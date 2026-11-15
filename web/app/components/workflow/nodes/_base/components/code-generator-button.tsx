@@ -1,24 +1,25 @@
 'use client'
+
 import type { FC } from 'react'
 import type { CodeLanguage } from '../../code/types'
 import type { GenRes } from '@/service/debug'
-import { useBoolean } from 'ahooks'
+import { cn } from '@langgenius/dify-ui/cn'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { GetCodeGeneratorResModal } from '@/app/components/app/configuration/config/code-generator/get-code-generator-res'
-import { ActionButton } from '@/app/components/base/action-button'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
-import { AppModeEnum } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import { useHooksStore } from '../../../hooks-store'
+import { getEditorResourceId } from '@/app/components/workflow/editor-resource/resource'
+import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
 
-type Props = {
+type Props = Readonly<{
   nodeId: string
   currentCode?: string
   className?: string
   onGenerated?: (prompt: string) => void
   codeLanguages: CodeLanguage
-}
+}>
 
 const CodeGenerateBtn: FC<Props> = ({
   nodeId,
@@ -27,29 +28,35 @@ const CodeGenerateBtn: FC<Props> = ({
   codeLanguages,
   onGenerated,
 }) => {
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = useCallback((res: GenRes) => {
-    onGenerated?.(res.modified)
-    showAutomaticFalse()
-  }, [onGenerated, showAutomaticFalse])
-  const configsMap = useHooksStore(s => s.configsMap)
+  const { t } = useTranslation(['appDebug'])
+  const [showAutomatic, setShowAutomatic] = useState(false)
+  const handleAutomaticRes = useCallback(
+    (res: GenRes) => {
+      onGenerated?.(res.modified)
+      setShowAutomatic(false)
+    },
+    [onGenerated],
+  )
+  const resource = useAtomValue(editorResourceAtom)
+  const resourceId = getEditorResourceId(resource)
 
   return (
     <div className={cn(className)}>
-      <ActionButton
+      <IconButton
+        aria-label={t(($) => $['operation.automatic'], { ns: 'appDebug' })}
         className="hover:bg-[#155EFF]/8"
-        onClick={showAutomaticTrue}
+        onClick={() => setShowAutomatic(true)}
       >
-        <Generator className="h-4 w-4 text-primary-600" />
-      </ActionButton>
+        <span aria-hidden className="i-custom-vender-other-generator size-4 text-primary-600" />
+      </IconButton>
       {showAutomatic && (
         <GetCodeGeneratorResModal
-          mode={AppModeEnum.CHAT}
+          modelMode="chat"
           isShow={showAutomatic}
           codeLanguages={codeLanguages}
-          onClose={showAutomaticFalse}
+          onClose={() => setShowAutomatic(false)}
           onFinished={handleAutomaticRes}
-          flowId={configsMap?.flowId || ''}
+          flowId={resourceId || ''}
           nodeId={nodeId}
           currentCode={currentCode}
         />

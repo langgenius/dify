@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from types import SimpleNamespace
+import uuid
+from inspect import unwrap
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
-from graphon.model_runtime.errors.invoke import InvokeError
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.web.completion import ChatApi, ChatStopApi, CompletionApi, CompletionStopApi
 from controllers.web.error import (
+    AgentNotPublishedError,
     CompletionRequestError,
     NotChatAppError,
     NotCompletionAppError,
@@ -18,19 +21,53 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from core.app.apps.agent_app.errors import AgentAppNotPublishedError
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from graphon.model_runtime.errors.invoke import InvokeError
+from models.model import App, AppMode, EndUser
+from tests.helpers.unit.model_factories import make_app, make_end_user
 
 
-def _completion_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="completion")
+def _app(mode: AppMode) -> App:
+    return make_app(name="Web App", mode=mode, enable_api=False, max_active_requests=0)
 
 
-def _chat_app() -> SimpleNamespace:
-    return SimpleNamespace(id="app-1", mode="chat")
+def _completion_app() -> App:
+    return _app(AppMode.COMPLETION)
 
 
-def _end_user() -> SimpleNamespace:
-    return SimpleNamespace(id="eu-1")
+def _chat_app() -> App:
+    return _app(AppMode.CHAT)
+
+
+def _end_user() -> EndUser:
+    return make_end_user(end_user_id="eu-1", app_id="app-1", name="Web User")
+
+
+@pytest.mark.parametrize(
+    ("resource", "mode", "path"),
+    [
+        (CompletionApi, AppMode.COMPLETION, "/completion-messages"),
+        (ChatApi, AppMode.CHAT, "/chat-messages"),
+    ],
+)
+def test_unexpected_generation_error_hides_internal_details(
+    app: Flask,
+    resource: type[CompletionApi | ChatApi],
+    mode: AppMode,
+    path: str,
+) -> None:
+    error = RuntimeError("internal provider failure")
+    with (
+        patch("controllers.web.completion.AppGenerateService.generate", side_effect=error),
+        app.test_request_context(path, method="POST", json={"inputs": {}, "query": "hello"}),
+        pytest.raises(InternalServerError) as exc_info,
+    ):
+        resource().post(_app(mode), _end_user())
+
+    assert exc_info.value.code == 500
+    assert "internal provider failure" not in str(exc_info.value)
+    assert exc_info.value.__context__ is error
 
 
 # ---------------------------------------------------------------------------
@@ -46,7 +83,8 @@ class TestCompletionApi:
     @patch("controllers.web.completion.AppGenerateService.generate")
     @patch("controllers.web.completion.web_ns")
     def test_happy_path(self, mock_ns: MagicMock, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "test"}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs, "query": "test"}
         mock_gen.return_value = "response-obj"
 
         with app.test_request_context("/completion-messages", method="POST"):
@@ -60,7 +98,8 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_provider_not_init_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderNotInitializeError):
@@ -72,7 +111,8 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_quota_exceeded_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderQuotaExceededError):
@@ -84,7 +124,8 @@ class TestCompletionApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_model_not_support_error(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs}
 
         with app.test_request_context("/completion-messages", method="POST"):
             with pytest.raises(ProviderModelCurrentlyNotSupportError):
@@ -122,7 +163,8 @@ class TestChatApi:
     @patch("controllers.web.completion.AppGenerateService.generate")
     @patch("controllers.web.completion.web_ns")
     def test_happy_path(self, mock_ns: MagicMock, mock_gen: MagicMock, mock_compact: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "hi"}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs, "query": "hi"}
         mock_gen.return_value = "response"
 
         with app.test_request_context("/chat-messages", method="POST"):
@@ -136,11 +178,46 @@ class TestChatApi:
     )
     @patch("controllers.web.completion.web_ns")
     def test_invoke_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
-        mock_ns.payload = {"inputs": {}, "query": "x"}
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs, "query": "x"}
 
         with app.test_request_context("/chat-messages", method="POST"):
             with pytest.raises(CompletionRequestError):
                 ChatApi().post(_chat_app(), _end_user())
+
+    @patch(
+        "controllers.web.completion.AppGenerateService.generate",
+        side_effect=AgentAppNotPublishedError("Agent has not been published"),
+    )
+    @patch("controllers.web.completion.web_ns")
+    def test_agent_not_published_error_mapped(self, mock_ns: MagicMock, mock_gen: MagicMock, app: Flask) -> None:
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs, "query": "x"}
+        app_model = _app(AppMode.AGENT)
+
+        with app.test_request_context("/chat-messages", method="POST"):
+            with pytest.raises(AgentNotPublishedError):
+                ChatApi().post(app_model, _end_user())
+
+    @patch("controllers.web.completion.AppGenerateService.generate", return_value="response")
+    @patch("controllers.web.completion.ConversationService.get_conversation")
+    @patch("controllers.web.completion.web_ns")
+    def test_conversation_validation_uses_request_session(
+        self,
+        mock_ns: MagicMock,
+        mock_get_conversation: MagicMock,
+        mock_generate: MagicMock,
+        app: Flask,
+        unbound_session: Session,
+    ) -> None:
+        empty_inputs: dict[str, object] = {}
+        mock_ns.payload = {"inputs": empty_inputs, "query": "hi", "conversation_id": str(uuid.uuid4())}
+        session = unbound_session
+
+        with app.test_request_context("/chat-messages", method="POST"):
+            unwrap(ChatApi.post)(ChatApi(), session, _chat_app(), _end_user())
+
+        assert mock_get_conversation.call_args.kwargs["session"] is session
 
 
 # ---------------------------------------------------------------------------

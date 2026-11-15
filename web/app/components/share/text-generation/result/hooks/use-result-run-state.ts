@@ -1,26 +1,32 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react'
+import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import type { AppSourceType } from '@/service/share'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import {
+  captureAppAccessScope,
+  hasAppAccessError,
+  isAppAccessError,
+  isAppAccessScopeCurrent,
+} from '@/features/app-access-error/state'
+import {
+  AppSourceType,
   stopChatMessageResponding,
   stopWorkflowMessage,
   updateFeedback,
 } from '@/service/share'
 
-type Notify = (payload: { type: 'error', message: string }) => void
+type Notify = (payload: { type: 'error'; message: string }) => void
 
 type RunControlState = {
   currentTaskId: string | null
   isStopping: boolean
 }
 
-type RunControlAction
-  = | { type: 'reset' }
-    | { type: 'setCurrentTaskId', value: SetStateAction<string | null> }
-    | { type: 'setIsStopping', value: SetStateAction<boolean> }
+type RunControlAction =
+  | { type: 'reset' }
+  | { type: 'setCurrentTaskId'; value: SetStateAction<string | null> }
+  | { type: 'setIsStopping'; value: SetStateAction<boolean> }
 
 type UseResultRunStateOptions = {
   appId?: string
@@ -28,11 +34,13 @@ type UseResultRunStateOptions = {
   controlStopResponding?: number
   isWorkflow: boolean
   notify: Notify
-  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
+  onRunControlChange?: (
+    control: { onStop: () => Promise<void> | void; isStopping: boolean } | null,
+  ) => void
 }
 
 export type ResultRunStateController = {
-  abortControllerRef: MutableRefObject<AbortController | null>
+  abortControllerRef: RefObject<AbortController | null>
   clearMoreLikeThis: () => void
   completionRes: string
   controlClearMoreLikeThis: number
@@ -67,12 +75,14 @@ const runControlReducer = (state: RunControlState, action: RunControlAction): Ru
     case 'setCurrentTaskId':
       return {
         ...state,
-        currentTaskId: typeof action.value === 'function' ? action.value(state.currentTaskId) : action.value,
+        currentTaskId:
+          typeof action.value === 'function' ? action.value(state.currentTaskId) : action.value,
       }
     case 'setIsStopping':
       return {
         ...state,
-        isStopping: typeof action.value === 'function' ? action.value(state.isStopping) : action.value,
+        isStopping:
+          typeof action.value === 'function' ? action.value(state.isStopping) : action.value,
       }
   }
 }
@@ -85,7 +95,8 @@ export const useResultRunState = ({
   notify,
   onRunControlChange,
 }: UseResultRunStateOptions): ResultRunStateController => {
-  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
+  const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] =
+    useBoolean(false)
   const [completionResState, setCompletionResState] = useState<string>('')
   const completionResRef = useRef<string>('')
   const [workflowProcessDataState, setWorkflowProcessDataState] = useState<WorkflowProcess>()
@@ -96,6 +107,7 @@ export const useResultRunState = ({
   })
   const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
   const abortControllerRef = useRef<AbortController | null>(null)
+  const runGenerationRef = useRef(0)
   const [{ currentTaskId, isStopping }, dispatchRunControl] = useReducer(runControlReducer, {
     currentTaskId: null,
     isStopping: false,
@@ -130,6 +142,7 @@ export const useResultRunState = ({
   const getWorkflowProcessData = useCallback(() => workflowProcessDataRef.current, [])
 
   const resetRunState = useCallback(() => {
+    runGenerationRef.current += 1
     dispatchRunControl({ type: 'reset' })
     abortControllerRef.current = null
     onRunControlChange?.(null)
@@ -143,42 +156,69 @@ export const useResultRunState = ({
     resetRunState()
   }, [resetRunState, setCompletionRes, setWorkflowProcessData])
 
-  const handleFeedback = useCallback(async (nextFeedback: FeedbackType) => {
-    await updateFeedback({
-      url: `/messages/${messageId}/feedbacks`,
-      body: {
-        rating: nextFeedback.rating,
-        content: nextFeedback.content,
-      },
-    }, appSourceType, appId)
-    setFeedback(nextFeedback)
-  }, [appId, appSourceType, messageId])
+  const handleFeedback = useCallback(
+    async (nextFeedback: FeedbackType) => {
+      if (!messageId) return
+      await updateFeedback(
+        {
+          messageId,
+          body: {
+            rating: nextFeedback.rating,
+            content: nextFeedback.content,
+          },
+        },
+        appSourceType,
+        appId,
+      )
+      setFeedback(nextFeedback)
+    },
+    [appId, appSourceType, messageId],
+  )
 
   const handleStop = useCallback(async () => {
-    if (!currentTaskId || isStopping)
-      return
+    if (!currentTaskId || isStopping) return
 
+    const runGeneration = runGenerationRef.current
+    const appAccessScope = appSourceType === AppSourceType.webApp ? captureAppAccessScope() : null
+    const isCurrentRequest = () =>
+      runGeneration === runGenerationRef.current &&
+      isAppAccessScopeCurrent(appAccessScope) &&
+      !hasAppAccessError(appAccessScope)
+    if (!isCurrentRequest()) return
+
+    const abortController = abortControllerRef.current
     setIsStopping(true)
     try {
       if (isWorkflow)
-        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '')
+        await stopWorkflowMessage(appId!, currentTaskId, appSourceType, appId || '', {
+          silent: true,
+        })
       else
-        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '')
+        await stopChatMessageResponding(appId!, currentTaskId, appSourceType, appId || '', {
+          silent: true,
+        })
 
-      abortControllerRef.current?.abort()
-    }
-    catch (error) {
+      if (isCurrentRequest()) abortController?.abort()
+    } catch (error) {
+      if (!isCurrentRequest() || isAppAccessError(error)) return
+
       const message = error instanceof Error ? error.message : String(error)
       notify({ type: 'error', message })
-    }
-    finally {
-      setIsStopping(false)
+    } finally {
+      if (isCurrentRequest()) setIsStopping(false)
     }
   }, [appId, appSourceType, currentTaskId, isStopping, isWorkflow, notify, setIsStopping])
 
   const clearMoreLikeThis = useCallback(() => {
     setControlClearMoreLikeThis(Date.now())
   }, [])
+
+  useEffect(
+    () => () => {
+      runGenerationRef.current += 1
+    },
+    [],
+  )
 
   useEffect(() => {
     const abortCurrentRequest = () => {
@@ -195,8 +235,7 @@ export const useResultRunState = ({
   }, [controlStopResponding, resetRunState, setRespondingFalse])
 
   useEffect(() => {
-    if (!onRunControlChange)
-      return
+    if (!onRunControlChange) return
 
     if (isResponding && currentTaskId) {
       onRunControlChange({

@@ -10,6 +10,7 @@ import tempfile
 from collections.abc import Generator
 from io import BytesIO
 from pathlib import Path
+from typing import Any, override
 
 import clickzetta
 from pydantic import BaseModel, model_validator
@@ -39,7 +40,7 @@ class ClickZettaVolumeConfig(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def validate_config(cls, values: dict):
+    def validate_config(cls, values: dict[str, Any]):
         """Validate the configuration values.
 
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,
@@ -190,11 +191,8 @@ class ClickZettaVolumeStorage(BaseStorage):
 
             # Only use TABLE VOLUME for actual dataset-specific paths
             # like "dataset_12345/file.pdf" or paths with dataset_ prefix
-            if dataset_id:
-                table_name = f"{self._config.table_prefix}{dataset_id}"
-            else:
-                # Default table name for generic operations
-                table_name = "default_dataset"
+            # Default table name for generic operations
+            table_name = f"{self._config.table_prefix}{dataset_id}" if dataset_id else "default_dataset"
             return f"TABLE VOLUME {table_name}"
         elif self._config.volume_type == "external":
             return f"VOLUME {self._config.volume_name}"
@@ -250,6 +248,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             # Don't raise exception, let the operation continue
             # The table might exist but not be visible due to permissions
 
+    @override
     def save(self, filename: str, data: bytes):
         """Save data to ClickZetta Volume.
 
@@ -303,6 +302,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             # Clean up temporary file
             Path(temp_file_path).unlink(missing_ok=True)
 
+    @override
     def load_once(self, filename: str) -> bytes:
         """Load file content from ClickZetta Volume.
 
@@ -363,6 +363,7 @@ class ClickZettaVolumeStorage(BaseStorage):
             logger.debug("File %s loaded from ClickZetta Volume", filename)
             return content
 
+    @override
     def load_stream(self, filename: str) -> Generator:
         """Load file as stream from ClickZetta Volume.
 
@@ -381,6 +382,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         logger.debug("File %s loaded as stream from ClickZetta Volume", filename)
 
+    @override
     def download(self, filename: str, target_filepath: str):
         """Download file from ClickZetta Volume to local path.
 
@@ -394,6 +396,7 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         logger.debug("File %s downloaded from ClickZetta Volume to %s", filename, target_filepath)
 
+    @override
     def exists(self, filename: str) -> bool:
         """Check if file exists in ClickZetta Volume.
 
@@ -433,8 +436,11 @@ class ClickZettaVolumeStorage(BaseStorage):
             return exists
         except Exception as e:
             logger.warning("Error checking file existence for %s: %s", filename, e)
-            return False
+            # Deletion relies on this result. A failed query is not proof that
+            # the file is absent; retain references so callers can retry.
+            raise
 
+    @override
     def delete(self, filename: str):
         """Delete file from ClickZetta Volume.
 
@@ -471,23 +477,32 @@ class ClickZettaVolumeStorage(BaseStorage):
 
         logger.debug("File %s deleted from ClickZetta Volume", filename)
 
+    @override
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         """Scan files and directories in ClickZetta Volume.
 
         Args:
-            path: Path to scan (dataset_id for table volumes)
+            path: Path prefix to scan, or a bare dataset_id for a table-volume root
             files: Include files in results
             directories: Include directories in results
 
         Returns:
             List of file/directory paths
         """
+        if not files and not directories:
+            raise ValueError("At least one of files or directories must be True")
+        requested_path = path
         try:
-            # For table volumes, path is treated as dataset_id
+            # Match save/load/delete: the first path component selects the
+            # table (or special USER VOLUME), and the remainder is its file path.
             dataset_id = None
+            logical_root = ""
             if self._config.volume_type == "table":
-                dataset_id = path
-                path = ""  # Root of the table volume
+                root, separator, relative_path = path.partition("/")
+                dataset_id = root.removeprefix(self._config.table_prefix)
+                path = relative_path
+                if separator:
+                    logical_root = root + "/"
 
             volume_prefix = self._get_volume_sql_prefix(dataset_id)
 
@@ -499,10 +514,7 @@ class ClickZettaVolumeStorage(BaseStorage):
                 else:
                     sql = f"LIST {volume_prefix} SUBDIRECTORY '{self._config.dify_prefix}'"
             else:
-                if path:
-                    sql = f"LIST {volume_prefix} SUBDIRECTORY '{path}'"
-                else:
-                    sql = f"LIST {volume_prefix}"
+                sql = f"LIST {volume_prefix} SUBDIRECTORY '{path}'" if path else f"LIST {volume_prefix}"
 
             rows = self._execute_sql(sql, fetch=True)
 
@@ -516,6 +528,10 @@ class ClickZettaVolumeStorage(BaseStorage):
                     if volume_prefix == "USER VOLUME" and file_path.startswith(dify_prefix_with_slash):
                         file_path = file_path[len(dify_prefix_with_slash) :]  # Remove prefix
 
+                    file_path = logical_root + file_path
+                    if logical_root and not file_path.startswith(requested_path):
+                        continue
+
                     if files and not file_path.endswith("/") or directories and file_path.endswith("/"):
                         result.append(file_path)
 
@@ -523,5 +539,5 @@ class ClickZettaVolumeStorage(BaseStorage):
             return result
 
         except Exception:
-            logger.exception("Error scanning path %s", path)
-            return []
+            logger.exception("Error scanning path %s", requested_path)
+            raise

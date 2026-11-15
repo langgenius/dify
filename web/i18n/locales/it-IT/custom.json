@@ -1,0 +1,17 @@
+{
+  "apply": "Applica",
+  "change": "Cambia",
+  "custom": "Personalizzazione",
+  "customize.contactUs": " contattaci ",
+  "customize.prefix": "Per personalizzare il logo del marchio all'interno dell'app, per favore",
+  "customize.suffix": "per aggiornare alla versione Enterprise.",
+  "restore": "Ripristina Impostazioni Predefinite",
+  "upgradeTip.des": "Aggiorna il tuo piano per personalizzare il tuo marchio",
+  "upgradeTip.title": "Aggiorna il tuo piano",
+  "upload": "Carica",
+  "uploadedFail": "Caricamento dell'immagine fallito, per favore ricarica.",
+  "uploading": "Caricamento in corso",
+  "webapp.changeLogo": "Cambia immagine del marchio Powered by",
+  "webapp.changeLogoTip": "Formato SVG o PNG con una dimensione minima di 40x40px",
+  "webapp.removeBrand": "Rimuovi Powered by Dify"
+}

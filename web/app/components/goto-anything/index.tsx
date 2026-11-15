@@ -1,246 +1,137 @@
 'use client'
 
-import type { FC, KeyboardEvent } from 'react'
-import { Command } from 'cmdk'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { SlashCommandProvider } from './actions/commands'
-import { slashCommandRegistry } from './actions/commands/registry'
-import CommandSelector from './command-selector'
-import { EmptyState, Footer, ResultList, SearchInput } from './components'
-import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import type { Plugin } from '../plugins/types'
+import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import {
-  useGotoAnythingModal,
-  useGotoAnythingNavigation,
-  useGotoAnythingResults,
-  useGotoAnythingSearch,
-} from './hooks'
+  Drawer,
+  DrawerBackdrop,
+  DrawerClose,
+  DrawerPopup,
+  DrawerPortal,
+  DrawerTitle,
+  DrawerViewport,
+  DrawerVirtualKeyboardProvider,
+} from '@langgenius/dify-ui/drawer'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
+import { useHotkey } from '@tanstack/react-hotkeys'
+import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { PluginInstallPermissionProvider } from '../plugins/install-plugin/components/plugin-install-permission-provider'
+import useWorkspacePluginInstallPermission from '../plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
+import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
+import { gotoAnythingDialogHandle, gotoAnythingDrawerHandle } from './handles'
+import { GOTO_ANYTHING_HOTKEY } from './hotkeys'
+import { SearchSession } from './search-session'
 
-type Props = {
-  onHide?: () => void
+function isEditableShortcutTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false
+
+  return target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)
 }
 
-const GotoAnything: FC<Props> = ({
-  onHide,
-}) => {
-  const { t } = useTranslation()
-  const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
-  const prevShowRef = useRef(false)
+export function GotoAnything() {
+  const { t } = useTranslation(['app', 'common'])
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const isAtLeastMd = useMediaQuery('(width >= 48rem)', {})
+  if (isAtLeastMd && drawerOpen) setDrawerOpen(false)
+  const [activePlugin, setActivePlugin] = useState<Plugin>()
+  const { canInstallPlugin, currentDifyVersion } = useWorkspacePluginInstallPermission()
+  const dialogInputRef = useRef<HTMLInputElement>(null)
+  const drawerInputRef = useRef<HTMLInputElement>(null)
 
-  // Search state management (called first so setSearchQuery is available)
-  const {
-    searchQuery,
-    setSearchQuery,
-    searchQueryDebouncedValue,
-    searchMode,
-    isCommandsMode,
-    cmdVal,
-    setCmdVal,
-    clearSelection,
-    Actions,
-  } = useGotoAnythingSearch()
+  useHotkey(
+    GOTO_ANYTHING_HOTKEY,
+    (event) => {
+      if (event.defaultPrevented) return
+      const isOpen = gotoAnythingDialogHandle.isOpen || drawerOpen
+      if (!isOpen && isEditableShortcutTarget(event.target)) return
 
-  // Modal state management
-  const {
-    show,
-    setShow,
-    inputRef,
-    handleClose: modalClose,
-  } = useGotoAnythingModal()
+      event.preventDefault()
+      event.stopPropagation()
 
-  // Reset state when modal opens/closes
-  useEffect(() => {
-    if (show && !prevShowRef.current) {
-      // Modal just opened - reset search
-      setSearchQuery('')
-    }
-    else if (!show && prevShowRef.current) {
-      // Modal just closed
-      setSearchQuery('')
-      clearSelection()
-      onHide?.()
-    }
-    prevShowRef.current = show
-  }, [show, setSearchQuery, clearSelection, onHide])
+      if (isOpen) return
+      if (isAtLeastMd) gotoAnythingDialogHandle.open(null)
+      else setDrawerOpen(true)
+    },
+    {
+      ignoreInputs: false,
+      preventDefault: false,
+      stopPropagation: false,
+    },
+  )
 
-  // Results fetching and processing
-  const {
-    dedupedResults,
-    groupedResults,
-    isLoading,
-    isError,
-    error,
-  } = useGotoAnythingResults({
-    searchQueryDebouncedValue,
-    searchMode,
-    isCommandsMode,
-    Actions,
-    isWorkflowPage,
-    isRagPipelinePage,
-    cmdVal,
-    setCmdVal,
-  })
+  function closeSearch() {
+    gotoAnythingDialogHandle.close()
+    setDrawerOpen(false)
+  }
 
-  // Navigation handlers
-  const {
-    handleCommandSelect,
-    handleNavigate,
-    activePlugin,
-    setActivePlugin,
-  } = useGotoAnythingNavigation({
-    Actions,
-    setSearchQuery,
-    clearSelection,
-    inputRef,
-    onClose: () => setShow(false),
-  })
-
-  // Handle search input change
-  const handleSearchChange = useCallback((value: string) => {
-    setSearchQuery(value)
-    if (!value.startsWith('@') && !value.startsWith('/'))
-      clearSelection()
-  }, [setSearchQuery, clearSelection])
-
-  // Handle search input keydown for slash commands
-  const handleSearchKeyDown = useCallback((e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      const query = searchQuery.trim()
-      // Check if it's a complete slash command
-      if (query.startsWith('/')) {
-        const commandName = query.substring(1).split(' ')[0]
-        const handler = slashCommandRegistry.findCommand(commandName)
-
-        // If it's a direct mode command, execute immediately
-        const isAvailable = handler?.isAvailable?.() ?? true
-        if (handler?.mode === 'direct' && handler.execute && isAvailable) {
-          e.preventDefault()
-          handler.execute()
-          setShow(false)
-          setSearchQuery('')
-        }
-      }
-    }
-  }, [searchQuery, setShow, setSearchQuery])
-
-  // Determine which empty state to show
-  const emptyStateVariant = useMemo(() => {
-    if (isLoading)
-      return 'loading'
-    if (isError)
-      return 'error'
-    if (!searchQuery.trim())
-      return 'default'
-    if (dedupedResults.length === 0 && !isCommandsMode)
-      return 'no-results'
-    return null
-  }, [isLoading, isError, searchQuery, dedupedResults.length, isCommandsMode])
+  const searchTitle = t(($) => $['gotoAnything.searchTitle'], { ns: 'app' })
+  const closeLabel = t(($) => $['operation.close'], { ns: 'common' })
 
   return (
     <>
-      <SlashCommandProvider />
-      <Modal
-        isShow={show}
-        onClose={modalClose}
-        closable={false}
-        className="!w-[480px] !p-0"
-        highPriority={true}
+      <Dialog handle={gotoAnythingDialogHandle}>
+        <DialogContent
+          initialFocus={dialogInputRef}
+          className="w-140 data-open:transition-none"
+          backdropProps={{ className: 'bg-background-overlay-alt data-open:transition-none' }}
+        >
+          <DialogTitle className="sr-only">{searchTitle}</DialogTitle>
+          <SearchSession
+            surface="dialog"
+            inputRef={dialogInputRef}
+            onClose={closeSearch}
+            onInstallPlugin={setActivePlugin}
+          />
+          <DialogClose tabIndex={-1} className="sr-only">
+            {closeLabel}
+          </DialogClose>
+        </DialogContent>
+      </Dialog>
+
+      <Drawer
+        handle={gotoAnythingDrawerHandle}
+        swipeDirection="down"
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
       >
-        <div className="flex flex-col rounded-2xl border border-components-panel-border bg-components-panel-bg shadow-xl">
-          <Command
-            className="outline-none"
-            value={cmdVal}
-            onValueChange={setCmdVal}
-            disablePointerSelection
-            loop
-          >
-            <SearchInput
-              inputRef={inputRef}
-              value={searchQuery}
-              onChange={handleSearchChange}
-              onKeyDown={handleSearchKeyDown}
-              searchMode={searchMode}
-              placeholder={t('gotoAnything.searchPlaceholder', { ns: 'app' })}
-            />
+        <DrawerVirtualKeyboardProvider>
+          <DrawerPortal>
+            <DrawerBackdrop className="fixed bg-background-overlay-alt" />
+            <DrawerViewport>
+              <DrawerPopup
+                initialFocus={drawerInputRef}
+                className="h-[min(85dvh,calc(100dvh-3.5rem))]"
+              >
+                <DrawerTitle className="sr-only">{searchTitle}</DrawerTitle>
+                <SearchSession
+                  surface="drawer"
+                  inputRef={drawerInputRef}
+                  onClose={closeSearch}
+                  onInstallPlugin={setActivePlugin}
+                />
+                <DrawerClose tabIndex={-1} className="sr-only">
+                  {closeLabel}
+                </DrawerClose>
+              </DrawerPopup>
+            </DrawerViewport>
+          </DrawerPortal>
+        </DrawerVirtualKeyboardProvider>
+      </Drawer>
 
-            <Command.List className="h-[240px] overflow-y-auto">
-              {emptyStateVariant === 'loading' && (
-                <EmptyState variant="loading" />
-              )}
-
-              {emptyStateVariant === 'error' && (
-                <EmptyState variant="error" error={error} />
-              )}
-
-              {!isLoading && !isError && (
-                <>
-                  {isCommandsMode
-                    ? (
-                        <CommandSelector
-                          actions={Actions}
-                          onCommandSelect={handleCommandSelect}
-                          searchFilter={searchQuery.trim().substring(1)}
-                          commandValue={cmdVal}
-                          onCommandValueChange={setCmdVal}
-                          originalQuery={searchQuery.trim()}
-                        />
-                      )
-                    : (
-                        <ResultList
-                          groupedResults={groupedResults}
-                          onSelect={handleNavigate}
-                        />
-                      )}
-
-                  {!isCommandsMode && emptyStateVariant === 'no-results' && (
-                    <EmptyState
-                      variant="no-results"
-                      searchMode={searchMode}
-                      Actions={Actions}
-                    />
-                  )}
-
-                  {!isCommandsMode && emptyStateVariant === 'default' && (
-                    <EmptyState variant="default" />
-                  )}
-                </>
-              )}
-            </Command.List>
-
-            <Footer
-              resultCount={dedupedResults.length}
-              searchMode={searchMode}
-              isError={isError}
-              isCommandsMode={isCommandsMode}
-              hasQuery={!!searchQuery.trim()}
-            />
-          </Command>
-        </div>
-      </Modal>
-
-      {activePlugin && (
-        <InstallFromMarketplace
-          manifest={activePlugin}
-          uniqueIdentifier={activePlugin.latest_package_identifier}
-          onClose={() => setActivePlugin(undefined)}
-          onSuccess={() => setActivePlugin(undefined)}
-        />
+      {activePlugin && canInstallPlugin && (
+        <PluginInstallPermissionProvider
+          canInstallPlugin={canInstallPlugin}
+          currentDifyVersion={currentDifyVersion}
+        >
+          <InstallFromMarketplace
+            manifest={activePlugin}
+            uniqueIdentifier={activePlugin.latest_package_identifier}
+            onClose={() => setActivePlugin(undefined)}
+            onSuccess={() => setActivePlugin(undefined)}
+          />
+        </PluginInstallPermissionProvider>
       )}
     </>
   )
 }
-
-/**
- * GotoAnything component with context provider
- */
-const GotoAnythingWithContext: FC<Props> = (props) => {
-  return (
-    <GotoAnythingProvider>
-      <GotoAnything {...props} />
-    </GotoAnythingProvider>
-  )
-}
-
-export default GotoAnythingWithContext

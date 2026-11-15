@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { Switch } from '@langgenius/dify-ui/switch'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 
 type ReasoningFormatConfigProps = {
@@ -15,22 +15,22 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
   onChange,
   readonly = false,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['workflowModels'])
 
   return (
     <Field
-      title={t('nodes.llm.reasoningFormat.title', { ns: 'workflow' })}
-      tooltip={t('nodes.llm.reasoningFormat.tooltip', { ns: 'workflow' })}
-      operations={(
+      title={t(($) => $['nodes.llm.reasoningFormat.title'], { ns: 'workflowModels' })}
+      tooltip={t(($) => $['nodes.llm.reasoningFormat.tooltip'], { ns: 'workflowModels' })}
+      operations={
         // ON = separated, OFF = tagged
         <Switch
-          value={value === 'separated'}
-          onChange={enabled => onChange(enabled ? 'separated' : 'tagged')}
+          checked={value === 'separated'}
+          onCheckedChange={(enabled) => onChange(enabled ? 'separated' : 'tagged')}
           size="md"
           disabled={readonly}
           key={value}
         />
-      )}
+      }
     >
       <div />
     </Field>

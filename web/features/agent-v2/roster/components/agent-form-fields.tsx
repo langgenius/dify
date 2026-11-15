@@ -1,0 +1,105 @@
+import type { Ref } from 'react'
+import type { AgentFormValues, AgentIconSelection } from './agent-form'
+import type { IconPickerValue } from '@/app/components/base/icon-picker'
+import { DialogBody } from '@langgenius/dify-ui/dialog'
+import { Field, FieldError, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useTranslation } from 'react-i18next'
+import {
+  IconPicker,
+  IconPickerContent,
+  IconPickerIcon,
+  IconPickerTrigger,
+} from '@/app/components/base/icon-picker'
+
+type AgentFormFieldsProps = {
+  defaultValues: AgentFormValues
+  icon: AgentIconSelection
+  iconAriaLabel: string
+  onIconChange: (value: IconPickerValue) => void
+  ref: Ref<HTMLInputElement>
+}
+
+export function AgentFormFields({
+  defaultValues,
+  icon,
+  iconAriaLabel,
+  onIconChange,
+  ref,
+}: AgentFormFieldsProps) {
+  const { t } = useTranslation(['agentRoster'])
+  const { t: tCommon } = useTranslation(['common'])
+
+  return (
+    <DialogBody className="space-y-5">
+      <div className="flex items-start gap-4">
+        <IconPicker value={icon} onValueChange={onIconChange}>
+          <IconPickerTrigger aria-label={iconAriaLabel} className="shrink-0 rounded-full">
+            <IconPickerIcon size="xxl" shape="circle" className="size-16 cursor-pointer" />
+          </IconPickerTrigger>
+          <IconPickerContent />
+        </IconPicker>
+        <div className="flex min-w-0 flex-1 flex-col items-start gap-3 pb-1 sm:flex-row">
+          <Field
+            name="name"
+            className="min-w-0 flex-1"
+            validate={(value) => {
+              if (typeof value === 'string' && value.length > 0 && !value.trim())
+                return t(($) => $['roster.createForm.nameRequired'], { ns: 'agentRoster' })
+
+              return null
+            }}
+          >
+            <FieldLabel>
+              {t(($) => $['roster.createForm.nameLabel'], { ns: 'agentRoster' })}
+            </FieldLabel>
+            <Input
+              ref={ref}
+              autoComplete="off"
+              defaultValue={defaultValues.name}
+              maxLength={255}
+              placeholder={t(($) => $['roster.createForm.namePlaceholder'], { ns: 'agentRoster' })}
+              required
+            />
+            <FieldError match="valueMissing">
+              {t(($) => $['roster.createForm.nameRequired'], { ns: 'agentRoster' })}
+            </FieldError>
+            <FieldError match="customError" />
+          </Field>
+          <Field name="role" className="min-w-0 flex-1">
+            <FieldLabel>
+              {t(($) => $['roster.createForm.roleLabel'], { ns: 'agentRoster' })}
+              <span className="ml-1 system-xs-regular text-text-tertiary">
+                {tCommon(($) => $['label.optional'])}
+              </span>
+            </FieldLabel>
+            <Input
+              autoComplete="off"
+              defaultValue={defaultValues.role}
+              maxLength={255}
+              placeholder={t(($) => $['roster.createForm.rolePlaceholder'], { ns: 'agentRoster' })}
+            />
+          </Field>
+        </div>
+      </div>
+      <Field name="description">
+        <FieldLabel>
+          {t(($) => $['roster.createForm.descriptionLabel'], { ns: 'agentRoster' })}
+          <span className="ml-1 system-xs-regular text-text-tertiary">
+            {tCommon(($) => $['label.optional'])}
+          </span>
+        </FieldLabel>
+        <Textarea
+          autoComplete="off"
+          className="h-20 resize-none"
+          defaultValue={defaultValues.description}
+          maxLength={400}
+          placeholder={t(($) => $['roster.createForm.descriptionPlaceholder'], {
+            ns: 'agentRoster',
+          })}
+        />
+      </Field>
+    </DialogBody>
+  )
+}

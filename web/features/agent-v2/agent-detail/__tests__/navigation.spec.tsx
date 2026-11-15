@@ -1,0 +1,241 @@
+import type { AgentAppDetailWithSite } from '@dify/contracts/api/console/agent/types.gen'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { AgentPermission } from '@/features/agent-v2/acl'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createAgentFixture } from '@/test/fixtures/agent'
+import { AgentDetailSection, AgentDetailTop } from '../navigation'
+
+const mocks = vi.hoisted(() => ({
+  deleteAgent: vi.fn(),
+  exportAppDsl: vi.fn(),
+  pathname: '/agents/agent-1/configure',
+  queryData: undefined as ReturnType<typeof createAgentFixture> | undefined,
+  replace: vi.fn(),
+}))
+
+vi.mock('@/features/agent-v2/permissions', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/agent-v2/permissions')>()),
+  useCanCreateAgents: () => true,
+}))
+vi.mock('@/app/components/app/use-export-app-dsl', () => ({
+  useExportAppDsl: () => ({
+    exportAppDsl: mocks.exportAppDsl,
+    isExporting: false,
+  }),
+}))
+
+vi.mock('@/next/navigation', () => ({
+  usePathname: () => mocks.pathname,
+  useSelectedLayoutSegment: () => mocks.pathname.split('/').at(-1),
+  useRouter: () => ({
+    back: vi.fn(),
+    replace: mocks.replace,
+  }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.delete': mocks.deleteAgent,
+      'agent.byAgentId.get': async () => mocks.queryData,
+    }),
+  }
+})
+
+const createAgent = (overrides: Partial<AgentAppDetailWithSite> = {}) =>
+  createAgentFixture({
+    permission_keys: Object.values(AgentPermission),
+    app_id: 'app-1',
+    description: 'Find and summarize market materials.',
+    enable_api: true,
+    enable_site: true,
+    icon: '🧪',
+    icon_background: '#E0F2FE',
+    icon_type: 'emoji',
+    id: 'agent-1',
+    icon_url: null,
+    mode: 'agent',
+    name: 'Research Agent',
+    role: 'Research Assistant',
+    ...overrides,
+  })
+
+function renderAgentDetailSection(expand = true) {
+  const { queryClient, wrapper } = createConsoleQueryWrapper({
+    systemFeatures: { rbac_enabled: true },
+  })
+  queryClient.setQueryData(
+    consoleQuery.agent.byAgentId.get.queryKey({ input: { params: { agent_id: 'agent-1' } } }),
+    mocks.queryData,
+  )
+  return render(<AgentDetailSection expand={expand} />, { wrapper })
+}
+
+describe('AgentDetailSection', () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLImageElement.prototype, 'complete', 'get').mockReturnValue(true)
+    vi.spyOn(HTMLImageElement.prototype, 'naturalWidth', 'get').mockReturnValue(32)
+    vi.clearAllMocks()
+    mocks.deleteAgent.mockResolvedValue({})
+    mocks.exportAppDsl.mockResolvedValue(undefined)
+    mocks.pathname = '/agents/agent-1/configure'
+    mocks.queryData = createAgent()
+  })
+
+  afterEach(() => vi.restoreAllMocks())
+
+  it('renders the current agent avatar, name, and role', () => {
+    renderAgentDetailSection()
+    expect(screen.getByText('Research Agent')).toBeInTheDocument()
+    expect(screen.getByText('Research Assistant')).toBeInTheDocument()
+    expect(screen.queryByText('agent')).not.toBeInTheDocument()
+    expect(screen.queryByText('agentV2.agentDetail.title')).not.toBeInTheDocument()
+    expect(screen.getByText('🧪')).toBeInTheDocument()
+  })
+
+  it('renders an uploaded sidebar avatar using its signed URL', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: 'https://files.example.com/avatar.png?sign=signature',
+    })
+    const { container } = renderAgentDetailSection()
+
+    expect(container.querySelector('img')).toHaveAttribute(
+      'src',
+      'https://files.example.com/avatar.png?sign=signature',
+    )
+  })
+
+  it('preserves an external sidebar avatar when icon_url is null', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'link',
+      icon: 'https://example.com/avatar.png',
+      icon_url: null,
+    })
+    const { container } = renderAgentDetailSection()
+
+    expect(container.querySelector('img')).toHaveAttribute('src', 'https://example.com/avatar.png')
+  })
+
+  it('shows a fallback without exposing the file ID when the signed URL is missing', () => {
+    mocks.queryData = createAgent({
+      icon_type: 'image',
+      icon: 'uploaded-file-id',
+      icon_url: null,
+    })
+    const { container } = renderAgentDetailSection()
+
+    expect(container.querySelector('img')).not.toBeInTheDocument()
+    expect(screen.queryByText('uploaded-file-id')).not.toBeInTheDocument()
+    expect(screen.getByText('🤖')).toBeInTheDocument()
+  })
+
+  it.each([null, '', '   '])(
+    'omits an empty role while keeping the agent accessible (%s)',
+    (role) => {
+      mocks.queryData = createAgent({ role })
+      renderAgentDetailSection()
+
+      expect(screen.getByText('Research Agent')).toBeInTheDocument()
+      expect(screen.queryByText('Research Assistant')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /Research Agent/ })).toBeInTheDocument()
+    },
+  )
+
+  it('exports the Agent App package from the detail action menu', async () => {
+    const user = userEvent.setup()
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'agentV2.exportAgent' }))
+
+    expect(mocks.exportAppDsl).toHaveBeenCalledWith({
+      format: 'ifpkg',
+      appId: 'app-1',
+      appName: 'Research Agent',
+    })
+  })
+
+  it('keeps confirmation open while deleting and returns to the roster only after success', async () => {
+    const user = userEvent.setup()
+    const pending = createDeferred<void>()
+    mocks.deleteAgent.mockReturnValueOnce(pending.promise)
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentRoster\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() => expect(mocks.deleteAgent).toHaveBeenCalledOnce())
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    expect(mocks.replace).not.toHaveBeenCalled()
+    await act(async () => pending.resolve())
+    await waitFor(() => {
+      expect(mocks.replace).toHaveBeenCalledWith('/agents')
+    })
+    expect(mocks.deleteAgent).toHaveBeenCalledExactlyOnceWith({
+      params: {
+        agent_id: 'agent-1',
+      },
+    })
+  })
+
+  it('keeps the current agent open when deletion fails', async () => {
+    const user = userEvent.setup()
+    mocks.deleteAgent.mockRejectedValue(new Error('Delete failed'))
+    renderAgentDetailSection()
+
+    await user.click(screen.getByRole('button', { name: /agentRoster\.roster\.moreActions/ }))
+    await user.click(screen.getByRole('menuitem', { name: 'common.operation.delete' }))
+
+    const dialog = await screen.findByRole('alertdialog', {
+      name: /agentRoster\.roster\.deleteDialog\.title/,
+    })
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.fill' }))
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+    expect(await within(dialog).findByRole('alert')).toHaveTextContent(
+      'agentRoster.roster.deleteFailed',
+    )
+    expect(mocks.replace).not.toHaveBeenCalled()
+    expect(dialog).toBeInTheDocument()
+  })
+
+  it('does not render more actions in collapsed sidebar mode', () => {
+    renderAgentDetailSection(false)
+
+    expect(
+      screen.queryByRole('button', { name: /agentRoster\.roster\.moreActions/ }),
+    ).not.toBeInTheDocument()
+  })
+})
+
+describe('AgentDetailTop', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('links the combined home control to home', () => {
+    render(<AgentDetailTop />)
+
+    expect(screen.getByRole('link', { name: 'navigation.mainNav.home' })).toHaveAttribute(
+      'href',
+      '/',
+    )
+    expect(screen.getByRole('link', { name: 'Agents' })).toHaveAttribute('href', '/agents')
+    expect(screen.queryByRole('button', { name: 'common.operation.back' })).not.toBeInTheDocument()
+  })
+})

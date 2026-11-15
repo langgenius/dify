@@ -1,11 +1,11 @@
 import time
 
 import click
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import func, select
 
 import app
 from configs import dify_config
-from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
@@ -22,7 +22,7 @@ def create_tidb_serverless_task():
         try:
             # check the number of idle tidb serverless
             idle_tidb_serverless_number = (
-                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active == False)) or 0
+                db.session.scalar(select(func.count(TidbAuthBinding.id)).where(TidbAuthBinding.active.is_(False))) or 0
             )
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
@@ -57,6 +57,7 @@ def create_clusters(batch_size):
                 cluster_name=new_cluster["cluster_name"],
                 account=new_cluster["account"],
                 password=new_cluster["password"],
+                qdrant_endpoint=new_cluster.get("qdrant_endpoint"),
                 active=False,
                 status=TidbAuthBindingStatus.CREATING,
             )

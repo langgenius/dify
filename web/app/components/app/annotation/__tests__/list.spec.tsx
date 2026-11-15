@@ -1,0 +1,173 @@
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
+import { screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import * as React from 'react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { List } from '../list'
+
+const mockFormatTime = vi.fn(() => 'formatted-time')
+
+vi.mock('@/hooks/use-timestamp', () => ({
+  default: () => ({
+    formatTime: mockFormatTime,
+  }),
+}))
+
+const { mockedRequest } = vi.hoisted(() => ({
+  mockedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mockedRequest,
+}))
+
+const createAnnotation = (overrides: Partial<Annotation> = {}): Annotation => ({
+  id: overrides.id ?? 'annotation-id',
+  question: overrides.question ?? 'question 1',
+  answer: overrides.answer ?? 'answer 1',
+  created_at: overrides.created_at ?? 1700000000,
+  hit_count: overrides.hit_count ?? 2,
+})
+
+describe('List', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should render annotation rows and call onEdited when clicking a row', async () => {
+    const user = userEvent.setup()
+    const item = createAnnotation()
+    const onEdited = vi.fn()
+
+    render(
+      <List
+        appId="app-1"
+        list={[item]}
+        onEdited={onEdited}
+        onRemoved={vi.fn()}
+        selectedIds={[]}
+        onSelectedIdsChange={vi.fn()}
+        onBatchDelete={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByText(item.question!))
+
+    expect(
+      screen.getByRole('dialog', { name: 'appAnnotation.viewModal.annotatedResponse' }),
+    ).toBeInTheDocument()
+    expect(mockFormatTime).toHaveBeenCalledWith(item.created_at, 'appLog.dateTimeFormat')
+  })
+
+  it('selects individual rows and all rows without opening their detail', async () => {
+    const user = userEvent.setup()
+    const list = [
+      createAnnotation({ id: 'a', question: 'A' }),
+      createAnnotation({ id: 'b', question: 'B' }),
+    ]
+    const onEdited = vi.fn()
+    const onSelectedIdsChange = vi.fn()
+    function ControlledList() {
+      const [selectedIds, setSelectedIds] = React.useState<string[]>([])
+      return (
+        <List
+          appId="app-1"
+          list={list}
+          onEdited={onEdited}
+          onRemoved={vi.fn()}
+          selectedIds={selectedIds}
+          onSelectedIdsChange={(next) => {
+            setSelectedIds(next)
+            onSelectedIdsChange(next)
+          }}
+          onBatchDelete={vi.fn()}
+        />
+      )
+    }
+    render(<ControlledList />)
+    await user.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['a'])
+    await user.click(screen.getByRole('checkbox', { name: 'A' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith([])
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith(['a', 'b'])
+    await user.click(screen.getByRole('checkbox', { name: 'common.operation.selectAll' }))
+    expect(onSelectedIdsChange).toHaveBeenLastCalledWith([])
+    expect(onEdited).not.toHaveBeenCalled()
+  })
+
+  it('should confirm before removing an annotation and expose batch actions', async () => {
+    const user = userEvent.setup()
+    const item = createAnnotation({ id: 'to-delete', question: 'Delete me' })
+    const onRemoved = vi.fn()
+    mockedRequest.mockResolvedValue(Response.json({ result: 'success' }))
+    render(
+      <List
+        appId="app-1"
+        list={[item]}
+        onEdited={vi.fn()}
+        onRemoved={onRemoved}
+        selectedIds={[item.id]}
+        onSelectedIdsChange={vi.fn()}
+        onBatchDelete={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.remove' }))
+
+    expect(
+      await screen.findByText('appDebug.feature.annotation.removeConfirm'),
+    )!.toBeInTheDocument()
+    const confirmButton = await screen.findByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
+    await user.click(confirmButton)
+    await waitFor(() => {
+      expect(onRemoved).toHaveBeenCalledTimes(1)
+    })
+    const [url, , options] = mockedRequest.mock.calls[0]!
+    expect(url).toMatch(/\/apps\/app-1\/annotations\/to-delete$/)
+    expect(options.request.method).toBe('DELETE')
+
+    expect(screen.getByText('appAnnotation.batchAction.selected'))!.toBeInTheDocument()
+  })
+
+  it('should keep the remove confirmation open until the removal settles', async () => {
+    const user = userEvent.setup()
+    const item = createAnnotation({ id: 'to-delete', question: 'Delete me' })
+    let settleRemove: (response: Response) => void = () => {}
+    mockedRequest.mockReturnValue(
+      new Promise<Response>((resolve) => {
+        settleRemove = resolve
+      }),
+    )
+    render(
+      <List
+        appId="app-1"
+        list={[item]}
+        onEdited={vi.fn()}
+        onRemoved={vi.fn()}
+        selectedIds={[]}
+        onSelectedIdsChange={vi.fn()}
+        onBatchDelete={vi.fn()}
+      />,
+    )
+
+    await user.click(screen.getByRole('button', { name: 'appDebug.feature.annotation.remove' }))
+    const dialog = await screen.findByRole('alertdialog')
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.confirm' }))
+
+    await waitFor(() => {
+      expect(within(dialog).getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    })
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+
+    settleRemove(Response.json({ result: 'success' }))
+
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  })
+})

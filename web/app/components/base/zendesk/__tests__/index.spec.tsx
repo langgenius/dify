@@ -1,65 +1,73 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import type { ReactNode } from 'react'
-import { render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { render } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import Zendesk from '../index'
 
 // Shared state for mocks
-let mockIsCeEdition = false
+let mockDeploymentEdition: DeploymentEdition = 'CLOUD'
 let mockZendeskWidgetKey: string | undefined = 'test-key'
 let mockIsProd = false
 let mockNonce: string | null = 'test-nonce'
+const mocks = vi.hoisted(() => ({
+  getOptionalSystemFeatures: vi.fn(),
+  headers: vi.fn(),
+  scriptProps: vi.fn(),
+}))
 
-// Mock react's memo to just return the function
+// happy-dom cannot render async server components; unwrap memo only to invoke the server boundary.
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
   return {
     ...actual,
-    memo: vi.fn(fn => fn),
+    memo: vi.fn((fn) => fn),
   }
 })
 
-// Mock config
 vi.mock('@/config', () => ({
-  get IS_CE_EDITION() { return mockIsCeEdition },
-  get ZENDESK_WIDGET_KEY() { return mockZendeskWidgetKey },
-  get IS_PROD() { return mockIsProd },
+  get ZENDESK_WIDGET_KEY() {
+    return mockZendeskWidgetKey
+  },
+  get IS_PROD() {
+    return mockIsProd
+  },
+}))
+
+vi.mock('@/features/system-features/server', () => ({
+  getOptionalSystemFeatures: mocks.getOptionalSystemFeatures,
 }))
 
 // Mock next/headers
 vi.mock('@/next/headers', () => ({
-  headers: vi.fn(() => ({
-    get: vi.fn((name: string) => {
-      if (name === 'x-nonce')
-        return mockNonce
-      return null
-    }),
-  })),
+  headers: mocks.headers,
 }))
 
-// Mock next/script
-type ScriptProps = {
-  'children'?: ReactNode
-  'id'?: string
-  'src'?: string
-  'nonce'?: string
-  'data-testid'?: string
+type ZendeskScriptProps = {
+  nonce?: string
+  widgetKey: string
 }
-vi.mock('@/next/script', () => ({
-  __esModule: true,
-  default: vi.fn(({ children, id, src, nonce, 'data-testid': testId }: ScriptProps) => (
-    <div data-testid={testId} id={id} data-src={src} data-nonce={nonce}>
-      {children}
-    </div>
-  )),
+vi.mock('../script', () => ({
+  ZendeskScript: (props: ZendeskScriptProps) => {
+    mocks.scriptProps(props)
+    return null
+  },
 }))
 
 describe('Zendesk', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockIsCeEdition = false
+    mockDeploymentEdition = 'CLOUD'
     mockZendeskWidgetKey = 'test-key'
     mockIsProd = false
     mockNonce = 'test-nonce'
+    mocks.getOptionalSystemFeatures.mockImplementation(async () => ({
+      deployment_edition: mockDeploymentEdition,
+    }))
+    mocks.headers.mockImplementation(async () => {
+      const requestHeaders = new Headers()
+      if (mockNonce !== null) requestHeaders.set('x-nonce', mockNonce)
+      return requestHeaders
+    })
   })
 
   // Helper to call the async component
@@ -68,59 +76,45 @@ describe('Zendesk', () => {
     return await Component()
   }
 
-  it('should render nothing when IS_CE_EDITION is true', async () => {
-    mockIsCeEdition = true
-    const result = await renderZendesk()
-    expect(result).toBeNull()
-  })
+  it.each(['COMMUNITY', 'ENTERPRISE'] as const)(
+    'should render nothing when deployment edition is %s',
+    async (deploymentEdition) => {
+      mockDeploymentEdition = deploymentEdition
+      const result = await renderZendesk()
+      expect(result).toBeNull()
+    },
+  )
 
   it('should render nothing when ZENDESK_WIDGET_KEY is missing', async () => {
     mockZendeskWidgetKey = undefined
     const result = await renderZendesk()
     expect(result).toBeNull()
+    expect(mocks.headers).not.toHaveBeenCalled()
+    expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
   })
 
-  it('should render scripts correctly in non-production environment', async () => {
-    mockIsProd = false
+  it('should render nothing when System Features is unavailable', async () => {
+    mocks.getOptionalSystemFeatures.mockResolvedValue(undefined)
+
     const result = await renderZendesk()
-    render(result as React.ReactElement) // result is ReactNode, which render accepts but types might be picky
 
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toBeInTheDocument()
-    expect(snippet).toHaveAttribute('id', 'ze-snippet')
-    expect(snippet).toHaveAttribute('data-src', 'https://static.zdassets.com/ekr/snippet.js?key=test-key')
-    expect(snippet).toHaveAttribute('data-nonce', '')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toBeInTheDocument()
-    expect(init).toHaveAttribute('id', 'ze-init')
-    expect(init).toHaveTextContent('window.zE(\'messenger\', \'hide\')')
-    expect(init).toHaveAttribute('data-nonce', '')
+    expect(result).toBeNull()
   })
 
-  it('should render scripts with nonce in production environment', async () => {
-    mockIsProd = true
-    mockNonce = 'prod-nonce'
-    const result = await renderZendesk()
-    render(result as React.ReactElement)
-
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toHaveAttribute('data-nonce', 'prod-nonce')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toHaveAttribute('data-nonce', 'prod-nonce')
-  })
-
-  it('should render scripts with empty nonce in production when header is missing', async () => {
-    mockIsProd = true
-    mockNonce = null
-    const result = await renderZendesk()
-    render(result as React.ReactElement)
-
-    const snippet = screen.getByTestId('ze-snippet')
-    expect(snippet).toHaveAttribute('data-nonce', '')
-
-    const init = screen.getByTestId('ze-init')
-    expect(init).toHaveAttribute('data-nonce', '')
-  })
+  it.each([
+    { production: false, header: 'test-nonce', expectedNonce: '' },
+    { production: true, header: 'prod-nonce', expectedNonce: 'prod-nonce' },
+    { production: true, header: null, expectedNonce: '' },
+  ])(
+    'passes the CSP nonce to the widget runtime: %j',
+    async ({ production, header, expectedNonce }) => {
+      mockIsProd = production
+      mockNonce = header
+      render(await renderZendesk())
+      expect(mocks.scriptProps).toHaveBeenCalledWith({
+        nonce: expectedNonce,
+        widgetKey: 'test-key',
+      })
+    },
+  )
 })

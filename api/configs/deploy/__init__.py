@@ -1,5 +1,16 @@
+from enum import StrEnum
+
 from pydantic import Field
 from pydantic_settings import BaseSettings
+
+from enums import DeploymentEdition
+
+
+class IMEventTransportMode(StrEnum):
+    """Deployment-wide transport used for inbound IM provider events."""
+
+    WEBHOOK = "WEBHOOK"
+    STREAM = "STREAM"
 
 
 class DeploymentConfig(BaseSettings):
@@ -23,9 +34,19 @@ class DeploymentConfig(BaseSettings):
         default=False,
     )
 
-    EDITION: str = Field(
-        description="Deployment edition of the application (e.g., 'SELF_HOSTED', 'CLOUD')",
-        default="SELF_HOSTED",
+    DEPLOYMENT_EDITION: DeploymentEdition = Field(
+        description="Product edition of the application.",
+        default=DeploymentEdition.COMMUNITY,
+    )
+
+    HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE: IMEventTransportMode = Field(
+        IMEventTransportMode.WEBHOOK,
+        description="Required deployment-wide transport for Human Input IM provider events.",
+    )
+
+    INIT_PASSWORD: str = Field(
+        description="Password required before initializing a self-hosted deployment",
+        default="",
     )
 
     DEPLOY_ENV: str = Field(

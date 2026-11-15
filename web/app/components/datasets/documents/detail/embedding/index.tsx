@@ -1,12 +1,13 @@
 import type { FC } from 'react'
 import type { IndexingType } from '../../../create/step-two'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '@/app/components/base/toast/context'
-import { useProcessRule } from '@/service/knowledge/use-dataset'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { useDocumentContext } from '../context'
 import { ProgressBar, RuleDetail, SegmentProgress, StatusHeader } from './components'
 import { useEmbeddingStatus, usePauseIndexing, useResumeIndexing } from './hooks'
@@ -19,7 +20,6 @@ type EmbeddingDetailProps = {
   retrievalMethod?: RETRIEVE_METHOD
   detailUpdate: VoidFunction
 }
-
 const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   datasetId: dstId,
   documentId: docId,
@@ -27,14 +27,11 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
   indexingType,
   retrievalMethod,
 }) => {
-  const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
-
-  const contextDatasetId = useDocumentContext(s => s.datasetId)
-  const contextDocumentId = useDocumentContext(s => s.documentId)
+  const { t } = useTranslation(['common'])
+  const contextDatasetId = useDocumentContext((s) => s.datasetId)
+  const contextDocumentId = useDocumentContext((s) => s.documentId)
   const datasetId = dstId ?? contextDatasetId
   const documentId = docId ?? contextDocumentId
-
   const {
     data: indexingStatus,
     isEmbedding,
@@ -49,18 +46,25 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     documentId,
     onComplete: detailUpdate,
   })
-
-  const { data: ruleDetail } = useProcessRule(documentId)
-
+  const { data: ruleDetail } = useQuery(
+    consoleQuery.datasets.processRule.get.queryOptions({
+      input: { query: { document_id: documentId } },
+      enabled: !!documentId,
+    }),
+  )
   const handleSuccess = useCallback(() => {
-    notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
-  }, [notify, t])
-
-  const handleError = useCallback(() => {
-    notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
-  }, [notify, t])
-
+    toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
+  }, [t])
+  const handleError = useCallback(
+    (error: unknown) => {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
+    },
+    [t],
+  )
   const pauseMutation = usePauseIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -69,8 +73,8 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     },
     onError: handleError,
   })
-
   const resumeMutation = useResumeIndexing({
+    context: { silent: true },
     datasetId,
     documentId,
     onSuccess: () => {
@@ -80,15 +84,12 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     },
     onError: handleError,
   })
-
   const handlePause = useCallback(() => {
     pauseMutation.mutate()
   }, [pauseMutation])
-
   const handleResume = useCallback(() => {
     resumeMutation.mutate()
   }, [resumeMutation])
-
   return (
     <>
       <div className="flex flex-col gap-y-2 px-16 py-12">
@@ -110,8 +111,8 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
           isError={isError}
         />
         <SegmentProgress
-          completedSegments={indexingStatus?.completed_segments}
-          totalSegments={indexingStatus?.total_segments}
+          completedSegments={indexingStatus?.completed_segments ?? undefined}
+          totalSegments={indexingStatus?.total_segments ?? undefined}
           percent={percent}
         />
         <RuleDetail
@@ -124,5 +125,4 @@ const EmbeddingDetail: FC<EmbeddingDetailProps> = ({
     </>
   )
 }
-
 export default React.memo(EmbeddingDetail)

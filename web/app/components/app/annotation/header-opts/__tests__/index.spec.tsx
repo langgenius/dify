@@ -1,0 +1,389 @@
+import type { Window } from 'happy-dom'
+import type { ComponentProps } from 'react'
+import type { Mock } from 'vite-plus/test'
+import type { Locale } from '@/i18n'
+import type { consoleClient } from '@/service/console'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useLocale } from '#i18n'
+import { LanguagesSupported } from '@/i18n/language'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import HeaderOptions from '../index'
+
+const mockJsonToCSV = vi.fn((_: unknown) => 'csv-content')
+const mockCSVDownloader = vi.fn(({ children }) => <>{children}</>)
+
+vi.mock('react-papaparse', () => ({
+  useCSVDownloader: () => ({
+    CSVDownloader: (
+      props: ComponentProps<
+        ReturnType<typeof import('react-papaparse').useCSVDownloader>['CSVDownloader']
+      >,
+    ) => mockCSVDownloader(props),
+    Type: { Link: 'link' },
+  }),
+  jsonToCSV: (data: unknown) => mockJsonToCSV(data),
+}))
+
+const { mockedFetchAnnotations, addAnnotation } = vi.hoisted(() => ({
+  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
+  mockedFetchAnnotations: vi.fn(),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.annotations.post': (input) => addAnnotation(input),
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.annotations.export.get': (input) => mockedFetchAnnotations(input),
+    }),
+  }
+})
+
+const { mockedRequest } = vi.hoisted(() => ({
+  mockedRequest:
+    vi.fn<(url: string, init: RequestInit, options: { request: Request }) => Promise<Response>>(),
+}))
+
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  request: mockedRequest,
+}))
+
+vi.mock('@/app/components/billing/annotation-full', () => ({
+  default: () => <div data-testid="annotation-full" />,
+}))
+
+vi.mock('#i18n', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('#i18n')>()),
+  useLocale: vi.fn(() => LanguagesSupported[0]),
+}))
+
+type HeaderOptionsProps = ComponentProps<typeof HeaderOptions>
+
+const renderComponent = (
+  props: Partial<HeaderOptionsProps> = {},
+  locale: Locale = LanguagesSupported[0]!,
+) => {
+  ;(useLocale as Mock).mockReturnValue(locale)
+
+  const defaultProps: HeaderOptionsProps = {
+    appId: 'test-app-id',
+    onAdded: vi.fn(),
+    controlUpdateList: 0,
+    ...props,
+  }
+
+  return render(<HeaderOptions {...defaultProps} />)
+}
+
+const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) => {
+  const trigger = screen.getByRole('button', { name: 'common.operation.more' }) as HTMLButtonElement
+  await user.click(trigger)
+}
+
+const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openOperationsPopover(user)
+  const exportItem = await screen.findByRole('menuitem', {
+    name: /appAnnotation\.table\.header\.bulkExport/i,
+  })
+  await user.click(exportItem)
+}
+
+const getExportItems = async () => {
+  const csvItem = await screen.findByRole('menuitem', { name: 'CSV' })
+  const jsonItem = await screen.findByRole('menuitem', { name: 'JSONL' })
+  return {
+    csvItem,
+    jsonItem,
+  }
+}
+
+const clickMenuItem = async (user: ReturnType<typeof userEvent.setup>, item: HTMLElement) => {
+  item.focus()
+  await user.keyboard('{Enter}')
+}
+
+const clickOperationAction = async (
+  user: ReturnType<typeof userEvent.setup>,
+  translationKey: string,
+) => {
+  const item = await screen.findByRole('menuitem', { name: translationKey })
+  await clickMenuItem(user, item)
+}
+
+const mockAnnotations = [
+  {
+    question: 'Question 1',
+    answer: 'Answer 1',
+  },
+]
+
+describe('HeaderOptions', () => {
+  const originalUrl = window.location.href
+
+  beforeEach(() => {
+    vi.resetAllMocks()
+    vi.useRealTimers()
+    mockJsonToCSV.mockReturnValue('csv-content')
+    mockedFetchAnnotations.mockResolvedValue({ data: [] })
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+    // Earlier cases can leave the test window on a URL the console client cannot build requests from.
+    ;(window as unknown as Window).happyDOM.setURL(originalUrl)
+  })
+
+  it('should fetch annotations on mount and render enabled export actions when data exist', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    renderComponent()
+
+    await waitFor(() => {
+      expect(mockedFetchAnnotations).toHaveBeenCalledWith({ params: { app_id: 'test-app-id' } })
+    })
+
+    await expandExportMenu(user)
+
+    const { csvItem, jsonItem } = await getExportItems()
+
+    expect(csvItem).not.toHaveAttribute('data-disabled')
+    expect(jsonItem).not.toHaveAttribute('data-disabled')
+
+    await clickMenuItem(user, csvItem)
+
+    expect(mockJsonToCSV).toHaveBeenCalledWith([
+      ['Question', 'Answer'],
+      ['Question 1', 'Answer 1'],
+    ])
+  })
+
+  it('should trigger CSV download with locale-specific filename', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const originalCreateElement = document.createElement.bind(document)
+    const anchor = originalCreateElement('a') as HTMLAnchorElement
+    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(vi.fn())
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: Parameters<Document['createElement']>[0]) => {
+        if (tagName === 'a') return anchor
+        return originalCreateElement(tagName)
+      })
+    let capturedBlob: Blob | null = null
+    const objectURLSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      capturedBlob = blob as Blob
+      return 'blob://mock-url'
+    })
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn())
+
+    renderComponent({}, LanguagesSupported[1])
+
+    await expandExportMenu(user)
+
+    const { csvItem } = await getExportItems()
+    await clickMenuItem(user, csvItem)
+
+    expect(mockJsonToCSV).toHaveBeenCalledWith([
+      ['问题', '答案'],
+      ['Question 1', 'Answer 1'],
+    ])
+    expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.csv`)
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
+
+    expect(capturedBlob).toBeInstanceOf(Blob)
+    expect(capturedBlob!.type).toBe('text/csv;charset=utf-8;')
+
+    const blobContent = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(capturedBlob!)
+    })
+    expect(blobContent).toBe('csv-content')
+
+    clickSpy.mockRestore()
+    createElementSpy.mockRestore()
+    objectURLSpy.mockRestore()
+    revokeSpy.mockRestore()
+  })
+
+  it('should disable export actions when there are no annotations', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+
+    await expandExportMenu(user)
+
+    const { csvItem, jsonItem } = await getExportItems()
+
+    expect(csvItem).toHaveAttribute('data-disabled')
+    expect(jsonItem).toHaveAttribute('data-disabled')
+    expect(mockJsonToCSV).not.toHaveBeenCalled()
+  })
+
+  it('creates an annotation through the dialog and refreshes the parent and export data', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const onAdded = vi.fn()
+    addAnnotation.mockResolvedValue({ id: 'annotation-id' })
+    renderComponent({ onAdded })
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalled())
+
+    await user.click(
+      screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' }),
+    )
+
+    await screen.findByText('appAnnotation.addModal.title')
+    const questionInput = screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')
+    const answerInput = screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')
+
+    await user.type(questionInput, 'Integration question')
+    await user.type(answerInput, 'Integration answer')
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+
+    await waitFor(() => {
+      expect(addAnnotation).toHaveBeenCalledWith({
+        params: { app_id: 'test-app-id' },
+        body: { question: 'Integration question', answer: 'Integration answer' },
+      })
+      expect(onAdded).toHaveBeenCalledOnce()
+      expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  it('should allow bulk import through the batch modal', async () => {
+    const user = userEvent.setup()
+    const onAdded = vi.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
+
+    expect(await screen.findByText('appAnnotation.batchModal.title'))!.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }))
+    expect(onAdded).not.toHaveBeenCalled()
+  })
+
+  it('should trigger JSONL download with locale-specific filename', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const originalCreateElement = document.createElement.bind(document)
+    const anchor = originalCreateElement('a') as HTMLAnchorElement
+    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(vi.fn())
+    const createElementSpy = vi
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: Parameters<Document['createElement']>[0]) => {
+        if (tagName === 'a') return anchor
+        return originalCreateElement(tagName)
+      })
+    let capturedBlob: Blob | null = null
+    const objectURLSpy = vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => {
+      capturedBlob = blob as Blob
+      return 'blob://mock-url'
+    })
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn())
+
+    renderComponent({}, LanguagesSupported[1])
+
+    await expandExportMenu(user)
+
+    const { jsonItem } = await getExportItems()
+    await clickMenuItem(user, jsonItem)
+
+    expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
+
+    // Verify the blob was created with correct content
+    expect(capturedBlob).toBeInstanceOf(Blob)
+    expect(capturedBlob!.type).toBe('application/jsonl')
+
+    const blobContent = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(capturedBlob!)
+    })
+    const lines = blobContent.trim().split('\n')
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0]!)).toEqual({
+      messages: [
+        { role: 'system', content: '' },
+        { role: 'user', content: 'Question 1' },
+        { role: 'assistant', content: 'Answer 1' },
+      ],
+    })
+
+    clickSpy.mockRestore()
+    createElementSpy.mockRestore()
+    objectURLSpy.mockRestore()
+    revokeSpy.mockRestore()
+  })
+
+  it('should clear all annotations when confirmation succeeds', async () => {
+    mockedRequest.mockResolvedValue(Response.json({ result: 'success' }))
+    const user = userEvent.setup()
+    const onAdded = vi.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+
+    await screen.findByText('appAnnotation.table.header.clearAllConfirm')
+    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(onAdded).toHaveBeenCalled()
+    })
+    const [url, , options] = mockedRequest.mock.calls[0]!
+    expect(url).toMatch(/\/apps\/test-app-id\/annotations$/)
+    expect(options.request.method).toBe('DELETE')
+    await waitFor(() => {
+      expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+    })
+  })
+
+  it('should keep the clear all confirmation open when clearing fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
+    mockedRequest.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    const onAdded = vi.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+    await screen.findByText('appAnnotation.table.header.clearAllConfirm')
+    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    expect(mockedRequest).not.toHaveBeenCalled()
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockedRequest).toHaveBeenCalled()
+    })
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeEnabled()
+    })
+    expect(screen.getByRole('alertdialog')).toBeInTheDocument()
+    expect(onAdded).not.toHaveBeenCalled()
+
+    consoleSpy.mockRestore()
+  })
+
+  it('should refetch annotations when controlUpdateList changes', async () => {
+    const view = renderComponent({ controlUpdateList: 0 })
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
+
+    view.rerender(<HeaderOptions appId="test-app-id" onAdded={vi.fn()} controlUpdateList={1} />)
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
+  })
+})

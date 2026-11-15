@@ -19,6 +19,9 @@ class DifySpanAttributes:
     WORKFLOW_ID = "dify.workflow_id"
     """Workflow identifier."""
 
+    WORKFLOW_ABORT_REASON = "dify.workflow.abort.reason"
+    """Reason recorded when a workflow run is aborted."""
+
     INVOKE_FROM = "dify.invoke_from"
     """Invocation source, e.g. SERVICE_API, WEB_APP, DEBUGGER."""
 

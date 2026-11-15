@@ -3,10 +3,10 @@ import time
 
 import click
 from celery import shared_task
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from core.db.session_factory import session_factory
-from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
@@ -27,12 +27,12 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
     start_at = time.perf_counter()
 
     with session_factory.create_session() as session:
-        dataset = session.query(Dataset).where(Dataset.id == dataset_id).first()
+        dataset = session.scalar(select(Dataset).where(Dataset.id == dataset_id).limit(1))
         if not dataset:
             logger.info(click.style(f"Dataset {dataset_id} not found, pass.", fg="cyan"))
             return
 
-        dataset_document = session.query(DatasetDocument).where(DatasetDocument.id == document_id).first()
+        dataset_document = session.scalar(select(DatasetDocument).where(DatasetDocument.id == document_id).limit(1))
 
         if not dataset_document:
             logger.info(click.style(f"Document {document_id} not found, pass.", fg="cyan"))
@@ -55,48 +55,48 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
             return
 
         try:
-            index_node_ids = [segment.index_node_id for segment in segments]
+            index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id]
             if dataset.is_multimodal:
                 segment_ids = [segment.id for segment in segments]
-                segment_attachment_bindings = (
-                    session.query(SegmentAttachmentBinding)
-                    .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
-                    .all()
-                )
+                segment_attachment_bindings = session.scalars(
+                    select(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                ).all()
                 if segment_attachment_bindings:
                     attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                     index_node_ids.extend(attachment_ids)
-            index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
+            index_processor.clean(
+                dataset, index_node_ids, with_keywords=True, delete_child_chunks=False, session=session
+            )
+            session.commit()
 
             # Disable summary indexes for these segments
-            from services.summary_index_service import SummaryIndexService
+            from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
             segment_ids_list = [segment.id for segment in segments]
             try:
                 # Get disabled_by from first segment (they should all have the same disabled_by)
                 disabled_by = segments[0].disabled_by if segments else None
-                SummaryIndexService.disable_summaries_for_segments(
+                SummaryIndexAdapter.disable_summaries_for_segments(
                     dataset=dataset,
                     segment_ids=segment_ids_list,
                     disabled_by=disabled_by,
                 )
-            except Exception as e:
-                logger.warning("Failed to disable summaries for segments: %s", str(e))
+            except Exception:
+                logger.warning("Failed to disable summaries for segments", exc_info=True)
 
             end_at = time.perf_counter()
             logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
         except Exception:
             # update segment error msg
-            session.query(DocumentSegment).where(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset_id,
-                DocumentSegment.document_id == document_id,
-            ).update(
-                {
-                    "disabled_at": None,
-                    "disabled_by": None,
-                    "enabled": True,
-                }
+            session.rollback()
+            session.execute(
+                update(DocumentSegment)
+                .where(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset_id,
+                    DocumentSegment.document_id == document_id,
+                )
+                .values(disabled_at=None, disabled_by=None, enabled=True)
             )
             session.commit()
         finally:

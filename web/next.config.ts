@@ -1,22 +1,41 @@
 import type { NextConfig } from '@/next'
-import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
 import { env } from './env'
 
+const openapiLoader = {
+  loader: '@dify/openapi-content-mapper/loader',
+}
+
 const isDev = process.env.NODE_ENV === 'development'
-const withMDX = createMDX()
+const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean)
 
 const nextConfig: NextConfig = {
   basePath: env.NEXT_PUBLIC_BASE_PATH,
+  ...(allowedDevOrigins?.length ? { allowedDevOrigins } : {}),
   transpilePackages: ['@t3-oss/env-core', '@t3-oss/env-nextjs', 'echarts', 'zrender'],
+  serverExternalPackages: ['loro-crdt'],
   turbopack: {
-    rules: codeInspectorPlugin({
-      bundler: 'turbopack',
-    }),
+    rules: {
+      ...codeInspectorPlugin({
+        bundler: 'turbopack',
+        behavior: { locate: true, defaultAction: 'locate' },
+      }),
+      '*.openapi': { loaders: [openapiLoader], as: '*.js' },
+      '*.openapi-source': { loaders: [openapiLoader], as: '*.js' },
+      '*openapi-namespace.js': { loaders: [openapiLoader], as: '*.js' },
+    },
+  },
+  webpack(config) {
+    config.module.rules.push({
+      test: /(?:\.openapi|\.openapi-source|openapi-namespace\.js)$/,
+      type: 'javascript/auto',
+      use: [openapiLoader],
+    })
+    return config
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
-  // Configure pageExtensions to include md and mdx
-  pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
@@ -24,9 +43,9 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
-        source: '/',
-        destination: '/apps',
-        permanent: false,
+        source: '/explore/apps',
+        destination: '/',
+        permanent: true,
       },
     ]
   },
@@ -34,9 +53,6 @@ const nextConfig: NextConfig = {
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
   },
-  experimental: {
-    turbopackFileSystemCacheForDev: false,
-  },
 }
 
-export default withMDX(nextConfig)
+export default nextConfig

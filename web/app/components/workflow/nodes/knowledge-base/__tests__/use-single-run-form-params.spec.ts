@@ -25,48 +25,36 @@ const createPayload = (overrides: Partial<KnowledgeBaseNodeType> = {}): Knowledg
 })
 
 describe('useSingleRunFormParams', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   // The hook should expose the single query form and map chunk dependencies for single-run execution.
   describe('Forms', () => {
-    it('should build the query form with the current run input value', () => {
-      const { result } = renderHook(() => useSingleRunFormParams({
-        id: 'knowledge-base-1',
-        payload: createPayload(),
-        runInputData: { query: 'what is dify' },
-        getInputVars: vi.fn(),
-        setRunInputData: vi.fn(),
-        toVarInputs: vi.fn(),
-      }))
+    it('builds the query form and preserves other run inputs when the query changes', () => {
+      const setRunInputData = vi.fn()
+      const { result } = renderHook(() =>
+        useSingleRunFormParams({
+          id: 'knowledge-base-1',
+          payload: createPayload(),
+          runInputData: { query: 'what is dify', locale: 'en-US' },
+          getInputVars: vi.fn(),
+          setRunInputData,
+          toVarInputs: vi.fn(),
+        }),
+      )
 
       expect(result.current.forms).toHaveLength(1)
-      expect(result.current.forms[0].inputs).toEqual([{
-        label: 'workflow.nodes.common.inputVars',
-        variable: 'query',
-        type: InputVarType.paragraph,
-        required: true,
-      }])
-      expect(result.current.forms[0].values).toEqual({ query: 'what is dify' })
-    })
-
-    it('should update run input data when the query changes', () => {
-      const setRunInputData = vi.fn()
-      const { result } = renderHook(() => useSingleRunFormParams({
-        id: 'knowledge-base-1',
-        payload: createPayload(),
-        runInputData: { query: 'old query' },
-        getInputVars: vi.fn(),
-        setRunInputData,
-        toVarInputs: vi.fn(),
-      }))
-
-      act(() => {
-        result.current.forms[0].onChange({ query: 'new query' })
+      expect(result.current.forms[0]!.inputs).toEqual([
+        {
+          label: 'workflow.nodes.common.inputVars',
+          variable: 'query',
+          type: InputVarType.paragraph,
+          required: true,
+        },
+      ])
+      expect(result.current.forms[0]!.values).toEqual({ query: 'what is dify' })
+      act(() => result.current.forms[0]!.onChange({ query: 'new query' }))
+      expect(setRunInputData).toHaveBeenCalledExactlyOnceWith({
+        query: 'new query',
+        locale: 'en-US',
       })
-
-      expect(setRunInputData).toHaveBeenCalledWith({ query: 'new query' })
     })
   })
 
@@ -76,14 +64,16 @@ describe('useSingleRunFormParams', () => {
         index_chunk_variable_selector: ['node-1', 'chunks'],
       })
 
-      const { result } = renderHook(() => useSingleRunFormParams({
-        id: 'knowledge-base-1',
-        payload,
-        runInputData: {},
-        getInputVars: vi.fn(),
-        setRunInputData: vi.fn(),
-        toVarInputs: vi.fn(),
-      }))
+      const { result } = renderHook(() =>
+        useSingleRunFormParams({
+          id: 'knowledge-base-1',
+          payload,
+          runInputData: {},
+          getInputVars: vi.fn(),
+          setRunInputData: vi.fn(),
+          toVarInputs: vi.fn(),
+        }),
+      )
 
       expect(result.current.getDependentVars()).toEqual([['node-1', 'chunks']])
       expect(result.current.getDependentVar('query')).toEqual(['node-1', 'chunks'])

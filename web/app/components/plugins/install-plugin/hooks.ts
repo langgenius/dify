@@ -1,5 +1,5 @@
+import type { ToastType } from '@langgenius/dify-ui/toast'
 import type { GitHubRepoReleaseResponse } from '../types'
-import { toast } from '@/app/components/base/ui/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 
@@ -19,28 +19,19 @@ const formatReleases = (releases: any) => {
 }
 
 export const fetchReleases = async (owner: string, repo: string) => {
-  try {
-    // Fetch releases without authentication from client
-    const res = await fetch(`https://ungh.cc/repos/${owner}/${repo}/releases`)
-    if (!res.ok)
-      throw new Error('Failed to fetch repository releases')
-    const data = await res.json()
-    return formatReleases(data.releases)
-  }
-  catch (error) {
-    if (error instanceof Error) {
-      toast.error(error.message)
-    }
-    else {
-      toast.error('Failed to fetch repository releases')
-    }
-    return []
-  }
+  // Fetch releases without authentication from client.
+  const res = await fetch(`https://ungh.cc/repos/${owner}/${repo}/releases`)
+  if (!res.ok) throw new Error('Failed to fetch repository releases')
+  const data = await res.json()
+  return formatReleases(data.releases)
 }
 
-export const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], currentVersion: string) => {
+export const checkForUpdates = (
+  fetchedReleases: GitHubRepoReleaseResponse[],
+  currentVersion: string,
+) => {
   let needUpdate = false
-  const toastProps: { type?: 'success' | 'error' | 'info' | 'warning', message: string } = {
+  const toastProps: { type: ToastType; message: string } = {
     type: 'info',
     message: 'No new version available',
   }
@@ -49,14 +40,12 @@ export const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], cu
     toastProps.message = 'Input releases is empty'
     return { needUpdate, toastProps }
   }
-  const versions = fetchedReleases.map(release => release.tag_name)
+  const versions = fetchedReleases.map((release) => release.tag_name)
   const latestVersion = getLatestVersion(versions)
   try {
-    needUpdate = compareVersion(latestVersion, currentVersion) === 1
-    if (needUpdate)
-      toastProps.message = `New version available: ${latestVersion}`
-  }
-  catch {
+    needUpdate = compareVersion(latestVersion!, currentVersion) === 1
+    if (needUpdate) toastProps.message = `New version available: ${latestVersion}`
+  } catch {
     needUpdate = false
     toastProps.type = 'error'
     toastProps.message = 'Fail to compare versions, please check the version format'
@@ -68,20 +57,13 @@ export const handleUpload = async (
   repoUrl: string,
   selectedVersion: string,
   selectedPackage: string,
-  onSuccess?: (GitHubPackage: { manifest: any, unique_identifier: string }) => void,
+  onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
 ) => {
-  try {
-    const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
-    const GitHubPackage = {
-      manifest: response.manifest,
-      unique_identifier: response.unique_identifier,
-    }
-    if (onSuccess)
-      onSuccess(GitHubPackage)
-    return GitHubPackage
+  const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage, { silent: true })
+  const GitHubPackage = {
+    manifest: response.manifest,
+    unique_identifier: response.unique_identifier,
   }
-  catch (error) {
-    toast.error('Error uploading package')
-    throw error
-  }
+  onSuccess?.(GitHubPackage)
+  return GitHubPackage
 }

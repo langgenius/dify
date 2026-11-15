@@ -4,7 +4,8 @@ from collections.abc import Callable
 from functools import cached_property
 from typing import Any, ClassVar
 
-from enums.cloud_plan import CloudPlan
+from configs import dify_config
+from enums import CloudPlan, DeploymentEdition
 from services.feature_service import FeatureService
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ class DocumentTaskProxyBase(ABC):
 
     @cached_property
     def features(self):
-        return FeatureService.get_features(self._tenant_id)
+        return FeatureService.get_features(self._tenant_id, exclude_vector_space=True)
 
     @abstractmethod
     def _send_to_direct_queue(self, task_func: Callable[..., Any]):
@@ -88,14 +89,10 @@ class DocumentTaskProxyBase(ABC):
         - Paid plans → priority queue + tenant isolation
         - Self-hosted → priority queue, no isolation
         """
-        logger.info(
-            "dispatch args: %s - %s - %s",
-            self._tenant_id,
-            self.features.billing.enabled,
-            self.features.billing.subscription.plan,
-        )
-        # dispatch to different indexing queue with tenant isolation when billing enabled
-        if self.features.billing.enabled:
+        logger.info("Dispatching tenant %s in %s", self._tenant_id, dify_config.DEPLOYMENT_EDITION)
+
+        # Cloud queues isolate tenants and prioritize paid plans.
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
             if self.features.billing.subscription.plan == CloudPlan.SANDBOX:
                 # dispatch to normal pipeline queue with tenant self sub queue for sandbox plan
                 self._send_to_default_tenant_queue()

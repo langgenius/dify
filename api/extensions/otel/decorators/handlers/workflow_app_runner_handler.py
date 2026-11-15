@@ -1,8 +1,8 @@
 import logging
-from collections.abc import Callable, Mapping
-from typing import Any
+from collections.abc import Callable
+from typing import override
 
-from opentelemetry.trace import SpanKind, Status, StatusCode
+from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
 from opentelemetry.util.types import AttributeValue
 
 from extensions.otel.decorators.handler import SpanHandler
@@ -12,21 +12,22 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppRunnerHandler(SpanHandler):
-    """Span handler for ``WorkflowAppRunner.run``."""
+    """Trace the workflow driver's full execution, including graph preparation."""
 
-    def wrapper(
+    @override
+    def wrapper[**P, R](
         self,
-        tracer: Any,
-        wrapped: Callable[..., Any],
-        args: tuple[Any, ...],
-        kwargs: Mapping[str, Any],
-    ) -> Any:
+        tracer: Tracer,
+        wrapped: Callable[P, R],
+        *args: P.args,
+        **kwargs: P.kwargs,
+    ) -> R:
         try:
-            arguments = self._extract_arguments(wrapped, args, kwargs)
+            arguments = self._extract_arguments(wrapped, *args, **kwargs)
             if not arguments:
                 return wrapped(*args, **kwargs)
 
-            runner = arguments.get("self")
+            runner = arguments.get("runner")
             if runner is None or not hasattr(runner, "application_generate_entity"):
                 return wrapped(*args, **kwargs)
 
@@ -51,7 +52,7 @@ class WorkflowAppRunnerHandler(SpanHandler):
 
             span_name = self._build_span_name(wrapped)
         except Exception as exc:
-            logger.warning("Failed to prepare span attributes for WorkflowAppRunner.run: %s", exc, exc_info=True)
+            logger.warning("Failed to prepare workflow execution span attributes: %s", exc, exc_info=True)
             return wrapped(*args, **kwargs)
 
         with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL, attributes=attributes) as span:

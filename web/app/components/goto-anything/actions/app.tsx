@@ -1,36 +1,37 @@
-import type { ActionItem, AppSearchResult } from './types'
-import type { App } from '@/types/app'
-import { fetchAppList } from '@/service/apps'
+import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
+import type { ActionItem, AppSearchResult, SearchQueryOptions } from './types'
+import { consoleQuery } from '@/service/console'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'
 import AppIcon from '../../base/app-icon'
 
-const parser = (apps: App[]): AppSearchResult[] => {
-  return apps.map(app => ({
+function getAppPath(app: AppPartial) {
+  return getRedirectionPath({
+    id: app.id,
+    mode: app.mode,
+    permission_keys: app.permission_keys,
+  })
+}
+
+const appIcon = (app: AppPartial) => (
+  <div className="relative shrink-0">
+    <AppIcon size="large" icon={app} />
+    <AppTypeIcon
+      wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-sm border border-divider-regular outline-solid outline-components-panel-on-panel-item-bg"
+      className="size-3"
+      type={app.mode}
+    />
+  </div>
+)
+
+function getAppResults(apps: AppPartial[]): AppSearchResult[] {
+  return apps.map((app) => ({
     id: app.id,
     title: app.name,
-    description: app.description,
+    description: app.description ?? undefined,
     type: 'app' as const,
-    path: getRedirectionPath(true, {
-      id: app.id,
-      mode: app.mode,
-    }),
-    icon: (
-      <div className="relative shrink-0">
-        <AppIcon
-          size="large"
-          iconType={app.icon_type}
-          icon={app.icon}
-          background={app.icon_background}
-          imageUrl={app.icon_url}
-        />
-        <AppTypeIcon
-          wrapperClassName="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-[4px] border border-divider-regular outline outline-components-panel-on-panel-item-bg"
-          className="h-3 w-3"
-          type={app.mode}
-        />
-      </div>
-    ),
+    path: getAppPath(app),
+    icon: appIcon(app),
     data: app,
   }))
 }
@@ -40,22 +41,19 @@ export const appAction: ActionItem = {
   shortcut: '@app',
   title: 'Search Applications',
   description: 'Search and navigate to your applications',
-  // action,
-  search: async (_, searchTerm = '', _locale) => {
-    try {
-      const response = await fetchAppList({
-        url: 'apps',
-        params: {
-          page: 1,
-          name: searchTerm,
-        },
-      })
-      const apps = response?.data || []
-      return parser(apps)
-    }
-    catch (error) {
-      console.warn('App search failed:', error)
-      return []
-    }
-  },
+  source: 'remote',
+}
+
+export function appSearchQueryOptions(searchTerm: string, options: SearchQueryOptions = {}) {
+  return consoleQuery.apps.get.queryOptions({
+    input: {
+      query: {
+        page: 1,
+        name: searchTerm,
+      },
+    },
+    retry: false,
+    ...options,
+    select: (response) => getAppResults(response.data),
+  })
 }

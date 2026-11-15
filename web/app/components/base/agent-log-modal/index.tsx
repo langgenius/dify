@@ -1,41 +1,92 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import AgentLogDetail from './detail'
 
-type AgentLogModalProps = {
+type AgentLogModalProps = Readonly<{
+  appId: string
   currentLogItem?: IChatItem
   width: number
+  floating?: boolean
   onCancel: () => void
-}
+}>
 const AgentLogModal: FC<AgentLogModalProps> = ({
+  appId,
   currentLogItem,
   width,
+  floating,
   onCancel,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['appLog', 'common'])
   const ref = useRef(null)
   const [mounted, setMounted] = useState(false)
 
   useClickAway(() => {
-    if (mounted)
-      onCancel()
+    if (mounted && !floating) onCancel()
   }, ref)
 
   useEffect(() => {
     setMounted(true)
   }, [])
 
-  if (!currentLogItem || !currentLogItem.conversationId)
-    return null
+  if (!currentLogItem || !currentLogItem.conversationId) return null
+
+  const detailContent = (
+    <>
+      <AgentLogDetail
+        appId={appId}
+        conversationID={currentLogItem.conversationId}
+        messageID={currentLogItem.id}
+        log={currentLogItem}
+      />
+    </>
+  )
+
+  if (floating) {
+    return (
+      <Dialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onCancel()
+        }}
+      >
+        <DialogPortal>
+          <DialogBackdrop className="bg-transparent!" />
+          <DialogPopup className="fixed top-16 bottom-4 left-[max(8px,calc(100vw-1136px))] flex w-120 max-w-[calc(100vw-16px)] flex-col overflow-hidden overscroll-contain rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl">
+            <div className="shrink-0 px-4 py-1">
+              <DialogTitle>{t(($) => $['runDetail.workflowTitle'], { ns: 'appLog' })}</DialogTitle>
+            </div>
+            <button
+              type="button"
+              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+              className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+              onClick={onCancel}
+            >
+              <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+            </button>
+            {detailContent}
+          </DialogPopup>
+        </DialogPortal>
+      </Dialog>
+    )
+  }
 
   return (
     <div
-      className={cn('relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl')}
+      className={cn(
+        'relative z-10 flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl',
+      )}
       style={{
         width: 480,
         position: 'fixed',
@@ -45,15 +96,18 @@ const AgentLogModal: FC<AgentLogModalProps> = ({
       }}
       ref={ref}
     >
-      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
-      <span className="absolute right-3 top-4 z-20 cursor-pointer p-1" onClick={onCancel}>
-        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
-      </span>
-      <AgentLogDetail
-        conversationID={currentLogItem.conversationId}
-        messageID={currentLogItem.id}
-        log={currentLogItem}
-      />
+      <h1 className="text-md shrink-0 px-4 py-1 font-semibold text-text-primary">
+        {t(($) => $['runDetail.workflowTitle'], { ns: 'appLog' })}
+      </h1>
+      <button
+        type="button"
+        aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        className="absolute top-4 right-3 z-20 cursor-pointer border-none bg-transparent p-1 focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+        onClick={onCancel}
+      >
+        <RiCloseLine className="size-4 text-text-tertiary" aria-hidden="true" />
+      </button>
+      {detailContent}
     </div>
   )
 }

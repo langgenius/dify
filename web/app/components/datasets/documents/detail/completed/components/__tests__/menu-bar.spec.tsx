@@ -1,24 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import type { ComponentProps } from 'react'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import MenuBar from '../menu-bar'
 
-vi.mock('../../display-toggle', () => ({
-  default: ({ isCollapsed, toggleCollapsed }: { isCollapsed: boolean, toggleCollapsed: () => void }) => (
-    <button data-testid="display-toggle" onClick={toggleCollapsed}>
-      {isCollapsed ? 'collapsed' : 'expanded'}
-    </button>
-  ),
-}))
-
-vi.mock('../../status-item', () => ({
-  default: ({ item }: { item: { name: string } }) => <div data-testid="status-item">{item.name}</div>,
-}))
-
 describe('MenuBar', () => {
-  const defaultProps = {
-    isAllSelected: false,
-    isSomeSelected: false,
-    onSelectedAll: vi.fn(),
+  const defaultProps: ComponentProps<typeof MenuBar> = {
+    hasSelectableSegments: true,
     isLoading: false,
     totalText: '10 Chunks',
     statusList: [
@@ -26,7 +15,7 @@ describe('MenuBar', () => {
       { value: 0, name: 'Enabled' },
       { value: 1, name: 'Disabled' },
     ],
-    selectDefaultValue: 'all' as const,
+    selectDefaultValue: 'all',
     onChangeStatus: vi.fn(),
     inputValue: '',
     onInputChange: vi.fn(),
@@ -38,58 +27,65 @@ describe('MenuBar', () => {
     vi.clearAllMocks()
   })
 
-  it('should render total text', () => {
-    render(<MenuBar {...defaultProps} />)
-    expect(screen.getByText('10 Chunks')).toBeInTheDocument()
+  const renderMenuBar = (props: Partial<typeof defaultProps> = {}) => {
+    return render(
+      <CheckboxGroup value={[]} onValueChange={vi.fn()} allValues={['seg-1']}>
+        <MenuBar {...defaultProps} {...props} />
+      </CheckboxGroup>,
+    )
+  }
+
+  it.each([
+    { hasSelectableSegments: true, isLoading: false },
+    { hasSelectableSegments: true, isLoading: true },
+    { hasSelectableSegments: false, isLoading: false },
+  ])(
+    'allows bulk selection only for selectable, loaded chunks: %j',
+    ({ hasSelectableSegments, isLoading }) => {
+      renderMenuBar({ hasSelectableSegments, isLoading })
+      expect(screen.getByText('10 Chunks')).toBeInTheDocument()
+      const checkbox = screen.queryByRole('checkbox', { name: 'common.operation.selectAll' })
+      if (hasSelectableSegments)
+        expect(checkbox?.getAttribute('aria-disabled') === 'true').toBe(isLoading)
+      else expect(checkbox).not.toBeInTheDocument()
+    },
+  )
+
+  it('changes the status filter using the full status option, including numeric zero', async () => {
+    const user = userEvent.setup()
+    renderMenuBar()
+    const trigger = screen.getByRole('combobox', {
+      name: 'datasetDocuments.segment.statusFilterLabel',
+    })
+    expect(trigger).toHaveTextContent('All')
+    await user.click(trigger)
+    await user.click(await screen.findByRole('option', { name: 'Enabled' }))
+    expect(defaultProps.onChangeStatus).toHaveBeenCalledExactlyOnceWith({
+      value: 0,
+      name: 'Enabled',
+    })
   })
 
-  it('should render checkbox', () => {
-    const { container } = render(<MenuBar {...defaultProps} />)
-    const checkbox = container.querySelector('[class*="shrink-0"]')
-    expect(checkbox).toBeInTheDocument()
+  it('forwards edits and clear actions from the chunk search field', async () => {
+    const user = userEvent.setup()
+    renderMenuBar({ inputValue: 'some text' })
+    await user.type(screen.getByRole('searchbox', { name: 'common.operation.search' }), '!')
+    expect(defaultProps.onInputChange).toHaveBeenLastCalledWith('some text!')
+    await user.click(screen.getByRole('button', { name: 'common.operation.clear' }))
+    expect(defaultProps.onInputChange).toHaveBeenLastCalledWith('')
   })
 
-  it('should call onInputChange when input changes', () => {
-    render(<MenuBar {...defaultProps} />)
-    const input = screen.getByRole('textbox')
-    fireEvent.change(input, { target: { value: 'test search' } })
-    expect(defaultProps.onInputChange).toHaveBeenCalledWith('test search')
-  })
-
-  it('should render display toggle', () => {
-    render(<MenuBar {...defaultProps} />)
-    expect(screen.getByTestId('display-toggle')).toBeInTheDocument()
-  })
-
-  it('should call toggleCollapsed when display toggle clicked', () => {
-    render(<MenuBar {...defaultProps} />)
-    fireEvent.click(screen.getByTestId('display-toggle'))
-    expect(defaultProps.toggleCollapsed).toHaveBeenCalled()
-  })
-
-  it('should call onInputChange with empty string when input is cleared', () => {
-    render(<MenuBar {...defaultProps} inputValue="some text" />)
-    const clearButton = screen.getByTestId('input-clear')
-    fireEvent.click(clearButton)
-    expect(defaultProps.onInputChange).toHaveBeenCalledWith('')
-  })
-
-  it('should render select with status items via renderOption', () => {
-    render(<MenuBar {...defaultProps} />)
-    expect(screen.getByText('All')).toBeInTheDocument()
-  })
-
-  it('should call renderOption for each item when dropdown is opened', async () => {
-    render(<MenuBar {...defaultProps} />)
-
-    const selectButton = screen.getByRole('button', { name: /All/i })
-    fireEvent.click(selectButton)
-
-    // After opening, renderOption is called for each item, rendering the mocked StatusItem
-    const statusItems = await screen.findAllByTestId('status-item')
-    expect(statusItems.length).toBe(3)
-    expect(statusItems[0]).toHaveTextContent('All')
-    expect(statusItems[1]).toHaveTextContent('Enabled')
-    expect(statusItems[2]).toHaveTextContent('Disabled')
-  })
+  it.each([true, false])(
+    'offers the correct chunk display action when collapsed=%s',
+    async (isCollapsed) => {
+      const user = userEvent.setup()
+      renderMenuBar({ isCollapsed })
+      await user.click(
+        screen.getByRole('button', {
+          name: `datasetDocuments.segment.${isCollapsed ? 'expandChunks' : 'collapseChunks'}`,
+        }),
+      )
+      expect(defaultProps.toggleCollapsed).toHaveBeenCalledOnce()
+    },
+  )
 })

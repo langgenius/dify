@@ -1,18 +1,9 @@
 'use client'
 
 import type { RefObject } from 'react'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-} from '../types'
-import type { ThemeBuilder } from './theme/theme-context'
-import type {
-  AppConversationData,
-  AppData,
-  AppMeta,
-  ConversationItem,
-} from '@/models/share'
+import type { ChatConfig, ChatItem, OnFeedback } from '../types'
+import type { Theme } from './theme/theme'
+import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 import { AppSourceType } from '@/service/share'
@@ -32,19 +23,19 @@ export type EmbeddedChatbotContextValue = {
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
-  handleStartChat: (callback?: any) => void
+  handleStartChat: (callback?: () => void) => void
   handleChangeConversation: (conversationId: string) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
-  isMobile: boolean
+  isBelowSm: boolean
   isInstalledApp: boolean
   appSourceType: AppSourceType
   allowResetChat: boolean
   appId?: string
   disableFeedback?: boolean
-  handleFeedback: (messageId: string, feedback: Feedback) => void
+  handleFeedback: OnFeedback
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
-  themeBuilder?: ThemeBuilder
+  theme?: Theme
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
@@ -76,11 +67,11 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   handleChangeConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   appSourceType: AppSourceType.webApp,
   isInstalledApp: false,
   allowResetChat: true,
-  handleFeedback: noop,
+  handleFeedback: () => Promise.resolve(),
   currentChatInstanceRef: { current: { handleStop: noop } },
   clearChatList: false,
   setClearChatList: noop,

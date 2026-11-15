@@ -1,12 +1,26 @@
-from unittest.mock import MagicMock, patch
+import datetime as _datasets_document_datetime
+import json
+from datetime import datetime as _datasets_document_download_datetime
+from inspect import unwrap
+from io import BytesIO
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import MagicMock, create_autospec, patch
+from uuid import UUID
+from zipfile import ZipFile
 
 import pytest
+from flask import send_file
+from sqlalchemy import event
 from werkzeug.exceptions import Forbidden, NotFound
 
-import services
-from controllers.console import console_ns
+from controllers.common.errors import InvalidArgumentError, NotFoundError
+from controllers.common.rbac import DatasetByDocument, DatasetId, RBACPermission
+from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.datasets import datasets_document as controller
 from controllers.console.datasets.datasets_document import (
     DatasetDocumentListApi,
+    DatasetInitApi,
     DocumentApi,
     DocumentBatchDownloadZipApi,
     DocumentBatchIndexingEstimateApi,
@@ -16,1355 +30,755 @@ from controllers.console.datasets.datasets_document import (
     DocumentIndexingEstimateApi,
     DocumentIndexingStatusApi,
     DocumentMetadataApi,
+    DocumentMetadataUpdatePayload,
+    DocumentPauseApi,
     DocumentPipelineExecutionLogApi,
     DocumentProcessingApi,
+    DocumentRecoverApi,
+    DocumentRenameApi,
+    DocumentRenamePayload,
     DocumentRetryApi,
+    DocumentRetryPayload,
     DocumentStatusApi,
     DocumentSummaryStatusApi,
+    GenerateSummaryPayload,
     GetProcessRuleApi,
+    WebsiteDocumentSyncApi,
 )
 from controllers.console.datasets.error import (
+    ArchivedDocumentImmutableError,
+    DatasetAccessDeniedRequestError,
     DocumentAlreadyFinishedError,
     DocumentIndexingError,
     IndexingEstimateError,
     InvalidActionError,
     InvalidMetadataError,
 )
-from core.rag.index_processor.constant.index_type import IndexStructureType
-from models.enums import DataSourceType, IndexingStatus
+from machinery.context import RequestContext
+from models.dataset import Dataset, Document
+from models.model import UploadFile
+from services.knowledge.dataset_access import (
+    AccessibleDataset,
+    DatasetAccess,
+    DatasetAccessDeniedError,
+    DatasetNotFoundError,
+)
+from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
+from services.knowledge.documents.application import (
+    DatasetDocumentApplicationService,
+    DocumentArchivedError,
+    DocumentIndexingStateError,
+    DocumentInvalidActionError,
+    DocumentListFilter,
+    DocumentNotFoundError,
+    DocumentProviderError,
+)
+from services.knowledge.indexing.estimate import (
+    EstimateDocumentAlreadyFinishedError,
+    EstimateDocumentNotFoundError,
+    EstimateSourceNotFoundError,
+    IndexingEstimateCredentialUnavailableError,
+    IndexingEstimateExecutionError,
+    IndexingEstimateProviderUnavailableError,
+    UnsupportedEstimateSourceError,
+)
+from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
+
+_DATASETS_DOCUMENT_CONTEXT = RequestContext("request-1", None, "account-1", "tenant-1")
+DS = UUID(int=1)
+DOC = UUID(int=2)
 
 
-def unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+class TestDatasetsDocumentCases:
+    @staticmethod
+    @pytest.fixture
+    def documents(monkeypatch):
+        documents = create_autospec(DatasetDocumentApplicationService, instance=True, spec_set=True)
+        monkeypatch.setattr(
+            controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(documents=documents))
+        )
+        monkeypatch.setattr(controller, "check_knowledge_rate_limit", lambda: None)
+        return documents
 
+    @staticmethod
+    def test_process_rule_authorizes_document_dataset_before_read(app, documents):
+        with (
+            app.test_request_context(f"/?document_id={DOC}"),
+            patch.object(controller, "enforce_rbac_checks", side_effect=Forbidden) as enforce_checks,
+            pytest.raises(Forbidden),
+        ):
+            unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), _DATASETS_DOCUMENT_CONTEXT)
 
-@pytest.fixture
-def tenant_ctx():
-    return (MagicMock(is_dataset_editor=True, id="u1"), "tenant-1")
+        enforce_checks.assert_called_once()
+        kwargs = enforce_checks.call_args.kwargs
+        assert kwargs["tenant_id"] == _DATASETS_DOCUMENT_CONTEXT.active_workspace_id
+        assert kwargs["account_id"] == _DATASETS_DOCUMENT_CONTEXT.account_id
+        assert kwargs["path_args"] == {"document_id": str(DOC)}
+        [check] = kwargs["checks"]
+        assert check.scene is RBACPermission.DATASET_READONLY
+        assert isinstance(check.locator, DatasetByDocument)
+        documents.get_process_rule.assert_not_called()
 
+    @staticmethod
+    def test_default_process_rule_does_not_require_dataset_permission(app, documents):
+        documents.get_process_rule.return_value = {
+            "mode": "automatic",
+            "rules": {},
+            "limits": {"indexing_max_segmentation_tokens_length": 4000},
+        }
+        with app.test_request_context("/"), patch.object(controller, "enforce_rbac_checks") as enforce_checks:
+            unwrap(GetProcessRuleApi.get)(GetProcessRuleApi(), _DATASETS_DOCUMENT_CONTEXT)
+        enforce_checks.assert_not_called()
+        documents.get_process_rule.assert_called_once_with(_DATASETS_DOCUMENT_CONTEXT, document_id=None)
 
-@pytest.fixture
-def patch_tenant(tenant_ctx):
-    with patch(
-        "controllers.console.datasets.datasets_document.current_account_with_tenant",
-        return_value=tenant_ctx,
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("resource", "verb", "operation", "kwargs"),
+        [
+            (GetProcessRuleApi, GetProcessRuleApi.get, lambda service: service.get_process_rule, {}),
+            (
+                DatasetDocumentListApi,
+                DatasetDocumentListApi.get,
+                lambda service: service.list_documents,
+                {"dataset_id": DS},
+            ),
+            (
+                DatasetDocumentListApi,
+                DatasetDocumentListApi.post,
+                lambda service: service.create_documents,
+                {"dataset_id": DS},
+            ),
+            (
+                DatasetDocumentListApi,
+                DatasetDocumentListApi.delete,
+                lambda service: service.delete_documents,
+                {"dataset_id": DS},
+            ),
+            (DatasetInitApi, DatasetInitApi.post, lambda service: service.initialize_dataset, {}),
+            (
+                DocumentBatchIndexingStatusApi,
+                DocumentBatchIndexingStatusApi.get,
+                lambda service: service.get_batch_indexing_status,
+                {"dataset_id": DS, "batch": "batch-1"},
+            ),
+            (
+                DocumentIndexingStatusApi,
+                DocumentIndexingStatusApi.get,
+                lambda service: service.get_indexing_status,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentApi,
+                DocumentApi.get,
+                lambda service: service.get_document,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentApi,
+                DocumentApi.delete,
+                lambda service: service.delete_document,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentDownloadApi,
+                DocumentDownloadApi.get,
+                lambda service: service.get_download_url,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentBatchDownloadZipApi,
+                DocumentBatchDownloadZipApi.post,
+                lambda service: service.build_download_zip,
+                {"dataset_id": DS},
+            ),
+            (
+                DocumentProcessingApi,
+                DocumentProcessingApi.patch,
+                lambda service: service.update_processing,
+                {"dataset_id": DS, "document_id": DOC, "action": "pause"},
+            ),
+            (
+                DocumentMetadataApi,
+                DocumentMetadataApi.put,
+                lambda service: service.update_metadata,
+                {
+                    "dataset_id": DS,
+                    "document_id": DOC,
+                    "req_data": DocumentMetadataUpdatePayload(doc_type="book", doc_metadata={"title": "Book"}),
+                },
+            ),
+            (
+                DocumentStatusApi,
+                DocumentStatusApi.patch,
+                lambda service: service.change_status,
+                {"dataset_id": DS, "action": "enable"},
+            ),
+            (
+                DocumentPauseApi,
+                DocumentPauseApi.patch,
+                lambda service: service.pause_document,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentRecoverApi,
+                DocumentRecoverApi.patch,
+                lambda service: service.recover_document,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentRetryApi,
+                DocumentRetryApi.post,
+                lambda service: service.retry_documents,
+                {"dataset_id": DS, "req_data": DocumentRetryPayload(document_ids=[str(DOC)])},
+            ),
+            (
+                DocumentRenameApi,
+                DocumentRenameApi.post,
+                lambda service: service.rename_document,
+                {"dataset_id": DS, "document_id": DOC, "req_data": DocumentRenamePayload(name="New name")},
+            ),
+            (
+                WebsiteDocumentSyncApi,
+                WebsiteDocumentSyncApi.get,
+                lambda service: service.sync_website,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentPipelineExecutionLogApi,
+                DocumentPipelineExecutionLogApi.get,
+                lambda service: service.get_execution_log,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+            (
+                DocumentGenerateSummaryApi,
+                DocumentGenerateSummaryApi.post,
+                lambda service: service.generate_summary,
+                {"dataset_id": DS, "req_data": GenerateSummaryPayload(document_list=[str(DOC)])},
+            ),
+            (
+                DocumentSummaryStatusApi,
+                DocumentSummaryStatusApi.get,
+                lambda service: service.get_summary_status,
+                {"dataset_id": DS, "document_id": DOC},
+            ),
+        ],
+    )
+    def test_endpoints_pass_request_context_and_map_application_errors(
+        app, documents, resource, verb, operation, kwargs
     ):
-        yield
+        operation(documents).side_effect = DocumentNotFoundError("Document not found.")
+        with app.test_request_context(
+            "/?document_id=" + str(DOC), json={"indexing_technique": "economy", "document_ids": [str(DOC)]}
+        ):
+            with pytest.raises(NotFound):
+                unwrap(verb)(resource(), request_context=_DATASETS_DOCUMENT_CONTEXT, **kwargs)
+        called = operation(documents)
+        assert called.call_count == 1
+        assert called.call_args.args == (_DATASETS_DOCUMENT_CONTEXT,)
+        if "dataset_id" in kwargs:
+            assert called.call_args.kwargs["dataset_id"] == str(DS)
+        if "document_id" in kwargs:
+            assert called.call_args.kwargs["document_id"] == str(DOC)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("fetch", "expected"), [("true", True), ("YES", True), ("false", False), ("invalid", False)]
+    )
+    def test_list_preserves_filters_pagination_and_fetch_parsing(app, documents, fetch, expected):
+        documents.list_documents.return_value = {"data": [], "has_more": False, "page": 2, "limit": 3, "total": 3}
+        with app.test_request_context(f"/?page=2&limit=3&keyword=needle&status=available&sort=hit_count&fetch={fetch}"):
+            response = unwrap(DatasetDocumentListApi.get)(DatasetDocumentListApi(), _DATASETS_DOCUMENT_CONTEXT, DS)
+        documents.list_documents.assert_called_once_with(
+            _DATASETS_DOCUMENT_CONTEXT,
+            dataset_id=str(DS),
+            query=DocumentListFilter(
+                page=2, limit=3, search="needle", status="available", sort="hit_count", fetch=expected
+            ),
+        )
+        assert response == {"data": [], "has_more": False, "page": 2, "limit": 3, "total": 3}
+
+    @staticmethod
+    @pytest.mark.parametrize("metadata", ["only", "without", "all"])
+    def test_document_detail_metadata_projection_and_raw_source(app, documents, metadata):
+        documents.get_document.return_value = {
+            "id": str(DOC),
+            "doc_type": "others",
+            "doc_metadata": [],
+            "name": "Name",
+            "data_source_info": {"file_path": "/path/to/local/file"},
+            "data_source_detail_dict": {},
+        }
+        with app.test_request_context(f"/?metadata={metadata}"):
+            response, status = unwrap(DocumentApi.get)(DocumentApi(), _DATASETS_DOCUMENT_CONTEXT, DS, DOC)
+        assert status == 200
+        documents.get_document.assert_called_once_with(
+            _DATASETS_DOCUMENT_CONTEXT, dataset_id=str(DS), document_id=str(DOC), metadata_only=metadata == "only"
+        )
+        if metadata == "only":
+            assert response == {"id": str(DOC), "doc_type": "others", "doc_metadata": []}
+        else:
+            assert response["data_source_info"] == {"file_path": "/path/to/local/file"}
+            assert ("doc_metadata" in response) is (metadata == "all")
+
+    @staticmethod
+    def test_invalid_metadata_fails_before_application_call(app, documents):
+        with app.test_request_context("/?metadata=invalid"), pytest.raises(InvalidMetadataError):
+            unwrap(DocumentApi.get)(DocumentApi(), _DATASETS_DOCUMENT_CONTEXT, DS, DOC)
+        documents.get_document.assert_not_called()
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("resource", "verb", "kwargs"),
+        [
+            (DocumentApi, DocumentApi.delete, {"document_id": DOC}),
+            (DatasetDocumentListApi, DatasetDocumentListApi.delete, {}),
+            (DocumentPauseApi, DocumentPauseApi.patch, {"document_id": DOC}),
+            (DocumentRecoverApi, DocumentRecoverApi.patch, {"document_id": DOC}),
+            (DocumentRetryApi, DocumentRetryApi.post, {"req_data": DocumentRetryPayload(document_ids=[str(DOC)])}),
+        ],
+    )
+    @pytest.mark.usefixtures("documents")
+    def test_no_content_mutations_return_empty_204(app, resource, verb, kwargs):
+        with app.test_request_context("/?document_id=" + str(DOC)):
+            result = unwrap(verb)(resource(), request_context=_DATASETS_DOCUMENT_CONTEXT, dataset_id=DS, **kwargs)
+        assert result == ("", 204)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("resource", "verb", "operation", "kwargs"),
+        [
+            (
+                DocumentProcessingApi,
+                DocumentProcessingApi.patch,
+                lambda service: service.update_processing,
+                {"document_id": DOC, "action": "resume"},
+            ),
+            (DocumentStatusApi, DocumentStatusApi.patch, lambda service: service.change_status, {"action": "disable"}),
+            (
+                WebsiteDocumentSyncApi,
+                WebsiteDocumentSyncApi.get,
+                lambda service: service.sync_website,
+                {"document_id": DOC},
+            ),
+            (
+                DocumentGenerateSummaryApi,
+                DocumentGenerateSummaryApi.post,
+                lambda service: service.generate_summary,
+                {"req_data": GenerateSummaryPayload(document_list=[str(DOC)])},
+            ),
+        ],
+    )
+    def test_success_mutations_return_success_response(app, documents, resource, verb, operation, kwargs):
+        with app.test_request_context("/?document_id=" + str(DOC)):
+            result = unwrap(verb)(resource(), request_context=_DATASETS_DOCUMENT_CONTEXT, dataset_id=DS, **kwargs)
+        assert result == ({"result": "success"}, 200)
+        assert operation(documents).call_count == 1
+
+    @staticmethod
+    @pytest.mark.parametrize("resource", [DatasetInitApi, DatasetDocumentListApi])
+    def test_creation_serializes_materialized_dataset_and_documents(app, documents, resource):
+        operation = documents.initialize_dataset if resource is DatasetInitApi else documents.create_documents
+        operation.return_value = {
+            "dataset": {
+                "id": str(DS),
+                "name": "Dataset",
+                "created_at": _datasets_document_datetime.datetime(2024, 1, 1, tzinfo=_datasets_document_datetime.UTC),
+            },
+            "documents": [
+                {
+                    "id": str(DOC),
+                    "name": "Document",
+                    "data_source_detail_dict": {},
+                    "data_source_info_dict": {},
+                    "doc_metadata_details": [],
+                }
+            ],
+            "batch": "batch-1",
+        }
+        with app.test_request_context("/", json={"indexing_technique": "economy"}):
+            response = unwrap(resource.post)(
+                resource(),
+                request_context=_DATASETS_DOCUMENT_CONTEXT,
+                **({} if resource is DatasetInitApi else {"dataset_id": DS}),
+            )
+        assert response["dataset"]["created_at"] == 1704067200
+        assert response["documents"][0]["data_source_info"] == {}
+        assert response["documents"][0]["doc_metadata"] == []
+        assert response["batch"] == "batch-1"
+
+    @staticmethod
+    @pytest.mark.parametrize("resource", [DocumentIndexingStatusApi, DocumentBatchIndexingStatusApi])
+    def test_indexing_status_keeps_timestamps_counts_and_error_fields(app, documents, resource):
+        value = {
+            "id": str(DOC),
+            "indexing_status": "paused",
+            "completed_segments": 2,
+            "total_segments": 3,
+            **dict.fromkeys(
+                (
+                    "processing_started_at",
+                    "parsing_completed_at",
+                    "cleaning_completed_at",
+                    "splitting_completed_at",
+                    "completed_at",
+                    "paused_at",
+                    "error",
+                    "stopped_at",
+                )
+            ),
+        }
+        value["processing_started_at"] = _datasets_document_datetime.datetime(
+            2024, 1, 1, tzinfo=_datasets_document_datetime.UTC
+        )
+        batch = resource is DocumentBatchIndexingStatusApi
+        operation = documents.get_batch_indexing_status if batch else documents.get_indexing_status
+        operation.return_value = {"data": [value]} if batch else value
+        with app.test_request_context("/"):
+            response = unwrap(resource.get)(
+                resource(),
+                request_context=_DATASETS_DOCUMENT_CONTEXT,
+                dataset_id=DS,
+                **({"batch": "batch-1"} if batch else {"document_id": DOC}),
+            )
+        row = response["data"][0] if batch else response
+        assert row["indexing_status"] == "paused"
+        assert row["processing_started_at"] == 1704067200
+        assert row["completed_segments"] == 2
+        assert row["total_segments"] == 3
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("translate", "error", "http_error"),
+        [
+            (controller._raise_document_error, DatasetNotFoundError(), NotFound),
+            (controller._raise_document_error, DocumentNotFoundError("missing"), NotFound),
+            (controller._raise_document_error, DatasetAccessDeniedError(), Forbidden),
+            (controller._raise_document_indexing_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+            (
+                controller._raise_document_indexing_error,
+                DocumentProviderError("provider", kind="uninitialized"),
+                ProviderNotInitializeError,
+            ),
+            (controller._raise_document_action_error, DocumentInvalidActionError("invalid"), InvalidActionError),
+            (controller._raise_document_status_error, DocumentInvalidActionError("invalid"), InvalidActionError),
+            (controller._raise_document_status_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+            (controller._raise_document_archive_error, DocumentArchivedError(), ArchivedDocumentImmutableError),
+            (controller._raise_document_archive_error, DocumentIndexingStateError("indexing"), DocumentIndexingError),
+            # Every narrow translator falls back to the shared scope mapping.
+            (controller._raise_document_archive_error, DatasetNotFoundError(), NotFound),
+        ],
+    )
+    def test_document_errors_are_mapped_at_transport_boundary(translate, error, http_error):
+        with pytest.raises(http_error):
+            translate(error)
+
+    @staticmethod
+    def test_scope_translator_does_not_map_other_operations_errors():
+        error = DocumentInvalidActionError("invalid")
+        with pytest.raises(DocumentInvalidActionError) as raised:
+            controller._raise_document_error(error)
+        assert raised.value is error
+
+    @staticmethod
+    def test_unexpected_error_is_not_hidden():
+        error = RuntimeError("unexpected")
+        with pytest.raises(RuntimeError) as raised:
+            controller._raise_document_error(error)
+        assert raised.value is error
+
+    class TestIndexingEstimateExceptionMapping:
+        @staticmethod
+        def _registry(method_name: str, error: Exception) -> SimpleNamespace:
+            estimates = MagicMock()
+            method = estimates.estimate_document if method_name == "estimate_document" else estimates.estimate_batch
+            method.side_effect = error
+            return SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
+
+        @pytest.mark.parametrize(
+            ("error", "expected_http_error"),
+            [
+                (DatasetNotFoundError(), NotFoundError),
+                (EstimateDocumentNotFoundError(), NotFoundError),
+                (EstimateSourceNotFoundError("source-1"), NotFoundError),
+                (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+                (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+                (EstimateDocumentAlreadyFinishedError(), DocumentAlreadyFinishedError),
+                (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+                (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+                (IndexingEstimateExecutionError(), IndexingEstimateError),
+            ],
+        )
+        def test_document_estimate_maps_application_errors(
+            self,
+            error: Exception,
+            expected_http_error: type[Exception],
+        ) -> None:
+            api = DocumentIndexingEstimateApi()
+            method = unwrap(api.get)
+            context = RequestContext("request-1", None, "account-1", "workspace-1")
+            registry = self._registry("estimate_document", error)
+
+            with patch(
+                "controllers.console.datasets.datasets_document.application_services",
+                return_value=registry,
+            ):
+                with pytest.raises(expected_http_error):
+                    method(api, context, UUID(int=1), UUID(int=2))
+
+        @pytest.mark.parametrize(
+            ("error", "expected_http_error"),
+            [
+                (DatasetNotFoundError(), NotFoundError),
+                (EstimateDocumentNotFoundError(), NotFoundError),
+                (EstimateSourceNotFoundError("source-1"), NotFoundError),
+                (IndexingEstimateCredentialUnavailableError(), NotFoundError),
+                (DatasetAccessDeniedError(), DatasetAccessDeniedRequestError),
+                (EstimateDocumentAlreadyFinishedError(), DocumentAlreadyFinishedError),
+                (UnsupportedEstimateSourceError("unsupported"), InvalidArgumentError),
+                (IndexingEstimateProviderUnavailableError(), ProviderNotInitializeError),
+                (IndexingEstimateExecutionError(), IndexingEstimateError),
+            ],
+        )
+        def test_batch_estimate_maps_application_errors(
+            self,
+            error: Exception,
+            expected_http_error: type[Exception],
+        ) -> None:
+            api = DocumentBatchIndexingEstimateApi()
+            method = unwrap(api.get)
+            context = RequestContext("request-1", None, "account-1", "workspace-1")
+            registry = self._registry("estimate_batch", error)
+
+            with patch(
+                "controllers.console.datasets.datasets_document.application_services",
+                return_value=registry,
+            ):
+                with pytest.raises(expected_http_error):
+                    method(api, context, UUID(int=1), "unknown-batch")
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "method",
+        [
+            DatasetDocumentListApi.get,
+            DocumentBatchIndexingStatusApi.get,
+            DocumentIndexingStatusApi.get,
+            DocumentApi.get,
+            DocumentPipelineExecutionLogApi.get,
+            DocumentSummaryStatusApi.get,
+        ],
+    )
+    def test_document_read_routes_require_dataset_readonly_permission(method) -> None:
+        [check] = rbac_checks(method)
+
+        assert check.scene is RBACPermission.DATASET_READONLY
+        assert isinstance(check.locator, DatasetId)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        "method",
+        [DocumentIndexingEstimateApi.get, DocumentBatchIndexingEstimateApi.get],
+    )
+    def test_document_indexing_estimates_require_dataset_use_permission(method) -> None:
+        [check] = rbac_checks(method)
+
+        assert check.scene is RBACPermission.DATASET_USE
+        assert isinstance(check.locator, DatasetId)
+
+    @staticmethod
+    @pytest.mark.parametrize(
+        ("method", "expected_scene"),
+        [
+            (DatasetDocumentListApi.post, RBACPermission.DATASET_USE),
+            (DatasetDocumentListApi.delete, RBACPermission.DATASET_DELETE_FILE),
+            (DocumentApi.delete, RBACPermission.DATASET_DELETE_FILE),
+            (DocumentBatchDownloadZipApi.post, RBACPermission.DATASET_DOCUMENT_DOWNLOAD),
+        ],
+    )
+    def test_document_mutation_routes_require_operation_specific_permissions(method, expected_scene) -> None:
+        [check] = rbac_checks(method)
+
+        assert check.scene is expected_scene
+        assert isinstance(check.locator, DatasetId)
 
 
-@pytest.fixture
-def dataset():
-    return MagicMock(id="ds-1", indexing_technique="economy", summary_index_setting={"enable": True})
+"""Document downloads through the controller, application service, and SQLite adapter."""
 
 
-@pytest.fixture
-def document():
-    return MagicMock(
-        id="doc-1",
-        tenant_id="tenant-1",
-        indexing_status=IndexingStatus.INDEXING,
-        data_source_type=DataSourceType.UPLOAD_FILE,
-        data_source_info_dict={"upload_file_id": "file-1"},
-        doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        archived=False,
-        is_paused=False,
-        dataset_process_rule=None,
+_DATASETS_DOCUMENT_DOWNLOAD_CONTEXT = RequestContext("request-1", None, "actor-1", "tenant-1")
+DOC_ID = str(UUID(int=1))
+FILE_ID = str(UUID(int=2))
+
+
+def _document(**values):
+    return Document(
+        **{
+            "id": DOC_ID,
+            "tenant_id": "tenant-1",
+            "dataset_id": "dataset-1",
+            "position": 1,
+            "data_source_type": "upload_file",
+            "data_source_info": json.dumps({"upload_file_id": FILE_ID}),
+            "batch": "batch-1",
+            "name": "document.txt",
+            "created_from": "web",
+            "created_by": "actor-1",
+            **values,
+        }
     )
 
 
-@pytest.fixture
-def patch_dataset(dataset):
-    with patch(
-        "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-        return_value=dataset,
-    ):
-        yield
+class TestDatasetsDocumentDownloadCases:
+    @staticmethod
+    @pytest.fixture(autouse=True)
+    def downloads(monkeypatch, sqlite_session_factory):
+        with sqlite_session_factory.begin() as session:
+            session.add(Dataset(id="dataset-1", tenant_id="tenant-1", name="Dataset", created_by="actor-1"))
+            session.add(_document())
+            upload = UploadFile(
+                tenant_id="tenant-1",
+                storage_type="local",
+                key="key-1",
+                name="document.txt",
+                size=5,
+                extension="txt",
+                mime_type="text/plain",
+                created_by_role="account",
+                created_by="actor-1",
+                created_at=_datasets_document_download_datetime(2024, 1, 1),
+                used=False,
+            )
+            upload.id = FILE_ID
+            session.add(upload)
+        access = create_autospec(DatasetAccess, instance=True, spec_set=True)
+        access.require_accessible.return_value = AccessibleDataset("dataset-1", "tenant-1")
+        documents = DatasetDocumentApplicationService(
+            dataset_access=access,
+            operations=SQLAlchemyDocumentOperations(session_factory=sqlite_session_factory),
+            metadata_schema={},
+        )
+        monkeypatch.setattr(
+            controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(documents=documents))
+        )
+        return documents
 
+    @staticmethod
+    def test_document_download_returns_signed_url(app, monkeypatch):
+        from services.knowledge import dataset_service
 
-@pytest.fixture
-def patch_permission():
-    with patch(
-        "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-        return_value=None,
-    ):
-        yield
+        signed = []
 
+        def sign(**kwargs):
+            signed.append(kwargs)
+            return "https://files.example/download"
 
-class TestGetProcessRuleApi:
-    def test_get_default_success(self, app, patch_tenant):
-        api = GetProcessRuleApi()
-        method = unwrap(api.get)
-
+        monkeypatch.setattr(dataset_service.file_helpers, "get_signed_file_url", sign)
         with app.test_request_context("/"):
-            response = method(api)
+            result = unwrap(controller.DocumentDownloadApi.get)(
+                controller.DocumentDownloadApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1", DOC_ID
+            )
+        assert result == {"url": "https://files.example/download"}
+        assert signed == [{"upload_file_id": FILE_ID, "as_attachment": True}]
 
-        assert "rules" in response
+    @staticmethod
+    @pytest.mark.parametrize(
+        "values",
+        [
+            {"data_source_type": "website_crawl"},
+            {"data_source_info": "{}"},
+            {"data_source_info": json.dumps({"upload_file_id": "missing"})},
+            {"tenant_id": "foreign"},
+            {"dataset_id": "foreign"},
+        ],
+    )
+    def test_invalid_or_foreign_document_is_not_downloadable(app, sqlite_session_factory, values):
+        with sqlite_session_factory.begin() as session:
+            document = session.get(Document, DOC_ID)
+            for key, value in values.items():
+                setattr(document, key, value)
+        with app.test_request_context("/"), pytest.raises(NotFound):
+            unwrap(controller.DocumentDownloadApi.get)(
+                controller.DocumentDownloadApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1", DOC_ID
+            )
 
-    def test_get_with_document_dataset_not_found(self, app, patch_tenant):
-        api = GetProcessRuleApi()
-        method = unwrap(api.get)
+    @staticmethod
+    def test_cross_tenant_upload_file_is_not_signed(app, sqlite_session_factory):
+        with sqlite_session_factory.begin() as session:
+            session.get(UploadFile, FILE_ID).tenant_id = "foreign"
+        with app.test_request_context("/"), pytest.raises(NotFound):
+            unwrap(controller.DocumentDownloadApi.get)(
+                controller.DocumentDownloadApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1", DOC_ID
+            )
 
-        document = MagicMock(dataset_id="ds-1")
+    @staticmethod
+    def test_zip_is_readable_and_cleanup_waits_for_response_close(app, monkeypatch, sqlite_engine):
+        from services import file_service
 
+        paths = []
+        checked_out = set()
+
+        def checkout(_connection, record, _proxy):
+            checked_out.add(record)
+
+        def checkin(_connection, record):
+            checked_out.discard(record)
+
+        def load(key, *, stream):
+            assert not checked_out, "storage I/O must run after the read transaction closes"
+            assert key == "key-1"
+            assert stream is True
+            return iter([b"hello"])
+
+        def send(path, **kwargs):
+            paths.append(Path(path))
+            return send_file(path, **kwargs)
+
+        monkeypatch.setattr(file_service.storage, "load", load)
+        monkeypatch.setattr(controller, "send_file", send)
+        event.listen(sqlite_engine, "checkout", checkout)
+        event.listen(sqlite_engine, "checkin", checkin)
+        try:
+            with app.test_request_context("/", json={"document_ids": [DOC_ID]}):
+                response = unwrap(controller.DocumentBatchDownloadZipApi.post)(
+                    controller.DocumentBatchDownloadZipApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1"
+                )
+                assert paths[0].exists()
+                response.direct_passthrough = False
+                with ZipFile(BytesIO(response.get_data())) as archive:
+                    assert archive.read("document.txt") == b"hello"
+                response.close()
+            assert not paths[0].exists()
+        finally:
+            event.remove(sqlite_engine, "checkout", checkout)
+            event.remove(sqlite_engine, "checkin", checkin)
+
+    @staticmethod
+    def test_zip_cleanup_when_response_creation_fails(app, monkeypatch):
+        from services import file_service
+
+        paths = []
+        monkeypatch.setattr(file_service.storage, "load", lambda *_args, **_kwargs: iter([b"hello"]))
+
+        def fail_send(path, **_kwargs):
+            paths.append(Path(path))
+            raise RuntimeError("response failed")
+
+        monkeypatch.setattr(controller, "send_file", fail_send)
         with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.get_or_404",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=None,
-            ),
+            app.test_request_context("/", json={"document_ids": [DOC_ID]}),
+            pytest.raises(RuntimeError, match="response failed"),
         ):
-            with pytest.raises(NotFound):
-                method(api)
-
-
-class TestDatasetDocumentListApi:
-    def test_get_with_fetch_true_counts_segments(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        doc = MagicMock(id="doc-1")
-        pagination = MagicMock(items=[doc], total=1)
-
-        count_mock = MagicMock(return_value=2)
-
-        with (
-            app.test_request_context("/?fetch=true"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=2,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
-        ):
-            resp = method(api, "ds-1")
-
-        assert resp["data"]
-
-    def test_get_with_search_status_and_created_at_sort(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        pagination = MagicMock(items=[MagicMock()], total=1)
-
-        with (
-            app.test_request_context("/?keyword=test&status=enabled&sort=created_at"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.apply_display_status_filter",
-                side_effect=lambda q, s: q,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
-        ):
-            resp = method(api, "ds-1")
-
-        assert resp["total"] == 1
-
-    def test_get_success(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        pagination = MagicMock(items=[MagicMock()], total=1)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
-        ):
-            response = method(api, "ds-1")
-
-        assert response["total"] == 1
-
-    def test_post_success(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.post)
-
-        payload = {"indexing_technique": "economy"}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.document_create_args_validate",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.save_document_with_dataset_id",
-                return_value=([MagicMock()], "batch-1"),
-            ),
-        ):
-            response = method(api, "ds-1")
-
-        assert "documents" in response
-
-    def test_post_forbidden(self, app):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.post)
-
-        user = MagicMock(is_dataset_editor=False)
-
-        with (
-            app.test_request_context("/", json={}),
-            patch.object(type(console_ns), "payload", {}),
-            patch(
-                "controllers.console.datasets.datasets_document.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "ds-1")
-
-    def test_get_with_fetch_true_and_invalid_fetch(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        pagination = MagicMock(items=[MagicMock()], total=1)
-
-        with (
-            app.test_request_context("/?fetch=maybe"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
-        ):
-            response = method(api, "ds-1")
-
-        assert response["total"] == 1
-
-    def test_get_sort_hit_count(self, app, patch_tenant, patch_dataset, patch_permission):
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        pagination = MagicMock(items=[], total=0)
-
-        with (
-            app.test_request_context("/?sort=hit_count"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-        ):
-            response = method(api, "ds-1")
-
-        assert response["total"] == 0
-
-
-class TestDocumentApi:
-    def test_get_success(self, app, patch_tenant):
-        api = DocumentApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(dataset_process_rule=None)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={},
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-    def test_get_invalid_metadata(self, app, patch_tenant):
-        api = DocumentApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/?metadata=wrong"), patch.object(api, "get_document", return_value=MagicMock()):
-            with pytest.raises(InvalidMetadataError):
-                method(api, "ds-1", "doc-1")
-
-    def test_delete_success(self, app, patch_tenant, patch_dataset):
-        api = DocumentApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch.object(api, "get_document", return_value=MagicMock()),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.delete_document",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 204
-
-    def test_delete_indexing_error(self, app, patch_tenant, patch_dataset):
-        api = DocumentApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch.object(api, "get_document", return_value=MagicMock()),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.delete_document",
-                side_effect=services.errors.document.DocumentIndexingError(),
-            ),
-        ):
-            with pytest.raises(DocumentIndexingError):
-                method(api, "ds-1", "doc-1")
-
-
-class TestDocumentDownloadApi:
-    def test_download_success(self, app, patch_tenant):
-        api = DocumentDownloadApi()
-        method = unwrap(api.get)
-
-        document = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document_download_url",
-                return_value="url",
-            ),
-        ):
-            response = method(api, "ds-1", "doc-1")
-
-        assert response["url"] == "url"
-
-
-class TestDocumentProcessingApi:
-    def test_processing_forbidden_when_not_editor(self, app):
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        user = MagicMock(is_dataset_editor=False)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.current_account_with_tenant",
-                return_value=(user, "tenant"),
-            ),
-            patch.object(api, "get_document", return_value=MagicMock()),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "ds-1", "doc-1", "pause")
-
-    def test_resume_from_error_state(self, app, patch_tenant):
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        doc = MagicMock(indexing_status=IndexingStatus.ERROR, is_paused=True)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=doc),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            _, status = method(api, "ds-1", "doc-1", "resume")
-
-        assert status == 200
-
-    def test_resume_success(self, app, patch_tenant):
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        document = MagicMock(indexing_status=IndexingStatus.PAUSED, is_paused=True)
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1", "resume")
-
-        assert status == 200
-
-    def test_pause_success(self, app, patch_tenant):
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        document = MagicMock(indexing_status="indexing")
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1", "pause")
-
-        assert status == 200
-
-    def test_pause_invalid(self, app, patch_tenant):
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
-
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(InvalidActionError):
-                method(api, "ds-1", "doc-1", "pause")
-
-
-class TestDocumentMetadataApi:
-    def test_put_metadata_schema_filtering(self, app, patch_tenant):
-        api = DocumentMetadataApi()
-        method = unwrap(api.put)
-
-        doc = MagicMock()
-
-        payload = {
-            "doc_type": "invoice",
-            "doc_metadata": {"amount": 10, "invalid": "x"},
-        }
-
-        schema = {"amount": int}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(api, "get_document", return_value=doc),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"invoice": schema},
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            method(api, "ds-1", "doc-1")
-
-        assert doc.doc_metadata == {"amount": 10}
-
-    def test_put_success(self, app, patch_tenant):
-        api = DocumentMetadataApi()
-        method = unwrap(api.put)
-
-        document = MagicMock()
-
-        payload = {"doc_type": "others", "doc_metadata": {"a": 1}}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"others": {}},
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-    def test_put_invalid_payload(self, app, patch_tenant):
-        api = DocumentMetadataApi()
-        method = unwrap(api.put)
-
-        with app.test_request_context("/", json={}), patch.object(api, "get_document", return_value=MagicMock()):
-            with pytest.raises(ValueError):
-                method(api, "ds-1", "doc-1")
-
-    def test_put_invalid_doc_type(self, app, patch_tenant):
-        api = DocumentMetadataApi()
-        method = unwrap(api.put)
-
-        payload = {"doc_type": "invalid", "doc_metadata": {}}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(api, "get_document", return_value=MagicMock()),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"others": {}},
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "ds-1", "doc-1")
-
-
-class TestDocumentStatusApi:
-    def test_patch_success(self, app, patch_tenant, patch_dataset):
-        api = DocumentStatusApi()
-        method = unwrap(api.patch)
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.batch_update_document_status",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "enable")
-
-        assert status == 200
-
-    def test_patch_invalid_action(self, app, patch_tenant, patch_dataset):
-        api = DocumentStatusApi()
-        method = unwrap(api.patch)
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.batch_update_document_status",
-                side_effect=ValueError("x"),
-            ),
-        ):
-            with pytest.raises(InvalidActionError):
-                method(api, "ds-1", "enable")
-
-
-class TestDocumentRetryApi:
-    def test_retry_archived_document_skipped(self, app, patch_tenant, patch_dataset):
-        api = DocumentRetryApi()
-        method = unwrap(api.post)
-
-        payload = {"document_ids": ["doc-1"]}
-
-        doc = MagicMock(indexing_status="indexing")
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document",
-                return_value=doc,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.check_archived",
-                return_value=True,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.retry_document",
-            ) as retry_mock,
-        ):
-            resp, status = method(api, "ds-1")
-
-        assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
-
-    def test_retry_success(self, app, patch_tenant, patch_dataset):
-        api = DocumentRetryApi()
-        method = unwrap(api.post)
-
-        payload = {"document_ids": ["doc-1"]}
-
-        document = MagicMock(indexing_status=IndexingStatus.INDEXING, archived=False)
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.check_archived",
-                return_value=False,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.retry_document",
-                return_value=None,
-            ) as retry_mock,
-        ):
-            response, status = method(api, "ds-1")
-
-        assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [document])
-
-    def test_retry_skips_completed_document(self, app, patch_tenant, patch_dataset):
-        api = DocumentRetryApi()
-        method = unwrap(api.post)
-
-        payload = {"document_ids": ["doc-1"]}
-
-        document = MagicMock(indexing_status=IndexingStatus.COMPLETED, archived=False)
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.retry_document",
-                return_value=None,
-            ) as retry_mock,
-        ):
-            response, status = method(api, "ds-1")
-
-        assert status == 204
-        retry_mock.assert_called_once_with("ds-1", [])
-
-
-class TestDocumentPipelineExecutionLogApi:
-    def test_get_log_success(self, app, patch_tenant, patch_dataset):
-        api = DocumentPipelineExecutionLogApi()
-        method = unwrap(api.get)
-
-        log = MagicMock(
-            datasource_info="{}",
-            datasource_type="file",
-            input_data={},
-            datasource_node_id="n1",
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=log,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-
-class TestDocumentGenerateSummaryApi:
-    def test_generate_summary_missing_documents(self, app, patch_tenant, patch_permission):
-        api = DocumentGenerateSummaryApi()
-        method = unwrap(api.post)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            summary_index_setting={"enable": True},
-        )
-
-        payload = {"document_list": ["doc-1", "doc-2"]}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[MagicMock(id="doc-1")],
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "ds-1")
-
-    def test_generate_not_enabled(self, app, patch_tenant, patch_permission):
-        api = DocumentGenerateSummaryApi()
-        method = unwrap(api.post)
-
-        dataset = MagicMock(indexing_technique="high_quality", summary_index_setting={"enable": False})
-
-        payload = {"document_list": ["doc-1"]}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "ds-1")
-
-    def test_generate_summary_success_with_qa_skip(self, app, patch_tenant, patch_permission):
-        api = DocumentGenerateSummaryApi()
-        method = unwrap(api.post)
-
-        dataset = MagicMock(
-            indexing_technique="high_quality",
-            summary_index_setting={"enable": True},
-        )
-
-        doc1 = MagicMock(id="doc-1", doc_form=IndexStructureType.QA_INDEX)
-        doc2 = MagicMock(id="doc-2", doc_form=IndexStructureType.PARAGRAPH_INDEX)
-
-        payload = {"document_list": ["doc-1", "doc-2"]}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_documents_by_ids",
-                return_value=[doc1, doc2],
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.generate_summary_index_task.delay",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1")
-
-        assert status == 200
-
-
-class TestDocumentSummaryStatusApi:
-    def test_get_success(self, app, patch_tenant, patch_permission):
-        api = DocumentSummaryStatusApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "services.summary_index_service.SummaryIndexService.get_document_summary_status_detail",
-                return_value={"total_segments": 0},
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-
-class TestDocumentIndexingEstimateApi:
-    def test_indexing_estimate_file_not_found(self, app, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            data_source_info_dict={"upload_file_id": "file-1"},
-            tenant_id="tenant-1",
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            dataset_process_rule=None,
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "ds-1", "doc-1")
-
-    def test_indexing_estimate_generic_exception(self, app, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            data_source_info_dict={"upload_file_id": "file-1"},
-            tenant_id="tenant-1",
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            dataset_process_rule=None,
-        )
-
-        upload_file = MagicMock()
-
-        mock_indexing_runner = MagicMock()
-        mock_indexing_runner.indexing_estimate.side_effect = RuntimeError("Some indexing error")
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=upload_file,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.ExtractSetting",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner",
-                return_value=mock_indexing_runner,
-            ),
-        ):
-            with pytest.raises(IndexingEstimateError):
-                method(api, "ds-1", "doc-1")
-
-    def test_get_finished(self, app, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(indexing_status=IndexingStatus.COMPLETED)
-
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(DocumentAlreadyFinishedError):
-                method(api, "ds-1", "doc-1")
-
-
-class TestDocumentBatchDownloadZipApi:
-    def test_post_no_documents(self, app, patch_tenant):
-        api = DocumentBatchDownloadZipApi()
-        method = unwrap(api.post)
-
-        payload = {"document_ids": []}
-
-        with app.test_request_context("/", json=payload), patch.object(type(console_ns), "payload", payload):
-            with pytest.raises(ValueError):
-                method(api, "ds-1")
-
-
-class TestDatasetDocumentListApiDelete:
-    def test_delete_success(self, app, patch_tenant, patch_dataset):
-        """Test successful deletion of documents"""
-        api = DatasetDocumentListApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/?document_id=doc-1&document_id=doc-2"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.delete_documents",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1")
-
-        assert status == 204
-
-    def test_delete_indexing_error(self, app, patch_tenant, patch_dataset):
-        """Test deletion with indexing error"""
-        api = DatasetDocumentListApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_model_setting",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.delete_documents",
-                side_effect=services.errors.document.DocumentIndexingError(),
-            ),
-        ):
-            with pytest.raises(DocumentIndexingError):
-                method(api, "ds-1")
-
-    def test_delete_dataset_not_found(self, app, patch_tenant):
-        """Test deletion when dataset not found"""
-        api = DatasetDocumentListApi()
-        method = unwrap(api.delete)
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=None,
-            ),
-        ):
-            with pytest.raises(NotFound):
-                method(api, "ds-1")
-
-
-class TestDocumentBatchIndexingEstimateApi:
-    def test_batch_indexing_estimate_website(self, app, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        doc = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.WEBSITE_CRAWL,
-            data_source_info_dict={
-                "provider": "firecrawl",
-                "job_id": "j1",
-                "url": "https://x.com",
-                "mode": "single",
-                "only_main_content": True,
-            },
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 2}),
-            ),
-        ):
-            resp, status = method(api, "ds-1", "batch-1")
-
-        assert status == 200
-
-    def test_batch_indexing_estimate_notion(self, app, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        doc = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.NOTION_IMPORT,
-            data_source_info_dict={
-                "credential_id": "c1",
-                "notion_workspace_id": "w1",
-                "notion_page_id": "p1",
-                "type": "page",
-            },
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_batch_documents", return_value=[doc]),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 1}),
-            ),
-        ):
-            resp, status = method(api, "ds-1", "batch-1")
-
-        assert status == 200
-
-    def test_batch_estimate_unsupported_datasource(self, app, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type="unknown",
-            data_source_info_dict={},
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-        )
-
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", return_value=[document]):
-            with pytest.raises(ValueError):
-                method(api, "ds-1", "batch-1")
-
-    def test_get_batch_estimate_invalid_batch(self, app, patch_tenant):
-        """Test batch estimation with invalid batch"""
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, "ds-1", "invalid-batch")
-
-
-class TestDocumentBatchIndexingStatusApi:
-    def test_get_batch_status_invalid_batch(self, app, patch_tenant):
-        """Test batch status with invalid batch"""
-        api = DocumentBatchIndexingStatusApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"), patch.object(api, "get_batch_documents", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, "ds-1", "invalid-batch")
-
-
-class TestDocumentIndexingStatusApi:
-    def test_get_status_document_not_found(self, app, patch_tenant):
-        """Test getting status for non-existent document"""
-        api = DocumentIndexingStatusApi()
-        method = unwrap(api.get)
-
-        with app.test_request_context("/"), patch.object(api, "get_document", side_effect=NotFound()):
-            with pytest.raises(NotFound):
-                method(api, "ds-1", "invalid-doc")
-
-
-class TestDocumentApiMetadata:
-    def test_get_with_only_option(self, app, patch_tenant):
-        """Test get with 'only' metadata option"""
-        api = DocumentApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(dataset_process_rule=None, doc_metadata_details=[])
-
-        with (
-            app.test_request_context("/?metadata=only"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={},
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-    def test_get_with_without_option(self, app, patch_tenant):
-        """Test get with 'without' metadata option"""
-        api = DocumentApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(dataset_process_rule=None)
-
-        with (
-            app.test_request_context("/?metadata=without"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={},
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
-
-
-class TestDocumentGenerateSummaryApiSuccess:
-    def test_generate_not_enabled_high_quality(self, app, patch_tenant, patch_permission):
-        """Test summary generation on non-high-quality dataset"""
-        api = DocumentGenerateSummaryApi()
-        method = unwrap(api.post)
-
-        dataset = MagicMock(indexing_technique="economy", summary_index_setting={"enable": True})
-
-        payload = {"document_list": ["doc-1"]}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(type(console_ns), "payload", payload),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=dataset,
-            ),
-        ):
-            with pytest.raises(ValueError):
-                method(api, "ds-1")
-
-
-class TestDocumentProcessingApiResume:
-    def test_resume_invalid_status(self, app, patch_tenant):
-        """Test resume on non-paused document"""
-        api = DocumentProcessingApi()
-        method = unwrap(api.patch)
-
-        document = MagicMock(indexing_status=IndexingStatus.COMPLETED, is_paused=False)
-
-        with app.test_request_context("/"), patch.object(api, "get_document", return_value=document):
-            with pytest.raises(InvalidActionError):
-                method(api, "ds-1", "doc-1", "resume")
-
-
-class TestDocumentPermissionCases:
-    def test_document_batch_get_permission_denied(self, app, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "ds-1", "batch-1")
-
-    def test_document_batch_get_documents_not_found(self, app, patch_tenant):
-        api = DocumentBatchIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch.object(api, "get_batch_documents", return_value=None),
-        ):
-            response, status = method(api, "ds-1", "batch-1")
-
-        assert status == 200
-        assert response == {
-            "tokens": 0,
-            "total_price": 0,
-            "currency": "USD",
-            "total_segments": 0,
-            "preview": [],
-        }
-
-    def test_document_tenant_mismatch(self, app):
-        api = DocumentApi()
-        method = unwrap(api.get)
-
-        user = MagicMock(is_dataset_editor=True)
-        document = MagicMock(
-            tenant_id="other-tenant",
-            dataset_process_rule=None,
-        )
-
-        with (
-            app.test_request_context("/"),
-            patch(
-                "controllers.console.datasets.datasets_document.current_account_with_tenant",
-                return_value=(user, "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),  # ✅ prevents real DB call
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.get_document",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_process_rules",
-                return_value={},
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api, "ds-1", "doc-1")
-
-    def test_process_rule_get_by_document_success(self, app, patch_tenant):
-        api = GetProcessRuleApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(dataset_id="ds-1")
-        process_rule = MagicMock(mode="custom", rules_dict={"a": 1})
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.get_or_404",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=process_rule,
-            ),
-        ):
-            result = method(api)
-
-        if isinstance(result, tuple):
-            response, status = result
-        else:
-            response, status = result, 200
-
-        assert status == 200
-        assert response["mode"] == "custom"
-
-    def test_process_rule_permission_denied(self, app):
-        api = GetProcessRuleApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(dataset_id="ds-1")
-
-        with (
-            app.test_request_context("/?document_id=doc-1"),
-            patch(
-                "controllers.console.datasets.datasets_document.current_account_with_tenant",
-                return_value=(MagicMock(is_dataset_editor=True), "tenant-1"),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.get_or_404",
-                return_value=document,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.get_dataset",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DatasetService.check_dataset_permission",
-                side_effect=services.errors.account.NoPermissionError("No permission"),
-            ),
-        ):
-            with pytest.raises(Forbidden):
-                method(api)
-
-
-class TestDocumentListAdvancedCases:
-    def test_document_list_with_multiple_sort_options(self, app, patch_tenant, patch_dataset, patch_permission):
-        """Test document list with different sort options"""
-        api = DatasetDocumentListApi()
-        method = unwrap(api.get)
-
-        pagination = MagicMock(items=[MagicMock()], total=1)
-
-        with (
-            app.test_request_context("/?sort=updated_at"),
-            patch(
-                "controllers.console.datasets.datasets_document.db.paginate",
-                return_value=pagination,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.enrich_documents_with_summary_index_status",
-                return_value=None,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.marshal",
-                return_value=[{"id": "doc-1"}],
-            ),
-        ):
-            response = method(api, "ds-1")
-
-        assert response["total"] == 1
-
-    def test_document_metadata_with_schema_validation(self, app, patch_tenant):
-        """Test document metadata update with schema validation"""
-        api = DocumentMetadataApi()
-        method = unwrap(api.put)
-
-        doc = MagicMock()
-        payload = {
-            "doc_type": "contract",
-            "doc_metadata": {"amount": 5000, "currency": "USD", "invalid_field": "x"},
-        }
-
-        schema = {"amount": int, "currency": str}
-
-        with (
-            app.test_request_context("/", json=payload),
-            patch.object(api, "get_document", return_value=doc),
-            patch(
-                "controllers.console.datasets.datasets_document.DocumentService.DOCUMENT_METADATA_SCHEMA",
-                {"contract": schema},
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.commit",
-                return_value=None,
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-            assert status == 200
-            assert doc.doc_metadata == {"amount": 5000, "currency": "USD"}
-
-
-class TestDocumentIndexingEdgeCases:
-    def test_document_indexing_with_extraction_setting(self, app, patch_tenant):
-        api = DocumentIndexingEstimateApi()
-        method = unwrap(api.get)
-
-        document = MagicMock(
-            indexing_status=IndexingStatus.INDEXING,
-            data_source_type=DataSourceType.UPLOAD_FILE,
-            data_source_info_dict={"upload_file_id": "file-1"},
-            tenant_id="tenant-1",
-            doc_form=IndexStructureType.PARAGRAPH_INDEX,
-            dataset_process_rule=None,
-        )
-
-        upload_file = MagicMock()
-
-        with (
-            app.test_request_context("/"),
-            patch.object(api, "get_document", return_value=document),
-            patch(
-                "controllers.console.datasets.datasets_document.db.session.scalar",
-                return_value=upload_file,
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.ExtractSetting",
-                return_value=MagicMock(),
-            ),
-            patch(
-                "controllers.console.datasets.datasets_document.IndexingRunner.indexing_estimate",
-                return_value=MagicMock(model_dump=lambda: {"tokens": 5}),
-            ),
-        ):
-            response, status = method(api, "ds-1", "doc-1")
-
-        assert status == 200
+            unwrap(controller.DocumentBatchDownloadZipApi.post)(
+                controller.DocumentBatchDownloadZipApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1"
+            )
+        assert paths
+        assert not paths[0].exists()
+
+    @staticmethod
+    def test_zip_rejects_non_upload_document(app, sqlite_session_factory):
+        with sqlite_session_factory.begin() as session:
+            session.get(Document, DOC_ID).data_source_type = "website_crawl"
+        with app.test_request_context("/", json={"document_ids": [DOC_ID]}), pytest.raises(NotFound):
+            unwrap(controller.DocumentBatchDownloadZipApi.post)(
+                controller.DocumentBatchDownloadZipApi(), _DATASETS_DOCUMENT_DOWNLOAD_CONTEXT, "dataset-1"
+            )

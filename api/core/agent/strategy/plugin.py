@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Any
+from typing import Any, override
 
 from core.agent.entities import AgentInvokeMessage
 from core.agent.plugin_entities import AgentStrategyEntity, AgentStrategyParameter
@@ -18,11 +18,15 @@ class PluginAgentStrategy(BaseAgentStrategy):
     declaration: AgentStrategyEntity
     meta_version: str | None = None
 
-    def __init__(self, tenant_id: str, declaration: AgentStrategyEntity, meta_version: str | None):
+    def __init__(
+        self, tenant_id: str, declaration: AgentStrategyEntity, meta_version: str | None, plugin_unique_identifier: str
+    ):
         self.tenant_id = tenant_id
         self.declaration = declaration
         self.meta_version = meta_version
+        self.plugin_unique_identifier = plugin_unique_identifier
 
+    @override
     def get_parameters(self) -> Sequence[AgentStrategyParameter]:
         return self.declaration.parameters
 
@@ -34,6 +38,7 @@ class PluginAgentStrategy(BaseAgentStrategy):
             params[parameter.name] = parameter.init_frontend_parameter(params.get(parameter.name))
         return params
 
+    @override
     def _invoke(
         self,
         params: dict[str, Any],
@@ -42,11 +47,11 @@ class PluginAgentStrategy(BaseAgentStrategy):
         app_id: str | None = None,
         message_id: str | None = None,
         credentials: InvokeCredentials | None = None,
-    ) -> Generator[AgentInvokeMessage, None, None]:
+    ) -> Generator[AgentInvokeMessage]:
         """
         Invoke the agent strategy.
         """
-        manager = PluginAgentClient()
+        manager = PluginAgentClient(plugin_unique_identifier=self.plugin_unique_identifier)
 
         initialized_params = self.initialize_parameters(params)
         params = convert_parameters_to_plugin_format(initialized_params)

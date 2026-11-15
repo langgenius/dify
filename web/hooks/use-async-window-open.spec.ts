@@ -1,6 +1,9 @@
 import { act, renderHook } from '@testing-library/react'
 import { useAsyncWindowOpen } from './use-async-window-open'
 
+const createMockWindow = (opener: string | null, close = vi.fn()) =>
+  ({ opener, close, location: { href: '' } }) as unknown as Window
+
 describe('useAsyncWindowOpen', () => {
   const originalOpen = window.open
 
@@ -13,7 +16,7 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('opens immediate url synchronously, clears opener, without calling async getter', async () => {
-    const mockWindow: any = { opener: 'should-clear' }
+    const mockWindow = createMockWindow('should-clear')
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const getUrl = vi.fn()
@@ -33,7 +36,7 @@ describe('useAsyncWindowOpen', () => {
   })
 
   it('appends noopener,noreferrer when immediate open passes custom features', async () => {
-    const mockWindow: any = { opener: 'should-clear' }
+    const mockWindow = createMockWindow('should-clear')
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const getUrl = vi.fn()
@@ -47,7 +50,11 @@ describe('useAsyncWindowOpen', () => {
       })
     })
 
-    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'width=500,noopener,noreferrer')
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com',
+      '_blank',
+      'width=500,noopener,noreferrer',
+    )
     expect(getUrl).not.toHaveBeenCalled()
     expect(mockWindow.opener).toBeNull()
   })
@@ -68,24 +75,29 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })
 
   it('sets opener to null and redirects when async url resolves', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: 'should-be-cleared',
-    }
+    const mockWindow = createMockWindow('should-be-cleared', close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
 
+    let resolveUrl!: (url: string) => void
+    const url = new Promise<string>((resolve) => {
+      resolveUrl = resolve
+    })
+    const pendingOpen = result.current(() => url)
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank', undefined)
+    expect(mockWindow.opener).toBeNull()
+    expect(mockWindow.location.href).toBe('')
     await act(async () => {
-      await result.current(async () => 'https://example.com/path')
+      resolveUrl('https://example.com/path')
+      await pendingOpen
     })
 
     expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank', undefined)
@@ -96,11 +108,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('closes placeholder and forwards error when async getter throws', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: null,
-    }
+    const mockWindow = createMockWindow(null, close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const onError = vi.fn()
@@ -108,9 +116,12 @@ describe('useAsyncWindowOpen', () => {
 
     const error = new Error('fetch failed')
     await act(async () => {
-      await result.current(async () => {
-        throw error
-      }, { onError })
+      await result.current(
+        async () => {
+          throw error
+        },
+        { onError },
+      )
     })
 
     expect(close).toHaveBeenCalled()
@@ -120,11 +131,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('preserves custom features as-is for async open', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: 'should-be-cleared',
-    }
+    const mockWindow = createMockWindow('should-be-cleared', close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const { result } = renderHook(() => useAsyncWindowOpen())
@@ -144,11 +151,7 @@ describe('useAsyncWindowOpen', () => {
 
   it('closes placeholder and reports when no url is returned', async () => {
     const close = vi.fn()
-    const mockWindow: any = {
-      location: { href: '' },
-      close,
-      opener: null,
-    }
+    const mockWindow = createMockWindow(null, close)
     const openSpy = vi.fn(() => mockWindow)
     window.open = openSpy
     const onError = vi.fn()
@@ -160,7 +163,7 @@ describe('useAsyncWindowOpen', () => {
 
     expect(close).toHaveBeenCalled()
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('No url resolved for new window')
   })
 
@@ -176,7 +179,7 @@ describe('useAsyncWindowOpen', () => {
     })
 
     expect(onError).toHaveBeenCalled()
-    const errArg = onError.mock.calls[0][0] as Error
+    const errArg = onError.mock.calls[0]![0] as Error
     expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })

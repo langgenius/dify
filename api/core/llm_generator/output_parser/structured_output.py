@@ -5,6 +5,11 @@ from enum import StrEnum
 from typing import Any, Literal, cast, overload
 
 import json_repair
+from pydantic import TypeAdapter, ValidationError
+
+from core.llm_generator.output_parser.errors import OutputParserError
+from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
+from core.model_manager import ModelInstance
 from graphon.model_runtime.callbacks.base_callback import Callback
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -21,11 +26,6 @@ from graphon.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ParameterRule
-from pydantic import TypeAdapter, ValidationError
-
-from core.llm_generator.output_parser.errors import OutputParserError
-from core.llm_generator.prompts import STRUCTURED_OUTPUT_PROMPT
-from core.model_manager import ModelInstance
 
 
 class ResponseFormat(StrEnum):
@@ -56,7 +56,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[True],
     callbacks: list[Callback] | None = None,
-) -> Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> Generator[LLMResultChunkWithStructuredOutput]: ...
 @overload
 def invoke_llm_with_structured_output(
     *,
@@ -70,6 +71,7 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: Literal[False],
     callbacks: list[Callback] | None = None,
+    request_metadata: Mapping[str, object] | None = None,
 ) -> LLMResultWithStructuredOutput: ...
 @overload
 def invoke_llm_with_structured_output(
@@ -84,7 +86,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]: ...
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]: ...
 def invoke_llm_with_structured_output(
     *,
     provider: str,
@@ -97,7 +100,8 @@ def invoke_llm_with_structured_output(
     stop: list[str] | None = None,
     stream: bool = True,
     callbacks: list[Callback] | None = None,
-) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput, None, None]:
+    request_metadata: Mapping[str, object] | None = None,
+) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
     """
     Invoke large language model with structured output
     1. This method invokes model_instance.invoke_llm with json_schema
@@ -139,6 +143,7 @@ def invoke_llm_with_structured_output(
         stop=stop,
         stream=stream,
         callbacks=callbacks,
+        request_metadata=request_metadata,
     )
 
     if isinstance(llm_result, LLMResult):
@@ -157,7 +162,7 @@ def invoke_llm_with_structured_output(
         )
     else:
 
-        def generator() -> Generator[LLMResultChunkWithStructuredOutput, None, None]:
+        def generator() -> Generator[LLMResultChunkWithStructuredOutput]:
             result_text: str = ""
             prompt_messages: Sequence[PromptMessage] = []
             system_fingerprint: str | None = None
@@ -166,12 +171,13 @@ def invoke_llm_with_structured_output(
                     prompt_messages = event.prompt_messages
                     system_fingerprint = event.system_fingerprint
 
-                    if isinstance(event.delta.message.content, str):
-                        result_text += event.delta.message.content
-                    elif isinstance(event.delta.message.content, list):
-                        for item in event.delta.message.content:
-                            if isinstance(item, TextPromptMessageContent):
-                                result_text += item.data
+                    match event.delta.message.content:
+                        case str():
+                            result_text += event.delta.message.content
+                        case list():
+                            for item in event.delta.message.content:
+                                if isinstance(item, TextPromptMessageContent):
+                                    result_text += item.data
 
                 yield LLMResultChunkWithStructuredOutput(
                     model=model_schema.model,
@@ -200,9 +206,9 @@ def _handle_native_json_schema(
     provider: str,
     model_schema: AIModelEntity,
     structured_output_schema: Mapping,
-    model_parameters: dict,
+    model_parameters: dict[str, Any],
     rules: list[ParameterRule],
-):
+) -> dict[str, Any]:
     """
     Handle structured output for models with native JSON schema support.
 
@@ -224,7 +230,7 @@ def _handle_native_json_schema(
     return model_parameters
 
 
-def _set_response_format(model_parameters: dict, rules: list):
+def _set_response_format(model_parameters: dict[str, Any], rules: list[ParameterRule]) -> None:
     """
     Set the appropriate response format parameter based on model rules.
 
@@ -285,15 +291,36 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
         if not isinstance(parsed, dict):
             raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = parsed
-    except ValidationError:
+    except ValidationError as caught_error:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
-        if not isinstance(temp_parsed, dict):
-            # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
-            if isinstance(temp_parsed, list):
+        if isinstance(temp_parsed, list) and result_text.lstrip().lower().startswith("<think"):
+            # The response opens with a reasoning block and repaired into several objects.
+            # Reasoning models emit their chain of thought in a <think> block that the provider
+            # concatenates ahead of the answer, so a JSON object inside the reasoning becomes one
+            # of those candidates and the first one wins. Repair what follows the leading blocks
+            # instead, and keep that result only if it still yields candidates, so a truncated
+            # response behaves as it did before. This drops a prefix rather than substituting
+            # every <think> block, which would also empty literal tags inside the answer.
+            answer_text = result_text.lstrip()
+            while answer_text.lower().startswith("<think"):
+                close_index = answer_text.lower().find("</think>")
+                if close_index < 0:
+                    answer_text = ""
+                    break
+                answer_text = answer_text[close_index + len("</think>") :].lstrip()
+            if answer_text:
+                reparsed = json_repair.loads(answer_text)
+                if isinstance(reparsed, dict | list):
+                    temp_parsed = reparsed
+        match temp_parsed:
+            case dict():
+                pass
+            case list():
+                # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
-            else:
-                raise OutputParserError(f"Failed to parse structured output: {result_text}")
+            case _:
+                raise OutputParserError(f"Failed to parse structured output: {result_text}") from caught_error
         structured_output = cast(dict, temp_parsed)
     return structured_output
 
@@ -312,9 +339,6 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
     # Deep copy to avoid modifying the original schema
     processed_schema = dict(deepcopy(schema))
 
-    # Convert boolean types to string types (common requirement)
-    convert_boolean_to_string(processed_schema)
-
     # Apply model-specific transformations
     if SpecialModelType.GEMINI in model_schema.model:
         remove_additional_properties(processed_schema)
@@ -326,7 +350,7 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict):
+def remove_additional_properties(schema: dict[str, Any]) -> None:
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
@@ -341,32 +365,10 @@ def remove_additional_properties(schema: dict):
 
     # Process nested structures recursively
     for value in schema.values():
-        if isinstance(value, dict):
-            remove_additional_properties(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    remove_additional_properties(item)
-
-
-def convert_boolean_to_string(schema: dict):
-    """
-    Convert boolean type specifications to string in JSON schema.
-
-    :param schema: JSON schema to modify in-place
-    """
-    if not isinstance(schema, dict):
-        return
-
-    # Check for boolean type at current level
-    if schema.get("type") == "boolean":
-        schema["type"] = "string"
-
-    # Process nested dictionaries and lists recursively
-    for value in schema.values():
-        if isinstance(value, dict):
-            convert_boolean_to_string(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    convert_boolean_to_string(item)
+        match value:
+            case dict():
+                remove_additional_properties(value)
+            case list():
+                for item in value:
+                    if isinstance(item, dict):
+                        remove_additional_properties(item)

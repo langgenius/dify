@@ -1,15 +1,21 @@
 import * as React from 'react'
-import useTheme from '@/hooks/use-theme'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { basePath } from '@/utils/var'
 
 const PipelineScreenShot = () => {
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
 
   return (
     <picture>
       <source media="(resolution: 1x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline.png`} />
-      <source media="(resolution: 2x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@2x.png`} />
-      <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`} />
+      <source
+        media="(resolution: 2x)"
+        srcSet={`${basePath}/screenshots/${theme}/Pipeline@2x.png`}
+      />
+      <source
+        media="(resolution: 3x)"
+        srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`}
+      />
       <img
         src={`${basePath}/screenshots/${theme}/Pipeline.png`}
         alt="Pipeline Screenshot"

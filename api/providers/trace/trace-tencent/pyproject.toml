@@ -1,0 +1,13 @@
+[project]
+name = "dify-trace-tencent"
+version = "0.0.1"
+dependencies = [
+    "dify-trace-sdk",
+]
+description = "Dify ops tracing provider (Tencent APM)."
+
+[project.entry-points."dify.trace_providers"]
+tencent = "dify_trace_tencent.provider:TencentProvider"
+
+[tool.setuptools.packages.find]
+where = ["src"]

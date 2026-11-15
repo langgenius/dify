@@ -1,24 +1,29 @@
 import type { ElkNode, LayoutOptions } from 'elkjs/lib/elk-api'
-import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
+import type { HumanInputSharedNodeType } from '@/app/components/workflow/nodes/human-input/shared/types'
 import type { CaseItem, IfElseNodeType } from '@/app/components/workflow/nodes/if-else/types'
-import type {
-  Edge,
-  Node,
-} from '@/app/components/workflow/types'
-import ELK from 'elkjs/lib/elk.bundled.js'
+import type { QuestionClassifierNodeType } from '@/app/components/workflow/nodes/question-classifier/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
 } from '@/app/components/workflow/constants'
+import { hasAgentV2OutputRoutes } from '@/app/components/workflow/nodes/agent-v2/types'
+import { HUMAN_INPUT_TIMEOUT_HANDLE } from '@/app/components/workflow/nodes/human-input/shared/constants'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '@/app/components/workflow/nodes/loop-start/constants'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
-const elk = new ELK()
+let elk: import('elkjs/lib/elk-api').ELK | undefined
+
+async function getELK() {
+  if (!elk) {
+    const { default: ELK } = await import('elkjs/lib/elk.bundled.js')
+    elk = new ELK()
+  }
+  return elk
+}
 
 const DEFAULT_NODE_WIDTH = 244
 const DEFAULT_NODE_HEIGHT = 100
@@ -37,13 +42,13 @@ const ROOT_LAYOUT_OPTIONS = {
 
   // === Port Configuration ===
   'elk.portConstraints': 'FIXED_ORDER',
-  'elk.layered.considerModelOrder.strategy': 'PREFER_EDGES',
+  'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+  'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
 
-  // === Node Placement - Best quality ===
-  'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+  // === Node Placement - Balanced centering ===
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.nodePlacement.favorStraightEdges': 'true',
-  'elk.layered.nodePlacement.linearSegments.deflectionDampening': '0.5',
-  'elk.layered.nodePlacement.networkSimplex.nodeFlexibility': 'NODE_SIZE',
+  'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
 
   // === Edge Routing - Maximum quality ===
   'elk.edgeRouting': 'SPLINES',
@@ -56,7 +61,7 @@ const ROOT_LAYOUT_OPTIONS = {
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
   'elk.layered.crossingMinimization.greedySwitch.type': 'TWO_SIDED',
   'elk.layered.crossingMinimization.greedySwitchHierarchical.type': 'TWO_SIDED',
-  'elk.layered.crossingMinimization.semiInteractive': 'true',
+  'elk.layered.crossingMinimization.semiInteractive': 'false',
   'elk.layered.crossingMinimization.hierarchicalSweepiness': '0.9',
 
   // === Layering Strategy - Best quality ===
@@ -115,11 +120,15 @@ const CHILD_LAYOUT_OPTIONS = {
   'elk.spacing.edgeLabel': '8',
   'elk.spacing.portPort': '15',
 
-  // === Node Placement - Best quality ===
-  'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX',
+  // === Port Configuration ===
+  'elk.portConstraints': 'FIXED_ORDER',
+  'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+  'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+
+  // === Node Placement - Balanced centering ===
+  'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
   'elk.layered.nodePlacement.favorStraightEdges': 'true',
-  'elk.layered.nodePlacement.linearSegments.deflectionDampening': '0.5',
-  'elk.layered.nodePlacement.networkSimplex.nodeFlexibility': 'NODE_SIZE',
+  'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
 
   // === Edge Routing - Maximum quality ===
   'elk.edgeRouting': 'SPLINES',
@@ -129,7 +138,7 @@ const CHILD_LAYOUT_OPTIONS = {
   // === Crossing Minimization - Aggressive ===
   'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
   'elk.layered.crossingMinimization.greedySwitch.type': 'TWO_SIDED',
-  'elk.layered.crossingMinimization.semiInteractive': 'true',
+  'elk.layered.crossingMinimization.semiInteractive': 'false',
 
   // === Layering Strategy ===
   'elk.layered.layering.strategy': 'NETWORK_SIMPLEX',
@@ -193,15 +202,7 @@ type ElkEdgeShape = {
   id: string
   sources: string[]
   targets: string[]
-  sourcePort?: string
-  targetPort?: string
 }
-
-const toElkNode = (node: Node): ElkNodeShape => ({
-  id: node.id,
-  width: node.width ?? DEFAULT_NODE_WIDTH,
-  height: node.height ?? DEFAULT_NODE_HEIGHT,
-})
 
 let edgeCounter = 0
 const nextEdgeId = () => `elk-edge-${edgeCounter++}`
@@ -213,10 +214,8 @@ const createEdge = (
   targetPort?: string,
 ): ElkEdgeShape => ({
   id: nextEdgeId(),
-  sources: [source],
-  targets: [target],
-  sourcePort,
-  targetPort,
+  sources: [sourcePort ?? source],
+  targets: [targetPort ?? target],
 })
 
 const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): LayoutResult => {
@@ -249,8 +248,7 @@ const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): Layo
         maxY = Math.max(maxY, y + height)
       }
 
-      if (child.children?.length)
-        visit(child)
+      if (child.children?.length) visit(child)
     })
   }
 
@@ -281,16 +279,32 @@ const sortIfElseOutEdges = (ifElseNode: Node, outEdges: Edge[]): Edge[] => {
 
     if (handleA && handleB) {
       const cases = (ifElseNode.data as IfElseNodeType).cases || []
-      if (handleA === 'false')
-        return 1
-      if (handleB === 'false')
-        return -1
+      if (handleA === 'false') return 1
+      if (handleB === 'false') return -1
 
       const indexA = cases.findIndex((c: CaseItem) => c.case_id === handleA)
       const indexB = cases.findIndex((c: CaseItem) => c.case_id === handleB)
 
-      if (indexA !== -1 && indexB !== -1)
-        return indexA - indexB
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
+    }
+
+    return 0
+  })
+}
+
+const sortQuestionClassifierOutEdges = (classifierNode: Node, outEdges: Edge[]): Edge[] => {
+  return [...outEdges].sort((edgeA, edgeB) => {
+    const handleA = edgeA.sourceHandle
+    const handleB = edgeB.sourceHandle
+
+    if (handleA && handleB) {
+      const classes = hasAgentV2OutputRoutes(classifierNode.data)
+        ? (classifierNode.data.agent_output_routes?.routes ?? [])
+        : (classifierNode.data as QuestionClassifierNodeType).classes || []
+      const indexA = classes.findIndex((t) => t.id === handleA)
+      const indexB = classes.findIndex((t) => t.id === handleB)
+
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
 
     return 0
@@ -303,17 +317,14 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
     const handleB = edgeB.sourceHandle
 
     if (handleA && handleB) {
-      const userActions = (humanInputNode.data as HumanInputNodeType).user_actions || []
-      if (handleA === '__timeout')
-        return 1
-      if (handleB === '__timeout')
-        return -1
+      const userActions = (humanInputNode.data as HumanInputSharedNodeType).user_actions || []
+      if (handleA === HUMAN_INPUT_TIMEOUT_HANDLE) return 1
+      if (handleB === HUMAN_INPUT_TIMEOUT_HANDLE) return -1
 
-      const indexA = userActions.findIndex(action => action.id === handleA)
-      const indexB = userActions.findIndex(action => action.id === handleB)
+      const indexA = userActions.findIndex((action) => action.id === handleA)
+      const indexB = userActions.findIndex((action) => action.id === handleB)
 
-      if (indexA !== -1 && indexB !== -1)
-        return indexA - indexB
+      if (indexA !== -1 && indexB !== -1) return indexA - indexB
     }
 
     return 0
@@ -321,13 +332,9 @@ const sortHumanInputOutEdges = (humanInputNode: Node, outEdges: Edge[]): Edge[] 
 }
 
 const normaliseBounds = (layout: LayoutResult): LayoutResult => {
-  const {
-    nodes,
-    bounds,
-  } = layout
+  const { nodes, bounds } = layout
 
-  if (nodes.size === 0)
-    return layout
+  if (nodes.size === 0) return layout
 
   const offsetX = bounds.minX
   const offsetY = bounds.minY
@@ -352,63 +359,51 @@ const normaliseBounds = (layout: LayoutResult): LayoutResult => {
   }
 }
 
-export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): Promise<LayoutResult> => {
-  edgeCounter = 0
-  const nodes = cloneDeep(originNodes).filter(node => !node.parentId && node.type === CUSTOM_NODE)
-  const edges = cloneDeep(originEdges).filter(edge => (!edge.data?.isInIteration && !edge.data?.isInLoop))
-
+/**
+ * Build ELK nodes with output ports (sorted for branching types)
+ * and edges ordered by a DFS traversal that follows port order.
+ */
+const buildPortAwareGraph = (nodes: Node[], originEdges: Edge[]) => {
+  const nodeIdSet = new Set(nodes.map((node) => node.id))
+  const edges = originEdges.filter(
+    (edge) => nodeIdSet.has(edge.source) && nodeIdSet.has(edge.target),
+  )
   const outEdgesByNode = new Map<string, Edge[]>()
-  const inEdgesByNode = new Map<string, Edge[]>()
   edges.forEach((edge) => {
-    if (!outEdgesByNode.has(edge.source))
-      outEdgesByNode.set(edge.source, [])
+    if (!outEdgesByNode.has(edge.source)) outEdgesByNode.set(edge.source, [])
     outEdgesByNode.get(edge.source)!.push(edge)
-    if (!inEdgesByNode.has(edge.target))
-      inEdgesByNode.set(edge.target, [])
-    inEdgesByNode.get(edge.target)!.push(edge)
   })
 
   const elkNodes: ElkNodeShape[] = []
   const elkEdges: ElkEdgeShape[] = []
   const sourcePortMap = new Map<string, string>()
-  const targetPortMap = new Map<string, string>()
   const sortedOutEdgesByNode = new Map<string, Edge[]>()
 
   nodes.forEach((node) => {
-    const inEdges = inEdgesByNode.get(node.id) || []
     let outEdges = outEdgesByNode.get(node.id) || []
 
-    if (node.data.type === BlockEnum.IfElse)
-      outEdges = sortIfElseOutEdges(node, outEdges)
+    if (node.data.type === BlockEnum.IfElse) outEdges = sortIfElseOutEdges(node, outEdges)
+    else if (node.data.type === BlockEnum.QuestionClassifier || hasAgentV2OutputRoutes(node.data))
+      outEdges = sortQuestionClassifierOutEdges(node, outEdges)
     else if (node.data.type === BlockEnum.HumanInput)
       outEdges = sortHumanInputOutEdges(node, outEdges)
 
     sortedOutEdgesByNode.set(node.id, outEdges)
 
     const ports: ElkPortShape[] = []
-
-    inEdges.forEach((edge, index) => {
-      const portId = `${node.id}-in-${index}`
-      ports.push({
-        id: portId,
-        layoutOptions: {
-          'elk.port.side': 'WEST',
-          'elk.port.index': String(index),
-        },
-      })
-      targetPortMap.set(edge.id, portId)
-    })
-
-    outEdges.forEach((edge, index) => {
-      const portId = `${node.id}-out-${edge.sourceHandle || index}`
+    const portIds = new Set<string>()
+    outEdges.forEach((edge) => {
+      const portId = `${node.id}-out-${edge.sourceHandle || edge.id}`
+      sourcePortMap.set(edge.id, portId)
+      if (portIds.has(portId)) return
+      portIds.add(portId)
       ports.push({
         id: portId,
         layoutOptions: {
           'elk.port.side': 'EAST',
-          'elk.port.index': String(index),
+          'elk.port.index': String(ports.length),
         },
       })
-      sourcePortMap.set(edge.id, portId)
     })
 
     elkNodes.push({
@@ -422,18 +417,48 @@ export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): 
     })
   })
 
-  // Build edges in sorted per-node order so PREFER_EDGES aligns with port order
-  nodes.forEach((node) => {
-    const outEdges = sortedOutEdgesByNode.get(node.id) || []
+  // DFS in port order to determine the definitive vertical ordering of nodes.
+  // forceNodeModelOrder makes ELK respect the children-array order within each layer.
+  const visited = new Set<string>()
+  const orderedIds: string[] = []
+
+  const dfs = (id: string) => {
+    if (visited.has(id) || !nodeIdSet.has(id)) return
+    visited.add(id)
+    orderedIds.push(id)
+    const outEdges = sortedOutEdgesByNode.get(id) || []
+    outEdges.forEach((e) => dfs(e.target))
+  }
+
+  nodes.forEach((n) => {
+    if (!edges.some((e) => e.target === n.id)) dfs(n.id)
+  })
+  nodes.forEach((n) => dfs(n.id))
+
+  const nodeOrder = new Map(orderedIds.map((id, i) => [id, i]))
+  elkNodes.sort((a, b) => (nodeOrder.get(a.id) ?? 0) - (nodeOrder.get(b.id) ?? 0))
+
+  orderedIds.forEach((id) => {
+    const outEdges = sortedOutEdgesByNode.get(id) || []
     outEdges.forEach((edge) => {
-      elkEdges.push(createEdge(
-        edge.source,
-        edge.target,
-        sourcePortMap.get(edge.id),
-        targetPortMap.get(edge.id),
-      ))
+      elkEdges.push(createEdge(edge.source, edge.target, sourcePortMap.get(edge.id)))
     })
   })
+
+  return { elkNodes, elkEdges }
+}
+
+export const getLayoutByELK = async (
+  originNodes: Node[],
+  originEdges: Edge[],
+): Promise<LayoutResult> => {
+  edgeCounter = 0
+  const nodes = cloneDeep(originNodes).filter((node) => !node.parentId && node.type === CUSTOM_NODE)
+  const edges = cloneDeep(originEdges).filter(
+    (edge) => !edge.data?.isInIteration && !edge.data?.isInLoop,
+  )
+
+  const { elkNodes, elkEdges } = buildPortAwareGraph(nodes, edges)
 
   const graph = {
     id: 'workflow-root',
@@ -442,27 +467,24 @@ export const getLayoutByELK = async (originNodes: Node[], originEdges: Edge[]): 
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph)
-  // No need to filter dummy nodes anymore, as we're using ports
+  const layoutedGraph = await (await getELK()).layout(graph)
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseBounds(layout)
 }
 
-const normaliseChildLayout = (
-  layout: LayoutResult,
-  nodes: Node[],
-): LayoutResult => {
+const normaliseChildLayout = (layout: LayoutResult, nodes: Node[]): LayoutResult => {
   const result = new Map<string, LayoutInfo>()
   layout.nodes.forEach((info, id) => {
     result.set(id, info)
   })
 
   // Ensure iteration / loop start nodes do not collapse into the children.
-  const startNode = nodes.find(node =>
-    node.type === CUSTOM_ITERATION_START_NODE
-    || node.type === CUSTOM_LOOP_START_NODE
-    || node.data?.type === BlockEnum.LoopStart
-    || node.data?.type === BlockEnum.IterationStart,
+  const startNode = nodes.find(
+    (node) =>
+      node.type === CUSTOM_ITERATION_START_NODE ||
+      node.type === CUSTOM_LOOP_START_NODE ||
+      node.data?.type === BlockEnum.LoopStart ||
+      node.data?.type === BlockEnum.IterationStart,
   )
 
   if (startNode) {
@@ -503,8 +525,7 @@ const normaliseChildLayout = (
     maxY = Math.max(maxY, value.y + value.height)
   })
 
-  if (!Number.isFinite(minX) || !Number.isFinite(minY))
-    return layout
+  if (!Number.isFinite(minX) || !Number.isFinite(minY)) return layout
 
   return normaliseBounds({
     nodes: result,
@@ -523,17 +544,16 @@ export const getLayoutForChildNodes = async (
   originEdges: Edge[],
 ): Promise<LayoutResult | null> => {
   edgeCounter = 0
-  const nodes = cloneDeep(originNodes).filter(node => node.parentId === parentNodeId)
-  if (!nodes.length)
-    return null
+  const nodes = cloneDeep(originNodes).filter((node) => node.parentId === parentNodeId)
+  if (!nodes.length) return null
 
-  const edges = cloneDeep(originEdges).filter(edge =>
-    (edge.data?.isInIteration && edge.data?.iteration_id === parentNodeId)
-    || (edge.data?.isInLoop && edge.data?.loop_id === parentNodeId),
+  const edges = cloneDeep(originEdges).filter(
+    (edge) =>
+      (edge.data?.isInIteration && edge.data?.iteration_id === parentNodeId) ||
+      (edge.data?.isInLoop && edge.data?.loop_id === parentNodeId),
   )
 
-  const elkNodes: ElkNodeShape[] = nodes.map(toElkNode)
-  const elkEdges: ElkEdgeShape[] = edges.map(edge => createEdge(edge.source, edge.target))
+  const { elkNodes, elkEdges } = buildPortAwareGraph(nodes, edges)
 
   const graph = {
     id: parentNodeId,
@@ -542,7 +562,7 @@ export const getLayoutForChildNodes = async (
     edges: elkEdges,
   }
 
-  const layoutedGraph = await elk.layout(graph)
+  const layoutedGraph = await (await getELK()).layout(graph)
   const layout = collectLayout(layoutedGraph, () => true)
   return normaliseChildLayout(layout, nodes)
 }

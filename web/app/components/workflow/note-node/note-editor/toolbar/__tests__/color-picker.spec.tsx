@@ -1,32 +1,26 @@
-import { fireEvent, render, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { NoteTheme } from '../../../types'
-import ColorPicker, { COLOR_LIST } from '../color-picker'
+import ColorPicker from '../color-picker'
 
 describe('NoteEditor ColorPicker', () => {
   it('should open the palette and apply the selected theme', async () => {
+    const user = userEvent.setup()
     const onThemeChange = vi.fn()
-    const { container } = render(
-      <ColorPicker theme={NoteTheme.blue} onThemeChange={onThemeChange} />,
-    )
+    render(<ColorPicker theme={NoteTheme.blue} onThemeChange={onThemeChange} />)
 
-    const trigger = container.querySelector('[data-state="closed"]') as HTMLElement
+    await user.click(screen.getByRole('button'))
 
-    fireEvent.click(trigger)
+    const popup = screen.getByRole('dialog')
 
-    const popup = document.body.querySelector('[role="tooltip"]')
+    const options = popup.querySelectorAll('.group.relative')
 
-    expect(popup).toBeInTheDocument()
-
-    const options = popup?.querySelectorAll('.group.relative')
-
-    expect(options).toHaveLength(COLOR_LIST.length)
-
-    fireEvent.click(options?.[COLOR_LIST.length - 1] as Element)
+    await user.click(options[5] as Element)
 
     expect(onThemeChange).toHaveBeenCalledWith(NoteTheme.violet)
 
     await waitFor(() => {
-      expect(document.body.querySelector('[role="tooltip"]')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
   })
 })

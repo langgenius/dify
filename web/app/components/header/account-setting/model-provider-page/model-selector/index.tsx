@@ -1,109 +1,237 @@
-import type { FC } from 'react'
+import type { Ref } from 'react'
 import type {
-  DefaultModel,
-  Model,
-  ModelFeatureEnum,
-  ModelItem,
-} from '../declarations'
-import { useState } from 'react'
+  ModelSelectorModel,
+  ModelSelectorModelPredicate,
+  ModelSelectorProvider,
+  ModelSelectorValue,
+} from './types'
+import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/app/components/base/ui/popover'
-import { useCurrentProviderAndModel } from '../hooks'
-import ModelSelectorTrigger from './model-selector-trigger'
+  PopoverPopup,
+  PopoverPortal,
+  PopoverPositioner,
+  PopoverTitle,
+} from '@langgenius/dify-ui/popover'
+import { useQueryState } from 'nuqs'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  settingsQueryParamName,
+  settingsQueryParser,
+} from '@/app/components/header/account-setting/query-params'
+import { getCurrentProviderAndModel } from '../hooks'
+import { ModelSelectorTrigger } from './model-selector-trigger'
 import Popup from './popup'
 
-type ModelSelectorProps = {
-  defaultModel?: DefaultModel
-  modelList: Model[]
-  triggerClassName?: string
-  popupClassName?: string
-  onSelect?: (model: DefaultModel) => void
-  onHide?: () => void
-  readonly?: boolean
-  scopeFeatures?: ModelFeatureEnum[]
-  deprecatedClassName?: string
-  showDeprecatedWarnIcon?: boolean
+// The popup scrolls within --available-height, so keep it above or below the
+// trigger instead of letting a tall list fall back beside it.
+const MODEL_SELECTOR_COLLISION_AVOIDANCE = { fallbackAxisSide: 'none' } as const
+
+const getModelProviderPluginId = (provider: string) => {
+  const [organization, pluginName] = provider.split('/').filter(Boolean)
+
+  if (organization && pluginName) return `${organization}/${pluginName}`
+
+  return provider ? `langgenius/${provider}` : ''
 }
-const ModelSelector: FC<ModelSelectorProps> = ({
-  defaultModel,
-  modelList,
-  triggerClassName,
+
+type ModelSelectorBaseProps = {
+  ariaDescribedBy?: string
+  ariaInvalid?: boolean
+  ariaLabelledBy?: string
+  ariaRequired?: boolean
+  triggerRef?: Ref<HTMLButtonElement>
+  'aria-labelledby'?: string
+  value?: ModelSelectorValue
+  models: ModelSelectorProvider[]
+  className?: string
+  popupClassName?: string
+  onValueChange?: (model: ModelSelectorValue) => void
+  onClear?: () => void
+  clearLabel?: string
+  onHide?: () => void
+  disabled?: boolean
+  loading?: boolean
+  scopeFeatures?: readonly string[]
+  showDeprecatedWarnIcon?: boolean
+  hideProviderSettingsFooter?: boolean
+  onConfigureEmptyState?: () => void
+  onOpenMarketplace?: () => void
+  showModelMeta?: boolean
+  modelPredicate?: ModelSelectorModelPredicate
+  modelSuggestionPredicate?: ModelSelectorModelPredicate
+}
+type ModelSelectorProps = ModelSelectorBaseProps & {
+  size?: 'small' | 'medium'
+  surface?: 'default' | 'workflow'
+}
+type SplitModelSelectorProps = ModelSelectorBaseProps & {
+  surface?: 'default' | 'workflow'
+}
+
+function ModelSelectorRoot({
+  ariaDescribedBy,
+  ariaInvalid,
+  ariaLabelledBy,
+  ariaRequired,
+  triggerRef,
+  'aria-labelledby': labelledBy,
+  value,
+  models,
+  className,
   popupClassName,
-  onSelect,
+  onValueChange,
+  onClear,
+  clearLabel,
   onHide,
-  readonly,
+  disabled,
+  loading,
+  size,
+  surface,
+  shape,
   scopeFeatures = [],
-  deprecatedClassName,
   showDeprecatedWarnIcon = true,
-}) => {
+  hideProviderSettingsFooter,
+  onConfigureEmptyState,
+  onOpenMarketplace,
+  showModelMeta,
+  modelPredicate,
+  modelSuggestionPredicate,
+}: ModelSelectorBaseProps & {
+  size: 'small' | 'medium'
+  surface: 'default' | 'workflow'
+  shape: 'standalone' | 'split'
+}) {
+  const { t } = useTranslation(['plugin'])
   const [open, setOpen] = useState(false)
-  const {
-    currentProvider,
-    currentModel,
-  } = useCurrentProviderAndModel(
-    modelList,
-    defaultModel,
+  const [inputValue, setInputValue] = useState('')
+  const [settingsDestination, setSettingsDestination] = useQueryState(
+    settingsQueryParamName,
+    settingsQueryParser,
+  )
+  const { currentProvider, currentModel } = getCurrentProviderAndModel(models, value)
+
+  const handleOpenChange = useCallback(
+    (newOpen: boolean) => {
+      if ((disabled || loading) && newOpen) return
+
+      setOpen(newOpen)
+      if (!newOpen) setInputValue('')
+    },
+    [disabled, loading],
   )
 
-  const handleSelect = (provider: string, model: ModelItem) => {
-    setOpen(false)
+  const handleSelect = useCallback(
+    (provider: string, model: ModelSelectorModel) => {
+      setOpen(false)
+      setInputValue('')
 
-    if (onSelect)
-      onSelect({ provider, model: model.model })
-  }
+      if (onValueChange) {
+        onValueChange({
+          provider,
+          model: model.model,
+          plugin_id: getModelProviderPluginId(provider),
+        })
+      }
+    },
+    [onValueChange],
+  )
+
+  const handleHide = useCallback(() => {
+    setOpen(false)
+    setInputValue('')
+    onHide?.()
+  }, [onHide])
+
+  const handleOpenSettings = useCallback(() => {
+    handleHide()
+    setSettingsDestination('provider')
+  }, [handleHide, setSettingsDestination])
+
+  const handleConfigureEmptyState = useCallback(() => {
+    if (onConfigureEmptyState) {
+      handleHide()
+      onConfigureEmptyState()
+      return
+    }
+    if (settingsDestination === 'provider') {
+      handleHide()
+      return
+    }
+
+    handleOpenSettings()
+  }, [handleHide, handleOpenSettings, onConfigureEmptyState, settingsDestination])
 
   return (
-    <Popover
-      open={open}
-      onOpenChange={(newOpen) => {
-        if (readonly)
-          return
-        setOpen(newOpen)
-      }}
-    >
-      <PopoverTrigger
-        render={(
-          <button
-            type="button"
-            className="block w-full border-0 bg-transparent p-0 text-left"
-            disabled={readonly}
-          >
-            <ModelSelectorTrigger
-              currentProvider={currentProvider}
-              currentModel={currentModel}
-              defaultModel={defaultModel}
-              open={open}
-              readonly={readonly}
-              className={triggerClassName}
-              deprecatedClassName={deprecatedClassName}
-              showDeprecatedWarnIcon={showDeprecatedWarnIcon}
-            />
-          </button>
-        )}
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <ModelSelectorTrigger
+        ref={triggerRef}
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid || undefined}
+        aria-labelledby={ariaLabelledBy || labelledBy}
+        aria-required={ariaRequired}
+        currentProvider={currentProvider}
+        currentModel={currentModel}
+        defaultModel={value}
+        onClear={onClear}
+        clearLabel={clearLabel}
+        disabled={disabled || loading}
+        loading={loading}
+        size={size}
+        surface={surface}
+        shape={shape}
+        className={className}
+        showDeprecatedWarnIcon={showDeprecatedWarnIcon}
+        showModelMeta={showModelMeta}
+        isModelCompatible={
+          currentProvider && currentModel
+            ? modelPredicate?.(currentProvider, currentModel)
+            : undefined
+        }
       />
-      <PopoverContent
-        placement="bottom-start"
-        sideOffset={4}
-        className={popupClassName}
-        popupClassName="overflow-hidden rounded-lg"
-        popupProps={{ style: { minWidth: '320px', width: 'var(--anchor-width, auto)' } }}
-      >
-        <Popup
-          defaultModel={defaultModel}
-          modelList={modelList}
-          onSelect={handleSelect}
-          scopeFeatures={scopeFeatures}
-          onHide={() => {
-            setOpen(false)
-            onHide?.()
-          }}
-        />
-      </PopoverContent>
+      <PopoverPortal>
+        <PopoverPositioner align="start" collisionAvoidance={MODEL_SELECTOR_COLLISION_AVOIDANCE}>
+          <PopoverPopup
+            className={cn(
+              'flex max-h-[min(624px,var(--available-height,624px))] w-(--anchor-width) max-w-[min(28rem,var(--available-width))] flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg',
+              popupClassName,
+            )}
+          >
+            <PopoverTitle className="sr-only">
+              {t(($) => $['detailPanel.configureModel'], { ns: 'plugin' })}
+            </PopoverTitle>
+            <Popup
+              defaultModel={value}
+              inputValue={inputValue}
+              modelList={models}
+              scopeFeatures={scopeFeatures}
+              modelPredicate={modelPredicate}
+              modelSuggestionPredicate={modelSuggestionPredicate}
+              onOpenProviderSettings={
+                !hideProviderSettingsFooter && settingsDestination !== 'provider'
+                  ? handleOpenSettings
+                  : undefined
+              }
+              onConfigureEmptyState={handleConfigureEmptyState}
+              onOpenMarketplace={onOpenMarketplace}
+              onInputValueChange={setInputValue}
+              onSelect={handleSelect}
+              onHide={handleHide}
+            />
+          </PopoverPopup>
+        </PopoverPositioner>
+      </PopoverPortal>
     </Popover>
   )
 }
 
-export default ModelSelector
+function ModelSelector({ size = 'medium', surface = 'default', ...props }: ModelSelectorProps) {
+  return <ModelSelectorRoot {...props} shape="standalone" size={size} surface={surface} />
+}
+
+function SplitModelSelector({ surface = 'default', ...props }: SplitModelSelectorProps) {
+  return <ModelSelectorRoot {...props} shape="split" size="medium" surface={surface} />
+}
+
+export { ModelSelector, SplitModelSelector }

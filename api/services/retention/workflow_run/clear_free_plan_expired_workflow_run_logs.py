@@ -1,27 +1,47 @@
+"""Cleanup expired workflow run logs for free-plan tenants.
+
+The cleanup service owns billing eligibility decisions while repositories own database-efficient batch selection and
+deletion. Free-plan cleanup intentionally scans lightweight workflow run references first, then re-queries the same
+candidate cursor slice with eligible tenant IDs so paid tenants are skipped without hydrating full WorkflowRun models.
+"""
+
 import datetime
 import logging
 import random
 import time
 from collections.abc import Iterable, Sequence
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 import click
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
-from enums.cloud_plan import CloudPlan
+from enums import CloudPlan, DeploymentEdition
 from extensions.ext_database import db
-from models.workflow import WorkflowRun
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.api_workflow_run_repository import (
+    APIWorkflowRunRepository,
+    RunsWithRelatedCountsDict,
+    WorkflowRunCleanupRef,
+)
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_client.billing import SubscriptionPlanItem
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
 
 if TYPE_CHECKING:
     from opentelemetry.metrics import Counter, Histogram
+
+
+class RelatedCountsDict(TypedDict):
+    node_executions: int
+    offloads: int
+    app_logs: int
+    trigger_logs: int
+    pauses: int
+    pause_reasons: int
 
 
 class WorkflowRunCleanupMetrics:
@@ -173,7 +193,17 @@ class WorkflowRunCleanupMetrics:
         self._record(self._job_duration_seconds, job_duration_seconds, attributes)
 
 
+_RELATED_RECORD_KEYS = ("node_executions", "offloads", "app_logs", "trigger_logs", "pauses", "pause_reasons")
+
+
 class WorkflowRunCleanup:
+    """
+    Coordinates free-plan workflow run retention cleanup.
+
+    The cleanup cursor advances by candidate refs, not target refs. This keeps pagination stable
+    when billing filters out paid or unknown tenants before the repository performs the target lookup.
+    """
+
     def __init__(
         self,
         days: int,
@@ -230,7 +260,7 @@ class WorkflowRunCleanup:
 
         total_runs_deleted = 0
         total_runs_targeted = 0
-        related_totals = self._empty_related_counts() if self.dry_run else None
+        related_totals: RelatedCountsDict | None = self._empty_related_counts() if self.dry_run else None
         batch_index = 0
         last_seen: tuple[datetime.datetime, str] | None = None
         status = "success"
@@ -242,26 +272,28 @@ class WorkflowRunCleanup:
                 batch_start = time.monotonic()
 
                 fetch_start = time.monotonic()
-                run_rows = self.workflow_run_repo.get_runs_batch_by_time_range(
+                candidate_last_seen = last_seen
+                candidate_refs = self.workflow_run_repo.get_cleanup_refs_batch_by_time_range(
                     start_from=self.window_start,
                     end_before=self.window_end,
-                    last_seen=last_seen,
+                    last_seen=candidate_last_seen,
                     batch_size=self.batch_size,
                 )
-                if not run_rows:
+                if not candidate_refs:
                     logger.info("workflow_run_cleanup (batch #%s): no more rows to process", batch_index + 1)
                     break
 
                 batch_index += 1
-                last_seen = (run_rows[-1].created_at, run_rows[-1].id)
+                candidate_high_water = self._cursor_from_ref(candidate_refs[-1])
+                last_seen = candidate_high_water
                 logger.info(
-                    "workflow_run_cleanup (batch #%s): fetched %s rows in %sms",
+                    "workflow_run_cleanup (batch #%s): fetched %s candidate refs in %sms",
                     batch_index,
-                    len(run_rows),
+                    len(candidate_refs),
                     int((time.monotonic() - fetch_start) * 1000),
                 )
 
-                tenant_ids = {row.tenant_id for row in run_rows}
+                tenant_ids = {ref.tenant_id for ref in candidate_refs}
 
                 filter_start = time.monotonic()
                 free_tenants = self._filter_free_tenants(tenant_ids)
@@ -273,10 +305,28 @@ class WorkflowRunCleanup:
                     int((time.monotonic() - filter_start) * 1000),
                 )
 
-                free_runs = [row for row in run_rows if row.tenant_id in free_tenants]
-                paid_or_skipped = len(run_rows) - len(free_runs)
+                target_refs: Sequence[WorkflowRunCleanupRef] = []
+                if free_tenants:
+                    target_fetch_start = time.monotonic()
+                    target_refs = self.workflow_run_repo.get_cleanup_refs_batch_by_time_range(
+                        start_from=self.window_start,
+                        end_before=self.window_end,
+                        last_seen=candidate_last_seen,
+                        batch_size=self.batch_size,
+                        tenant_ids=sorted(free_tenants),
+                        upper_bound=candidate_high_water,
+                    )
+                    logger.info(
+                        "workflow_run_cleanup (batch #%s): fetched %s target refs in %sms",
+                        batch_index,
+                        len(target_refs),
+                        int((time.monotonic() - target_fetch_start) * 1000),
+                    )
 
-                if not free_runs:
+                target_run_ids = [ref.id for ref in target_refs]
+                paid_or_skipped = max(len(candidate_refs) - len(target_run_ids), 0)
+
+                if not target_run_ids:
                     skipped_message = (
                         f"[batch #{batch_index}] skipped (no sandbox runs in batch, {paid_or_skipped} paid/unknown)"
                     )
@@ -287,7 +337,7 @@ class WorkflowRunCleanup:
                         )
                     )
                     self._metrics.record_batch(
-                        batch_rows=len(run_rows),
+                        batch_rows=len(candidate_refs),
                         targeted_runs=0,
                         skipped_runs=paid_or_skipped,
                         deleted_runs=0,
@@ -297,13 +347,13 @@ class WorkflowRunCleanup:
                     )
                     continue
 
-                total_runs_targeted += len(free_runs)
+                total_runs_targeted += len(target_run_ids)
 
                 if self.dry_run:
                     count_start = time.monotonic()
-                    batch_counts = self.workflow_run_repo.count_runs_with_related(
-                        free_runs,
-                        count_node_executions=self._count_node_executions,
+                    batch_counts = self.workflow_run_repo.count_runs_with_related_by_ids(
+                        target_run_ids,
+                        count_node_executions=self._count_node_executions_by_run_ids,
                         count_trigger_logs=self._count_trigger_logs,
                     )
                     logger.info(
@@ -312,12 +362,11 @@ class WorkflowRunCleanup:
                         int((time.monotonic() - count_start) * 1000),
                     )
                     if related_totals is not None:
-                        for key in related_totals:
-                            related_totals[key] += batch_counts.get(key, 0)
-                    sample_ids = ", ".join(run.id for run in free_runs[:5])
+                        self._accumulate_related_counts(related_totals, batch_counts)
+                    sample_ids = ", ".join(target_run_ids[:5])
                     click.echo(
                         click.style(
-                            f"[batch #{batch_index}] would delete {len(free_runs)} runs "
+                            f"[batch #{batch_index}] would delete {len(target_run_ids)} runs "
                             f"(sample ids: {sample_ids}) and skip {paid_or_skipped} paid/unknown",
                             fg="yellow",
                         )
@@ -328,11 +377,14 @@ class WorkflowRunCleanup:
                         int((time.monotonic() - batch_start) * 1000),
                     )
                     self._metrics.record_batch(
-                        batch_rows=len(run_rows),
-                        targeted_runs=len(free_runs),
+                        batch_rows=len(candidate_refs),
+                        targeted_runs=len(target_run_ids),
                         skipped_runs=paid_or_skipped,
                         deleted_runs=0,
-                        related_counts={key: batch_counts.get(key, 0) for key in self._empty_related_counts()},
+                        related_counts={
+                            k: batch_counts[k]  # type: ignore[literal-required]
+                            for k in _RELATED_RECORD_KEYS
+                        },
                         related_action="would_delete",
                         batch_duration_seconds=time.monotonic() - batch_start,
                     )
@@ -340,14 +392,14 @@ class WorkflowRunCleanup:
 
                 try:
                     delete_start = time.monotonic()
-                    counts = self.workflow_run_repo.delete_runs_with_related(
-                        free_runs,
-                        delete_node_executions=self._delete_node_executions,
+                    counts = self.workflow_run_repo.delete_runs_with_related_by_ids(
+                        target_run_ids,
+                        delete_node_executions=self._delete_node_executions_by_run_ids,
                         delete_trigger_logs=self._delete_trigger_logs,
                     )
                     delete_ms = int((time.monotonic() - delete_start) * 1000)
                 except Exception:
-                    logger.exception("Failed to delete workflow runs batch ending at %s", last_seen[0])
+                    logger.exception("Failed to delete workflow runs batch ending at %s", candidate_high_water[0])
                     raise
 
                 total_runs_deleted += counts["runs"]
@@ -368,11 +420,14 @@ class WorkflowRunCleanup:
                     int((time.monotonic() - batch_start) * 1000),
                 )
                 self._metrics.record_batch(
-                    batch_rows=len(run_rows),
-                    targeted_runs=len(free_runs),
+                    batch_rows=len(candidate_refs),
+                    targeted_runs=len(target_run_ids),
                     skipped_runs=paid_or_skipped,
                     deleted_runs=counts["runs"],
-                    related_counts={key: counts.get(key, 0) for key in self._empty_related_counts()},
+                    related_counts={
+                        k: counts[k]  # type: ignore[literal-required]
+                        for k in _RELATED_RECORD_KEYS
+                    },
                     related_action="deleted",
                     batch_duration_seconds=time.monotonic() - batch_start,
                 )
@@ -422,9 +477,9 @@ class WorkflowRunCleanup:
             )
 
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
-        tenant_id_list = list(tenant_ids)
+        tenant_id_list = sorted(set(tenant_ids))
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return set(tenant_id_list)
 
         if not tenant_id_list:
@@ -448,7 +503,7 @@ class WorkflowRunCleanup:
                 logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
                 continue
 
-            if info.get("plan") != CloudPlan.SANDBOX:
+            if info.plan != CloudPlan.SANDBOX:
                 continue
 
             if self._is_within_grace_period(tenant_id, info):
@@ -468,12 +523,11 @@ class WorkflowRunCleanup:
             logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
             return None
 
-    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlan) -> bool:
+    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlanItem) -> bool:
         if self.free_plan_grace_period_days <= 0:
             return False
 
-        expiration_value = info.get("expiration_date", -1)
-        expiration_at = self._expiration_datetime(tenant_id, expiration_value)
+        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
         if expiration_at is None:
             return False
 
@@ -484,7 +538,7 @@ class WorkflowRunCleanup:
         if self._cleanup_whitelist is not None:
             return self._cleanup_whitelist
 
-        if not dify_config.BILLING_ENABLED:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             self._cleanup_whitelist = set()
             return self._cleanup_whitelist
 
@@ -506,7 +560,7 @@ class WorkflowRunCleanup:
         return trigger_repo.count_by_run_ids(run_ids)
 
     @staticmethod
-    def _empty_related_counts() -> dict[str, int]:
+    def _empty_related_counts() -> RelatedCountsDict:
         return {
             "node_executions": 0,
             "offloads": 0,
@@ -517,7 +571,7 @@ class WorkflowRunCleanup:
         }
 
     @staticmethod
-    def _format_related_counts(counts: dict[str, int]) -> str:
+    def _format_related_counts(counts: RelatedCountsDict) -> str:
         return (
             f"node_executions {counts['node_executions']}, "
             f"offloads {counts['offloads']}, "
@@ -527,15 +581,26 @@ class WorkflowRunCleanup:
             f"pause_reasons {counts['pause_reasons']}"
         )
 
-    def _count_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_ids = [run.id for run in runs]
+    @staticmethod
+    def _accumulate_related_counts(totals: RelatedCountsDict, batch: RunsWithRelatedCountsDict) -> None:
+        totals["node_executions"] += batch.get("node_executions", 0)
+        totals["offloads"] += batch.get("offloads", 0)
+        totals["app_logs"] += batch.get("app_logs", 0)
+        totals["trigger_logs"] += batch.get("trigger_logs", 0)
+        totals["pauses"] += batch.get("pauses", 0)
+        totals["pause_reasons"] += batch.get("pause_reasons", 0)
+
+    @staticmethod
+    def _cursor_from_ref(ref: WorkflowRunCleanupRef) -> tuple[datetime.datetime, str]:
+        return ref.created_at, ref.id
+
+    def _count_node_executions_by_run_ids(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )
         return repo.count_by_runs(session, run_ids)
 
-    def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
-        run_ids = [run.id for run in runs]
+    def _delete_node_executions_by_run_ids(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker=sessionmaker(bind=session.get_bind(), expire_on_commit=False)
         )

@@ -11,31 +11,31 @@ import { Component } from 'react'
 // Avoid error #7832 (Crash when ECharts accesses undefined objects)
 // This can happen when a component attempts to access an undefined object that references an unregistered map, causing the program to crash.
 
-export default class ErrorBoundary extends Component {
-  constructor(props: any) {
+export default class ErrorBoundary extends Component<
+  React.PropsWithChildren,
+  { hasError: boolean }
+> {
+  constructor(props: React.PropsWithChildren) {
     super(props)
     this.state = { hasError: false }
   }
 
-  componentDidCatch(error: any, errorInfo: any) {
+  override componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     this.setState({ hasError: true })
     console.error(error, errorInfo)
   }
 
-  render() {
-    // eslint-disable-next-line ts/ban-ts-comment
-    // @ts-expect-error
+  override render() {
     if (this.state.hasError) {
       return (
         <div>
-          Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content.
+          Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG
+          content.
           <br />
           (see the browser console for more information)
         </div>
       )
     }
-    // eslint-disable-next-line ts/ban-ts-comment
-    // @ts-expect-error
     return this.props.children
   }
 }

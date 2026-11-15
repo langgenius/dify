@@ -1,9 +1,10 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
+from pytest_mock import MockerFixture
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
+from graphon.model_runtime.entities.message_entities import TextPromptMessageContent
 from tests.unit_tests.core.agent.conftest import (
     DummyAgentConfig,
     DummyAppConfig,
@@ -41,21 +42,28 @@ class DummyUnit:
         return self._final
 
 
+class DummyRunner(CotChatAgentRunner):
+    """Test double that avoids BaseAgentRunner's heavy DB/model constructor."""
+
+    def __init__(self) -> None:
+        # Use a plain __init__ (init fn) rather than bypassing via __new__,
+        # so the instance is fully initialised by the constructor.
+        self._instruction = "test_instruction"
+        self._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
+        self._query = "user query"
+        self._agent_scratchpad = []
+        self.files = []
+        self.application_generate_entity = DummyGenerateEntity()
+        self._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
+
+
 @pytest.fixture
-def runner():
-    runner = CotChatAgentRunner.__new__(CotChatAgentRunner)
-    runner._instruction = "test_instruction"
-    runner._prompt_messages_tools = [DummyTool("tool1"), DummyTool("tool2")]
-    runner._query = "user query"
-    runner._agent_scratchpad = []
-    runner.files = []
-    runner.application_generate_entity = DummyGenerateEntity()
-    runner._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
-    return runner
+def runner() -> DummyRunner:
+    return DummyRunner()
 
 
 class TestOrganizeSystemPrompt:
-    def test_organize_system_prompt_success(self, runner, mocker):
+    def test_organize_system_prompt_success(self, runner, mocker: MockerFixture):
         first_prompt = "Instruction: {{instruction}}, Tools: {{tools}}, Names: {{tool_names}}"
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt(first_prompt)))
 
@@ -154,7 +162,7 @@ class TestOrganizeUserQuery:
 
 
 class TestOrganizePromptMessages:
-    def test_no_scratchpad(self, runner, mocker):
+    def test_no_scratchpad(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -164,7 +172,7 @@ class TestOrganizePromptMessages:
         assert "query" in result
         runner._organize_historic_prompt_messages.assert_called_once()
 
-    def test_with_final_scratchpad(self, runner, mocker):
+    def test_with_final_scratchpad(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -177,7 +185,7 @@ class TestOrganizePromptMessages:
         combined = "".join([m.content for m in assistant_msgs if isinstance(m.content, str)])
         assert "Final Answer: done" in combined
 
-    def test_with_thought_action_observation(self, runner, mocker):
+    def test_with_thought_action_observation(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])
@@ -197,7 +205,7 @@ class TestOrganizePromptMessages:
         assert "Action: action" in combined
         assert "Observation: observe" in combined
 
-    def test_multiple_units_mixed(self, runner, mocker):
+    def test_multiple_units_mixed(self, runner, mocker: MockerFixture):
         runner.app_config = DummyAppConfig(DummyAgentConfig(DummyPrompt("{{instruction}}")))
         runner._organize_system_prompt = MagicMock(return_value="system")
         runner._organize_user_query = MagicMock(return_value=["query"])

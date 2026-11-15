@@ -1,0 +1,12 @@
+id: no-new-getattr
+language: python
+rule:
+  any:
+    - pattern: getattr($OBJ, $NAME)
+    - pattern: getattr($OBJ, $NAME, $$$REST)
+    - pattern: builtins.getattr($OBJ, $NAME)
+    - pattern: builtins.getattr($OBJ, $NAME, $$$REST)
+    - pattern: __builtins__.getattr($OBJ, $NAME)
+    - pattern: __builtins__.getattr($OBJ, $NAME, $$$REST)
+message: net-new getattr() in added code
+severity: error

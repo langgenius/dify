@@ -1,18 +1,21 @@
 import logging
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
-from graphon.entities.graph_config import NodeConfigDict
-from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
-from graphon.node_events import NodeRunResult
-from graphon.nodes.base.node import Node
-from graphon.nodes.base.template import Template
+from sqlalchemy.orm import Session
 
+from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.db.session_factory import session_factory
+from core.model_context import use_credit_usage_metadata
 from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index import KNOWLEDGE_INDEX_NODE_TYPE
 from core.workflow.system_variables import SystemVariableKey, get_system_segment, get_system_text
+from graphon.enums import NodeExecutionType, WorkflowNodeExecutionStatus
+from graphon.node_events import NodeRunResult
+from graphon.nodes.base.node import Node
+from graphon.nodes.base.template import Template
 
 from .entities import KnowledgeIndexNodeData
 from .exc import (
@@ -20,8 +23,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from graphon.entities import GraphInitParams
-    from graphon.runtime import GraphRuntimeState
+    from graphon.runtime import InitParams, RuntimeState
 
 logger = logging.getLogger(__name__)
 _INVOKE_FROM_DEBUGGER = "debugger"
@@ -33,18 +35,25 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
 
     def __init__(
         self,
-        id: str,
-        config: NodeConfigDict,
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        node_id: str,
+        data: KnowledgeIndexNodeData,
+        *,
+        init_params: "InitParams",
+        runtime_state: "RuntimeState",
     ) -> None:
-        super().__init__(id, config, graph_init_params, graph_runtime_state)
+        super().__init__(
+            node_id=node_id,
+            data=data,
+            init_params=init_params,
+            runtime_state=runtime_state,
+        )
         self.index_processor = IndexProcessor()
         self.summary_index_service = SummaryIndex()
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    @override
+    def _run(self) -> NodeRunResult:
         node_data = self.node_data
-        variable_pool = self.graph_runtime_state.variable_pool
+        variable_pool = self.runtime_state.variable_pool
 
         # get dataset id as string
         dataset_id_segment = get_system_segment(variable_pool, SystemVariableKey.DATASET_ID)
@@ -78,9 +87,15 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
                 # Get indexing_technique and summary_index_setting from node_data (workflow graph config)
                 # or fallback to dataset if not available in node_data
 
-                outputs = self.index_processor.get_preview_output(
-                    chunks, dataset_id, document_id, node_data.chunk_structure, summary_index_setting
-                )
+                with session_factory.create_session() as session:
+                    outputs = self.index_processor.get_preview_output(
+                        chunks,
+                        dataset_id,
+                        document_id,
+                        node_data.chunk_structure,
+                        summary_index_setting,
+                        session=session,
+                    )
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=variables,
@@ -92,15 +107,17 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
             if not batch:
                 raise KnowledgeIndexNodeError("Batch is required.")
 
-            results = self._invoke_knowledge_index(
-                dataset_id=dataset_id,
-                document_id=document_id,
-                original_document_id=original_document_id_segment.value if original_document_id_segment else "",
-                is_preview=is_preview,
-                batch=batch.value,
-                chunks=chunks,
-                summary_index_setting=summary_index_setting,
-            )
+            with session_factory.create_session() as session:
+                results = self._invoke_knowledge_index(
+                    session=session,
+                    dataset_id=dataset_id,
+                    document_id=document_id,
+                    original_document_id=original_document_id_segment.value if original_document_id_segment else "",
+                    is_preview=is_preview,
+                    batch=batch.value,
+                    chunks=chunks,
+                    summary_index_setting=summary_index_setting,
+                )
             return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=results)
 
         except KnowledgeIndexNodeError as e:
@@ -129,18 +146,26 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         batch: Any,
         chunks: Mapping[str, Any],
         summary_index_setting: SummaryIndexSettingDict | None = None,
+        *,
+        session: Session,
     ):
         if not document_id:
             raise KnowledgeIndexNodeError("document_id is required.")
-        rst = self.index_processor.index_and_clean(
-            dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting
-        )
-        self.summary_index_service.generate_and_vectorize_summary(
-            dataset_id, document_id, is_preview, summary_index_setting
-        )
+        dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
+        request_metadata = {"app_type": dify_ctx.app_type} if dify_ctx.app_type is not None else None
+        with use_credit_usage_metadata(request_metadata):
+            rst = self.index_processor.index_and_clean(
+                dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session=session
+            )
+            # Summary generation opens independent sessions and must see the indexed rows.
+            session.commit()
+            self.summary_index_service.generate_and_vectorize_summary(
+                dataset_id, document_id, is_preview, summary_index_setting
+            )
         return rst
 
     @classmethod
+    @override
     def version(cls) -> str:
         return "1"
 

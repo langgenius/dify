@@ -1,9 +1,25 @@
+import contextlib
 import json
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
 
+from dify_trace_sdk.emitter import TraceScope
+from sqlalchemy.orm import Session
+
+from core.agent.base_agent_runner import BaseAgentRunner
+from core.agent.entities import AgentScratchpadUnit
+from core.agent.errors import AgentMaxIterationError
+from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
+from core.app.apps.base_app_queue_manager import PublishFrom
+from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
+from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
+from core.model_context import use_credit_usage_metadata
+from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.__base.tool import Tool
+from core.tools.entities.tool_entities import ToolInvokeMeta
+from core.tools.tool_engine import ToolEngine
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -12,21 +28,16 @@ from graphon.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-
-from core.agent.base_agent_runner import BaseAgentRunner
-from core.agent.entities import AgentScratchpadUnit
-from core.agent.errors import AgentMaxIterationError
-from core.agent.output_parser.cot_output_parser import CotAgentOutputParser
-from core.app.apps.base_app_queue_manager import PublishFrom
-from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.ops.ops_trace_manager import TraceQueueManager
-from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
-from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
 logger = logging.getLogger(__name__)
+
+
+class ActionDict(TypedDict):
+    """Shape produced by AgentScratchpadUnit.Action.to_dict()."""
+
+    action: str
+    action_input: dict[str, Any] | str
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -40,6 +51,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def run(
         self,
+        session: Session,
         message: Message,
         query: str,
         inputs: Mapping[str, str],
@@ -52,7 +64,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         self._repack_app_generate_entity(app_generate_entity)
         self._init_react_state(query)
 
-        trace_manager = app_generate_entity.trace_manager
+        trace_scope = app_generate_entity.trace_scope
 
         # check model mode
         if "Observation" not in app_generate_entity.model_conf.stop:
@@ -105,7 +117,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             message_file_ids: list[str] = []
 
             agent_thought_id = self.create_agent_thought(
-                message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
+                message_id=message.id,
+                message="",
+                tool_name="",
+                tool_input="",
+                messages_ids=message_file_ids,
             )
 
             if iteration_step > 1:
@@ -116,7 +132,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             # recalc llm max tokens
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
+
+            # Release any setup/tool transaction before waiting on the provider stream.
+            session.commit()
+            session.close()
+
             # invoke model
+            request_metadata: dict[str, object] = {
+                "app_id": self.app_config.app_id,
+                "app_type": CreditUsageAppType.AGENT,
+                "created_by": CreditUsageCreatedBy.APP,
+            }
+
             chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
@@ -124,6 +151,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 stop=app_generate_entity.model_conf.stop,
                 stream=True,
                 callbacks=[],
+                request_metadata=request_metadata,
             )
 
             usage_dict: dict[str, LLMUsage | None] = {}
@@ -202,22 +230,24 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if scratchpad.action.action_name.lower() == "final answer":
                     # action is final answer, return final answer directly
                     try:
-                        if isinstance(scratchpad.action.action_input, dict):
-                            final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
-                        elif isinstance(scratchpad.action.action_input, str):
-                            final_answer = scratchpad.action.action_input
-                        else:
-                            final_answer = f"{scratchpad.action.action_input}"
+                        match scratchpad.action.action_input:
+                            case dict():
+                                final_answer = json.dumps(scratchpad.action.action_input, ensure_ascii=False)
+                            case str():
+                                final_answer = scratchpad.action.action_input
+                            case _:
+                                final_answer = f"{scratchpad.action.action_input}"
                     except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
                     function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
+                        session=session,
                         action=scratchpad.action,
                         tool_instances=tool_instances,
                         message_file_ids=message_file_ids,
-                        trace_manager=trace_manager,
+                        trace_scope=trace_scope,
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
@@ -280,17 +310,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
     def _handle_invoke_action(
         self,
+        session: Session,
         action: AgentScratchpadUnit.Action,
         tool_instances: Mapping[str, Tool],
         message_file_ids: list[str],
-        trace_manager: TraceQueueManager | None = None,
+        trace_scope: TraceScope | None,
     ) -> tuple[str, ToolInvokeMeta]:
         """
         handle invoke action
         :param action: action
         :param tool_instances: tool instances
         :param message_file_ids: message file ids
-        :param trace_manager: trace manager
+        :param trace_scope: where the tool call is reported, if anywhere
         :return: observation, meta
         """
         # action is tool call, invoke tool
@@ -303,22 +334,24 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             return answer, ToolInvokeMeta.error_instance(answer)
 
         if isinstance(tool_call_args, str):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 tool_call_args = json.loads(tool_call_args)
-            except json.JSONDecodeError:
-                pass
 
         # invoke tool
-        tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
-            tool=tool_instance,
-            tool_parameters=tool_call_args,
-            user_id=self.user_id,
-            tenant_id=self.tenant_id,
-            message=self.message,
-            invoke_from=self.application_generate_entity.invoke_from,
-            agent_tool_callback=self.agent_callback,
-            trace_manager=trace_manager,
-        )
+        with use_credit_usage_metadata({"app_type": CreditUsageAppType.AGENT}):
+            tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
+                session=session,
+                tool=tool_instance,
+                tool_parameters=tool_call_args,
+                user_id=self.user_id,
+                tenant_id=self.tenant_id,
+                message=self.message,
+                invoke_from=self.application_generate_entity.invoke_from,
+                agent_tool_callback=self.agent_callback,
+                trace_scope=trace_scope,
+            )
+        session.commit()
+        session.close()
 
         # publish files
         for message_file_id in message_files:
@@ -331,7 +364,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         return tool_invoke_response, tool_invoke_meta
 
-    def _convert_dict_to_action(self, action: dict) -> AgentScratchpadUnit.Action:
+    def _convert_dict_to_action(self, action: ActionDict) -> AgentScratchpadUnit.Action:
         """
         convert dict to action
         """
@@ -391,39 +424,40 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         current_scratchpad: AgentScratchpadUnit | None = None
 
         for message in self.history_prompt_messages:
-            if isinstance(message, AssistantPromptMessage):
-                if not current_scratchpad:
-                    assert isinstance(message.content, str)
-                    current_scratchpad = AgentScratchpadUnit(
-                        agent_response=message.content,
-                        thought=message.content or "I am thinking about how to help you",
-                        action_str="",
-                        action=None,
-                        observation=None,
-                    )
-                    scratchpads.append(current_scratchpad)
-                if message.tool_calls:
-                    try:
-                        current_scratchpad.action = AgentScratchpadUnit.Action(
-                            action_name=message.tool_calls[0].function.name,
-                            action_input=json.loads(message.tool_calls[0].function.arguments),
+            match message:
+                case AssistantPromptMessage():
+                    if not current_scratchpad:
+                        assert isinstance(message.content, str)
+                        current_scratchpad = AgentScratchpadUnit(
+                            agent_response=message.content,
+                            thought=message.content or "I am thinking about how to help you",
+                            action_str="",
+                            action=None,
+                            observation=None,
                         )
-                        current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
-                    except Exception:
-                        logger.exception("Failed to parse tool call from assistant message")
-            elif isinstance(message, ToolPromptMessage):
-                if current_scratchpad:
-                    assert isinstance(message.content, str)
-                    current_scratchpad.observation = message.content
-                else:
-                    raise NotImplementedError("expected str type")
-            elif isinstance(message, UserPromptMessage):
-                if scratchpads:
-                    result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))
-                    scratchpads = []
-                    current_scratchpad = None
+                        scratchpads.append(current_scratchpad)
+                    if message.tool_calls:
+                        try:
+                            current_scratchpad.action = AgentScratchpadUnit.Action(
+                                action_name=message.tool_calls[0].function.name,
+                                action_input=json.loads(message.tool_calls[0].function.arguments),
+                            )
+                            current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
+                        except Exception:
+                            logger.exception("Failed to parse tool call from assistant message")
+                case ToolPromptMessage():
+                    if current_scratchpad:
+                        assert isinstance(message.content, str)
+                        current_scratchpad.observation = message.content
+                    else:
+                        raise NotImplementedError("expected str type")
+                case UserPromptMessage():
+                    if scratchpads:
+                        result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))
+                        scratchpads = []
+                        current_scratchpad = None
 
-                result.append(message)
+                    result.append(message)
 
         if scratchpads:
             result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))

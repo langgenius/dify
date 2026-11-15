@@ -1,6 +1,6 @@
 import type { VariableIconProps } from './base/variable-icon'
+import { cn } from '@langgenius/dify-ui/cn'
 import { memo } from 'react'
-import { cn } from '@/utils/classnames'
 import VariableIcon from './base/variable-icon'
 import { useVarColor } from './hooks'
 
@@ -19,10 +19,7 @@ const VariableIconWithColor = ({
     <VariableIcon
       variables={variables}
       variableCategory={variableCategory}
-      className={cn(
-        varColorClassName,
-        className,
-      )}
+      className={cn(varColorClassName, className)}
     />
   )
 }

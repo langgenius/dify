@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
+import { fn } from 'storybook/test'
 import NotionConnector from '.'
 
 const meta = {
@@ -8,14 +9,13 @@ const meta = {
     layout: 'centered',
     docs: {
       description: {
-        component: 'Call-to-action card inviting users to connect a Notion workspace. Shows the product icon, copy, and primary button.',
+        component:
+          'Call-to-action card inviting users to connect a Notion workspace. Shows the product icon, copy, and primary button.',
       },
     },
   },
   args: {
-    onSetting: () => {
-      console.log('Open Notion settings')
-    },
+    onSetting: fn(),
   },
   tags: ['autodocs'],
 } satisfies Meta<typeof NotionConnector>

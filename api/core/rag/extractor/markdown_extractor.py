@@ -2,6 +2,7 @@
 
 import re
 from pathlib import Path
+from typing import override
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.extractor.helpers import detect_file_encodings
@@ -31,6 +32,7 @@ class MarkdownExtractor(BaseExtractor):
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
 
+    @override
     def extract(self) -> list[Document]:
         """Load from file path."""
         tups = self.parse_tups(self._file_path)
@@ -55,16 +57,30 @@ class MarkdownExtractor(BaseExtractor):
 
         current_header = None
         current_text = ""
-        code_block_flag = False
+        fence_marker = None
+        fence_length = 0
 
         for line in lines:
-            if line.startswith("```"):
-                code_block_flag = not code_block_flag
+            fence_match = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+            if fence_marker is not None:
+                if (
+                    fence_match
+                    and fence_match.group(1)[0] == fence_marker
+                    and len(fence_match.group(1)) >= fence_length
+                    and re.fullmatch(r"[ \t]*", fence_match.group(2))
+                ):
+                    fence_marker = None
+                    fence_length = 0
                 current_text += line + "\n"
                 continue
-            if code_block_flag:
-                current_text += line + "\n"
-                continue
+            if fence_match:
+                marker = fence_match.group(1)
+                info = fence_match.group(2)
+                if marker[0] == "~" or "`" not in info:
+                    fence_marker = marker[0]
+                    fence_length = len(marker)
+                    current_text += line + "\n"
+                    continue
             header_match = re.match(r"^#+\s", line)
             if header_match:
                 markdown_tups.append((current_header, current_text))

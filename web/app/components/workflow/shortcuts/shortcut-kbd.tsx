@@ -1,0 +1,54 @@
+import type { KbdColor } from '@langgenius/dify-ui/kbd'
+import type { FormatDisplayOptions, HotkeyChord } from '@tanstack/react-hotkeys'
+import type { WorkflowCanvasShortcutId } from './definitions'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
+import { formatForDisplay } from '@tanstack/react-hotkeys'
+import { getWorkflowCanvasShortcutDisplayKey } from './definitions'
+
+type ShortcutKbdSource =
+  | { shortcut: WorkflowCanvasShortcutId; hotkey?: never; displayKey?: never }
+  | { shortcut?: never; hotkey: HotkeyChord; displayKey?: never }
+  | { shortcut?: never; hotkey?: never; displayKey: string }
+
+type ShortcutKbdProps = ShortcutKbdSource & {
+  className?: string
+  textColor?: 'default' | 'secondary'
+  bgColor?: KbdColor
+  platform?: FormatDisplayOptions['platform']
+}
+
+export const ShortcutKbd = ({
+  shortcut,
+  hotkey,
+  displayKey,
+  className,
+  textColor = 'default',
+  bgColor = 'gray',
+  platform,
+}: ShortcutKbdProps) => {
+  const shortcutDisplayKey =
+    hotkey ?? (shortcut ? getWorkflowCanvasShortcutDisplayKey(shortcut) : undefined)
+
+  const displayKeys = displayKey
+    ? [displayKey]
+    : shortcutDisplayKey
+      ? formatForDisplay(shortcutDisplayKey, { platform, parts: true })
+      : []
+
+  if (!displayKeys.length) return null
+
+  return (
+    <KbdGroup className={cn(className)}>
+      {displayKeys.map((key) => (
+        <Kbd
+          key={key}
+          color={bgColor}
+          className={cn(textColor === 'secondary' && 'text-text-tertiary')}
+        >
+          {key}
+        </Kbd>
+      ))}
+    </KbdGroup>
+  )
+}

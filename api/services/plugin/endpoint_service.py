@@ -1,9 +1,13 @@
+from typing import Any, Literal
+
 from core.plugin.impl.endpoint import PluginEndpointClient
 
 
 class EndpointService:
     @classmethod
-    def create_endpoint(cls, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict):
+    def create_endpoint(
+        cls, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict[str, Any]
+    ) -> Literal[True]:
         return PluginEndpointClient().create_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -32,7 +36,9 @@ class EndpointService:
         )
 
     @classmethod
-    def update_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):
+    def update_endpoint(
+        cls, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict[str, Any]
+    ) -> Literal[True]:
         return PluginEndpointClient().update_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -42,7 +48,7 @@ class EndpointService:
         )
 
     @classmethod
-    def delete_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
+    def delete_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         return PluginEndpointClient().delete_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -50,7 +56,7 @@ class EndpointService:
         )
 
     @classmethod
-    def enable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
+    def enable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         return PluginEndpointClient().enable_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -58,7 +64,7 @@ class EndpointService:
         )
 
     @classmethod
-    def disable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str):
+    def disable_endpoint(cls, tenant_id: str, user_id: str, endpoint_id: str) -> Literal[True]:
         return PluginEndpointClient().disable_endpoint(
             tenant_id=tenant_id,
             user_id=user_id,

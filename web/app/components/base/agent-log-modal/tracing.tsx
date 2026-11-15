@@ -1,11 +1,11 @@
 'use client'
+import type { AgentIterationLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { FC } from 'react'
-import type { AgentIteration } from '@/models/log'
 import Iteration from './iteration'
 
-type TracingPanelProps = {
-  list: AgentIteration[]
-}
+type TracingPanelProps = Readonly<{
+  list: AgentIterationLogResponse[]
+}>
 
 const TracingPanel: FC<TracingPanelProps> = ({ list }) => {
   return (

@@ -6,40 +6,38 @@ by the core workflow module. These models are independent of the storage mechani
 and don't contain implementation details like tenant_id, app_id, etc.
 """
 
-from abc import ABC, abstractmethod
-from collections.abc import Sequence
 from datetime import datetime
+from typing import Protocol
 
-from graphon.entities.pause_reason import PauseReason
 
-
-class WorkflowPauseEntity(ABC):
+class WorkflowPauseEntity(Protocol):
     """
-    Abstract base class for workflow pause entities.
+    Protocol for workflow pause entities.
 
     This domain model represents a paused workflow execution state,
     without implementation details like tenant_id, app_id, etc.
     It provides the interface for managing workflow pause/resume operations
     and state persistence through file storage.
 
+    Pause presentation is resolved by the service from checkpoint references;
+    this entity does not load relational pause reasons.
+
     The `WorkflowPauseEntity` is never reused. If a workflow execution pauses multiple times,
     it will generate multiple `WorkflowPauseEntity` records.
     """
 
     @property
-    @abstractmethod
     def id(self) -> str:
         """The identifier of current WorkflowPauseEntity"""
-        pass
+        ...
 
     @property
-    @abstractmethod
     def workflow_execution_id(self) -> str:
         """The identifier of the workflow execution record the pause associated with.
         Correspond to `WorkflowExecution.id`.
         """
+        ...
 
-    @abstractmethod
     def get_state(self) -> bytes:
         """
         Retrieve the serialized workflow state from storage.
@@ -56,25 +54,13 @@ class WorkflowPauseEntity(ABC):
         ...
 
     @property
-    @abstractmethod
     def resumed_at(self) -> datetime | None:
         """`resumed_at` return the resumption time of the current pause, or `None` if
         the pause is not resumed yet.
         """
-        pass
+        ...
 
     @property
-    @abstractmethod
     def paused_at(self) -> datetime:
         """`paused_at` returns the creation time of the pause."""
-        pass
-
-    @abstractmethod
-    def get_pause_reasons(self) -> Sequence[PauseReason]:
-        """
-        Retrieve detailed reasons for this pause.
-
-        Returns a sequence of `PauseReason` objects describing the specific nodes and
-        reasons for which the workflow execution was paused.
-        """
         ...

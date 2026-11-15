@@ -22,7 +22,7 @@ type ChunkCardProps = {
 
 const ChunkCard = (props: ChunkCardProps) => {
   const { chunkType, parentMode, content, positionId, wordCount } = props
-  const { t } = useTranslation()
+  const { t } = useTranslation(['datasetDocuments'])
 
   const isFullDoc = useMemo(() => {
     return chunkType === ChunkingMode.parentChild && parentMode === 'full-doc'
@@ -80,7 +80,7 @@ const ChunkCard = (props: ChunkCardProps) => {
             labelPrefix={isParagraph ? 'Parent-Chunk' : 'Chunk'}
           />
           <Dot />
-          <div className="system-xs-medium text-text-tertiary">{`${formatNumber(wordCount)} ${t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}`}</div>
+          <div className="system-xs-medium text-text-tertiary">{`${formatNumber(wordCount)} ${t(($) => $['segment.characters'], { ns: 'datasetDocuments', count: wordCount })}`}</div>
         </div>
       )}
       <div className="body-md-regular text-text-secondary">{contentElement}</div>

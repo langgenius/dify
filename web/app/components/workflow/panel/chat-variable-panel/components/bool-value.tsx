@@ -4,32 +4,35 @@ import * as React from 'react'
 import { useCallback } from 'react'
 import OptionCard from '../../../nodes/_base/components/option-card'
 
-type Props = {
+type Props = Readonly<{
   value: boolean
+  disabled?: boolean
   onChange: (value: boolean) => void
-}
+}>
 
-const BoolValue: FC<Props> = ({
-  value,
-  onChange,
-}) => {
+const BoolValue: FC<Props> = ({ value, onChange, disabled }) => {
   const booleanValue = value
-  const handleChange = useCallback((newValue: boolean) => {
-    return () => {
-      onChange(newValue)
-    }
-  }, [onChange])
+  const handleChange = useCallback(
+    (newValue: boolean) => {
+      return () => {
+        onChange(newValue)
+      }
+    },
+    [onChange],
+  )
 
   return (
     <div className="flex w-full space-x-1">
       <OptionCard
         className="grow"
+        disabled={disabled}
         selected={booleanValue}
         title="True"
         onSelect={handleChange(true)}
       />
       <OptionCard
         className="grow"
+        disabled={disabled}
         selected={!booleanValue}
         title="False"
         onSelect={handleChange(false)}

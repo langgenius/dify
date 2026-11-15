@@ -1,27 +1,31 @@
+import type { useNodesSyncDraft } from './use-nodes-sync-draft'
 import type { IOtherOptions } from '@/service/base'
-import type { VersionHistory } from '@/types/workflow'
+import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { useMutation } from '@tanstack/react-query'
 import { produce } from 'immer'
+import { useAtomValue } from 'jotai'
 import { useCallback, useRef } from 'react'
+import { useReactFlow, useStoreApi } from 'reactflow'
 import {
-  useReactFlow,
-  useStoreApi,
-} from 'reactflow'
+  editorResourceAtom,
+  knowledgePipelineIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
-import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-update'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { useInvalidAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
-import { stopWorkflowRun } from '@/service/workflow'
-import { FlowType } from '@/types/common'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { consoleQuery } from '@/service/console'
+import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 
-export const usePipelineRun = () => {
+type DoSyncWorkflowDraft = ReturnType<typeof useNodesSyncDraft>['doSyncWorkflowDraft']
+
+const usePipelineRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const reactflow = useReactFlow()
-  const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const {
@@ -45,16 +49,9 @@ export const usePipelineRun = () => {
   const abortControllerRef = useRef<AbortController | null>(null)
 
   const handleBackupDraft = useCallback(() => {
-    const {
-      getNodes,
-      edges,
-    } = store.getState()
+    const { getNodes, edges } = store.getState()
     const { getViewport } = reactflow
-    const {
-      backupDraft,
-      setBackupDraft,
-      environmentVariables,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, environmentVariables } = workflowStore.getState()
 
     if (!backupDraft) {
       setBackupDraft({
@@ -68,19 +65,10 @@ export const usePipelineRun = () => {
   }, [reactflow, workflowStore, store, doSyncWorkflowDraft])
 
   const handleLoadBackupDraft = useCallback(() => {
-    const {
-      backupDraft,
-      setBackupDraft,
-      setEnvironmentVariables,
-    } = workflowStore.getState()
+    const { backupDraft, setBackupDraft, setEnvironmentVariables } = workflowStore.getState()
 
     if (backupDraft) {
-      const {
-        nodes,
-        edges,
-        viewport,
-        environmentVariables,
-      } = backupDraft
+      const { nodes, edges, viewport, environmentVariables } = backupDraft
       handleUpdateWorkflowCanvas({
         nodes,
         edges,
@@ -91,221 +79,227 @@ export const usePipelineRun = () => {
     }
   }, [handleUpdateWorkflowCanvas, workflowStore])
 
-  const pipelineId = useStore(s => s.pipelineId)
-  const invalidAllLastRun = useInvalidAllLastRun(FlowType.ragPipeline, pipelineId)
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
+  const resource = useAtomValue(editorResourceAtom)
+  const invalidAllLastRun = useInvalidateAllLastRun(resource)
   const invalidateRunHistory = useInvalidateWorkflowRunHistory()
-  const { fetchInspectVars } = useSetWorkflowVarsWithValue({
-    flowType: FlowType.ragPipeline,
-    flowId: pipelineId!,
-  })
+  const { fetchInspectVars } = useSetWorkflowVarsWithValue()
 
-  const handleRun = useCallback(async (
-    params: any,
-    callback?: IOtherOptions,
-  ) => {
-    const {
-      getNodes,
-      setNodes,
-    } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
-      draft.forEach((node) => {
-        node.data.selected = false
-        node.data._runningStatus = undefined
+  const handleRun = useCallback(
+    async (params: any, callback?: IOtherOptions) => {
+      const { getNodes, setNodes } = store.getState()
+      const newNodes = produce(getNodes(), (draft) => {
+        draft.forEach((node) => {
+          node.data.selected = false
+          node.data._runningStatus = undefined
+        })
       })
-    })
-    setNodes(newNodes)
-    await doSyncWorkflowDraft()
+      setNodes(newNodes)
+      await doSyncWorkflowDraft()
 
-    const {
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onAgentLog,
-      onError,
-      ...restCallback
-    } = callback || {}
-    const { pipelineId } = workflowStore.getState()
-    const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
-    workflowStore.setState({ historyWorkflowData: undefined })
-    const workflowContainer = document.getElementById('workflow-container')
+      const {
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onAgentLog,
+        onError,
+        ...restCallback
+      } = callback || {}
 
-    const {
-      clientWidth,
-      clientHeight,
-    } = workflowContainer!
+      const runHistoryUrl = `/rag/pipelines/${pipelineId}/workflow-runs`
+      workflowStore.setState({ historyWorkflowData: undefined })
+      const workflowContainer = document.getElementById('workflow-container')
 
-    const url = `/rag/pipelines/${pipelineId}/workflows/draft/run`
+      const { clientWidth, clientHeight } = workflowContainer!
 
-    const {
-      setWorkflowRunningData,
-    } = workflowStore.getState()
-    setWorkflowRunningData({
-      result: {
-        inputs_truncated: false,
-        process_data_truncated: false,
-        outputs_truncated: false,
-        status: WorkflowRunningStatus.Running,
-      },
-      tracing: [],
-      resultText: '',
-    })
+      const url = `/rag/pipelines/${pipelineId}/workflows/draft/run`
 
-    abortControllerRef.current?.abort()
-    abortControllerRef.current = null
-
-    ssePost(
-      url,
-      {
-        body: params,
-      },
-      {
-        getAbortController: (controller: AbortController) => {
-          abortControllerRef.current = controller
+      const { setWorkflowRunningData } = workflowStore.getState()
+      setWorkflowRunningData({
+        result: {
+          inputs_truncated: false,
+          process_data_truncated: false,
+          outputs_truncated: false,
+          status: WorkflowRunningStatus.Running,
         },
-        onWorkflowStarted: (params) => {
-          handleWorkflowStarted(params)
-          invalidateRunHistory(runHistoryUrl)
+        tracing: [],
+        resultText: '',
+      })
 
-          if (onWorkflowStarted)
-            onWorkflowStarted(params)
-        },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
-          invalidateRunHistory(runHistoryUrl)
-          fetchInspectVars({})
-          invalidAllLastRun()
+      abortControllerRef.current?.abort()
+      abortControllerRef.current = null
 
-          if (onWorkflowFinished)
-            onWorkflowFinished(params)
+      ssePost(
+        url,
+        {
+          body: params,
         },
-        onError: (params) => {
-          handleWorkflowFailed()
-          invalidateRunHistory(runHistoryUrl)
+        {
+          getAbortController: (controller: AbortController) => {
+            abortControllerRef.current = controller
+          },
+          onWorkflowStarted: (params) => {
+            handleWorkflowStarted(params)
+            invalidateRunHistory(runHistoryUrl)
 
-          if (onError)
-            onError(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
+            if (onWorkflowStarted) onWorkflowStarted(params)
+          },
+          onWorkflowFinished: (params) => {
+            handleWorkflowFinished(params)
+            invalidateRunHistory(runHistoryUrl)
+            fetchInspectVars({})
+            invalidAllLastRun()
+
+            if (onWorkflowFinished) onWorkflowFinished(params)
+          },
+          onError: (params) => {
+            handleWorkflowFailed()
+            invalidateRunHistory(runHistoryUrl)
+
+            if (onError) onError(params)
+          },
+          onNodeStarted: (params) => {
+            handleWorkflowNodeStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          if (onNodeStarted)
-            onNodeStarted(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
+            if (onNodeStarted) onNodeStarted(params)
+          },
+          onNodeFinished: (params) => {
+            handleWorkflowNodeFinished(params)
 
-          if (onNodeFinished)
-            onNodeFinished(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
+            if (onNodeFinished) onNodeFinished(params)
+          },
+          onIterationStart: (params) => {
+            handleWorkflowNodeIterationStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          if (onIterationStart)
-            onIterationStart(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
+            if (onIterationStart) onIterationStart(params)
+          },
+          onIterationNext: (params) => {
+            handleWorkflowNodeIterationNext(params)
 
-          if (onIterationNext)
-            onIterationNext(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
+            if (onIterationNext) onIterationNext(params)
+          },
+          onIterationFinish: (params) => {
+            handleWorkflowNodeIterationFinished(params)
 
-          if (onIterationFinish)
-            onIterationFinish(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
+            if (onIterationFinish) onIterationFinish(params)
+          },
+          onLoopStart: (params) => {
+            handleWorkflowNodeLoopStarted(params, {
               clientWidth,
               clientHeight,
-            },
-          )
+            })
 
-          if (onLoopStart)
-            onLoopStart(params)
+            if (onLoopStart) onLoopStart(params)
+          },
+          onLoopNext: (params) => {
+            handleWorkflowNodeLoopNext(params)
+
+            if (onLoopNext) onLoopNext(params)
+          },
+          onLoopFinish: (params) => {
+            handleWorkflowNodeLoopFinished(params)
+
+            if (onLoopFinish) onLoopFinish(params)
+          },
+          onNodeRetry: (params) => {
+            handleWorkflowNodeRetry(params)
+
+            if (onNodeRetry) onNodeRetry(params)
+          },
+          onAgentLog: (params) => {
+            handleWorkflowAgentLog(params)
+
+            if (onAgentLog) onAgentLog(params)
+          },
+          onTextChunk: (params) => {
+            handleWorkflowTextChunk(params)
+          },
+          onTextReplace: (params) => {
+            handleWorkflowTextReplace(params)
+          },
+          ...restCallback,
         },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
+      )
+    },
+    [
+      store,
+      doSyncWorkflowDraft,
+      workflowStore,
+      handleWorkflowStarted,
+      handleWorkflowFinished,
+      fetchInspectVars,
+      invalidAllLastRun,
+      invalidateRunHistory,
+      handleWorkflowFailed,
+      handleWorkflowNodeStarted,
+      handleWorkflowNodeFinished,
+      handleWorkflowNodeIterationStarted,
+      handleWorkflowNodeIterationNext,
+      handleWorkflowNodeIterationFinished,
+      handleWorkflowNodeLoopStarted,
+      handleWorkflowNodeLoopNext,
+      handleWorkflowNodeLoopFinished,
+      handleWorkflowNodeRetry,
+      handleWorkflowAgentLog,
+      handleWorkflowTextChunk,
+      handleWorkflowTextReplace,
+      pipelineId,
+    ],
+  )
 
-          if (onLoopNext)
-            onLoopNext(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
+  const { mutate: stopRun } = useMutation(
+    consoleQuery.rag.pipelines.byPipelineId.workflowRuns.tasks.byTaskId.stop.post.mutationOptions(),
+  )
 
-          if (onLoopFinish)
-            onLoopFinish(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
+  const handleStopRun = useCallback(
+    (taskId: string) => {
+      stopRun({ params: { pipeline_id: pipelineId, task_id: taskId } })
 
-          if (onNodeRetry)
-            onNodeRetry(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
+      if (abortControllerRef.current) abortControllerRef.current.abort()
 
-          if (onAgentLog)
-            onAgentLog(params)
-        },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
-        },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        ...restCallback,
-      },
-    )
-  }, [store, doSyncWorkflowDraft, workflowStore, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, invalidateRunHistory, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
+      abortControllerRef.current = null
+    },
+    [pipelineId, stopRun],
+  )
 
-  const handleStopRun = useCallback((taskId: string) => {
-    const { pipelineId } = workflowStore.getState()
+  const handleRestoreFromPublishedWorkflow = useCallback(
+    (publishedWorkflow: FetchWorkflowDraftResponse) => {
+      const nodes = publishedWorkflow.graph.nodes.map((node) => ({
+        ...node,
+        selected: false,
+        data: { ...node.data, selected: false },
+      }))
+      const edges = publishedWorkflow.graph.edges
+      const viewport = publishedWorkflow.graph.viewport!
+      handleUpdateWorkflowCanvas({
+        nodes,
+        edges,
+        viewport,
+      })
 
-    stopWorkflowRun(`/rag/pipelines/${pipelineId}/workflow-runs/tasks/${taskId}/stop`)
-
-    if (abortControllerRef.current)
-      abortControllerRef.current.abort()
-
-    abortControllerRef.current = null
-  }, [workflowStore])
-
-  const handleRestoreFromPublishedWorkflow = useCallback((publishedWorkflow: VersionHistory) => {
-    const nodes = publishedWorkflow.graph.nodes.map(node => ({ ...node, selected: false, data: { ...node.data, selected: false } }))
-    const edges = publishedWorkflow.graph.edges
-    const viewport = publishedWorkflow.graph.viewport!
-    handleUpdateWorkflowCanvas({
-      nodes,
-      edges,
-      viewport,
-    })
-
-    workflowStore.getState().setEnvironmentVariables(publishedWorkflow.environment_variables || [])
-    workflowStore.getState().setRagPipelineVariables?.(publishedWorkflow.rag_pipeline_variables || [])
-  }, [handleUpdateWorkflowCanvas, workflowStore])
+      workflowStore
+        .getState()
+        .setEnvironmentVariables(publishedWorkflow.environment_variables || [])
+      workflowStore
+        .getState()
+        .setRagPipelineVariables?.(publishedWorkflow.rag_pipeline_variables || [])
+    },
+    [handleUpdateWorkflowCanvas, workflowStore],
+  )
 
   return {
     handleBackupDraft,
@@ -314,4 +308,10 @@ export const usePipelineRun = () => {
     handleStopRun,
     handleRestoreFromPublishedWorkflow,
   }
+}
+
+export const usePipelineRunByCanEdit = (canEdit: boolean) => {
+  const { doSyncWorkflowDraft } = useNodesSyncDraftByCanEdit(canEdit)
+
+  return usePipelineRunBase(doSyncWorkflowDraft)
 }

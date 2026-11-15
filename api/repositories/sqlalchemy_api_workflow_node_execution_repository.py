@@ -6,34 +6,30 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Protocol, cast
+from itertools import batched
+from typing import Any, cast, override
 
-from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
-from sqlalchemy import asc, delete, desc, func, select
+from sqlalchemy import String, asc, delete, desc, func, or_, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
+from extensions.ext_storage import storage
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
+from models.model import UploadFile
+from models.workflow import (
+    ExecutionOffLoadType,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
     WorkflowNodeExecutionSnapshot,
+    WorkflowNodeExecutionSnapshotRow,
 )
-
-
-class _WorkflowNodeExecutionSnapshotRow(Protocol):
-    id: str
-    node_execution_id: str | None
-    node_id: str
-    node_type: str
-    title: str
-    index: int
-    status: WorkflowNodeExecutionStatus
-    elapsed_time: float | None
-    created_at: datetime
-    finished_at: datetime | None
-    execution_metadata: str | None
 
 
 class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRepository):
@@ -65,6 +61,67 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         """
         self._session_maker = session_maker
 
+    @override
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.INPUTS, execution.inputs_dict)
+
+    @override
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.OUTPUTS, execution.outputs_dict)
+
+    @override
+    def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        """Load Process Data from external storage when the execution was offloaded."""
+        return self._load_full_payload(execution, ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict)
+
+    def _load_full_payload(
+        self,
+        execution: WorkflowNodeExecutionModel,
+        type_: ExecutionOffLoadType,
+        inline: Mapping[str, Any] | None,
+    ) -> Mapping[str, Any] | None:
+        offload = next((item for item in execution.offload_data if item.type_ == type_), None)
+        if offload is None:
+            return inline
+        reference = (execution.tenant_id, offload.file_id)
+        return self._load_offloaded_payloads({reference})[reference]
+
+    def _load_offloaded_payloads(
+        self, references: set[tuple[str, str]]
+    ) -> dict[tuple[str, str], Mapping[str, Any] | None]:
+        if not references:
+            return {}
+        keys: dict[tuple[str, str], str] = {}
+        with self._session_maker() as session:
+            for batch in batched(references, 1000, strict=False):
+                rows = session.execute(
+                    select(UploadFile.tenant_id, UploadFile.id, UploadFile.key).where(
+                        tuple_(UploadFile.tenant_id, UploadFile.id).in_(batch)
+                    )
+                )
+                keys.update(((tenant_id, file_id), key) for tenant_id, file_id, key in rows)
+        for tenant_id, file_id in references:
+            assert (tenant_id, file_id) in keys, f"UploadFile with id {file_id} should exist in the execution's tenant"
+        return {reference: json.loads(storage.load(keys[reference])) for reference in references}
+
+    @override
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        loaded = self._load_offloaded_payloads(
+            {(execution.tenant_id, offload.file_id) for execution in executions for offload in execution.offload_data}
+        )
+        result: dict[str, WorkflowNodeExecutionPayloads] = {}
+        for execution in executions:
+            full = {offload.type_: loaded[execution.tenant_id, offload.file_id] for offload in execution.offload_data}
+            result[execution.id] = WorkflowNodeExecutionPayloads(
+                inputs=full.get(ExecutionOffLoadType.INPUTS, execution.inputs_dict),
+                process_data=full.get(ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict),
+                outputs=full.get(ExecutionOffLoadType.OUTPUTS, execution.outputs_dict),
+            )
+        return result
+
+    @override
     def get_node_last_execution(
         self,
         tenant_id: str,
@@ -97,6 +154,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 WorkflowNodeExecutionModel.app_id == app_id,
                 WorkflowNodeExecutionModel.workflow_id == workflow_id,
                 WorkflowNodeExecutionModel.node_id == node_id,
+                WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
                 WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
             )
             .order_by(desc(WorkflowNodeExecutionModel.created_at))
@@ -106,6 +164,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.scalar(stmt)
 
+    @override
     def get_executions_by_workflow_run(
         self,
         tenant_id: str,
@@ -131,11 +190,56 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             WorkflowNodeExecutionModel.tenant_id == tenant_id,
             WorkflowNodeExecutionModel.app_id == app_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+            WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
         ).order_by(asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
 
+    @override
+    def get_workflow_tool_executions(
+        self,
+        tenant_id: str,
+        workflow_run_id: str,
+        parent_node_execution_id: str,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        with self._session_maker() as session:
+            parent = session.execute(
+                select(
+                    func.coalesce(
+                        func.nullif(WorkflowNodeExecutionModel.node_execution_id, ""),
+                        WorkflowNodeExecutionModel.id.cast(String),
+                    ),
+                    WorkflowNodeExecutionModel.workflow_id,
+                )
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.node_type == BuiltinNodeTypes.TOOL,
+                    or_(
+                        WorkflowNodeExecutionModel.id.cast(String) == parent_node_execution_id,
+                        WorkflowNodeExecutionModel.node_execution_id == parent_node_execution_id,
+                    ),
+                )
+                .limit(1)
+            ).one_or_none()
+            if parent is None:
+                return []
+            parent_execution_id, parent_workflow_id = parent
+            stmt = (
+                WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
+                .where(
+                    WorkflowNodeExecutionModel.tenant_id == tenant_id,
+                    WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
+                    WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+                    WorkflowNodeExecutionModel.triggered_from_node_execution_id == parent_execution_id,
+                    WorkflowNodeExecutionModel.triggered_from_workflow_id == parent_workflow_id,
+                )
+                .order_by(WorkflowNodeExecutionModel.created_at, WorkflowNodeExecutionModel.index)
+            )
+            return session.scalars(stmt).all()
+
+    @override
     def get_execution_snapshots_by_workflow_run(
         self,
         tenant_id: str,
@@ -172,44 +276,11 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         )
 
         with self._session_maker() as session:
-            rows = cast(Sequence[_WorkflowNodeExecutionSnapshotRow], session.execute(stmt).all())
+            rows = cast(Sequence[WorkflowNodeExecutionSnapshotRow], session.execute(stmt).all())
 
-        return [self._row_to_snapshot(row) for row in rows]
+        return [WorkflowNodeExecutionSnapshot.from_execution(row) for row in rows]
 
-    @staticmethod
-    def _row_to_snapshot(row: _WorkflowNodeExecutionSnapshotRow) -> WorkflowNodeExecutionSnapshot:
-        metadata: dict[str, object] = {}
-        execution_metadata = getattr(row, "execution_metadata", None)
-        if execution_metadata:
-            try:
-                metadata = json.loads(execution_metadata)
-            except json.JSONDecodeError:
-                metadata = {}
-        iteration_id = metadata.get(WorkflowNodeExecutionMetadataKey.ITERATION_ID.value)
-        loop_id = metadata.get(WorkflowNodeExecutionMetadataKey.LOOP_ID.value)
-        execution_id = getattr(row, "node_execution_id", None) or row.id
-        elapsed_time = getattr(row, "elapsed_time", None)
-        created_at = row.created_at
-        finished_at = getattr(row, "finished_at", None)
-        if elapsed_time is None:
-            if finished_at is not None and created_at is not None:
-                elapsed_time = (finished_at - created_at).total_seconds()
-            else:
-                elapsed_time = 0.0
-        return WorkflowNodeExecutionSnapshot(
-            execution_id=str(execution_id),
-            node_id=row.node_id,
-            node_type=row.node_type,
-            title=row.title,
-            index=row.index,
-            status=row.status,
-            elapsed_time=float(elapsed_time),
-            created_at=created_at,
-            finished_at=finished_at,
-            iteration_id=str(iteration_id) if iteration_id else None,
-            loop_id=str(loop_id) if loop_id else None,
-        )
-
+    @override
     def get_execution_by_id(
         self,
         execution_id: str,
@@ -242,6 +313,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.scalar(stmt)
 
+    @override
     def delete_expired_executions(
         self,
         tenant_id: str,
@@ -289,6 +361,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return total_deleted
 
+    @override
     def delete_executions_by_app(
         self,
         tenant_id: str,
@@ -296,7 +369,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         batch_size: int = 1000,
     ) -> int:
         """
-        Delete all workflow node executions for a specific app.
+        Delete source-app executions and nested executions owned by the app's runs.
 
         Args:
             tenant_id: The tenant identifier
@@ -315,7 +388,10 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                     select(WorkflowNodeExecutionModel.id)
                     .where(
                         WorkflowNodeExecutionModel.tenant_id == tenant_id,
-                        WorkflowNodeExecutionModel.app_id == app_id,
+                        or_(
+                            WorkflowNodeExecutionModel.app_id == app_id,
+                            WorkflowNodeExecutionModel.workflow_tool_owned_by_app(tenant_id=tenant_id, app_id=app_id),
+                        ),
                     )
                     .limit(batch_size)
                 )
@@ -325,6 +401,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                     break
 
                 # Delete the batch
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.tenant_id == tenant_id,
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(execution_ids),
+                    )
+                )
                 delete_stmt = delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(execution_ids))
                 result = cast(CursorResult, session.execute(delete_stmt))
                 session.commit()
@@ -336,6 +418,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return total_deleted
 
+    @override
     def get_expired_executions_batch(
         self,
         tenant_id: str,
@@ -365,6 +448,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()
 
+    @override
     def delete_executions_by_ids(
         self,
         execution_ids: Sequence[str],
@@ -387,6 +471,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session.commit()
             return result.rowcount
 
+    @override
     def delete_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Delete node executions (and offloads) for the given workflow runs using workflow_run_id.
@@ -420,6 +505,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
         return node_executions_deleted, offloads_deleted
 
+    @override
     def count_by_runs(self, session: Session, run_ids: Sequence[str]) -> tuple[int, int]:
         """
         Count node executions (and offloads) for the given workflow runs using workflow_run_id.
@@ -456,6 +542,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
+    @override
     def get_offloads_by_execution_ids(
         self,
         session: Session,

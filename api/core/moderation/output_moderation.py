@@ -55,10 +55,7 @@ class OutputModeration(BaseModel):
         if not result or not result.flagged:
             return completion, False
 
-        if result.action == ModerationAction.DIRECT_OUTPUT:
-            final_output = result.preset_response
-        else:
-            final_output = result.text
+        final_output = result.preset_response if result.action == ModerationAction.DIRECT_OUTPUT else result.text
 
         if public_event:
             self.queue_manager.publish(

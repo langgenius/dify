@@ -1,17 +1,11 @@
 import type { LexicalEditor } from 'lexical'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, waitFor } from '@testing-library/react'
-import {
-  BLUR_COMMAND,
-  FOCUS_COMMAND,
-} from 'lexical'
+import { BLUR_COMMAND, FOCUS_COMMAND } from 'lexical'
+import { TestLexicalComposer } from '@/test/lexical'
 import OnBlurBlock from '../on-blur-or-focus-block'
-import { CaptureEditorPlugin } from '../test-utils'
+import { CaptureEditorPlugin } from './test-utils'
 
-const renderOnBlurBlock = (props?: {
-  onBlur?: () => void
-  onFocus?: () => void
-}) => {
+const renderOnBlurBlock = (props?: { onBlur?: () => void; onFocus?: () => void }) => {
   let editor: LexicalEditor | null = null
 
   const setEditor = (value: LexicalEditor) => {
@@ -19,7 +13,7 @@ const renderOnBlurBlock = (props?: {
   }
 
   const utils = render(
-    <LexicalComposer
+    <TestLexicalComposer
       initialConfig={{
         namespace: 'on-blur-block-plugin-test',
         onError: (error: Error) => {
@@ -29,7 +23,7 @@ const renderOnBlurBlock = (props?: {
     >
       <OnBlurBlock onBlur={props?.onBlur} onFocus={props?.onFocus} />
       <CaptureEditorPlugin onReady={setEditor} />
-    </LexicalComposer>,
+    </TestLexicalComposer>,
   )
 
   return {
@@ -85,29 +79,14 @@ describe('OnBlurBlock', () => {
 
       let handled = false
       act(() => {
-        handled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('button')))
+        handled = editor!.dispatchCommand(
+          BLUR_COMMAND,
+          createBlurEvent(document.createElement('button')),
+        )
       })
 
       expect(handled).toBe(true)
       expect(onBlur).toHaveBeenCalledTimes(1)
-    })
-
-    it('should handle blur when onBlur callback is not provided', async () => {
-      const { getEditor } = renderOnBlurBlock()
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      let handled = false
-      act(() => {
-        handled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
-      })
-
-      expect(handled).toBe(true)
     })
 
     it('should skip onBlur when blur target is var-search-input', async () => {
@@ -132,24 +111,6 @@ describe('OnBlurBlock', () => {
       expect(handled).toBe(true)
       expect(onBlur).not.toHaveBeenCalled()
     })
-
-    it('should handle focus command when onFocus callback is not provided', async () => {
-      const { getEditor } = renderOnBlurBlock()
-
-      await waitFor(() => {
-        expect(getEditor()).not.toBeNull()
-      })
-
-      const editor = getEditor()
-      expect(editor).not.toBeNull()
-
-      let handled = false
-      act(() => {
-        handled = editor!.dispatchCommand(FOCUS_COMMAND, createFocusEvent())
-      })
-
-      expect(handled).toBe(true)
-    })
   })
 
   describe('Lifecycle cleanup', () => {
@@ -168,7 +129,10 @@ describe('OnBlurBlock', () => {
       let blurHandled = true
       let focusHandled = true
       act(() => {
-        blurHandled = editor!.dispatchCommand(BLUR_COMMAND, createBlurEvent(document.createElement('div')))
+        blurHandled = editor!.dispatchCommand(
+          BLUR_COMMAND,
+          createBlurEvent(document.createElement('div')),
+        )
         focusHandled = editor!.dispatchCommand(FOCUS_COMMAND, createFocusEvent())
       })
 

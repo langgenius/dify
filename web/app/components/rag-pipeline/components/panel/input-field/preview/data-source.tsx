@@ -1,8 +1,11 @@
 import type { Datasource } from '../../test-run/types'
+import { useQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
-import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
+import { selectPipelineStepParameters } from '@/app/components/rag-pipeline/utils/query-select'
+import { knowledgePipelineIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import { consoleQuery } from '@/service/console'
 import DataSourceOptions from '../../test-run/preparation/data-source-options'
 import Form from './form'
 
@@ -11,27 +14,26 @@ type DatasourceProps = {
   dataSourceNodeId: string
 }
 
-const DataSource = ({
-  onSelect: setDatasource,
-  dataSourceNodeId,
-}: DatasourceProps) => {
-  const { t } = useTranslation()
-  const pipelineId = useStore(state => state.pipelineId)
-  const { data: paramsConfig } = useDraftPipelinePreProcessingParams({
-    pipeline_id: pipelineId!,
-    node_id: dataSourceNodeId,
-  }, !!pipelineId && !!dataSourceNodeId)
+const DataSource = ({ onSelect: setDatasource, dataSourceNodeId }: DatasourceProps) => {
+  const { t } = useTranslation(['datasetPipeline'])
+  const pipelineId = useAtomValue(knowledgePipelineIdentityAtom).pipelineId
+  const { data: paramsConfig } = useQuery(
+    consoleQuery.rag.pipelines.byPipelineId.workflows.draft.preProcessing.parameters.get.queryOptions(
+      {
+        input: { params: { pipeline_id: pipelineId! }, query: { node_id: dataSourceNodeId } },
+        enabled: !!pipelineId && !!dataSourceNodeId,
+        select: selectPipelineStepParameters,
+      },
+    ),
+  )
 
   return (
     <div className="flex flex-col">
-      <div className="system-sm-semibold-uppercase px-4 pt-2 text-text-secondary">
-        {t('inputFieldPanel.preview.stepOneTitle', { ns: 'datasetPipeline' })}
+      <div className="px-4 pt-2 system-sm-semibold-uppercase text-text-secondary">
+        {t(($) => $['inputFieldPanel.preview.stepOneTitle'], { ns: 'datasetPipeline' })}
       </div>
       <div className="px-4 py-2">
-        <DataSourceOptions
-          onSelect={setDatasource}
-          dataSourceNodeId={dataSourceNodeId}
-        />
+        <DataSourceOptions onSelect={setDatasource} dataSourceNodeId={dataSourceNodeId} />
       </div>
       <Form variables={paramsConfig?.variables || []} />
     </div>

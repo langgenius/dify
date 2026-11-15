@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from typing import override
+
 from factories.agent_factory import get_plugin_agent_strategy
 
 from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategyResolver, ResolvedAgentStrategy
 
 
 class PluginAgentStrategyResolver(AgentStrategyResolver):
+    @override
     def resolve(
         self,
         *,
@@ -21,6 +24,7 @@ class PluginAgentStrategyResolver(AgentStrategyResolver):
 
 
 class PluginAgentStrategyPresentationProvider(AgentStrategyPresentationProvider):
+    @override
     def get_icon(self, *, tenant_id: str, agent_strategy_provider_name: str) -> str | None:
         from core.plugin.impl.plugin import PluginInstaller
 

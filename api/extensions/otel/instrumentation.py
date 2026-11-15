@@ -1,5 +1,7 @@
 import contextlib
 import logging
+from collections.abc import Callable
+from typing import Protocol, cast, override
 
 import flask
 from opentelemetry.instrumentation.celery import CeleryInstrumentor
@@ -17,8 +19,38 @@ from opentelemetry.trace.status import StatusCode
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.otel.runtime import is_celery_worker
+from extensions.otel.workflow_collaboration import init_workflow_collaboration_metrics
 
 logger = logging.getLogger(__name__)
+
+
+class SupportsInstrument(Protocol):
+    def instrument(self, **kwargs: object) -> None: ...
+
+
+class SupportsFlaskInstrumentor(Protocol):
+    def instrument_app(
+        self, app: DifyApp, response_hook: Callable[[Span, str, list], None] | None = None, **kwargs: object
+    ) -> None: ...
+
+
+# Some OpenTelemetry instrumentor constructors are typed loosely enough that
+# pyrefly infers `NoneType`. Narrow the instances to just the methods we use
+# while leaving runtime behavior unchanged.
+def _new_celery_instrumentor() -> SupportsInstrument:
+    return cast(SupportsInstrument, CeleryInstrumentor())
+
+
+def _new_httpx_instrumentor() -> SupportsInstrument:
+    return cast(SupportsInstrument, HTTPXClientInstrumentor())
+
+
+def _new_redis_instrumentor() -> SupportsInstrument:
+    return cast(SupportsInstrument, RedisInstrumentor())
+
+
+def _new_sqlalchemy_instrumentor() -> SupportsInstrument:
+    return cast(SupportsInstrument, SQLAlchemyInstrumentor())
 
 
 class ExceptionLoggingHandler(logging.Handler):
@@ -29,7 +61,8 @@ class ExceptionLoggingHandler(logging.Handler):
     to maintain trace context consistency throughout the request lifecycle.
     """
 
-    def emit(self, record: logging.LogRecord):
+    @override
+    def emit(self, record: logging.LogRecord) -> None:
         with contextlib.suppress(Exception):
             if not record.exc_info:
                 return
@@ -97,7 +130,7 @@ def init_flask_instrumentor(app: DifyApp) -> None:
 
     from opentelemetry.instrumentation.flask import FlaskInstrumentor
 
-    instrumentor = FlaskInstrumentor()
+    instrumentor = cast(SupportsFlaskInstrumentor, FlaskInstrumentor())
     if dify_config.DEBUG:
         logger.info("Initializing Flask instrumentor")
     instrumentor.instrument_app(app, response_hook=response_hook)
@@ -106,21 +139,24 @@ def init_flask_instrumentor(app: DifyApp) -> None:
 def init_sqlalchemy_instrumentor(app: DifyApp) -> None:
     with app.app_context():
         engines = list(app.extensions["sqlalchemy"].engines.values())
-        SQLAlchemyInstrumentor().instrument(enable_commenter=True, engines=engines)
+        _new_sqlalchemy_instrumentor().instrument(enable_commenter=True, engines=engines)
 
 
 def init_redis_instrumentor() -> None:
-    RedisInstrumentor().instrument()
+    _new_redis_instrumentor().instrument()
 
 
 def init_httpx_instrumentor() -> None:
-    HTTPXClientInstrumentor().instrument()
+    _new_httpx_instrumentor().instrument()
 
 
 def init_instruments(app: DifyApp) -> None:
     if not is_celery_worker():
         init_flask_instrumentor(app)
-        CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
+        init_workflow_collaboration_metrics(app)
+        _new_celery_instrumentor().instrument(
+            tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()
+        )
 
     instrument_exception_logging()
     init_sqlalchemy_instrumentor(app)

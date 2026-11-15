@@ -1,202 +1,77 @@
 # API Agent Guide
 
-## Notes for Agent (must-check)
+Read surrounding module, class, and function docstrings plus non-obvious comments before changing backend behavior. They are local contracts; update them only when their owned behavior changes, and keep them aligned with the current code.
 
-Before changing any backend code under `api/`, you MUST read the surrounding docstrings and comments. These notes contain required context (invariants, edge cases, trade-offs) and are treated as part of the spec.
+## Commands
 
-Look for:
+Run backend checks from the repository root:
 
-- The module (file) docstring at the top of a source code file
-- Docstrings on classes and functions/methods
-- Paragraph/block comments for non-obvious logic
-
-### What to write where
-
-- Keep notes scoped: module notes cover module-wide context, class notes cover class-wide context, function/method notes cover behavioural contracts, and paragraph/block comments cover local “why”. Avoid duplicating the same content across scopes unless repetition prevents misuse.
-- **Module (file) docstring**: purpose, boundaries, key invariants, and “gotchas” that a new reader must know before editing.
-  - Include cross-links to the key collaborators (modules/services) when discovery is otherwise hard.
-  - Prefer stable facts (invariants, contracts) over ephemeral “today we…” notes.
-- **Class docstring**: responsibility, lifecycle, invariants, and how it should be used (or not used).
-  - If the class is intentionally stateful, note what state exists and what methods mutate it.
-  - If concurrency/async assumptions matter, state them explicitly.
-- **Function/method docstring**: behavioural contract.
-  - Document arguments, return shape, side effects (DB writes, external I/O, task dispatch), and raised domain exceptions.
-  - Add examples only when they prevent misuse.
-- **Paragraph/block comments**: explain *why* (trade-offs, historical constraints, surprising edge cases), not what the code already states.
-  - Keep comments adjacent to the logic they justify; delete or rewrite comments that no longer match reality.
-
-### Rules (must follow)
-
-In this section, “notes” means module/class/function docstrings plus any relevant paragraph/block comments.
-
-- **Before working**
-  - Read the notes in the area you’ll touch; treat them as part of the spec.
-  - If a docstring or comment conflicts with the current code, treat the **code as the single source of truth** and update the docstring or comment to match reality.
-  - If important intent/invariants/edge cases are missing, add them in the closest docstring or comment (module for overall scope, function for behaviour).
-- **During working**
-  - Keep the notes in sync as you discover constraints, make decisions, or change approach.
-  - If you move/rename responsibilities across modules/classes, update the affected docstrings and comments so readers can still find the “why” and the invariants.
-  - Record non-obvious edge cases, trade-offs, and the test/verification plan in the nearest docstring or comment that will stay correct.
-  - Keep the notes **coherent**: integrate new findings into the relevant docstrings and comments; avoid append-only “recent fix” / changelog-style additions.
-- **When finishing**
-  - Update the notes to reflect what changed, why, and any new edge cases/tests.
-  - Remove or rewrite any comments that could be mistaken as current guidance but no longer apply.
-  - Keep docstrings and comments concise and accurate; they are meant to prevent repeated rediscovery.
-
-## Coding Style
-
-This is the default standard for backend code in this repo. Follow it for new code and use it as the checklist when reviewing changes.
-
-### Linting & Formatting
-
-- Use Ruff for formatting and linting (follow `.ruff.toml`).
-- Keep each line under 120 characters (including spaces).
-
-### Naming Conventions
-
-- Use `snake_case` for variables and functions.
-- Use `PascalCase` for classes.
-- Use `UPPER_CASE` for constants.
-
-### Typing & Class Layout
-
-- Code should usually include type annotations that match the repo’s current Python version (avoid untyped public APIs and “mystery” values).
-- Prefer modern typing forms (e.g. `list[str]`, `dict[str, int]`) and avoid `Any` unless there’s a strong reason.
-- For dictionary-like data with known keys and value types, prefer `TypedDict` over `dict[...]` or `Mapping[...]`.
-- For optional keys in typed payloads, use `NotRequired[...]` (or `total=False` when most fields are optional).
-- Keep `dict[...]` / `Mapping[...]` for truly dynamic key spaces where the key set is unknown.
-
-```python
-from datetime import datetime
-from typing import NotRequired, TypedDict
-
-
-class UserProfile(TypedDict):
-    user_id: str
-    email: str
-    created_at: datetime
-    nickname: NotRequired[str]
-```
-
-- For classes, declare all member variables explicitly with types at the top of the class body (before `__init__`), even when the class is not a dataclass or Pydantic model, so the class shape is obvious at a glance:
-
-```python
-from datetime import datetime
-
-
-class Example:
-    user_id: str
-    created_at: datetime
-
-    def __init__(self, user_id: str, created_at: datetime) -> None:
-        self.user_id = user_id
-        self.created_at = created_at
-```
-
-### General Rules
-
-- Use Pydantic v2 conventions.
-- Use `uv` for Python package management in this repo (usually with `--project api`).
-- Prefer simple functions over small “utility classes” for lightweight helpers.
-- Avoid implementing dunder methods unless it’s clearly needed and matches existing patterns.
-- Never start long-running services as part of agent work (`uv run app.py`, `flask run`, etc.); running tests is allowed.
-- Keep files below ~800 lines; split when necessary.
-- Keep code readable and explicit—avoid clever hacks.
-
-### Architecture & Boundaries
-
-- Mirror the layered architecture: controller → service → core/domain.
-- Reuse existing helpers in `core/`, `services/`, and `libs/` before creating new abstractions.
-- Optimise for observability: deterministic control flow, clear logging, actionable errors.
-
-### Logging & Errors
-
-- Never use `print`; use a module-level logger:
-  - `logger = logging.getLogger(__name__)`
-- Include tenant/app/workflow identifiers in log context when relevant.
-- Raise domain-specific exceptions (`services/errors`, `core/errors`) and translate them into HTTP responses in controllers.
-- Log retryable events at `warning`, terminal failures at `error`.
-
-### SQLAlchemy Patterns
-
-- Models inherit from `models.base.TypeBase`; do not create ad-hoc metadata or engines.
-- Open sessions with context managers:
-
-```python
-from sqlalchemy.orm import Session
-
-with Session(db.engine, expire_on_commit=False) as session:
-    stmt = select(Workflow).where(
-        Workflow.id == workflow_id,
-        Workflow.tenant_id == tenant_id,
-    )
-    workflow = session.execute(stmt).scalar_one_or_none()
-```
-
-- Prefer SQLAlchemy expressions; avoid raw SQL unless necessary.
-- Always scope queries by `tenant_id` and protect write paths with safeguards (`FOR UPDATE`, row counts, etc.).
-- Introduce repository abstractions only for very large tables (e.g., workflow executions) or when alternative storage strategies are required.
-
-### Storage & External I/O
-
-- Access storage via `extensions.ext_storage.storage`.
-- Use `core.helper.ssrf_proxy` for outbound HTTP fetches.
-- Background tasks that touch storage must be idempotent, and should log relevant object identifiers.
-
-### Pydantic Usage
-
-- Define DTOs with Pydantic v2 models and forbid extras by default.
-- Use `@field_validator` / `@model_validator` for domain rules.
-
-Example:
-
-```python
-from pydantic import BaseModel, ConfigDict, HttpUrl, field_validator
-
-
-class TriggerConfig(BaseModel):
-    endpoint: HttpUrl
-    secret: str
-
-    model_config = ConfigDict(extra="forbid")
-
-    @field_validator("secret")
-    def ensure_secret_prefix(cls, value: str) -> str:
-        if not value.startswith("dify_"):
-            raise ValueError("secret must start with dify_")
-        return value
-```
-
-### Generics & Protocols
-
-- Use `typing.Protocol` to define behavioural contracts (e.g., cache interfaces).
-- Apply generics (`TypeVar`, `Generic`) for reusable utilities like caches or providers.
-- Validate dynamic inputs at runtime when generics cannot enforce safety alone.
-
-### Tooling & Checks
-
-Quick checks while iterating:
-
-- Format: `make format`
-- Lint (includes auto-fix): `make lint`
+- Format and lint: `make lint`
 - Type check: `make type-check`
-- Targeted tests: `make test TARGET_TESTS=./api/tests/<target_tests>`
+- Unit tests: `make test`
+- Targeted tests: `make test TARGET_TESTS=./api/tests/<path>`
 
-Before opening a PR / submitting:
+Run direct Python commands through `uv run --project api`. Docker-backed integration suites are normally CI-owned. Do not start long-running services as part of routine agent work.
 
-- `make lint`
-- `make type-check`
-- `make test`
+Follow the backend developer guide's [test layout and naming requirements](README.md#testing) when adding or moving unit tests.
 
-### Controllers & Services
+## Architecture And Boundaries
 
-- Controllers: parse input via Pydantic, invoke services, return serialised responses; no business logic.
-- Services: coordinate repositories, providers, background tasks; keep side effects explicit.
-- Document non-obvious behaviour with concise docstrings and comments.
+Read all backend architecture documentation before modifying backend code:
 
-### Miscellaneous
+- [Backend architecture][architecture]
+- [Repositories][repositories]
+- [SQLAlchemy][sqlalchemy]
+- [Database schema][db-schema]
+- [API schema guide][schema-guide]
 
-- Use `configs.dify_config` for configuration—never read environment variables directly.
-- Maintain tenant awareness end-to-end; `tenant_id` must flow through every layer touching shared resources.
-- Queue async work through `services/async_workflow_service`; implement tasks under `tasks/` with explicit queue selection.
-- Keep experimental scripts under `dev/`; do not ship them in production builds.
+## Additional Backend Rules
+
+- Reconstruct trusted internal references from validated database state after payload or async boundaries.
+- Read configuration through `configs.dify_config`, access storage through `extensions.ext_storage.storage`, and route outbound HTTP through the existing SSRF-safe owner in `core.helper.ssrf_proxy`.
+- Use existing Celery task and queue owners for asynchronous work; do not route unrelated jobs through workflow-specific services.
+- Celery tasks that may be retried or redelivered must keep side effects idempotent and log affected resource identifiers.
+
+New SQLAlchemy models must inherit from `models.base.TypeBase`. The ast-grep
+guard rejects new `Base` subclasses. Existing `Base` subclasses may be edited
+or migrated without adding more legacy inheritance. `make lint` checks local
+changes, and CI checks the PR against its target revision.
+
+## Billing And SaaS Calls
+
+- Call billing and saas only through the generated functions in `services/billing_client`; do not hand-write paths or response types.
+- Ruff's banned-api rule (TID251) enforces this: outside `services/billing_client`, reading the billing URL and secret settings or calling `transport.request` fails lint.
+- To call a new endpoint, add it to `ALLOWED_OPERATIONS` in `dev/generate_billing_client.py` and rerun that script against a dify-saas checkout. Never edit the generated modules or snapshots by hand.
+
+## Typing Best Practises
+
+- Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
+- Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
+
+## Invariants And Construction
+
+- Start each design from explicit principles and domain invariants. An invariant is a condition that all valid states preserve.
+- Derive implementation rules and memory documents from these principles. Explain the invariant that each rule protects.
+- Document each invariant in the docstring of the module, class, or function that owns it. Use a comment for a local invariant.
+- Use abstract interpretation to reason about possible values and state transitions. Check that each operation preserves the relevant invariants.
+- Use dedicated types to distinguish domain values with different meanings. Use `NewType` for static distinctions between values with identical representations.
+- `NewType` does not validate values at runtime. Use validated value objects when an invariant requires runtime checks.
+- Model mutually exclusive alternatives (an OR relationship) with union types. Use a tagged union when variants need an explicit discriminator.
+- Give each tagged variant a distinct `Literal` tag. Include only the fields that are valid for that variant.
+- Prefer safe-by-construction functional idioms. Use immutable values, explicit result variants, and pure functions where practical.
+- Validate external values at boundaries with Pydantic v2 models or `TypeAdapter`. Construct trusted domain values only after validation succeeds.
+
+## Control Flow And Contracts
+
+- Use structured control flow. Do not add `continue` or `break` statements.
+- Express iteration with explicit conditions, comprehensions, or small functions that return a result.
+- State preconditions and postconditions for each new or changed function in the code you produce.
+- Put these contracts in the function docstring. Include accepted inputs, required state, results, side effects, and failure behavior as applicable.
+- Specify which invariants remain true after success and failure. Use types and executable checks to enforce contracts where practical.
+- Include preconditions and postconditions in the change report. State which checks support the claimed postconditions.
+
+[architecture]: ../docs/BACKEND_ARCHITECTURE.md
+[repositories]: ../docs/BACKEND_REPOSITORIES.md
+[sqlalchemy]: ../docs/BACKEND_SQLALCHEMY.md
+[db-schema]: ../docs/BACKEND_DATABASE_SCHEMA.md
+[schema-guide]: controllers/API_SCHEMA_GUIDE.md

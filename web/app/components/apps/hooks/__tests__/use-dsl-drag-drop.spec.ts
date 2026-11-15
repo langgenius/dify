@@ -1,474 +1,117 @@
 import { act, renderHook } from '@testing-library/react'
 import { useDSLDragDrop } from '../use-dsl-drag-drop'
 
+const file = (name = 'test.yaml') => new File(['content'], name, { type: 'application/x-yaml' })
+
+const dispatch = (
+  target: HTMLElement,
+  type: string,
+  files: File[] | null = [],
+  relatedTarget: EventTarget | null = null,
+) => {
+  const event = new Event(type, { bubbles: true, cancelable: true })
+  Object.defineProperties(event, {
+    dataTransfer: {
+      value: files === null ? null : { files, types: files.length ? ['Files'] : [] },
+    },
+    relatedTarget: { value: relatedTarget },
+  })
+  act(() => {
+    target.dispatchEvent(event)
+  })
+  return event
+}
+
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
-  let mockOnDSLFileDropped = vi.fn<(file: File) => void>()
-
+  const onDSLFileDropped = vi.fn()
   beforeEach(() => {
-    vi.clearAllMocks()
+    onDSLFileDropped.mockReset()
     container = document.createElement('div')
-    document.body.appendChild(container)
-    mockOnDSLFileDropped = vi.fn<(file: File) => void>()
+    document.body.append(container)
   })
-
   afterEach(() => {
-    document.body.removeChild(container)
+    container.remove()
   })
 
-  const createDragEvent = (type: string, files: File[] = []) => {
-    const dataTransfer = {
-      types: files.length > 0 ? ['Files'] : [],
-      files,
+  const setup = (enabled = true) => {
+    const dropZoneRef = { current: container }
+    return renderHook(({ enabled }) => useDSLDragDrop({ dropZoneRef, onDSLFileDropped, enabled }), {
+      initialProps: { enabled },
+    })
+  }
+
+  it('activates only for files, stays active across child elements, and clears on leaving the zone', () => {
+    const viewport = document.createElement('div')
+    const overlay = document.createElement('div')
+    container.append(viewport, overlay)
+    const { result } = setup()
+    expect(result.current.dragging).toBe(false)
+    dispatch(viewport, 'dragenter')
+    expect(result.current.dragging).toBe(false)
+    dispatch(viewport, 'dragenter', [file()])
+    expect(result.current.dragging).toBe(true)
+    dispatch(viewport, 'dragleave', [], overlay)
+    expect(result.current.dragging).toBe(true)
+    dispatch(overlay, 'dragleave', [], document.body)
+    expect(result.current.dragging).toBe(false)
+  })
+
+  it('prevents the browser default and stops dragover from reaching parent drop zones', () => {
+    setup()
+    const parentDragOver = vi.fn()
+    document.body.addEventListener('dragover', parentDragOver)
+    try {
+      expect(dispatch(container, 'dragover').defaultPrevented).toBe(true)
+      expect(parentDragOver).not.toHaveBeenCalled()
+    } finally {
+      document.body.removeEventListener('dragover', parentDragOver)
     }
-
-    const event = new Event(type, { bubbles: true, cancelable: true }) as DragEvent
-    Object.defineProperty(event, 'dataTransfer', {
-      value: dataTransfer,
-      writable: false,
-    })
-    Object.defineProperty(event, 'preventDefault', {
-      value: vi.fn(),
-      writable: false,
-    })
-    Object.defineProperty(event, 'stopPropagation', {
-      value: vi.fn(),
-      writable: false,
-    })
-
-    return event
-  }
-
-  const createMockFile = (name: string) => {
-    return new File(['content'], name, { type: 'application/x-yaml' })
-  }
-
-  describe('Basic functionality', () => {
-    it('should return dragging state', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should initialize with dragging as false', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-    })
   })
 
-  describe('Drag events', () => {
-    it('should set dragging to true on dragenter with files', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file = createMockFile('test.yaml')
-      const event = createDragEvent('dragenter', [file])
-
-      act(() => {
-        container.dispatchEvent(event)
-      })
-
+  it.each(['test.yaml', 'test.yml', 'test.YAML', 'agent.ifpkg', 'agent.IFPKG'])(
+    'imports the first dropped %s and clears the drag state',
+    (filename) => {
+      const { result } = setup()
+      const first = file(filename)
+      dispatch(container, 'dragenter', [first])
       expect(result.current.dragging).toBe(true)
-    })
-
-    it('should not set dragging on dragenter without files', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const event = createDragEvent('dragenter', [])
-
-      act(() => {
-        container.dispatchEvent(event)
-      })
-
+      expect(dispatch(container, 'drop', [first, file('second.yaml')]).defaultPrevented).toBe(true)
+      expect(onDSLFileDropped).toHaveBeenCalledExactlyOnceWith(first)
       expect(result.current.dragging).toBe(false)
-    })
+    },
+  )
 
-    it('should handle dragover event', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const event = createDragEvent('dragover')
-
-      act(() => {
-        container.dispatchEvent(event)
-      })
-
-      expect(event.preventDefault).toHaveBeenCalled()
-      expect(event.stopPropagation).toHaveBeenCalled()
-    })
-
-    it('should set dragging to false on dragleave when leaving container', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      const leaveEvent = createDragEvent('dragleave')
-      Object.defineProperty(leaveEvent, 'relatedTarget', {
-        value: null,
-        writable: false,
-      })
-
-      act(() => {
-        container.dispatchEvent(leaveEvent)
-      })
-
+  it.each([{ files: null }, { files: [] }, { files: [file('test.json')] }])(
+    'ignores an unsupported or missing file payload (%j)',
+    ({ files }) => {
+      const { result } = setup()
+      dispatch(container, 'dragenter', [file()])
+      dispatch(container, 'drop', files)
       expect(result.current.dragging).toBe(false)
-    })
+      expect(onDSLFileDropped).not.toHaveBeenCalled()
+    },
+  )
 
-    it('should not set dragging to false on dragleave when within container', () => {
-      const containerRef = { current: container }
-      const childElement = document.createElement('div')
-      container.appendChild(childElement)
-
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      const leaveEvent = createDragEvent('dragleave')
-      Object.defineProperty(leaveEvent, 'relatedTarget', {
-        value: childElement,
-        writable: false,
-      })
-
-      act(() => {
-        container.dispatchEvent(leaveEvent)
-      })
-
-      expect(result.current.dragging).toBe(true)
-
-      container.removeChild(childElement)
-    })
+  it('does not accept files while disabled, including after disabling an active drag', () => {
+    const { result, rerender } = setup(false)
+    dispatch(container, 'dragenter', [file()])
+    dispatch(container, 'drop', [file()])
+    expect(result.current.dragging).toBe(false)
+    expect(onDSLFileDropped).not.toHaveBeenCalled()
+    rerender({ enabled: true })
+    dispatch(container, 'dragenter', [file()])
+    expect(result.current.dragging).toBe(true)
+    rerender({ enabled: false })
+    expect(result.current.dragging).toBe(false)
+    dispatch(container, 'drop', [file()])
+    expect(onDSLFileDropped).not.toHaveBeenCalled()
   })
 
-  describe('Drop functionality', () => {
-    it('should call onDSLFileDropped for .yaml file', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file = createMockFile('test.yaml')
-      const dropEvent = createDragEvent('drop', [file])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
-    })
-
-    it('should call onDSLFileDropped for .yml file', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file = createMockFile('test.yml')
-      const dropEvent = createDragEvent('drop', [file])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
-    })
-
-    it('should call onDSLFileDropped for uppercase .YAML file', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file = createMockFile('test.YAML')
-      const dropEvent = createDragEvent('drop', [file])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file)
-    })
-
-    it('should not call onDSLFileDropped for non-yaml file', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file = createMockFile('test.json')
-      const dropEvent = createDragEvent('drop', [file])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).not.toHaveBeenCalled()
-    })
-
-    it('should set dragging to false on drop', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      const dropEvent = createDragEvent('drop', [createMockFile('test.yaml')])
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should handle drop with no dataTransfer', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const event = new Event('drop', { bubbles: true, cancelable: true }) as DragEvent
-      Object.defineProperty(event, 'dataTransfer', {
-        value: null,
-        writable: false,
-      })
-      Object.defineProperty(event, 'preventDefault', {
-        value: vi.fn(),
-        writable: false,
-      })
-      Object.defineProperty(event, 'stopPropagation', {
-        value: vi.fn(),
-        writable: false,
-      })
-
-      act(() => {
-        container.dispatchEvent(event)
-      })
-
-      expect(mockOnDSLFileDropped).not.toHaveBeenCalled()
-    })
-
-    it('should handle drop with empty files array', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const dropEvent = createDragEvent('drop', [])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).not.toHaveBeenCalled()
-    })
-
-    it('should only process the first file when multiple files are dropped', () => {
-      const containerRef = { current: container }
-      renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const file1 = createMockFile('test1.yaml')
-      const file2 = createMockFile('test2.yaml')
-      const dropEvent = createDragEvent('drop', [file1, file2])
-
-      act(() => {
-        container.dispatchEvent(dropEvent)
-      })
-
-      expect(mockOnDSLFileDropped).toHaveBeenCalledTimes(1)
-      expect(mockOnDSLFileDropped).toHaveBeenCalledWith(file1)
-    })
-  })
-
-  describe('Enabled prop', () => {
-    it('should not add event listeners when enabled is false', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-          enabled: false,
-        }),
-      )
-
-      const file = createMockFile('test.yaml')
-      const enterEvent = createDragEvent('dragenter', [file])
-
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should return dragging as false when enabled is false even if state is true', () => {
-      const containerRef = { current: container }
-      const { result, rerender } = renderHook(
-        ({ enabled }) =>
-          useDSLDragDrop({
-            onDSLFileDropped: mockOnDSLFileDropped,
-            containerRef,
-            enabled,
-          }),
-        { initialProps: { enabled: true } },
-      )
-
-      const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-      expect(result.current.dragging).toBe(true)
-
-      rerender({ enabled: false })
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should default enabled to true', () => {
-      const containerRef = { current: container }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      const enterEvent = createDragEvent('dragenter', [createMockFile('test.yaml')])
-
-      act(() => {
-        container.dispatchEvent(enterEvent)
-      })
-
-      expect(result.current.dragging).toBe(true)
-    })
-  })
-
-  describe('Cleanup', () => {
-    it('should remove event listeners on unmount', () => {
-      const containerRef = { current: container }
-      const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener')
-
-      const { unmount } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      unmount()
-
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragenter', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragover', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('dragleave', expect.any(Function))
-      expect(removeEventListenerSpy).toHaveBeenCalledWith('drop', expect.any(Function))
-
-      removeEventListenerSpy.mockRestore()
-    })
-  })
-
-  describe('Edge cases', () => {
-    it('should handle null containerRef', () => {
-      const containerRef = { current: null }
-      const { result } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      expect(result.current.dragging).toBe(false)
-    })
-
-    it('should handle containerRef changing to null', () => {
-      const containerRef = { current: container as HTMLDivElement | null }
-      const { result, rerender } = renderHook(() =>
-        useDSLDragDrop({
-          onDSLFileDropped: mockOnDSLFileDropped,
-          containerRef,
-        }),
-      )
-
-      containerRef.current = null
-      rerender()
-
-      expect(result.current.dragging).toBe(false)
-    })
+  it('stops intercepting dropped files after unmount', () => {
+    const { unmount } = setup()
+    unmount()
+    expect(dispatch(container, 'drop', [file()]).defaultPrevented).toBe(false)
+    expect(onDSLFileDropped).not.toHaveBeenCalled()
   })
 })

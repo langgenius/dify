@@ -6,41 +6,41 @@ from core.helper.csv_sanitizer import CSVSanitizer
 class TestCSVSanitizer:
     """Test cases for CSV sanitization to prevent formula injection attacks."""
 
-    def test_sanitize_formula_equals(self):
+    def test_sanitize_formula_equals(self) -> None:
         """Test sanitizing values starting with = (most common formula injection)."""
         assert CSVSanitizer.sanitize_value("=cmd|'/c calc'!A0") == "'=cmd|'/c calc'!A0"
         assert CSVSanitizer.sanitize_value("=SUM(A1:A10)") == "'=SUM(A1:A10)"
         assert CSVSanitizer.sanitize_value("=1+1") == "'=1+1"
         assert CSVSanitizer.sanitize_value("=@SUM(1+1)") == "'=@SUM(1+1)"
 
-    def test_sanitize_formula_plus(self):
+    def test_sanitize_formula_plus(self) -> None:
         """Test sanitizing values starting with + (plus formula injection)."""
         assert CSVSanitizer.sanitize_value("+1+1+cmd|'/c calc") == "'+1+1+cmd|'/c calc"
         assert CSVSanitizer.sanitize_value("+123") == "'+123"
         assert CSVSanitizer.sanitize_value("+cmd|'/c calc'!A0") == "'+cmd|'/c calc'!A0"
 
-    def test_sanitize_formula_minus(self):
+    def test_sanitize_formula_minus(self) -> None:
         """Test sanitizing values starting with - (minus formula injection)."""
         assert CSVSanitizer.sanitize_value("-2+3+cmd|'/c calc") == "'-2+3+cmd|'/c calc"
         assert CSVSanitizer.sanitize_value("-456") == "'-456"
         assert CSVSanitizer.sanitize_value("-cmd|'/c notepad") == "'-cmd|'/c notepad"
 
-    def test_sanitize_formula_at(self):
+    def test_sanitize_formula_at(self) -> None:
         """Test sanitizing values starting with @ (at-sign formula injection)."""
         assert CSVSanitizer.sanitize_value("@SUM(1+1)*cmd|'/c calc") == "'@SUM(1+1)*cmd|'/c calc"
         assert CSVSanitizer.sanitize_value("@AVERAGE(1,2,3)") == "'@AVERAGE(1,2,3)"
 
-    def test_sanitize_formula_tab(self):
+    def test_sanitize_formula_tab(self) -> None:
         """Test sanitizing values starting with tab character."""
         assert CSVSanitizer.sanitize_value("\t=1+1") == "'\t=1+1"
         assert CSVSanitizer.sanitize_value("\tcalc") == "'\tcalc"
 
-    def test_sanitize_formula_carriage_return(self):
+    def test_sanitize_formula_carriage_return(self) -> None:
         """Test sanitizing values starting with carriage return."""
         assert CSVSanitizer.sanitize_value("\r=1+1") == "'\r=1+1"
         assert CSVSanitizer.sanitize_value("\rcmd") == "'\rcmd"
 
-    def test_sanitize_safe_values(self):
+    def test_sanitize_safe_values(self) -> None:
         """Test that safe values are not modified."""
         assert CSVSanitizer.sanitize_value("Hello World") == "Hello World"
         assert CSVSanitizer.sanitize_value("123") == "123"
@@ -48,18 +48,18 @@ class TestCSVSanitizer:
         assert CSVSanitizer.sanitize_value("Normal text") == "Normal text"
         assert CSVSanitizer.sanitize_value("Question: How are you?") == "Question: How are you?"
 
-    def test_sanitize_safe_values_with_special_chars_in_middle(self):
+    def test_sanitize_safe_values_with_special_chars_in_middle(self) -> None:
         """Test that special characters in the middle are not escaped."""
         assert CSVSanitizer.sanitize_value("A = B + C") == "A = B + C"
         assert CSVSanitizer.sanitize_value("Price: $10 + $20") == "Price: $10 + $20"
         assert CSVSanitizer.sanitize_value("Email: user@domain.com") == "Email: user@domain.com"
 
-    def test_sanitize_empty_values(self):
+    def test_sanitize_empty_values(self) -> None:
         """Test handling of empty values."""
         assert CSVSanitizer.sanitize_value("") == ""
         assert CSVSanitizer.sanitize_value(None) == ""
 
-    def test_sanitize_numeric_types(self):
+    def test_sanitize_numeric_types(self) -> None:
         """Test handling of numeric types."""
         assert CSVSanitizer.sanitize_value(123) == "123"
         assert CSVSanitizer.sanitize_value(456.789) == "456.789"
@@ -67,12 +67,12 @@ class TestCSVSanitizer:
         # Negative numbers should be escaped (start with -)
         assert CSVSanitizer.sanitize_value(-123) == "'-123"
 
-    def test_sanitize_boolean_types(self):
+    def test_sanitize_boolean_types(self) -> None:
         """Test handling of boolean types."""
         assert CSVSanitizer.sanitize_value(True) == "True"
         assert CSVSanitizer.sanitize_value(False) == "False"
 
-    def test_sanitize_dict_with_specific_fields(self):
+    def test_sanitize_dict_with_specific_fields(self) -> None:
         """Test sanitizing specific fields in a dictionary."""
         data = {
             "question": "=1+1",
@@ -87,7 +87,7 @@ class TestCSVSanitizer:
         assert sanitized["safe_field"] == "Normal text"
         assert sanitized["id"] == "12345"
 
-    def test_sanitize_dict_all_string_fields(self):
+    def test_sanitize_dict_all_string_fields(self) -> None:
         """Test sanitizing all string fields when no field list provided."""
         data = {
             "question": "=1+1",
@@ -100,7 +100,7 @@ class TestCSVSanitizer:
         assert sanitized["answer"] == "'+calc"
         assert sanitized["id"] == 123  # Unchanged
 
-    def test_sanitize_dict_with_missing_fields(self):
+    def test_sanitize_dict_with_missing_fields(self) -> None:
         """Test that missing fields in dict don't cause errors."""
         data = {"question": "=1+1"}
         sanitized = CSVSanitizer.sanitize_dict(data, ["question", "nonexistent_field"])
@@ -108,7 +108,7 @@ class TestCSVSanitizer:
         assert sanitized["question"] == "'=1+1"
         assert "nonexistent_field" not in sanitized
 
-    def test_sanitize_dict_creates_copy(self):
+    def test_sanitize_dict_creates_copy(self) -> None:
         """Test that sanitize_dict creates a copy and doesn't modify original."""
         original = {"question": "=1+1", "answer": "Normal"}
         sanitized = CSVSanitizer.sanitize_dict(original, ["question"])
@@ -116,7 +116,7 @@ class TestCSVSanitizer:
         assert original["question"] == "=1+1"  # Original unchanged
         assert sanitized["question"] == "'=1+1"  # Copy sanitized
 
-    def test_real_world_csv_injection_payloads(self):
+    def test_real_world_csv_injection_payloads(self) -> None:
         """Test against real-world CSV injection attack payloads."""
         # Common DDE (Dynamic Data Exchange) attack payloads
         payloads = [
@@ -135,7 +135,7 @@ class TestCSVSanitizer:
             assert result.startswith("'"), f"Payload not sanitized: {payload}"
             assert result == f"'{payload}", f"Unexpected sanitization for: {payload}"
 
-    def test_multiline_strings(self):
+    def test_multiline_strings(self) -> None:
         """Test handling of multiline strings."""
         multiline = "Line 1\nLine 2\nLine 3"
         assert CSVSanitizer.sanitize_value(multiline) == multiline
@@ -143,7 +143,7 @@ class TestCSVSanitizer:
         multiline_with_formula = "=SUM(A1)\nLine 2"
         assert CSVSanitizer.sanitize_value(multiline_with_formula) == f"'{multiline_with_formula}"
 
-    def test_whitespace_only_strings(self):
+    def test_whitespace_only_strings(self) -> None:
         """Test handling of whitespace-only strings."""
         assert CSVSanitizer.sanitize_value("   ") == "   "
         assert CSVSanitizer.sanitize_value("\n\n") == "\n\n"

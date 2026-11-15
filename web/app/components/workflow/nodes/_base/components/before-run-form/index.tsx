@@ -5,15 +5,15 @@ import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
-import { toast } from '@/app/components/base/ui/toast'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
+import { toast } from '@/app/notifications'
 import Form from './form'
 import {
   buildSubmitData,
@@ -39,11 +39,12 @@ export type BeforeRunFormProps = {
   existVarValuesInForms: Record<string, any>[]
   filteredExistVarForms: FormProps[]
   showGeneratedForm?: boolean
+  isGeneratingForm?: boolean
   handleShowGeneratedForm?: (data: Record<string, any>) => void
   handleHideGeneratedForm?: () => void
   formData?: HumanInputFormData
   handleSubmitHumanInputForm?: (data: any) => Promise<void>
-  handleAfterHumanInputStepRun?: () => void
+  handleAfterHumanInputStepRun?: () => void | Promise<void>
 } & Partial<SpecialResultPanelProps>
 
 const BeforeRunForm: FC<BeforeRunFormProps> = ({
@@ -55,14 +56,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   filteredExistVarForms,
   existVarValuesInForms,
   showGeneratedForm = false,
+  isGeneratingForm = false,
   handleShowGeneratedForm,
   handleHideGeneratedForm,
   formData,
   handleSubmitHumanInputForm,
   handleAfterHumanInputStepRun,
 }) => {
-  const { t } = useTranslation()
-
+  const { t } = useTranslation(['appDebug', 'workflow', 'workflowHumanInput'])
   const isHumanInput = nodeType === BlockEnum.HumanInput
   const showBackButton = filteredExistVarForms.length > 0
 
@@ -77,51 +78,41 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
 
     const { submitData, parseErrorJsonField } = buildSubmitData(forms)
     if (parseErrorJsonField) {
-      toast.error(t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }))
+      toast.error(
+        t(($) => $['errorMsg.invalidJson'], { ns: 'workflow', field: parseErrorJsonField }),
+      )
       return
     }
 
-    if (isHumanInput)
-      handleShowGeneratedForm?.(submitData)
-    else
-      onRun(submitData)
+    if (isHumanInput) handleShowGeneratedForm?.(submitData)
+    else onRun(submitData)
   }
 
   const handleHumanInputFormSubmit = async (data: any) => {
     await handleSubmitHumanInputForm?.(data)
-    handleAfterHumanInputStepRun?.()
+    await handleAfterHumanInputStepRun?.()
   }
 
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
-    if (hasRun.current)
-      return
+    if (hasRun.current) return
     hasRun.current = true
-    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
-      onRun({})
+    if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput)) onRun({})
     if (shouldAutoShowGeneratedForm(filteredExistVarForms, isHumanInput))
       handleShowGeneratedForm?.({})
   }, [filteredExistVarForms, handleShowGeneratedForm, isHumanInput, onRun])
 
-  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput))
-    return null
+  if (shouldAutoRunBeforeRunForm(filteredExistVarForms, isHumanInput)) return null
 
   return (
-    <PanelWrap
-      nodeName={nodeName}
-      onHide={onHide}
-    >
+    <PanelWrap nodeName={nodeName} onHide={onHide}>
       <div className="h-0 grow overflow-y-auto pb-4">
         {!showGeneratedForm && (
           <div className="mt-3 space-y-4 px-4">
             {filteredExistVarForms.map((form, index) => (
               <div key={index}>
-                <Form
-                  key={index}
-                  className={cn(index < forms.length - 1 && 'mb-4')}
-                  {...form}
-                />
+                <Form key={index} className={cn(index < forms.length - 1 && 'mb-4')} {...form} />
                 {index < forms.length - 1 && <Split />}
               </div>
             ))}
@@ -139,13 +130,26 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
         {!showGeneratedForm && (
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
-              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
+              <Button
+                disabled={!isFileLoaded || isGeneratingForm}
+                variant="primary"
+                className="w-0 grow"
+                onClick={handleRunOrGenerateForm}
+              >
+                <div>{t(($) => $[`${i18nPrefix}.startRun`], { ns: 'workflow' })}</div>
               </Button>
             )}
             {isHumanInput && (
-              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t('nodes.humanInput.singleRun.button', { ns: 'workflow' })}</div>
+              <Button
+                disabled={!isFileLoaded || isGeneratingForm}
+                loading={isGeneratingForm}
+                variant="primary"
+                className="w-0 grow"
+                onClick={handleRunOrGenerateForm}
+              >
+                <div>
+                  {t(($) => $['nodes.humanInput.singleRun.button'], { ns: 'workflowHumanInput' })}
+                </div>
               </Button>
             )}
           </div>

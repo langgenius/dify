@@ -1,0 +1,121 @@
+import * as amplitude from '@amplitude/analytics-browser'
+import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
+import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+
+const mockConfig = vi.hoisted(() => ({
+  AMPLITUDE_API_KEY: 'test-api-key',
+}))
+
+let ensureAmplitudeInitialized: typeof import('../init').ensureAmplitudeInitialized
+
+vi.mock('@/config', () => ({
+  get AMPLITUDE_API_KEY() {
+    return mockConfig.AMPLITUDE_API_KEY
+  },
+}))
+
+vi.mock('@amplitude/analytics-browser', () => ({
+  init: vi.fn(),
+  add: vi.fn(),
+  setOptOut: vi.fn(),
+  track: vi.fn(),
+  flush: vi.fn(),
+  setUserId: vi.fn(),
+  Identify: vi.fn(),
+  identify: vi.fn(),
+  reset: vi.fn(),
+}))
+
+vi.mock('@amplitude/plugin-session-replay-browser', () => ({
+  sessionReplayPlugin: vi.fn(() => ({ name: 'session-replay' })),
+}))
+
+describe('amplitude init helper', () => {
+  beforeEach(async () => {
+    vi.resetModules()
+    vi.clearAllMocks()
+    mockConfig.AMPLITUDE_API_KEY = 'test-api-key'
+    const init = await import('../init')
+    ensureAmplitudeInitialized = init.ensureAmplitudeInitialized
+    init.setAmplitudeOptOut(false)
+  })
+
+  describe('ensureAmplitudeInitialized', () => {
+    it('initializes once for concurrent calls and notifies readiness only after plugins are registered', async () => {
+      const { getIsAmplitudeInitialized, subscribeAmplitudeInitialization } =
+        await import('../init')
+      const listener = vi.fn(() => {
+        expect(amplitude.add).toHaveBeenCalledWith(
+          expect.objectContaining({ name: 'page-name-enrichment' }),
+        )
+        expect(amplitude.add).toHaveBeenCalledWith({ name: 'session-replay' })
+        expect(getIsAmplitudeInitialized()).toBe(true)
+      })
+      const removedListener = vi.fn()
+      subscribeAmplitudeInitialization(removedListener)()
+      const unsubscribe = subscribeAmplitudeInitialization(listener)
+      expect(getIsAmplitudeInitialized()).toBe(false)
+      await Promise.all([
+        ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.8 }),
+        ensureAmplitudeInitialized({ sessionReplaySampleRate: 0.2 }),
+      ])
+
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
+      expect(amplitude.init).toHaveBeenCalledWith('test-api-key', {
+        autocapture: {
+          sessions: true,
+          pageViews: true,
+          formInteractions: true,
+          fileDownloads: true,
+          attribution: true,
+        },
+      })
+      expect(sessionReplayPlugin).toHaveBeenCalledTimes(1)
+      expect(sessionReplayPlugin).toHaveBeenCalledWith({ sampleRate: 0.8 })
+      expect(listener).toHaveBeenCalledTimes(1)
+      expect(removedListener).not.toHaveBeenCalled()
+      await ensureAmplitudeInitialized()
+      expect(amplitude.init).toHaveBeenCalledTimes(1)
+      unsubscribe()
+    })
+
+    it('allows a later initialization attempt after SDK setup fails', async () => {
+      const { getIsAmplitudeInitialized } = await import('../init')
+      vi.mocked(amplitude.init).mockImplementationOnce(() => {
+        throw new Error('SDK setup failed')
+      })
+
+      await expect(ensureAmplitudeInitialized()).rejects.toThrow('SDK setup failed')
+      expect(getIsAmplitudeInitialized()).toBe(false)
+
+      await ensureAmplitudeInitialized()
+      expect(getIsAmplitudeInitialized()).toBe(true)
+      expect(amplitude.init).toHaveBeenCalledTimes(2)
+    })
+
+    it('should skip initialization when amplitude is disabled', async () => {
+      mockConfig.AMPLITUDE_API_KEY = ''
+
+      await ensureAmplitudeInitialized()
+
+      expect(amplitude.init).not.toHaveBeenCalled()
+      expect(sessionReplayPlugin).not.toHaveBeenCalled()
+      expect(amplitude.add).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('setAmplitudeOptOut', () => {
+    it('only updates opt-out after amplitude has initialized', async () => {
+      const { setAmplitudeOptOut } = await import('../init')
+
+      setAmplitudeOptOut(true)
+      expect(amplitude.setOptOut).not.toHaveBeenCalled()
+
+      setAmplitudeOptOut(false)
+      await ensureAmplitudeInitialized()
+      setAmplitudeOptOut(true)
+
+      expect(amplitude.setOptOut).toHaveBeenCalledWith(true)
+    })
+  })
+})

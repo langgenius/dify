@@ -10,7 +10,8 @@ const meta = {
     layout: 'fullscreen',
     docs: {
       description: {
-        component: 'Wrapper that renders content in a drawer on mobile and inline on desktop. Useful for responsive settings panels.',
+        component:
+          'Wrapper that renders content in a drawer on mobile and inline on desktop. Useful for responsive settings panels.',
       },
     },
   },
@@ -22,10 +23,10 @@ type Story = StoryObj<typeof meta>
 
 const ContainerDemo = () => {
   const [open, setOpen] = useState(false)
-  const [isMobile, setIsMobile] = useState(false)
+  const [isDrawer, setIsDrawer] = useState(false)
 
   return (
-    <div className="flex h-[360px] flex-col gap-4 bg-background-default-subtle p-6">
+    <div className="flex h-90 flex-col gap-4 bg-background-default-subtle p-6">
       <div className="flex items-center gap-3">
         <button
           type="button"
@@ -37,25 +38,25 @@ const ContainerDemo = () => {
         <label className="flex items-center gap-1 text-xs text-text-secondary">
           <input
             type="checkbox"
-            checked={isMobile}
-            onChange={e => setIsMobile(e.target.checked)}
+            checked={isDrawer}
+            onChange={(e) => setIsDrawer(e.target.checked)}
           />
-          Simulate mobile
+          Drawer presentation
         </label>
       </div>
 
       <FloatRightContainer
-        isMobile={isMobile}
+        presentation={isDrawer ? 'drawer' : 'inline'}
         isOpen={open}
         onClose={() => setOpen(false)}
         title="Responsive panel"
-        description="Switch the toggle to see drawer vs inline behaviour."
         mask
       >
         <div className="rounded-xl border border-divider-subtle bg-components-panel-bg p-4 text-xs text-text-secondary">
           <p className="mb-2 text-sm text-text-primary">Panel Content</p>
           <p>
-            On desktop, this block renders inline when `isOpen` is true. On mobile it appears inside the drawer wrapper.
+            With the inline presentation, this block renders in place when `isOpen` is true. With
+            the drawer presentation it appears inside the drawer wrapper.
           </p>
         </div>
       </FloatRightContainer>
@@ -66,7 +67,7 @@ const ContainerDemo = () => {
 export const Playground: Story = {
   render: () => <ContainerDemo />,
   args: {
-    isMobile: false,
+    presentation: 'inline',
     isOpen: false,
     onClose: fn(),
     children: null,

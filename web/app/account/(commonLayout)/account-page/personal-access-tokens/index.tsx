@@ -1,0 +1,338 @@
+'use client'
+
+import type { PersonalAccessTokenResponse } from '@dify/contracts/api/console/account/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { SavedTokenFormPayload } from './saved-token-form'
+import {
+  AlertDialog,
+  AlertDialogContent,
+  createAlertDialogHandle,
+} from '@langgenius/dify-ui/alert-dialog'
+import { Button } from '@langgenius/dify-ui/button'
+import {
+  createDialogHandle,
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import {
+  PaginationNavigation,
+  PaginationNext,
+  PaginationPageJump,
+  PaginationPrevious,
+  PaginationRoot,
+} from '@langgenius/dify-ui/pagination'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { keepPreviousData, useIsMutating, useQuery } from '@tanstack/react-query'
+import { parseAsInteger, useQueryState } from 'nuqs'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { consoleQuery } from '@/service/console'
+import DeleteToken from './delete-token'
+import SavedTokenForm from './saved-token-form'
+import ScopeDetails from './scope-details'
+import TokenActions from './token-actions'
+import TokenForm from './token-form'
+import TokenTime from './token-time'
+
+export default function PersonalAccessTokens() {
+  const { t } = useTranslation(['accountSettings', 'common'])
+  const [requestedPage, setRequestedPage] = useQueryState(
+    'patPage',
+    parseAsInteger.withDefault(1).withOptions({ history: 'push' }),
+  )
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState<PersonalAccessTokenResponse | null>(null)
+  const deleteTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const createButtonRef = useRef<HTMLButtonElement | null>(null)
+  const formTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const formDialogActionsRef = useRef<DialogActions>(null)
+  const formDialogHandle = useMemo(() => createDialogHandle<SavedTokenFormPayload>(), [])
+  const deleteDialogHandle = useMemo(() => createAlertDialogHandle(), [])
+  const creating =
+    useIsMutating({
+      mutationKey: consoleQuery.account.personalAccessTokens.post.key({
+        type: 'mutation',
+      }),
+    }) > 0
+  const updating =
+    useIsMutating({
+      mutationKey: consoleQuery.account.personalAccessTokens.byTokenId.patch.key({
+        type: 'mutation',
+      }),
+    }) > 0
+  const page = Math.max(1, requestedPage)
+  const query = useQuery(
+    consoleQuery.account.personalAccessTokens.get.queryOptions({
+      context: { silent: true },
+      input: { query: { page, limit: 20 } },
+      placeholderData: keepPreviousData,
+    }),
+  )
+  const totalPages = query.data ? Math.ceil(query.data.total / query.data.limit) : 0
+  const correctedPage =
+    query.isSuccess && !query.isFetching && !query.isPlaceholderData
+      ? Math.min(page, Math.max(1, totalPages))
+      : page
+
+  useEffect(() => {
+    if (correctedPage === requestedPage) return
+
+    void setRequestedPage(correctedPage, { history: 'replace' }) // oxlint-disable-line eslint-react/set-state-in-effect -- Synchronize the browser URL with the resolved page bounds.
+  }, [correctedPage, requestedPage, setRequestedPage])
+
+  return (
+    <>
+      <section className="mb-8" aria-labelledby="personal-access-tokens-heading">
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div>
+            <h2
+              id="personal-access-tokens-heading"
+              className="system-sm-semibold text-text-secondary"
+            >
+              {t(($) => $['personalAccessToken.title'])}
+            </h2>
+            <p className="mt-1 body-xs-regular text-text-tertiary">
+              {t(($) => $['personalAccessToken.description'])}
+            </p>
+          </div>
+          <Dialog
+            onOpenChange={(open, details) => {
+              if (!open && creating) details.cancel()
+            }}
+          >
+            <DialogTrigger render={<Button ref={createButtonRef} variant="primary" />}>
+              {t(($) => $['personalAccessToken.createButton'])}
+            </DialogTrigger>
+            <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+              <TokenForm />
+            </DialogContent>
+          </Dialog>
+        </div>
+        <div className="flex h-106 max-h-[60svh] flex-col">
+          {query.isPending && (
+            <div
+              className="flex-1 animate-pulse rounded-lg bg-background-section"
+              aria-busy="true"
+            />
+          )}
+          {query.isError && (
+            <div role="alert" className="my-auto flex flex-wrap items-center justify-center gap-2">
+              {t(($) => $['resourceAccessToken.loadError'])}
+              <Button onClick={() => query.refetch()}>
+                {t(($) => $['operation.retry'], { ns: 'common' })}
+              </Button>
+            </div>
+          )}
+          {query.data &&
+            (query.data.total === 0 ? (
+              <div className="flex flex-1 items-center justify-center rounded-lg bg-background-section system-sm-medium text-text-primary">
+                {t(($) => $['personalAccessToken.noTokens'])}
+              </div>
+            ) : (
+              <div
+                key={query.data.page}
+                className="min-h-0 flex-1 scroll-pt-9 overflow-auto rounded-lg border border-divider-regular bg-components-panel-bg"
+              >
+                <table
+                  className="w-full min-w-200 table-fixed text-start system-xs-regular text-text-secondary"
+                  aria-busy={query.isFetching}
+                >
+                  <caption className="sr-only">{t(($) => $['personalAccessToken.title'])}</caption>
+                  <thead className="sticky top-0 z-10 h-9 bg-components-panel-bg system-xs-medium text-text-tertiary">
+                    <tr>
+                      <th className="w-3/16 px-3 text-start font-medium">
+                        {t(($) => $['resourceAccessToken.name'])}
+                      </th>
+                      <th className="w-1/4 px-3 text-start font-medium">
+                        {t(($) => $['personalAccessToken.access'])}
+                      </th>
+                      <th className="w-1/5 px-3 text-start font-medium">
+                        {t(($) => $['personalAccessToken.status'])}
+                      </th>
+                      <th className="px-3 text-start font-medium">
+                        {t(($) => $['personalAccessToken.expires'])}
+                      </th>
+                      <th className="px-3 text-start font-medium">
+                        {t(($) => $['personalAccessToken.lastUsed'])}
+                      </th>
+                      <th className="w-24 px-3 text-end font-medium">
+                        {t(($) => $['resourceAccessToken.actions'])}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody inert={query.isPlaceholderData}>
+                    {query.data.data.map((token) => (
+                      <tr key={token.id} className="h-16 border-t border-divider-regular">
+                        <td className="px-3">
+                          <div className="flex flex-col items-start">
+                            <Dialog>
+                              <Tooltip>
+                                <TooltipTrigger
+                                  render={
+                                    <DialogTrigger className="max-w-full truncate font-medium underline underline-offset-2" />
+                                  }
+                                >
+                                  {token.name}
+                                </TooltipTrigger>
+                                <TooltipContent>{token.name}</TooltipContent>
+                              </Tooltip>
+                              <DialogContent className="w-150 has-[[data-pat-created]]:w-130">
+                                <ScopeDetails tokenId={token.id} />
+                              </DialogContent>
+                            </Dialog>
+                            <span className="font-mono system-xs-regular text-text-tertiary">
+                              ••••{token.secret_last_four}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-3">
+                          <span>
+                            {token.resource_scope_mode === 'all'
+                              ? t(($) => $['personalAccessToken.allResources'])
+                              : token.resource_scope_mode === 'none'
+                                ? t(($) => $['personalAccessToken.none'])
+                                : t(($) => $['personalAccessToken.resourcesCount'], {
+                                    count: token.resource_count,
+                                  })}
+                          </span>
+                          {' · '}
+                          <span>
+                            {token.workspace_scope_mode === 'all'
+                              ? t(($) => $['personalAccessToken.allWorkspaces'])
+                              : token.workspace_scope_mode === 'none'
+                                ? t(($) => $['personalAccessToken.none'])
+                                : t(($) => $['personalAccessToken.workspacesCount'], {
+                                    count: token.workspace_count,
+                                  })}
+                          </span>
+                        </td>
+                        <td className="px-3">
+                          <div className="flex flex-wrap gap-1">
+                            <span
+                              className={
+                                token.status === 'expired'
+                                  ? 'rounded-full bg-background-section px-2.5 py-1 text-text-tertiary'
+                                  : 'rounded-full bg-components-badge-bg-green-soft px-2.5 py-1 text-text-success'
+                              }
+                            >
+                              {token.status === 'expired'
+                                ? t(($) => $['personalAccessToken.expired'])
+                                : t(($) => $['personalAccessToken.active'])}
+                            </span>
+                            {token.unavailable_count > 0 && (
+                              <span className="rounded-full bg-components-badge-bg-orange-soft px-2.5 py-1 text-text-warning">
+                                {t(($) => $['personalAccessToken.unavailableCount'], {
+                                  count: token.unavailable_count,
+                                })}
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3">
+                          <TokenTime value={token.expires_at} expiration />
+                        </td>
+                        <td className="px-3 text-text-tertiary">
+                          <TokenTime value={token.last_used_at} />
+                        </td>
+                        <td className="px-2">
+                          <TokenActions
+                            token={token}
+                            onDelete={(target, trigger) => {
+                              setDeleting(target)
+                              deleteTriggerRef.current = trigger
+                            }}
+                            deleteDialogHandle={deleteDialogHandle}
+                            formDialogHandle={formDialogHandle}
+                            onFormOpen={(trigger) => {
+                              formTriggerRef.current = trigger
+                            }}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ))}
+        </div>
+        <div className="mt-3 min-h-8">
+          {query.data && (page > 1 || query.data.has_more) && (
+            <PaginationRoot
+              className="justify-end gap-3 px-0 py-0"
+              aria-label={t(($) => $['personalAccessToken.title'])}
+              page={page}
+              totalPages={totalPages}
+              onPageChange={(nextPage) => {
+                if (!query.isPlaceholderData) setRequestedPage(nextPage)
+              }}
+            >
+              {query.isPlaceholderData && (
+                <span role="status" className="me-auto system-xs-regular text-text-tertiary">
+                  {t(($) => $.loading, { ns: 'common' })}
+                </span>
+              )}
+              <PaginationNavigation>
+                <PaginationPrevious
+                  aria-label={t(($) => $['resourceAccessToken.previous'])}
+                  disabled={query.isPlaceholderData}
+                  focusableWhenDisabled={query.isPlaceholderData}
+                />
+                <PaginationPageJump
+                  aria-label={t(($) => $['pagination.editPageNumber'], {
+                    ns: 'common',
+                    page,
+                    totalPages,
+                  })}
+                  inputLabel={t(($) => $['pagination.pageNumber'], { ns: 'common' })}
+                  disabled={query.isPlaceholderData}
+                  focusableWhenDisabled={query.isPlaceholderData}
+                />
+                <PaginationNext
+                  aria-label={t(($) => $['resourceAccessToken.next'])}
+                  disabled={query.isPlaceholderData}
+                  focusableWhenDisabled={query.isPlaceholderData}
+                />
+              </PaginationNavigation>
+            </PaginationRoot>
+          )}
+        </div>
+      </section>
+      <Dialog
+        handle={formDialogHandle}
+        actionsRef={formDialogActionsRef}
+        onOpenChange={(open, details) => {
+          if (!open && (creating || updating) && details.reason !== 'imperative-action')
+            details.cancel()
+        }}
+      >
+        {({ payload }) => (
+          <DialogContent
+            className="w-150 has-data-pat-created:w-130"
+            finalFocus={() =>
+              !query.isFetching && formTriggerRef.current?.isConnected
+                ? formTriggerRef.current
+                : createButtonRef.current
+            }
+          >
+            {payload && (
+              <SavedTokenForm {...payload} onSaved={() => formDialogActionsRef.current?.close()} />
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
+      <AlertDialog handle={deleteDialogHandle} open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent
+          className="w-110"
+          finalFocus={() =>
+            deleteTriggerRef.current?.isConnected
+              ? deleteTriggerRef.current
+              : createButtonRef.current
+          }
+        >
+          {deleting && <DeleteToken token={deleting} onClose={() => setDeleteOpen(false)} />}
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  )
+}

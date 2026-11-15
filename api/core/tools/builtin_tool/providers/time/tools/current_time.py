@@ -1,22 +1,25 @@
 from collections.abc import Generator
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, override
+from zoneinfo import ZoneInfo
 
-from pytz import timezone as pytz_timezone  # type: ignore[import-untyped]
+from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 class CurrentTimeTool(BuiltinTool):
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         invoke tools
         """
@@ -28,7 +31,7 @@ class CurrentTimeTool(BuiltinTool):
             return
 
         try:
-            tz = pytz_timezone(tz)
+            tz = ZoneInfo(tz)
         except Exception:
             yield self.create_text_message(f"Invalid timezone: {tz}")
             return

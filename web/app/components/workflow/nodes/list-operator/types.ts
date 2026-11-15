@@ -1,10 +1,12 @@
 import type { ComparisonOperator } from '../if-else/types'
 import type { CommonNodeType, ValueSelector, VarType } from '@/app/components/workflow/types'
 
-export enum OrderBy {
-  ASC = 'asc',
-  DESC = 'desc',
-}
+export const OrderBy = {
+  ASC: 'asc',
+  DESC: 'desc',
+} as const
+
+export type OrderBy = (typeof OrderBy)[keyof typeof OrderBy]
 
 export type Limit = {
   enabled: boolean

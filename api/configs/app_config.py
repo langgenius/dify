@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
+from pydantic import model_validator
 from pydantic.fields import FieldInfo
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict, TomlConfigSettingsSource
 
@@ -25,9 +26,11 @@ class RemoteSettingsSourceFactory(PydanticBaseSettingsSource):
     def __init__(self, settings_cls: type[BaseSettings]):
         super().__init__(settings_cls)
 
+    @override
     def get_field_value(self, field: FieldInfo, field_name: str) -> tuple[Any, str, bool]:
         raise NotImplementedError
 
+    @override
     def __call__(self) -> dict[str, Any]:
         current_state = self.current_state
         remote_source_name = current_state.get("REMOTE_SETTINGS_SOURCE_NAME")
@@ -89,7 +92,15 @@ class DifyConfig(
     # for better readability and maintainability.
     # Thanks for your concentration and consideration.
 
+    @model_validator(mode="after")
+    def validate_knowledge_fs_production_origin(self) -> "DifyConfig":
+        if self.DEPLOY_ENV.strip().upper() == "PRODUCTION":
+            if self.KNOWLEDGE_FS_BASE_URL and not self._is_secure_or_loopback_origin(self.KNOWLEDGE_FS_BASE_URL):
+                raise ValueError("KNOWLEDGE_FS_BASE_URL must use HTTPS in production unless it targets loopback")
+        return self
+
     @classmethod
+    @override
     def settings_customise_sources(
         cls,
         settings_cls: type[BaseSettings],

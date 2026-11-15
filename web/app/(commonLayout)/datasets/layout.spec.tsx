@@ -1,108 +1,78 @@
-import type { ReactNode } from 'react'
-import { render, screen, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import DatasetsLayout from './layout'
 
-const mockReplace = vi.fn()
-const mockUseAppContext = vi.fn()
-
+const navigation = vi.hoisted(() => ({ replace: vi.fn(), pathname: '/datasets' }))
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-  }),
+  useRouter: () => ({ replace: navigation.replace }),
+  usePathname: () => navigation.pathname,
 }))
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => mockUseAppContext(),
-}))
-
-vi.mock('@/context/external-api-panel-context', () => ({
-  ExternalApiPanelProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
-vi.mock('@/context/external-knowledge-api-context', () => ({
-  ExternalKnowledgeApiProvider: ({ children }: { children: ReactNode }) => <>{children}</>,
-}))
-
-type AppContextMock = {
-  isCurrentWorkspaceEditor: boolean
-  isCurrentWorkspaceDatasetOperator: boolean
-  isLoadingCurrentWorkspace: boolean
-  currentWorkspace: {
-    id: string
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.summary.get': () => new Promise(() => {}),
+      'workspaces.current.rbac.myPermissions.get': () => new Promise(() => {}),
+    }),
   }
-}
+})
 
-const baseContext: AppContextMock = {
-  isCurrentWorkspaceEditor: true,
-  isCurrentWorkspaceDatasetOperator: false,
-  isLoadingCurrentWorkspace: false,
-  currentWorkspace: {
-    id: 'workspace-1',
+beforeEach(() => {
+  navigation.replace.mockClear()
+  navigation.pathname = '/datasets'
+})
+
+it.each([{ currentWorkspace: null }, { workspacePermissionKeys: null }])(
+  'waits for access data before redirecting a creation route: %o',
+  (options) => {
+    navigation.pathname = '/datasets/create'
+    render(<DatasetsLayout>Datasets content</DatasetsLayout>, options)
+    expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText('Datasets content')).not.toBeInTheDocument()
+    expect(navigation.replace).not.toHaveBeenCalled()
   },
-}
+)
 
-const setAppContext = (overrides: Partial<AppContextMock> = {}) => {
-  mockUseAppContext.mockReturnValue({
-    ...baseContext,
-    ...overrides,
+it('allows the dataset list without create or connect permissions', () => {
+  render(<DatasetsLayout>Datasets content</DatasetsLayout>, { workspacePermissionKeys: [] })
+  expect(screen.getByText('Datasets content')).toBeInTheDocument()
+  expect(navigation.replace).not.toHaveBeenCalled()
+})
+
+it.each([
+  ['/datasets/create', 'dataset.create_and_management'],
+  ['/datasets/create-from-pipeline', 'dataset.create_and_management'],
+  ['/datasets/create/draft', 'dataset.create_and_management'],
+  ['/datasets/new/create', 'dataset.create_and_management'],
+  ['/datasets/connect', 'dataset.external.connect'],
+  ['/datasets/connect/', 'dataset.external.connect'],
+  ['/datasets/connect/provider', 'dataset.external.connect'],
+])('requires the matching permission for %s', async (pathname, permission) => {
+  navigation.pathname = pathname
+  const otherPermission =
+    permission === 'dataset.external.connect'
+      ? 'dataset.create_and_management'
+      : 'dataset.external.connect'
+  const { unmount } = render(<DatasetsLayout>Datasets content</DatasetsLayout>, {
+    workspacePermissionKeys: [otherPermission],
   })
-}
-
-describe('DatasetsLayout', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    setAppContext()
+  expect(screen.queryByText('Datasets content')).not.toBeInTheDocument()
+  await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/datasets'))
+  unmount()
+  navigation.replace.mockClear()
+  render(<DatasetsLayout>Datasets content</DatasetsLayout>, {
+    workspacePermissionKeys: [permission],
   })
+  expect(screen.getByText('Datasets content')).toBeInTheDocument()
+  expect(navigation.replace).not.toHaveBeenCalled()
+})
 
-  it('should render loading when workspace is still loading', () => {
-    setAppContext({
-      isLoadingCurrentWorkspace: true,
-      currentWorkspace: { id: '' },
-    })
-
-    render((
-      <DatasetsLayout>
-        <div data-testid="datasets-content">datasets</div>
-      </DatasetsLayout>
-    ))
-
-    expect(screen.getByRole('status')).toBeInTheDocument()
-    expect(screen.queryByTestId('datasets-content')).not.toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
-
-  it('should redirect non-editor and non-dataset-operator users to /apps', async () => {
-    setAppContext({
-      isCurrentWorkspaceEditor: false,
-      isCurrentWorkspaceDatasetOperator: false,
-    })
-
-    render((
-      <DatasetsLayout>
-        <div data-testid="datasets-content">datasets</div>
-      </DatasetsLayout>
-    ))
-
-    expect(screen.queryByTestId('datasets-content')).not.toBeInTheDocument()
-    await waitFor(() => {
-      expect(mockReplace).toHaveBeenCalledWith('/apps')
-    })
-  })
-
-  it('should render children for dataset operators', () => {
-    setAppContext({
-      isCurrentWorkspaceEditor: false,
-      isCurrentWorkspaceDatasetOperator: true,
-    })
-
-    render((
-      <DatasetsLayout>
-        <div data-testid="datasets-content">datasets</div>
-      </DatasetsLayout>
-    ))
-
-    expect(screen.getByTestId('datasets-content')).toBeInTheDocument()
-    expect(mockReplace).not.toHaveBeenCalled()
-  })
+it('leaves New RAG source authorization to the knowledge-space route', () => {
+  navigation.pathname = '/datasets/new/space-1/sources/new'
+  render(<DatasetsLayout>Datasets content</DatasetsLayout>, { workspacePermissionKeys: [] })
+  expect(screen.getByText('Datasets content')).toBeInTheDocument()
+  expect(navigation.replace).not.toHaveBeenCalled()
 })

@@ -2,38 +2,73 @@
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from typing import cast
 from unittest.mock import MagicMock, patch
 
+import pytest
+from dify_trace_sdk.emitter import TraceScope
+from dify_trace_sdk.events import TraceCorrelation, TraceEvent
+from sqlalchemy.orm import Session, sessionmaker
+
+from core.telemetry import gateway as telemetry_gateway
+from enterprise.telemetry.contracts import TelemetryCase
+from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from graphon.enums import WorkflowNodeExecutionMetadataKey
+from models.enums import CreatorUserRole
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionStatus,
+    WorkflowNodeExecutionTriggeredFrom,
+)
+from repositories.factory import DifyAPIRepositoryFactory
+from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.records import DraftNodeExecutionTrace
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
 
-def _make_execution(**overrides) -> MagicMock:
-    """Return a minimal WorkflowNodeExecutionModel mock."""
-    execution = MagicMock()
-    execution.tenant_id = overrides.get("tenant_id", "tenant-1")
-    execution.app_id = overrides.get("app_id", "app-1")
-    execution.workflow_id = overrides.get("workflow_id", "wf-1")
-    execution.id = overrides.get("id", "exec-1")
-    execution.node_id = overrides.get("node_id", "node-1")
-    execution.node_type = overrides.get("node_type", "llm")
-    execution.title = overrides.get("title", "My LLM Node")
-    execution.status = overrides.get("status", "succeeded")
-    execution.error = overrides.get("error")
-    execution.elapsed_time = overrides.get("elapsed_time", 1.5)
-    execution.index = overrides.get("index", 1)
-    execution.predecessor_node_id = overrides.get("predecessor_node_id")
-    execution.created_at = overrides.get("created_at", datetime(2024, 1, 1, tzinfo=UTC))
-    execution.finished_at = overrides.get("finished_at", datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC))
-    execution.workflow_run_id = overrides.get("workflow_run_id", "run-1")
-    execution.inputs_dict = overrides.get("inputs_dict", {"prompt": "hello"})
-    execution.outputs_dict = overrides.get("outputs_dict", {"answer": "world"})
-    execution.process_data_dict = overrides.get("process_data_dict", {})
-    execution.execution_metadata_dict = overrides.get("execution_metadata_dict", {})
+def _make_execution(**overrides: object) -> WorkflowNodeExecutionModel:
+    """Return a real transient execution with JSON-backed model properties."""
+
+    inputs = overrides.get("inputs_dict", {"prompt": "hello"})
+    outputs = overrides.get("outputs_dict", {"answer": "world"})
+    process_data = overrides.get("process_data_dict", {})
+    metadata = overrides.get("execution_metadata_dict", {})
+    execution = WorkflowNodeExecutionModel(
+        id=cast(str, overrides.get("id", "exec-1")),
+        tenant_id=cast(str, overrides.get("tenant_id", "tenant-1")),
+        app_id=cast(str, overrides.get("app_id", "app-1")),
+        workflow_id=cast(str, overrides.get("workflow_id", "wf-1")),
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+        workflow_run_id=cast(str | None, overrides.get("workflow_run_id", "run-1")),
+        index=cast(int, overrides.get("index", 1)),
+        predecessor_node_id=cast(str | None, overrides.get("predecessor_node_id")),
+        node_execution_id=None,
+        node_id=cast(str, overrides.get("node_id", "node-1")),
+        node_type=cast(str, overrides.get("node_type", "llm")),
+        title=cast(str, overrides.get("title", "My LLM Node")),
+        agent_workspace_binding_id=None,
+        inputs=json.dumps(inputs) if inputs is not None else None,
+        process_data=json.dumps(process_data) if process_data is not None else None,
+        outputs=json.dumps(outputs) if outputs is not None else None,
+        status=WorkflowNodeExecutionStatus(cast(str, overrides.get("status", "succeeded"))),
+        error=cast(str | None, overrides.get("error")),
+        elapsed_time=cast(float, overrides.get("elapsed_time", 1.5)),
+        execution_metadata=json.dumps(metadata),
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="user-1",
+        finished_at=cast(
+            datetime | None,
+            overrides.get("finished_at", datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)),
+        ),
+    )
+    execution.created_at = cast(datetime, overrides.get("created_at", datetime(2024, 1, 1, tzinfo=UTC)))
     return execution
 
 
@@ -213,8 +248,7 @@ class TestBuildNodeExecutionData:
 class TestEnqueueDraftNodeExecutionTrace:
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_emits_telemetry_event(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent, TraceTaskName
-        from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+        from core.telemetry import DraftNodeExecutionTraceEvent
 
         execution = _make_execution()
         enqueue_draft_node_execution_trace(
@@ -225,16 +259,15 @@ class TestEnqueueDraftNodeExecutionTrace:
         )
 
         mock_emit.assert_called_once()
-        event: TelemetryEvent = mock_emit.call_args[0][0]
-        assert event.name == TraceTaskName.DRAFT_NODE_EXECUTION_TRACE
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
+        assert event.case == TelemetryCase.DRAFT_NODE_EXECUTION
         assert event.context.tenant_id == "tenant-1"
         assert event.context.user_id == "user-1"
         assert event.context.app_id == "app-1"
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_payload_contains_node_execution_data(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
-        from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+        from core.telemetry import DraftNodeExecutionTraceEvent
 
         execution = _make_execution()
         enqueue_draft_node_execution_trace(
@@ -244,7 +277,7 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-2",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         node_data = event.payload["node_execution_data"]
         assert node_data["workflow_id"] == "wf-1"
         assert node_data["node_type"] == "llm"
@@ -252,8 +285,7 @@ class TestEnqueueDraftNodeExecutionTrace:
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_outputs_forwarded_to_build(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
-        from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+        from core.telemetry import DraftNodeExecutionTraceEvent
 
         execution = _make_execution(outputs_dict={"default": True})
         enqueue_draft_node_execution_trace(
@@ -263,13 +295,12 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-3",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         assert event.payload["node_execution_data"]["node_outputs"] == {"explicit": True}
 
     @patch("enterprise.telemetry.draft_trace.telemetry_emit")
     def test_none_outputs_uses_execution_outputs(self, mock_emit: MagicMock) -> None:
-        from core.telemetry import TelemetryEvent
-        from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
+        from core.telemetry import DraftNodeExecutionTraceEvent
 
         execution = _make_execution(outputs_dict={"from_model": "yes"})
         enqueue_draft_node_execution_trace(
@@ -279,18 +310,42 @@ class TestEnqueueDraftNodeExecutionTrace:
             user_id="user-4",
         )
 
-        event: TelemetryEvent = mock_emit.call_args[0][0]
+        event: DraftNodeExecutionTraceEvent = mock_emit.call_args[0][0]
         assert event.payload["node_execution_data"]["node_outputs"] == {"from_model": "yes"}
 
 
 # ---------------------------------------------------------------------------
 # End-to-end token/model data flow: _build_node_execution_data →
-# ops_trace_manager.draft_node_execution_trace → DraftNodeExecutionTrace
+# DraftNodeExecuted trace event → TraceRecordRepository → DraftNodeExecutionTrace
 # ---------------------------------------------------------------------------
 
 
-def _make_llm_execution() -> MagicMock:
-    """Return a WorkflowNodeExecutionModel mock that mimics a real LLM node.
+@dataclass
+class _TracePipeline:
+    """Records the events the telemetry gateway emits through an app trace scope."""
+
+    events: list[TraceEvent] = field(default_factory=list)
+
+    def create_scope(
+        self, *, tenant_id: str, app_id: str | None, user_id: str | None, extras: Mapping[str, object]
+    ) -> TraceScope:
+        assert extras == {}
+        return TraceScope(
+            emitter=self,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            user_id=user_id,
+            correlation=TraceCorrelation(
+                external_trace_id=None, session_id=None, parent_workflow_run_id=None, parent_node_execution_id=None
+            ),
+        )
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+def _make_llm_execution() -> WorkflowNodeExecutionModel:
+    """Return a real WorkflowNodeExecutionModel that mimics an LLM node.
 
     The field values match what graphon/nodes/llm/node.py produces:
     - process_data_dict contains model_provider, model_name, and usage
@@ -350,8 +405,8 @@ def _make_llm_execution() -> MagicMock:
 
 class TestDraftTraceTokenDataFlow:
     """End-to-end test: verify all token and model fields survive from
-    _build_node_execution_data through ops_trace_manager.draft_node_execution_trace
-    to the DraftNodeExecutionTrace that enterprise_trace.py consumes.
+    _build_node_execution_data through the emitted trace event to the
+    DraftNodeExecutionTrace that enterprise_trace.py consumes.
     """
 
     def test_all_token_and_model_fields_reach_trace_info(self) -> None:
@@ -367,9 +422,8 @@ class TestDraftTraceTokenDataFlow:
             workflow_execution_id="run-flow",
         )
 
-        # Simulate what ops_trace_manager.draft_node_execution_trace does:
-        # it calls node_execution_trace(node_execution_data=node_data) which
-        # reads top-level keys from node_data. Verify all expected keys exist.
+        # The trace assembler reads these top-level keys from the emitted node
+        # execution data. Verify all expected keys exist.
         expected_keys = {
             # Token fields — read by enterprise_trace._emit_node_execution_trace
             "total_tokens",
@@ -455,60 +509,36 @@ class TestDraftTraceTokenDataFlow:
         assert result["prompt_tokens"] is None
         assert result["completion_tokens"] is None
 
-    def test_node_data_feeds_into_draft_node_execution_trace(self) -> None:
-        """Verify the node_data dict can be consumed by
-        ops_trace_manager.draft_node_execution_trace without error and
-        produces a DraftNodeExecutionTrace with correct token/model fields."""
+    def test_node_data_feeds_into_draft_node_execution_trace(
+        self, monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """Verify the emitted node data is assembled into a DraftNodeExecutionTrace
+        with correct token/model fields."""
+        pipeline = _TracePipeline()
+        monkeypatch.setattr(telemetry_gateway, "is_enterprise_telemetry_enabled", lambda: True)
+        monkeypatch.setattr(telemetry_gateway, "create_trace_scope_for_app", pipeline.create_scope)
 
-        from enterprise.telemetry.draft_trace import _build_node_execution_data
-
-        execution = _make_llm_execution()
-        node_data = _build_node_execution_data(
-            execution=execution,
+        enqueue_draft_node_execution_trace(
+            execution=_make_llm_execution(),
             outputs=None,
             workflow_execution_id="run-e2e",
+            user_id="user-1",
         )
 
-        # Directly construct DraftNodeExecutionTrace the way
-        # ops_trace_manager.node_execution_trace does (lines 1315-1350),
-        # skipping DB lookups by providing minimal metadata.
-        from core.ops.entities.trace_entity import DraftNodeExecutionTrace
-
-        trace_info = DraftNodeExecutionTrace(
-            workflow_id=node_data.get("workflow_id", ""),
-            workflow_run_id=node_data.get("workflow_execution_id", ""),
-            tenant_id=node_data.get("tenant_id", ""),
-            node_execution_id=node_data.get("node_execution_id", ""),
-            node_id=node_data.get("node_id", ""),
-            node_type=node_data.get("node_type", ""),
-            title=node_data.get("title", ""),
-            status=node_data.get("status", ""),
-            error=node_data.get("error"),
-            elapsed_time=node_data.get("elapsed_time", 0.0),
-            index=node_data.get("index", 0),
-            predecessor_node_id=node_data.get("predecessor_node_id"),
-            total_tokens=node_data.get("total_tokens", 0),
-            total_price=node_data.get("total_price", 0.0),
-            currency=node_data.get("currency"),
-            model_provider=node_data.get("model_provider"),
-            model_name=node_data.get("model_name"),
-            prompt_tokens=node_data.get("prompt_tokens"),
-            completion_tokens=node_data.get("completion_tokens"),
-            tool_name=node_data.get("tool_name"),
-            iteration_id=node_data.get("iteration_id"),
-            iteration_index=node_data.get("iteration_index"),
-            loop_id=node_data.get("loop_id"),
-            loop_index=node_data.get("loop_index"),
-            parallel_id=node_data.get("parallel_id"),
-            node_inputs=node_data.get("node_inputs"),
-            node_outputs=node_data.get("node_outputs"),
-            process_data=node_data.get("process_data"),
-            start_time=node_data.get("created_at"),
-            end_time=node_data.get("finished_at"),
-            metadata={},
-        )
+        (event,) = pipeline.events
+        assert (event.tenant_id, event.app_id, event.user_id) == ("tenant-flow", "app-flow", "user-1")
+        trace_info = TraceRecordRepository(
+            sqlite_session_factory,
+            workflow_runs=DifyAPIRepositoryFactory.create_api_workflow_run_repository(sqlite_session_factory),
+            node_executions=DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
+                sqlite_session_factory
+            ),
+            files_url="https://files.example.com",
+            enterprise_details=False,
+        ).assemble(event)
 
         # These are the fields enterprise_trace._emit_node_execution_trace reads
+        assert isinstance(trace_info, DraftNodeExecutionTrace)
         assert trace_info.total_tokens == 80
         assert trace_info.prompt_tokens == 50
         assert trace_info.completion_tokens == 30
@@ -517,3 +547,7 @@ class TestDraftTraceTokenDataFlow:
         assert trace_info.node_type == "llm"
         assert trace_info.total_price == 0.0014
         assert trace_info.currency == "USD"
+        assert trace_info.workflow_run_id == "run-e2e"
+        assert trace_info.node_execution_id == "exec-flow"
+        assert trace_info.start_time == datetime(2024, 1, 1, tzinfo=UTC)
+        assert trace_info.end_time == datetime(2024, 1, 1, 0, 0, 5, tzinfo=UTC)

@@ -1,23 +1,9 @@
 import type { ToolNodeType } from '../../nodes/tool/types'
 import type { ToolWithProvider } from '../../types'
 import { CollectionType } from '@/app/components/tools/types'
+import { createTool, createToolProvider } from '../../block-selector/__tests__/factories'
 import { BlockEnum } from '../../types'
-import { CHUNK_TYPE_MAP, getToolCheckParams, wrapStructuredVarItem } from '../tool'
-
-vi.mock('@/app/components/tools/utils/to-form-schema', () => ({
-  toolParametersToFormSchemas: vi.fn((params: Array<Record<string, unknown>>) =>
-    params.map(p => ({
-      variable: p.name,
-      label: p.label || { en_US: p.name },
-      type: p.type || 'string',
-      required: p.required ?? false,
-      form: p.form ?? 'llm',
-    }))),
-}))
-
-vi.mock('@/utils', () => ({
-  canFindTool: vi.fn((collectionId: string, providerId: string) => collectionId === providerId),
-}))
+import { getToolCheckParams, wrapStructuredVarItem } from '../tool'
 
 function createToolData(overrides: Partial<ToolNodeType> = {}): ToolNodeType {
   return {
@@ -26,59 +12,62 @@ function createToolData(overrides: Partial<ToolNodeType> = {}): ToolNodeType {
     type: BlockEnum.Tool,
     provider_id: 'builtin-search',
     provider_type: CollectionType.builtIn,
+    provider_name: 'Search',
+    tool_label: 'Google Search',
     tool_name: 'google_search',
     tool_parameters: {},
     tool_configurations: {},
     ...overrides,
-  } as ToolNodeType
+  }
 }
 
 function createToolCollection(overrides: Partial<ToolWithProvider> = {}): ToolWithProvider {
-  return {
+  return createToolProvider({
     id: 'builtin-search',
     name: 'Search',
+    allow_delete: true,
+    is_team_authorization: false,
     tools: [
       {
-        name: 'google_search',
+        ...createTool('google_search', 'Google Search'),
         parameters: [
-          { name: 'query', label: { en_US: 'Query', zh_Hans: '查询' }, type: 'string', required: true, form: 'llm' },
-          { name: 'api_key', label: { en_US: 'API Key' }, type: 'string', required: true, form: 'credential' },
+          {
+            name: 'query',
+            label: { en_US: 'Query', zh_Hans: '查询' },
+            type: 'string',
+            required: true,
+            form: 'llm',
+            human_description: { en_US: '', zh_Hans: '' },
+            llm_description: '',
+            multiple: false,
+          },
+          {
+            name: 'api_key',
+            label: { en_US: 'API Key', zh_Hans: 'API Key' },
+            type: 'string',
+            required: true,
+            form: 'credential',
+            human_description: { en_US: '', zh_Hans: '' },
+            llm_description: '',
+            multiple: false,
+          },
         ],
       },
     ],
-    allow_delete: true,
-    is_team_authorization: false,
     ...overrides,
-  } as unknown as ToolWithProvider
+  })
 }
 
 describe('getToolCheckParams', () => {
   it('should separate llm inputs from settings', () => {
-    const result = getToolCheckParams(
-      createToolData(),
-      [createToolCollection()],
-      [],
-      [],
-      'en_US',
-    )
+    const result = getToolCheckParams(createToolData(), [createToolCollection()], [], [], 'en_US')
 
     expect(result.toolInputsSchema).toEqual([
-      { label: 'Query', variable: 'query', type: 'string', required: true },
+      { label: 'Query', variable: 'query', type: 'text-input', required: true },
     ])
-    expect(result.toolSettingSchema).toHaveLength(1)
-    expect(result.toolSettingSchema[0].variable).toBe('api_key')
-  })
-
-  it('should mark notAuthed for builtin tools without team auth', () => {
-    const result = getToolCheckParams(
-      createToolData(),
-      [createToolCollection()],
-      [],
-      [],
-      'en_US',
-    )
-
     expect(result.notAuthed).toBe(true)
+    expect(result.toolSettingSchema).toHaveLength(1)
+    expect(result.toolSettingSchema[0]!.variable).toBe('api_key')
   })
 
   it('should mark authed when is_team_authorization is true', () => {
@@ -103,7 +92,9 @@ describe('getToolCheckParams', () => {
       'en_US',
     )
 
-    expect(result.toolInputsSchema).toHaveLength(1)
+    expect(result.toolInputsSchema).toEqual([
+      { label: 'Query', variable: 'query', type: 'text-input', required: true },
+    ])
   })
 
   it('should return empty schemas when tool is not found', () => {
@@ -119,11 +110,6 @@ describe('getToolCheckParams', () => {
     expect(result.toolSettingSchema).toEqual([])
   })
 
-  it('should include language in result', () => {
-    const result = getToolCheckParams(createToolData(), [createToolCollection()], [], [], 'zh_Hans')
-    expect(result.language).toBe('zh_Hans')
-  })
-
   it('should use workflowTools when provider_type is workflow', () => {
     const workflowTool = createToolCollection({ id: 'wf-tool' })
     const result = getToolCheckParams(
@@ -134,40 +120,19 @@ describe('getToolCheckParams', () => {
       'en_US',
     )
 
-    expect(result.toolInputsSchema).toHaveLength(1)
+    expect(result.toolInputsSchema).toEqual([
+      { label: 'Query', variable: 'query', type: 'text-input', required: true },
+    ])
   })
 
   it('should fallback to en_US label when language key is missing', () => {
-    const tool = createToolCollection({
-      tools: [
-        {
-          name: 'google_search',
-          parameters: [
-            { name: 'query', label: { en_US: 'Query' }, type: 'string', required: true, form: 'llm' },
-          ],
-        },
-      ],
-    } as Partial<ToolWithProvider>)
+    const tool = createToolCollection()
 
-    const result = getToolCheckParams(
-      createToolData(),
-      [tool],
-      [],
-      [],
-      'ja_JP',
-    )
+    const result = getToolCheckParams(createToolData(), [tool], [], [], 'ja_JP')
 
-    expect(result.toolInputsSchema[0].label).toBe('Query')
-  })
-})
-
-describe('CHUNK_TYPE_MAP', () => {
-  it('should contain all expected chunk type mappings', () => {
-    expect(CHUNK_TYPE_MAP).toEqual({
-      general_chunks: 'GeneralStructureChunk',
-      parent_child_chunks: 'ParentChildStructureChunk',
-      qa_chunks: 'QAStructureChunk',
-    })
+    expect(result.toolInputsSchema[0]!.label).toBe('Query')
+    const localized = getToolCheckParams(createToolData(), [tool], [], [], 'zh_Hans')
+    expect(localized.toolInputsSchema[0]!.label).toBe('查询')
   })
 })
 

@@ -2,11 +2,11 @@ import time
 from collections.abc import Sequence
 
 import click
+from dify_vdb_tidb_on_qdrant.tidb_service import TidbService
 from sqlalchemy import select
 
 import app
 from configs import dify_config
-from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from extensions.ext_database import db
 from models.dataset import TidbAuthBinding
 from models.enums import TidbAuthBindingStatus
@@ -20,7 +20,7 @@ def update_tidb_serverless_status_task():
         # check the number of idle tidb serverless
         tidb_serverless_list = db.session.scalars(
             select(TidbAuthBinding).where(
-                TidbAuthBinding.active == False,
+                TidbAuthBinding.active.is_(False),
                 TidbAuthBinding.status == TidbAuthBindingStatus.CREATING,
             )
         ).all()

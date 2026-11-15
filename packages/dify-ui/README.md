@@ -1,0 +1,110 @@
+# @langgenius/dify-ui
+
+Independent UI primitives, design tokens, CSS-first Tailwind styles, and the `cn()` utility for
+Dify products.
+
+Most interactive primitives are thin, opinionated wrappers around [Base UI] headless components.
+Dify-authored primitives use semantic HTML, `cva`, `cn`, and Dify design tokens. The package is
+private to the workspace, but its public subpaths are treated as stable package boundaries.
+
+## Usage
+
+Add the workspace dependency:
+
+```jsonc
+{
+  "dependencies": {
+    "@langgenius/dify-ui": "workspace:*",
+  },
+}
+```
+
+Import from a public subpath. The package intentionally has no root barrel:
+
+```tsx
+import { Button } from '@langgenius/dify-ui/button'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Field, FieldLabel } from '@langgenius/dify-ui/field'
+import { Input } from '@langgenius/dify-ui/input'
+import '@langgenius/dify-ui/styles.css'
+```
+
+Import `styles.css` once from the consumer's root stylesheet or entrypoint.
+
+## Primitives
+
+| Category         | Public subpaths                                                                                                                                                                                          |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Actions          | `./button`, `./icon-button`, `./toggle`                                                                                                                                                                  |
+| Controls         | `./segmented-control`                                                                                                                                                                                    |
+| Display          | `./collapsible`, `./kbd`                                                                                                                                                                                 |
+| Feedback         | `./alert`, `./meter`, `./progress`, `./spinner`, `./status-dot`, `./toast`                                                                                                                               |
+| Form             | `./form`, `./field`, `./fieldset`, `./input`, `./input-group`, `./password-field`, `./textarea`, `./checkbox`, `./checkbox-group`, `./radio-group`, `./number-field`, `./select`, `./slider`, `./switch` |
+| Layout           | `./scroll-area`, `./separator`                                                                                                                                                                           |
+| Media            | `./avatar`                                                                                                                                                                                               |
+| Navigation       | `./breadcrumb`, `./file-tree`, `./pagination`, `./tabs`                                                                                                                                                  |
+| Overlay and menu | `./alert-dialog`, `./context-menu`, `./dialog`, `./drawer`, `./menu`, `./infotip`, `./popover`, `./preview-card`, `./tooltip`                                                                            |
+| Search and pick  | `./autocomplete`, `./combobox`, `./select`, `./date-picker`, `./time-picker`, `./date-time-picker`                                                                                                       |
+
+Utilities:
+
+- `./direction-provider` exports Base UI `DirectionProvider` and `useDirection`. Set HTML `dir` as well for CSS layout; pickers propagate their resolved direction to their trigger and portaled content.
+
+- `./cn` re-exports `cn` from the `cn` package through Dify UI's public subpath.
+- `./use-media-query` exports Base UI's `useMediaQuery(query, options)`, which follows `matchMedia` change events and returns `defaultMatches` (false) on the server and during hydration.
+- `./use-merged-refs` exports `useMergedRefs` for combining internal and caller refs, including callback cleanup.
+- `./use-ref-with-init` exports `useRefWithInit` for lazy ref initialization. Later initializer or argument changes do not reset the ref; initialization runs during render and must be safe to retry or discard.
+- `./use-render` exports `useRender` for building a part with Base UI's `render` prop, `className(state)` callback and state data attributes; `./merge-props` exports `mergeProps` for chaining event handlers and merging `className`/`style` when composing parts.
+- `./styles.css` provides design tokens, theme variables, the `dark` variant, and shared utilities.
+
+## Guides
+
+Open only the guide for the contract being changed. Component-specific Dify behavior lives beside
+the component. Contracts shared by several primitives live in `docs/`.
+Upstream behavior remains owned by the [Base UI documentation].
+
+### Component guides
+
+| Guide                   | Dify-owned contract                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| [Date and time pickers] | Value semantics, composition, draft commits, localization and native forms.                 |
+| [Button]                | Action semantics, submit and link choices, loading versus disabled, and content spacing.    |
+| [Icon Button]           | Accessible names, decorative glyphs, appearance ownership, and primitive composition.       |
+| [Infotip]               | Explanation triggers, concise dialog names, and hint surface ownership.                     |
+| [Input Group]           | Compound input anatomy, shared-surface ownership, DOM order, focus, and interactive addons. |
+| [Password Field]        | Password and secret inputs, required autocomplete, and the optional reveal toggle.          |
+
+### Cross-component guides
+
+| Guide                               | Scope                                                                           |
+| ----------------------------------- | ------------------------------------------------------------------------------- |
+| [Accessible names and descriptions] | Naming sources, descriptions, overrides, and safe label removal.                |
+| [Forms]                             | Native submit boundaries, value ownership, fields, labels, and errors.          |
+| [Selection]                         | Typed values and choosing among segmented controls, pickers, and radio groups.  |
+| [Overlays]                          | Portals, presence lifecycles, layering, trigger composition, and semantics.     |
+| [Styling]                           | State styling, callbacks, composition, Tailwind integration, and border radius. |
+| [Public API authoring]              | Subpath exports, naming, public types, generics, and private helpers.           |
+| [Testing and development]           | Package commands, test ownership, accessibility, and animation setup.           |
+
+## Contributing
+
+[Package rules][component authoring rules] own the package boundary and contributor guidance.
+For a known contract, go directly to its guide above.
+
+[Accessible names and descriptions]: ./docs/accessible-names-and-descriptions.md
+[Base UI documentation]: https://base-ui.com/llms.txt
+[Base UI]: https://base-ui.com/react
+[Button]: ./src/button/README.md
+[Date and time pickers]: ./src/date-time/README.md
+[Forms]: ./docs/forms.md
+[Icon Button]: ./src/icon-button/README.md
+[Infotip]: ./src/infotip/README.md
+[Input Group]: ./src/input-group/README.md
+[Overlays]: ./docs/overlays.md
+[Password Field]: ./src/password-field/README.md
+[Public API authoring]: ./docs/authoring.md
+[Selection]: ./docs/selection.md
+[Styling]: ./docs/styling.md
+[Testing and development]: ./docs/testing.md
+[component authoring rules]: ./AGENTS.md

@@ -3,22 +3,21 @@ import type { FC } from 'react'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import TriggerFormItem from './item'
+import type { ResourceVarInputs } from '@/app/components/workflow/nodes/_base/types'
+import { TriggerFormItem } from './item'
 
-type Props = {
+type Props = Readonly<{
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
-  value: PluginTriggerVarInputs
-  onChange: (value: PluginTriggerVarInputs) => void
+  value: ResourceVarInputs
+  onChange: (value: ResourceVarInputs) => void
   onOpen?: (index: number) => void
-  inPanel?: boolean
   currentEvent?: Event
   currentProvider?: TriggerWithProvider
   extraParams?: Record<string, any>
   disableVariableInsertion?: boolean
-}
+}>
 
 const TriggerForm: FC<Props> = ({
   readOnly,
@@ -26,7 +25,6 @@ const TriggerForm: FC<Props> = ({
   schema,
   value,
   onChange,
-  inPanel,
   currentEvent,
   currentProvider,
   extraParams,
@@ -34,23 +32,20 @@ const TriggerForm: FC<Props> = ({
 }) => {
   return (
     <div className="space-y-1">
-      {
-        schema.map((schema, index) => (
-          <TriggerFormItem
-            key={index}
-            readOnly={readOnly}
-            nodeId={nodeId}
-            schema={schema}
-            value={value}
-            onChange={onChange}
-            inPanel={inPanel}
-            currentEvent={currentEvent}
-            currentProvider={currentProvider}
-            extraParams={extraParams}
-            disableVariableInsertion={disableVariableInsertion}
-          />
-        ))
-      }
+      {schema.map((schema, index) => (
+        <TriggerFormItem
+          key={index}
+          readOnly={readOnly}
+          nodeId={nodeId}
+          schema={schema}
+          value={value}
+          onChange={onChange}
+          currentEvent={currentEvent}
+          currentProvider={currentProvider}
+          extraParams={extraParams}
+          disableVariableInsertion={disableVariableInsertion}
+        />
+      ))}
     </div>
   )
 }

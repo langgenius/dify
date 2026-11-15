@@ -1,21 +1,18 @@
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel
 
 from core.mcp.session.base_session import BaseSession
 from core.mcp.types import LATEST_PROTOCOL_VERSION, OAuthClientInformation, OAuthMetadata, RequestId, RequestParams
 
-SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", LATEST_PROTOCOL_VERSION]
-
-
-SessionT = TypeVar("SessionT", bound=BaseSession[Any, Any, Any, Any, Any])
-LifespanContextT = TypeVar("LifespanContextT")
+# 2025-06-18 stays explicit: it is no longer LATEST_PROTOCOL_VERSION, but servers still negotiate down to it.
+SUPPORTED_PROTOCOL_VERSIONS: list[str] = ["2024-11-05", "2025-03-26", "2025-06-18", LATEST_PROTOCOL_VERSION]
 
 
 @dataclass
-class RequestContext(Generic[SessionT, LifespanContextT]):
+class RequestContext[SessionT: BaseSession, LifespanContextT]:
     request_id: RequestId
     meta: RequestParams.Meta | None
     session: SessionT

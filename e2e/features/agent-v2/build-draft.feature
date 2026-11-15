@@ -1,0 +1,118 @@
+@agent-v2 @authenticated @build
+Feature: Agent v2 build draft
+  @core
+  Scenario: Build chat is blocked until a model is configured
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And the Agent v2 composer draft uses the normal E2E prompt
+    When I open the Agent v2 configure page
+    And I try to generate an Agent v2 Build draft without a model
+    Then Agent v2 Build chat should be blocked until a model is configured
+    And the Agent v2 Build draft should not be checked out
+
+  @external-model @agent-backend-runtime @agent-decision-model
+  Scenario: Generating a Build note draft leaves the normal Agent configuration unchanged
+    Given I am signed in as the default E2E admin
+    And the Agent Builder agent-decision chat model is available
+    And the Agent v2 runtime backend is available
+    And a runnable Agent v2 test agent using the agent-decision model has been created via API
+    When I open the Agent v2 configure page
+    And I generate an Agent v2 Build draft from the fixed instruction
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the Agent v2 Build mode confirmation state
+    And the Agent v2 Build draft should include the generated build note
+    And I should see the generated Agent v2 build note in Configure
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    And the normal Agent v2 draft should not include the generated build note
+
+  @core
+  Scenario: Discarding a Build draft keeps the original Agent configuration
+    Given I am signed in as the default E2E admin
+    And an Agent v2 test agent has been created via API
+    And the Agent v2 composer draft uses the normal E2E prompt
+    And an Agent v2 Build draft uses the updated E2E prompt
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I discard the Agent v2 Build draft
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And the Agent v2 Build draft should no longer be active
+    When I refresh the current page
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And the Agent v2 Build draft should no longer be active
+
+  @core @skill-fixture
+  Scenario: Discarding a Build draft does not apply supported configuration changes
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    And an Agent v2 Build draft adds the supported E2E files, skills, and env
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the small Agent v2 file in the Files section
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I discard the Agent v2 Build draft
+    Then the Agent v2 draft should not include the supported Build draft config
+    And the Agent v2 Build draft should no longer be active
+    When I refresh the current page
+    Then I should see the normal E2E prompt in the Agent v2 prompt editor
+    And I should not see the small Agent v2 file in the Files section
+    And I should not see the e2e-summary-skill Skill in the Skills section
+    And I should not see the supported E2E environment variable in Advanced Settings
+
+  @external-model @agent-backend-runtime @stable-model
+  Scenario: Applying a pending Build draft updates the normal Agent configuration
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And the Agent v2 runtime backend is available
+    And a runnable Agent v2 test agent has been created via API
+    And an Agent v2 Build draft uses the updated E2E prompt with the stable E2E model
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I apply the Agent v2 Build draft
+    Then I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should use the updated E2E prompt
+    And the Agent v2 Build draft should no longer be active
+    When I refresh the current page
+    Then I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the Agent v2 Build draft should no longer be active
+
+  @core @external-model @stable-model @skill-fixture
+  Scenario: Applying a Build draft updates configuration without duplicating an existing Skill
+    Given I am signed in as the default E2E admin
+    And the Agent Builder stable chat model is available
+    And a basic configured Agent v2 test agent has been created via API
+    And an Agent v2 Build draft adds supported E2E files and env while retaining the existing Skill
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And I should see one e2e-summary-skill Skill in the Skills section
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    And the Agent v2 draft should include one e2e-summary-skill Skill
+    When I apply the Agent v2 Build draft
+    Then the Agent v2 draft should include the supported Build draft config
+    And the Agent v2 draft should include one e2e-summary-skill Skill
+    When I refresh the current page
+    Then I should see the updated E2E prompt in the Agent v2 prompt editor
+    And I should see the small Agent v2 file in the Files section
+    And I should see one e2e-summary-skill Skill in the Skills section
+    And the Agent v2 draft should include one e2e-summary-skill Skill
+    And I should see the supported E2E environment variable in Advanced Settings
+    And the Agent v2 Build draft should no longer be active
+
+  @core
+  Scenario: Pending Build draft remains protected after leaving Configure
+    Given I am signed in as the default E2E admin
+    And a basic configured Agent v2 test agent has been created via API
+    And an Agent v2 Build draft uses the updated E2E prompt
+    When I open the Agent v2 configure page
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt
+    When I switch to the Agent v2 Access Point section
+    And I switch to the Agent v2 Configure section
+    Then I should see the Agent v2 Build draft pending changes
+    And I should see the updated E2E prompt in the Agent v2 prompt editor
+    And the normal Agent v2 draft should still use the normal E2E prompt

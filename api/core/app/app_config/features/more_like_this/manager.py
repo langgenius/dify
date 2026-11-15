@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
@@ -13,7 +15,7 @@ class AppConfigModel(BaseModel):
 
 class MoreLikeThisConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> bool:
+    def convert(cls, config: dict[str, Any]) -> bool:
         """
         Convert model config to model config
 
@@ -23,10 +25,10 @@ class MoreLikeThisConfigManager:
         return AppConfigModel.model_validate(validated_config).more_like_this.enabled
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
         try:
             return AppConfigModel.model_validate(config).model_dump(), ["more_like_this"]
-        except ValidationError:
+        except ValidationError as caught_error:
             raise ValueError(
                 "more_like_this must be of dict type and enabled in more_like_this must be of boolean type"
-            )
+            ) from caught_error

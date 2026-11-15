@@ -1,13 +1,20 @@
-import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type {
+  Emoji,
+  WorkflowToolOutputVariable,
+  WorkflowToolProviderOutputParameter,
+  WorkflowToolProviderParameter,
+  WorkflowToolProviderRequest,
+  WorkflowToolProviderResponse,
+} from '@/app/components/tools/types'
+import type { InputVar } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from '@/app/components/base/ui/toast'
-import { useAppContext } from '@/context/app-context'
-import { useRouter } from '@/next/navigation'
+import { selectWorkflowToolDetail } from '@/app/components/tools/utils/query-select'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { createWorkflowToolProvider, saveWorkflowToolProvider } from '@/service/tools'
-import { useInvalidateAllWorkflowTools, useInvalidateWorkflowToolDetailByAppID, useWorkflowToolDetailByAppID } from '@/service/use-tools'
 
 // region Pure helpers
 
@@ -19,27 +26,22 @@ export function isParametersOutdated(
   detail: WorkflowToolProviderResponse | undefined,
   inputs: InputVar[] | undefined,
 ): boolean {
-  if (!detail)
-    return false
-  if (detail.tool.parameters.length !== (inputs?.length ?? 0))
-    return true
+  if (!detail) return false
+  if (detail.tool.parameters.length !== (inputs?.length ?? 0)) return true
 
   for (const item of inputs || []) {
-    const param = detail.tool.parameters.find(p => p.name === item.variable)
-    if (!param)
-      return true
-    if (param.required !== item.required)
-      return true
+    const param = detail.tool.parameters.find((p) => p.name === item.variable)
+    if (!param) return true
+    if (param.required !== item.required) return true
     const needsStringType = item.type === 'paragraph' || item.type === 'text-input'
-    if (needsStringType && param.type !== 'string')
-      return true
+    if (needsStringType && param.type !== 'string') return true
   }
 
   return false
 }
 
 function buildNewParameters(inputs?: InputVar[]): WorkflowToolProviderParameter[] {
-  return (inputs || []).map(item => ({
+  return (inputs || []).map((item) => ({
     name: item.variable,
     description: '',
     form: 'llm',
@@ -53,7 +55,7 @@ function buildExistingParameters(
   detail: WorkflowToolProviderResponse,
 ): WorkflowToolProviderParameter[] {
   return (inputs || []).map((item) => {
-    const matched = detail.tool.parameters.find(p => p.name === item.variable)
+    const matched = detail.tool.parameters.find((p) => p.name === item.variable)
     return {
       name: item.variable,
       required: item.required,
@@ -64,16 +66,19 @@ function buildExistingParameters(
   })
 }
 
-function buildNewOutputParameters(outputs?: Variable[]): WorkflowToolProviderOutputParameter[] {
-  return (outputs || []).map(item => ({
+function buildNewOutputParameters(
+  outputs?: WorkflowToolOutputVariable[],
+): WorkflowToolProviderOutputParameter[] {
+  return (outputs || []).map((item) => ({
     name: item.variable,
     description: '',
     type: item.value_type,
+    source: item.source,
   }))
 }
 
 function buildExistingOutputParameters(
-  outputs: Variable[] | undefined,
+  outputs: WorkflowToolOutputVariable[] | undefined,
   detail: WorkflowToolProviderResponse,
 ): WorkflowToolProviderOutputParameter[] {
   return (outputs || []).map((item) => {
@@ -82,6 +87,7 @@ function buildExistingOutputParameters(
       name: item.variable,
       description: found ? found.description : '',
       type: item.value_type,
+      source: item.source,
     }
   })
 }
@@ -89,6 +95,7 @@ function buildExistingOutputParameters(
 // endregion
 
 type UseConfigureButtonOptions = {
+  enabled: boolean
   published: boolean
   detailNeedUpdate: boolean
   workflowAppId: string
@@ -96,13 +103,15 @@ type UseConfigureButtonOptions = {
   name: string
   description: string
   inputs?: InputVar[]
-  outputs?: Variable[]
+  outputs?: WorkflowToolOutputVariable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
+  onConfigured?: () => void
 }
 
 export function useConfigureButton(options: UseConfigureButtonOptions) {
   const {
+    enabled,
     published,
     detailNeedUpdate,
     workflowAppId,
@@ -113,35 +122,41 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     outputs,
     handlePublish,
     onRefreshData,
+    onConfigured,
   } = options
-
-  const { t } = useTranslation()
-  const router = useRouter()
-  const { isCurrentWorkspaceManager } = useAppContext()
-
-  const [showModal, setShowModal] = useState(false)
+  const { t } = useTranslation(['common'])
 
   // Data fetching via React Query
-  const { data: detail, isLoading } = useWorkflowToolDetailByAppID(workflowAppId, published)
+  const queryClient = useQueryClient()
+  const detailQueryKey = consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryKey({
+    input: { query: { workflow_app_id: workflowAppId } },
+  })
+  const { data: detail, isLoading } = useQuery(
+    consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryOptions({
+      input: { query: { workflow_app_id: workflowAppId } },
+      enabled: enabled && published && !!workflowAppId,
+      select: selectWorkflowToolDetail,
+    }),
+  )
 
-  // Invalidation functions (store in ref for stable effect dependency)
-  const invalidateDetail = useInvalidateWorkflowToolDetailByAppID()
-  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
-
-  const invalidateDetailRef = useRef(invalidateDetail)
-  invalidateDetailRef.current = invalidateDetail
+  const invalidateDetail = () => queryClient.invalidateQueries({ queryKey: detailQueryKey })
+  const invalidateAllWorkflowTools = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.workspaces.current.tools.workflow.get.queryKey(),
+    })
 
   // Refetch when detailNeedUpdate becomes true
   useEffect(() => {
-    if (detailNeedUpdate)
-      invalidateDetailRef.current(workflowAppId)
-  }, [detailNeedUpdate, workflowAppId])
+    if (enabled && detailNeedUpdate)
+      queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.toolProvider.workflow.get.get.queryKey({
+          input: { query: { workflow_app_id: workflowAppId } },
+        }),
+      })
+  }, [detailNeedUpdate, enabled, queryClient, workflowAppId])
 
   // Computed values
-  const outdated = useMemo(
-    () => isParametersOutdated(detail, inputs),
-    [detail, inputs],
-  )
+  const outdated = useMemo(() => isParametersOutdated(detail, inputs), [detail, inputs])
 
   const payload = useMemo(() => {
     const hasPublishedDetail = published && detail?.tool
@@ -173,57 +188,46 @@ export function useConfigureButton(options: UseConfigureButtonOptions) {
     }
   }, [detail, published, workflowAppId, icon, name, description, inputs, outputs])
 
-  // Modal controls (stable callbacks)
-  const openModal = useCallback(() => setShowModal(true), [])
-  const closeModal = useCallback(() => setShowModal(false), [])
-  const navigateToTools = useCallback(
-    () => router.push('/tools?category=workflow'),
-    [router],
-  )
-
   // Mutation handlers (not memoized — only used in conditionally-rendered modal)
   const handleCreate = async (data: WorkflowToolProviderRequest & { workflow_app_id: string }) => {
     try {
-      await createWorkflowToolProvider(data)
+      await handlePublish()
+      await createWorkflowToolProvider(data, { silent: true })
       invalidateAllWorkflowTools()
       onRefreshData?.()
-      invalidateDetail(workflowAppId)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
-      setShowModal(false)
-    }
-    catch (e) {
+      invalidateDetail()
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      onConfigured?.()
+    } catch (e) {
       toast.error((e as Error).message)
     }
   }
 
-  const handleUpdate = async (data: WorkflowToolProviderRequest & Partial<{
-    workflow_app_id: string
-    workflow_tool_id: string
-  }>) => {
+  const handleUpdate = async (
+    data: WorkflowToolProviderRequest &
+      Partial<{
+        workflow_app_id: string
+        workflow_tool_id: string
+      }>,
+  ) => {
     try {
       await handlePublish()
-      await saveWorkflowToolProvider(data)
+      await saveWorkflowToolProvider(data, { silent: true })
       onRefreshData?.()
       invalidateAllWorkflowTools()
-      invalidateDetail(workflowAppId)
-      toast.success(t('api.actionSuccess', { ns: 'common' }))
-      setShowModal(false)
-    }
-    catch (e) {
+      invalidateDetail()
+      toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
+      onConfigured?.()
+    } catch (e) {
       toast.error((e as Error).message)
     }
   }
 
   return {
-    showModal,
     isLoading,
     outdated,
     payload,
-    isCurrentWorkspaceManager,
-    openModal,
-    closeModal,
     handleCreate,
     handleUpdate,
-    navigateToTools,
   }
 }

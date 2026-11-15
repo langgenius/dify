@@ -1,5 +1,4 @@
 # Written by YORKI MINAKO🤡, Edited by Xiaoyi, Edited by yasu-oh
-import os
 
 CONVERSATION_TITLE_PROMPT = """You are asked to generate a concise chat title by decomposing the user’s input into two parts: “Intention” and “Subject”.
 
@@ -96,23 +95,14 @@ JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
 )
 
 
-# Default prompt for suggested questions (can be overridden by environment variable)
-_DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT = (
+# Default prompt and model parameters for suggested questions.
+DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keep each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response. "
     "The output must be an array in JSON format following the specified schema:\n"
     '["question1","question2","question3"]\n'
 )
-
-# Environment variable override for suggested questions prompt
-SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = os.getenv(
-    "SUGGESTED_QUESTIONS_PROMPT", _DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_PROMPT
-)
-
-# Configurable LLM parameters for suggested questions (can be overridden by environment variables)
-SUGGESTED_QUESTIONS_MAX_TOKENS = int(os.getenv("SUGGESTED_QUESTIONS_MAX_TOKENS", "256"))
-SUGGESTED_QUESTIONS_TEMPERATURE = float(os.getenv("SUGGESTED_QUESTIONS_TEMPERATURE", "0"))
 
 GENERATOR_QA_PROMPT = (
     "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
@@ -264,7 +254,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
 }
 
 ### Example 4:
-**User Input:** I need album schema, the ablum has songs, and each song has name, duration, and artist.
+**User Input:** I need album schema, the album has songs, and each song has name, duration, and artist.
 **JSON Schema Output:**
 {
     "type": "object",
@@ -283,7 +273,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
                     "duration": {
                         "type": "string"
                     },
-                    "aritst": {
+                    "artist": {
                         "type": "string"
                     }
                 },
@@ -291,7 +281,7 @@ Your task is to convert simple user descriptions into properly formatted JSON Sc
                     "name",
                     "id",
                     "duration",
-                    "aritst"
+                    "artist"
                 ]
             }
         }
@@ -307,17 +297,18 @@ Now, generate a JSON Schema based on my description
 STRUCTURED_OUTPUT_PROMPT = """You’re a helpful AI assistant. You could answer questions and output in JSON format.
 constraints:
     - You must output in JSON format.
-    - Do not output boolean value, use string type instead.
-    - Do not output integer or float value, use number type instead.
+    - Strictly follow the provided JSON schema, including all field types.
+    - Use JSON true or false for boolean values, never strings.
+    - Use JSON numbers for numeric fields and JSON null where allowed by the schema.
 eg:
     Here is the JSON schema:
-    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}}, "required": ["name", "age"], "type": "object"}
+    {"additionalProperties": false, "properties": {"age": {"type": "number"}, "name": {"type": "string"}, "is_active": {"type": "boolean"}}, "required": ["name", "age", "is_active"], "type": "object"}
 
     Here is the user's question:
-    My name is John Doe and I am 30 years old.
+    My name is John Doe, I am 30 years old, and my account is active.
 
     output:
-    {"name": "John Doe", "age": 30}
+    {"name": "John Doe", "age": 30, "is_active": true}
 Here is the JSON schema:
 {{schema}}
 """  # noqa: E501
@@ -422,7 +413,7 @@ Both your input and output should be in JSON format.
 When you are modifying the code, you should remember:
 - Do not use print, this not work in dify sandbox.
 - Do not try dangerous call like deleting files. It's PROHIBITED.
-- Do not use any library that is not built-in in with Python.
+- Do not use any library that is not built-in with Python.
 - Get inputs from the parameters of the function and have explicit type annotations.
 - Write proper imports at the top of the code.
 - Use return statement to return the result.
@@ -446,7 +437,7 @@ Requirements:
 4. If images are included, describe their key information
 5. Do not use words like "好的", "ok", "I understand", "This text discusses", "The content mentions"
 6. Write directly without extra words
-7. If there is not enough content to generate a meaningful summary, 
+7. If there is not enough content to generate a meaningful summary,
    return an empty string without any explanation or prompt
 
 Output only the summary text. Start summarizing now:

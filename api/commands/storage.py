@@ -28,6 +28,7 @@ def clear_orphaned_file_records(force: bool):
     ]
     ids_tables = [
         {"type": "uuid", "table": "message_files", "column": "upload_file_id"},
+        {"type": "uuid", "table": "segment_attachment_bindings", "column": "attachment_id"},
         {"type": "text", "table": "documents", "column": "data_source_info"},
         {"type": "text", "table": "document_segments", "column": "content"},
         {"type": "text", "table": "messages", "column": "answer"},
@@ -378,6 +379,7 @@ def file_usage(
     ]
     ids_tables = [
         {"type": "uuid", "table": "message_files", "column": "upload_file_id", "pk_column": "id"},
+        {"type": "uuid", "table": "segment_attachment_bindings", "column": "attachment_id", "pk_column": "id"},
         {"type": "text", "table": "documents", "column": "data_source_info", "pk_column": "id"},
         {"type": "text", "table": "document_segments", "column": "content", "pk_column": "id"},
         {"type": "text", "table": "messages", "column": "answer", "pk_column": "id"},
@@ -751,7 +753,7 @@ def migrate_oss(
                             UploadFile.storage_type == source_storage_type,
                             UploadFile.key.in_(copied_upload_file_keys),
                         )
-                        .values(storage_type=dify_config.STORAGE_TYPE)
+                        .values(storage_type=StorageType(dify_config.STORAGE_TYPE))
                     ),
                 ).rowcount
                 db.session.commit()

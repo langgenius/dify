@@ -1,3 +1,4 @@
+from extensions.otel.context import propagate_context
 from extensions.otel.decorators.base import trace_span
 from extensions.otel.decorators.handler import SpanHandler
 from extensions.otel.decorators.handlers.generate_handler import AppGenerateHandler
@@ -7,5 +8,6 @@ __all__ = [
     "AppGenerateHandler",
     "SpanHandler",
     "WorkflowAppRunnerHandler",
+    "propagate_context",
     "trace_span",
 ]

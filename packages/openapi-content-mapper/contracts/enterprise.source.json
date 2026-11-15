@@ -1,0 +1,14 @@
+{
+  "command": ["node", "packages/contracts/scripts/export-compatibility-types.ts"],
+  "cwd": "../../..",
+  "inputs": [
+    "packages/contracts/api-documents.ts",
+    "packages/contracts/typescript-generation.ts",
+    "packages/contracts/scripts/export-compatibility-types.ts",
+    "packages/contracts/package.json",
+    "pnpm-lock.yaml",
+    "packages/contracts/generated/enterprise*/types.gen.ts",
+    "packages/contracts/generated/enterprise*/openapi.gen.json"
+  ],
+  "timeoutMs": 120000
+}

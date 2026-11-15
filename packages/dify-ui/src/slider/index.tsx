@@ -1,0 +1,141 @@
+'use client'
+
+import { Slider as BaseSlider } from '@base-ui/react/slider'
+import { cn } from '../cn'
+import { formLabelClassName } from '../internal/form-control'
+import { resolveClassName } from '../internal/resolve-class-name'
+
+type SliderRootValue = NonNullable<BaseSlider.Root.Props['value']>
+type SliderProps<Value extends SliderRootValue = SliderRootValue> = BaseSlider.Root.Props<Value>
+type SliderChangeEventReason = BaseSlider.Root.ChangeEventReason
+type SliderChangeEventDetails = BaseSlider.Root.ChangeEventDetails
+type SliderCommitEventReason = BaseSlider.Root.CommitEventReason
+type SliderCommitEventDetails = BaseSlider.Root.CommitEventDetails
+
+function Slider<Value extends SliderRootValue = SliderRootValue>({
+  className,
+  ...props
+}: SliderProps<Value>) {
+  return (
+    <BaseSlider.Root
+      className={(state) =>
+        cn(
+          'group/slider relative inline-flex w-full data-[orientation=vertical]:w-auto data-[orientation=vertical]:flex-col',
+          'data-disabled:opacity-30',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type SliderLabelProps = BaseSlider.Label.Props
+
+function SliderLabel({ className, ...props }: SliderLabelProps) {
+  return (
+    <BaseSlider.Label
+      className={(state) => cn(formLabelClassName, resolveClassName(className, state))}
+      {...props}
+    />
+  )
+}
+
+type SliderValueProps = BaseSlider.Value.Props
+const SliderValue = BaseSlider.Value
+
+type SliderControlProps = BaseSlider.Control.Props
+
+function SliderControl({ className, ...props }: SliderControlProps) {
+  return (
+    <BaseSlider.Control
+      className={(state) =>
+        cn(
+          'relative flex h-5 w-full touch-none items-center select-none',
+          'data-[orientation=vertical]:h-32 data-[orientation=vertical]:w-5 data-[orientation=vertical]:justify-center',
+          'data-disabled:cursor-not-allowed',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type SliderTrackProps = BaseSlider.Track.Props
+
+function SliderTrack({ className, ...props }: SliderTrackProps) {
+  return (
+    <BaseSlider.Track
+      className={(state) =>
+        cn(
+          'relative h-1 w-full rounded-full',
+          'data-[orientation=vertical]:h-full data-[orientation=vertical]:w-1',
+          'bg-components-slider-track',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+type SliderIndicatorProps = BaseSlider.Indicator.Props
+
+function SliderIndicator({ className, ...props }: SliderIndicatorProps) {
+  return (
+    <BaseSlider.Indicator
+      className={(state) =>
+        cn('h-full rounded-full', 'bg-components-slider-range', resolveClassName(className, state))
+      }
+      {...props}
+    />
+  )
+}
+
+type SliderThumbProps = BaseSlider.Thumb.Props
+
+function SliderThumb({ className, ...props }: SliderThumbProps) {
+  return (
+    <BaseSlider.Thumb
+      className={(state) =>
+        cn(
+          'block h-5 w-2 shrink-0 rounded-[3px] border-[0.5px]',
+          'data-[orientation=vertical]:h-2 data-[orientation=vertical]:w-5',
+          'border-components-slider-knob-border bg-components-slider-knob shadow-sm',
+          'transition-[background-color,border-color,box-shadow,opacity] motion-reduce:transition-none',
+          'hover:bg-components-slider-knob-hover',
+          'has-focus-visible:ring-2 has-focus-visible:ring-state-accent-solid has-focus-visible:ring-offset-0',
+          'active:shadow-md group-data-dragging/slider:has-focus:shadow-md',
+          'data-disabled:border-components-slider-knob-border data-disabled:bg-components-slider-knob-disabled data-disabled:shadow-none',
+          resolveClassName(className, state),
+        )
+      }
+      {...props}
+    />
+  )
+}
+
+export {
+  Slider,
+  SliderControl,
+  SliderIndicator,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+  SliderValue,
+}
+
+export type {
+  SliderChangeEventDetails,
+  SliderChangeEventReason,
+  SliderCommitEventDetails,
+  SliderCommitEventReason,
+  SliderControlProps,
+  SliderIndicatorProps,
+  SliderLabelProps,
+  SliderProps,
+  SliderThumbProps,
+  SliderTrackProps,
+  SliderValueProps,
+}

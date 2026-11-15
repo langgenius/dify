@@ -1,9 +1,51 @@
+from http import HTTPStatus
+
 from libs.exception import BaseHTTPException
+from services.errors.app import (
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE,
+    TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE,
+)
+
+
+class AppNotFoundError(BaseHTTPException):
+    error_code = "app_not_found"
+    description = "The app no longer exists."
+    code = HTTPStatus.FORBIDDEN
+
+
+class AppAbnormalStatusError(BaseHTTPException):
+    error_code = "app_abnormal_status"
+    description = "The app's status is abnormal."
+    code = HTTPStatus.FORBIDDEN
+
+
+class AppApiDisabledError(BaseHTTPException):
+    error_code = "app_api_disabled"
+    description = "The app's API service has been disabled."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceNotFoundError(BaseHTTPException):
+    error_code = "workspace_not_found"
+    description = "Tenant does not exist."
+    code = HTTPStatus.FORBIDDEN
+
+
+class WorkspaceArchivedError(BaseHTTPException):
+    error_code = "workspace_archived"
+    description = "The workspace's status is archived."
+    code = HTTPStatus.FORBIDDEN
 
 
 class AppUnavailableError(BaseHTTPException):
     error_code = "app_unavailable"
     description = "App unavailable, please check your app configurations."
+    code = 400
+
+
+class AgentNotPublishedError(BaseHTTPException):
+    error_code = "agent_not_published"
+    description = "Agent has not been published. Please publish the Agent before using the API."
     code = 400
 
 
@@ -23,6 +65,18 @@ class NotWorkflowAppError(BaseHTTPException):
     error_code = "not_workflow_app"
     description = "Please check if your app mode matches the right API route."
     code = 400
+
+
+class WorkflowVersionExecutionNotAllowedError(BaseHTTPException):
+    error_code = "workflow_version_execution_not_allowed"
+    description = "Workflow version execution is not available on your current plan. Please upgrade to a paid plan."
+    code = 403
+
+
+class TriggerWorkflowServiceModeUnavailableError(BaseHTTPException):
+    error_code = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_CODE
+    description = TRIGGER_WORKFLOW_SERVICE_MODE_UNAVAILABLE_MESSAGE
+    code = 403
 
 
 class ConversationCompletedError(BaseHTTPException):
@@ -61,6 +115,12 @@ class CompletionRequestError(BaseHTTPException):
     code = 400
 
 
+class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
+    error_code = "app_suggested_questions_after_answer_disabled"
+    description = "The 'Suggested Questions After Answer' feature is disabled."
+    code = 403
+
+
 class NoAudioUploadedError(BaseHTTPException):
     error_code = "no_audio_uploaded"
     description = "Please upload your audio."
@@ -82,6 +142,12 @@ class UnsupportedAudioTypeError(BaseHTTPException):
 class ProviderNotSupportSpeechToTextError(BaseHTTPException):
     error_code = "provider_not_support_speech_to_text"
     description = "Provider not support speech to text."
+    code = 400
+
+
+class SpeechToTextDisabledError(BaseHTTPException):
+    error_code = "speech_to_text_disabled"
+    description = "Speech to text is disabled."
     code = 400
 
 

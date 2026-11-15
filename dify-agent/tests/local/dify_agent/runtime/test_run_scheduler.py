@@ -1,0 +1,1324 @@
+from dify_agent.runtime.context import Services
+import asyncio
+from collections import defaultdict
+from collections.abc import Mapping
+import hashlib
+import json
+from typing import cast
+
+import httpx
+import pytest
+from fakeredis.aioredis import FakeRedis as AsyncFakeRedis
+
+from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.output import DifyOutputLayerConfig
+from dify_agent.protocol import DIFY_AGENT_MODEL_LAYER_ID, DIFY_AGENT_OUTPUT_LAYER_ID, RunFailureType
+from dify_agent.protocol.schemas import (
+    AgentRunUsage,
+    CancelRunRequest,
+    CreateRunRequest,
+    RunCancelledEvent,
+    RunCancelledEventData,
+    RunComposition,
+    RunEvent,
+    RunFailedEvent,
+    RunLayerSpec,
+    RunStatus,
+    utc_now,
+)
+from dify_agent.runtime.cancellation import RunCancellationIntent
+from dify_agent.runtime.observability import AgentObservability
+from dify_agent.runtime.event_sink import (
+    NonTerminalRunEvent,
+    RunFinalizationResult,
+    TerminalRunEvent,
+    emit_run_failed,
+    emit_run_succeeded,
+    terminal_event_status_fields,
+)
+from dify_agent.runtime.run_scheduler import RunCancellationConflictError, RunScheduler, SchedulerStoppingError
+from dify_agent.runtime.runner import AgentRunRunner
+from dify_agent.server.schemas import RunRecord
+from dify_agent.storage.redis_keys import run_idempotency_key, run_record_key
+from dify_agent.storage.redis_run_store import IdempotencyConflictError, RedisRunStore
+
+
+def _request(
+    user: str | list[str] = "hello",
+    *,
+    output_config: Mapping[str, object] | DifyOutputLayerConfig | None = None,
+) -> CreateRunRequest:
+    layers = [
+        RunLayerSpec(name="prompt", config=(PromptConfig(user=user)).model_dump(mode="json")),
+        RunLayerSpec(
+            name="execution_context",
+            config=(
+                DifyExecutionContextLayerConfig(
+                    tenant_id="tenant-1", user_from="account", agent_mode="workflow_run", invoke_from="service-api"
+                )
+            ).model_dump(mode="json"),
+        ),
+        RunLayerSpec(
+            name=DIFY_AGENT_MODEL_LAYER_ID,
+            config=(
+                DifyPluginLLMLayerConfig(plugin_id="langgenius/openai", model_provider="openai", model="demo-model")
+            ).model_dump(mode="json"),
+        ),
+    ]
+    if output_config is not None:
+        layers.append(RunLayerSpec(name=DIFY_AGENT_OUTPUT_LAYER_ID, config=output_config))
+
+    return CreateRunRequest(composition=RunComposition(layers=layers))
+
+
+def _recursive_output_schema() -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {"node": {"$ref": "#/$defs/node"}},
+        "$defs": {
+            "node": {
+                "type": "object",
+                "properties": {"child": {"$ref": "#/$defs/node"}},
+                "additionalProperties": False,
+            }
+        },
+        "additionalProperties": False,
+    }
+
+
+class FakeStore:
+    records: dict[str, RunRecord]
+    events: dict[str, list[RunEvent]]
+    statuses: dict[str, RunStatus]
+    errors: dict[str, str | None]
+    error_types: dict[str, RunFailureType | None]
+    cancellation_changes: dict[str, asyncio.Event]
+    cancellation_intents: dict[str, RunCancellationIntent]
+    idempotency_claims: dict[str, tuple[str, str]]
+
+    def __init__(self) -> None:
+        self.records = {}
+        self.events = defaultdict(list)
+        self.statuses = {}
+        self.errors = {}
+        self.error_types = {}
+        self.cancellation_changes = {}
+        self.cancellation_intents = {}
+        self.idempotency_claims = {}
+
+    async def create_run(self) -> RunRecord:
+        run_id = f"run-{len(self.records) + 1}"
+        record = RunRecord(run_id=run_id, status="running")
+        self.records[run_id] = record
+        self.statuses[run_id] = "running"
+        self.cancellation_changes[run_id] = asyncio.Event()
+        return record
+
+    async def create_run_idempotent(self, *, idempotency_key: str, request_fingerprint: str) -> tuple[RunRecord, bool]:
+        existing = self.idempotency_claims.get(idempotency_key)
+        if existing is not None:
+            existing_fingerprint, run_id = existing
+            if existing_fingerprint != request_fingerprint:
+                raise IdempotencyConflictError("idempotency key was already used with a different create-run request")
+            return await self.get_run(run_id), False
+        record = await self.create_run()
+        self.idempotency_claims[idempotency_key] = (request_fingerprint, record.run_id)
+        return record, True
+
+    async def append_event(self, event: NonTerminalRunEvent) -> str:
+        event_id = str(len(self.events[event.run_id]) + 1)
+        self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
+        return event_id
+
+    async def get_run(self, run_id: str) -> RunRecord:
+        return self.records[run_id].model_copy(
+            update={
+                "status": self.statuses[run_id],
+                "error": self.errors.get(run_id),
+                "error_type": self.error_types.get(run_id),
+            },
+        )
+
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        current_status = self.statuses[event.run_id]
+        if current_status != "running":
+            return RunFinalizationResult(applied=False, status=current_status)
+        if event.run_id in self.cancellation_intents:
+            return RunFinalizationResult(applied=False, status="running")
+
+        status, error, error_type = terminal_event_status_fields(event)
+        event_id = str(len(self.events[event.run_id]) + 1)
+        self.events[event.run_id].append(event.model_copy(update={"id": event_id}))
+        self.statuses[event.run_id] = status
+        self.errors[event.run_id] = error
+        self.error_types[event.run_id] = error_type
+        return RunFinalizationResult(applied=True, status=status, event_id=event_id)
+
+    async def request_cancellation(self, run_id: str, request: CancelRunRequest) -> RunStatus:
+        status = self.statuses[run_id]
+        if status != "running":
+            return status
+        if run_id not in self.cancellation_intents:
+            self.cancellation_intents[run_id] = RunCancellationIntent(
+                reason=request.reason,
+                message=request.message,
+                requested_at=utc_now(),
+            )
+            self.cancellation_changes[run_id].set()
+        return "running"
+
+    async def get_cancellation_intent(self, run_id: str) -> RunCancellationIntent | None:
+        return self.cancellation_intents.get(run_id)
+
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        await self.cancellation_changes[run_id].wait()
+        return self.cancellation_intents[run_id]
+
+    async def finalize_cancellation(
+        self,
+        run_id: str,
+        intent: RunCancellationIntent,
+        *,
+        session_snapshot: SessionSnapshot | None = None,
+        usage: AgentRunUsage | None = None,
+    ) -> RunFinalizationResult:
+        current_status = self.statuses[run_id]
+        if current_status != "running":
+            return RunFinalizationResult(applied=False, status=current_status)
+        if run_id not in self.cancellation_intents:
+            return RunFinalizationResult(applied=False, status="running")
+        event = RunCancelledEvent(
+            run_id=run_id,
+            data=RunCancelledEventData(
+                reason=intent.reason,
+                message=intent.message,
+                session_snapshot=session_snapshot,
+                usage=usage,
+            ),
+        )
+        event_id = str(len(self.events[run_id]) + 1)
+        self.events[run_id].append(event.model_copy(update={"id": event_id}))
+        self.statuses[run_id] = "cancelled"
+        self.errors[run_id] = intent.message or intent.reason
+        self.error_types[run_id] = None
+        del self.cancellation_intents[run_id]
+        return RunFinalizationResult(applied=True, status="cancelled", event_id=event_id)
+
+
+class SlowCreateStore(FakeStore):
+    create_started: asyncio.Event
+    release_create: asyncio.Event
+
+    def __init__(self, *, create_started: asyncio.Event, release_create: asyncio.Event) -> None:
+        super().__init__()
+        self.create_started = create_started
+        self.release_create = release_create
+
+    async def create_run(self) -> RunRecord:
+        _ = self.create_started.set()
+        await self.release_create.wait()
+        return await super().create_run()
+
+
+class TrackingStore(FakeStore):
+    observer_started: asyncio.Event
+    observer_finished: asyncio.Event
+    release_observer: asyncio.Event
+
+    def __init__(self, *, pause_observer: bool = False) -> None:
+        super().__init__()
+        self.observer_started = asyncio.Event()
+        self.observer_finished = asyncio.Event()
+        self.release_observer = asyncio.Event()
+        if not pause_observer:
+            self.release_observer.set()
+
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        self.observer_started.set()
+        try:
+            await self.release_observer.wait()
+            return await super().wait_for_cancellation(run_id)
+        finally:
+            self.observer_finished.set()
+
+
+class FailingObserverStore(FakeStore):
+    fail_observer: asyncio.Event
+    observer_finished: asyncio.Event
+
+    def __init__(self, *, fail_observer: asyncio.Event) -> None:
+        super().__init__()
+        self.fail_observer = fail_observer
+        self.observer_finished = asyncio.Event()
+
+    async def wait_for_cancellation(self, run_id: str) -> RunCancellationIntent:
+        del run_id
+        try:
+            await self.fail_observer.wait()
+            raise RuntimeError("redis read failed")
+        finally:
+            self.observer_finished.set()
+
+
+class CancellationDuringShutdownFailureStore(FakeStore):
+    async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
+        if isinstance(event, RunFailedEvent) and event.data.reason == "shutdown":
+            _ = await self.request_cancellation(
+                event.run_id,
+                CancelRunRequest(reason="concurrent_shutdown_cancel"),
+            )
+        return await super().finalize_run(event)
+
+
+class SnapshotlessRunner:
+    @property
+    def terminal_session_snapshot(self) -> SessionSnapshot | None:
+        return None
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        return None
+
+
+class ControlledRunner:
+    started: asyncio.Event
+    release: asyncio.Event
+    finished: asyncio.Event | None
+    _terminal_session_snapshot: SessionSnapshot
+    _terminal_usage: AgentRunUsage | None
+
+    def __init__(
+        self,
+        *,
+        started: asyncio.Event,
+        release: asyncio.Event,
+        finished: asyncio.Event | None = None,
+        usage: AgentRunUsage | None = None,
+    ) -> None:
+        self.started = started
+        self.release = release
+        self.finished = finished
+        self._terminal_session_snapshot = SessionSnapshot(layers={})
+        self._terminal_usage = usage
+
+    @property
+    def terminal_session_snapshot(self) -> SessionSnapshot:
+        return self._terminal_session_snapshot
+
+    @property
+    def terminal_usage(self) -> AgentRunUsage | None:
+        return self._terminal_usage
+
+    async def run(self) -> None:
+        _ = self.started.set()
+        try:
+            await self.release.wait()
+        finally:
+            if self.finished is not None:
+                self.finished.set()
+
+
+class PreEnterBlockingRunner(SnapshotlessRunner):
+    def __init__(self, *, started: asyncio.Event) -> None:
+        self.started = started
+
+    async def run(self) -> None:
+        self.started.set()
+        await asyncio.Event().wait()
+
+
+class SuccessThenWaitRunner(SnapshotlessRunner):
+    def __init__(
+        self,
+        *,
+        store: FakeStore,
+        run_id: str,
+        finalized: asyncio.Event,
+        release: asyncio.Event,
+    ) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.finalized = finalized
+        self.release = release
+
+    async def run(self) -> None:
+        result = await emit_run_succeeded(
+            self.store,
+            run_id=self.run_id,
+            output="done",
+            session_snapshot=SessionSnapshot(layers={}),
+        )
+        assert result.applied is True
+        self.finalized.set()
+        await self.release.wait()
+
+
+class IgnoreCancellationThenSucceedRunner(SnapshotlessRunner):
+    def __init__(
+        self,
+        *,
+        store: FakeStore,
+        run_id: str,
+        started: asyncio.Event,
+        release: asyncio.Event,
+        finished: asyncio.Event,
+    ) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.started = started
+        self.release = release
+        self.finished = finished
+
+    async def run(self) -> None:
+        try:
+            self.started.set()
+            while not self.release.is_set():
+                try:
+                    await self.release.wait()
+                except asyncio.CancelledError:
+                    continue
+            result = await emit_run_succeeded(
+                self.store,
+                run_id=self.run_id,
+                output="late success",
+                session_snapshot=SessionSnapshot(layers={}),
+            )
+            assert result.applied is False
+            assert result.status == "running"
+        finally:
+            self.finished.set()
+
+
+class ReleaseThenSucceedRunner(SnapshotlessRunner):
+    def __init__(
+        self,
+        *,
+        store: FakeStore,
+        run_id: str,
+        started: asyncio.Event,
+        release: asyncio.Event,
+        finished: asyncio.Event,
+    ) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.started = started
+        self.release = release
+        self.finished = finished
+
+    async def run(self) -> None:
+        self.started.set()
+        try:
+            await self.release.wait()
+            result = await emit_run_succeeded(
+                self.store,
+                run_id=self.run_id,
+                output="done",
+                session_snapshot=SessionSnapshot(layers={}),
+            )
+            assert result.applied is True
+        finally:
+            self.finished.set()
+
+
+class CompetingFailureRunner(SnapshotlessRunner):
+    def __init__(
+        self,
+        *,
+        store: FakeStore,
+        run_id: str,
+        started: asyncio.Event,
+        release: asyncio.Event,
+        failure_attempted: asyncio.Event,
+    ) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.started = started
+        self.release = release
+        self.failure_attempted = failure_attempted
+
+    async def run(self) -> None:
+        self.started.set()
+        try:
+            await self.release.wait()
+        except asyncio.CancelledError:
+            pass
+        _ = await emit_run_failed(self.store, run_id=self.run_id, error="runner failed", reason="model_error")
+        self.failure_attempted.set()
+
+
+class FinalizeSuccessOnCancellationRunner(SnapshotlessRunner):
+    def __init__(self, *, store: FakeStore, run_id: str, started: asyncio.Event) -> None:
+        self.store = store
+        self.run_id = run_id
+        self.started = started
+
+    async def run(self) -> None:
+        self.started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            result = await emit_run_succeeded(
+                self.store,
+                run_id=self.run_id,
+                output="completed during shutdown",
+                session_snapshot=SessionSnapshot(layers={}),
+            )
+            assert result.applied is True
+
+
+def test_default_runner_factory_passes_runtime_limits_to_runner() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        record = await store.create_run()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                run_timeout_seconds=17,
+                stream_text_delta_coalescing_enabled=False,
+                stream_text_delta_flush_interval_seconds=0.25,
+                stream_text_delta_max_chars=2048,
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+
+            runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+
+        assert isinstance(runner, AgentRunRunner)
+        assert runner.run_timeout_seconds == 17
+        assert runner.stream_text_delta_coalescing_enabled is False
+        assert runner.stream_text_delta_flush_interval_seconds == 0.25
+        assert runner.stream_text_delta_max_chars == 2048
+
+    asyncio.run(scenario())
+
+
+def test_default_runner_factory_passes_agent_observability_instance() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        record = await store.create_run()
+        sentinel = cast(AgentObservability, object())
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                agent_observability=sentinel,
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+
+            runner = scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+            default_scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+            default_runner = default_scheduler._default_runner_factory(record, _request(), is_cancelled=lambda: False)
+
+        assert isinstance(runner, AgentRunRunner)
+        assert runner.agent_observability is sentinel
+        assert isinstance(default_runner, AgentRunRunner)
+        assert default_runner.agent_observability is None
+
+    asyncio.run(scenario())
+
+
+def test_create_run_starts_background_task_and_returns_running() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            assert record.status == "running"
+            assert list(scheduler.active_tasks) == [record.run_id]
+            _ = release.set()
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+            await asyncio.sleep(0)
+            assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("terminal_status", ["succeeded", "failed", "cancelled"])
+def test_create_run_idempotency_replay_does_not_schedule_a_second_runner(terminal_status: RunStatus) -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        runner_invocations = 0
+
+        class CompletingRunner(ControlledRunner):
+            def __init__(self, run_record: RunRecord) -> None:
+                super().__init__(started=started, release=release)
+                self.run_id = run_record.run_id
+
+            async def run(self) -> None:
+                await super().run()
+                if terminal_status == "succeeded":
+                    await emit_run_succeeded(
+                        store, run_id=self.run_id, output="done", session_snapshot=self.terminal_session_snapshot
+                    )
+                elif terminal_status == "failed":
+                    await emit_run_failed(store, run_id=self.run_id, error="test failure")
+                else:
+                    await store.request_cancellation(self.run_id, CancelRunRequest(reason="test"))
+                    intent = await store.get_cancellation_intent(self.run_id)
+                    assert intent is not None
+                    await store.finalize_cancellation(self.run_id, intent)
+
+        def runner_factory(run_record: RunRecord, _request: CreateRunRequest) -> CompletingRunner:
+            nonlocal runner_invocations
+            runner_invocations += 1
+            return CompletingRunner(run_record)
+
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=runner_factory,
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            request = _request().model_copy(update={"idempotency_key": "retry-1"})
+
+            first = await scheduler.create_run(request)
+            await asyncio.wait_for(started.wait(), timeout=1)
+            first_task = scheduler.active_tasks[first.run_id]
+            replay = await scheduler.create_run(request.model_copy(deep=True))
+
+            assert replay.run_id == first.run_id
+            assert replay.status == "running"
+            assert runner_invocations == 1
+            assert scheduler.active_tasks[first.run_id] is first_task
+            assert list(scheduler.active_tasks) == [first.run_id]
+            assert len(store.records) == 1
+            _ = release.set()
+            await asyncio.wait_for(first_task, timeout=1)
+            await asyncio.sleep(0)
+
+            terminal_replay = await scheduler.create_run(request.model_copy(deep=True))
+
+            assert terminal_replay.run_id == first.run_id
+            assert terminal_replay.status == terminal_status
+            assert runner_invocations == 1
+            assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_create_run_idempotency_rejects_different_request() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=asyncio.Event(), release=asyncio.Event()
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            first = _request().model_copy(update={"idempotency_key": "retry-1"})
+            _ = await scheduler.create_run(first)
+            conflicting = _request("different payload").model_copy(update={"idempotency_key": "retry-1"})
+
+            with pytest.raises(IdempotencyConflictError):
+                _ = await scheduler.create_run(conflicting)
+            assert len(store.records) == 1
+            await scheduler.shutdown()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("normalization", ["defaults", "dict_order", "snapshot_version"])
+def test_create_run_idempotency_replays_normalized_requests(normalization: str) -> None:
+    async def scenario() -> None:
+        payload = _request().model_dump(mode="json")
+        payload["idempotency_key"] = "retry-1"
+        if normalization == "defaults":
+            del payload["metadata"]
+        elif normalization == "dict_order":
+            payload["metadata"] = {"second": {"b": 2, "a": 1}, "first": True}
+            payload["composition"]["layers"][0]["config"] = {"user": "hello", "options": {"b": 2, "a": 1}}
+        else:
+            payload["session_snapshot"] = {
+                "schema_version": 1,
+                "layers": [{"name": "history", "lifecycle_state": "suspended", "runtime_state": {"messages": []}}],
+            }
+        first_request = CreateRunRequest.model_validate(payload)
+        replay_payload = first_request.model_dump(mode="json")
+        if normalization == "dict_order":
+            replay_payload["metadata"] = {"first": True, "second": {"a": 1, "b": 2}}
+            replay_payload["composition"]["layers"][0]["config"] = {"options": {"a": 1, "b": 2}, "user": "hello"}
+        replay_request = CreateRunRequest.model_validate(replay_payload)
+        store = FakeStore()
+        started, release = asyncio.Event(), asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            try:
+                first = await scheduler.create_run(first_request)
+                await asyncio.wait_for(started.wait(), timeout=1)
+                first_task = scheduler.active_tasks[first.run_id]
+
+                replay = await scheduler.create_run(replay_request)
+
+                assert replay.run_id == first.run_id
+                assert scheduler.active_tasks[first.run_id] is first_task
+                assert len(store.records) == 1
+            finally:
+                release.set()
+                await scheduler.shutdown()
+
+    asyncio.run(scenario())
+
+
+def test_create_run_persists_only_admission_digests_and_run_metadata_in_redis() -> None:
+    async def scenario() -> None:
+        raw_key = " private-retry-key\t"
+        credential = "private-layer-credential"
+        prompt = "private-layer-prompt"
+        metadata_value = "private-metadata-value"
+        snapshot_value = "private-snapshot-value"
+        request = CreateRunRequest(
+            composition=_request(user=prompt).composition,
+            idempotency_key=raw_key,
+            metadata={"private": metadata_value},
+            session_snapshot=SessionSnapshot(layers={"history": {"private": snapshot_value}}),
+        )
+        request.composition.layers[-1].config["api_key"] = credential
+        started, release = asyncio.Event(), asyncio.Event()
+        async with AsyncFakeRedis(decode_responses=True) as redis, httpx.AsyncClient() as client:
+            store = RedisRunStore(redis, prefix="test", run_retention_seconds=60)
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(request)
+            supervisor = scheduler.active_tasks[record.run_id]
+            try:
+                await asyncio.wait_for(started.wait(), timeout=1)
+
+                key_digest = hashlib.sha256(raw_key.encode()).hexdigest()
+                claim_key = run_idempotency_key("test", key_digest)
+                record_key = run_record_key("test", record.run_id)
+                keys = await redis.keys("*")
+                assert set(keys) == {claim_key, record_key}
+                assert await redis.get(claim_key) == record.run_id
+                persisted = json.loads(await redis.get(record_key))
+                assert persisted["idempotency_key_digest"] == key_digest
+                fingerprint = persisted["idempotency_fingerprint"]
+                assert len(fingerprint) == 64
+                assert all(character in "0123456789abcdef" for character in fingerprint)
+                stored_strings = keys + [await redis.get(key) for key in keys]
+                for sentinel in (raw_key, raw_key.strip(), credential, prompt, metadata_value, snapshot_value):
+                    assert all(sentinel not in value for value in stored_strings)
+            finally:
+                release.set()
+                await asyncio.wait_for(supervisor, timeout=1)
+                await scheduler.shutdown()
+
+    asyncio.run(scenario())
+
+
+def test_create_run_fingerprint_excludes_the_idempotency_key() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=asyncio.Event(), release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            try:
+                for key in ("retry-1", "retry-2"):
+                    await scheduler.create_run(_request().model_copy(update={"idempotency_key": key}))
+                first_fingerprint, first_id = store.idempotency_claims["retry-1"]
+                second_fingerprint, second_id = store.idempotency_claims["retry-2"]
+                assert first_fingerprint == second_fingerprint
+                assert first_id != second_id
+            finally:
+                release.set()
+                await scheduler.shutdown()
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("changed_field", ["metadata", "session_snapshot", "layer_order"])
+def test_create_run_idempotency_conflicts_when_normalized_payload_changes(changed_field: str) -> None:
+    async def scenario() -> None:
+        first_request = _request().model_copy(
+            update={
+                "idempotency_key": "retry-1",
+                "metadata": {"source": "first"},
+                "session_snapshot": SessionSnapshot(layers={"prompt": {"turn": 1}}),
+            },
+        )
+        conflicting = first_request.model_copy(deep=True)
+        if changed_field == "metadata":
+            conflicting.metadata["source"] = "second"
+        elif changed_field == "session_snapshot":
+            conflicting.session_snapshot = SessionSnapshot(layers={"prompt": {"turn": 2}})
+        else:
+            conflicting.composition.layers.reverse()
+        store = FakeStore()
+        started, release = asyncio.Event(), asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=release),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            try:
+                first = await scheduler.create_run(first_request)
+                await asyncio.wait_for(started.wait(), timeout=1)
+                first_task = scheduler.active_tasks[first.run_id]
+
+                with pytest.raises(IdempotencyConflictError):
+                    await scheduler.create_run(conflicting)
+
+                assert scheduler.active_tasks[first.run_id] is first_task
+                assert len(store.records) == 1
+            finally:
+                release.set()
+                await scheduler.shutdown()
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_marks_unfinished_runs_failed_and_appends_event() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            await scheduler.shutdown()
+
+            assert scheduler.stopping is True
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "failed"
+            assert store.errors[record.run_id] == "run cancelled during server shutdown"
+            assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_failure_finalization_yields_to_concurrent_cancellation_intent() -> None:
+    async def scenario() -> None:
+        store = CancellationDuringShutdownFailureStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(started=started, release=asyncio.Event()),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            await scheduler.shutdown()
+
+            assert store.statuses[record.run_id] == "cancelled"
+            assert record.run_id not in store.cancellation_intents
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.reason == "concurrent_shutdown_cancel"
+            assert terminal.data.session_snapshot == SessionSnapshot(layers={})
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_observer_failure_stops_runner_and_finalizes_failed() -> None:
+    async def scenario() -> None:
+        fail_observer = asyncio.Event()
+        store = FailingObserverStore(fail_observer=fail_observer)
+        runner_started = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=runner_started, release=asyncio.Event(), finished=runner_finished
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(runner_started.wait(), timeout=1)
+
+            fail_observer.set()
+            await asyncio.wait_for(supervisor_task, timeout=1)
+
+            assert store.statuses[record.run_id] == "failed"
+            assert store.errors[record.run_id] == "run cancellation observer failed: redis read failed"
+            assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+            assert runner_finished.is_set()
+            assert store.observer_finished.is_set()
+            await asyncio.sleep(0)
+            assert scheduler.active_tasks == {}
+
+    asyncio.run(scenario())
+
+
+def test_cancellation_observer_failure_finalizes_concurrent_intent_after_runner_exit() -> None:
+    async def scenario() -> None:
+        fail_observer = asyncio.Event()
+        store = FailingObserverStore(fail_observer=fail_observer)
+        runner_started = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=runner_started, release=asyncio.Event(), finished=runner_finished
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(runner_started.wait(), timeout=1)
+
+            response = await scheduler.cancel_run(
+                record.run_id,
+                CancelRunRequest(reason="workflow_aborted", message="outer workflow stopped"),
+            )
+            fail_observer.set()
+            await asyncio.wait_for(supervisor_task, timeout=1)
+
+            assert response.status == "cancelled"
+            assert runner_finished.is_set()
+            assert store.statuses[record.run_id] == "cancelled"
+            assert record.run_id not in store.cancellation_intents
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.session_snapshot == SessionSnapshot(layers={})
+
+    asyncio.run(scenario())
+
+
+def test_non_owner_cancel_run_stops_owner_task_and_persists_cancelled_terminal() -> None:
+    async def scenario() -> None:
+        store = TrackingStore()
+        started = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            owner_scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=started,
+                    release=asyncio.Event(),
+                    finished=runner_finished,
+                    usage=AgentRunUsage(prompt_tokens=13, completion_tokens=8),
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            remote_scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+            record = await owner_scheduler.create_run(_request())
+            owner_task = owner_scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(started.wait(), timeout=1)
+            await asyncio.wait_for(store.observer_started.wait(), timeout=1)
+
+            response = await remote_scheduler.cancel_run(
+                record.run_id,
+                CancelRunRequest(reason="workflow_aborted", message="outer workflow stopped"),
+            )
+
+            assert response.status == "cancelled"
+            assert remote_scheduler.active_tasks == {}
+            await asyncio.wait_for(owner_task, timeout=1)
+            assert store.statuses[record.run_id] == "cancelled"
+            assert store.errors[record.run_id] == "outer workflow stopped"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert terminal.data.session_snapshot == SessionSnapshot(layers={})
+            assert terminal.data.usage is not None
+            assert terminal.data.usage.prompt_tokens == 13
+            assert terminal.data.usage.completion_tokens == 8
+            assert terminal.data.usage.total_tokens == 21
+            assert runner_finished.is_set()
+            assert store.observer_finished.is_set()
+            await asyncio.sleep(0)
+            assert owner_scheduler.active_tasks == {}
+
+            repeated = await remote_scheduler.cancel_run(record.run_id, CancelRunRequest(reason="duplicate"))
+            assert repeated.status == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+    asyncio.run(scenario())
+
+
+def test_pre_enter_cancellation_does_not_copy_input_session_snapshot() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        request = _request()
+        request.session_snapshot = SessionSnapshot(layers={"prior": {"value": "prior"}})
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda _record, _request: PreEnterBlockingRunner(started=started),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(request)
+            supervisor = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            _ = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="pre_enter_cancel"))
+            await asyncio.wait_for(supervisor, timeout=1)
+
+            terminal = store.events[record.run_id][0]
+            assert isinstance(terminal, RunCancelledEvent)
+            assert request.session_snapshot is not None
+            assert terminal.data.session_snapshot is None
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_does_not_override_successful_terminal() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        finalized = asyncio.Event()
+        release = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda record, _request: SuccessThenWaitRunner(
+                    store=store, run_id=record.run_id, finalized=finalized, release=release
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(finalized.wait(), timeout=1)
+            task = scheduler.active_tasks[record.run_id]
+
+            with pytest.raises(RunCancellationConflictError, match="already finished with status 'succeeded'"):
+                await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="late_cancel"))
+
+            assert task.done() is False
+            assert store.statuses[record.run_id] == "succeeded"
+            assert [event.type for event in store.events[record.run_id]] == ["run_succeeded"]
+            release.set()
+            await asyncio.wait_for(task, timeout=1)
+
+    asyncio.run(scenario())
+
+
+def test_cancelled_terminal_survives_shutdown_while_runner_cleanup_is_pending() -> None:
+    async def scenario() -> None:
+        store = TrackingStore()
+        started = asyncio.Event()
+        release = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda record, _request: IgnoreCancellationThenSucceedRunner(
+                    store=store, run_id=record.run_id, started=started, release=release, finished=runner_finished
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(started.wait(), timeout=1)
+            await asyncio.wait_for(store.observer_started.wait(), timeout=1)
+
+            response = await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="workflow_aborted"))
+
+            assert response.status == "cancelled"
+            assert store.statuses[record.run_id] == "running"
+            assert store.events[record.run_id] == []
+            assert record.run_id in store.cancellation_intents
+            await asyncio.wait_for(store.observer_finished.wait(), timeout=1)
+            assert supervisor_task.done() is False
+            shutdown_task = asyncio.create_task(scheduler.shutdown())
+            await asyncio.sleep(0)
+            assert shutdown_task.done() is False
+            release.set()
+            await asyncio.wait_for(shutdown_task, timeout=1)
+
+            assert supervisor_task.done()
+            assert runner_finished.is_set()
+            assert store.observer_finished.is_set()
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "cancelled"
+            assert [event.type for event in store.events[record.run_id]] == ["run_cancelled"]
+
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize(
+    ("winner", "expected_event_type"),
+    [
+        pytest.param("failed", "run_failed", id="failure-first"),
+        pytest.param("cancelled", "run_cancelled", id="cancellation-first"),
+    ],
+)
+def test_failure_and_cancellation_keep_the_first_terminal(
+    winner: RunStatus,
+    expected_event_type: str,
+) -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        runner_started = asyncio.Event()
+        release_runner = asyncio.Event()
+        failure_attempted = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                runner_factory=lambda record, _request: CompetingFailureRunner(
+                    store=store,
+                    run_id=record.run_id,
+                    started=runner_started,
+                    release=release_runner,
+                    failure_attempted=failure_attempted,
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(runner_started.wait(), timeout=1)
+
+            if winner == "failed":
+                release_runner.set()
+                await asyncio.wait_for(failure_attempted.wait(), timeout=1)
+                with pytest.raises(RunCancellationConflictError, match="already finished with status 'failed'"):
+                    await scheduler.cancel_run(record.run_id, CancelRunRequest(reason="late_cancel"))
+            else:
+                response = await scheduler.cancel_run(
+                    record.run_id,
+                    CancelRunRequest(reason="cancel_before_failure"),
+                )
+                assert response.run_id == record.run_id
+                assert response.status == "cancelled"
+                release_runner.set()
+
+            await asyncio.wait_for(failure_attempted.wait(), timeout=1)
+            await asyncio.wait_for(supervisor_task, timeout=1)
+
+            assert store.statuses[record.run_id] == winner
+            assert [event.type for event in store.events[record.run_id]] == [expected_event_type]
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_grace_allows_runner_first_completion_and_reaps_children() -> None:
+    async def scenario() -> None:
+        store = TrackingStore(pause_observer=True)
+        runner_started = asyncio.Event()
+        release_runner = asyncio.Event()
+        runner_finished = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=1,
+                runner_factory=lambda record, _request: ReleaseThenSucceedRunner(
+                    store=store,
+                    run_id=record.run_id,
+                    started=runner_started,
+                    release=release_runner,
+                    finished=runner_finished,
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            supervisor_task = scheduler.active_tasks[record.run_id]
+            await asyncio.wait_for(runner_started.wait(), timeout=1)
+            await asyncio.wait_for(store.observer_started.wait(), timeout=1)
+
+            shutdown_task = asyncio.create_task(scheduler.shutdown())
+            await asyncio.sleep(0)
+            assert shutdown_task.done() is False
+            release_runner.set()
+            await asyncio.wait_for(shutdown_task, timeout=1)
+
+            assert supervisor_task.done()
+            assert runner_finished.is_set()
+            assert store.observer_finished.is_set()
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "succeeded"
+            assert [event.type for event in store.events[record.run_id]] == ["run_succeeded"]
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_does_not_append_failed_after_success_wins() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        started = asyncio.Event()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda record, _request: FinalizeSuccessOnCancellationRunner(
+                    store=store, run_id=record.run_id, started=started
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+            record = await scheduler.create_run(_request())
+            await asyncio.wait_for(started.wait(), timeout=1)
+
+            await scheduler.shutdown()
+
+            assert store.statuses[record.run_id] == "succeeded"
+            assert [event.type for event in store.events[record.run_id]] == ["run_succeeded"]
+
+    asyncio.run(scenario())
+
+
+def test_cancel_run_rejects_finished_run() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+            record = await store.create_run()
+            store.statuses[record.run_id] = "succeeded"
+
+            with pytest.raises(RunCancellationConflictError, match="already finished"):
+                await scheduler.cancel_run(record.run_id, CancelRunRequest())
+
+    asyncio.run(scenario())
+
+
+def test_create_run_accepts_blank_prompt_and_runner_fails_asynchronously() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+
+            record = await scheduler.create_run(_request(["", "   "]))
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+
+        assert store.records == {record.run_id: record}
+        assert [event.type for event in store.events[record.run_id]] == ["run_started", "run_failed"]
+        assert store.statuses[record.run_id] == "failed"
+        assert store.errors[record.run_id] == "run.user_prompts must not be empty"
+
+    asyncio.run(scenario())
+
+
+def test_create_run_accepts_invalid_output_schema_and_runner_fails_asynchronously() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+
+            record = await scheduler.create_run(
+                _request(
+                    output_config={
+                        "json_schema": _recursive_output_schema(),
+                    }
+                )
+            )
+            await asyncio.wait_for(scheduler.active_tasks[record.run_id], timeout=1)
+
+        assert store.records == {record.run_id: record}
+        assert [event.type for event in store.events[record.run_id]] == ["run_started", "run_failed"]
+        assert store.statuses[record.run_id] == "failed"
+        assert "Recursive $defs refs are not supported" in (store.errors[record.run_id] or "")
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_after_shutdown_starts() -> None:
+    async def scenario() -> None:
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=FakeStore(), services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+            await scheduler.shutdown()
+
+            with pytest.raises(SchedulerStoppingError):
+                await scheduler.create_run(_request())
+
+    asyncio.run(scenario())
+
+
+def test_create_run_rejects_invalid_request_after_shutdown_without_persisting() -> None:
+    async def scenario() -> None:
+        store = FakeStore()
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store, services=Services(plugin_daemon_http_client=client, dify_api_http_client=client)
+            )
+            await scheduler.shutdown()
+
+            with pytest.raises(SchedulerStoppingError):
+                _ = await scheduler.create_run(_request(["", "   "]))
+
+        assert store.records == {}
+
+    asyncio.run(scenario())
+
+
+def test_shutdown_waits_for_in_flight_create_to_register_before_cancelling() -> None:
+    async def scenario() -> None:
+        create_started = asyncio.Event()
+        release_create = asyncio.Event()
+        runner_started = asyncio.Event()
+        store = SlowCreateStore(create_started=create_started, release_create=release_create)
+        async with httpx.AsyncClient() as client:
+            scheduler = RunScheduler(
+                store=store,
+                shutdown_grace_seconds=0,
+                runner_factory=lambda _record, _request: ControlledRunner(
+                    started=runner_started, release=asyncio.Event()
+                ),
+                services=Services(plugin_daemon_http_client=client, dify_api_http_client=client),
+            )
+
+            create_task = asyncio.create_task(scheduler.create_run(_request()))
+            await asyncio.wait_for(create_started.wait(), timeout=1)
+            shutdown_task = asyncio.create_task(scheduler.shutdown())
+            await asyncio.sleep(0)
+
+            assert shutdown_task.done() is False
+            assert scheduler.stopping is False
+
+            _ = release_create.set()
+            record = await asyncio.wait_for(create_task, timeout=1)
+            await asyncio.wait_for(shutdown_task, timeout=1)
+
+            assert scheduler.stopping is True
+            assert scheduler.active_tasks == {}
+            assert store.statuses[record.run_id] == "failed"
+            assert [event.type for event in store.events[record.run_id]] == ["run_failed"]
+
+            with pytest.raises(SchedulerStoppingError):
+                await scheduler.create_run(_request())
+
+    asyncio.run(scenario())

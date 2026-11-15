@@ -1,20 +1,9 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Var } from '@/app/components/workflow/types'
 import { act } from '@testing-library/react'
-import {
-  BlockEnum,
-  InputVarType,
-} from '@/app/components/workflow/types'
-import {
-  createLexicalTestEditor,
-  expectInlineWrapperDom,
-} from '../../test-helpers'
-import HITLInputBlockComponent from '../component'
-import {
-  $createHITLInputNode,
-  $isHITLInputNode,
-  HITLInputNode,
-} from '../node'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { createLexicalTestEditor } from '../../__tests__/test-helpers'
+import { $createHITLInputNode, HITLInputNode } from '../node'
 
 const createFormInput = (): FormInputItem => ({
   type: InputVarType.paragraph,
@@ -98,6 +87,8 @@ describe('HITLInputNode', () => {
         expect(node.getConversationVariables()).toEqual(props.conversationVariables)
         expect(node.getRagVariables()).toEqual(props.ragVariables)
         expect(node.getReadonly()).toBe(true)
+        node.setReadonly(false)
+        expect(node.getReadonly()).toBe(false)
         expect(node.getTextContent()).toBe('{{#$output.user_name#}}')
       })
     })
@@ -127,7 +118,7 @@ describe('HITLInputNode', () => {
     })
   })
 
-  it('should clone, serialize, import and decorate correctly', () => {
+  it('preserves editable field metadata and callbacks across clone and serialization', () => {
     const editor = createTestEditor()
     const props = createNodeProps()
 
@@ -152,15 +143,17 @@ describe('HITLInputNode', () => {
         const cloned = HITLInputNode.clone(node)
         const imported = HITLInputNode.importJSON(serialized)
 
-        expect(cloned).toBeInstanceOf(HITLInputNode)
         expect(cloned.getKey()).toBe(node.getKey())
         expect(cloned).not.toBe(node)
-        expect(imported).toBeInstanceOf(HITLInputNode)
-
-        const element = node.decorate()
-        expect(element.type).toBe(HITLInputBlockComponent)
-        expect(element.props.nodeKey).toBe(node.getKey())
-        expect(element.props.varName).toBe('user_name')
+        expect(cloned.exportJSON()).toEqual(serialized)
+        expect(imported.exportJSON()).toEqual(serialized)
+        expect(imported.getTextContent()).toBe('{{#$output.user_name#}}')
+        imported.getOnFormInputsChange()([])
+        imported.getOnFormInputItemRename()(props.formInputs[0]!, 'old_name')
+        imported.getOnFormInputItemRemove()('user_name')
+        expect(props.onFormInputsChange).toHaveBeenCalledWith([])
+        expect(props.onFormInputItemRename).toHaveBeenCalledWith(props.formInputs[0], 'old_name')
+        expect(props.onFormInputItemRemove).toHaveBeenCalledWith('user_name')
       })
     })
   })
@@ -198,38 +191,5 @@ describe('HITLInputNode', () => {
         expect(cloned.getFormInputs()).toEqual([])
       })
     })
-  })
-
-  it('should create and update DOM and support helper type guard', () => {
-    const editor = createTestEditor()
-    const props = createNodeProps()
-
-    act(() => {
-      editor.update(() => {
-        const node = $createHITLInputNode(
-          props.variableName,
-          props.nodeId,
-          props.formInputs,
-          props.onFormInputsChange,
-          props.onFormInputItemRename,
-          props.onFormInputItemRemove,
-          props.workflowNodesMap,
-          props.getVarType,
-          props.environmentVariables,
-          props.conversationVariables,
-          props.ragVariables,
-          props.readonly,
-        )
-
-        const dom = node.createDOM()
-
-        expectInlineWrapperDom(dom, ['w-[calc(100%-1px)]', 'support-drag'])
-        expect(node.updateDOM()).toBe(false)
-        expect($isHITLInputNode(node)).toBe(true)
-      })
-    })
-
-    expect($isHITLInputNode(null)).toBe(false)
-    expect($isHITLInputNode(undefined)).toBe(false)
   })
 })

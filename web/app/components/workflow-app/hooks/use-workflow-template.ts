@@ -1,29 +1,43 @@
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
+import { useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
+import { NODE_WIDTH_X_OFFSET, START_INITIAL_POSITION } from '@/app/components/workflow/constants'
 import {
-  NODE_WIDTH_X_OFFSET,
-  START_INITIAL_POSITION,
-} from '@/app/components/workflow/constants'
+  isChatflowAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import answerDefault from '@/app/components/workflow/nodes/answer/default'
 import llmDefault from '@/app/components/workflow/nodes/llm/default'
+import startPlaceholderDefault from '@/app/components/workflow/nodes/start-placeholder/default'
 import startDefault from '@/app/components/workflow/nodes/start/default'
 import { generateNewNode } from '@/app/components/workflow/utils'
-import { useIsChatMode } from './use-is-chat-mode'
+import { consoleQuery } from '@/service/console'
 
 export const useWorkflowTemplate = () => {
-  const isChatMode = useIsChatMode()
-  const { t } = useTranslation()
+  const isChatflow = useAtomValue(isChatflowAtom)
+  const { appId } = useAtomValue(workflowAppIdentityAtom)
+  const { data: appDetail } = useSuspenseQuery(
+    consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+  )
+  const { t } = useTranslation(['workflow'] as const)
 
-  const { newNode: startNode } = generateNewNode({
-    data: {
-      ...startDefault.defaultValue as StartNodeType,
-      type: startDefault.metaData.type,
-      title: t(`blocks.${startDefault.metaData.type}`, { ns: 'workflow' }),
-    },
-    position: START_INITIAL_POSITION,
-  })
+  const createStartNode = () => {
+    const { newNode: startNode } = generateNewNode({
+      data: {
+        ...(startDefault.defaultValue as StartNodeType),
+        type: startDefault.metaData.type,
+        title: t(($) => $[`blocks.${startDefault.metaData.type}`], { ns: 'workflow' }),
+      },
+      position: START_INITIAL_POSITION,
+    })
 
-  if (isChatMode) {
+    return startNode
+  }
+
+  if (isChatflow) {
+    const startNode = createStartNode()
+
     const { newNode: llmNode } = generateNewNode({
       id: 'llm',
       data: {
@@ -34,7 +48,7 @@ export const useWorkflowTemplate = () => {
         },
         selected: true,
         type: llmDefault.metaData.type,
-        title: t(`blocks.${llmDefault.metaData.type}`, { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${llmDefault.metaData.type}`], { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET,
@@ -48,7 +62,7 @@ export const useWorkflowTemplate = () => {
         ...answerDefault.defaultValue,
         answer: `{{#${llmNode.id}.text#}}`,
         type: answerDefault.metaData.type,
-        title: t(`blocks.${answerDefault.metaData.type}`, { ns: 'workflow' }),
+        title: t(($) => $[`blocks.${answerDefault.metaData.type}`], { ns: 'workflow' }),
       },
       position: {
         x: START_INITIAL_POSITION.x + NODE_WIDTH_X_OFFSET * 2,
@@ -77,10 +91,26 @@ export const useWorkflowTemplate = () => {
       edges: [startToLlmEdge, llmToAnswerEdge],
     }
   }
-  else {
+  if (appDetail.mode === 'workflow') {
+    const { newNode: startPlaceholderNode } = generateNewNode({
+      data: {
+        ...startPlaceholderDefault.defaultValue,
+        selected: true,
+        type: startPlaceholderDefault.metaData.type,
+        title: t(($) => $[`blocks.${startPlaceholderDefault.metaData.type}`], { ns: 'workflow' }),
+        desc: '',
+      },
+      position: START_INITIAL_POSITION,
+    })
+
     return {
-      nodes: [startNode],
+      nodes: [startPlaceholderNode],
       edges: [],
     }
+  }
+
+  return {
+    nodes: [createStartNode()],
+    edges: [],
   }
 }

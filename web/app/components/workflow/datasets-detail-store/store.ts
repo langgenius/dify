@@ -1,20 +1,22 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { produce } from 'immer'
-import { useContext } from 'react'
+import { use } from 'react'
 import { createStore, useStore } from 'zustand'
 import { DatasetsDetailContext } from './provider'
 
 type DatasetsDetailStore = {
-  datasetsDetail: Record<string, DataSet>
-  updateDatasetsDetail: (datasetsDetail: DataSet[]) => void
+  datasetsDetail: Record<string, DatasetDetailWithPartialMembersResponse>
+  updateDatasetsDetail: (datasetsDetail: DatasetDetailWithPartialMembersResponse[]) => void
 }
 
 export const createDatasetsDetailStore = () => {
   return createStore<DatasetsDetailStore>((set, get) => ({
     datasetsDetail: {},
-    updateDatasetsDetail: (datasets: DataSet[]) => {
+    updateDatasetsDetail: (datasets: DatasetDetailWithPartialMembersResponse[]) => {
       const oldDatasetsDetail = get().datasetsDetail
-      const datasetsDetail = datasets.reduce<Record<string, DataSet>>((acc, dataset) => {
+      const datasetsDetail = datasets.reduce<
+        Record<string, DatasetDetailWithPartialMembersResponse>
+      >((acc, dataset) => {
         acc[dataset.id] = dataset
         return acc
       }, {})
@@ -30,9 +32,8 @@ export const createDatasetsDetailStore = () => {
 }
 
 export const useDatasetsDetailStore = <T>(selector: (state: DatasetsDetailStore) => T): T => {
-  const store = useContext(DatasetsDetailContext)
-  if (!store)
-    throw new Error('Missing DatasetsDetailContext.Provider in the tree')
+  const store = use(DatasetsDetailContext)
+  if (!store) throw new Error('Missing DatasetsDetailContext.Provider in the tree')
 
   return useStore(store, selector)
 }

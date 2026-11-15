@@ -1,0 +1,70 @@
+import type { StorageMode } from './store'
+import type { TokensFile, TokenStore } from './token-store'
+import { getEnv, platform } from '@/sys'
+import { FileTokenStore, KeychainTokenStore } from './token-store'
+
+const KEYRING_SERVICE = 'difyctl'
+const LINUX = 'linux'
+const DBUS_SESSION = 'DBUS_SESSION_BUS_ADDRESS'
+
+const PROBE_HOST = '__difyctl_probe__'
+const PROBE_EMAIL = '__difyctl_probe__'
+const PROBE_VALUE = 'probe-v1'
+
+export type GetTokenStoreOptions = {
+  readonly file: TokensFile
+  readonly factory?: {
+    readonly keyring?: () => TokenStore
+    readonly file?: () => TokenStore
+  }
+}
+
+export type DetectTokenStoreOptions = GetTokenStoreOptions & {
+  readonly skipKeyring?: boolean
+}
+
+/**
+ * Without a DBus session, the Linux keyring falls back to the kernel keyutils
+ * store: the probe round-trips, but the token is gone when the session ends.
+ */
+export function keyringDurable(): boolean {
+  return platform() !== LINUX || Boolean(getEnv(DBUS_SESSION))
+}
+
+const TOKEN_STORE_OPENERS: Record<StorageMode, (opts: GetTokenStoreOptions) => TokenStore> = {
+  file: (opts) => opts.factory?.file?.() ?? new FileTokenStore(opts.file),
+  keychain: (opts) => opts.factory?.keyring?.() ?? new KeychainTokenStore(KEYRING_SERVICE),
+}
+
+/**
+ * Decide which credential backend to use by probing the OS keyring with a
+ * write/read/remove round-trip. The probe MUTATES the keyring, so call this
+ * only where a credential is about to be written anyway (login).
+ */
+export async function detectTokenStore(
+  opts: DetectTokenStoreOptions,
+): Promise<{ store: TokenStore; mode: StorageMode }> {
+  if (opts.skipKeyring === true || !keyringDurable())
+    return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
+  try {
+    const k = TOKEN_STORE_OPENERS.keychain(opts)
+    await k.write(PROBE_HOST, PROBE_EMAIL, PROBE_VALUE)
+    let got = ''
+    try {
+      got = await k.read(PROBE_HOST, PROBE_EMAIL)
+    } finally {
+      await k.remove(PROBE_HOST, PROBE_EMAIL)
+    }
+    if (got === PROBE_VALUE) return { store: k, mode: 'keychain' }
+  } catch {
+    /* keyring unavailable → fall through to file */
+  }
+  return { store: TOKEN_STORE_OPENERS.file(opts), mode: 'file' }
+}
+
+/**
+ * Construct the credential backend the registry already recorded at login.
+ */
+export function getTokenStore(mode: StorageMode, opts: GetTokenStoreOptions): TokenStore {
+  return TOKEN_STORE_OPENERS[mode](opts)
+}

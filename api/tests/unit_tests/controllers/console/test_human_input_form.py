@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import UTC, datetime
+from inspect import unwrap
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import ANY, Mock
 
 import pytest
-from flask import Response
+from flask import Flask, Response, has_request_context
+from pytest_mock import MockerFixture
+from sqlalchemy import Engine
 
+from controllers.common.errors import NotFoundError
+from controllers.common.human_input import HumanInputFormSubmitPayload
+from controllers.common.rbac import locators as rbac_locators
+from controllers.console import human_input_form as human_input_form_module
 from controllers.console.human_input_form import (
     ConsoleHumanInputFormApi,
     ConsoleWorkflowEventsApi,
@@ -15,22 +23,121 @@ from controllers.console.human_input_form import (
     WorkflowResponseConverter,
     _jsonify_form_definition,
 )
-from controllers.web.error import NotFoundError
-from models.enums import CreatorUserRole
+from core.rbac import RBACPermission, RBACResourceScope
+from core.repositories.human_input_repository import HumanInputFormRecord
+from core.workflow.human_input_policy import HumanInputSurface
+from core.workflow.nodes.human_input.entities import FormDefinition, SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.enums import HumanInputFormKind, HumanInputFormStatus, ValueSourceType
+from graphon.enums import WorkflowExecutionStatus, WorkflowType
+from models import Account
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import RecipientType
-from models.model import AppMode
+from models.model import App, AppMode
+from models.workflow import WorkflowRun
+from models.workflow import WorkflowType as ModelWorkflowType
+from services.enterprise.rbac_service import RBACService
+from services.entities.app_entities import AppAgentBinding
+from services.human_input_service import Form
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.model_factories import make_account, make_app
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
-def _unwrap(func):
-    while hasattr(func, "__wrapped__"):
-        func = func.__wrapped__
-    return func
+@pytest.fixture(autouse=True)
+def bind_console_human_input_database(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bind controller-owned service factories to the isolated SQLite engine."""
+    monkeypatch.setattr(human_input_form_module, "db", SimpleNamespace(engine=sqlite_engine))
+
+
+def _account(*, account_id: str = "user-1") -> Account:
+    return make_account(account_id=account_id, name="Console User", email=f"{account_id}@example.com")
+
+
+def _app() -> App:
+    return make_app(
+        tenant_id="t1",
+        name="Human Input App",
+        mode=AppMode.WORKFLOW,
+        icon_type=None,
+        max_active_requests=0,
+    )
+
+
+def _workflow_run(
+    *,
+    created_by_role: CreatorUserRole = CreatorUserRole.ACCOUNT,
+    created_by: str = "user-1",
+    finished_at: datetime | None = None,
+) -> WorkflowRun:
+    workflow_run = WorkflowRun(
+        id="run-1",
+        tenant_id="t1",
+        app_id="app-1",
+        workflow_id="workflow-1",
+        type=ModelWorkflowType(WorkflowType.WORKFLOW),
+        triggered_from=WorkflowRunTriggeredFrom.DEBUGGING,
+        version="draft",
+        graph="{}",
+        inputs="{}",
+        status=WorkflowExecutionStatus.SUCCEEDED if finished_at else WorkflowExecutionStatus.RUNNING,
+        created_by_role=created_by_role,
+        created_by=created_by,
+        finished_at=finished_at,
+    )
+    workflow_run.created_at = datetime(2024, 1, 1, tzinfo=UTC)
+    return workflow_run
+
+
+def _definition(expiration: datetime) -> FormDefinition:
+    """Minimal form definition with no sections, inputs or user actions."""
+    return FormDefinition(
+        form_content="# Title",
+        rendered_content="# Title",
+        expiration_time=expiration,
+    )
+
+
+def _form(
+    *,
+    definition: FormDefinition,
+    tenant_id: str = "tenant-1",
+    recipient_type: RecipientType | None = None,
+) -> Form:
+    """Build a real ``Form`` around a record so no test double is needed."""
+    expiration = definition.expiration_time
+    record = HumanInputFormRecord(
+        form_id="form-1",
+        workflow_run_id=None,
+        node_id="node-1",
+        tenant_id=tenant_id,
+        app_id="app-1",
+        form_kind=HumanInputFormKind.RUNTIME,
+        definition=definition,
+        rendered_content=definition.rendered_content,
+        created_at=expiration,
+        expiration_time=expiration,
+        status=HumanInputFormStatus.WAITING,
+        selected_action_id=None,
+        submitted_data=None,
+        submitted_at=None,
+        submission_user_id=None,
+        submission_end_user_id=None,
+        completed_by_recipient_id=None,
+        recipient_id=None,
+        recipient_type=recipient_type,
+        access_token=None,
+    )
+    return Form(record)
 
 
 def test_jsonify_form_definition() -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": []})
-    form = SimpleNamespace(get_definition=lambda: definition, expiration_time=expiration)
+    definition = FormDefinition(
+        form_content="# Title",
+        rendered_content="# Title",
+        expiration_time=expiration,
+    )
+    form = _form(definition=definition)
 
     response = _jsonify_form_definition(form)
 
@@ -40,78 +147,82 @@ def test_jsonify_form_definition() -> None:
 
 
 def test_ensure_console_access_rejects(monkeypatch: pytest.MonkeyPatch) -> None:
-    form = SimpleNamespace(tenant_id="tenant-1")
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-2"))
+    form = _form(definition=_definition(datetime(2024, 1, 1, tzinfo=UTC)), tenant_id="tenant-1")
 
     with pytest.raises(NotFoundError):
-        ConsoleHumanInputFormApi._ensure_console_access(form)
+        ConsoleHumanInputFormApi._ensure_console_access(form, "tenant-2")
 
 
-def test_get_form_definition_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_form_definition_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     expiration = datetime(2024, 1, 1, tzinfo=UTC)
-    definition = SimpleNamespace(model_dump=lambda: {"fields": ["a"]})
-    form = SimpleNamespace(tenant_id="tenant-1", get_definition=lambda: definition, expiration_time=expiration)
+    definition = FormDefinition(
+        form_content="# Pick one",
+        rendered_content="# Rendered prompt",
+        expiration_time=expiration,
+    )
+    form = _form(definition=definition, tenant_id="tenant-1")
+    resolved_input = SelectInputConfig(
+        output_variable_name="choice",
+        option_source=StringListSource(type=ValueSourceType.CONSTANT, value=["a"]),
+    )
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_definition_by_token_for_console(self, _token):
+        def get_form_definition_by_token_for_console(self, _token: str) -> Mock:
             return form
 
+        def resolve_form_inputs(self, resolved_form: Mock) -> list[SelectInputConfig]:
+            assert resolved_form is form
+            return [resolved_input]
+
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-1"))
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
-        response = handler(api, form_token="token")
+        response = handler(api, "tenant-1", form_token="token")
 
     payload = json.loads(response.get_data(as_text=True))
-    assert payload["fields"] == ["a"]
+    assert payload["form_content"] == definition.form_content
+    assert payload["rendered_content"] == definition.rendered_content
+    assert payload["inputs"] == [resolved_input.model_dump(mode="json")]
 
 
-def test_get_form_definition_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_form_definition_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_definition_by_token_for_console(self, _token):
+        def get_form_definition_by_token_for_console(self, _token: str) -> Mock:
             return None
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr("controllers.console.human_input_form.current_account_with_tenant", lambda: (None, "tenant-1"))
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/form/human_input/token", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, form_token="token")
+            handler(api, "tenant-1", form_token="token")
 
 
-def test_post_form_invalid_recipient_type(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_invalid_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.EMAIL_MEMBER)
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
@@ -119,47 +230,123 @@ def test_post_form_invalid_recipient_type(app, monkeypatch: pytest.MonkeyPatch) 
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
         with pytest.raises(NotFoundError):
-            handler(api, form_token="token")
+            handler(
+                api,
+                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                "tenant-1",
+                _account(),
+                form_token="token",
+            )
 
 
-def test_post_form_success(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_rejects_webapp_recipient_type(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.STANDALONE_WEB_APP)
+
+    class _ServiceStub:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_form_by_token(self, _token: str) -> Mock:
+            return form
+
+    monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
+
+    api = ConsoleHumanInputFormApi()
+    handler = unwrap(api.post)
+
+    with app.test_request_context(
+        "/console/api/form/human_input/token",
+        method="POST",
+        json={"inputs": {"content": "ok"}, "action": "approve"},
+    ):
+        with pytest.raises(NotFoundError):
+            handler(
+                api,
+                HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+                "tenant-1",
+                _account(),
+                form_token="token",
+            )
+
+
+def test_post_form_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     submit_mock = Mock()
     form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)
 
     class _ServiceStub:
-        def __init__(self, *_args, **_kwargs):
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
             pass
 
-        def get_form_by_token(self, _token):
+        def get_form_by_token(self, _token: str) -> Mock:
             return form
 
-        def submit_form_by_token(self, **kwargs):
+        def submit_form_by_token(self, **kwargs: object) -> None:
             submit_mock(**kwargs)
 
     monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "tenant-1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleHumanInputFormApi()
-    handler = _unwrap(api.post)
+    handler = unwrap(api.post)
 
     with app.test_request_context(
         "/console/api/form/human_input/token",
         method="POST",
         json={"inputs": {"content": "ok"}, "action": "approve"},
     ):
-        response = handler(api, form_token="token")
+        response = handler(
+            api,
+            HumanInputFormSubmitPayload.model_validate({"inputs": {"content": "ok"}, "action": "approve"}),
+            "tenant-1",
+            _account(),
+            form_token="token",
+        )
 
     assert response.get_json() == {}
     submit_mock.assert_called_once()
 
 
-def test_workflow_events_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_post_form_decorated_success_validates_request_body(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    submit_mock = Mock()
+    form = SimpleNamespace(tenant_id="tenant-1", recipient_type=RecipientType.CONSOLE)
+    current_user = _account()
+
+    class _ServiceStub:
+        def __init__(self, *_args: object, **_kwargs: object) -> None:
+            pass
+
+        def get_form_by_token(self, _token: str) -> Mock:
+            return form
+
+        def submit_form_by_token(self, **kwargs: object) -> None:
+            submit_mock(**kwargs)
+
+    monkeypatch.setattr("controllers.console.human_input_form.HumanInputService", _ServiceStub)
+    monkeypatch.setattr(
+        "controllers.console.wraps.current_account_with_tenant",
+        lambda: (current_user, "tenant-1"),
+    )
+    apply_config_overrides(monkeypatch, LOGIN_DISABLED=True)
+
+    with app.test_request_context(
+        "/console/api/form/human_input/token",
+        method="POST",
+        json={"inputs": {"content": "ok"}, "action": "approve"},
+    ):
+        response = ConsoleHumanInputFormApi().post(form_token="token")
+
+    assert response.get_json() == {}
+    submit_mock.assert_called_once_with(
+        recipient_type=RecipientType.CONSOLE,
+        form_token="token",
+        selected_action_id="approve",
+        form_data={"content": "ok"},
+        submission_user_id="user-1",
+    )
+
+
+def test_workflow_events_not_found(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun | None:
             return None
 
     monkeypatch.setattr(
@@ -167,30 +354,20 @@ def test_workflow_events_not_found(app, monkeypatch: pytest.MonkeyPatch) -> None
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", _account(account_id="u1"), workflow_run_id="run-1")
 
 
-def test_workflow_events_requires_account(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow_run = SimpleNamespace(
-        id="run-1",
-        created_by_role=CreatorUserRole.END_USER,
-        created_by="user-1",
-        tenant_id="t1",
-    )
+def test_workflow_events_requires_account(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _workflow_run(created_by_role=CreatorUserRole.END_USER)
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     monkeypatch.setattr(
@@ -198,30 +375,20 @@ def test_workflow_events_requires_account(app, monkeypatch: pytest.MonkeyPatch) 
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", _account(account_id="u1"), workflow_run_id="run-1")
 
 
-def test_workflow_events_requires_creator(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow_run = SimpleNamespace(
-        id="run-1",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-2",
-        tenant_id="t1",
-    )
+def test_workflow_events_requires_creator(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _workflow_run(created_by="user-2")
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     monkeypatch.setattr(
@@ -229,33 +396,21 @@ def test_workflow_events_requires_creator(app, monkeypatch: pytest.MonkeyPatch) 
         "create_api_workflow_run_repository",
         lambda *_args, **_kwargs: _RepoStub(),
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="u1"), "t1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
         with pytest.raises(NotFoundError):
-            handler(api, workflow_run_id="run-1")
+            handler(api, "t1", _account(account_id="u1"), workflow_run_id="run-1")
 
 
-def test_workflow_events_finished(app, monkeypatch: pytest.MonkeyPatch) -> None:
-    workflow_run = SimpleNamespace(
-        id="run-1",
-        created_by_role=CreatorUserRole.ACCOUNT,
-        created_by="user-1",
-        tenant_id="t1",
-        app_id="app-1",
-        finished_at=datetime(2024, 1, 1, tzinfo=UTC),
-    )
-    app_model = SimpleNamespace(mode=AppMode.WORKFLOW)
+def test_workflow_events_finished(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    workflow_run = _workflow_run(finished_at=datetime(2024, 1, 1, tzinfo=UTC))
+    app_model = _app()
 
     class _RepoStub:
-        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs):
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
             return workflow_run
 
     response_obj = SimpleNamespace(
@@ -277,17 +432,110 @@ def test_workflow_events_finished(app, monkeypatch: pytest.MonkeyPatch) -> None:
         "workflow_run_result_to_finish_response",
         lambda **_kwargs: response_obj,
     )
-    monkeypatch.setattr(
-        "controllers.console.human_input_form.current_account_with_tenant",
-        lambda: (SimpleNamespace(id="user-1"), "t1"),
-    )
-    monkeypatch.setattr("controllers.console.human_input_form.db", SimpleNamespace(engine=object()))
 
     api = ConsoleWorkflowEventsApi()
-    handler = _unwrap(api.get)
+    handler = unwrap(api.get)
 
     with app.test_request_context("/console/api/workflow/run/events", method="GET"):
-        response = handler(api, workflow_run_id="run-1")
+        response = handler(api, "t1", _account(), workflow_run_id="run-1")
 
     assert response.mimetype == "text/event-stream"
     assert "data" in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize(
+    ("rbac_enabled", "has_permission", "is_maintainer", "agent_backed", "include_node_details"),
+    [
+        (True, False, False, False, False),
+        (True, True, False, False, True),
+        (True, False, True, False, True),
+        (True, True, False, True, False),
+        (False, False, False, False, True),
+    ],
+    ids=["run-only", "app-manager", "maintainer", "agent-app", "rbac-disabled"],
+)
+def test_workflow_events_snapshot_can_continue_across_pauses(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    rbac_domain: RBACDomain,
+    rbac_enabled: bool,
+    has_permission: bool,
+    is_maintainer: bool,
+    agent_backed: bool,
+    include_node_details: bool,
+    mocker: MockerFixture,
+) -> None:
+    workflow_run = _workflow_run()
+    app_model = _app()
+    apply_config_overrides(monkeypatch, RBAC_ENABLED=rbac_enabled)
+    check_access = mocker.patch.object(RBACService.CheckAccess, "check", return_value=has_permission)
+    monkeypatch.setattr(rbac_locators, "application_services", lambda: rbac_domain)
+    monkeypatch.setattr(
+        rbac_domain.rbac.queries,
+        "get_app_agent_binding",
+        lambda *_args, **_kwargs: AppAgentBinding(id="agent-1", workflow_only=False) if agent_backed else None,
+    )
+    monkeypatch.setattr(
+        rbac_domain.rbac.queries, "get_app_maintainer", lambda *_args, **_kwargs: "user-1" if is_maintainer else None
+    )
+
+    class _RepoStub:
+        def get_workflow_run_by_id_and_tenant_id(self, **_kwargs: object) -> WorkflowRun:
+            return workflow_run
+
+    snapshot_calls: list[dict[str, object]] = []
+
+    def snapshot_events() -> Iterator[dict[str, str]]:
+        assert has_request_context()
+        yield {"event": "snapshot"}
+
+    def snapshot_builder(**kwargs: object) -> Iterator[dict[str, str]]:
+        snapshot_calls.append(kwargs)
+        return snapshot_events()
+
+    monkeypatch.setattr(
+        DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        lambda *_args, **_kwargs: _RepoStub(),
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form._retrieve_app_for_workflow_run",
+        lambda *_args, **_kwargs: app_model,
+    )
+    monkeypatch.setattr(
+        "controllers.console.human_input_form.build_workflow_event_stream",
+        snapshot_builder,
+    )
+
+    api = ConsoleWorkflowEventsApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context(
+        "/console/api/workflow/run-1/events?include_state_snapshot=true&continue_on_pause=true",
+        method="GET",
+    ):
+        response = handler(api, "t1", _account(), workflow_run_id="run-1")
+
+    assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
+    assert snapshot_calls == [
+        {
+            "app_mode": AppMode.WORKFLOW,
+            "workflow_run": workflow_run,
+            "tenant_id": "t1",
+            "app_id": "app-1",
+            "session_maker": ANY,
+            "human_input_surface": HumanInputSurface.CONSOLE,
+            "include_node_details": include_node_details,
+            "close_on_pause": False,
+        }
+    ]
+    if rbac_enabled and not is_maintainer and not agent_backed:
+        check_access.assert_called_once_with(
+            "t1",
+            "user-1",
+            scene=RBACPermission.APP_CREATE_AND_MANAGEMENT,
+            resource_type=RBACResourceScope.APP,
+            resource_id="app-1",
+        )
+    else:
+        check_access.assert_not_called()

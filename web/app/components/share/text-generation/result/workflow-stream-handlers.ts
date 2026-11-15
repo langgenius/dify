@@ -1,15 +1,24 @@
 import type { Dispatch, SetStateAction } from 'react'
+import type { TextGenerationTranslate } from '../types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { IOtherOptions } from '@/service/base'
-import type { HumanInputFormTimeoutData, NodeTracing, WorkflowFinishedResponse } from '@/types/workflow'
+import type {
+  HumanInputFormTimeoutData,
+  NodeTracing,
+  WorkflowFinishedResponse,
+} from '@/types/workflow'
 import { produce } from 'immer'
+import {
+  updateFilledHumanInputForm,
+  updateHumanInputFormTimeout,
+  updatePendingHumanInputForm,
+} from '@/app/components/base/chat/chat/answer/human-input-content/form-state'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
+import { localizeKnowledgeRetrievalV2Error } from '@/app/components/workflow/nodes/knowledge-retrieval-v2/error-message'
 import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { sseGet } from '@/service/base'
 
-type Notify = (payload: { type: 'error' | 'warning', message: string }) => void
-type Translate = (key: string, options?: Record<string, unknown>) => string
-
+type Notify = (payload: { type: 'error' | 'warning'; message: string }) => void
 type CreateWorkflowStreamHandlersParams = {
   getCompletionRes: () => string
   getWorkflowProcessData: () => WorkflowProcess | undefined
@@ -18,6 +27,7 @@ type CreateWorkflowStreamHandlersParams = {
   markEnded: () => void
   notify: Notify
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  onPaused?: (workflowRunId: string, handlers: IOtherOptions) => void
   resetRunState: () => void
   setCompletionRes: (res: string) => void
   setCurrentTaskId: Dispatch<SetStateAction<string | null>>
@@ -25,13 +35,14 @@ type CreateWorkflowStreamHandlersParams = {
   setMessageId: Dispatch<SetStateAction<string | null>>
   setRespondingFalse: () => void
   setWorkflowProcessData: (data: WorkflowProcess | undefined) => void
-  t: Translate
+  t: TextGenerationTranslate
   taskId?: number
 }
 
 const createInitialWorkflowProcess = (): WorkflowProcess => ({
   status: WorkflowRunningStatus.Running,
   tracing: [],
+  error: undefined,
   expand: false,
   resultText: '',
 })
@@ -44,9 +55,11 @@ const updateWorkflowProcess = (
 }
 
 const matchParallelTrace = (trace: WorkflowProcess['tracing'][number], data: NodeTracing) => {
-  return trace.node_id === data.node_id
-    && (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
-      || trace.parallel_id === data.execution_metadata?.parallel_id)
+  return (
+    trace.node_id === data.node_id &&
+    (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id ||
+      trace.parallel_id === data.execution_metadata?.parallel_id)
+  )
 }
 
 const ensureParallelTraceDetails = (details?: NodeTracing['details']) => {
@@ -68,9 +81,8 @@ const appendParallelStart = (current: WorkflowProcess | undefined, data: NodeTra
 const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const trace = draft.tracing.find(item => matchParallelTrace(item, data))
-    if (!trace)
-      return
+    const trace = draft.tracing.find((item) => matchParallelTrace(item, data))
+    if (!trace) return
 
     trace.details = ensureParallelTraceDetails(trace.details)
     trace.details.push([])
@@ -80,7 +92,7 @@ const appendParallelNext = (current: WorkflowProcess | undefined, data: NodeTrac
 const finishParallelTrace = (current: WorkflowProcess | undefined, data: NodeTracing) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const traceIndex = draft.tracing.findIndex(item => matchParallelTrace(item, data))
+    const traceIndex = draft.tracing.findIndex((item) => matchParallelTrace(item, data))
     if (traceIndex > -1) {
       draft.tracing[traceIndex] = {
         ...data,
@@ -91,35 +103,31 @@ const finishParallelTrace = (current: WorkflowProcess | undefined, data: NodeTra
 }
 
 const upsertWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTracing) => {
-  if (data.iteration_id || data.loop_id)
-    return current
+  if (data.iteration_id || data.loop_id) return current
 
   return updateWorkflowProcess(current, (draft) => {
     draft.expand = true
-    const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
+    const currentIndex = draft.tracing.findIndex((item) => item.node_id === data.node_id)
     const nextTrace = {
       ...data,
       status: NodeRunningStatus.Running,
       expand: true,
     }
 
-    if (currentIndex > -1)
-      draft.tracing[currentIndex] = nextTrace
-    else
-      draft.tracing.push(nextTrace)
+    if (currentIndex > -1) draft.tracing[currentIndex] = nextTrace
+    else draft.tracing.push(nextTrace)
   })
 }
 
 const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTracing) => {
-  if (data.iteration_id || data.loop_id)
-    return current
+  if (data.iteration_id || data.loop_id) return current
 
   return updateWorkflowProcess(current, (draft) => {
-    const currentIndex = draft.tracing.findIndex(trace => matchParallelTrace(trace, data))
+    const currentIndex = draft.tracing.findIndex((trace) => matchParallelTrace(trace, data))
     if (currentIndex > -1) {
       draft.tracing[currentIndex] = {
-        ...(draft.tracing[currentIndex].extras
-          ? { extras: draft.tracing[currentIndex].extras }
+        ...(draft.tracing[currentIndex]!.extras
+          ? { extras: draft.tracing[currentIndex]!.extras }
           : {}),
         ...data,
         expand: !!data.error,
@@ -129,14 +137,18 @@ const finishWorkflowNode = (current: WorkflowProcess | undefined, data: NodeTrac
 }
 
 const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
-  if (!traces)
-    return
+  if (!traces) return
 
   const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
-    if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+    const unfinishedStatuses: readonly NodeRunningStatus[] = [
+      NodeRunningStatus.Running,
+      NodeRunningStatus.Waiting,
+    ]
+
+    if (unfinishedStatuses.includes(trace.status as NodeRunningStatus))
       trace.status = NodeRunningStatus.Stopped
 
-    trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+    trace.details?.forEach((detailGroup) => detailGroup.forEach(markTrace))
     trace.retryDetail?.forEach(markTrace)
     trace.parallelDetail?.children?.forEach(markTrace)
   }
@@ -147,11 +159,17 @@ const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
 const applyWorkflowFinishedState = (
   current: WorkflowProcess | undefined,
   status: WorkflowRunningStatus,
+  error?: string,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
+    const errorStatuses: readonly WorkflowRunningStatus[] = [
+      WorkflowRunningStatus.Stopped,
+      WorkflowRunningStatus.Failed,
+    ]
+
     draft.status = status
-    if ([WorkflowRunningStatus.Stopped, WorkflowRunningStatus.Failed].includes(status))
-      markNodesStopped(draft.tracing)
+    draft.error = error
+    if (errorStatuses.includes(status)) markNodesStopped(draft.tracing)
   })
 }
 
@@ -161,6 +179,7 @@ const applyWorkflowOutputs = (
 ) => {
   return updateWorkflowProcess(current, (draft) => {
     draft.status = WorkflowRunningStatus.Succeeded
+    draft.error = undefined
     draft.files = getFilesInLogs(outputs || []) as unknown as WorkflowProcess['files']
   })
 }
@@ -182,20 +201,10 @@ const updateHumanInputRequired = (
   data: NonNullable<WorkflowProcess['humanInputFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList) {
-      draft.humanInputFormDataList = [data]
-    }
-    else {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-      if (currentFormIndex > -1)
-        draft.humanInputFormDataList[currentFormIndex] = data
-      else
-        draft.humanInputFormDataList.push(data)
-    }
+    updatePendingHumanInputForm(draft, data)
 
-    const currentIndex = draft.tracing.findIndex(item => item.node_id === data.node_id)
-    if (currentIndex > -1)
-      draft.tracing[currentIndex].status = NodeRunningStatus.Paused
+    const currentIndex = draft.tracing.findIndex((item) => item.node_id === data.node_id)
+    if (currentIndex > -1) draft.tracing[currentIndex]!.status = NodeRunningStatus.Paused
   })
 }
 
@@ -204,16 +213,7 @@ const updateHumanInputFilled = (
   data: NonNullable<WorkflowProcess['humanInputFilledFormDataList']>[number],
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (draft.humanInputFormDataList?.length) {
-      const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-      if (currentFormIndex > -1)
-        draft.humanInputFormDataList.splice(currentFormIndex, 1)
-    }
-
-    if (!draft.humanInputFilledFormDataList)
-      draft.humanInputFilledFormDataList = [data]
-    else
-      draft.humanInputFilledFormDataList.push(data)
+    updateFilledHumanInputForm(draft, data)
   })
 }
 
@@ -222,12 +222,7 @@ const updateHumanInputTimeout = (
   data: HumanInputFormTimeoutData,
 ) => {
   return updateWorkflowProcess(current, (draft) => {
-    if (!draft.humanInputFormDataList?.length)
-      return
-
-    const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
-    if (currentFormIndex > -1)
-      draft.humanInputFormDataList[currentFormIndex].expiration_time = data.expiration_time
+    updateHumanInputFormTimeout(draft, data)
   })
 }
 
@@ -239,16 +234,13 @@ const applyWorkflowPaused = (current: WorkflowProcess | undefined) => {
 }
 
 const serializeWorkflowOutputs = (outputs: WorkflowFinishedResponse['data']['outputs']) => {
-  if (outputs === undefined || outputs === null)
-    return ''
+  if (outputs === undefined || outputs === null) return ''
 
-  if (typeof outputs === 'string')
-    return outputs
+  if (typeof outputs === 'string') return outputs
 
   try {
     return JSON.stringify(outputs) ?? ''
-  }
-  catch {
+  } catch {
     return String(outputs)
   }
 }
@@ -261,6 +253,7 @@ export const createWorkflowStreamHandlers = ({
   markEnded,
   notify,
   onCompleted,
+  onPaused,
   resetRunState,
   setCompletionRes,
   setCurrentTaskId,
@@ -272,6 +265,7 @@ export const createWorkflowStreamHandlers = ({
   taskId,
 }: CreateWorkflowStreamHandlersParams): IOtherOptions => {
   let tempMessageId = ''
+  let hasStartedResumeStream = false
 
   const finishWithFailure = () => {
     setRespondingFalse()
@@ -293,10 +287,13 @@ export const createWorkflowStreamHandlers = ({
     onWorkflowStarted: ({ workflow_run_id, task_id }) => {
       const workflowProcessData = getWorkflowProcessData()
       if (workflowProcessData?.tracing.length) {
-        setWorkflowProcessData(updateWorkflowProcess(workflowProcessData, (draft) => {
-          draft.expand = true
-          draft.status = WorkflowRunningStatus.Running
-        }))
+        setWorkflowProcessData(
+          updateWorkflowProcess(workflowProcessData, (draft) => {
+            draft.expand = true
+            draft.status = WorkflowRunningStatus.Running
+            draft.error = undefined
+          }),
+        )
         return
       }
 
@@ -330,21 +327,49 @@ export const createWorkflowStreamHandlers = ({
       setWorkflowProcessData(finishWorkflowNode(getWorkflowProcessData(), data))
     },
     onWorkflowFinished: ({ data }) => {
+      const workflowStatus = data.status as WorkflowRunningStatus | undefined
+      const localizedError = localizeKnowledgeRetrievalV2Error(data.error, (key) =>
+        t(($) => $[key], { ns: 'workflow' }),
+      )
       if (isTimedOut()) {
-        notify({ type: 'warning', message: t('warningMessage.timeoutExceeded', { ns: 'appDebug' }) })
+        const finishedStatus =
+          workflowStatus === WorkflowRunningStatus.Stopped
+            ? WorkflowRunningStatus.Stopped
+            : workflowStatus === WorkflowRunningStatus.Failed || data.error
+              ? WorkflowRunningStatus.Failed
+              : WorkflowRunningStatus.Succeeded
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(getWorkflowProcessData(), finishedStatus, localizedError),
+        )
+        notify({
+          type: 'warning',
+          message: t(($) => $['warningMessage.timeoutExceeded'], { ns: 'appDebug' }),
+        })
+        markEnded()
         return
       }
 
-      const workflowStatus = data.status as WorkflowRunningStatus | undefined
       if (workflowStatus === WorkflowRunningStatus.Stopped) {
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Stopped))
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(
+            getWorkflowProcessData(),
+            WorkflowRunningStatus.Stopped,
+            localizedError,
+          ),
+        )
         finishWithFailure()
         return
       }
 
       if (data.error) {
-        notify({ type: 'error', message: data.error })
-        setWorkflowProcessData(applyWorkflowFinishedState(getWorkflowProcessData(), WorkflowRunningStatus.Failed))
+        notify({ type: 'error', message: localizedError! })
+        setWorkflowProcessData(
+          applyWorkflowFinishedState(
+            getWorkflowProcessData(),
+            WorkflowRunningStatus.Failed,
+            localizedError,
+          ),
+        )
         finishWithFailure()
         return
       }
@@ -354,11 +379,14 @@ export const createWorkflowStreamHandlers = ({
       setCompletionRes(serializedOutputs)
       if (data.outputs) {
         const outputKeys = Object.keys(data.outputs)
-        const isStringOutput = outputKeys.length === 1 && typeof data.outputs[outputKeys[0]] === 'string'
+        const isStringOutput =
+          outputKeys.length === 1 && typeof data.outputs[outputKeys[0]!] === 'string'
         if (isStringOutput) {
-          setWorkflowProcessData(updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
-            draft.resultText = data.outputs[outputKeys[0]]
-          }))
+          setWorkflowProcessData(
+            updateWorkflowProcess(getWorkflowProcessData(), (draft) => {
+              draft.resultText = data.outputs[outputKeys[0]!]
+            }),
+          )
         }
       }
 
@@ -381,8 +409,19 @@ export const createWorkflowStreamHandlers = ({
     },
     onWorkflowPaused: ({ data }) => {
       tempMessageId = data.workflow_run_id
-      // WebApp workflows must keep using the public API namespace after pause/resume.
-      void sseGet(`/workflow/${data.workflow_run_id}/events`, {}, otherOptions)
+      if (onPaused) {
+        setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
+        onPaused(data.workflow_run_id, otherOptions)
+        return
+      }
+      if (!hasStartedResumeStream) {
+        hasStartedResumeStream = true
+        void sseGet(
+          `/workflow/${data.workflow_run_id}/events?include_state_snapshot=true&continue_on_pause=true`,
+          {},
+          otherOptions,
+        )
+      }
       setWorkflowProcessData(applyWorkflowPaused(getWorkflowProcessData()))
     },
   }
@@ -395,11 +434,9 @@ export {
   appendParallelStart,
   appendResultText,
   applyWorkflowFinishedState,
-  applyWorkflowOutputs,
   applyWorkflowPaused,
   finishParallelTrace,
   finishWorkflowNode,
-  markNodesStopped,
   replaceResultText,
   updateHumanInputFilled,
   updateHumanInputRequired,

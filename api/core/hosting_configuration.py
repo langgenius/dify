@@ -1,10 +1,13 @@
+from typing import Any
+
 from flask import Flask
-from graphon.model_runtime.entities.model_entities import ModelType
 from pydantic import BaseModel
 
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
+from enums import DeploymentEdition
+from graphon.model_runtime.entities.model_entities import ModelType
 
 
 class HostingQuota(BaseModel):
@@ -28,7 +31,7 @@ class FreeHostingQuota(HostingQuota):
 
 class HostingProvider(BaseModel):
     enabled: bool = False
-    credentials: dict | None = None
+    credentials: dict[str, Any] | None = None
     quota_unit: QuotaUnit | None = None
     quotas: list[HostingQuota] = []
 
@@ -47,7 +50,7 @@ class HostingConfiguration:
         self.moderation_config = None
 
     def init_app(self, app: Flask):
-        if dify_config.EDITION != "CLOUD":
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return
 
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
@@ -238,7 +241,8 @@ class HostingConfiguration:
         if len(quotas) > 0:
             credentials = {
                 "dashscope_api_key": dify_config.HOSTED_TONGYI_API_KEY,
-                "use_international_endpoint": dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT,
+                # SNP-494: keep temporary compatibility with tongyi plugin string credential checks.
+                "use_international_endpoint": str(dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT).lower(),
             }
 
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)

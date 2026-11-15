@@ -1,8 +1,8 @@
 'use client'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import CustomDialog from '@/app/components/base/dialog'
-import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { COUNT_DOWN_TIME_MS, useSetCountdownLeftTime } from '@/app/components/signin/storage'
 import CheckEmail from './components/check-email'
 import FeedBack from './components/feed-back'
 import VerifyEmail from './components/verify-email'
@@ -13,7 +13,8 @@ type DeleteAccountProps = {
 }
 
 export default function DeleteAccount(props: DeleteAccountProps) {
-  const { t } = useTranslation()
+  const { t } = useTranslation(['accountSettings'])
+  const setCountdownLeftTime = useSetCountdownLeftTime()
 
   const [showVerifyEmail, setShowVerifyEmail] = useState(false)
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false)
@@ -21,31 +22,39 @@ export default function DeleteAccount(props: DeleteAccountProps) {
   const handleEmailCheckSuccess = useCallback(async () => {
     try {
       setShowVerifyEmail(true)
-      localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
+      setCountdownLeftTime(`${COUNT_DOWN_TIME_MS}`)
+    } catch (error) {
+      console.error(error)
     }
-    catch (error) { console.error(error) }
-  }, [])
+  }, [setCountdownLeftTime])
 
-  if (showFeedbackDialog)
-    return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
+  if (showFeedbackDialog) return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
 
   return (
-    <CustomDialog
-      show={true}
-      onClose={props.onCancel}
-      title={t('account.delete', { ns: 'common' })}
-      className="max-w-[480px]"
-      footer={false}
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onCancel()
+      }}
     >
-      {!showVerifyEmail && <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />}
-      {showVerifyEmail && (
-        <VerifyEmail
-          onCancel={props.onCancel}
-          onConfirm={() => {
-            setShowFeedbackDialog(true)
-          }}
-        />
-      )}
-    </CustomDialog>
+      <DialogContent
+        backdropProps={{ className: 'bg-background-overlay-backdrop backdrop-blur-[6px]' }}
+      >
+        <DialogHeader>
+          <DialogTitle>{t(($) => $['account.delete'], { ns: 'accountSettings' })}</DialogTitle>
+        </DialogHeader>
+        {!showVerifyEmail && (
+          <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />
+        )}
+        {showVerifyEmail && (
+          <VerifyEmail
+            onCancel={props.onCancel}
+            onConfirm={() => {
+              setShowFeedbackDialog(true)
+            }}
+          />
+        )}
+      </DialogContent>
+    </Dialog>
   )
 }

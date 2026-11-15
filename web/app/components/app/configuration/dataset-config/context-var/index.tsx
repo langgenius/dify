@@ -1,32 +1,44 @@
 'use client'
 import type { FC } from 'react'
 import type { Props } from './var-picker'
+import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {
-  const { t } = useTranslation()
+  const titleId = React.useId()
+
+  const { t } = useTranslation(['appDebug'])
   const { value, options } = props
-  const currItem = options.find(item => item.value === value)
+  const currItem = options.find((item) => item.value === value)
   const notSetVar = !currItem
   return (
-    <div className={cn(notSetVar ? 'rounded-bl-xl rounded-br-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3 ')}>
+    <div
+      className={cn(
+        notSetVar
+          ? 'rounded-br-xl rounded-bl-xl border-[#FEF0C7] bg-[#FEF0C7]'
+          : 'border-components-panel-border-subtle',
+        'flex h-12 items-center justify-between border-t px-3',
+      )}
+    >
       <div className="flex shrink-0 items-center space-x-1">
         <div className="p-1">
-          <BracketsX className="h-4 w-4 text-text-accent" />
+          <span
+            aria-hidden
+            className="i-custom-vender-line-development-brackets-x size-4 text-text-accent"
+          />
         </div>
-        <div className="mr-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.title', { ns: 'appDebug' })}</div>
-        <Tooltip
-          popupContent={(
-            <div className="w-[180px]">
-              {t('feature.dataSet.queryVariable.tip', { ns: 'appDebug' })}
-            </div>
-          )}
-        />
+        <div id={titleId} className="mr-1 text-sm font-medium text-text-secondary">
+          {t(($) => $['feature.dataSet.queryVariable.title'], { ns: 'appDebug' })}
+        </div>
+        <Infotip>
+          <InfotipTrigger aria-labelledby={titleId} />
+          <InfotipContent aria-labelledby={titleId} className="w-45">
+            {t(($) => $['feature.dataSet.queryVariable.tip'], { ns: 'appDebug' })}
+          </InfotipContent>
+        </Infotip>
       </div>
 
       <VarPicker {...props} />

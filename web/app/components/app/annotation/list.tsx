@@ -1,155 +1,293 @@
 'use client'
-import type { FC } from 'react'
-import type { AnnotationItem } from './type'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import * as React from 'react'
-import { useCallback, useMemo } from 'react'
+import type { Annotation } from '@dify/contracts/api/console/apps/types.gen'
+import type { AlertDialogActions } from '@langgenius/dify-ui/alert-dialog'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
+import { Checkbox } from '@langgenius/dify-ui/checkbox'
+import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import {
+  Dialog,
+  DialogBackdrop,
+  DialogPopup,
+  DialogPortal,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useMutation } from '@tanstack/react-query'
+import { useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import ActionButton from '@/app/components/base/action-button'
-import Checkbox from '@/app/components/base/checkbox'
+import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import useTimestamp from '@/hooks/use-timestamp'
-import { cn } from '@/utils/classnames'
+import { consoleQuery } from '@/service/console'
 import BatchAction from './batch-action'
-import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
+import EmptyElement from './empty-element'
+import { RemoveAnnotationConfirmContent } from './remove-annotation-confirm-modal'
+import AnnotationDetails from './view-annotation-modal'
 
-type Props = {
-  list: AnnotationItem[]
-  onView: (item: AnnotationItem) => void
-  onRemove: (id: string) => void
+type AnnotationTableRowProps = {
+  appId: string
+  item: Annotation
+  formattedCreatedAt: string
+  onRemoved: () => void
+}
+
+function AnnotationTableRow({
+  appId,
+  item,
+  formattedCreatedAt,
+  onRemoved,
+}: AnnotationTableRowProps) {
+  const { t } = useTranslation(['appDebug'])
+  const questionId = useId()
+  const editTriggerRef = useRef<HTMLButtonElement>(null)
+  const removeConfirmActionsRef = useRef<AlertDialogActions>(null)
+  const removeMutation = useMutation(
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.delete.mutationOptions({
+      onSuccess: () => {
+        removeConfirmActionsRef.current?.close()
+        onRemoved()
+      },
+    }),
+  )
+
+  return (
+    <tr
+      className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
+      onClick={(event) => {
+        if (!(event.target as HTMLElement).closest('button, input, [role="checkbox"]'))
+          editTriggerRef.current?.click()
+      }}
+    >
+      <td className="w-12 px-2 align-middle" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center">
+          <Checkbox className="shrink-0" value={item.id} aria-labelledby={questionId} />
+        </div>
+      </td>
+      <td className="max-w-62.5 truncate p-3 pe-2" title={item.question ?? undefined}>
+        <DialogTrigger payload={item} id={questionId} className="max-w-full truncate text-start">
+          {item.question}
+        </DialogTrigger>
+      </td>
+      <td className="max-w-62.5 truncate p-3 pe-2" title={item.answer ?? undefined}>
+        {item.answer}
+      </td>
+      <td className="p-3 pe-2">{formattedCreatedAt}</td>
+      <td className="p-3 pe-2">{item.hit_count}</td>
+      <td className="w-24 p-3 pe-2" onClick={(e) => e.stopPropagation()}>
+        <div className="flex space-x-1 text-text-tertiary">
+          <DialogTrigger
+            payload={item}
+            ref={editTriggerRef}
+            render={
+              <IconButton aria-label={t(($) => $['feature.annotation.edit'], { ns: 'appDebug' })}>
+                <span aria-hidden className="i-ri-edit-line size-4" />
+              </IconButton>
+            }
+          >
+            <span aria-hidden className="i-ri-edit-line size-4" />
+          </DialogTrigger>
+          <AlertDialog
+            actionsRef={removeConfirmActionsRef}
+            onOpenChange={(open, details) => {
+              if (!open && removeMutation.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
+          >
+            <AlertDialogTrigger
+              render={
+                <IconButton
+                  aria-label={t(($) => $['feature.annotation.remove'], { ns: 'appDebug' })}
+                >
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <RemoveAnnotationConfirmContent
+              isPending={removeMutation.isPending}
+              onRemove={() =>
+                removeMutation.mutate({ params: { app_id: appId, annotation_id: item.id } })
+              }
+            />
+          </AlertDialog>
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+type AnnotationListProps = {
+  isLoading?: boolean
+  appId: string
+  list: Annotation[]
+  onEdited: () => void
+  onRemoved: () => void
   selectedIds: string[]
   onSelectedIdsChange: (selectedIds: string[]) => void
   onBatchDelete: () => Promise<void>
-  onCancel: () => void
 }
 
-const List: FC<Props> = ({
+export function List({
+  isLoading = false,
+  appId,
   list,
-  onView,
-  onRemove,
+  onEdited,
+  onRemoved,
   selectedIds,
   onSelectedIdsChange,
   onBatchDelete,
-  onCancel,
-}) => {
-  const { t } = useTranslation()
+}: AnnotationListProps) {
+  const { t } = useTranslation(['appAnnotation', 'appLog', 'common'])
   const { formatTime } = useTimestamp()
-  const [currId, setCurrId] = React.useState<string | null>(null)
-  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
-
-  const isAllSelected = useMemo(() => {
-    return list.length > 0 && list.every(item => selectedIds.includes(item.id))
-  }, [list, selectedIds])
-
-  const isSomeSelected = useMemo(() => {
-    return list.some(item => selectedIds.includes(item.id))
-  }, [list, selectedIds])
-
-  const handleSelectAll = useCallback(() => {
-    const currentPageIds = list.map(item => item.id)
-    const otherPageIds = selectedIds.filter(id => !currentPageIds.includes(id))
-
-    if (isAllSelected)
-      onSelectedIdsChange(otherPageIds)
-    else
-      onSelectedIdsChange([...otherPageIds, ...currentPageIds])
-  }, [isAllSelected, list, selectedIds, onSelectedIdsChange])
+  const annotationIds = list.map((item) => item.id)
+  const actionsRef = useRef<DialogActions>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const triggerRef = useRef<Element | null>(null)
+  const removed = useRef(false)
+  const removalFocus = useRef<HTMLElement | null>(null)
+  const update = useMutation(
+    consoleQuery.apps.byAppId.annotations.byAnnotationId.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: onEdited,
+    }),
+  )
 
   return (
-    <>
-      <div className="relative mt-2 grow overflow-x-auto">
-        <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-          <thead className="system-xs-medium-uppercase text-text-tertiary">
-            <tr>
-              <td className="w-12 whitespace-nowrap rounded-l-lg bg-background-section-burn px-2">
-                <Checkbox
-                  className="mr-2"
-                  checked={isAllSelected}
-                  indeterminate={!isAllSelected && isSomeSelected}
-                  onCheck={handleSelectAll}
-                />
-              </td>
-              <td className="w-5 whitespace-nowrap bg-background-section-burn pl-2 pr-1">{t('table.header.question', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.answer', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.createdAt', { ns: 'appAnnotation' })}</td>
-              <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.hits', { ns: 'appAnnotation' })}</td>
-              <td className="w-[96px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.actions', { ns: 'appAnnotation' })}</td>
-            </tr>
-          </thead>
-          <tbody className="system-sm-regular text-text-secondary">
-            {list.map(item => (
-              <tr
-                key={item.id}
-                className="cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
-                onClick={
-                  () => {
-                    onView(item)
-                  }
-                }
+    <Dialog<Annotation>
+      actionsRef={actionsRef}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (open) {
+          removed.current = false
+          triggerRef.current = details.trigger ?? null
+        }
+        if (!open && update.isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) {
+          update.reset()
+          if (removed.current) onRemoved()
+        }
+      }}
+    >
+      {({ payload }) => (
+        <>
+          <div
+            ref={listRef}
+            data-annotation-list
+            role="region"
+            aria-label={t(($) => $.title, { ns: 'appAnnotation' })}
+            tabIndex={-1}
+            className="relative mt-2 grow overflow-x-auto focus-visible:outline-2 focus-visible:outline-components-input-border-active"
+          >
+            {list.length === 0 && isLoading ? (
+              <LoadingPlaceholder className="h-full" />
+            ) : list.length === 0 ? (
+              <div className="flex h-full items-center justify-center">
+                <EmptyElement />
+              </div>
+            ) : (
+              <CheckboxGroup
+                value={selectedIds}
+                onValueChange={onSelectedIdsChange}
+                allValues={annotationIds}
               >
-                <td className="w-12 px-2" onClick={e => e.stopPropagation()}>
-                  <Checkbox
-                    className="mr-2"
-                    checked={selectedIds.includes(item.id)}
-                    onCheck={() => {
-                      if (selectedIds.includes(item.id))
-                        onSelectedIdsChange(selectedIds.filter(id => id !== item.id))
-                      else
-                        onSelectedIdsChange([...selectedIds, item.id])
-                    }}
-                  />
-                </td>
-                <td
-                  className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
-                  title={item.question}
-                >
-                  {item.question}
-                </td>
-                <td
-                  className="max-w-[250px] overflow-hidden text-ellipsis whitespace-nowrap p-3 pr-2"
-                  title={item.answer}
-                >
-                  {item.answer}
-                </td>
-                <td className="p-3 pr-2">{formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
-                <td className="p-3 pr-2">{item.hit_count}</td>
-                <td className="w-[96px] p-3 pr-2" onClick={e => e.stopPropagation()}>
-                  {/* Actions */}
-                  <div className="flex space-x-1 text-text-tertiary">
-                    <ActionButton onClick={() => onView(item)}>
-                      <RiEditLine className="h-4 w-4" />
-                    </ActionButton>
-                    <ActionButton
-                      onClick={() => {
-                        setCurrId(item.id)
-                        setShowConfirmDelete(true)
-                      }}
-                    >
-                      <RiDeleteBinLine className="h-4 w-4" />
-                    </ActionButton>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <RemoveAnnotationConfirmModal
-          isShow={showConfirmDelete}
-          onHide={() => setShowConfirmDelete(false)}
-          onRemove={() => {
-            onRemove(currId as string)
-            setShowConfirmDelete(false)
-          }}
-        />
-      </div>
-      {selectedIds.length > 0 && (
-        <BatchAction
-          className="absolute bottom-20 left-0 z-20"
-          selectedIds={selectedIds}
-          onBatchDelete={onBatchDelete}
-          onCancel={onCancel}
-        />
+                <table className="w-full min-w-110 border-collapse border-0">
+                  <thead className="system-xs-medium-uppercase text-text-tertiary">
+                    <tr>
+                      <th className="w-12 rounded-s-lg bg-background-section-burn px-2 text-start align-middle font-[weight:inherit] whitespace-nowrap">
+                        <div className="flex items-center">
+                          <Checkbox
+                            className="shrink-0"
+                            parent
+                            aria-label={t(($) => $['operation.selectAll'], { ns: 'common' })}
+                          />
+                        </div>
+                      </th>
+                      <th className="w-5 bg-background-section-burn ps-2 pe-1 text-start font-[weight:inherit] whitespace-nowrap">
+                        {t(($) => $['table.header.question'], { ns: 'appAnnotation' })}
+                      </th>
+                      <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
+                        {t(($) => $['table.header.answer'], { ns: 'appAnnotation' })}
+                      </th>
+                      <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
+                        {t(($) => $['table.header.createdAt'], { ns: 'appAnnotation' })}
+                      </th>
+                      <th className="bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
+                        {t(($) => $['table.header.hits'], { ns: 'appAnnotation' })}
+                      </th>
+                      <th className="w-24 rounded-e-lg bg-background-section-burn py-1.5 ps-3 text-start font-[weight:inherit] whitespace-nowrap">
+                        {t(($) => $['table.header.actions'], { ns: 'appAnnotation' })}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="system-sm-regular text-text-secondary">
+                    {list.map((item) => (
+                      <AnnotationTableRow
+                        key={item.id}
+                        item={item}
+                        formattedCreatedAt={
+                          item.created_at
+                            ? formatTime(
+                                item.created_at,
+                                t(($) => $.dateTimeFormat, { ns: 'appLog' }) as string,
+                              )
+                            : '-'
+                        }
+                        appId={appId}
+                        onRemoved={onRemoved}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </CheckboxGroup>
+            )}
+          </div>
+          {selectedIds.length > 0 && (
+            <BatchAction
+              className="absolute inset-s-0 bottom-20 z-20"
+              selectedIds={selectedIds}
+              onBatchDelete={onBatchDelete}
+              onSelectedIdsChange={onSelectedIdsChange}
+            />
+          )}
+          <DialogPortal>
+            <DialogBackdrop />
+            <DialogPopup
+              finalFocus={() => {
+                if (removed.current)
+                  return removalFocus.current?.isConnected ? removalFocus.current : listRef.current
+                return triggerRef.current?.isConnected ? true : listRef.current
+              }}
+              className="fixed inset-e-2 top-16 bottom-3 flex min-h-0 w-200 max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg text-text-primary shadow-xl"
+            >
+              {payload && (
+                <AnnotationDetails
+                  key={payload.id}
+                  appId={appId}
+                  item={payload}
+                  isPending={update.isPending}
+                  isError={update.isError}
+                  onSave={(body, onSuccess) =>
+                    update.mutate(
+                      { params: { app_id: appId, annotation_id: payload.id }, body },
+                      { onSuccess },
+                    )
+                  }
+                  onRemoved={() => {
+                    const row = triggerRef.current?.closest('tr')
+                    removalFocus.current =
+                      row?.nextElementSibling?.querySelector<HTMLButtonElement>('button') ??
+                      row?.previousElementSibling?.querySelector<HTMLButtonElement>('button') ??
+                      listRef.current
+                    removed.current = true
+                    actionsRef.current?.close()
+                  }}
+                />
+              )}
+            </DialogPopup>
+          </DialogPortal>
+        </>
       )}
-    </>
+    </Dialog>
   )
 }
-export default React.memo(List)

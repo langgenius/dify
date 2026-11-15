@@ -1,84 +1,97 @@
-from typing import Union
+from dataclasses import dataclass
+from datetime import datetime
+from typing import Literal, NamedTuple, Protocol
 
-from extensions.ext_database import db
-from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models import Account
-from models.enums import CreatorUserRole
-from models.model import App, EndUser
-from models.web import SavedMessage
-from services.message_service import MessageService
+from pydantic import JsonValue
+
+from graphon.file import File
+
+type SavedMessageActorRole = Literal["account", "end_user"]
+type SavedMessageInputValue = JsonValue | File | list[File]
+
+
+@dataclass(frozen=True, slots=True)
+class SavedMessageActor:
+    id: str
+    role: SavedMessageActorRole
+
+    @classmethod
+    def account(cls, account_id: str) -> "SavedMessageActor":
+        return cls(id=account_id, role="account")
+
+    @classmethod
+    def end_user(cls, end_user_id: str) -> "SavedMessageActor":
+        return cls(id=end_user_id, role="end_user")
+
+
+class SavedMessageFeedback(NamedTuple):
+    rating: str | None
+
+
+class SavedMessageFileRecord(NamedTuple):
+    id: str
+    filename: str
+    type: str
+    url: str | None
+    mime_type: str | None
+    size: int | None
+    transfer_method: str
+    belongs_to: str | None
+    upload_file_id: str | None
+
+
+class SavedMessageRecord(NamedTuple):
+    id: str
+    inputs: dict[str, SavedMessageInputValue]
+    query: str
+    answer: str
+    message_files: list[SavedMessageFileRecord]
+    user_feedback: SavedMessageFeedback | None
+    created_at: datetime | None
+
+
+class SavedMessagePage(NamedTuple):
+    limit: int
+    has_more: bool
+    data: tuple[SavedMessageRecord, ...]
+
+
+class SavedMessageStore(Protocol):
+    def pagination_by_last_id(
+        self,
+        *,
+        app_id: str,
+        actor: SavedMessageActor,
+        last_id: str | None,
+        limit: int,
+    ) -> SavedMessagePage: ...
+
+    def save(self, *, app_id: str, actor: SavedMessageActor, message_id: str) -> None: ...
+
+    def delete(self, *, app_id: str, actor: SavedMessageActor, message_id: str) -> None: ...
 
 
 class SavedMessageService:
-    @classmethod
+    def __init__(self, *, saved_messages: SavedMessageStore) -> None:
+        self._saved_messages = saved_messages
+
     def pagination_by_last_id(
-        cls, app_model: App, user: Union[Account, EndUser] | None, last_id: str | None, limit: int
-    ) -> InfiniteScrollPagination:
-        if not user:
-            raise ValueError("User is required")
-        saved_messages = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
-            )
-            .order_by(SavedMessage.created_at.desc())
-            .all()
-        )
-        message_ids = [sm.message_id for sm in saved_messages]
-
-        return MessageService.pagination_by_last_id(
-            app_model=app_model, user=user, last_id=last_id, limit=limit, include_ids=message_ids
+        self,
+        *,
+        app_id: str,
+        actor: SavedMessageActor,
+        last_id: str | None,
+        limit: int,
+    ) -> SavedMessagePage:
+        return self._saved_messages.pagination_by_last_id(
+            app_id=app_id,
+            actor=actor,
+            last_id=last_id,
+            limit=limit,
         )
 
-    @classmethod
-    def save(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
-        if not user:
-            return
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.message_id == message_id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
-            )
-            .first()
-        )
+    def save(self, *, app_id: str, actor: SavedMessageActor, message_id: str) -> None:
+        self._saved_messages.save(app_id=app_id, actor=actor, message_id=message_id)
 
-        if saved_message:
-            return
-
-        message = MessageService.get_message(app_model=app_model, user=user, message_id=message_id)
-
-        saved_message = SavedMessage(
-            app_id=app_model.id,
-            message_id=message.id,
-            created_by_role=CreatorUserRole.ACCOUNT if isinstance(user, Account) else CreatorUserRole.END_USER,
-            created_by=user.id,
-        )
-
-        db.session.add(saved_message)
-        db.session.commit()
-
-    @classmethod
-    def delete(cls, app_model: App, user: Union[Account, EndUser] | None, message_id: str):
-        if not user:
-            return
-        saved_message = (
-            db.session.query(SavedMessage)
-            .where(
-                SavedMessage.app_id == app_model.id,
-                SavedMessage.message_id == message_id,
-                SavedMessage.created_by_role == ("account" if isinstance(user, Account) else "end_user"),
-                SavedMessage.created_by == user.id,
-            )
-            .first()
-        )
-
-        if not saved_message:
-            return
-
-        db.session.delete(saved_message)
-        db.session.commit()
+    def delete(self, *, app_id: str, actor: SavedMessageActor, message_id: str) -> None:
+        self._saved_messages.delete(app_id=app_id, actor=actor, message_id=message_id)

@@ -1,0 +1,161 @@
+import json
+from collections.abc import Callable, Generator
+from typing import cast
+from unittest import mock
+
+import pytest
+from flask import Flask, Response, request
+from sqlalchemy.orm import Session
+
+from constants import COOKIE_NAME_ACCESS_TOKEN
+from core.logging.context import clear_request_context, get_identity_context
+from extensions import ext_login
+from extensions.ext_application_services import ApplicationServices
+from extensions.ext_login import unauthorized_handler
+from models.account import TenantAccountRole
+from models.enums import EndUserType
+
+
+@pytest.fixture(autouse=True)
+def _reset_logging_context() -> Generator[None]:
+    clear_request_context()
+    yield
+    clear_request_context()
+
+
+def test_unauthorized_handler_returns_json_response() -> None:
+    response = unauthorized_handler()
+
+    assert isinstance(response, Response)
+    assert response.status_code == 401
+    assert response.content_type == "application/json"
+    assert json.loads(response.get_data(as_text=True)) == {
+        "code": "unauthorized",
+        "message": "Unauthorized.",
+        "status": 401,
+    }
+
+
+def test_on_user_logged_in_sets_account_logging_identity() -> None:
+    account = ext_login.Account(name="Test Account", email="test@example.com")
+    account.id = "account-id"
+    account._current_tenant = ext_login.Tenant(name="Test Tenant")
+    account._current_tenant.id = "tenant-id"
+    clear_request_context()
+
+    ext_login.on_user_logged_in(None, account)
+
+    assert get_identity_context() == ("tenant-id", "account-id", "account")
+
+
+def test_on_user_logged_in_sets_end_user_logging_identity() -> None:
+    end_user = ext_login.EndUser(
+        id="end-user-id",
+        tenant_id="tenant-id",
+        type=EndUserType.BROWSER,
+    )
+    clear_request_context()
+
+    ext_login.on_user_logged_in(None, end_user)
+
+    assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
+
+
+def test_on_user_logged_in_does_not_break_auth_when_identity_is_unavailable(caplog: pytest.LogCaptureFixture) -> None:
+    account = ext_login.Account(name="Test Account", email="test@example.com")
+    account.id = "account-id"
+    clear_request_context()
+
+    with (
+        mock.patch.object(
+            ext_login.Account,
+            "current_tenant_id",
+            new_callable=mock.PropertyMock,
+            side_effect=RuntimeError("unavailable"),
+        ),
+        caplog.at_level("ERROR", logger=ext_login.logger.name),
+    ):
+        ext_login.on_user_logged_in(None, account)
+
+    assert get_identity_context() == ("", "", "")
+    assert "Failed to set logging identity context" in caplog.text
+
+
+def test_on_user_logged_in_logs_unsupported_user_type(caplog: pytest.LogCaptureFixture) -> None:
+    unsupported_user = cast(ext_login.LoginUser, object())
+    clear_request_context()
+
+    with caplog.at_level("ERROR", logger=ext_login.logger.name):
+        ext_login.on_user_logged_in(None, unsupported_user)
+
+    assert get_identity_context() == ("", "", "")
+    assert "Failed to set logging identity context" in caplog.text
+
+
+def test_admin_api_key_header_takes_precedence_over_console_cookie(
+    sqlite_session: Session, config_overrides: Callable[..., None]
+) -> None:
+    app = Flask(__name__)
+    tenant = ext_login.Tenant(name="Test Tenant")
+    tenant.id = "workspace-id"
+    account = ext_login.Account(name="Test Account", email="test@example.com")
+    sqlite_session.add_all([tenant, account])
+    sqlite_session.flush()
+    tenant_account_join = ext_login.TenantAccountJoin(
+        tenant_id=tenant.id,
+        account_id=account.id,
+        role=TenantAccountRole.OWNER,
+    )
+    sqlite_session.add(tenant_account_join)
+    sqlite_session.commit()
+    config_overrides(
+        ADMIN_API_KEY_ENABLE=True,
+        ADMIN_API_KEY="admin-key",
+        CONSOLE_WEB_URL="http://console.example.com",
+        CONSOLE_API_URL="http://api.example.com",
+        COOKIE_DOMAIN="",
+    )
+
+    with app.test_request_context(
+        "/console/api/test",
+        headers={
+            "Authorization": "Bearer admin-key",
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=console-session",
+            "X-WORKSPACE-ID": "workspace-id",
+        },
+    ):
+        result = ext_login._load_user_from_request(request, sqlite_session)
+
+    assert result is account
+    assert account.current_tenant is tenant
+
+
+@pytest.mark.parametrize("route", ["personal", "inherited", "workspace", "function", "missing"])
+def test_console_account_loader_respects_handler_admission_metadata(
+    route: str, account_application_services: ApplicationServices
+) -> None:
+    from flask.views import MethodView
+
+    class PersonalView(MethodView):
+        def get(self) -> str:
+            return "ok"
+
+        get.__dict__[ext_login.ACCOUNT_ONLY_ADMISSION_ATTR] = True
+
+        def post(self) -> str:
+            return "ok"
+
+    class InheritedView(PersonalView):
+        pass
+
+    app = Flask(__name__)
+    app.add_url_rule("/personal", view_func=PersonalView.as_view("personal"))
+    app.add_url_rule("/inherited", view_func=InheritedView.as_view("inherited"))
+    app.add_url_rule("/function", view_func=lambda: "ok")
+    loader = account_application_services.accounts.identity.get_account_by_id
+    ext_login.bind_account_only_loader(app, loader)
+    path = "/personal" if route == "workspace" else f"/{route}"
+    method = "POST" if route == "workspace" else "GET"
+    with app.test_request_context(path, method=method):
+        expected = loader if route in {"personal", "inherited"} else ext_login.load_account
+        assert ext_login._console_account_loader() is expected

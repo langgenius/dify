@@ -1,133 +1,135 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { ORPCError } from '@orpc/client'
+import { act, screen } from '@testing-library/react'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, createConsoleQueryWrapper } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import Billing from '../index'
 
-let currentBillingUrl: string | null = 'https://billing'
-let fetching = false
+let currentBillingUrl: string | undefined = 'https://billing.example.com'
 let isManager = true
-let enableBilling = true
+let deploymentEdition: 'CLOUD' | 'COMMUNITY' = 'CLOUD'
 
-const refetchMock = vi.fn()
-const openAsyncWindowMock = vi.fn()
-
-vi.mock('@/service/use-billing', () => ({
-  useBillingUrl: () => ({
-    data: currentBillingUrl,
-    isFetching: fetching,
-    refetch: refetchMock,
-  }),
+const mocks = vi.hoisted(() => ({
+  request: vi.fn(() => new Promise(() => {})),
+  getInvoices: vi.fn(() => new Promise(() => {})),
 }))
 
-vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => openAsyncWindowMock,
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'billing.invoices.get': mocks.getInvoices,
+    }),
+  }
+})
 
-vi.mock('@/context/app-context', () => ({
-  useAppContext: () => ({
-    isCurrentWorkspaceManager: isManager,
-  }),
-}))
-
-vi.mock('@/context/provider-context', () => ({
-  useProviderContext: () => ({
-    enableBilling,
-  }),
+vi.mock('@/service/base', () => ({
+  request: mocks.request,
+  sseGeneratorPost: vi.fn(),
 }))
 
 vi.mock('../../plan', () => ({
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
 
+const renderBilling = () => {
+  const queryClient = createConsoleQueryClient()
+  if (currentBillingUrl) {
+    queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+      url: currentBillingUrl,
+    })
+  }
+  const { wrapper } = createConsoleQueryWrapper({
+    queryClient,
+    currentWorkspace: { role: isManager ? 'owner' : 'normal' },
+    systemFeatures: { deployment_edition: deploymentEdition },
+  })
+
+  return { ...render(<Billing />, { wrapper }), queryClient }
+}
+
 describe('Billing', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    currentBillingUrl = 'https://billing'
-    fetching = false
+    currentBillingUrl = 'https://billing.example.com'
     isManager = true
-    enableBilling = true
-    refetchMock.mockResolvedValue({ data: 'https://billing' })
+    deploymentEdition = 'CLOUD'
   })
 
-  it('hides the billing action when user is not manager or billing is disabled', () => {
+  it('hides the billing action from non-manager members', () => {
     isManager = false
-    render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
 
-    vi.clearAllMocks()
-    isManager = true
-    enableBilling = false
-    render(<Billing />)
-    expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
+    renderBilling()
+
+    expect(screen.queryByText('billing.viewBillingTitle')).not.toBeInTheDocument()
   })
 
-  it('opens the billing window with the immediate url when the button is clicked', async () => {
-    render(<Billing />)
+  it('hides the billing action when billing is disabled', () => {
+    deploymentEdition = 'COMMUNITY'
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
+    renderBilling()
 
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0]
-    expect(options).toMatchObject({
-      immediateUrl: currentBillingUrl,
-      features: 'noopener,noreferrer',
-    })
+    expect(screen.queryByText('billing.viewBillingTitle')).not.toBeInTheDocument()
   })
 
-  it('returns the refetched url from the async callback', async () => {
-    const newUrl = 'https://new-billing-url'
-    refetchMock.mockResolvedValue({ data: newUrl })
-    render(<Billing />)
+  it('enables the manager billing link only after its URL becomes available', async () => {
+    currentBillingUrl = undefined
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
+    const { queryClient } = renderBilling()
 
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
+    expect(screen.getByText('billing.viewBillingTitle')).toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
 
-    // Execute the async callback passed to openAsyncWindow
-    const result = await asyncCallback()
-    expect(result).toBe(newUrl)
-    expect(refetchMock).toHaveBeenCalled()
+    act(() =>
+      queryClient.setQueryData(consoleQuery.billing.invoices.get.queryOptions().queryKey, {
+        url: 'https://billing.example.com',
+      }),
+    )
+    const link = await screen.findByRole('link', { name: /billing\.viewBillingTitle/ })
+    expect(link).toHaveAttribute('href', 'https://billing.example.com')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   })
 
-  it('returns null when refetch returns no url', async () => {
-    refetchMock.mockResolvedValue({ data: null })
-    render(<Billing />)
+  it('explains why the billing link is unavailable', async () => {
+    currentBillingUrl = undefined
+    mocks.getInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503, message: 'Backend text' }),
+    )
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
+    renderBilling()
 
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [asyncCallback] = openAsyncWindowMock.mock.calls[0]
-
-    // Execute the async callback when url is null
-    const result = await asyncCallback()
-    expect(result).toBeNull()
+    expect(await screen.findByText('billing.errors.unavailable')).toBeInTheDocument()
+    expect(screen.queryByText('billing.viewBillingDescription')).not.toBeInTheDocument()
+    expect(
+      screen.queryByRole('link', { name: /billing\.viewBillingTitle/ }),
+    ).not.toBeInTheDocument()
   })
 
-  it('handles errors in onError callback', async () => {
-    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-    render(<Billing />)
+  it('keeps a working billing link when a background refresh fails', async () => {
+    mocks.getInvoices.mockRejectedValueOnce(
+      new ORPCError('billing_unavailable', { defined: true, status: 503 }),
+    )
 
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    fireEvent.click(actionButton)
+    const { queryClient } = renderBilling()
+    await act(() =>
+      queryClient.refetchQueries({
+        queryKey: consoleQuery.billing.invoices.get.queryOptions().queryKey,
+      }),
+    )
 
-    await waitFor(() => expect(openAsyncWindowMock).toHaveBeenCalled())
-    const [, options] = openAsyncWindowMock.mock.calls[0]
-
-    // Execute the onError callback
-    const testError = new Error('Test error')
-    options.onError(testError)
-    expect(consoleError).toHaveBeenCalledWith('Failed to fetch billing url', testError)
-
-    consoleError.mockRestore()
-  })
-
-  it('disables the button while billing url is fetching', () => {
-    fetching = true
-    render(<Billing />)
-
-    const actionButton = screen.getByRole('button', { name: /billing\.viewBillingTitle/ })
-    expect(actionButton).toBeDisabled()
+    expect(
+      queryClient.getQueryState(consoleQuery.billing.invoices.get.queryOptions().queryKey)?.status,
+    ).toBe('error')
+    expect(screen.getByRole('link', { name: /billing\.viewBillingTitle/ })).toHaveAttribute(
+      'href',
+      'https://billing.example.com',
+    )
+    expect(screen.getByText('billing.viewBillingDescription')).toBeInTheDocument()
+    expect(screen.queryByText('billing.errors.unavailable')).not.toBeInTheDocument()
   })
 })

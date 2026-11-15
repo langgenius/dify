@@ -1,129 +1,116 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { renderWithAccountProfile as render } from '@/test/console/account-profile'
+import { DatasetACLPermission } from '@/utils/permission'
 import ApiAccess from '../index'
 
-// Mock context and hooks for Card component
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: vi.fn(() => 'test-dataset-id'),
-}))
+let mockDatasetId = 'dataset-123'
+let mockMutateDatasetRes = vi.fn()
+let mockDatasetPermissionKeys: string[] = [DatasetACLPermission.Edit]
+const mockEnableApi = vi.fn()
+const mockDisableApi = vi.fn()
 
-vi.mock('@/context/app-context', () => ({
-  useSelector: vi.fn(() => true),
-}))
-
-vi.mock('@/hooks/use-api-access-url', () => ({
-  useDatasetApiAccessUrl: vi.fn(() => 'https://api.example.com/docs'),
-}))
-
-vi.mock('@/service/knowledge/use-dataset', () => ({
-  useEnableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
-  useDisableDatasetServiceApi: vi.fn(() => ({ mutateAsync: vi.fn() })),
-}))
-
-afterEach(() => {
-  cleanup()
+vi.mock('@/context/workspace-state', async () => {
+  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+  return createWorkspaceStateModuleMock(() => ({
+    currentWorkspace: { id: 'workspace-1' },
+  }))
 })
 
-describe('ApiAccess', () => {
-  it('should render without crashing', () => {
-    render(<ApiAccess expand={true} apiEnabled={true} />)
-    expect(screen.getByText('common.appMenus.apiAccess')).toBeInTheDocument()
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContextWithSelector: (selector: (state: Record<string, unknown>) => unknown) =>
+    selector({
+      dataset: {
+        id: mockDatasetId,
+        permission_keys: mockDatasetPermissionKeys,
+      },
+      mutateDatasetRes: mockMutateDatasetRes,
+    }),
+}))
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'datasets.byDatasetId.apiKeys.byStatus.post': (input) =>
+        ((input: { params: { status: string } }) =>
+          input.params.status === 'enable' ? mockEnableApi(input) : mockDisableApi(input))(input),
+    }),
+  }
+})
+
+vi.mock('@/hooks/use-api-access-url', () => ({
+  useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
+}))
+
+vi.mock('@/context/permission-state', async () => {
+  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
+
+  return createPermissionStateModuleMock(() => ({
+    workspacePermissionKeys: [],
+  }))
+})
+
+describe('Dataset API access', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mockDatasetId = 'dataset-123'
+    mockMutateDatasetRes = vi.fn()
+    mockDatasetPermissionKeys = [DatasetACLPermission.Edit]
   })
 
-  it('should render API access text when expanded', () => {
-    render(<ApiAccess expand={true} apiEnabled={true} />)
-    expect(screen.getByText('common.appMenus.apiAccess')).toBeInTheDocument()
-  })
+  it.each([true, false])(
+    'opens API details from the keyboard when sidebar expanded=%s',
+    async (expand) => {
+      const user = userEvent.setup()
+      render(<ApiAccess expand={expand} apiEnabled />)
+      const trigger = screen.getByRole('button', { name: 'common.appMenus.apiAccess' })
+      await user.tab()
+      expect(trigger).toHaveFocus()
+      await user.keyboard('{Enter}')
+      expect(await screen.findByText('dataset.serviceApi.enabled')).toBeInTheDocument()
+      expect(
+        screen.getByRole('link', { name: 'appOverview.overview.apiInfo.doc' }),
+      ).toHaveAttribute('href', 'https://docs.dify.ai/api-reference/datasets')
+    },
+  )
 
-  it('should not render API access text when collapsed', () => {
-    render(<ApiAccess expand={false} apiEnabled={true} />)
-    expect(screen.queryByText('common.appMenus.apiAccess')).not.toBeInTheDocument()
-  })
+  it('enables the dataset API and refreshes dataset state', async () => {
+    const user = userEvent.setup()
+    mockEnableApi.mockResolvedValue({ result: 'success' })
+    render(<ApiAccess expand apiEnabled={false} />)
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
 
-  it('should render with apiEnabled=true', () => {
-    render(<ApiAccess expand={true} apiEnabled={true} />)
-    expect(screen.getByText('common.appMenus.apiAccess')).toBeInTheDocument()
-  })
+    await user.click(screen.getByRole('switch'))
 
-  it('should render with apiEnabled=false', () => {
-    render(<ApiAccess expand={true} apiEnabled={false} />)
-    expect(screen.getByText('common.appMenus.apiAccess')).toBeInTheDocument()
-  })
-
-  it('should be wrapped with React.memo', () => {
-    expect((ApiAccess as unknown as { $$typeof: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
-  })
-
-  describe('toggle functionality', () => {
-    it('should toggle open state when trigger is clicked', async () => {
-      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
-      const trigger = container.querySelector('.cursor-pointer')
-      expect(trigger).toBeInTheDocument()
-
-      await act(async () => {
-        fireEvent.click(trigger!)
-      })
-
-      // The component should update its state - check for state change via class
-      expect(trigger).toBeInTheDocument()
+    expect(mockEnableApi).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-123', status: 'enable' },
     })
-
-    it('should toggle open state multiple times', async () => {
-      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
-      const trigger = container.querySelector('.cursor-pointer')
-
-      // First click - open
-      await act(async () => {
-        fireEvent.click(trigger!)
-      })
-
-      // Second click - close
-      await act(async () => {
-        fireEvent.click(trigger!)
-      })
-
-      expect(trigger).toBeInTheDocument()
-    })
-
-    it('should work when collapsed', async () => {
-      const { container } = render(<ApiAccess expand={false} apiEnabled={true} />)
-      const trigger = container.querySelector('.cursor-pointer')
-
-      await act(async () => {
-        fireEvent.click(trigger!)
-      })
-
-      expect(trigger).toBeInTheDocument()
-    })
+    await waitFor(() => expect(mockMutateDatasetRes).toHaveBeenCalledOnce())
   })
 
-  describe('indicator color', () => {
-    it('should render with green indicator when apiEnabled is true', () => {
-      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
-      // Indicator component should be present
-      const indicator = container.querySelector('.shrink-0')
-      expect(indicator).toBeInTheDocument()
-    })
+  it('disables the dataset API and refreshes dataset state', async () => {
+    const user = userEvent.setup()
+    mockDisableApi.mockResolvedValue({ result: 'success' })
+    render(<ApiAccess expand apiEnabled />)
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
 
-    it('should render with yellow indicator when apiEnabled is false', () => {
-      const { container } = render(<ApiAccess expand={true} apiEnabled={false} />)
-      const indicator = container.querySelector('.shrink-0')
-      expect(indicator).toBeInTheDocument()
+    await user.click(screen.getByRole('switch'))
+
+    expect(mockDisableApi).toHaveBeenCalledWith({
+      params: { dataset_id: 'dataset-123', status: 'disable' },
     })
+    await waitFor(() => expect(mockMutateDatasetRes).toHaveBeenCalledOnce())
   })
 
-  describe('layout', () => {
-    it('should have justify-center when collapsed', () => {
-      const { container } = render(<ApiAccess expand={false} apiEnabled={true} />)
-      const trigger = container.querySelector('.justify-center')
-      expect(trigger).toBeInTheDocument()
-    })
+  it('prevents API changes without dataset edit permission', async () => {
+    const user = userEvent.setup()
+    mockDatasetPermissionKeys = []
+    render(<ApiAccess expand apiEnabled />)
+    await user.click(screen.getByRole('button', { name: 'common.appMenus.apiAccess' }))
 
-    it('should not have justify-center when expanded', () => {
-      const { container } = render(<ApiAccess expand={true} apiEnabled={true} />)
-      const innerDiv = container.querySelector('.cursor-pointer')
-      // When expanded, should have gap-2 and text, not justify-center
-      expect(innerDiv).not.toHaveClass('justify-center')
-    })
+    expect(screen.getByRole('switch')).toHaveAttribute('aria-disabled', 'true')
   })
 })

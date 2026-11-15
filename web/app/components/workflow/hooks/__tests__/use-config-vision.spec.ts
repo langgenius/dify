@@ -1,30 +1,29 @@
 import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
-import { act, renderHook } from '@testing-library/react'
+import { act } from '@testing-library/react'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
 import { Resolution } from '@/types/app'
 import useConfigVision from '../use-config-vision'
 
 const mockUseTextGenerationCurrentProviderAndModelAndModelList = vi.hoisted(() => vi.fn())
-const mockUseIsChatMode = vi.hoisted(() => vi.fn())
+let chatflowMode = false
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useTextGenerationCurrentProviderAndModelAndModelList: (...args: unknown[]) =>
     mockUseTextGenerationCurrentProviderAndModelAndModelList(...args),
 }))
 
-vi.mock('../use-workflow', () => ({
-  useIsChatMode: () => mockUseIsChatMode(),
-}))
-
 const createModel = (overrides: Partial<ModelConfig> = {}): ModelConfig => ({
   provider: 'openai',
   name: 'gpt-4o',
   mode: 'chat',
-  completion_params: [],
+  completion_params: {},
   ...overrides,
 })
 
-const createVisionPayload = (overrides: Partial<{ enabled: boolean, configs?: VisionSetting }> = {}) => ({
+const createVisionPayload = (
+  overrides: Partial<{ enabled: boolean; configs?: VisionSetting }> = {},
+) => ({
   enabled: false,
   ...overrides,
 })
@@ -32,7 +31,7 @@ const createVisionPayload = (overrides: Partial<{ enabled: boolean, configs?: Vi
 describe('useConfigVision', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseIsChatMode.mockReturnValue(false)
+    chatflowMode = false
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
       currentModel: {
         features: [],
@@ -42,17 +41,27 @@ describe('useConfigVision', () => {
 
   it('should expose vision capability and enable default chat configs for vision models', () => {
     const onChange = vi.fn()
-    mockUseIsChatMode.mockReturnValue(true)
+    chatflowMode = true
     mockUseTextGenerationCurrentProviderAndModelAndModelList.mockReturnValue({
       currentModel: {
         features: [ModelFeatureEnum.vision],
       },
     })
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload(),
-      onChange,
-    }))
+    const { result } = renderHook(
+      () =>
+        useConfigVision(createModel(), {
+          payload: createVisionPayload(),
+          onChange,
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
+    )
 
     expect(result.current.isVisionModel).toBe(true)
 
@@ -72,16 +81,26 @@ describe('useConfigVision', () => {
   it('should clear configs when disabling vision resolution', () => {
     const onChange = vi.fn()
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.low,
-          variable_selector: ['node', 'files'],
+    const { result } = renderHook(
+      () =>
+        useConfigVision(createModel(), {
+          payload: createVisionPayload({
+            enabled: true,
+            configs: {
+              detail: Resolution.low,
+              variable_selector: ['node', 'files'],
+            },
+          }),
+          onChange,
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
         },
-      }),
-      onChange,
-    }))
+      },
+    )
 
     act(() => {
       result.current.handleVisionResolutionEnabledChange(false)
@@ -99,10 +118,20 @@ describe('useConfigVision', () => {
       variable_selector: ['upstream', 'images'],
     }
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({ enabled: true }),
-      onChange,
-    }))
+    const { result } = renderHook(
+      () =>
+        useConfigVision(createModel(), {
+          payload: createVisionPayload({ enabled: true }),
+          onChange,
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
+        },
+      },
+    )
 
     act(() => {
       result.current.handleVisionResolutionChange(config)
@@ -117,16 +146,26 @@ describe('useConfigVision', () => {
   it('should disable vision settings when the selected model is no longer a vision model', () => {
     const onChange = vi.fn()
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.high,
-          variable_selector: ['sys', 'files'],
+    const { result } = renderHook(
+      () =>
+        useConfigVision(createModel(), {
+          payload: createVisionPayload({
+            enabled: true,
+            configs: {
+              detail: Resolution.high,
+              variable_selector: ['sys', 'files'],
+            },
+          }),
+          onChange,
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
         },
-      }),
-      onChange,
-    }))
+      },
+    )
 
     act(() => {
       result.current.handleModelChanged()
@@ -145,16 +184,26 @@ describe('useConfigVision', () => {
       },
     })
 
-    const { result } = renderHook(() => useConfigVision(createModel(), {
-      payload: createVisionPayload({
-        enabled: true,
-        configs: {
-          detail: Resolution.low,
-          variable_selector: ['old', 'files'],
+    const { result } = renderHook(
+      () =>
+        useConfigVision(createModel(), {
+          payload: createVisionPayload({
+            enabled: true,
+            configs: {
+              detail: Resolution.low,
+              variable_selector: ['old', 'files'],
+            },
+          }),
+          onChange,
+        }),
+      {
+        resource: {
+          kind: 'app',
+          appId: 'app-1',
+          mode: chatflowMode ? 'advanced-chat' : 'workflow',
         },
-      }),
-      onChange,
-    }))
+      },
+    )
 
     act(() => {
       result.current.handleModelChanged()

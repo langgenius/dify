@@ -1,6 +1,6 @@
 from datetime import UTC, datetime
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from croniter import croniter
 
 
@@ -38,7 +38,10 @@ def calculate_next_run_at(
             f"(@daily, @weekly, etc.). Got {len(parts)} fields: '{cron_expression}'"
         )
 
-    tz = pytz.timezone(timezone)
+    try:
+        tz = ZoneInfo(timezone)
+    except (ValueError, OSError):
+        raise ValueError(f"Invalid timezone: {timezone!r}") from None
 
     if base_time is None:
         base_time = datetime.now(UTC)
@@ -91,7 +94,7 @@ def convert_12h_to_24h(time_str: str) -> tuple[int, int]:
         hour = int(time_parts[0])
         minute = int(time_parts[1])
     except ValueError as e:
-        raise ValueError(f"Invalid time values: {e}")
+        raise ValueError(f"Invalid time values: {e}") from e
 
     if hour < 1 or hour > 12:
         raise ValueError(f"Invalid hour: {hour}. Must be between 1 and 12")

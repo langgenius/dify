@@ -1,0 +1,225 @@
+'use client'
+
+import {
+  Avatar,
+  AvatarFallback,
+  AvatarGroup,
+  AvatarGroupCount,
+  AvatarImage,
+} from '@langgenius/dify-ui/avatar'
+import { cn } from '@langgenius/dify-ui/cn'
+import {
+  Combobox,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxInputGroup,
+  ComboboxItem,
+  ComboboxItemIndicator,
+  ComboboxItemText,
+  ComboboxList,
+  ComboboxPopup,
+  ComboboxPortal,
+  ComboboxPositioner,
+  ComboboxTrigger,
+  ComboboxValue,
+  createComboboxItems,
+} from '@langgenius/dify-ui/combobox'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { consoleQuery } from '@/service/console'
+import { getAvatarInitial } from '@/utils/avatar'
+
+type CreatorsFilterProps = {
+  value: string[]
+  onChange: (value: string[]) => void
+}
+
+type CreatorOption = {
+  id: string
+  name: string
+  avatarUrl: string | null
+  isYou: boolean
+}
+
+const baseChipClassName =
+  'flex h-8 items-center whitespace-nowrap rounded-lg border-[0.5px] px-2 text-[13px] leading-4 transition-colors motion-reduce:transition-none'
+
+const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
+  const { t } = useTranslation(['app', 'common'])
+  const { data: currentUserId } = useSuspenseQuery({
+    ...userProfileQueryOptions(),
+    select: (data) => data.profile.id,
+  })
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
+  const triggerRef = useRef<HTMLButtonElement>(null)
+
+  const creatorOptions = useMemo<CreatorOption[]>(() => {
+    const members = membersData?.accounts ?? []
+
+    return [...members]
+      .filter((member) => member.status !== 'pending')
+      .sort((left, right) => {
+        if (left.id === currentUserId) return -1
+        if (right.id === currentUserId) return 1
+        return left.name.localeCompare(right.name)
+      })
+      .map((member) => ({
+        id: member.id,
+        name: member.name,
+        avatarUrl: member.avatar_url,
+        isYou: member.id === currentUserId,
+      }))
+  }, [currentUserId, membersData?.accounts])
+
+  const creatorMap = useMemo(
+    () => new Map(creatorOptions.map((creator) => [creator.id, creator])),
+    [creatorOptions],
+  )
+  const creatorItems = useMemo(
+    () =>
+      createComboboxItems(creatorOptions, {
+        getValue: (creator) => creator.id,
+        getLabel: (creator) => creator.name,
+      }),
+    [creatorOptions],
+  )
+  const selectedCreators = useMemo(() => {
+    return value
+      .map((id) => creatorMap.get(id))
+      .filter((creator): creator is CreatorOption => Boolean(creator))
+  }, [creatorMap, value])
+
+  const handleSelectionClear = useCallback(() => {
+    onChange([])
+    triggerRef.current?.focus()
+  }, [onChange])
+
+  const selectedCount = value.length
+  const selectedAvatarCreators = selectedCreators.slice(0, 3)
+  const remainingCount = selectedCount - selectedAvatarCreators.length
+  const creatorFilterLabel = t(($) => $['studio.filters.creators'], { ns: 'app' })
+  const resetLabel = t(($) => $['studio.filters.reset'], { ns: 'app' })
+  const selectedCountLabel =
+    selectedCount > 0
+      ? t(($) => $['dynamicSelect.selected'], {
+          ns: 'common',
+          count: selectedCount,
+        })
+      : ''
+
+  return (
+    <Combobox<string, true, CreatorOption>
+      multiple
+      autoHighlight
+      items={creatorItems}
+      value={value}
+      onValueChange={(nextValue) => onChange(nextValue)}
+    >
+      <div className="relative inline-flex h-8 items-stretch">
+        <ComboboxTrigger
+          ref={triggerRef}
+          aria-label={creatorFilterLabel}
+          className={cn(
+            baseChipClassName,
+            'group/creators-trigger peer/creators-trigger w-auto min-w-0 gap-0.5 border-components-button-secondary-border bg-components-button-secondary-bg py-2 pr-7 text-start system-sm-regular shadow-xs hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-placeholder:border-transparent data-placeholder:bg-components-input-bg-normal data-placeholder:pr-2 data-placeholder:text-text-tertiary data-placeholder:shadow-none data-placeholder:hover:bg-components-input-bg-hover data-popup-open:bg-state-base-hover-alt',
+          )}
+        >
+          <ComboboxValue<string, true>>
+            <span aria-hidden className="flex min-w-0 items-center">
+              <span className="px-1 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary">
+                {creatorFilterLabel}
+              </span>
+              {selectedCount > 0 ? (
+                <AvatarGroup size="xs">
+                  {selectedAvatarCreators.map((creator, index) => (
+                    <Avatar
+                      key={creator.id}
+                      aria-hidden="true"
+                      style={{ zIndex: selectedAvatarCreators.length - index }}
+                    >
+                      <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
+                    </Avatar>
+                  ))}
+                  {remainingCount > 0 && <AvatarGroupCount>+{remainingCount}</AvatarGroupCount>}
+                </AvatarGroup>
+              ) : (
+                <span className="i-ri-arrow-down-s-line h-4 w-4 shrink-0 text-text-tertiary group-data-popup-open/creators-trigger:text-text-secondary" />
+              )}
+            </span>
+            <span className="sr-only">{selectedCountLabel}</span>
+          </ComboboxValue>
+        </ComboboxTrigger>
+        {selectedCount > 0 && (
+          <IconButton
+            size="sm"
+            aria-label={resetLabel}
+            className="absolute top-1/2 right-1 -translate-y-1/2 peer-data-popup-open/creators-trigger:text-text-secondary"
+            onClick={handleSelectionClear}
+          >
+            <span aria-hidden className="i-ri-close-circle-fill h-3.5 w-3.5" />
+          </IconButton>
+        )}
+      </div>
+      <ComboboxPortal>
+        <ComboboxPositioner>
+          <ComboboxPopup
+            aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
+            className="w-[min(280px,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))] bg-components-panel-bg-blur text-sm text-text-secondary backdrop-blur-[5px]"
+          >
+            <ComboboxInputGroup>
+              <span
+                aria-hidden
+                className="i-ri-search-line size-4 shrink-0 text-components-input-text-placeholder"
+              />
+              <ComboboxInput
+                name="creator-query"
+                enterKeyHint="search"
+                aria-label={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+                placeholder={t(($) => $['studio.filters.searchCreators'], { ns: 'app' })}
+              />
+            </ComboboxInputGroup>
+            <ComboboxEmpty>{t(($) => $.noData, { ns: 'common' })}</ComboboxEmpty>
+            <ComboboxList<CreatorOption> className="max-h-60">
+              {(creator) => (
+                <ComboboxItem<string>
+                  key={creator.id}
+                  value={creator.id}
+                  className="group/creator-option grid-cols-[auto_1fr] gap-1 rounded-md"
+                >
+                  <span
+                    aria-hidden
+                    className="inline-flex size-4 shrink-0 items-center justify-center rounded-sm border border-components-checkbox-border bg-components-checkbox-bg-unchecked text-components-checkbox-icon shadow-xs shadow-shadow-shadow-3 group-data-selected/creator-option:border-transparent group-data-selected/creator-option:bg-components-checkbox-bg"
+                  >
+                    <ComboboxItemIndicator className="ms-0 size-3 text-components-checkbox-icon" />
+                  </span>
+                  <ComboboxItemText className="flex items-center gap-2 px-1 font-normal">
+                    <Avatar size="xs" aria-hidden="true">
+                      <AvatarFallback>{getAvatarInitial(creator.name)}</AvatarFallback>
+                      <AvatarImage src={creator.avatarUrl || undefined} alt="" />
+                    </Avatar>
+                    <span className="flex min-w-0 grow items-center justify-between gap-2">
+                      <span className="truncate text-sm text-text-secondary">{creator.name}</span>
+                      {creator.isYou && (
+                        <span className="shrink-0 text-sm text-text-quaternary">
+                          {t(($) => $['studio.filters.you'], { ns: 'app' })}
+                        </span>
+                      )}
+                    </span>
+                  </ComboboxItemText>
+                </ComboboxItem>
+              )}
+            </ComboboxList>
+          </ComboboxPopup>
+        </ComboboxPositioner>
+      </ComboboxPortal>
+    </Combobox>
+  )
+}
+
+export default CreatorsFilter

@@ -1,7 +1,6 @@
 import hashlib
 import logging
 from threading import Thread, Timer
-from typing import Union
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -35,7 +34,7 @@ from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.enums import MessageFileBelongsTo
-from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
+from models.model import App, AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
@@ -45,13 +44,11 @@ class MessageCycleManager:
     def __init__(
         self,
         *,
-        application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity,
-        ],
-        task_state: Union[EasyUITaskState, WorkflowTaskState],
+        application_generate_entity: ChatAppGenerateEntity
+        | CompletionAppGenerateEntity
+        | AgentChatAppGenerateEntity
+        | AdvancedChatAppGenerateEntity,
+        task_state: EasyUITaskState | WorkflowTaskState,
     ):
         self._application_generate_entity = application_generate_entity
         self._task_state = task_state
@@ -65,11 +62,7 @@ class MessageCycleManager:
         # Use SQLAlchemy 2.x style session.scalar(select(...))
         with session_factory.create_session() as session:
             message_file = session.scalar(
-                select(MessageFile)
-                .where(
-                    MessageFile.message_id == message_id,
-                )
-                .where(MessageFile.belongs_to == "assistant")
+                select(MessageFile).where(MessageFile.message_id == message_id, MessageFile.belongs_to == "assistant")
             )
 
         if message_file:
@@ -78,7 +71,9 @@ class MessageCycleManager:
 
         return StreamEvent.MESSAGE
 
-    def generate_conversation_name(self, *, conversation_id: str, query: str) -> Thread | None:
+    def generate_conversation_name(
+        self, *, conversation_id: str, query: str, message_id: str | None = None
+    ) -> Thread | None:
         """
         Generate conversation name.
         :param conversation_id: conversation id
@@ -103,6 +98,7 @@ class MessageCycleManager:
                     "flask_app": current_app._get_current_object(),  # type: ignore
                     "conversation_id": conversation_id,
                     "query": query,
+                    "message_id": message_id,
                 },
             )
             thread.daemon = True
@@ -113,55 +109,69 @@ class MessageCycleManager:
 
         return thread
 
-    def _generate_conversation_name_worker(self, flask_app: Flask, conversation_id: str, query: str):
+    def _generate_conversation_name_worker(
+        self,
+        flask_app: Flask,
+        conversation_id: str,
+        query: str,
+        message_id: str | None = None,
+    ):
         with flask_app.app_context():
-            # get conversation and message
-            stmt = select(Conversation).where(Conversation.id == conversation_id)
-            conversation = db.session.scalar(stmt)
+            with session_factory.create_session() as session:
+                # get conversation and message
+                stmt = select(Conversation).where(Conversation.id == conversation_id)
+                conversation = session.scalar(stmt)
 
-            if not conversation:
-                return
-
-            if conversation.mode != AppMode.COMPLETION:
-                app_model = conversation.app
-                if not app_model:
+                if not conversation:
                     return
 
-                # generate conversation name
-                query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
-                cache_key = f"conv_name:{conversation_id}:{query_hash}"
+                if conversation.mode != AppMode.COMPLETION:
+                    app_model = session.get(App, conversation.app_id)
+                    if not app_model:
+                        return
 
-                cached_name = redis_client.get(cache_key)
-                if cached_name:
-                    name = cached_name.decode("utf-8")
-                else:
-                    try:
-                        name = LLMGenerator.generate_conversation_name(
-                            app_model.tenant_id, query, conversation_id, conversation.app_id
-                        )
-                        redis_client.setex(cache_key, 3600, name)
-                    except Exception:
-                        if dify_config.DEBUG:
-                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
-                        name = query[:47] + "..." if len(query) > 50 else query
-                conversation.name = name
-                db.session.commit()
-                db.session.close()
+                    # generate conversation name
+                    query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+                    cache_key = f"conv_name:{conversation_id}:{query_hash}"
 
-    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent) -> MessageAnnotation | None:
+                    cached_name = redis_client.get(cache_key)
+                    if cached_name:
+                        name = cached_name.decode("utf-8")
+                    else:
+                        try:
+                            name = LLMGenerator.generate_conversation_name(
+                                app_model.tenant_id,
+                                query,
+                                conversation_id,
+                                conversation.app_id,
+                                message_id=message_id,
+                                # The request's scope keeps the caller's trace ID with the message.
+                                trace_scope=self._application_generate_entity.trace_scope,
+                            )
+                            redis_client.setex(cache_key, 3600, name)
+                        except Exception:
+                            if dify_config.DEBUG:
+                                logger.exception(
+                                    "generate conversation name failed, conversation_id: %s", conversation_id
+                                )
+                            name = query[:47] + "..." if len(query) > 50 else query
+                    conversation.name = name
+                    session.commit()
+
+    def handle_annotation_reply(self, event: QueueAnnotationReplyEvent, session: Session) -> MessageAnnotation | None:
         """
         Handle annotation reply.
         :param event: event
         :return:
         """
-        annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
-        if annotation:
-            account = annotation.account
+        reply = AppAnnotationService.get_annotation_reply_by_id(event.message_annotation_id, session)
+        if reply:
+            annotation, account_name = reply
             self._task_state.metadata.annotation_reply = AnnotationReply(
                 id=annotation.id,
                 account=AnnotationReplyAccount(
                     id=annotation.account_id,
-                    name=account.name if account else "Dify user",
+                    name=account_name if account_name is not None else "Dify user",
                 ),
             )
 
@@ -180,6 +190,7 @@ class MessageCycleManager:
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
             existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
+            receipt_ids = {r.knowledge_fs_citation.id for r in merged_resources if r.knowledge_fs_citation}
 
             # Add new unique resources from the event
             for resource in event.retriever_resources or []:
@@ -187,13 +198,20 @@ class MessageCycleManager:
                     continue
 
                 is_duplicate = (
-                    resource.dataset_id
-                    and resource.document_id
-                    and (resource.dataset_id, resource.document_id) in existing_ids
+                    resource.knowledge_fs_citation.id in receipt_ids
+                    if resource.knowledge_fs_citation
+                    else (
+                        resource.knowledge_fs_citation is None
+                        and resource.dataset_id
+                        and resource.document_id
+                        and (resource.dataset_id, resource.document_id) in existing_ids
+                    )
                 )
 
                 if not is_duplicate:
                     merged_resources.append(resource)
+                    if resource.knowledge_fs_citation:
+                        receipt_ids.add(resource.knowledge_fs_citation.id)
 
             for i, resource in enumerate(merged_resources, 1):
                 resource.position = i
@@ -257,7 +275,7 @@ class MessageCycleManager:
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
-            from_variable_selector=from_variable_selector,
+            from_variable_selector=from_variable_selector or [],
             event=event_type or StreamEvent.MESSAGE,
         )
 

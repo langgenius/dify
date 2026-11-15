@@ -6,11 +6,10 @@ import { BlockEnum, isTriggerNode } from '../types'
  * Priority: trigger nodes > start node
  */
 export function getWorkflowEntryNode(nodes: Node[]): Node | undefined {
-  const triggerNode = nodes.find(node => isTriggerNode(node.data.type))
-  if (triggerNode)
-    return triggerNode
+  const triggerNode = nodes.find((node) => isTriggerNode(node.data.type))
+  if (triggerNode) return triggerNode
 
-  return nodes.find(node => node.data.type === BlockEnum.Start)
+  return nodes.find((node) => node.data.type === BlockEnum.Start)
 }
 
 /**
@@ -24,5 +23,5 @@ export function isWorkflowEntryNode(nodeType: BlockEnum): boolean {
  * Check if workflow is in trigger mode
  */
 export function isTriggerWorkflow(nodes: Node[]): boolean {
-  return nodes.some(node => isTriggerNode(node.data.type))
+  return nodes.some((node) => isTriggerNode(node.data.type))
 }

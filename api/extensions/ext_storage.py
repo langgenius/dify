@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
-from typing import Literal, Union, overload
+from typing import Literal, overload
 
 from flask import Flask
 
@@ -96,9 +96,9 @@ class Storage:
 
     # Keep a bool fallback overload for callers that forward a runtime bool flag.
     @overload
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]: ...
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator: ...
 
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> bytes | Generator:
         if stream:
             return self.load_stream(filename)
         else:
@@ -119,6 +119,19 @@ class Storage:
     def delete(self, filename: str):
         return self.storage_runner.delete(filename)
 
+    def generate_presigned_url(
+        self,
+        filename: str,
+        *,
+        expires_in: int,
+        content_type: str | None = None,
+    ) -> str:
+        return self.storage_runner.generate_presigned_url(
+            filename,
+            expires_in=expires_in,
+            content_type=content_type,
+        )
+
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:
         return self.storage_runner.scan(path, files=files, directories=directories)
 
@@ -128,6 +141,6 @@ storage = Storage()
 
 def init_app(app: DifyApp):
     storage.init_app(app)
-    from core.app.workflow.file_runtime import bind_dify_workflow_file_runtime
+    from core.app.workflow import file_runtime
 
-    bind_dify_workflow_file_runtime()
+    file_runtime.init_app(app)

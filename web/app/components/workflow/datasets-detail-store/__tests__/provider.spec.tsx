@@ -1,6 +1,8 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Node } from '../../types'
-import type { DataSet } from '@/models/datasets'
 import { render, screen, waitFor } from '@testing-library/react'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createStartNode } from '../../__tests__/fixtures'
 import { BlockEnum } from '../../types'
 import DatasetsDetailProvider from '../provider'
 import { useDatasetsDetailStore } from '../store'
@@ -12,11 +14,19 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 const Consumer = () => {
-  const datasetCount = useDatasetsDetailStore(state => Object.keys(state.datasetsDetail).length)
-  return <div>{`dataset-count:${datasetCount}`}</div>
+  const datasets = useDatasetsDetailStore((state) => state.datasetsDetail)
+  return (
+    <ul>
+      {Object.entries(datasets).map(([id, dataset]) => (
+        <li key={id}>
+          {id}: {dataset.name}
+        </li>
+      ))}
+    </ul>
+  )
 }
 
-const createWorkflowNode = (datasetIds: string[] = []): Node => ({
+const createWorkflowNode = (datasetIds: string[] = []): Node<{ dataset_ids: string[] }> => ({
   id: `node-${datasetIds.join('-') || 'empty'}`,
   type: 'custom',
   position: { x: 0, y: 0 },
@@ -26,12 +36,10 @@ const createWorkflowNode = (datasetIds: string[] = []): Node => ({
     type: BlockEnum.KnowledgeRetrieval,
     dataset_ids: datasetIds,
   },
-} as unknown as Node)
+})
 
-const createDataset = (id: string): DataSet => ({
-  id,
-  name: `Dataset ${id}`,
-} as DataSet)
+const createDataset = (id: string): DatasetDetailWithPartialMembersResponse =>
+  createDatasetFixture({ id, name: `Dataset ${id}` })
 
 describe('datasets-detail-store provider', () => {
   beforeEach(() => {
@@ -41,24 +49,12 @@ describe('datasets-detail-store provider', () => {
 
   it('should provide the datasets detail store without fetching when no knowledge datasets are selected', () => {
     render(
-      <DatasetsDetailProvider nodes={[
-        {
-          id: 'node-start',
-          type: 'custom',
-          position: { x: 0, y: 0 },
-          data: {
-            title: 'Start',
-            desc: '',
-            type: BlockEnum.Start,
-          },
-        } as unknown as Node,
-      ]}
-      >
+      <DatasetsDetailProvider nodes={[createStartNode({ id: 'node-start' })]}>
         <Consumer />
       </DatasetsDetailProvider>,
     )
 
-    expect(screen.getByText('dataset-count:0')).toBeInTheDocument()
+    expect(screen.queryByRole('listitem')).not.toBeInTheDocument()
     expect(mockFetchDatasets).not.toHaveBeenCalled()
   })
 
@@ -68,10 +64,8 @@ describe('datasets-detail-store provider', () => {
     })
 
     render(
-      <DatasetsDetailProvider nodes={[
-        createWorkflowNode(['dataset-1', 'dataset-2']),
-        createWorkflowNode(['dataset-2']),
-      ]}
+      <DatasetsDetailProvider
+        nodes={[createWorkflowNode(['dataset-1', 'dataset-2']), createWorkflowNode(['dataset-2'])]}
       >
         <Consumer />
       </DatasetsDetailProvider>,
@@ -79,13 +73,15 @@ describe('datasets-detail-store provider', () => {
 
     await waitFor(() => {
       expect(mockFetchDatasets).toHaveBeenCalledWith({
-        url: '/datasets',
         params: {
           page: 1,
           ids: ['dataset-1', 'dataset-2'],
         },
       })
-      expect(screen.getByText('dataset-count:2')).toBeInTheDocument()
+      expect(screen.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+        'dataset-1: Dataset dataset-1',
+        'dataset-2: Dataset dataset-2',
+      ])
     })
   })
 })

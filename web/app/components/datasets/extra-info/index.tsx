@@ -1,35 +1,24 @@
-import type { RelatedAppResponse } from '@/models/datasets'
+import type { RelatedAppListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import * as React from 'react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import ApiAccess from './api-access'
 import Statistics from './statistics'
 
 type IExtraInfoProps = {
-  relatedApps?: RelatedAppResponse
+  relatedApps?: RelatedAppListResponse
   documentCount?: number
   expand: boolean
 }
 
-const ExtraInfo = ({
-  relatedApps,
-  documentCount,
-  expand,
-}: IExtraInfoProps) => {
-  const apiEnabled = useDatasetDetailContextWithSelector(state => state.dataset?.enable_api)
+const ExtraInfo = ({ relatedApps, documentCount, expand }: IExtraInfoProps) => {
+  const apiEnabled = useDatasetDetailContextWithSelector((state) => state.dataset?.enable_api)
 
   return (
     <>
       {expand && (
-        <Statistics
-          expand={expand}
-          documentCount={documentCount}
-          relatedApps={relatedApps}
-        />
+        <Statistics expand={expand} documentCount={documentCount} relatedApps={relatedApps} />
       )}
-      <ApiAccess
-        expand={expand}
-        apiEnabled={apiEnabled ?? false}
-      />
+      <ApiAccess expand={expand} apiEnabled={apiEnabled ?? false} />
     </>
   )
 }

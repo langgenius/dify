@@ -1,8 +1,9 @@
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any
+from typing import Any, override
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
+from sqlalchemy.orm import Session
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -10,14 +11,16 @@ from core.tools.errors import ToolInvokeError
 
 
 class TimestampToLocaltimeTool(BuiltinTool):
+    @override
     def _invoke(
         self,
+        session: Session,
         user_id: str,
         tool_parameters: dict[str, Any],
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> Generator[ToolInvokeMessage, None, None]:
+    ) -> Generator[ToolInvokeMessage]:
         """
         Convert timestamp to localtime
         """
@@ -42,8 +45,11 @@ class TimestampToLocaltimeTool(BuiltinTool):
             if local_tz is None:
                 local_tz = datetime.now().astimezone().tzinfo
             if isinstance(local_tz, str):
-                local_tz = pytz.timezone(local_tz)
+                try:
+                    local_tz = ZoneInfo(local_tz)
+                except Exception:
+                    raise ToolInvokeError(f"Invalid timezone: {local_tz!r}") from None
             local_time = datetime.fromtimestamp(timestamp, local_tz)
             return local_time
         except Exception as e:
-            raise ToolInvokeError(str(e))
+            raise ToolInvokeError(str(e)) from e

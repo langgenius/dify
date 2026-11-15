@@ -1,0 +1,1076 @@
+"""Unit tests for the Agent App runtime request builder + the app-shaped
+``AgentBackendRunRequestBuilder.build_for_agent_app`` DTO assembler."""
+
+from __future__ import annotations
+
+import json
+from dataclasses import dataclass, replace
+from types import SimpleNamespace
+
+import pytest
+from dify_agent.layers.config import DifyConfigLayerConfig, DifyConfigSkillConfig
+from dify_agent.layers.dify_core_tools import DifyCoreToolConfig, DifyCoreToolsLayerConfig
+from dify_agent.layers.dify_plugin import DifyPluginLLMLayerConfig, DifyPluginToolConfig, DifyPluginToolsLayerConfig
+from dify_agent.layers.execution_context import DifyExecutionContextLayerConfig
+from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.user_prompt import DifyUserPromptLayerConfig
+from dify_agent.layers.user_prompt import layer as user_prompt_layer
+from dify_agent.protocol.snapshot import SessionSnapshot
+from dify_trace_sdk.events import TraceEvent
+from flask import Flask
+from pydantic import ValidationError
+from pydantic_ai.messages import BinaryContent, ImageUrl
+
+from clients.agent_backend import (
+    DIFY_CONFIG_LAYER_ID,
+    DIFY_CORE_TOOLS_LAYER_ID,
+    DIFY_PLUGIN_TOOLS_LAYER_ID,
+    AgentBackendAgentAppRunInput,
+    AgentBackendModelConfig,
+    AgentBackendRunRequestBuilder,
+)
+from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
+from core.app.apps.agent_app.runtime_request_builder import (
+    AgentAppRuntimeBuildContext,
+    AgentAppRuntimeRequestBuilder,
+    AgentAppRuntimeRequestBuildError,
+)
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.workflow.file_reference import build_file_reference
+from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
+from extensions.tracing import bind_tracing
+from graphon.file import File, FileTransferMethod, FileType
+from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
+from graphon.model_runtime.entities.model_entities import ModelFeature
+from models.agent_config_entities import AgentSoulConfig, AppVariableConfig
+from tests.helpers.unit.config_override import apply_config_overrides
+from tests.helpers.unit.knowledge_fs_core_fakes import RecordingModelFactory, llm_schema
+from tests.helpers.unit.services.tracing_ports import NoTracingPolicies, RecordingTracingHooks, kernel_trace_scopes
+
+
+@dataclass(frozen=True)
+class _LayerDeps:
+    """The only part of the agent runtime Deps the user-prompt capability reads."""
+
+    layers: dict[str, dict[str, object]]
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.fixture(autouse=True)
+def _no_runtime_agent_skills(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+        lambda **_kwargs: [],
+    )
+
+
+@pytest.fixture(autouse=True)
+def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
+    calls: list[tuple[object, str, str]] = []
+
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+        calls.append((run_context, provider_name, model_name))
+        return 32_768
+
+    monkeypatch.setattr(
+        "core.app.apps.agent_app.runtime_request_builder.resolve_model_context_window",
+        resolve,
+    )
+    return calls
+
+
+def _exec_ctx() -> DifyExecutionContextLayerConfig:
+    return DifyExecutionContextLayerConfig(
+        tenant_id="tenant-1",
+        user_from="end-user",
+        invoke_from="web-app",
+        agent_mode="agent_app",
+    )
+
+
+class TestBuildForAgentApp:
+    def test_layers_have_no_workflow_job_prompt_and_include_history(self):
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(
+            AgentBackendAgentAppRunInput(
+                model=AgentBackendModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+                execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
+                user_prompt="hello",
+                agent_soul_prompt="You are Iris.",
+            )
+        )
+        names = [layer.name for layer in request.composition.layers]
+        assert names == [
+            "agent_soul_prompt",
+            "agent_app_user_prompt",
+            "execution_context",
+            "history",
+            "llm",
+        ]
+        assert "workflow_node_job_prompt" not in names
+        # Agent App keeps layers alive across turns by default.
+
+    def test_blank_user_prompt_rejected(self):
+        with pytest.raises(ValueError, match="must not be blank"):
+            AgentBackendAgentAppRunInput(
+                model=AgentBackendModelConfig(plugin_id="p/q", model_provider="openai", model="m"),
+                execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
+                user_prompt="   ",
+            )
+
+    def test_soul_prompt_optional(self):
+        request = AgentBackendRunRequestBuilder().build_for_agent_app(
+            AgentBackendAgentAppRunInput(
+                model=AgentBackendModelConfig(plugin_id="langgenius/openai", model_provider="openai", model="gpt-test"),
+                execution_context=_exec_ctx(),
+                backend_binding_ref="binding-ref-1",
+                user_prompt="hi",
+            )
+        )
+        assert [layer.name for layer in request.composition.layers][0] == "agent_app_user_prompt"
+
+
+def test_builder_carries_application_trace_context_but_redacts_it_from_request_logs():
+    from uuid import uuid4
+
+    from dify_agent.layers.execution_context import ApplicationTracingContext
+
+    tracing = ApplicationTracingContext(
+        run_id=uuid4(),
+        invocation_id=uuid4(),
+        trace_id="1" * 32,
+        parent_span_id="2" * 16,
+        session_id="private-session",
+        capture_content=False,
+    )
+    context = _ctx(_soul_with_model())
+    hooks = RecordingTracingHooks(tracing)
+    app = Flask(__name__)
+    bind_tracing(
+        app,
+        scopes=kernel_trace_scopes(_TraceRecorder(), policies=NoTracingPolicies(), enterprise_enabled=False),
+        hooks=hooks,
+    )
+
+    with app.app_context():
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=WorkflowAgentDifyToolsBuilder()).build(context)
+    layer = next(item for item in result.request.composition.layers if item.name == "execution_context")
+    assert DifyExecutionContextLayerConfig.model_validate(layer.config).tracing == tracing
+    redacted = next(
+        item for item in result.redacted_request["composition"]["layers"] if item["name"] == "execution_context"
+    )
+    assert redacted["config"]["tracing"] == "[REDACTED]"
+    assert hooks.agent_apps == [context]
+
+
+class _NoToolsBuilder:
+    def __init__(self):
+        self.knowledge_fs_spaces = ()
+
+    def build_layers(self, **kwargs):
+        self.knowledge_fs_spaces = kwargs["knowledge_fs_spaces"]
+        return SimpleNamespace(plugin_tools=None, core_tools=None, exposed_tool_names=lambda: [])
+
+
+class _PluginLayerBuilder:
+    def build_layers(self, **kwargs):
+        return SimpleNamespace(
+            plugin_tools=DifyPluginToolsLayerConfig(
+                tools=[
+                    DifyPluginToolConfig(
+                        plugin_id="langgenius/time",
+                        provider="time",
+                        tool_name="current_time",
+                        credential_type="unauthorized",
+                        name="current_time",
+                        description="Get current time.",
+                        credentials={},
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            core_tools=None,
+            exposed_tool_names=lambda: ["current_time"],
+        )
+
+
+class _CoreLayerBuilder:
+    def build_layers(self, **kwargs):
+        del kwargs
+        return SimpleNamespace(
+            plugin_tools=None,
+            core_tools=DifyCoreToolsLayerConfig(
+                tools=[
+                    DifyCoreToolConfig(
+                        provider_type="builtin",
+                        provider_id="audio",
+                        tool_name="transcribe",
+                        name="transcribe",
+                        description="Transcribe audio.",
+                        runtime_parameters={},
+                        parameters=[],
+                        parameters_json_schema={"type": "object", "properties": {}, "required": []},
+                    )
+                ]
+            ),
+            exposed_tool_names=lambda: ["transcribe"],
+        )
+
+
+def _ctx(
+    soul: AgentSoulConfig,
+    *,
+    query: str = "hello",
+    agent_config_version_kind: str = "snapshot",
+    session_snapshot: SessionSnapshot | None = None,
+    files: tuple[File, ...] = (),
+    image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+) -> AgentAppRuntimeBuildContext:
+    dify_context = DifyRunContext(
+        tenant_id="tenant-1",
+        app_id="app-1",
+        user_id="user-1",
+        user_from=UserFrom.END_USER,
+        invoke_from=InvokeFrom.WEB_APP,
+        trace_session_id="trace-session-1",
+    )
+    return AgentAppRuntimeBuildContext(
+        dify_context=dify_context,
+        agent_id="agent-1",
+        agent_config_snapshot_id="snap-1",
+        agent_soul=soul,
+        conversation_id="conv-1",
+        user_query=query,
+        idempotency_key="msg-1",
+        binding_id="binding-1",
+        backend_binding_ref="binding-ref-1",
+        agent_config_version_kind=agent_config_version_kind,  # type: ignore[arg-type]
+        session_snapshot=session_snapshot,
+        files=files,
+        image_detail_config=image_detail_config,
+    )
+
+
+def _soul_with_model() -> AgentSoulConfig:
+    return AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-4o-mini",
+            },
+            "prompt": {"system_prompt": "You are Iris."},
+        }
+    )
+
+
+def _image_file() -> File:
+    return File(
+        file_id="file-1",
+        file_type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="upload-file-1",
+        filename="earth.png",
+        extension=".png",
+        mime_type="image/png",
+        size=12,
+    )
+
+
+def _document_file() -> File:
+    return File(
+        file_id="file-2",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.LOCAL_FILE,
+        reference="upload-document-1",
+        filename="brief.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=24,
+    )
+
+
+def _snapshot_for_layer_names(layer_names: list[str]) -> SessionSnapshot:
+    return SessionSnapshot(layers={name: {} for name in layer_names})
+
+
+class TestAgentAppRuntimeRequestBuilder:
+    def test_build_maps_soul_to_run_request(self, model_context_window_calls: list[tuple[object, str, str]]):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        context = _ctx(_soul_with_model())
+        result = builder.build(context)
+
+        req = result.request
+        names = [layer.name for layer in req.composition.layers]
+        assert names == [
+            "agent_soul_prompt",
+            "agent_app_user_prompt",
+            "execution_context",
+            "runtime",
+            DIFY_SHELL_LAYER_ID,
+            DIFY_CONFIG_LAYER_ID,
+            "history",
+            "llm",
+        ]
+        # plugin_id / provider normalized for plugin-daemon transport.
+        llm = next(layer for layer in req.composition.layers if layer.name == "llm")
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).context_window_tokens == 32_768
+        assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-4o-mini")]
+        # execution context carries conversation + agent_app invoke source.
+        exec_ctx = next(layer for layer in req.composition.layers if layer.name == "execution_context")
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).conversation_id == "conv-1"
+        # Real Dify access context forwarded; agent run mode in agent_mode.
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).user_from == "end-user"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).invoke_from == "web-app"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).agent_mode == "agent_app"
+        assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).trace_id == "trace-session-1"
+        # LLM credentials are resolved by API and never enter the Agent request.
+        assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
+        assert result.metadata["conversation_id"] == "conv-1"
+
+    def test_build_sends_images_directly_to_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        prompt_content_calls: list[tuple[File, ImagePromptMessageContent.DETAIL | None]] = []
+
+        def to_prompt_message_content(
+            file: File,
+            *,
+            image_detail_config: ImagePromptMessageContent.DETAIL | None,
+        ) -> ImagePromptMessageContent:
+            prompt_content_calls.append((file, image_detail_config))
+            return ImagePromptMessageContent(
+                format="png",
+                url="https://files.example.com/earth.png?sign=secret",
+                mime_type="image/png",
+                filename="earth.png",
+                detail=image_detail_config or ImagePromptMessageContent.DETAIL.LOW,
+            )
+
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            to_prompt_message_content,
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(
+            _ctx(
+                _soul_with_model(),
+                query="Describe this image.",
+                files=(_image_file(),),
+                image_detail_config=ImagePromptMessageContent.DETAIL.HIGH,
+            )
+        )
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.text == "Describe this image."
+        assert len(config.files) == 1
+        image = config.files[0]
+        assert image.delivery == "multimodal"
+        assert image.type == "image"
+        assert image.url == "https://files.example.com/earth.png?sign=secret"
+        assert image.detail == "high"
+        assert prompt_content_calls == [(_image_file(), ImagePromptMessageContent.DETAIL.HIGH)]
+
+    def test_build_keeps_image_locator_for_non_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: False,
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(_ctx(_soul_with_model(), query="Inspect the attachment.", files=(_image_file(),)))
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.text == "Inspect the attachment."
+        assert [file.model_dump(exclude_none=True) for file in config.files] == [
+            {
+                "delivery": "download",
+                "type": "image",
+                "filename": "earth.png",
+                "transfer_method": "local_file",
+                "reference": build_file_reference(record_id="upload-file-1"),
+            }
+        ]
+
+    @pytest.mark.parametrize("vision", [False, True])
+    @pytest.mark.parametrize("transport", ["url", "base64"])
+    def test_knowledge_image_search_retains_named_upload_references(
+        self, monkeypatch: pytest.MonkeyPatch, vision: bool, transport: str
+    ) -> None:
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: vision,
+        )
+        model_factory = RecordingModelFactory(schema=llm_schema(features=[ModelFeature.VISION] if vision else []))
+        monkeypatch.setattr("services.agent.knowledge_runtime_config.DifyModelFactory", model_factory)
+
+        def image_content(file: File, **_kwargs: object) -> ImagePromptMessageContent:
+            return ImagePromptMessageContent(
+                format="png",
+                url=f"https://files.example.com/{file.filename}" if transport == "url" else "",
+                base64_data="aW1hZ2UtYnl0ZXM=" if transport == "base64" else "",
+                mime_type="image/png",
+                filename=file.filename or "image.png",
+                detail="low",
+            )
+
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content", image_content
+        )
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "spaces": [
+                        {
+                            "id": "docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                            "name": "Docs",
+                        }
+                    ]
+                }
+            }
+        ).knowledge
+        upload_ids = ["a013fb44-3e12-4f5d-8de2-000000000001", "a013fb44-3e12-4f5d-8de2-000000000002"]
+        references = [build_file_reference(record_id=upload_id) for upload_id in upload_ids]
+        # Cover both raw upload IDs and already-canonical references, with distinct filenames.
+        files = tuple(
+            File(
+                file_id=upload_id,
+                file_type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                reference=reference,
+                filename=filename,
+                extension=".png",
+                mime_type="image/png",
+                size=11,
+            )
+            for upload_id, reference, filename in zip(
+                upload_ids, [upload_ids[0], references[1]], ["earth.png", "moon.png"], strict=True
+            )
+        )
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder()).build(  # type: ignore[arg-type]
+            _ctx(soul, query="Search knowledge using these images.", files=files)
+        )
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert "knowledge_fs" in layers
+        config = DifyUserPromptLayerConfig.model_validate(layers["agent_app_user_prompt"].config)
+        # Render the serialized request through the actual runtime module, not just the API DTO.
+        deps = _LayerDeps(
+            layers={"agent_app_user_prompt": {"config": json.loads(config.model_dump_json()), "state": {}}}
+        )
+        prompts = user_prompt_layer.Capability("agent_app_user_prompt").build_user_content(deps)  # type: ignore[arg-type]
+        assert isinstance(prompts[0], str)
+        assert json.loads(prompts[0].splitlines()[-1]) == [
+            {"filename": file.filename, "transfer_method": "local_file", "reference": reference}
+            for file, reference in zip(files, references, strict=True)
+        ]
+        assert len(prompts) == (3 if vision else 1)
+        for content, file in zip(prompts[1:], files, strict=False):
+            if transport == "url":
+                assert isinstance(content, ImageUrl)
+                assert content.url == f"https://files.example.com/{file.filename}"
+            else:
+                assert isinstance(content, BinaryContent)
+                assert content.data == b"image-bytes"
+            assert content.vendor_metadata == {"filename": file.filename, "detail": "low"}
+
+    def test_build_preserves_inline_base64_transport_for_vision_model(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            lambda *_args, **_kwargs: ImagePromptMessageContent(
+                format="png",
+                base64_data="aW1hZ2UtYnl0ZXM=",
+                mime_type="image/png",
+                filename="earth.png",
+                detail="low",
+            ),
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(_ctx(_soul_with_model(), query="Describe this image.", files=(_image_file(),)))
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        image = config.files[0]
+        assert image.delivery == "multimodal"
+        assert image.url is None
+        assert image.base64_data == "aW1hZ2UtYnl0ZXM="
+
+    def test_build_keeps_non_image_locator_when_vision_image_is_direct(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.resolve_model_supports_vision",
+            lambda **_kwargs: True,
+        )
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.file_manager.to_prompt_message_content",
+            lambda *_args, **_kwargs: ImagePromptMessageContent(
+                format="png",
+                url="https://files.example.com/earth.png",
+                mime_type="image/png",
+                filename="earth.png",
+                detail="low",
+            ),
+        )
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(
+            _ctx(_soul_with_model(), files=(_image_file(), _document_file()), query="Compare the attachments.")
+        )
+        layer = next(item for item in result.request.composition.layers if item.name == "agent_app_user_prompt")
+        config = DifyUserPromptLayerConfig.model_validate(layer.config)
+
+        assert config.text == "Compare the attachments."
+        assert len(config.files) == 2
+        image, download = config.files
+        assert image.delivery == "multimodal"
+        assert image.filename == "earth.png"
+        assert download.model_dump(exclude_none=True) == {
+            "delivery": "download",
+            "type": "document",
+            "filename": "brief.pdf",
+            "transfer_method": "local_file",
+            "reference": build_file_reference(record_id="upload-document-1"),
+        }
+
+    @pytest.mark.parametrize(
+        ("previous_prompt", "current_prompt"),
+        [("", "You are Iris."), ("You are Iris.", "")],
+    )
+    def test_build_preserves_snapshot_when_optional_prompt_modules_change(
+        self,
+        previous_prompt: str,
+        current_prompt: str,
+    ) -> None:
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        previous_soul = _soul_with_model()
+        previous_soul.prompt.system_prompt = previous_prompt
+        previous_request = builder.build(_ctx(previous_soul, agent_config_version_kind="draft")).request
+        snapshot = _snapshot_for_layer_names([layer.name for layer in previous_request.composition.layers])
+        current_soul = _soul_with_model()
+        current_soul.prompt.system_prompt = current_prompt
+
+        result = builder.build(_ctx(current_soul, agent_config_version_kind="draft", session_snapshot=snapshot))
+        assert result.request.session_snapshot is snapshot
+        assert ("agent_soul_prompt" in {s.name for s in result.request.composition.layers}) == bool(current_prompt)
+
+    def test_build_reuses_session_snapshot_when_config_changes_without_changing_layers(self) -> None:
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        previous_request = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft")).request
+        snapshot = _snapshot_for_layer_names([layer.name for layer in previous_request.composition.layers])
+        current_soul = _soul_with_model()
+        current_soul.prompt.system_prompt = "You are Ada."
+
+        result = builder.build(
+            _ctx(
+                current_soul,
+                agent_config_version_kind="draft",
+                session_snapshot=snapshot,
+            )
+        )
+
+        assert result.request.session_snapshot is snapshot
+
+    def test_build_wraps_agent_soul_prompt_for_build_draft(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="build_draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert PromptConfig.model_validate(prompt_layer.config).prefix != _soul_with_model().prompt
+        assert PromptConfig.model_validate(prompt_layer.config).prefix.startswith("You are running in build mode.")
+        assert "```text\nYou are Iris.\n```" in PromptConfig.model_validate(prompt_layer.config).prefix
+
+    def test_build_propagates_draft_version_kind_without_wrapping_prompt(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model(), agent_config_version_kind="draft"))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        execution_context = next(
+            layer for layer in result.request.composition.layers if layer.name == "execution_context"
+        )
+        config_layer = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == "You are Iris."
+        assert (
+            DifyExecutionContextLayerConfig.model_validate(execution_context.config).agent_config_version_kind
+            == "draft"
+        )
+        assert DifyConfigLayerConfig.model_validate(config_layer.config).config_version.kind == "draft"
+
+    def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_draft(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "plugin",
+                "provider_id": "langgenius/time/time",
+                "tool_name": "current_time",
+            }
+        ]
+        tools_builder = _PluginLayerBuilder()
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul, agent_config_version_kind="draft"))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
+        assert DIFY_CORE_TOOLS_LAYER_ID not in names
+
+    def test_build_includes_plugin_tools_layer_returned_by_injected_builder_for_snapshot(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "plugin",
+                "provider_id": "langgenius/time/time",
+                "tool_name": "current_time",
+            }
+        ]
+        tools_builder = _PluginLayerBuilder()
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=tools_builder,  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul, agent_config_version_kind="snapshot"))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID in names
+        assert DIFY_CORE_TOOLS_LAYER_ID not in names
+
+    def test_build_includes_core_tools_layer_returned_by_injected_builder(self):
+        soul = _soul_with_model()
+        soul.tools.dify_tools = [
+            {
+                "provider_type": "builtin",
+                "provider_id": "audio",
+                "tool_name": "transcribe",
+            }
+        ]
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_CoreLayerBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        names = [layer.name for layer in result.request.composition.layers]
+        assert DIFY_CORE_TOOLS_LAYER_ID in names
+        assert DIFY_PLUGIN_TOOLS_LAYER_ID not in names
+
+    def test_build_normalizes_marketplace_model_plugin_id(self):
+        soul = _soul_with_model()
+        soul.model.plugin_id = (
+            "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468"
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
+
+    def test_build_normalizes_legacy_three_segment_model_plugin_id(self):
+        soul = _soul_with_model()
+        soul.model.plugin_id = "langgenius/openai/openai"
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        llm = next(layer for layer in result.request.composition.layers if layer.name == "llm")
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).plugin_id == "langgenius/openai"
+        assert DifyPluginLLMLayerConfig.model_validate(llm.config).model_provider == "openai"
+
+    def test_build_runs_legacy_knowledge_without_shell(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=False)
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "support",
+                            "name": "Support KB",
+                            "datasets": [{"id": "dataset-1"}, {"id": "dataset-2"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {
+                                "mode": "multiple",
+                                "top_k": 3,
+                                "score_threshold": None,
+                            },
+                        }
+                    ],
+                },
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert "knowledge" in layers
+        assert "knowledge_fs" not in layers
+        assert layers["knowledge"].config["sets"][0]["id"] == "support"
+
+    def test_build_runs_classic_and_agent_knowledge_together(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        monkeypatch.setattr(
+            "services.agent.knowledge_runtime_config.DifyModelFactory",
+            RecordingModelFactory(schema=llm_schema(features=[])),
+        )
+        soul = _soul_with_model()
+        soul.knowledge = AgentSoulConfig.model_validate(
+            {
+                "knowledge": {
+                    "sets": [
+                        {
+                            "id": "classic",
+                            "name": "Classic Docs",
+                            "datasets": [{"id": "dataset-1"}],
+                            "query": {"mode": "generated_query"},
+                            "retrieval": {"mode": "multiple", "top_k": 3},
+                        }
+                    ],
+                    "spaces": [
+                        {
+                            "id": "new",
+                            "name": "New Docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000001",
+                        },
+                        {
+                            "id": "other",
+                            "name": "Other Docs",
+                            "control_space_id": "00000000-0000-4000-8000-000000000002",
+                        },
+                    ],
+                }
+            }
+        ).knowledge
+
+        tool_builder = _NoToolsBuilder()
+        result = AgentAppRuntimeRequestBuilder(dify_tools_builder=tool_builder).build(_ctx(soul))  # type: ignore[arg-type]
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert layers["knowledge"].config["sets"][0]["id"] == "classic"
+        assert layers["knowledge_fs"].config["spaces"][0]["id"] == "new"
+        assert [space.id for space in tool_builder.knowledge_fs_spaces] == ["new", "other"]
+
+    def test_build_raises_when_model_missing(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+        with pytest.raises(AgentAppRuntimeRequestBuildError) as exc:
+            builder.build(_ctx(AgentSoulConfig()))
+        assert exc.value.error_code == "agent_model_not_configured"
+
+    def test_build_maps_agent_soul_shell_settings_to_shell_layer(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        soul = AgentSoulConfig.model_validate(
+            {
+                "model": {
+                    "plugin_id": "langgenius/openai",
+                    "model_provider": "langgenius/openai/openai",
+                    "model": "gpt-4o-mini",
+                },
+                "tools": {"cli_tools": [{"name": "ripgrep", "install_command": "apt-get install -y ripgrep"}]},
+                "env": {"variables": [{"name": "PROJECT_NAME", "value": "demo"}]},
+                "sandbox": {"provider": "independent", "config": {"cpu": 2}},
+            }
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        dumped = result.request.model_dump(mode="json")
+        shell_config = {layer["name"]: layer for layer in dumped["composition"]["layers"]}[DIFY_SHELL_LAYER_ID][
+            "config"
+        ]
+        assert shell_config["cli_tools"][0]["install_commands"] == ["apt-get install -y ripgrep"]
+        assert shell_config["env"][0] == {"name": "PROJECT_NAME", "value": "demo"}
+        assert "sandbox" not in shell_config
+        assert result.metadata["agent_tools"] == {
+            "dify_tool_count": 0,
+            "dify_tool_names": [],
+            "cli_tool_count": 1,
+        }
+
+    @pytest.mark.parametrize(
+        ("inputs", "expected_block"),
+        [
+            (
+                {"second": "中文\nnext", "first": 0, "flag": False, "empty": "", "null": None, "secret": "hidden"},
+                '- first: 0\n- second: "中文\\nnext"\n- flag: false',
+            ),
+            ({"second": ["a", 2], "first": {"key": "值"}}, '- first: {"key": "值"}\n- second: ["a", 2]'),
+            ({"empty": "", "null": None, "secret": "hidden"}, None),
+            ({}, None),
+            ({"first": "  "}, '- first: "  "'),
+        ],
+        ids=["mixed", "nested", "all-skipped", "empty", "whitespace"],
+    )
+    def test_build_injects_only_declared_nonempty_inputs_in_declaration_order(self, inputs, expected_block):
+        soul = _soul_with_model()
+        soul.app_variables = [
+            AppVariableConfig(name=name, type="text-input") for name in ("first", "second", "flag", "empty", "null")
+        ]
+        query = "  original\n用户消息  "
+        context = replace(_ctx(soul, query=query), inputs=inputs)
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        result = builder.build(context)
+
+        layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_app_user_prompt")
+        expected = (
+            query
+            if expected_block is None
+            else (
+                "App inputs for this run:\n"
+                + expected_block
+                + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+                + query
+            )
+        )
+        assert DifyUserPromptLayerConfig.model_validate(layer.config).text == expected
+
+    @pytest.mark.parametrize("query", ["", "  \n\t"])
+    def test_build_rejects_blank_query_with_inputs(self, query):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul, query=query), inputs={"name": "value"})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(ValidationError, match="prompt must not be blank"):
+            builder.build(context)
+
+    def test_build_rejects_non_json_input(self):
+        soul = _soul_with_model()
+        soul.app_variables = [AppVariableConfig(name="name", type="text-input")]
+        context = replace(_ctx(soul), inputs={"name": object()})
+        builder = AgentAppRuntimeRequestBuilder(dify_tools_builder=_NoToolsBuilder())  # type: ignore[arg-type]
+
+        with pytest.raises(TypeError, match="not JSON serializable"):
+            builder.build(context)
+
+
+# ── Agent config layer declaration on the Agent App surface ──────────────────
+
+
+def _soul_with_model_and_skill() -> AgentSoulConfig:
+    return AgentSoulConfig.model_validate(
+        {
+            "model": {
+                "plugin_id": "langgenius/openai",
+                "model_provider": "langgenius/openai/openai",
+                "model": "gpt-4o-mini",
+            },
+            "prompt": {"system_prompt": "Use [§skill:tender-analyzer:Tender Analyzer§]"},
+            "config_skills": [{"name": "tender-analyzer", "description": "Parses RFPs.", "file_id": "tool-file-1"}],
+            "config_files": [{"name": "sample.pdf", "file_kind": "upload_file", "file_id": "upload-file-1"}],
+            "config_note": "Read the proposal first.",
+        }
+    )
+
+
+class TestAgentAppConfigLayer:
+    def test_config_layer_injected(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model_and_skill()))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert config.config["shell"] == DIFY_SHELL_LAYER_ID
+        assert DifyConfigLayerConfig.model_validate(config.config).agent_id == "agent-1"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version is not None
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.id == "snap-1"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.kind == "snapshot"
+        assert DifyConfigLayerConfig.model_validate(config.config).config_version.writable is False
+        assert [skill.name for skill in DifyConfigLayerConfig.model_validate(config.config).skills] == [
+            "tender-analyzer"
+        ]
+        assert [file_ref.name for file_ref in DifyConfigLayerConfig.model_validate(config.config).files] == [
+            "sample.pdf"
+        ]
+        assert DifyConfigLayerConfig.model_validate(config.config).note == "Read the proposal first."
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_skill_names == ["tender-analyzer"]
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_file_names == []
+        # shell enters first; config uses that shell to materialize mentioned targets.
+        names = [layer.name for layer in result.request.composition.layers]
+        assert names.index(DIFY_SHELL_LAYER_ID) == names.index("execution_context") + 2
+        assert names.index(DIFY_CONFIG_LAYER_ID) == names.index(DIFY_SHELL_LAYER_ID) + 1
+
+    def test_config_layer_present_when_agent_soul_has_no_config_assets(self, monkeypatch: pytest.MonkeyPatch):
+        apply_config_overrides(monkeypatch, AGENT_SHELL_ENABLED=True)
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model()))
+
+        layers = {layer.name: layer for layer in result.request.composition.layers}
+        assert DifyConfigLayerConfig.model_validate(layers[DIFY_CONFIG_LAYER_ID].config).model_dump(mode="json") == {
+            "shell": "shell",
+            "agent_id": "agent-1",
+            "config_version": {"id": "snap-1", "kind": "snapshot", "writable": False},
+            "skills": [],
+            "files": [],
+            "env_keys": [],
+            "note": "",
+            "mentioned_skill_names": [],
+            "mentioned_file_names": [],
+        }
+        assert layers[DIFY_SHELL_LAYER_ID].config["execution_context"] == "execution_context"
+        assert layers[DIFY_SHELL_LAYER_ID].config["runtime"] == "runtime"
+
+    def test_config_layer_for_build_draft_marks_config_writable(self):
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(_soul_with_model_and_skill(), agent_config_version_kind="build_draft"))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert DifyConfigLayerConfig.model_validate(config.config).model_dump(mode="json") == {
+            "shell": "shell",
+            "agent_id": "agent-1",
+            "config_version": {"id": "snap-1", "kind": "build_draft", "writable": True},
+            "skills": [
+                {
+                    "name": "tender-analyzer",
+                    "description": "Parses RFPs.",
+                    "size": None,
+                    "mime_type": "application/zip",
+                }
+            ],
+            "files": [{"name": "sample.pdf", "size": None, "mime_type": None}],
+            "env_keys": [],
+            "note": "Read the proposal first.",
+            "mentioned_skill_names": ["tender-analyzer"],
+            "mentioned_file_names": [],
+        }
+
+    def test_config_layer_includes_bound_workspace_skills(self, monkeypatch: pytest.MonkeyPatch):
+        monkeypatch.setattr(
+            "core.app.apps.agent_app.runtime_request_builder.load_runtime_agent_skill_configs",
+            lambda **_kwargs: [
+                DifyConfigSkillConfig(
+                    name="workspace-skill",
+                    description="Bound workspace skill.",
+                    size=123,
+                    mime_type="application/zip",
+                )
+            ],
+        )
+        soul = _soul_with_model()
+        soul.prompt.system_prompt = "Use [§skill:workspace-skill:Workspace Skill§]."
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        config = next(layer for layer in result.request.composition.layers if layer.name == DIFY_CONFIG_LAYER_ID)
+        assert [skill.name for skill in DifyConfigLayerConfig.model_validate(config.config).skills] == [
+            "workspace-skill"
+        ]
+        assert DifyConfigLayerConfig.model_validate(config.config).mentioned_skill_names == ["workspace-skill"]
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == "Use workspace-skill."
+
+    @pytest.mark.parametrize(
+        ("system_prompt", "expected_prefix"),
+        [
+            (
+                "Use [§skill:tender-analyzer:Tender Analyzer§] and [§file:sample.pdf:sample.pdf§].",
+                "Use tender-analyzer and sample.pdf.",
+            ),
+            (
+                "Use [§skill:tender-analyzer:Tender Analyzer§] and [§file:sample.pdf:sample.pdf§]",
+                "Use tender-analyzer and sample.pdf",
+            ),
+        ],
+    )
+    def test_agent_app_runtime_expands_config_mentions_in_agent_soul_prompt(
+        self,
+        system_prompt: str,
+        expected_prefix: str,
+    ):
+        soul = _soul_with_model_and_skill()
+        soul.prompt.system_prompt = system_prompt
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert PromptConfig.model_validate(prompt_layer.config).prefix == expected_prefix
+        assert "[§" not in PromptConfig.model_validate(prompt_layer.config).prefix
+
+    def test_agent_app_runtime_missing_config_mentions_fall_back_without_marker_leak(
+        self,
+    ):
+        soul = _soul_with_model()
+        soul.prompt.system_prompt = (
+            "Use [§skill:ghost-skill:Ghost Skill§], [§file:ghost.txt:Ghost File§], and [§file:no-label.txt§]."
+        )
+        builder = AgentAppRuntimeRequestBuilder(
+            dify_tools_builder=_NoToolsBuilder(),  # type: ignore[arg-type]
+        )
+
+        result = builder.build(_ctx(soul))
+
+        prompt_layer = next(layer for layer in result.request.composition.layers if layer.name == "agent_soul_prompt")
+        assert (
+            PromptConfig.model_validate(prompt_layer.config).prefix == "Use Ghost Skill, Ghost File, and no-label.txt."
+        )
+        assert "[§" not in PromptConfig.model_validate(prompt_layer.config).prefix
+        assert [warning["code"] for warning in result.metadata["runtime_support"]["unsupported_runtime_warnings"]] == [
+            "mention_target_missing",
+            "mention_target_missing",
+            "mention_target_missing",
+        ]

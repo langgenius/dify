@@ -1,0 +1,30 @@
+services:
+  weaviate:
+    ports:
+      - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
+      - "${EXPOSE_WEAVIATE_GRPC_PORT:-50051}:50051"
+
+  qdrant:
+    ports:
+      - "${EXPOSE_QDRANT_PORT:-6333}:6333"
+
+  pgvector:
+    ports:
+      - "${EXPOSE_PGVECTOR_PORT:-5433}:5432"
+
+  pgvecto-rs:
+    ports:
+      - "${EXPOSE_PGVECTO_RS_PORT:-5431}:5432"
+
+  chroma:
+    ports:
+      - "${EXPOSE_CHROMA_PORT:-8000}:8000"
+
+  couchbase-server:
+    ports:
+      - "${EXPOSE_COUCHBASE_WEB_PORT_RANGE:-8091-8096}:8091-8096"
+      - "${EXPOSE_COUCHBASE_DATA_PORT:-11210}:11210"
+
+  opensearch:
+    ports:
+      - "${EXPOSE_OPENSEARCH_PORT:-9200}:9200"

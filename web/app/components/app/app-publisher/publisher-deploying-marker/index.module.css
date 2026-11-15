@@ -1,0 +1,100 @@
+.deployingChevronTop {
+  animation: deploying-chevron-top 2s infinite;
+}
+
+.deployingChevronBottom {
+  animation: deploying-chevron-bottom 2s infinite;
+}
+
+@keyframes deploying-chevron-top {
+  0% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: linear;
+  }
+
+  10% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: ease-out;
+  }
+
+  22.5% {
+    opacity: 1;
+    transform: translateY(-0.75px);
+    animation-timing-function: ease-in-out;
+  }
+
+  37.5% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: linear;
+  }
+
+  60% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: ease-out;
+  }
+
+  72.5% {
+    opacity: 1;
+    transform: translateY(-0.75px);
+    animation-timing-function: ease-in-out;
+  }
+
+  87.5%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: linear;
+  }
+}
+
+@keyframes deploying-chevron-bottom {
+  0% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: ease-out;
+  }
+
+  12.5% {
+    opacity: 1;
+    transform: translateY(-0.75px);
+    animation-timing-function: ease-in-out;
+  }
+
+  27.5% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: linear;
+  }
+
+  50% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: ease-out;
+  }
+
+  62.5% {
+    opacity: 1;
+    transform: translateY(-0.75px);
+    animation-timing-function: ease-in-out;
+  }
+
+  77.5%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0.75px);
+    animation-timing-function: linear;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deployingChevronTop,
+  .deployingChevronBottom {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

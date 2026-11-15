@@ -1,42 +1,21 @@
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createNodeTracing as createTrace } from '../../../__tests__/fixtures'
 import { BlockEnum, NodeRunningStatus } from '../../../types'
 import IterationLogTrigger from '../iteration-log-trigger'
 
-const createNodeTracing = (overrides: Partial<NodeTracing> = {}): NodeTracing => ({
-  id: 'trace-1',
-  index: 0,
-  predecessor_node_id: '',
-  node_id: 'iteration-node',
-  node_type: BlockEnum.Iteration,
-  title: 'Iteration',
-  inputs: {},
-  inputs_truncated: false,
-  process_data: {},
-  process_data_truncated: false,
-  outputs: {},
-  outputs_truncated: false,
-  status: NodeRunningStatus.Succeeded,
-  error: '',
-  elapsed_time: 0.2,
-  metadata: {
-    iterator_length: 0,
-    iterator_index: 0,
-    loop_length: 0,
-    loop_index: 0,
-  },
-  created_at: 1710000000,
-  created_by: {
-    id: 'user-1',
-    name: 'Alice',
-    email: 'alice@example.com',
-  },
-  finished_at: 1710000001,
-  ...overrides,
-})
+const createNodeTracing = (overrides: Partial<NodeTracing> = {}) =>
+  createTrace({
+    node_id: 'iteration-node',
+    node_type: BlockEnum.Iteration,
+    title: 'Iteration',
+    ...overrides,
+  })
 
-const createExecutionMetadata = (overrides: Partial<NonNullable<NodeTracing['execution_metadata']>> = {}) => ({
+const createExecutionMetadata = (
+  overrides: Partial<NonNullable<NodeTracing['execution_metadata']>> = {},
+) => ({
   total_tokens: 0,
   total_price: 0,
   currency: 'USD',
@@ -94,11 +73,7 @@ describe('IterationLogTrigger', () => {
       await user.click(screen.getByRole('button'))
 
       expect(onShowIterationResultList).toHaveBeenCalledWith(
-        [
-          [allExecutions[0]],
-          [allExecutions[1]],
-          missingFailedIteration,
-        ],
+        [[allExecutions[0]], [allExecutions[1]], missingFailedIteration],
         iterationDurationMap,
       )
     })
@@ -123,7 +98,9 @@ describe('IterationLogTrigger', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /workflow\.nodes\.iteration\.iteration/ })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowLogic\.nodes\.iteration\.iteration/ }),
+      ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))
 
@@ -179,11 +156,16 @@ describe('IterationLogTrigger', () => {
         />,
       )
 
-      expect(screen.getByRole('button', { name: /workflow\.nodes\.iteration\.error/i })).toBeInTheDocument()
+      expect(
+        screen.getByRole('button', { name: /workflowLogic\.nodes\.iteration\.error/i }),
+      ).toBeInTheDocument()
 
       await user.click(screen.getByRole('button'))
 
-      expect(onShowIterationResultList).toHaveBeenCalledWith([[allExecutions[0]]], iterationDurationMap)
+      expect(onShowIterationResultList).toHaveBeenCalledWith(
+        [[allExecutions[0]]],
+        iterationDurationMap,
+      )
     })
   })
 })

@@ -1,114 +1,121 @@
-import type { Node } from '../types'
-import { fireEvent, render, screen } from '@testing-library/react'
-import NodeContextmenu from '../node-contextmenu'
+import { ContextMenu } from '@langgenius/dify-ui/context-menu'
+import { detectPlatform } from '@tanstack/react-hotkeys'
+import { screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { seedToolProviders } from '@/test/console/tool-providers'
+import { fullWorkflowAccessControl } from '../hooks-store'
+import { NodeContextmenu } from '../node-contextmenu'
+import { BlockEnum } from '../types'
+import { CANVAS_NODES_STATUS_NAME, CanvasNodesCatalogProbe } from './canvas-nodes-catalog-probe'
+import { createNode } from './fixtures'
+import { renderWorkflowFlowComponent } from './workflow-test-env'
 
-const mockUseClickAway = vi.hoisted(() => vi.fn())
-const mockUseNodes = vi.hoisted(() => vi.fn())
-const mockUsePanelInteractions = vi.hoisted(() => vi.fn())
-const mockUseStore = vi.hoisted(() => vi.fn())
-const mockPanelOperatorPopup = vi.hoisted(() => vi.fn())
+function ControlledNodeMenu({ onClose }: { onClose: () => void }) {
+  const [open, setOpen] = useState(true)
 
-vi.mock('ahooks', () => ({
-  useClickAway: (...args: unknown[]) => mockUseClickAway(...args),
-}))
+  return (
+    <>
+      <ContextMenu open={open}>
+        <NodeContextmenu
+          onClose={() => {
+            setOpen(false)
+            onClose()
+          }}
+        />
+      </ContextMenu>
+      <CanvasNodesCatalogProbe />
+    </>
+  )
+}
 
-vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
-  default: () => mockUseNodes(),
-}))
+function renderNodeContextmenu(nodeId?: string) {
+  const nodes = [
+    createNode({
+      id: 'node-1',
+      width: 240,
+      height: 80,
+      data: { type: BlockEnum.Code, title: 'Node 1' },
+    }),
+  ]
+  const { queryClient } = createConsoleQueryWrapper({ appDslVersion: '0.6.0' })
+  seedModelProviderQueries(queryClient)
+  seedToolProviders(queryClient, {
+    builtInTools: [],
+    customTools: [],
+    workflowTools: [],
+    mcpTools: [],
+  })
+  const onClose = vi.fn()
+  const rendered = renderWorkflowFlowComponent(<ControlledNodeMenu onClose={onClose} />, {
+    nodes,
+    edges: [],
+    queryClient,
+    hooksStoreProps: {
+      accessControl: fullWorkflowAccessControl,
+      doSyncWorkflowDraft: vi.fn().mockResolvedValue(undefined),
+    },
+    initialStoreState: nodeId
+      ? { nodes, contextMenuTarget: { type: 'node', nodeId } }
+      : { nodes, contextMenuTarget: undefined },
+    reactFlowProps: { fitView: false },
+  })
 
-vi.mock('@/app/components/workflow/hooks', () => ({
-  usePanelInteractions: () => mockUsePanelInteractions(),
-}))
+  return { ...rendered, onClose }
+}
 
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: { nodeMenu?: { nodeId: string, left: number, top: number } }) => unknown) => mockUseStore(selector),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/panel-operator/panel-operator-popup', () => ({
-  __esModule: true,
-  default: (props: {
-    id: string
-    data: Node['data']
-    showHelpLink: boolean
-    onClosePopup: () => void
-  }) => {
-    mockPanelOperatorPopup(props)
-    return (
-      <button type="button" onClick={props.onClosePopup}>
-        {props.id}
-        :
-        {props.data.title}
-      </button>
-    )
-  },
-}))
+function canvasNodeIds() {
+  return (
+    screen.getByRole('status', { name: CANVAS_NODES_STATUS_NAME }).textContent?.split(',') ?? []
+  ).filter(Boolean)
+}
 
 describe('NodeContextmenu', () => {
-  const mockHandleNodeContextmenuCancel = vi.fn()
-  let nodeMenu: { nodeId: string, left: number, top: number } | undefined
-  let nodes: Node[]
-  let clickAwayHandler: (() => void) | undefined
+  it.each([
+    { key: 'c', action: 'copy' },
+    { key: 'd', action: 'duplicate' },
+    { key: 'Delete', action: 'delete' },
+  ] as const)('routes $key through the real $action action', async ({ key, action }) => {
+    const user = userEvent.setup()
+    const { onClose, store } = renderNodeContextmenu('node-1')
+    await screen.findByRole('menu')
+    await user.keyboard('{ArrowDown}')
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    nodeMenu = undefined
-    nodes = [{
-      id: 'node-1',
-      type: 'custom',
-      position: { x: 0, y: 0 },
-      data: {
-        title: 'Node 1',
-        desc: '',
-        type: 'code' as never,
-      },
-    } as Node]
-    clickAwayHandler = undefined
+    const mod = detectPlatform() === 'mac' ? 'Meta' : 'Control'
+    await user.keyboard(key.length === 1 ? `{${mod}>}${key}{/${mod}}` : `{${key}}`)
 
-    mockUseClickAway.mockImplementation((handler: () => void) => {
-      clickAwayHandler = handler
-    })
-    mockUseNodes.mockImplementation(() => nodes)
-    mockUsePanelInteractions.mockReturnValue({
-      handleNodeContextmenuCancel: mockHandleNodeContextmenuCancel,
-    })
-    mockUseStore.mockImplementation((selector: (state: { nodeMenu?: { nodeId: string, left: number, top: number } }) => unknown) => selector({ nodeMenu }))
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    expect(onClose).toHaveBeenCalledOnce()
+
+    if (action === 'copy') {
+      expect(store.getState().clipboardElements.map((node) => node.id)).toEqual(['node-1'])
+      await waitFor(async () => {
+        const clipboard = JSON.parse(await navigator.clipboard.readText()) as {
+          nodes: Array<{ id: string }>
+        }
+        expect(clipboard.nodes.map((node) => node.id)).toEqual(['node-1'])
+      })
+      expect(canvasNodeIds()).toEqual(['node-1'])
+    } else if (action === 'duplicate') {
+      await waitFor(() => expect(canvasNodeIds()).toHaveLength(2))
+      expect(canvasNodeIds()).toContain('node-1')
+      expect(new Set(canvasNodeIds())).toHaveLength(2)
+    } else {
+      await waitFor(() => expect(canvasNodeIds()).toEqual([]))
+    }
   })
 
-  it('should stay hidden when the node menu is absent', () => {
-    render(<NodeContextmenu />)
+  it('stays hidden when the node menu is absent', () => {
+    renderNodeContextmenu()
 
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(mockPanelOperatorPopup).not.toHaveBeenCalled()
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 
-  it('should stay hidden when the referenced node cannot be found', () => {
-    nodeMenu = { nodeId: 'missing-node', left: 80, top: 120 }
+  it('stays hidden when the referenced node cannot be found', () => {
+    renderNodeContextmenu('missing-node')
 
-    render(<NodeContextmenu />)
-
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-    expect(mockPanelOperatorPopup).not.toHaveBeenCalled()
-  })
-
-  it('should render the popup at the stored position and close on popup/click-away actions', () => {
-    nodeMenu = { nodeId: 'node-1', left: 80, top: 120 }
-    const { container } = render(<NodeContextmenu />)
-
-    expect(screen.getByRole('button')).toHaveTextContent('node-1:Node 1')
-    expect(mockPanelOperatorPopup).toHaveBeenCalledWith(expect.objectContaining({
-      id: 'node-1',
-      data: expect.objectContaining({ title: 'Node 1' }),
-      showHelpLink: true,
-    }))
-    expect(container.firstChild).toHaveStyle({
-      left: '80px',
-      top: '120px',
-    })
-
-    fireEvent.click(screen.getByRole('button'))
-    clickAwayHandler?.()
-
-    expect(mockHandleNodeContextmenuCancel).toHaveBeenCalledTimes(2)
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument()
   })
 })

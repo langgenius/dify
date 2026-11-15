@@ -1,0 +1,131 @@
+'use client'
+
+import type { WorkflowVersion } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import type { Node } from '@/app/components/workflow/types'
+import { RuntimeState } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+import useTimestamp from '@/hooks/use-timestamp'
+import { useParams } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
+import { appWorkflowQueryOptions } from '@/service/workflow-queries'
+import { AccessPointIcon } from '../shared/access-point-icon'
+import { RuntimeStateIndicator } from '../shared/runtime-state'
+import { VersionLabel } from '../shared/version-label'
+import { ACCESS_POINT_ORDER, getAccessPointHref } from '../utils/access-point'
+
+function Divider() {
+  return (
+    <div aria-hidden className="i-custom-vender-deploy-line-5 hidden h-10 w-3 shrink-0 lg:block" />
+  )
+}
+
+export const BuiltInEnvironmentCard = memo(
+  ({ canViewAccessPoint }: { canViewAccessPoint: boolean }) => {
+    const { t } = useTranslation(['deployments'])
+    const { formatTime } = useTimestamp()
+    const { appId } = useParams<{ appId: string }>()
+    const { data: appDetail } = useSuspenseQuery(
+      consoleQuery.apps.byAppId.get.queryOptions({ input: { params: { app_id: appId } } }),
+    )
+    const { data: publishedWorkflow } = useQuery(appWorkflowQueryOptions(appId))
+    const { data: mcpServerDetail } = useQuery(
+      consoleQuery.apps.byAppId.server.get.queryOptions({
+        input: { params: { app_id: appId } },
+      }),
+    )
+    const publishedNodes = Array.isArray(publishedWorkflow?.graph.nodes)
+      ? (publishedWorkflow.graph.nodes as Node[])
+      : []
+    const hasStartNode = publishedNodes.some((node) => node.data.type === BlockEnum.Start)
+    const hasTriggerNode = publishedNodes.some((node) => isTriggerNode(node.data.type))
+    const serviceModeAvailable = Boolean(publishedWorkflow && hasStartNode && !hasTriggerNode)
+    const activeAccessPoints = {
+      mcp: serviceModeAvailable && mcpServerDetail?.status === 'active',
+      serviceApi: serviceModeAvailable && appDetail.enable_api,
+      trigger: Boolean(publishedWorkflow && hasTriggerNode),
+      webApp: serviceModeAvailable && appDetail.enable_site,
+    }
+    const publishedBy = publishedWorkflow?.created_by?.name ?? '--'
+    const updatedBy = publishedWorkflow?.updated_by?.name ?? publishedBy
+    const publishedVersion: WorkflowVersion | undefined = publishedWorkflow
+      ? {
+          created_at: publishedWorkflow.created_at,
+          created_by: publishedWorkflow.created_by ?? undefined,
+          id: publishedWorkflow.id,
+          marked_comment: publishedWorkflow.marked_comment,
+          marked_name: publishedWorkflow.marked_name,
+          version: publishedWorkflow.version,
+          version_number: publishedWorkflow.version_number ?? undefined,
+        }
+      : undefined
+
+    return (
+      <section
+        aria-labelledby="built-in-environment-title"
+        className="shrink-0 rounded-[14px] bg-background-section p-1"
+      >
+        <div className="flex flex-col gap-2.5 rounded-[10px] border-[0.5px] border-divider-subtle bg-components-panel-bg p-4">
+          {/* Icon */}
+          <div className="flex size-9 items-center justify-center rounded-lg border-[0.5px] border-divider-regular">
+            <span aria-hidden className="i-ri-instance-line size-5 text-text-secondary" />
+          </div>
+          {/* Info */}
+          <div className="flex flex-wrap items-center gap-x-10 gap-y-4">
+            <div className="flex min-w-0 flex-col gap-1">
+              <h2 id="built-in-environment-title" className="system-md-semibold text-text-primary">
+                {t(($) => $['studio.builtInTitle'])}
+              </h2>
+              <p className="system-xs-regular wrap-break-word text-text-tertiary">
+                {t(($) => $['studio.builtInDescription'])}
+              </p>
+            </div>
+            <Divider />
+            <div className="flex min-w-0 flex-col gap-1">
+              <div className="system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['studio.liveVersion'])}
+              </div>
+              <VersionLabel version={publishedVersion} isLatest />
+            </div>
+            <Divider />
+            <div className="flex flex-col gap-1">
+              <div className="system-xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['studio.accessPoints'])}
+              </div>
+              <div className="flex items-center gap-1">
+                {ACCESS_POINT_ORDER.map((accessPoint) => (
+                  <AccessPointIcon
+                    key={accessPoint}
+                    accessPoint={accessPoint}
+                    active={activeAccessPoints[accessPoint]}
+                    href={
+                      canViewAccessPoint
+                        ? getAccessPointHref(appId, 'built-in', accessPoint)
+                        : undefined
+                    }
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+        {/* Status and updated time */}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2.5">
+          <RuntimeStateIndicator runtimeState={RuntimeState.RUNTIME_STATE_RUNNING} />
+          <p className="system-xs-regular wrap-break-word text-text-tertiary">
+            {publishedWorkflow
+              ? t(($) => $['studio.updatedAtBy'], {
+                  name: updatedBy,
+                  time: formatTime(publishedWorkflow.updated_at, 'MM-DD HH:mm'),
+                })
+              : '--'}
+          </p>
+        </div>
+      </section>
+    )
+  },
+)
+
+BuiltInEnvironmentCard.displayName = 'BuiltInEnvironmentCard'

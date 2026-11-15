@@ -1,10 +1,12 @@
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from typing import Any, Literal
+
 from pydantic import BaseModel, Field, computed_field, model_validator
 
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.plugin.entities.plugin import PluginResourceRequirements
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class MarketplacePluginDeclaration(BaseModel):
@@ -30,7 +32,9 @@ class MarketplacePluginDeclaration(BaseModel):
     latest_package_identifier: str = Field(
         ..., description="Unique identifier for the latest package release of the plugin"
     )
-    status: str = Field(..., description="Indicate the status of marketplace plugin, enum from `active` `deleted`")
+    status: Literal["active", "deleted"] = Field(
+        ..., description="Indicate the status of marketplace plugin, enum from `active` `deleted`"
+    )
     deprecated_reason: str = Field(
         ..., description="Not empty when status='deleted', indicates the reason why this plugin is deleted(deprecated)"
     )
@@ -40,7 +44,7 @@ class MarketplacePluginDeclaration(BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def transform_declaration(cls, data: dict):
+    def transform_declaration(cls, data: dict[str, Any]) -> dict[str, Any]:
         if "endpoint" in data and not data["endpoint"]:
             del data["endpoint"]
         if "model" in data and not data["model"]:
