@@ -13,7 +13,7 @@ from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import Engine, event
+from sqlalchemy import Engine, Table, event
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
@@ -23,10 +23,11 @@ from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCal
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.model_manager import QuotaManagedModelInstance
+from core.model_manager import ModelInstance, QuotaManagedModelInstance
 from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError, PluginLLMPollingUnsupportedError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
@@ -38,6 +39,7 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow import node_runtime
 from core.workflow.file_reference import parse_file_reference
 from core.workflow.human_input_adapter import (
+    BoundRecipient,
     DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -55,6 +57,7 @@ from core.workflow.node_runtime import (
     DifyRetrieverAttachmentLoader,
     DifyToolFileManager,
     DifyToolNodeRuntime,
+    _WorkflowToolRuntimeBinding,
     apply_dify_debug_email_recipient,
     build_dify_llm_file_saver,
     resolve_dify_run_context,
@@ -70,7 +73,7 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities import UserPromptMessage
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.llm_entities import LLMPollingResult, LLMPollingStatus, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMPollingResult, LLMPollingStatus, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage as _node_runtime_AssistantPromptMessage,
 )
@@ -78,6 +81,7 @@ from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelFeature, ModelType
 from graphon.model_runtime.memory.prompt_message_memory import PromptMessageMemory
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
+from graphon.model_runtime.protocols.llm_runtime import LLMModelRuntime
 from graphon.node_events import StreamCompletedEvent
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
@@ -1152,7 +1156,7 @@ class TestToolNodeRuntimeCases:
             )
         )
         workflow_runtime = MagicMock()
-        workflow_runtime.runtime.runtime_parameters = {}
+        workflow_runtime.runtime.runtime_parameters = dict[str, object]()
         node_data = ToolNodeData.model_validate(
             {
                 "type": "tool",
@@ -1175,7 +1179,9 @@ class TestToolNodeRuntimeCases:
                 node_execution_id="node-execution-id",
             )
 
-        assert tool_runtime.raw.parent_trace_context.model_dump() == {
+        binding = _tool_binding(tool_runtime)
+        assert binding.parent_trace_context is not None
+        assert binding.parent_trace_context.model_dump() == {
             "parent_workflow_run_id": "workflow-run-id",
             "parent_node_execution_id": "node-execution-id",
         }
@@ -1192,7 +1198,7 @@ class TestToolNodeRuntimeCases:
             )
         )
         workflow_runtime = MagicMock()
-        workflow_runtime.runtime.runtime_parameters = {}
+        workflow_runtime.runtime.runtime_parameters = dict[str, object]()
         runtime._run_context.trace_session_id = "session-1"
         node_data = ToolNodeData.model_validate(
             {
@@ -1216,7 +1222,8 @@ class TestToolNodeRuntimeCases:
                 node_execution_id="node-execution-id",
             )
 
-        assert tool_runtime.raw.trace_session_id == "session-1"
+        binding = _tool_binding(tool_runtime)
+        assert binding.trace_session_id == "session-1"
         assert workflow_runtime.runtime.runtime_parameters == {}
 
     @staticmethod
@@ -1230,7 +1237,7 @@ class TestToolNodeRuntimeCases:
             )
         )
         builtin_runtime = MagicMock()
-        builtin_runtime.runtime.runtime_parameters = {}
+        builtin_runtime.runtime.runtime_parameters = dict[str, object]()
 
         with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=builtin_runtime):
             runtime.get_runtime(
@@ -1306,7 +1313,7 @@ class TestToolNodeRuntimeCases:
     )
     def test_convert_message_payload_supports_runtime_message_types(
         runtime: DifyToolNodeRuntime,
-        payload: object,
+        payload: _ToolMessagePayload,
         expected_type: type[object],
     ) -> None:
         message = runtime._convert_message_payload(payload)
@@ -1314,9 +1321,8 @@ class TestToolNodeRuntimeCases:
         assert isinstance(message, expected_type)
 
     @staticmethod
-    def test_convert_message_payload_rejects_unknown_types(runtime: DifyToolNodeRuntime) -> None:
-        with pytest.raises(TypeError, match="unsupported tool message payload"):
-            runtime._convert_message_payload(object())
+    def test_convert_message_payload_passes_through_absent_payload(runtime: DifyToolNodeRuntime) -> None:
+        assert runtime._convert_message_payload(None) is None
 
     @staticmethod
     def test_resolve_provider_icons_prefers_builtin_tool_icons(runtime: DifyToolNodeRuntime) -> None:
@@ -1350,7 +1356,7 @@ class TestToolNodeRuntimeCases:
             patch("core.workflow.node_runtime.PluginInstaller") as installer_cls,
             patch("core.workflow.node_runtime.BuiltinToolManageService.list_builtin_tools", return_value=[]),
         ):
-            installer_cls.return_value.list_plugins.return_value = []
+            installer_cls.return_value.list_plugins.return_value = list[object]()
 
             icon, icon_dark = runtime.resolve_provider_icons(provider_name="unknown", default_icon="fallback")
 
@@ -1428,31 +1434,66 @@ def _build_model_schema(*, features: list[ModelFeature] | None = None) -> AIMode
     )
 
 
+type _ToolMessagePayload = (
+    ToolInvokeMessage.BlobChunkMessage
+    | ToolInvokeMessage.BlobMessage
+    | ToolInvokeMessage.FileMessage
+    | ToolInvokeMessage.JsonMessage
+    | ToolInvokeMessage.LogMessage
+    | ToolInvokeMessage.RetrieverResourceMessage
+    | ToolInvokeMessage.TextMessage
+    | ToolInvokeMessage.VariableMessage
+    | None
+)
+
+
 class _ModelTypeInstanceStub(LargeLanguageModel):
+    """Real ``LargeLanguageModel`` carrying a mock schema lookup.
+
+    ``AIModel.model_runtime`` is declared as ``RuntimeT`` (never optional), so the stub has to
+    supply a real ``LLMModelRuntime`` implementation when the test does not inject a fake one.
+    """
+
+    get_model_schema: Mock
+
     def __init__(
         self,
         *,
         model_schema: AIModelEntity | None,
-        model_runtime: object | None = None,
+        model_runtime: LLMModelRuntime | None = None,
     ) -> None:
-        self.model_runtime = model_runtime
+        self.model_runtime = (
+            model_runtime if model_runtime is not None else create_plugin_model_runtime(tenant_id="test-tenant-id")
+        )
         self.get_model_schema = Mock(return_value=model_schema)
 
 
-class _ModelInstanceStub:
+class _ModelInstanceStub(ModelInstance):
+    """Real ``ModelInstance`` whose provider calls are replaced by mocks.
+
+    Production code type-checks ``model_instance`` as ``ModelInstance`` and ``DifyPreparedPollingLLM``
+    inspects it for quota support, so the stub is a genuine instance rather than a look-alike object.
+    """
+
+    get_llm_num_tokens: Mock
+    invoke_llm: Mock
+
     def __init__(
         self,
         *,
         model_schema: AIModelEntity | None,
-        model_runtime: object | None = None,
+        model_runtime: LLMModelRuntime | None = None,
         invoke_llm_result: object = sentinel.result,
         get_llm_num_tokens_result: int = 32,
     ) -> None:
-        self.provider = "langgenius/openai/openai"
-        self.model_name = "gpt-4o-mini"
+        config = make_model_config(provider="langgenius/openai/openai", model="gpt-4o-mini", mode="chat")
+        super().__init__(
+            provider_model_bundle=config.provider_model_bundle,
+            model="gpt-4o-mini",
+            credentials={"api_key": "secret"},
+        )
         self.parameters = {"temperature": 0.2}
         self.stop = ("stop",)
-        self.credentials = {"api_key": "secret"}
         self.model_type_instance = _ModelTypeInstanceStub(
             model_schema=model_schema,
             model_runtime=model_runtime,
@@ -1462,9 +1503,30 @@ class _ModelInstanceStub:
 
 
 class _QuotaManagedModelInstanceStub(_ModelInstanceStub, QuotaManagedModelInstance):
-    def __init__(self, **kwargs) -> None:
-        super().__init__(**kwargs)
+    reserve_quota: Mock
+
+    def __init__(
+        self,
+        *,
+        model_schema: AIModelEntity | None,
+        model_runtime: LLMModelRuntime | None = None,
+        invoke_llm_result: object = sentinel.result,
+        get_llm_num_tokens_result: int = 32,
+    ) -> None:
+        super().__init__(
+            model_schema=model_schema,
+            model_runtime=model_runtime,
+            invoke_llm_result=invoke_llm_result,
+            get_llm_num_tokens_result=get_llm_num_tokens_result,
+        )
         self.reserve_quota = Mock()
+
+
+def _tool_binding(handle: ToolRuntimeHandle) -> _WorkflowToolRuntimeBinding:
+    """Narrow the opaque graph handle to the workflow-private binding it carries."""
+    binding = handle.raw
+    assert isinstance(binding, _WorkflowToolRuntimeBinding)
+    return binding
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
@@ -1495,7 +1557,11 @@ class TestNodeRuntimeCases:
     def attachment_session(sqlite_engine: Engine) -> Iterator[Session]:
         """Provide real attachment and upload-file persistence to node runtime tests."""
 
-        TypeBase.metadata.create_all(sqlite_engine, tables=[SegmentAttachmentBinding.__table__, UploadFile.__table__])
+        attachment_table = SegmentAttachmentBinding.__table__
+        upload_file_table = UploadFile.__table__
+        assert isinstance(attachment_table, Table)
+        assert isinstance(upload_file_table, Table)
+        TypeBase.metadata.create_all(sqlite_engine, tables=[attachment_table, upload_file_table])
         with Session(sqlite_engine, expire_on_commit=False) as session:
             yield session
 
@@ -1520,7 +1586,9 @@ class TestNodeRuntimeCases:
         assert isinstance(updated, EmailDeliveryMethod)
         assert updated.config.recipients.include_bound_group is False
         assert len(updated.config.recipients.items) == 1
-        assert updated.config.recipients.items[0].reference_id == "actor-id"
+        recipient = updated.config.recipients.items[0]
+        assert isinstance(recipient, BoundRecipient)
+        assert recipient.reference_id == "actor-id"
 
     @staticmethod
     @pytest.mark.parametrize(
@@ -1533,7 +1601,7 @@ class TestNodeRuntimeCases:
     )
     def test_apply_dify_debug_email_recipient_noops_when_override_is_not_needed(
         enabled: bool,
-        method: object,
+        method: EmailDeliveryMethod | WebAppDeliveryMethod,
     ) -> None:
         assert apply_dify_debug_email_recipient(method, enabled=enabled, actor_id="actor-id") is method
 
@@ -1577,6 +1645,7 @@ class TestNodeRuntimeCases:
             is sentinel.result
         )
 
+        assert isinstance(model_type_instance.get_model_schema, Mock)
         model_type_instance.get_model_schema.assert_called_once_with("gpt-4o-mini", {"api_key": "secret"})
         model_instance.invoke_llm.assert_called_once_with(
             prompt_messages=[],
@@ -1626,13 +1695,15 @@ class TestNodeRuntimeCases:
 
     @staticmethod
     def test_dify_prepared_llm_identifies_structured_output_errors() -> None:
-        prepared = DifyPreparedLLM(SimpleNamespace())
+        prepared = DifyPreparedLLM(make_model_instance(provider="langgenius/openai/openai", model="gpt-4o-mini"))
 
         assert prepared.is_structured_output_parse_error(OutputParserError("bad json")) is True
         assert prepared.is_structured_output_parse_error(ValueError("other")) is False
 
     @staticmethod
-    def test_dify_prepared_polling_llm_delegates_to_plugin_runtime() -> None:
+    def test_dify_prepared_polling_llm_delegates_to_plugin_runtime(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         polling_result = LLMPollingResult(
             status=LLMPollingStatus.RUNNING,
             plugin_state={"task_id": "poll-1"},
@@ -1644,8 +1715,8 @@ class TestNodeRuntimeCases:
             client=PluginModelClient(),
             plugin_service=PluginService,
         )
-        plugin_runtime.start_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
-        plugin_runtime.check_llm_polling = Mock(return_value=polling_result)  # type: ignore[method-assign]
+        monkeypatch.setattr(plugin_runtime, "start_llm_polling", Mock(return_value=polling_result))
+        monkeypatch.setattr(plugin_runtime, "check_llm_polling", Mock(return_value=polling_result))
         model_instance = _ModelInstanceStub(
             model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
             model_runtime=plugin_runtime,
@@ -1670,6 +1741,7 @@ class TestNodeRuntimeCases:
             )
             == polling_result
         )
+        assert isinstance(plugin_runtime.start_llm_polling, Mock)
         plugin_runtime.start_llm_polling.assert_called_once_with(
             provider="langgenius/openai/openai",
             model="gpt-4o-mini",
@@ -1680,6 +1752,7 @@ class TestNodeRuntimeCases:
             stop=("END",),
             json_schema={"type": "object"},
         )
+        assert isinstance(plugin_runtime.check_llm_polling, Mock)
         plugin_runtime.check_llm_polling.assert_called_once_with(
             provider="langgenius/openai/openai",
             model="gpt-4o-mini",
@@ -1688,7 +1761,9 @@ class TestNodeRuntimeCases:
         )
 
     @staticmethod
-    def test_dify_prepared_polling_llm_commits_successful_reservation() -> None:
+    def test_dify_prepared_polling_llm_commits_successful_reservation(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         running_result = LLMPollingResult(
             status=LLMPollingStatus.RUNNING,
             plugin_state={"task_id": "poll-1"},
@@ -1709,8 +1784,8 @@ class TestNodeRuntimeCases:
             client=PluginModelClient(),
             plugin_service=PluginService,
         )
-        plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
-        plugin_runtime.check_llm_polling = Mock(return_value=succeeded_result)  # type: ignore[method-assign]
+        monkeypatch.setattr(plugin_runtime, "start_llm_polling", Mock(return_value=running_result))
+        monkeypatch.setattr(plugin_runtime, "check_llm_polling", Mock(return_value=succeeded_result))
         reservation = MagicMock()
         model_instance = _QuotaManagedModelInstanceStub(
             model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
@@ -1773,7 +1848,9 @@ class TestNodeRuntimeCases:
         assert len(started_pollings) == 1
 
     @staticmethod
-    def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart() -> None:
+    def test_dify_prepared_polling_llm_releases_previous_reservation_on_restart(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         running_result = LLMPollingResult(
             status=LLMPollingStatus.RUNNING,
             plugin_state={"task_id": "poll-1"},
@@ -1784,7 +1861,7 @@ class TestNodeRuntimeCases:
             client=PluginModelClient(),
             plugin_service=PluginService,
         )
-        plugin_runtime.start_llm_polling = Mock(return_value=running_result)  # type: ignore[method-assign]
+        monkeypatch.setattr(plugin_runtime, "start_llm_polling", Mock(return_value=running_result))
         first_reservation = MagicMock()
         second_reservation = MagicMock()
         model_instance = _QuotaManagedModelInstanceStub(
@@ -1869,7 +1946,9 @@ class TestNodeRuntimeCases:
         reservation.release.assert_called_once_with()
 
     @staticmethod
-    def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported() -> None:
+    def test_dify_prepared_polling_llm_raise_exception_when_polling_is_unsupported(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         llm_result = node_runtime.LLMResult(
             model="gpt-4o-mini",
             prompt_messages=[],
@@ -1882,7 +1961,11 @@ class TestNodeRuntimeCases:
             client=Mock(),
             plugin_service=Mock(),
         )
-        plugin_runtime.start_llm_polling = Mock(side_effect=PluginLLMPollingUnsupportedError("Polling unsupported"))  # type: ignore[method-assign]
+        monkeypatch.setattr(
+            plugin_runtime,
+            "start_llm_polling",
+            Mock(side_effect=PluginLLMPollingUnsupportedError("Polling unsupported")),
+        )
         model_instance = _ModelInstanceStub(
             model_schema=_build_model_schema(features=[ModelFeature.POLLING]),
             model_runtime=plugin_runtime,
@@ -1906,13 +1989,13 @@ class TestNodeRuntimeCases:
         monkeypatch.setattr(node_runtime.PromptMessageUtil, "prompt_messages_to_prompt_for_saving", serialize)
 
         result = DifyPromptMessageSerializer().serialize(
-            model_mode="chat",
+            model_mode=LLMMode.CHAT,
             prompt_messages=[],
         )
 
         assert result == {"prompt": "value"}
         serialize.assert_called_once_with(
-            model_mode="chat",
+            model_mode=LLMMode.CHAT,
             prompt_messages=[],
         )
 
@@ -1935,7 +2018,9 @@ class TestNodeRuntimeCases:
         assert mapping["id"] == "upload-file-id"
         assert mapping["transfer_method"] == FileTransferMethod.LOCAL_FILE
         assert mapping["type"] == FileType.IMAGE
-        assert parse_file_reference(mapping["reference"]).storage_key is None
+        parsed = parse_file_reference(mapping["reference"])
+        assert parsed is not None
+        assert parsed.storage_key is None
 
     @staticmethod
     def test_dify_retriever_attachment_loader_grants_upload_files_for_allowed_segment(
@@ -2169,12 +2254,14 @@ class TestNodeRuntimeCases:
         handle = runtime.get_runtime(
             node_id="tool-node",
             node_data=node_data,
-            variable_pool=object(),
+            variable_pool=build_test_variable_pool(),
             node_execution_id="node-execution-id",
         )
 
-        assert handle.raw.tool is runtime_tool
-        assert handle.raw.parent_trace_context.model_dump() == {
+        binding = _tool_binding(handle)
+        assert binding.tool is runtime_tool
+        assert binding.parent_trace_context is not None
+        assert binding.parent_trace_context.model_dump() == {
             "parent_workflow_run_id": "outer-workflow-run-id",
             "parent_node_execution_id": "node-execution-id",
         }
@@ -2197,7 +2284,9 @@ class TestNodeRuntimeCases:
         )
 
         run_context = _build_run_context()
-        run_context[DIFY_RUN_CONTEXT_KEY].trace_session_id = "session-1"
+        dify_run_context = run_context[DIFY_RUN_CONTEXT_KEY]
+        assert isinstance(dify_run_context, DifyRunContext)
+        dify_run_context.trace_session_id = "session-1"
         runtime = node_runtime.DifyToolNodeRuntime(run_context)
         node_data = ToolNodeData(
             title="Workflow Tool Node",
@@ -2214,11 +2303,11 @@ class TestNodeRuntimeCases:
         handle = runtime.get_runtime(
             node_id="tool-node",
             node_data=node_data,
-            variable_pool=object(),
+            variable_pool=build_test_variable_pool(),
             node_execution_id="node-execution-id",
         )
 
-        assert handle.raw.trace_session_id == "session-1"
+        assert _tool_binding(handle).trace_session_id == "session-1"
         assert runtime_tool.runtime.runtime_parameters == {}
 
     @staticmethod
@@ -2246,10 +2335,10 @@ class TestNodeRuntimeCases:
         handle = runtime.get_runtime(
             node_id="tool-node",
             node_data=node_data,
-            variable_pool=object(),
+            variable_pool=build_test_variable_pool(),
         )
 
-        assert handle.raw.tool is runtime_tool
+        assert _tool_binding(handle).tool is runtime_tool
         assert runtime_tool.runtime.dify_run_context.tenant_id == "tenant-id"
         assert runtime_tool.runtime.dify_run_context.app_id == "app-id"
         assert "outer_workflow_run_id" not in runtime_tool.runtime.runtime_parameters
@@ -2301,8 +2390,8 @@ class TestNodeRuntimeCases:
 
         assert payload.model_dump() == {
             "version": "1",
-            "source_app_id": str(tool.workflow_app_id),
-            "source_workflow_id": str(tool.workflow_id),
+            "source_app_id": tool.workflow_app_id,
+            "source_workflow_id": tool.workflow_id,
             "source_workflow_version": "published-version",
             "inputs": {"amount": 1.25},
             "system_files": [{"id": "file-id", "name": "input.txt"}],
@@ -2474,7 +2563,9 @@ class TestNodeRuntimeCases:
         assert params.delivery_methods[1].config.recipients.include_bound_group is True
 
     @staticmethod
-    def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files() -> None:
+    def test_dify_human_input_runtime_restore_submitted_data_rehydrates_files(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         runtime = DifyHumanInputNodeRuntime(_build_run_context())
         file_value = File(
             file_id="file-1",
@@ -2508,7 +2599,11 @@ class TestNodeRuntimeCases:
                 size=96,
             ),
         ]
-        runtime._file_reference_factory.build_from_mapping = MagicMock(side_effect=[file_value, *file_list_value])  # type: ignore[method-assign]
+        monkeypatch.setattr(
+            runtime._file_reference_factory,
+            "build_from_mapping",
+            MagicMock(side_effect=[file_value, *file_list_value]),
+        )
 
         restored = runtime.restore_submitted_data(
             inputs=[
