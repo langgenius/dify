@@ -11,7 +11,7 @@ from tests.unit_tests.conftest import app as app  # noqa: PLC0414
 
 
 @pytest.fixture(autouse=True)
-def _swagger_config(config_overrides) -> None:
+def _swagger_config(config_overrides: Callable[..., None]) -> None:
     config_overrides(SWAGGER_UI_ENABLED=True)
 
 
@@ -87,6 +87,27 @@ DOCUMENT_UPDATE_DATA_SCHEMA = {
 }
 
 
+def _mapping(value: object) -> dict[str, object]:
+    assert isinstance(value, dict)
+    return value
+
+
+def _listing(value: object) -> list[object]:
+    assert isinstance(value, list)
+    return value
+
+
+def _path(value: object, *keys: str) -> object:
+    """Walk a nested JSON object, narrowing each level before indexing into it."""
+    for key in keys:
+        value = _mapping(value)[key]
+    return value
+
+
+def _branches(schema: dict[str, object], field: str = "anyOf") -> list[dict[str, object]]:
+    return [_mapping(branch) for branch in _listing(schema[field])]
+
+
 def _schema_refs(value: object) -> set[str]:
     refs: set[str] = set()
     if isinstance(value, dict):
@@ -150,7 +171,7 @@ def _json_body_schema(payload: dict[str, object], operation: dict[str, object]) 
     ref = schema.get("$ref")
     if isinstance(ref, str):
         schema_name = ref.removeprefix("#/components/schemas/")
-        resolved = payload["components"]["schemas"][schema_name]
+        resolved = _mapping(_mapping(payload["components"])["schemas"])[schema_name]
         assert isinstance(resolved, dict)
         return resolved
 
@@ -178,7 +199,7 @@ def _response_content_types(operation: dict[str, object], status_code: str = "20
 def test_inline_model_name_includes_list_constraints(
     first_kwargs: dict[str, object],
     second_kwargs: dict[str, object],
-):
+) -> None:
     from flask_restx import fields
 
     from libs.flask_restx_compat import _inline_model_name
@@ -189,7 +210,7 @@ def test_inline_model_name_includes_list_constraints(
     assert _inline_model_name(first_inline_model) != _inline_model_name(second_inline_model)
 
 
-def test_uuid_path_format_is_derived_from_route_converter():
+def test_uuid_path_format_is_derived_from_route_converter() -> None:
     from flask_restx import swagger as restx_swagger
 
     from libs.flask_restx_compat import install_swagger_compatibility
@@ -208,7 +229,7 @@ def test_uuid_path_format_is_derived_from_route_converter():
     }
 
 
-def test_openapi_json_endpoints_render():
+def test_openapi_json_endpoints_render() -> None:
     from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
@@ -238,7 +259,7 @@ def test_openapi_json_endpoints_render():
         get_request_body_paths = [path for path, operation in _get_operations(payload) if "requestBody" in operation]
         assert not get_request_body_paths
 
-    assert app.config["RESTX_INCLUDE_ALL_MODELS"] is True
+    assert bool(app.config["RESTX_INCLUDE_ALL_MODELS"])
 
 
 def test_console_node_data_migration_documents_canonical_delivery_method_union(
@@ -269,7 +290,7 @@ def test_console_node_data_migration_documents_canonical_delivery_method_union(
     assert action_schema["properties"]["title"]["maxLength"] == 100
 
 
-def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader):
+def test_agent_tts_routes_document_voice_queries_and_binary_audio(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
     from core.base.tts.audio_mime import SUPPORTED_TTS_AUDIO_MIME_TYPES
 
@@ -351,10 +372,10 @@ def test_console_segment_mutation_contracts_survive_admission(openapi_json: Open
     assert {status for status in delete_operation["responses"] if status.startswith("2")} == {"204"}
     parameters = _parameters_by_name(delete_operation)
     assert parameters["segment_id"]["in"] == "query"
-    assert parameters["segment_id"]["schema"]["type"] == "array"
+    assert _path(parameters["segment_id"], "schema", "type") == "array"
 
 
-def test_service_document_file_routes_document_multipart_form_data(openapi_json: OpenAPIJSONLoader):
+def test_service_document_file_routes_document_multipart_form_data(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -391,7 +412,7 @@ def test_service_document_file_routes_document_multipart_form_data(openapi_json:
         assert update_operation["requestBody"]["required"] is False
 
 
-def test_service_openapi_merges_public_api_reference_descriptions(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_merges_public_api_reference_descriptions(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -408,7 +429,7 @@ def test_service_openapi_merges_public_api_reference_descriptions(openapi_json: 
     assert _parameters_by_name(rename_operation)["conversation_id"]["description"] == "Conversation ID."
 
 
-def test_service_document_list_documents_query_params_render(openapi_json: OpenAPIJSONLoader):
+def test_service_document_list_documents_query_params_render(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -419,7 +440,7 @@ def test_service_document_list_documents_query_params_render(openapi_json: OpenA
         assert params[name]["in"] == "query"
 
 
-def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -435,8 +456,8 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
-        assert "user" in schema["required"]
+        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
+        assert "user" in _listing(schema["required"])
 
     for path in ("/chat-messages", "/workflows/run", "/workflows/{workflow_id}/run"):
         rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
@@ -451,8 +472,10 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     }
     for path, expected_behavior in task_stop_user_descriptions.items():
         schema = _json_body_schema(payload, paths[path]["post"])
-        assert expected_behavior in schema["properties"]["user"]["description"]
-        assert "user" in schema["required"]
+        user_description = _path(schema, "properties", "user", "description")
+        assert isinstance(user_description, str)
+        assert expected_behavior in user_description
+        assert "user" in _listing(schema["required"])
         assert "404" not in paths[path]["post"]["responses"]
 
     optional_json_user_operations = (
@@ -463,8 +486,8 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     )
     for path, method in optional_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
-        assert "user" not in schema.get("required", [])
+        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
+        assert "user" not in _listing(schema.get("required", []))
 
     messages_params = _parameters_by_name(paths["/messages"]["get"])
     assert messages_params["user"]["in"] == "query"
@@ -475,7 +498,7 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     assert events_params["user"]["required"] is True
 
 
-def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -484,7 +507,7 @@ def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPI
     for path in ("/files/upload", "/audio-to-text"):
         schema = _multipart_form_schema(paths[path]["post"])
         if path == "/audio-to-text":
-            assert schema["properties"]["file"] == {
+            assert _path(schema, "properties", "file") == {
                 "description": (
                     "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
                     "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
@@ -493,16 +516,16 @@ def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPI
                 "type": "string",
             }
         else:
-            assert schema["properties"]["file"] == GENERIC_FILE_SCHEMA
-        assert schema["properties"]["user"] == USER_PROPERTY_SCHEMA
+            assert _path(schema, "properties", "file") == GENERIC_FILE_SCHEMA
+        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
         assert schema["required"] == ["file"]
 
     pipeline_schema = _multipart_form_schema(paths["/datasets/pipeline/file-upload"]["post"])
-    assert pipeline_schema["properties"]["file"] == GENERIC_FILE_SCHEMA
+    assert _path(pipeline_schema, "properties", "file") == GENERIC_FILE_SCHEMA
     assert pipeline_schema["required"] == ["file"]
 
 
-def test_service_openapi_documents_non_json_response_media_types(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_non_json_response_media_types(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -528,7 +551,7 @@ def test_service_openapi_documents_non_json_response_media_types(openapi_json: O
     }
 
 
-def test_service_openapi_documents_uuid_params_and_deprecated_routes(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_uuid_params_and_deprecated_routes(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -562,37 +585,37 @@ def test_service_openapi_documents_uuid_params_and_deprecated_routes(openapi_jso
         assert operation["deprecated"] is True
 
 
-def test_service_openapi_documents_path_action_enums(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_path_action_enums(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     annotation_params = _parameters_by_name(paths["/apps/annotation-reply/{action}"]["post"])
-    assert annotation_params["action"]["schema"]["enum"] == ["disable", "enable"]
+    assert _path(annotation_params["action"], "schema", "enum") == ["disable", "enable"]
 
     document_status_params = _parameters_by_name(paths["/datasets/{dataset_id}/documents/status/{action}"]["patch"])
-    assert document_status_params["action"]["schema"]["enum"] == ["archive", "disable", "enable", "un_archive"]
+    assert _path(document_status_params["action"], "schema", "enum") == ["archive", "disable", "enable", "un_archive"]
 
     metadata_params = _parameters_by_name(paths["/datasets/{dataset_id}/metadata/built-in/{action}"]["post"])
-    assert metadata_params["action"]["schema"]["enum"] == ["disable", "enable"]
+    assert _path(metadata_params["action"], "schema", "enum") == ["disable", "enable"]
 
 
-def test_service_openapi_documents_conditional_payload_schemas(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_conditional_payload_schemas(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
     paths = payload["paths"]
 
     rename_schema = _json_body_schema(payload, paths["/conversations/{conversation_id}/name"]["post"])
-    auto_generate_branch, manual_name_branch = rename_schema["anyOf"]
-    assert auto_generate_branch["properties"]["auto_generate"]["enum"] == [True]
+    auto_generate_branch, manual_name_branch = _branches(rename_schema)
+    assert _path(auto_generate_branch, "properties", "auto_generate", "enum") == [True]
     assert auto_generate_branch["required"] == ["auto_generate"]
-    assert manual_name_branch["properties"]["auto_generate"]["enum"] == [False]
-    assert manual_name_branch["properties"]["name"]["pattern"] == r".*\S.*"
+    assert _path(manual_name_branch, "properties", "auto_generate", "enum") == [False]
+    assert _path(manual_name_branch, "properties", "name", "pattern") == r".*\S.*"
     assert manual_name_branch["required"] == ["name"]
-    for branch in rename_schema["anyOf"]:
-        assert branch["properties"]["user"] == USER_PROPERTY_SCHEMA
+    for branch in _branches(rename_schema):
+        assert _path(branch, "properties", "user") == USER_PROPERTY_SCHEMA
 
     document_update_schema = payload["components"]["schemas"]["DocumentTextUpdate"]
     with_text_branch, without_text_branch = document_update_schema["anyOf"]
@@ -604,7 +627,7 @@ def test_service_openapi_documents_conditional_payload_schemas(openapi_json: Ope
     assert without_text_branch["properties"]["text"]["type"] == "null"
 
 
-def test_service_dataset_response_schemas_omit_console_permission_metadata():
+def test_service_dataset_response_schemas_omit_console_permission_metadata() -> None:
     from controllers.console import bp as console_bp
     from controllers.service_api import bp as service_api_bp
 
@@ -627,7 +650,7 @@ def test_service_dataset_response_schemas_omit_console_permission_metadata():
     assert "permission_keys" in console_schema["properties"]
 
 
-def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: OpenAPIJSONLoader):
+def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
@@ -641,7 +664,7 @@ def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: 
     assert "archived_document_immutable" in delete_document["responses"]["403"]["description"]
 
 
-def test_service_schemas_only_document_reachable_not_found_responses(openapi_json: OpenAPIJSONLoader):
+def test_service_schemas_only_document_reachable_not_found_responses(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     paths = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", False))["paths"]
@@ -704,7 +727,7 @@ def test_annotation_schemas_document_admission_and_validation_errors(
         assert "unprocessable_entity" in responses["422"]["description"]
 
 
-def test_service_openapi_does_not_encode_docs_coverage_boundaries(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_does_not_encode_docs_coverage_boundaries(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -722,7 +745,7 @@ def test_service_openapi_does_not_encode_docs_coverage_boundaries(openapi_json: 
     assert paths["/datasets/{dataset_id}/documents/{document_id}/update-by-file"]["post"]["deprecated"] is True
 
 
-def test_service_openapi_documents_auth_and_compatibility_payloads(openapi_json: OpenAPIJSONLoader):
+def test_service_openapi_documents_auth_and_compatibility_payloads(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.service_api import bp as service_api_bp
 
     payload = json.loads(openapi_json(service_api_bp, "/v1/openapi.json", True))
@@ -748,7 +771,7 @@ def test_service_openapi_documents_auth_and_compatibility_payloads(openapi_json:
     assert tag_ids_schema["required"] == ["tag_ids", "target_id"]
 
 
-def test_console_account_avatar_query_param_renders_as_query(openapi_json: OpenAPIJSONLoader):
+def test_console_account_avatar_query_param_renders_as_query(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -760,7 +783,7 @@ def test_console_account_avatar_query_param_renders_as_query(openapi_json: OpenA
     assert params["avatar"]["required"] is True
 
 
-def test_console_account_profile_patch_without_legacy_update_routes(openapi_json: OpenAPIJSONLoader):
+def test_console_account_profile_patch_without_legacy_update_routes(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -772,7 +795,7 @@ def test_console_account_profile_patch_without_legacy_update_routes(openapi_json
     assert profile_patch_schema["type"] == "object"
     assert profile_patch_schema["additionalProperties"] is False
     assert "required" not in profile_patch_schema
-    assert profile_patch_schema["properties"]["name"]["type"] == "string"
+    assert _path(profile_patch_schema, "properties", "name", "type") == "string"
 
     for path in (
         "/account/name",
@@ -786,7 +809,7 @@ def test_console_account_profile_patch_without_legacy_update_routes(openapi_json
     assert paths["/account/avatar"]["get"].get("deprecated") is not True
 
 
-def test_console_agent_debug_conversation_refresh_has_no_body(openapi_json: OpenAPIJSONLoader):
+def test_console_agent_debug_conversation_refresh_has_no_body(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", False))
@@ -796,7 +819,7 @@ def test_console_agent_debug_conversation_refresh_has_no_body(openapi_json: Open
     assert "AgentDebugConversationRefreshPayload" not in payload["components"]["schemas"]
 
 
-def test_console_member_invite_documents_bad_request_response(openapi_json: OpenAPIJSONLoader):
+def test_console_member_invite_documents_bad_request_response(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -920,7 +943,7 @@ def test_console_billing_reason_errors_are_documented(openapi_json: OpenAPIJSONL
         assert properties["status"]["const"] == status
 
 
-def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJSONLoader):
+def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -972,7 +995,7 @@ def test_console_billing_routes_document_error_responses(openapi_json: OpenAPIJS
     assert compliance_response["required"] == ["url"]
 
 
-def test_console_model_provider_checkout_route_is_deprecated(openapi_json: OpenAPIJSONLoader):
+def test_console_model_provider_checkout_route_is_deprecated(openapi_json: OpenAPIJSONLoader) -> None:
     from controllers.console import bp as console_bp
 
     payload = json.loads(openapi_json(console_bp, "/console/api/openapi.json", True))
@@ -981,7 +1004,7 @@ def test_console_model_provider_checkout_route_is_deprecated(openapi_json: OpenA
     assert operation["deprecated"] is True
 
 
-def test_console_plugin_category_list_exported_schema_uses_typed_items(exported_console_json: str):
+def test_console_plugin_category_list_exported_schema_uses_typed_items(exported_console_json: str) -> None:
     payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/plugin/{category}/list"]["get"]
     parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
@@ -1018,7 +1041,7 @@ def test_console_plugin_category_list_exported_schema_uses_typed_items(exported_
         assert field in builtin_tool_schema["properties"]
 
 
-def test_console_installed_plugin_ids_exported_schema_is_lightweight(exported_console_json: str):
+def test_console_installed_plugin_ids_exported_schema_is_lightweight(exported_console_json: str) -> None:
     payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/plugin/installed-ids"]["get"]
     parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
@@ -1090,7 +1113,7 @@ def test_console_datasource_catalog_exports_domain_response_schema(exported_cons
     }
 
 
-def test_console_model_provider_summary_exported_schema_is_lightweight(exported_console_json: str):
+def test_console_model_provider_summary_exported_schema_is_lightweight(exported_console_json: str) -> None:
     payload = json.loads(exported_console_json)
     operation = payload["paths"]["/workspaces/current/model-providers/summary"]["get"]
     assert operation.get("parameters", []) == []

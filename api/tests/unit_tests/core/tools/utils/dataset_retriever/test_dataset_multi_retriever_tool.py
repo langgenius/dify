@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import uuid
-from contextlib import nullcontext
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import override
 from unittest.mock import patch
 
 import pytest
+from flask import Flask
 from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from werkzeug.local import LocalProxy
 from yaml import YAMLError
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -16,6 +19,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.model_manager import ModelInstance, ModelManager
 from core.provider_manager import ProviderManager
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import RetrievalSourceMetadata
 from core.rag.models.document import Document as RagDocument
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.tools.utils.dataset_retriever import dataset_multi_retriever_tool as multi_retriever_module
@@ -29,6 +33,14 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, SegmentStatus
 
 
+def _flask_app() -> Flask:
+    return Flask(__name__)
+
+
+def _current_app_proxy() -> LocalProxy[Flask]:
+    return LocalProxy(_flask_app)
+
+
 def _retrieve_config() -> DatasetRetrieveConfigEntity:
     return DatasetRetrieveConfigEntity(retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE)
 
@@ -40,7 +52,7 @@ def _persist_dataset(
     tenant_id: str | None = None,
     name: str = "Knowledge Base",
     provider: str = "vendor",
-    retrieval_model: dict | None = None,
+    retrieval_model: dict[str, object] | None = None,
 ) -> Dataset:
     dataset = Dataset(
         id=dataset_id or str(uuid.uuid4()),
@@ -63,7 +75,7 @@ def _persist_document(
     dataset: Dataset,
     name: str,
     data_source_type: DataSourceType = DataSourceType.UPLOAD_FILE,
-    doc_metadata: dict | None = None,
+    doc_metadata: dict[str, object] | None = None,
 ) -> Document:
     document = Document(
         id=str(uuid.uuid4()),
@@ -82,16 +94,6 @@ def _persist_document(
     return document
 
 
-class _FakeFlaskApp:
-    def app_context(self):
-        return nullcontext()
-
-
-class _FakeCurrentApp:
-    def _get_current_object(self) -> _FakeFlaskApp:
-        return _FakeFlaskApp()
-
-
 @dataclass(eq=False, repr=False)
 class _DatabaseWithSession:
     session: scoped_session[Session]
@@ -108,49 +110,57 @@ class _UnusedModelInstance(ModelInstance):
 
 
 class _ImmediateThread:
-    def __init__(self, target=None, kwargs=None, **_kwargs):
+    def __init__(
+        self,
+        target: Callable[..., object] | None = None,
+        kwargs: dict[str, object] | None = None,
+        **_kwargs: object,
+    ) -> None:
         self._target = target
         self._kwargs = kwargs or {}
 
-    def start(self):
+    def start(self) -> None:
         if self._target is not None:
             self._target(**self._kwargs)
 
-    def join(self):
+    def join(self) -> None:
         return None
 
 
 class _TestHitCallback(DatasetIndexToolCallbackHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         self.queries: list[tuple[str, str]] = []
         self.documents: list[RagDocument] | None = None
-        self.resources = None
+        self.resources: list[RetrievalSourceMetadata] | None = None
 
-    def on_query(self, query: str, dataset_id: str, session=None):
+    @override
+    def on_query(self, query: str, dataset_id: str, session: Session) -> None:
         self.queries.append((query, dataset_id))
 
-    def on_tool_end(self, documents: list[RagDocument], session=None):
+    @override
+    def on_tool_end(self, documents: list[RagDocument], session: Session) -> None:
         self.documents = documents
 
-    def return_retriever_resource_info(self, resource):
+    @override
+    def return_retriever_resource_info(self, resource: Sequence[RetrievalSourceMetadata]) -> None:
         self.resources = list(resource)
 
 
-def test_remove_leading_symbols_preserves_markdown_link_and_strips_punctuation():
+def test_remove_leading_symbols_preserves_markdown_link_and_strips_punctuation() -> None:
     markdown = "[Example](https://example.com) content"
     assert remove_leading_symbols(markdown) == markdown
 
     assert remove_leading_symbols("...Hello world") == "Hello world"
 
 
-def test_is_valid_uuid_handles_valid_invalid_and_empty_values():
+def test_is_valid_uuid_handles_valid_invalid_and_empty_values() -> None:
     assert is_valid_uuid(str(uuid.uuid4())) is True
     assert is_valid_uuid("not-a-uuid") is False
     assert is_valid_uuid("") is False
     assert is_valid_uuid(None) is False
 
 
-def test_load_yaml_file_valid(tmp_path: Path):
+def test_load_yaml_file_valid(tmp_path: Path) -> None:
     valid_file = tmp_path / "valid.yaml"
     valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
 
@@ -159,12 +169,12 @@ def test_load_yaml_file_valid(tmp_path: Path):
     assert loaded == {"a": 1, "b": "two"}
 
 
-def test_load_yaml_file_missing(tmp_path: Path):
+def test_load_yaml_file_missing(tmp_path: Path) -> None:
     with pytest.raises(FileNotFoundError):
         _load_yaml_file(file_path=str(tmp_path / "missing.yaml"))
 
 
-def test_load_yaml_file_invalid(tmp_path: Path):
+def test_load_yaml_file_invalid(tmp_path: Path) -> None:
     invalid_file = tmp_path / "invalid.yaml"
     invalid_file.write_text("a: [1, 2\n", encoding="utf-8")
 
@@ -172,7 +182,7 @@ def test_load_yaml_file_invalid(tmp_path: Path):
         _load_yaml_file(file_path=str(invalid_file))
 
 
-def test_load_yaml_file_cached_hits(tmp_path: Path):
+def test_load_yaml_file_cached_hits(tmp_path: Path) -> None:
     valid_file = tmp_path / "valid.yaml"
     valid_file.write_text("a: 1\nb: two\n", encoding="utf-8")
 
@@ -183,7 +193,7 @@ def test_load_yaml_file_cached_hits(tmp_path: Path):
     assert load_yaml_file_cached.cache_info().hits == 1
 
 
-def test_single_dataset_retriever_from_dataset_builds_name_and_description(sqlite_session: Session):
+def test_single_dataset_retriever_from_dataset_builds_name_and_description(sqlite_session: Session) -> None:
     dataset = _persist_dataset(
         sqlite_session,
         dataset_id="dataset-1",
@@ -203,7 +213,7 @@ def test_single_dataset_retriever_from_dataset_builds_name_and_description(sqlit
     assert tool.description == "useful for when you want to answer queries about the Knowledge"
 
 
-def test_single_dataset_retriever_external_run_returns_content_and_resources(sqlite_session: Session):
+def test_single_dataset_retriever_external_run_returns_content_and_resources(sqlite_session: Session) -> None:
     dataset = _persist_dataset(sqlite_session, provider="external", retrieval_model={})
     callback = _TestHitCallback()
     metadata_filter_result = (
@@ -249,7 +259,7 @@ def test_single_dataset_retriever_external_run_returns_content_and_resources(sql
 
 def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_documents(
     sqlite_session: Session,
-):
+) -> None:
     dataset = _persist_dataset(sqlite_session)
     tool = SingleDatasetRetrieverTool(
         tenant_id=dataset.tenant_id,
@@ -273,7 +283,7 @@ def test_single_dataset_retriever_returns_empty_when_metadata_filter_finds_no_do
     retrieve_mock.assert_not_called()
 
 
-def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sqlite_session: Session):
+def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sqlite_session: Session) -> None:
     dataset = _persist_dataset(
         sqlite_session,
         retrieval_model={
@@ -383,7 +393,7 @@ def test_single_dataset_retriever_non_economy_run_sorts_context_and_resources(sq
     assert resource_info[1].content == "question:raw low \nanswer:low answer"
 
 
-def test_multi_dataset_retriever_from_dataset_sets_tool_name():
+def test_multi_dataset_retriever_from_dataset_sets_tool_name() -> None:
     tool = DatasetMultiRetrieverTool.from_dataset(
         dataset_ids=["dataset-1"],
         tenant_id="tenant-1",
@@ -398,7 +408,7 @@ def test_multi_dataset_retriever_from_dataset_sets_tool_name():
 
 def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing(
     sqlite_session_factory: sessionmaker[Session],
-):
+) -> None:
     callback = _TestHitCallback()
     all_documents: list[RagDocument] = []
     db_session = scoped_session(sqlite_session_factory)
@@ -415,7 +425,7 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
         with patch.object(multi_retriever_module, "db", _DatabaseWithSession(db_session)):
             with patch.object(multi_retriever_module.RetrievalService, "retrieve") as retrieve_mock:
                 result = tool._retriever(
-                    flask_app=_FakeFlaskApp(),
+                    flask_app=_flask_app(),
                     dataset_id=str(uuid.uuid4()),
                     query="hello",
                     all_documents=all_documents,
@@ -433,7 +443,7 @@ def test_multi_dataset_retriever_retriever_returns_early_when_dataset_is_missing
 def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     sqlite_session: Session,
     sqlite_session_factory: sessionmaker[Session],
-):
+) -> None:
     dataset = _persist_dataset(
         sqlite_session,
         retrieval_model={
@@ -466,7 +476,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
                 multi_retriever_module.RetrievalService, "retrieve", return_value=documents
             ) as retrieve_mock:
                 tool._retriever(
-                    flask_app=_FakeFlaskApp(),
+                    flask_app=_flask_app(),
                     dataset_id=dataset.id,
                     query="hello",
                     all_documents=all_documents,
@@ -489,7 +499,7 @@ def test_multi_dataset_retriever_retriever_non_economy_uses_retrieval_model(
     )
 
 
-def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlite_session: Session):
+def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlite_session: Session) -> None:
     dataset_one = _persist_dataset(sqlite_session, name="Dataset One")
     dataset_two = _persist_dataset(sqlite_session, tenant_id=dataset_one.tenant_id, name="Dataset Two")
     document_two = _persist_document(
@@ -520,11 +530,13 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     first_doc = RagDocument(page_content="first", metadata={"doc_id": "node-2", "score": 0.4})
     second_doc = RagDocument(page_content="second", metadata={"doc_id": "node-1", "score": 0.9})
 
-    def fake_retriever(**kwargs):
+    def fake_retriever(**kwargs: object) -> None:
+        documents_sink = kwargs["all_documents"]
+        assert isinstance(documents_sink, list)
         if kwargs["dataset_id"] == dataset_one.id:
-            kwargs["all_documents"].append(first_doc)
+            documents_sink.append(first_doc)
         else:
-            kwargs["all_documents"].append(second_doc)
+            documents_sink.append(second_doc)
 
     segment_for_node_2 = DocumentSegment(
         tenant_id=dataset_one.tenant_id,
@@ -562,7 +574,7 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     model_manager = ModelManager(provider_manager=_UnusedProviderManager())
     model_instance = _UnusedModelInstance()
     rerank_runner = RerankModelRunner(model_instance, session=sqlite_session)
-    fake_current_app = _FakeCurrentApp()
+    fake_current_app = _current_app_proxy()
 
     with (
         patch.object(
