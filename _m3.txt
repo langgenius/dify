@@ -1,0 +1,11 @@
+test(api): bring four more modules under strict pyrefly
+
+Graduate `test_workflow_draft_variable_service`, the human-input e2e form
+service, `workflow_as_tool/test_tool` and the chat app generator.
+
+The fakes in the two generator/tool tests now extend the real classes and skip
+`super().__init__()`, which keeps them off redis and pydantic validation while
+satisfying the declared types. Where the tests deliberately store `None` in a
+non-optional mapped column, they use SQLAlchemy's `set_committed_value`, which
+is the documented way to set an attribute without marking it dirty and avoids
+the typed descriptor.

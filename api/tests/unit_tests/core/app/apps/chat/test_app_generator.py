@@ -1,5 +1,7 @@
+from collections.abc import Generator
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -9,20 +11,22 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 import core.app.apps.chat.app_generator as generator_module
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.chat.app_runner import ChatAppRunner
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
+from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
-from models.enums import ConversationFromSource
+from models.enums import ConversationFromSource, ConversationStatus
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
 
 
-class DummyGenerateEntity:
-    def __init__(self, **kwargs):
+class DummyGenerateEntity(ChatAppGenerateEntity):
+    def __init__(self, **kwargs: object) -> None:
         self.__dict__.update(kwargs)
 
 
@@ -46,14 +50,13 @@ def _trace_scope() -> TraceScope:
     )
 
 
-class DummyQueueManager:
-    def __init__[**P](self, *args: P.args, **kwargs: P.kwargs):
-        self.published = []
+class DummyQueueManager(AppQueueManager):
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        self.published: list[tuple[object, object]] = []
+        self.invoke_from = InvokeFrom.SERVICE_API
 
-    def publish_error(self, error, pub_from):
-        self.published.append((error, pub_from))
-
-    def publish(self, event, pub_from):
+    @override
+    def _publish(self, event: AppQueueEvent, pub_from: PublishFrom) -> None:
         self.published.append((event, pub_from))
 
 
@@ -91,8 +94,8 @@ def _conversation() -> Conversation:
         introduction="",
         system_instruction="",
         system_instruction_tokens=0,
-        status="normal",
-        invoke_from=InvokeFrom.SERVICE_API,
+        status=ConversationStatus.NORMAL,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=None,
         from_account_id="user-1",
@@ -118,7 +121,7 @@ def _message() -> Message:
         provider_response_latency=0,
         total_price=Decimal(0),
         currency="USD",
-        invoke_from=InvokeFrom.SERVICE_API,
+        invoke_from=ModelInvokeFrom.SERVICE_API,
         from_source=ConversationFromSource.API,
         from_end_user_id=None,
         from_account_id="user-1",
@@ -136,12 +139,12 @@ def _persist_records(session: Session) -> tuple[App, Conversation, Message]:
 
 
 @pytest.fixture(autouse=True)
-def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch):
+def _bind_db_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(generator_module.db, "session", sqlite_session)
 
 
 class TestChatAppGenerator:
-    def test_generate_requires_query(self, unbound_session: Session):
+    def test_generate_requires_query(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
         with pytest.raises(ValueError, match="query is required"):
             generator.generate(
@@ -153,7 +156,7 @@ class TestChatAppGenerator:
                 streaming=False,
             )
 
-    def test_generate_rejects_non_string_query(self, unbound_session: Session):
+    def test_generate_rejects_non_string_query(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
         with pytest.raises(ValueError, match="query must be a string"):
             generator.generate(
@@ -180,9 +183,9 @@ class TestChatAppGenerator:
             return trace_scope
 
         monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
-        args = {
+        args: dict[str, object] = {
             "query": "hi",
-            "inputs": {},
+            "inputs": dict[str, object](),
             "conversation_id": "conversation-1",
             "model_config": {"foo": "bar"},
             "trace_session_id": "session-1",
@@ -241,7 +244,7 @@ class TestChatAppGenerator:
             }
         ]
 
-    def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session):
+    def test_generate_uses_session_for_annotation_reply(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
         app_model = _app()
         app_model_config = AppModelConfig(app_id="app-1")
@@ -267,6 +270,7 @@ class TestChatAppGenerator:
                     user,
                     {"query": "hi", "inputs": {}},
                     InvokeFrom.WEB_APP,
+                    streaming=False,
                     session=unbound_session,
                 )
 
@@ -274,7 +278,7 @@ class TestChatAppGenerator:
         to_dict.assert_called_once_with(annotation_reply=annotation_reply)
         assert get_app_config.call_args.kwargs["annotation_reply"] is annotation_reply
 
-    def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session):
+    def test_generate_rejects_model_config_override_for_non_debugger(self, unbound_session: Session) -> None:
         generator = ChatAppGenerator()
         with pytest.raises(ValueError, match="Only in App debug mode can override model config"):
             with (
@@ -290,7 +294,7 @@ class TestChatAppGenerator:
                     streaming=False,
                 )
 
-    def test_generate_worker_handles_exceptions(self):
+    def test_generate_worker_handles_exceptions(self) -> None:
         generator = ChatAppGenerator()
         queue_manager = DummyQueueManager()
         entity = DummyGenerateEntity(task_id="t1", user_id="u1")
@@ -325,7 +329,7 @@ class TestChatAppGenerator:
 
 
 class TestChatAppRunner:
-    def test_run_raises_when_app_missing(self, sqlite_session: Session):
+    def test_run_raises_when_app_missing(self, sqlite_session: Session) -> None:
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
             app_id="app-1", tenant_id="tenant-1", prompt_template=None, external_data_variables=[]
@@ -352,7 +356,7 @@ class TestChatAppRunner:
                 sqlite_session,
             )
 
-    def test_run_moderation_error_direct_output(self, sqlite_session: Session):
+    def test_run_moderation_error_direct_output(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
@@ -392,7 +396,7 @@ class TestChatAppRunner:
 
         mock_direct.assert_called_once()
 
-    def test_run_annotation_reply_short_circuits(self, sqlite_session: Session):
+    def test_run_annotation_reply_short_circuits(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
@@ -437,7 +441,7 @@ class TestChatAppRunner:
         assert annotation_query.call_args.kwargs["session"] is sqlite_session
         mock_direct.assert_called_once()
 
-    def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session):
+    def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
@@ -475,7 +479,7 @@ class TestChatAppRunner:
                 sqlite_session,
             )
 
-    def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
+    def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session) -> None:
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
         app_config = SimpleNamespace(
@@ -507,11 +511,11 @@ class TestChatAppRunner:
         def record_commit(_session: Session) -> None:
             events.append("commit")
 
-        def invoke_stream():
+        def invoke_stream() -> Generator[str]:
             events.append("first-chunk")
             yield "chunk"
 
-        def invoke_llm(**kwargs):
+        def invoke_llm(**kwargs: object) -> Generator[str]:
             events.append("invoke")
             return invoke_stream()
 
