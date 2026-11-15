@@ -11,6 +11,7 @@ from extensions.ext_storage import storage
 from machinery.context import RequestContext
 from models.enums import CreatorUserRole
 from services.external_agents.file_profile import (
+    FILE_EXTENSIONS,
     FILE_MODES,
     FileLimits,
     file_byte_limit,
@@ -22,14 +23,6 @@ from services.file_service import FileService, FileUploadActor
 
 from .gateway import checked_url
 from .transport import BoundedTransport, TransportError
-
-_EXTENSIONS = {
-    "application/pdf": "pdf",
-    "text/plain": "txt",
-    "text/markdown": "md",
-    "image/png": "png",
-    "image/jpeg": "jpg",
-}
 
 
 def _guessed_media_type(data: bytes, content_type: str, filename: str | None) -> str:
@@ -70,7 +63,11 @@ def _guessed_media_type(data: bytes, content_type: str, filename: str | None) ->
     return (
         declared
         if declared in {"text/plain", "text/markdown"}
-        else ("text/markdown" if filename and filename.lower().endswith((".md", ".markdown")) else "text/plain")
+        else (
+            "text/markdown"
+            if filename and filename.lower().endswith(tuple("." + value for value in FILE_EXTENSIONS["text/markdown"]))
+            else "text/plain"
+        )
     )
 
 
@@ -81,8 +78,10 @@ def _inferred_filename(disposition: str, url: str, media_type: str) -> str:
         message["Content-Disposition"] = disposition
     suggested = message.get_filename() or unquote(urlsplit(url).path.rsplit("/", 1)[-1])
     name = suggested.replace("\\", "/").rsplit("/", 1)[-1].strip()
-    extension = _EXTENSIONS[media_type]
-    suffixes = {"jpg", "jpeg"} if media_type == "image/jpeg" else {extension}
+    extension = FILE_EXTENSIONS[media_type][0]
+    # Preserve the existing Paste canonicalization; JPEG's two suffixes were
+    # already retained, while inferred Markdown names use the canonical .md.
+    suffixes = FILE_EXTENSIONS[media_type] if media_type == "image/jpeg" else (extension,)
     if not name or name in {".", ".."} or any(ord(char) < 32 or ord(char) == 127 for char in name):
         name = "download"
     stem, dot, existing = name.rpartition(".")

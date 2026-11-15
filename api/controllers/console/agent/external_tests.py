@@ -75,11 +75,16 @@ class ExternalTestPagePayload(_Payload):
 class ExternalTestStatisticsResponse(ResponseModel):
     elapsed_time: float | None = Field(description="Seconds from first dispatch through local end or current read time")
     total_tokens: int | None = Field(
-        description="Trusted call-total sum only when every dispatched attempt reports usage"
+        description=(
+            "Sum of proven call-total tokens only when every dispatched attempt reports usage. "
+            "Null means no complete proven total; it is not zero or a failed execution. "
+            "Zero is a valid reported value. Trace steps are never summed. "
+            "The default A2A profile has no standardized call-total usage proof."
+        )
     )
     attempt_count: int = Field(ge=0, description="Number of actually dispatched attempts in this logical test")
-    token_reporting_numerator: int = Field(ge=0)
-    token_reporting_denominator: int = Field(ge=0)
+    token_reporting_numerator: int = Field(ge=0, description="Dispatched attempts with a proven call-total token value")
+    token_reporting_denominator: int = Field(ge=0, description="All dispatched attempts; zero means no dispatch yet")
 
 
 class ExternalTestStatusResponse(ResponseModel):
@@ -122,17 +127,41 @@ class ExternalTestLeaveResponse(ResponseModel):
     result: Literal["success"]
 
 
+class ExternalAgentCapabilitiesQuery(_Payload):
+    agent_id: UUID | None = Field(
+        default=None, description="Optional visible Agent ID for its effective default input formats"
+    )
+
+
+class ExternalInputFileTypeResponse(ResponseModel):
+    media_type: str
+    extensions: tuple[str, ...] = Field(
+        description="Common lowercase filename suffixes including dots; MIME/ownership/size checks remain authoritative"
+    )
+
+
 class ExternalAgentCapabilitiesResponse(ResponseModel):
     enabled: bool
     protocol: str
     transport: str
     authentication: tuple[str, ...]
     input_file_modes: tuple[str, ...]
+    input_file_types: tuple[ExternalInputFileTypeResponse, ...] = Field(
+        description=(
+            "Finite Dify input types; when agent_id is supplied, "
+            "intersected with saved Agent defaults, never Skills"
+        )
+    )
     limits: dict
 
 
 register_schema_models(
-    console_ns, ExternalTestPayload, ExternalPasteLinkPayload, ExternalTestPagePayload, ExternalTestFileAccessQuery
+    console_ns,
+    ExternalTestPayload,
+    ExternalPasteLinkPayload,
+    ExternalTestPagePayload,
+    ExternalTestFileAccessQuery,
+    ExternalAgentCapabilitiesQuery,
 )
 register_response_schema_models(
     console_ns,
@@ -173,12 +202,19 @@ def _result_response(context: RequestContext, agent_id: str, result: ExternalTes
 
 @console_ns.route("/external-agents/capabilities")
 class ExternalAgentCapabilitiesApi(Resource):
+    @console_ns.doc(params=query_params_from_model(ExternalAgentCapabilitiesQuery))
     @console_ns.response(
         200, "Authenticated effective profile", console_ns.models[ExternalAgentCapabilitiesResponse.__name__]
     )
     @console_account_admission()
     def get(self, context: RequestContext):
-        return dump_response(ExternalAgentCapabilitiesResponse, application_services().external_agents.capabilities)
+        query = ExternalAgentCapabilitiesQuery.model_validate(request.args.to_dict(flat=True))
+        result = _call(
+            lambda: application_services().external_agents.capabilities_for(
+                context, agent_id=str(query.agent_id) if query.agent_id is not None else None
+            )
+        )
+        return dump_response(ExternalAgentCapabilitiesResponse, result)
 
 
 @console_ns.route("/external-agents/<uuid:agent_id>/tests")
