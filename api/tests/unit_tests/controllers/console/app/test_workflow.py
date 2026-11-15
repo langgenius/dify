@@ -155,9 +155,6 @@ def _make_workflow(
         marked_comment="Initial release",
         created_by="user-1",
         updated_by=None,
-        _environment_variables=[],
-        _conversation_variables=[],
-        _rag_pipeline_variables=[],
     )
     workflow.created_at = created_at
     _set_timestamp(workflow, attribute="updated_at", value=updated_at)
