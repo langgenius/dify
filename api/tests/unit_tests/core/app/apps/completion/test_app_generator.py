@@ -1,6 +1,5 @@
 import contextlib
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -11,27 +10,20 @@ from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
 import core.app.apps.completion.app_generator as module
+from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom, ModelConfigEntity, PromptTemplateEntity
+from core.app.apps.completion.app_config_manager import CompletionAppConfig
 from core.app.apps.completion.app_generator import CompletionAppGenerator
 from core.app.apps.exc import GenerateTaskStoppedError
-from core.app.entities.app_invoke_entities import InvokeFrom
+from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, InvokeFrom
+from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource
 from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, Message
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 TABLES = (AppModelConfig, Conversation, Message)
-
-
-def _generate_entity_mock() -> MagicMock:
-    """Return the patched ``CompletionAppGenerateEntity`` factory as a mock.
-
-    The ``generator`` fixture replaces the module-level factory, so the recorded
-    constructions live on that module attribute rather than on the generator.
-    """
-    entity: object = module.CompletionAppGenerateEntity
-    assert isinstance(entity, MagicMock)
-    return entity
 
 
 class _TraceRecorder:
@@ -68,7 +60,6 @@ def generator(mocker: MockerFixture) -> CompletionAppGenerator:
     mocker.patch.object(module.threading, "Thread", return_value=thread)
 
     mocker.patch.object(module, "MessageBasedAppQueueManager", return_value=MagicMock())
-    mocker.patch.object(module, "CompletionAppGenerateEntity", side_effect=lambda **kwargs: SimpleNamespace(**kwargs))
 
     return gen
 
@@ -99,6 +90,24 @@ def _build_user() -> Account:
 
 def _build_app_model_config() -> AppModelConfig:
     return AppModelConfig(app_id="app1", model='{"provider": "x"}')
+
+
+def _build_app_config() -> CompletionAppConfig:
+    """A real config so ``generate()`` builds a real ``CompletionAppGenerateEntity``."""
+    return CompletionAppConfig(
+        app_id="app1",
+        tenant_id="tenant",
+        app_mode=AppMode.COMPLETION,
+        app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+        app_model_config_id="cfg-current",
+        app_model_config_dict={"model": {"provider": "x"}},
+        model=ModelConfigEntity(provider="openai", model="model", mode="completion"),
+        prompt_template=PromptTemplateEntity(
+            prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
+            simple_prompt_template="Answer the query.",
+        ),
+        variables=[],
+    )
 
 
 def _persist_message(
@@ -212,13 +221,17 @@ class TestCompletionAppGenerator:
         build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings")
         assert isinstance(build_from_mappings, MagicMock)
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _build_app_config()
         get_app_config = mocker.patch.object(
             module.CompletionAppConfigManager,
             "get_app_config",
             return_value=app_config,
         )
-        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+        mocker.patch.object(
+            module.ModelConfigConverter,
+            "convert",
+            return_value=make_model_config(provider="openai", model="model", mode="completion"),
+        )
 
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
@@ -243,7 +256,7 @@ class TestCompletionAppGenerator:
             currency="USD",
             from_source=ConversationFromSource.CONSOLE,
         )
-        mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
+        init_records = mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
 
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
@@ -258,10 +271,11 @@ class TestCompletionAppGenerator:
         )
 
         assert result == "converted"
-        generate_entity = _generate_entity_mock()
-        extras = generate_entity.call_args.kwargs["extras"]
+        generate_entity = init_records.call_args.args[0]
+        assert isinstance(generate_entity, CompletionAppGenerateEntity)
+        extras = generate_entity.extras
         assert extras == {"trace_session_id": "session-1"}
-        assert generate_entity.call_args.kwargs["trace_scope"] is trace_scope
+        assert generate_entity.trace_scope is trace_scope
         assert scope_requests == [
             {"tenant_id": "tenant", "app_id": "app1", "app_tracing": None, "user_id": "user", "extras": extras}
         ]
@@ -277,14 +291,30 @@ class TestCompletionAppGenerator:
         mocker.patch.object(generator, "_get_app_model_config", return_value=app_model_config)
         mocker.patch.object(AppModelConfig, "to_dict", return_value={"model": {"provider": "x"}})
 
-        file_extra_config = MagicMock()
+        file_extra_config = FileUploadConfig(
+            allowed_file_types=[], allowed_file_extensions=[], allowed_file_upload_methods=[]
+        )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=file_extra_config)
-        build_from_mappings = mocker.patch.object(module.file_factory, "build_from_mappings", return_value=["file1"])
+        prepared_files = [
+            File(
+                file_id="file1",
+                file_type=FileType.DOCUMENT,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                related_id="file1",
+            )
+        ]
+        build_from_mappings = mocker.patch.object(
+            module.file_factory, "build_from_mappings", return_value=prepared_files
+        )
         assert isinstance(build_from_mappings, MagicMock)
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _build_app_config()
         mocker.patch.object(module.CompletionAppConfigManager, "get_app_config", return_value=app_config)
-        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+        mocker.patch.object(
+            module.ModelConfigConverter,
+            "convert",
+            return_value=make_model_config(provider="openai", model="model", mode="completion"),
+        )
 
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
 
@@ -309,7 +339,7 @@ class TestCompletionAppGenerator:
             currency="USD",
             from_source=ConversationFromSource.CONSOLE,
         )
-        mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
+        init_records = mocker.patch.object(generator, "_init_generate_records", return_value=(conversation, message))
 
         mocker.patch.object(generator, "_handle_response", return_value="response")
         mocker.patch.object(module.CompletionAppGenerateResponseConverter, "convert", return_value="converted")
@@ -325,6 +355,9 @@ class TestCompletionAppGenerator:
 
         assert result == "converted"
         build_from_mappings.assert_called_once()
+        generate_entity = init_records.call_args.args[0]
+        assert isinstance(generate_entity, CompletionAppGenerateEntity)
+        assert generate_entity.files == prepared_files
 
     def test_generate_override_model_config_debugger(
         self, generator: CompletionAppGenerator, mocker: MockerFixture, sqlite_session: Session
@@ -335,14 +368,18 @@ class TestCompletionAppGenerator:
         override_config = {"model": {"provider": "override"}}
         mocker.patch.object(module.CompletionAppConfigManager, "config_validate", return_value=override_config)
 
-        app_config = MagicMock(variables=["v"], to_dict=MagicMock(return_value={}))
+        app_config = _build_app_config()
         get_app_config = mocker.patch.object(
             module.CompletionAppConfigManager,
             "get_app_config",
             return_value=app_config,
         )
         mocker.patch.object(module.FileUploadConfigManager, "convert", return_value=None)
-        mocker.patch.object(module.ModelConfigConverter, "convert", return_value=MagicMock())
+        mocker.patch.object(
+            module.ModelConfigConverter,
+            "convert",
+            return_value=make_model_config(provider="openai", model="model", mode="completion"),
+        )
         mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
         mocker.patch.object(
             generator,
