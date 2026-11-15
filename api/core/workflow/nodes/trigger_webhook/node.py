@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, override
+from typing import Any, TypedDict, override
 
 from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
@@ -19,6 +19,27 @@ from .entities import ContentType, WebhookData
 logger = logging.getLogger(__name__)
 
 
+class WebhookNodeConfig(TypedDict):
+    """Shape of the ``config`` payload of :meth:`TriggerWebhookNode.get_default_config`."""
+
+    method: str
+    content_type: str
+    headers: list[object]
+    params: list[object]
+    body: list[object]
+    async_mode: bool
+    status_code: int
+    response_body: str
+    timeout: int
+
+
+class WebhookNodeDefaultConfig(TypedDict):
+    """Default configuration returned by :meth:`TriggerWebhookNode.get_default_config`."""
+
+    type: str
+    config: WebhookNodeConfig
+
+
 class TriggerWebhookNode(Node[WebhookData]):
     node_type = TRIGGER_WEBHOOK_NODE_TYPE
     execution_type = NodeExecutionType.ROOT
@@ -33,7 +54,18 @@ class TriggerWebhookNode(Node[WebhookData]):
 
     @classmethod
     @override
-    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
+    def get_default_config(cls, filters: Mapping[str, object] | None = None) -> WebhookNodeDefaultConfig:
+        """Return the default configuration of the webhook trigger node.
+
+        Preconditions:
+            ``filters`` is accepted for API parity with
+            :meth:`graphon.nodes.base.node.Node.get_default_config` and is not used.
+
+        Postconditions:
+            The returned mapping always carries ``type`` and a fully populated
+            ``config`` mapping; a fresh instance is returned on every call, so
+            callers may mutate the result without affecting later calls.
+        """
         return {
             "type": "webhook",
             "config": {

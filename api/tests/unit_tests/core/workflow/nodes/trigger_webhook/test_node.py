@@ -97,16 +97,6 @@ def _webhook_file_conversion_build_webhook_variable_pool(inputs: dict[str, Any])
     )
 
 
-def _mapping(value: object) -> dict[str, object]:
-    """Return ``value`` as a string-keyed mapping, failing the test when it is not one."""
-    assert isinstance(value, dict)
-    entries: dict[str, object] = {}
-    for key, entry in value.items():
-        assert isinstance(key, str)
-        entries[key] = entry
-    return entries
-
-
 def expected_factory_mapping(file_dict: dict[str, Any]) -> dict[str, Any]:
     return {**file_dict, "upload_file_id": file_dict["related_id"]}
 
@@ -501,9 +491,9 @@ def _webhook_node_build_webhook_variable_pool(inputs: dict[str, Any]) -> Variabl
 def test_webhook_node_default_config() -> None:
     """Test webhook node default configuration."""
     config = TriggerWebhookNode.get_default_config()
+    defaults = config["config"]
 
     assert config["type"] == "webhook"
-    defaults = _mapping(config["config"])
     assert defaults["method"] == "get"
     assert defaults["content_type"] == "application/json"
     assert defaults["headers"] == []
