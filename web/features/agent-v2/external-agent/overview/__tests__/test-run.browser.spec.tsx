@@ -35,6 +35,36 @@ async function openAndRun() {
   await panel().getByRole('button', { name: 'Run test', exact: true }).click()
   await expect.element(status().getByText('Running', { exact: true })).toBeVisible()
 }
+
+it.each([
+  { tokens: null, reported: 0, total: 1, label: 'Not provided' },
+  { tokens: 0, reported: 1, total: 1, label: '0' },
+  { tokens: 1234, reported: 2, total: 2, label: '1,234' },
+])(
+  'shows truthful call-total usage $label with reporting coverage',
+  async ({ tokens, reported, total, label }) => {
+    api.start.mockResolvedValue({
+      ...testResult('succeeded'),
+      statistics: {
+        total_tokens: tokens,
+        token_reporting_numerator: reported,
+        token_reporting_denominator: total,
+        attempt_count: total,
+        elapsed_time: 1,
+      },
+    })
+    const rendered = await renderTestPanel()
+    onTestFinished(() => rendered.queryClient.clear())
+    await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+    await task().fill('Review this contract.')
+    await panel().getByRole('button', { name: 'Run test', exact: true }).click()
+    await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
+    await expect.element(status().getByText(label, { exact: true })).toBeVisible()
+    await expect
+      .element(status().getByText(`${reported} of ${total} calls`, { exact: true }))
+      .toBeVisible()
+  },
+)
 function usePollClock() {
   vi.useFakeTimers({
     toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date'],

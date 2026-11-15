@@ -5,6 +5,7 @@ import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
 import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
+import { asRecord } from '../../model'
 
 export function TestAgentResults({
   run,
@@ -32,6 +33,21 @@ export function TestAgentResults({
     unknown: t(($) => $['external.overview.testRun.unsupportedState']),
   }
   const outputs = run.result?.outputs
+  // Older Console responses omit this additive statistics projection. Keep
+  // missing/unproved usage distinct from a real reported zero at display time.
+  const statistics = asRecord(asRecord(run.result).statistics)
+  const totalTokens = statistics.total_tokens
+  const reported = statistics.token_reporting_numerator
+  const total = statistics.token_reporting_denominator
+  const hasTotalTokens =
+    typeof totalTokens === 'number' && Number.isSafeInteger(totalTokens) && totalTokens >= 0
+  const hasReportingCounts =
+    typeof reported === 'number' &&
+    Number.isSafeInteger(reported) &&
+    reported >= 0 &&
+    typeof total === 'number' &&
+    Number.isSafeInteger(total) &&
+    total >= reported
   return (
     <div className="flex shrink-0 flex-col gap-4">
       <StatusContainer status={stopping ? 'running' : ended ? 'stopped' : run.status}>
@@ -76,7 +92,16 @@ export function TestAgentResults({
                   {t(($) => $['external.overview.testRun.totalTokens'])}
                 </dt>
                 <dd className="system-sm-medium text-text-secondary">
-                  {t(($) => $['external.overview.testRun.notProvided'])}
+                  <span>
+                    {hasTotalTokens
+                      ? new Intl.NumberFormat(i18n.language).format(totalTokens)
+                      : t(($) => $['external.overview.testRun.notProvided'])}
+                  </span>
+                  {hasReportingCounts && (
+                    <span className="mt-1 block system-xs-regular text-text-tertiary">
+                      {t(($) => $['external.monitoring.coverageDetail'], { reported, total })}
+                    </span>
+                  )}
                 </dd>
               </div>
             </>
