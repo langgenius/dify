@@ -955,26 +955,34 @@ class AgentObservabilityQueries:
         the same UTC bounds the daily queries use. Postcondition: the result is the
         number of distinct end-user identities that reached this Agent through the
         selected sources, independent of how many days or sources they appear in.
-        Reads only; no session state changes.
+        Deduplication stays in the database; one scalar is returned regardless of
+        user cardinality. Reads only; no session state changes.
 
         The daily rows cannot answer this: each carries a per-day, per-source
         ``COUNT(DISTINCT ...)``, so summing them counts a returning user once per
         day and once more per source. The monitoring card is documented as unique
         end users, so the range needs its own distinct count over the same scopes.
         """
-        identities: set[str] = set()
+        queries: list[str] = []
+        args: dict[str, Any] = {}
         if source_filter.kind in {"all", "webapp"}:
-            identities.update(self._webapp_end_user_ids(app=app, params=params, source_filter=source_filter))
+            query, query_args = self._webapp_end_user_query(app=app, params=params, source_filter=source_filter)
+            queries.append(query)
+            args.update(query_args)
         if source_filter.kind in {"all", "workflow"}:
-            identities.update(
-                self._workflow_end_user_ids(app=app, agent_id=agent_id, params=params, source_filter=source_filter)
+            query, query_args = self._workflow_end_user_query(
+                app=app, agent_id=agent_id, params=params, source_filter=source_filter
             )
-        return len(identities)
+            queries.append(query)
+            args.update(query_args)
+        # UNION deduplicates identities across sources before returning one scalar.
+        sql_query = f"SELECT COUNT(*) FROM ({' UNION '.join(queries)}) AS end_users"
+        return int(self._session.execute(sa.text(sql_query), args).scalar_one())
 
-    def _webapp_end_user_ids(
+    def _webapp_end_user_query(
         self, *, app: App, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
-    ) -> set[str]:
-        """Return the end-user ids behind the webapp daily statistics scope."""
+    ) -> tuple[str, dict[str, Any]]:
+        """Given a resolved source, build its scoped identity query without executing it."""
         sql_query = f"""SELECT DISTINCT m.from_end_user_id AS end_user_id
 FROM messages m
 WHERE
@@ -989,21 +997,21 @@ WHERE
         if params.end:
             sql_query += " AND m.created_at < :end"
             args["end"] = params.end
-        return {row.end_user_id for row in self._session.execute(sa.text(sql_query), args).all()}
+        return sql_query, args
 
-    def _workflow_end_user_ids(
+    def _workflow_end_user_query(
         self,
         *,
         app: App,
         agent_id: str,
         params: AgentStatisticsQueryParams,
         source_filter: AgentSourceFilter,
-    ) -> set[str]:
-        """Return the end-user ids behind both workflow daily statistics scopes.
+    ) -> tuple[str, dict[str, Any]]:
+        """Given a resolved source, build both scoped workflow identity queries.
 
-        Covers the same two populations the daily charts add together: runs without
-        a chat message, and Chatflow messages. Ownership is resolved by the shared
-        binding predicate, so a foreign tenant's rows never enter the set.
+        Returns a UNION over runs without a chat message and Chatflow messages,
+        without executing either query. The shared binding predicate preserves
+        the tenant and Agent ownership chain for both populations.
         """
         binding_filters = self._statistics_workflow_binding_filters_sql(source_filter)
         binding_join = self._statistics_workflow_node_binding_join_sql()
@@ -1056,9 +1064,7 @@ WHERE {self._statistics_workflow_message_scope_sql(source_filter)}
     AND m.from_end_user_id IS NOT NULL
     {message_date_filters}"""
 
-        runs = self._session.execute(sa.text(run_query), args).all()
-        messages = self._session.execute(sa.text(message_query), args).all()
-        return {row.end_user_id for row in runs} | {row.end_user_id for row in messages}
+        return f"{run_query} UNION {message_query}", args
 
     def _load_daily_statistics(
         self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter

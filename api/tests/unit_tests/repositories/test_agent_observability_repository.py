@@ -6,6 +6,7 @@ from sqlite3 import Connection
 import pytest
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.layers.user_prompt import DifyUserPromptImageConfig, DifyUserPromptLayerConfig
+from pytest_mock import MockerFixture
 from sqlalchemy import Select, select
 from sqlalchemy.orm import Session
 
@@ -1310,6 +1311,65 @@ class TestWorkflowToolAgentStatisticsCases:
         assert payload["summary"]["total_messages"] == 0
         assert payload["summary"]["total_tokens"] == 0
         assert payload["charts"]["daily_messages"] == []
+
+    @staticmethod
+    @pytest.mark.parametrize("workflow_type", [WorkflowType.WORKFLOW, WorkflowType.CHAT])
+    @pytest.mark.parametrize(("source", "expected"), [("webapp", 2), ("workflow", 1), ("all", 2)])
+    def test_end_users_shared_by_webapp_and_workflow_are_counted_once(
+        sqlite_session: Session,
+        statistics_service: AgentObservabilityQueries,
+        workflow_type: WorkflowType,
+        source: str,
+        expected: int,
+    ) -> None:
+        """Given matching source owners, count a returning user once across both sources."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=workflow_type)
+        conversation = _workflow_tool_agent_statistics_conversation(
+            conversation_id="webapp-shared-user-conversation", app_id=app.id
+        )
+        sqlite_session.add(conversation)
+        for message_id, end_user_id, day in (
+            ("webapp-shared-user-first-day", "end-user-1", 22),
+            ("webapp-shared-user-next-day", "end-user-1", 23),
+            ("webapp-distinct-user", "end-user-2", 23),
+        ):
+            message = _workflow_tool_agent_statistics_message(
+                message_id=message_id, app_id=app.id, created_at=datetime(2026, 7, day, 8, 0)
+            )
+            message.conversation_id = conversation.id
+            message.from_source = ConversationFromSource.API
+            message.invoke_from = _workflow_tool_agent_statistics_InvokeFrom.WEB_APP
+            message.from_account_id = None
+            message.from_end_user_id = end_user_id
+            sqlite_session.add(message)
+        sqlite_session.commit()
+
+        payload = statistics_service.get_statistics_summary(
+            app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source)
+        )
+
+        assert payload["summary"]["total_end_users"] == expected
+
+    @staticmethod
+    @pytest.mark.parametrize("source", ["webapp", "workflow", "all"])
+    def test_end_user_count_returns_one_database_aggregate(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries, mocker: MockerFixture, source: str
+    ) -> None:
+        """Given a valid source, transfer one count instead of materializing user identities."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.WORKFLOW)
+        execute = mocker.spy(sqlite_session, "execute")
+        params = AgentStatisticsQueryParams(source=source)
+
+        total = statistics_service._count_distinct_end_users(
+            app=app,
+            agent_id="agent-1",
+            params=params,
+            source_filter=statistics_service.resolve_source_filter(source),
+        )
+
+        assert total == (0 if source == "webapp" else 1)
+        assert execute.call_count == 1
+        assert str(execute.call_args.args[0]).lstrip().upper().startswith("SELECT COUNT(")
 
     @staticmethod
     def test_nested_agent_end_users_counted_once_across_sources_and_days(
