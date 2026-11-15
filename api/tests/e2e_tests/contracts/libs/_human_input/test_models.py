@@ -3,44 +3,29 @@ Unit tests for human input form models.
 """
 
 from datetime import datetime, timedelta
-from typing import NotRequired
 
 import pytest
-from typing_extensions import TypedDict
 
 from core.workflow.nodes.human_input.entities import (
-    FormInputConfig,
     ParagraphInputConfig,
 )
 from core.workflow.nodes.human_input.enums import (
     TimeoutUnit,
 )
 from libs.datetime_utils import naive_utc_now
-from tests.helpers.unit.libs._human_input.support import FormSubmissionData, FormSubmissionRequest, HumanInputForm
-
-
-class SampleFormData(TypedDict, closed=True):
-    """Keyword payload accepted by ``HumanInputForm`` for the tests in this module."""
-
-    form_id: str
-    workflow_run_id: str
-    node_id: str
-    tenant_id: str
-    app_id: str | None
-    form_content: str
-    inputs: list[FormInputConfig]
-    user_actions: list[dict[str, object]]
-    timeout: int
-    timeout_unit: TimeoutUnit
-    form_token: str | None
-    created_at: NotRequired[datetime]
+from tests.helpers.unit.libs._human_input.support import (
+    FormSubmissionData,
+    FormSubmissionRequest,
+    HumanInputForm,
+    HumanInputFormCreatePayload,
+)
 
 
 class TestHumanInputForm:
     """Test HumanInputForm model."""
 
     @pytest.fixture
-    def sample_form_data(self) -> SampleFormData:
+    def sample_form_data(self) -> HumanInputFormCreatePayload:
         """Create sample form data."""
         return {
             "form_id": "form-123",
@@ -56,7 +41,7 @@ class TestHumanInputForm:
             "form_token": "token-xyz",
         }
 
-    def test_form_creation(self, sample_form_data: SampleFormData) -> None:
+    def test_form_creation(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test form creation."""
         form = HumanInputForm(**sample_form_data)
 
@@ -74,7 +59,7 @@ class TestHumanInputForm:
         assert form.submitted_data is None
         assert form.submitted_action is None
 
-    def test_form_expiry_calculation_hours(self, sample_form_data: SampleFormData) -> None:
+    def test_form_expiry_calculation_hours(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test form expiry calculation for hours."""
         form = HumanInputForm(**sample_form_data)
 
@@ -83,7 +68,7 @@ class TestHumanInputForm:
         assert form.expires_at is not None
         assert abs((form.expires_at - expected_expiry).total_seconds()) < 1  # Within 1 second
 
-    def test_form_expiry_calculation_days(self, sample_form_data: SampleFormData) -> None:
+    def test_form_expiry_calculation_days(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test form expiry calculation for days."""
         sample_form_data["timeout"] = 3
         sample_form_data["timeout_unit"] = TimeoutUnit.DAY
@@ -95,12 +80,12 @@ class TestHumanInputForm:
         assert form.expires_at is not None
         assert abs((form.expires_at - expected_expiry).total_seconds()) < 1  # Within 1 second
 
-    def test_form_expiry_property_not_expired(self, sample_form_data: SampleFormData) -> None:
+    def test_form_expiry_property_not_expired(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test is_expired property for non-expired form."""
         form = HumanInputForm(**sample_form_data)
         assert not form.is_expired
 
-    def test_form_expiry_property_expired(self, sample_form_data: SampleFormData) -> None:
+    def test_form_expiry_property_expired(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test is_expired property for expired form."""
         # Create form with past expiry
         past_time = naive_utc_now() - timedelta(hours=1)
@@ -112,12 +97,12 @@ class TestHumanInputForm:
 
         assert form.is_expired
 
-    def test_form_submission_property_not_submitted(self, sample_form_data: SampleFormData) -> None:
+    def test_form_submission_property_not_submitted(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test is_submitted property for non-submitted form."""
         form = HumanInputForm(**sample_form_data)
         assert not form.is_submitted
 
-    def test_form_submission_property_submitted(self, sample_form_data: SampleFormData) -> None:
+    def test_form_submission_property_submitted(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test is_submitted property for submitted form."""
         form = HumanInputForm(**sample_form_data)
         form.submit({"input": "test value"}, "submit")
@@ -127,7 +112,7 @@ class TestHumanInputForm:
         assert form.submitted_data == {"input": "test value"}
         assert form.submitted_action == "submit"
 
-    def test_form_submit_method(self, sample_form_data: SampleFormData) -> None:
+    def test_form_submit_method(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test form submit method."""
         form = HumanInputForm(**sample_form_data)
 
@@ -141,7 +126,7 @@ class TestHumanInputForm:
         assert form.submitted_at is not None
         assert submission_time_before <= form.submitted_at <= submission_time_after
 
-    def test_form_to_response_dict_without_site_info(self, sample_form_data: SampleFormData) -> None:
+    def test_form_to_response_dict_without_site_info(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test converting form to response dict without site info."""
         form = HumanInputForm(**sample_form_data)
 
@@ -155,7 +140,7 @@ class TestHumanInputForm:
         assert response["inputs"][0]["type"] == "paragraph"
         assert response["inputs"][0]["output_variable_name"] == "input"
 
-    def test_form_to_response_dict_with_site_info(self, sample_form_data: SampleFormData) -> None:
+    def test_form_to_response_dict_with_site_info(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test converting form to response dict with site info."""
         form = HumanInputForm(**sample_form_data)
 
@@ -167,7 +152,7 @@ class TestHumanInputForm:
         assert response["site"]["app_id"] == "app-def"
         assert response["site"]["title"] == "Workflow Form"
 
-    def test_form_without_web_app_token(self, sample_form_data: SampleFormData) -> None:
+    def test_form_without_web_app_token(self, sample_form_data: HumanInputFormCreatePayload) -> None:
         """Test form creation without web app token."""
         sample_form_data["form_token"] = None
 

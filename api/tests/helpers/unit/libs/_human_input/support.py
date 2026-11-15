@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, NotRequired
+
+from typing_extensions import TypedDict
 
 from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import TimeoutUnit
@@ -34,6 +36,29 @@ class FormAlreadySubmittedError(HumanInputError):
 
 class InvalidFormDataError(HumanInputError):
     error_code = "invalid_form_data"
+
+
+class HumanInputFormCreatePayload(TypedDict, closed=True):
+    """Keyword payload ``HumanInputForm`` accepts on construction.
+
+    ``HumanInputForm`` is a plain dataclass, so its constructor contract is the set of field
+    names below. Keeping the payload beside the dataclass means a new required field breaks
+    the fixture that builds a form instead of silently passing a stale keyword set.
+    ``created_at`` is optional because the dataclass defaults it to now.
+    """
+
+    form_id: str
+    workflow_run_id: str
+    node_id: str
+    tenant_id: str
+    app_id: str | None
+    form_content: str
+    inputs: list[FormInputConfig]
+    user_actions: list[dict[str, Any]]
+    timeout: int
+    timeout_unit: TimeoutUnit
+    form_token: str | None
+    created_at: NotRequired[datetime]
 
 
 # Models
