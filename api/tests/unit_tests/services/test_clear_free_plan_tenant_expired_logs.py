@@ -9,7 +9,6 @@ from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import event
-from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -49,7 +48,7 @@ from models.workflow import (
 )
 from services import clear_free_plan_tenant_expired_logs as service_module
 from services.billing_client import billing
-from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
+from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs, MessageRelatedRecord
 from tests.helpers import billing_builders as builders
 
 
@@ -238,7 +237,7 @@ def _create_workflow_run(run_id: str) -> WorkflowRun:
     return workflow_run
 
 
-def _create_related_records(message_id: str) -> list[object]:
+def _create_related_records(message_id: str) -> list[MessageRelatedRecord]:
     """Create one real row for every message-related table cleaned by the service."""
     return [
         MessageFeedback(
@@ -331,16 +330,7 @@ class TestClearFreePlanTenantExpiredLogs:
         records = _create_related_records("msg-1")
         sqlite_session.add_all(records)
         sqlite_session.commit()
-        record_keys: list[tuple[type[object], object]] = []
-        for record in records:
-            # Every cleaned table maps the same ``id`` primary key, but the shared
-            # declarative base declares no such attribute, so read the persisted
-            # identity SQLAlchemy already tracks instead of naming the column.
-            state = sa_inspect(record)
-            assert state is not None
-            identity = state.identity
-            assert identity is not None
-            record_keys.append((type(record), identity[0]))
+        record_keys = [(type(record), record.id) for record in records]
         storage = MagicMock()
         monkeypatch.setattr(service_module, "storage", storage)
 
