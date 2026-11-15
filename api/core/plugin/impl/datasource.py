@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Any, NotRequired, TypedDict
+from typing import Any, NotRequired, TypedDict, cast
 
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -16,7 +16,7 @@ from core.plugin.entities.plugin_daemon import (
     PluginDatasourceProviderEntity,
 )
 from core.plugin.impl.base import BasePluginClient
-from core.schemas.resolver import resolve_dify_schema_refs
+from core.schemas.resolver import SchemaType, resolve_dify_schema_refs
 from models.provider_ids import DatasourceProviderID, GenericProviderID
 from services.plugin.dispatch_identity import plugin_dispatch_headers
 from services.tools.tools_transform_service import ToolTransformService
@@ -43,11 +43,13 @@ class PluginDatasourceEntryPayload(TypedDict):
     """A single datasource entry, including the refs the manager rewrites."""
 
     identity: "PluginDatasourceIdentityPayload"
-    output_schema: NotRequired[dict[str, Any]]
+    output_schema: NotRequired[SchemaType]
 
 
 class PluginDatasourceIdentityPayload(TypedDict):
-    provider: str
+    # The manager copies the declaration's provider name verbatim, so it keeps
+    # whatever the daemon reported - including a missing name.
+    provider: str | None
 
 
 class PluginDatasourceListPayload(TypedDict):
@@ -68,9 +70,10 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: PluginDatasourceListPayload) -> PluginDatasourceListPayload:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+            payload = cast(PluginDatasourceListPayload, json_response)
+            if payload.get("data"):
+                for provider in payload.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
                     provider_name = declaration.get("identity", {}).get("name")
                     for datasource in declaration.get("datasources", []):
@@ -79,7 +82,8 @@ class PluginDatasourceManager(BasePluginClient):
                         if datasource.get("output_schema"):
                             datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
 
-            return json_response
+            result: dict[str, Any] = dict(payload)
+            return result
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -110,9 +114,10 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: PluginDatasourceListPayload) -> PluginDatasourceListPayload:
-            if json_response.get("data"):
-                for provider in json_response.get("data", []):
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+            payload = cast(PluginDatasourceListPayload, json_response)
+            if payload.get("data"):
+                for provider in payload.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
                     provider_name = declaration.get("identity", {}).get("name")
                     for datasource in declaration.get("datasources", []):
@@ -121,7 +126,8 @@ class PluginDatasourceManager(BasePluginClient):
                         if datasource.get("output_schema"):
                             datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
 
-            return json_response
+            installed_result: dict[str, Any] = dict(payload)
+            return installed_result
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -152,14 +158,16 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: PluginDatasourceSinglePayload) -> PluginDatasourceSinglePayload:
-            data = json_response.get("data")
+        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+            payload = cast(PluginDatasourceSinglePayload, json_response)
+            data = payload.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
                     datasource["identity"]["provider"] = tool_provider_id.provider_name
                     if datasource.get("output_schema"):
                         datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-            return json_response
+            single_result: dict[str, Any] = dict(payload)
+            return single_result
 
         response = self._request_with_plugin_daemon_response(
             "GET",
