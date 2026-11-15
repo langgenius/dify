@@ -13,6 +13,7 @@ describe('settingsQueryParser', () => {
     ['provider', 'provider'],
     ['mcp', 'mcp'],
     ['agent-strategy', 'agent-strategy'],
+    ['file-scan', 'file-scan'],
     ['invalid', null],
     ['', null],
   ])('parses %s', (value, expected) => {
@@ -24,5 +25,8 @@ describe('settingsQueryParser', () => {
     expect(isAccountSettingDestination('provider')).toBe(false)
     expect(isIntegrationSettingDestination('provider')).toBe(true)
     expect(isIntegrationSettingDestination('members')).toBe(false)
+    // Malware scanners live in Integrations, not in the account settings.
+    expect(isIntegrationSettingDestination('file-scan')).toBe(true)
+    expect(isAccountSettingDestination('file-scan')).toBe(false)
   })
 })
