@@ -4,7 +4,7 @@ from decimal import Decimal
 
 import pytest
 from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.agent.base_agent_runner as module
 from core.agent.base_agent_runner import BaseAgentRunner
@@ -207,14 +207,6 @@ def _dataset_tool(name: str) -> DatasetRetrieverTool:
 
 
 @pytest.fixture
-def database_session(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Session:
-    """Bind legacy global-session writes to a real SQLite Session."""
-
-    monkeypatch.setattr(module.db, "session", sqlite_session)
-    return sqlite_session
-
-
-@pytest.fixture
 def queue_manager(mocker: MockerFixture) -> MessageBasedAppQueueManager:
     mocker.patch("core.app.apps.base_app_queue_manager.redis_client.setex")
     return MessageBasedAppQueueManager(
@@ -305,18 +297,25 @@ def test_update_prompt_tool_replaces_parameters(runner: BaseAgentRunner) -> None
 @pytest.mark.parametrize(("files", "expected_files"), [(["f1"], '["f1"]'), ([], "")])
 def test_create_agent_thought_persists_row(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     files: list[str],
     expected_files: str,
 ) -> None:
     thought_id = runner.create_agent_thought("message-1", "message", "tool", "input", files)
 
-    stored = database_session.get(MessageAgentThought, thought_id)
+    stored = _stored_thought(sqlite_session_factory, thought_id)
     assert stored is not None
     assert stored.message_id == "message-1"
     assert stored.message_files == expected_files
     assert stored.position == 1
     assert runner.agent_thought_count == 1
+
+
+def _stored_thought(session_factory: sessionmaker[Session], thought_id: str) -> MessageAgentThought | None:
+    # Read through a new session so assertions see what the runner committed,
+    # not objects cached in the session that seeded the row.
+    with session_factory() as session:
+        return session.get(MessageAgentThought, thought_id)
 
 
 def _persist_thought(session: Session, *, tool: str = "tool1;tool2") -> MessageAgentThought:
@@ -326,18 +325,21 @@ def _persist_thought(session: Session, *, tool: str = "tool1;tool2") -> MessageA
     return thought
 
 
-def test_save_agent_thought_rejects_missing_row(runner: BaseAgentRunner, database_session: Session) -> None:
-    assert database_session.get(MessageAgentThought, "missing") is None
+def test_save_agent_thought_rejects_missing_row(
+    runner: BaseAgentRunner, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    assert _stored_thought(sqlite_session_factory, "missing") is None
     with pytest.raises(ValueError, match="agent thought not found"):
         runner.save_agent_thought("missing", None, None, None, None, None, None, [], None)
 
 
 def test_save_agent_thought_full_update(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     mocker: MockerFixture,
 ) -> None:
-    thought = _persist_thought(database_session)
+    thought = _persist_thought(sqlite_session)
     label = I18nObject(en_US="label")
     mocker.patch.object(module.ToolManager, "get_tool_label", return_value=label)
     usage = LLMUsage(
@@ -367,7 +369,7 @@ def test_save_agent_thought_full_update(
         usage,
     )
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _stored_thought(sqlite_session_factory, thought.id)
     assert stored is not None
     assert stored.answer == "answer"
     assert stored.tokens == 3
@@ -379,40 +381,43 @@ def test_save_agent_thought_full_update(
 
 def test_save_agent_thought_uses_label_fallback(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     mocker: MockerFixture,
 ) -> None:
-    thought = _persist_thought(database_session, tool="unknown_tool")
+    thought = _persist_thought(sqlite_session, tool="unknown_tool")
     mocker.patch.object(module.ToolManager, "get_tool_label", return_value=None)
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _stored_thought(sqlite_session_factory, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["unknown_tool"]["en_US"] == "unknown_tool"
 
 
 def test_save_agent_thought_preserves_existing_labels(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
-    thought = _persist_thought(database_session, tool="tool1")
+    thought = _persist_thought(sqlite_session, tool="tool1")
     thought.tool_labels_str = json.dumps({"tool1": {"en_US": "existing"}})
-    database_session.commit()
+    sqlite_session.commit()
 
     runner.save_agent_thought(thought.id, None, None, None, None, None, None, [], None)
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _stored_thought(sqlite_session_factory, thought.id)
     assert stored is not None
     assert json.loads(stored.tool_labels_str)["tool1"]["en_US"] == "existing"
 
 
 def test_save_agent_thought_serialization_fallbacks(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     mocker: MockerFixture,
 ) -> None:
-    thought = _persist_thought(database_session, tool="tool1;;")
+    thought = _persist_thought(sqlite_session, tool="tool1;;")
     mocker.patch.object(module.ToolManager, "get_tool_label", return_value=None)
     tool_input = {"a": 1}
     observation = {"b": 2}
@@ -438,7 +443,7 @@ def test_save_agent_thought_serialization_fallbacks(
         None,
     )
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _stored_thought(sqlite_session_factory, thought.id)
     assert stored is not None
     assert isinstance(stored.tool_input, str)
     assert isinstance(stored.observation, str)
@@ -449,13 +454,14 @@ def test_save_agent_thought_serialization_fallbacks(
 @pytest.mark.parametrize("messages_ids", [None, []])
 def test_save_agent_thought_accepts_empty_message_ids(
     runner: BaseAgentRunner,
-    database_session: Session,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
     messages_ids: list[str] | None,
 ) -> None:
-    thought = _persist_thought(database_session)
+    thought = _persist_thought(sqlite_session)
     runner.save_agent_thought(thought.id, None, None, None, None, "meta_string", None, messages_ids, None)  # type: ignore[arg-type]
 
-    stored = database_session.get(MessageAgentThought, thought.id)
+    stored = _stored_thought(sqlite_session_factory, thought.id)
     assert stored is not None
     assert stored.tool_meta_str == "meta_string"
 
