@@ -1,11 +1,12 @@
 import gzip
 from collections.abc import Callable, Iterator
 from contextlib import ExitStack
-from typing import TypedDict, Unpack
+from typing import Unpack
 from unittest.mock import ANY, Mock, call, patch
 
 import httpx
 import pytest
+from typing_extensions import TypedDict
 
 from core.helper.ssrf_proxy import (
     BACKOFF_FACTOR,
@@ -26,7 +27,7 @@ from core.helper.ssrf_proxy import (
 from core.tools.errors import ToolSSRFError
 
 
-class _SendOptions(TypedDict, total=False):
+class _SendOptions(TypedDict, total=False, closed=True):
     stream: bool
     follow_redirects: bool
     auth: httpx.Auth | tuple[str, str] | Callable[[httpx.Request], httpx.Request] | None
@@ -57,7 +58,7 @@ def client_factory(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_successful_request(mock_get_client, client_factory):
+def test_successful_request(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     mock_response = httpx.Response(200)
     mock_client, send_calls = client_factory(mock_response)
     mock_get_client.return_value = mock_client
@@ -143,7 +144,9 @@ def test_request_can_return_an_open_stream_the_caller_closes() -> None:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exceed_max_retries(mock_get_client, client_factory, monkeypatch: pytest.MonkeyPatch):
+def test_retry_exceed_max_retries(
+    mock_get_client: Mock, client_factory: _ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
     sleep_calls: list[float] = []
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", sleep_calls.append)
     mock_response = httpx.Response(500)
@@ -181,7 +184,9 @@ def test_retry_exhaustion_preserves_the_last_request_error(monkeypatch: pytest.M
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory, monkeypatch: pytest.MonkeyPatch):
+def test_retry_exhaustion_keeps_the_last_status(
+    mock_get_client: Mock, client_factory: _ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
     mock_response = httpx.Response(503)
     mock_client, send_calls = client_factory(mock_response)
@@ -195,7 +200,9 @@ def test_retry_exhaustion_keeps_the_last_status(mock_get_client, client_factory,
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_exhaustion_without_a_response_keeps_no_status(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+def test_retry_exhaustion_without_a_response_keeps_no_status(
+    mock_get_client: Mock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
     sends = 0
 
@@ -214,7 +221,9 @@ def test_retry_exhaustion_without_a_response_keeps_no_status(mock_get_client, mo
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_then_success_returns_the_later_response(mock_get_client, monkeypatch: pytest.MonkeyPatch):
+def test_retry_then_success_returns_the_later_response(
+    mock_get_client: Mock, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
     responses = iter([httpx.Response(503), httpx.Response(200, content=b"ok")])
     sends = 0
@@ -234,7 +243,9 @@ def test_retry_then_success_returns_the_later_response(mock_get_client, monkeypa
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_force_list_response_returns_when_retries_disabled(mock_get_client, client_factory):
+def test_force_list_response_returns_when_retries_disabled(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     mock_response = httpx.Response(500)
     mock_client, send_calls = client_factory(mock_response)
     mock_get_client.return_value = mock_client
@@ -247,7 +258,7 @@ def test_force_list_response_returns_when_retries_disabled(mock_get_client, clie
 
 def test_build_ssrf_client_passes_ssl_verify_to_proxy_mount_transports(
     config_overrides: Callable[..., None],
-):
+) -> None:
     config_overrides(
         SSRF_PROXY_ALL_URL=None,
         SSRF_PROXY_HTTP_URL="http://proxy.example.com:8080",
@@ -352,33 +363,33 @@ def test_explicitly_passed_cookies_are_sent(vendor_requests: list[httpx.Request]
 class TestGetUserProvidedHostHeader:
     """Tests for _get_user_provided_host_header function."""
 
-    def test_returns_none_when_headers_is_none(self):
+    def test_returns_none_when_headers_is_none(self) -> None:
         assert _get_user_provided_host_header(None) is None
 
-    def test_returns_none_when_headers_is_empty(self):
+    def test_returns_none_when_headers_is_empty(self) -> None:
         assert _get_user_provided_host_header({}) is None
 
-    def test_returns_none_when_host_header_not_present(self):
+    def test_returns_none_when_host_header_not_present(self) -> None:
         headers = {"Content-Type": "application/json", "Authorization": "Bearer token"}
         assert _get_user_provided_host_header(headers) is None
 
-    def test_returns_host_header_lowercase(self):
+    def test_returns_host_header_lowercase(self) -> None:
         headers = {"host": "example.com"}
         assert _get_user_provided_host_header(headers) == "example.com"
 
-    def test_returns_host_header_uppercase(self):
+    def test_returns_host_header_uppercase(self) -> None:
         headers = {"HOST": "example.com"}
         assert _get_user_provided_host_header(headers) == "example.com"
 
-    def test_returns_host_header_mixed_case(self):
+    def test_returns_host_header_mixed_case(self) -> None:
         headers = {"HoSt": "example.com"}
         assert _get_user_provided_host_header(headers) == "example.com"
 
-    def test_returns_host_header_from_multiple_headers(self):
+    def test_returns_host_header_from_multiple_headers(self) -> None:
         headers = {"Content-Type": "application/json", "Host": "api.example.com", "Authorization": "Bearer token"}
         assert _get_user_provided_host_header(headers) == "api.example.com"
 
-    def test_returns_first_host_header_when_duplicates(self):
+    def test_returns_first_host_header_when_duplicates(self) -> None:
         headers = {"host": "first.com", "Host": "second.com"}
         # Should return the first one encountered (iteration order is preserved in dict)
         result = _get_user_provided_host_header(headers)
@@ -386,7 +397,7 @@ class TestGetUserProvidedHostHeader:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_host_header_preservation_with_user_header(mock_get_client, client_factory):
+def test_host_header_preservation_with_user_header(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     """Test that user-provided Host header is preserved in the request."""
     mock_response = httpx.Response(200)
     mock_client, send_calls = client_factory(mock_response)
@@ -402,7 +413,9 @@ def test_host_header_preservation_with_user_header(mock_get_client, client_facto
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
 @pytest.mark.parametrize("host_key", ["host", "HOST", "Host"])
-def test_host_header_preservation_case_insensitive(mock_get_client, client_factory, host_key):
+def test_host_header_preservation_case_insensitive(
+    mock_get_client: Mock, client_factory: _ClientFactory, host_key: str
+) -> None:
     """Test that Host header is preserved regardless of case."""
     mock_response = httpx.Response(200)
     mock_client, send_calls = client_factory(mock_response)
@@ -422,7 +435,9 @@ class TestFollowRedirectsParameter:
     """
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-    def test_follow_redirects_passed_to_request(self, mock_get_client, client_factory):
+    def test_follow_redirects_passed_to_request(
+        self, mock_get_client: Mock, client_factory: _ClientFactory
+    ) -> None:
         """Verify follow_redirects IS passed to client.send()."""
         mock_response = httpx.Response(200)
         mock_client, send_calls = client_factory(mock_response)
@@ -435,7 +450,9 @@ class TestFollowRedirectsParameter:
         assert call_kwargs.get("follow_redirects") is True
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-    def test_allow_redirects_converted_to_follow_redirects(self, mock_get_client, client_factory):
+    def test_allow_redirects_converted_to_follow_redirects(
+        self, mock_get_client: Mock, client_factory: _ClientFactory
+    ) -> None:
         """Verify allow_redirects (requests-style) is converted to follow_redirects (httpx-style)."""
         mock_response = httpx.Response(200)
         mock_client, send_calls = client_factory(mock_response)
@@ -450,7 +467,9 @@ class TestFollowRedirectsParameter:
         assert "allow_redirects" not in call_kwargs
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-    def test_follow_redirects_not_set_when_not_specified(self, mock_get_client, client_factory):
+    def test_follow_redirects_not_set_when_not_specified(
+        self, mock_get_client: Mock, client_factory: _ClientFactory
+    ) -> None:
         """Verify follow_redirects is not in kwargs when not specified (httpx default behavior)."""
         mock_response = httpx.Response(200)
         mock_client, send_calls = client_factory(mock_response)
@@ -463,7 +482,9 @@ class TestFollowRedirectsParameter:
         assert "follow_redirects" not in call_kwargs
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-    def test_follow_redirects_takes_precedence_over_allow_redirects(self, mock_get_client, client_factory):
+    def test_follow_redirects_takes_precedence_over_allow_redirects(
+        self, mock_get_client: Mock, client_factory: _ClientFactory
+    ) -> None:
         """Verify follow_redirects takes precedence when both are specified."""
         mock_response = httpx.Response(200)
         mock_client, send_calls = client_factory(mock_response)
@@ -551,7 +572,9 @@ def _build_squid_blocked_response(status_code: int = 403) -> httpx.Response:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client, client_factory) -> None:
+def test_squid_block_raises_actionable_tool_ssrf_error(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     """A 403 from Squid must raise ToolSSRFError whose message tells the user
     exactly which env var to set. Pre-#38443 the message had no remediation
     hint, so users hit dead ends when their internal API was blocked."""
@@ -655,7 +678,9 @@ def test_forwarded_via_only_response_without_server_is_returned(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_forwarded_403_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+def test_forwarded_403_through_squid_cdn_is_returned(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     """A Squid-based CDN adds ``Via: ... (squid/...)`` to every response, so an
     upstream 403 that kept its own Server header was forwarded by the proxy and
     must be returned with its body intact instead of being reported as an SSRF
@@ -680,7 +705,9 @@ def test_forwarded_403_through_squid_cdn_is_returned(mock_get_client, client_fac
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_forwarded_401_through_squid_cdn_is_returned(mock_get_client, client_factory) -> None:
+def test_forwarded_401_through_squid_cdn_is_returned(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     """Same as above for a 401 from an origin that identifies itself: the proxy
     forwarded the response, so the authorization error belongs to the caller."""
     response = httpx.Response(401, headers={"server": "nginx/1.25", "via": "1.1 edge (squid/6.13)"})
@@ -693,7 +720,9 @@ def test_forwarded_401_through_squid_cdn_is_returned(mock_get_client, client_fac
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client, client_factory) -> None:
+def test_non_squid_403_is_not_treated_as_ssrf_block(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     """A 403 from the *target server* (not Squid) must NOT be re-raised as
     a ToolSSRFError — that would mislead the user into editing SSRF config
     when the real problem is application-level authorization on the target.
@@ -709,7 +738,9 @@ def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client, client_fact
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_block_with_internal_10_x_url_mentions_allowlist(mock_get_client, client_factory) -> None:
+def test_squid_block_with_internal_10_x_url_mentions_allowlist(
+    mock_get_client: Mock, client_factory: _ClientFactory
+) -> None:
     """Real-world repro from #38443: 10.x.x.x internal API blocked. The error
     message must still point at SSRF_PROXY_ALLOW_PRIVATE_IPS, not just say
     "private address" without telling the user what to do."""
