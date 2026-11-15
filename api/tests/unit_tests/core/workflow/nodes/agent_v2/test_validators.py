@@ -1,10 +1,10 @@
 from datetime import UTC, datetime
-from typing import TypedDict
 from unittest.mock import Mock
 
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.graph_topology import WorkflowGraph, WorkflowGraphEdge
 from core.workflow.nodes.agent_v2.validators import (
     WorkflowAgentNodeValidationError,
     WorkflowAgentNodeValidator,
@@ -27,22 +27,7 @@ from models.workflow import Workflow
 from tests.helpers.unit.model_factories import make_workflow
 
 
-class _GraphEdge(TypedDict):
-    source: str
-    target: str
-
-
-class _GraphNode(TypedDict):
-    id: str
-    data: dict[str, object]
-
-
-class _WorkflowGraph(TypedDict):
-    nodes: list[_GraphNode]
-    edges: list[_GraphEdge]
-
-
-def _workflow(graph: _WorkflowGraph) -> Workflow:
+def _workflow(graph: WorkflowGraph) -> Workflow:
     return make_workflow(workflow_id="workflow-1", graph=graph)
 
 
@@ -115,7 +100,7 @@ def _snapshot_with_knowledge_dataset(dataset_id: str) -> AgentConfigSnapshot:
     )
 
 
-def _graph(edges: list[_GraphEdge]) -> _WorkflowGraph:
+def _graph(edges: list[WorkflowGraphEdge]) -> WorkflowGraph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
@@ -130,7 +115,7 @@ def _graph(edges: list[_GraphEdge]) -> _WorkflowGraph:
     }
 
 
-def _tool_graph(tool_data: dict[str, object]) -> _WorkflowGraph:
+def _tool_graph(tool_data: dict[str, object]) -> WorkflowGraph:
     return {
         "nodes": [
             {"id": "start", "data": {"type": "start"}},
@@ -155,9 +140,9 @@ def _tool_graph(tool_data: dict[str, object]) -> _WorkflowGraph:
 
 
 def test_historical_agent_version_two_is_not_validated_as_dify_agent(unbound_session: Session) -> None:
-    graph: _WorkflowGraph = {
+    graph: WorkflowGraph = {
         "nodes": [{"id": "legacy-agent", "data": {"type": "agent", "version": "2"}}],
-        "edges": list[_GraphEdge](),
+        "edges": list[WorkflowGraphEdge](),
     }
 
     WorkflowAgentNodeValidator.validate_published_workflow(session=unbound_session, workflow=_workflow(graph))

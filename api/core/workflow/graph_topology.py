@@ -10,7 +10,28 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import Any, TypedDict
+
+
+class WorkflowGraphEdge(TypedDict):
+    """One ``source -> target`` edge of a ``Workflow.graph`` payload."""
+
+    source: str
+    target: str
+
+
+class WorkflowGraphNode(TypedDict):
+    """One node of a ``Workflow.graph`` payload."""
+
+    id: str
+    data: dict[str, object]
+
+
+class WorkflowGraph(TypedDict):
+    """The ``nodes``/``edges`` JSON shape persisted in ``Workflow.graph``."""
+
+    nodes: list[WorkflowGraphNode]
+    edges: list[WorkflowGraphEdge]
 
 
 class WorkflowGraphTopology:
@@ -19,7 +40,7 @@ class WorkflowGraphTopology:
         self._incoming = incoming
 
     @classmethod
-    def from_graph(cls, graph: Mapping[str, Any]) -> WorkflowGraphTopology:
+    def from_graph(cls, graph: WorkflowGraph | Mapping[str, Any]) -> WorkflowGraphTopology:
         node_ids = cls._node_ids_from_graph(graph)
         incoming: dict[str, list[str]] = defaultdict(list)
         edges = graph.get("edges")
@@ -69,7 +90,7 @@ class WorkflowGraphTopology:
         return visited & self._node_ids
 
     @staticmethod
-    def _node_ids_from_graph(graph: Mapping[str, Any]) -> set[str]:
+    def _node_ids_from_graph(graph: WorkflowGraph | Mapping[str, Any]) -> set[str]:
         node_ids: set[str] = set()
         nodes = graph.get("nodes")
         if not isinstance(nodes, list):
@@ -83,4 +104,4 @@ class WorkflowGraphTopology:
         return node_ids
 
 
-__all__ = ["WorkflowGraphTopology"]
+__all__ = ["WorkflowGraph", "WorkflowGraphEdge", "WorkflowGraphNode", "WorkflowGraphTopology"]
