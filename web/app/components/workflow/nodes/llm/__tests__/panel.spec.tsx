@@ -197,7 +197,8 @@ describe('LLM Panel', () => {
     expect(screen.getByRole('switch', { name: 'app.structOutput.structured' })).toBeChecked()
   })
 
-  it('explains why generative UI is unavailable while JSON output is enabled', () => {
+  it('explains why generative UI is unavailable while JSON output is enabled', async () => {
+    const user = userEvent.setup()
     renderPanel({
       data: createData({ structured_output_enabled: true }),
       resource: {
@@ -212,7 +213,14 @@ describe('LLM Panel', () => {
       'aria-disabled',
       'true',
     )
-    expect(screen.getByText('appDebug.generativeUI.structuredOutputConflict')).toBeVisible()
+    expect(
+      screen.queryByText('appDebug.generativeUI.structuredOutputConflict'),
+    ).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'appDebug.generativeUI.title' }))
+    const explanation = await screen.findByRole('dialog', { name: 'appDebug.generativeUI.title' })
+    expect(
+      within(explanation).getByText('appDebug.generativeUI.structuredOutputConflict'),
+    ).toBeVisible()
   })
 
   it('offers model selection and disables parameter settings for an unconfigured model', async () => {

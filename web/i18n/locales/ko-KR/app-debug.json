@@ -122,7 +122,7 @@
   "formattingChangedTitle": "포맷이 변경되었습니다",
   "generativeUI.chartData": "데이터 보기",
   "generativeUI.chartEmpty": "차트 데이터 없음",
-  "generativeUI.description": "카드, 표, 양식으로 상호 작용할 수 있는 답변을 생성합니다.",
+  "generativeUI.description": "상호작용 가능한 인터페이스로 답변을 표시합니다.",
   "generativeUI.loading": "인터페이스 생성 중…",
   "generativeUI.metricComparison": "이전 기간 대비",
   "generativeUI.metricDeclined": "악화",

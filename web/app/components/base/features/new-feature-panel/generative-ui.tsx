@@ -25,7 +25,7 @@ export default function GenerativeUI({ disabled, onChange }: Props) {
     <FeatureCard
       icon={<span aria-hidden="true" className="i-ri-layout-grid-line size-5 text-text-accent" />}
       title={t(($) => $['generativeUI.title'])}
-      description={t(($) => $['generativeUI.description'])}
+      tooltip={t(($) => $['generativeUI.description'])}
       value={enabled}
       disabled={disabled}
       onChange={handleChange}

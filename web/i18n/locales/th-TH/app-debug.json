@@ -122,7 +122,7 @@
   "formattingChangedTitle": "การจัดรูปแบบเปลี่ยนไป",
   "generativeUI.chartData": "ดูข้อมูล",
   "generativeUI.chartEmpty": "ไม่มีข้อมูลกราฟ",
-  "generativeUI.description": "สร้างคำตอบแบบโต้ตอบด้วยการ์ด ตาราง และแบบฟอร์ม",
+  "generativeUI.description": "นำเสนอคำตอบผ่านส่วนติดต่อแบบโต้ตอบ",
   "generativeUI.loading": "กำลังสร้างอินเทอร์เฟซ…",
   "generativeUI.metricComparison": "เทียบกับช่วงก่อนหน้า",
   "generativeUI.metricDeclined": "แย่ลง",

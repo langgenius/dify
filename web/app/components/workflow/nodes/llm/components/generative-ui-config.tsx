@@ -1,3 +1,4 @@
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,28 +18,29 @@ export default function GenerativeUIConfig({
 }: Props) {
   const { t } = useTranslation(['appDebug'])
   const labelId = useId()
-  const descriptionId = useId()
 
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between gap-2">
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex items-center gap-1">
         <span id={labelId} className="system-sm-semibold text-text-secondary">
           {t(($) => $['generativeUI.title'])}
         </span>
-        <Switch
-          aria-labelledby={labelId}
-          aria-describedby={descriptionId}
-          checked={enabled}
-          disabled={readOnly || (structuredOutputEnabled && !enabled)}
-          onCheckedChange={onChange}
-          size="md"
-        />
+        <Infotip>
+          <InfotipTrigger aria-labelledby={labelId} />
+          <InfotipContent aria-labelledby={labelId}>
+            {structuredOutputEnabled
+              ? t(($) => $['generativeUI.structuredOutputConflict'])
+              : t(($) => $['generativeUI.description'])}
+          </InfotipContent>
+        </Infotip>
       </div>
-      <p id={descriptionId} className="system-xs-regular text-text-tertiary">
-        {structuredOutputEnabled
-          ? t(($) => $['generativeUI.structuredOutputConflict'])
-          : t(($) => $['generativeUI.description'])}
-      </p>
+      <Switch
+        aria-labelledby={labelId}
+        checked={enabled}
+        disabled={readOnly || (structuredOutputEnabled && !enabled)}
+        onCheckedChange={onChange}
+        size="md"
+      />
     </div>
   )
 }

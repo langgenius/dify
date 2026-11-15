@@ -122,7 +122,7 @@
   "formattingChangedTitle": "書式が変更されました",
   "generativeUI.chartData": "データを表示",
   "generativeUI.chartEmpty": "グラフデータがありません",
-  "generativeUI.description": "カード、表、フォームを使って操作可能な回答を生成します。",
+  "generativeUI.description": "インタラクティブなインターフェースで回答を表示します。",
   "generativeUI.loading": "画面を生成中…",
   "generativeUI.metricComparison": "前期比",
   "generativeUI.metricDeclined": "悪化",

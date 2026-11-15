@@ -122,7 +122,7 @@
   "formattingChangedTitle": "Zmiana formatowania",
   "generativeUI.chartData": "Pokaż dane",
   "generativeUI.chartEmpty": "Brak danych wykresu",
-  "generativeUI.description": "Generuj interaktywne odpowiedzi z kartami, tabelami i formularzami.",
+  "generativeUI.description": "Prezentuj odpowiedzi za pomocą interaktywnych interfejsów.",
   "generativeUI.loading": "Generowanie interfejsu…",
   "generativeUI.metricComparison": "w porównaniu z poprzednim okresem",
   "generativeUI.metricDeclined": "Pogorszenie",

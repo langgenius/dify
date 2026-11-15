@@ -122,7 +122,7 @@
   "formattingChangedTitle": "编排已改变",
   "generativeUI.chartData": "查看数据",
   "generativeUI.chartEmpty": "暂无图表数据",
-  "generativeUI.description": "使用卡片、表格和表单生成可交互的回答。",
+  "generativeUI.description": "通过交互式界面呈现回答。",
   "generativeUI.loading": "正在生成界面…",
   "generativeUI.metricComparison": "较上一期",
   "generativeUI.metricDeclined": "变差",
