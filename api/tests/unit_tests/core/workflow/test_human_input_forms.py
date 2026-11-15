@@ -115,7 +115,7 @@ def test_load_dispositions_console_backstage_only_form_yields_channels_not_token
     )
 
     assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.CONSOLE) == {
-        "form-1": FormDisposition(form_token=None, approval_channels=["console"])
+        "form-1": FormDisposition(form_token=None, approval_channels=[ApprovalChannel.CONSOLE])
     }
 
 
@@ -155,8 +155,8 @@ _EMAIL_EXTERNAL = (RecipientType.EMAIL_EXTERNAL, "t2")
         ([_CONSOLE, _WEB], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.WEB_APP])),
         ([_WEB], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.WEB_APP])),
         # A Backstage recipient is not selectable on CONSOLE; its channel is still console.
-        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.CONSOLE, FormDisposition("tok_c", ["console"])),
-        ([_BACKSTAGE], HumanInputSurface.CONSOLE, FormDisposition(None, ["console"])),
+        ([_BACKSTAGE, _CONSOLE], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.CONSOLE])),
+        ([_BACKSTAGE], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.CONSOLE])),
         # The management entry prefers the Backstage token, falling back to Console.
         ([_BACKSTAGE, _CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_b", [])),
         ([_CONSOLE], HumanInputSurface.BACKSTAGE, FormDisposition("tok_c", [])),
