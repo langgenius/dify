@@ -4,12 +4,9 @@ Unit tests for inner_api plugin endpoints
 Tests endpoint structure (method existence) for all plugin APIs, plus
 handler-level logic tests for representative non-streaming endpoints.
 Auth/setup decorators are tested separately in test_auth_wraps.py;
-handler tests use inspect.unwrap() to bypass them.
+handler tests use unwrap_plugin_handler() to bypass them.
 """
 
-import inspect
-from collections.abc import Callable
-from typing import Concatenate, Protocol
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -38,6 +35,7 @@ from controllers.inner_api.plugin.plugin import (
     PluginModelCatalogApi,
     PluginUploadFileRequestApi,
 )
+from controllers.inner_api.plugin.wraps import unwrap_plugin_handler
 from core.datasource.entities.datasource_entities import DatasourceProviderType
 from core.plugin.entities.request import RequestInvokeDatasource, RequestInvokeTextEmbedding, RequestListModels
 from core.workflow.file_reference import build_file_reference
@@ -59,34 +57,6 @@ def _user() -> Account:
 
 def _text_embedding_payload() -> RequestInvokeTextEmbedding:
     return RequestInvokeTextEmbedding(provider="openai", model="text-embedding-3-small", texts=["hello"])
-
-
-class _HasPost[**P, R](Protocol):
-    def post(self, *args: P.args, **kwargs: P.kwargs) -> R: ...
-
-
-def _extract_raw_post[**P, R](cls: type[_HasPost[P, R]]) -> Callable[Concatenate[object, P], R]:
-    """Extract the raw post() method from a plugin endpoint class.
-
-    Plugin endpoint methods are wrapped by several decorators (get_user_tenant,
-    setup_required, plugin_inner_api_only, plugin_data). These decorators
-    use @wraps where possible. This helper ensures we retrieve the original
-    post(self, user_model, tenant_model, payload) function by unwrapping
-    and, if necessary, walking the closure of the innermost wrapper.
-    """
-    bottom = inspect.unwrap(cls.post)
-
-    # If unwrap() didn't get us to the raw function (e.g. if a decorator
-    # missed @wraps), try to extract it from the closure if it looks like
-    # a plugin_data or similar wrapper that closes over 'view_func'.
-    if hasattr(bottom, "__code__") and "view_func" in bottom.__code__.co_freevars:
-        try:
-            idx = bottom.__code__.co_freevars.index("view_func")
-            return bottom.__closure__[idx].cell_contents
-        except (AttributeError, TypeError, IndexError):
-            pass
-
-    return bottom
 
 
 class TestPluginInvokeLLMApi:
@@ -132,7 +102,7 @@ class TestPluginInvokeTextEmbeddingApi:
         mock_invocation.invoke_text_embedding.side_effect = RuntimeError(
             "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later."
         )
-        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+        raw_post = unwrap_plugin_handler(PluginInvokeTextEmbeddingApi.post)
 
         result = raw_post(
             api_instance,
@@ -154,7 +124,7 @@ class TestPluginInvokeTextEmbeddingApi:
         self, mock_invocation: MagicMock, api_instance: PluginInvokeTextEmbeddingApi
     ) -> None:
         mock_invocation.invoke_text_embedding.side_effect = ValueError("invalid model input")
-        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+        raw_post = unwrap_plugin_handler(PluginInvokeTextEmbeddingApi.post)
 
         result = raw_post(
             api_instance,
@@ -207,7 +177,7 @@ class TestPluginModelCatalogApi:
         mock_user = _user()
         mock_payload = RequestListModels(model_type=ModelType.LLM)
 
-        raw_post = _extract_raw_post(PluginModelCatalogApi)
+        raw_post = unwrap_plugin_handler(PluginModelCatalogApi.post)
         result = raw_post(
             api_instance,
             user_model=mock_user,
@@ -254,7 +224,7 @@ class TestPluginInvokeDatasourceApi:
         mock_invocation.convert_to_event_stream.return_value = stream
         mock_length_prefixed_response.return_value = "response"
 
-        raw_post = _extract_raw_post(PluginInvokeDatasourceApi)
+        raw_post = unwrap_plugin_handler(PluginInvokeDatasourceApi.post)
         result = raw_post(
             api_instance,
             user_model=mock_user,
@@ -379,7 +349,7 @@ class TestPluginInvokeEncryptApi:
         mock_payload = MagicMock()
 
         # Act — extract raw post() bypassing all decorators including plugin_data
-        raw_post = _extract_raw_post(PluginInvokeEncryptApi)
+        raw_post = unwrap_plugin_handler(PluginInvokeEncryptApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -399,7 +369,7 @@ class TestPluginInvokeEncryptApi:
         mock_payload = MagicMock()
 
         # Act
-        raw_post = _extract_raw_post(PluginInvokeEncryptApi)
+        raw_post = unwrap_plugin_handler(PluginInvokeEncryptApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -449,7 +419,7 @@ class TestPluginUploadFileRequestApi:
         mock_payload.conversation_id = "conversation-id"
 
         # Act
-        raw_post = _extract_raw_post(PluginUploadFileRequestApi)
+        raw_post = unwrap_plugin_handler(PluginUploadFileRequestApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -527,7 +497,7 @@ class TestPluginDownloadFileRequestApi:
             "reference": reference,
         }
 
-        raw_post = _extract_raw_post(PluginDownloadFileRequestApi)
+        raw_post = unwrap_plugin_handler(PluginDownloadFileRequestApi.post)
         result = raw_post(api_instance, payload=mock_payload)
 
         mock_service.request_download.assert_called_once_with(
@@ -569,7 +539,7 @@ class TestPluginFetchAppInfoApi:
         mock_payload.app_id = "app-123"
 
         # Act
-        raw_post = _extract_raw_post(PluginFetchAppInfoApi)
+        raw_post = unwrap_plugin_handler(PluginFetchAppInfoApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
