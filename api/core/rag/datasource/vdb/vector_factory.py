@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 class AbstractVectorFactory(ABC):
     @abstractmethod
     def init_vector(
-        self, dataset: Dataset, attributes: list, embeddings: Embeddings, *, session: Session | None
+        self, dataset: Dataset, attributes: list[str], embeddings: Embeddings, *, session: Session | None
     ) -> BaseVector:
         """Initialize the backend using the caller's session for metadata reads.
 
@@ -118,7 +118,7 @@ class Vector:
     def __init__(
         self,
         dataset: Dataset,
-        attributes: list | None = None,
+        attributes: list[str] | None = None,
         *,
         session: Session | None,
         vector_type: str | None = None,

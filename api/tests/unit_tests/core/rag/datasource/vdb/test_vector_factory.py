@@ -19,22 +19,21 @@ from models.model import UploadFile
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def _dataset(**overrides: object) -> Dataset:
-    index_struct_dict = overrides.pop("index_struct_dict", ...)
-    if index_struct_dict is not ...:
-        overrides["index_struct"] = json.dumps(index_struct_dict) if index_struct_dict is not None else None
-    dataset = Dataset(
+def _dataset(
+    *,
+    tenant_id: str = "tenant-1",
+    index_struct_dict: dict[str, str] | None = None,
+) -> Dataset:
+    return Dataset(
         id="dataset-1",
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         name="Dataset",
         description="",
         created_by="user-1",
         embedding_model_provider="openai",
         embedding_model="text-embedding-3-small",
+        index_struct=json.dumps(index_struct_dict) if index_struct_dict is not None else None,
     )
-    for key, value in overrides.items():
-        setattr(dataset, key, value)
-    return dataset
 
 
 def _register_fake_factory_module(monkeypatch: pytest.MonkeyPatch, module_path: str, class_name: str) -> type:
