@@ -17,16 +17,6 @@ TENANT_ID = "11111111-1111-1111-1111-111111111111"
 ACCOUNT_ID = "33333333-3333-3333-3333-333333333333"
 
 
-def _freeze_reply(data: bool, freeze_type: str) -> saas.CheckAccountInFreezeReply:
-    """Build a freeze reply carrying an arbitrary upstream freeze type.
-
-    Billing versions predating the enum send values outside the declared literal set,
-    so the reply is built without validation: the subject only reads `data` and `freeze_type`.
-    """
-    reply = saas.CheckAccountInFreezeReply.model_construct(data=data, freeze_type="")
-    return reply.model_copy(update={"freeze_type": freeze_type})
-
-
 class TestBillingServiceSubscriptionInfo:
     """Subscription and usage reads delegate to the generated billing client."""
 
@@ -380,7 +370,8 @@ class TestBillingServiceAccountAndEducation:
         ],
     )
     def test_get_email_freeze_type(self, data: bool, freeze_type: str, expected: str | None) -> None:
-        reply = _freeze_reply(data, freeze_type)
+        # `freeze_type` stays open so a billing version outside the snapshot's enum still validates.
+        reply = saas.CheckAccountInFreezeReply(data=data, freeze_type=freeze_type)
 
         with patch.object(saas, "account_check_account_in_freeze", return_value=reply) as check:
             assert BillingService.get_email_freeze_type("user@example.com") == expected

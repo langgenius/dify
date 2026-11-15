@@ -66,6 +66,13 @@ ERROR_SCHEMA = "Error"
 ERROR_REASON_SUFFIX = "ErrorReason"
 ERROR_CLASS_SUFFIXES = ("UpstreamError", "UpstreamUnavailableError", "UpstreamInvalidResponseError")
 
+# A proto enum is open: a dify-saas deployment older or newer than this snapshot can send a value the
+# committed spec never listed, and a `Literal[...]` would then reject a reply the subject can still
+# read. Fields named here render as `str` instead, keyed by (schema, wire property name). Keep the set
+# minimal: only add a field whose consumer already handles unknown values, and delete the entry once
+# the upstream spec drops the enum.
+OPEN_ENUM_FIELDS: frozenset[tuple[str, str]] = frozenset({("CheckAccountInFreezeReply", "freezeType")})
+
 
 @dataclass(frozen=True)
 class AllowedOperation:
@@ -347,8 +354,14 @@ def python_type(schema: JsonObject, context: str) -> str:
     raise GenerationError(f"{context}: unsupported schema {json.dumps(schema)}; give it a named message type")
 
 
-def field_type(schema: JsonObject, required: bool, context: str) -> str:
-    annotation = python_type(schema, context)
+def field_type(schema: JsonObject, required: bool, context: str, *, open_enum: bool) -> str:
+    """Render a field annotation.
+
+    Precondition: `open_enum` is true only for a `(schema, wire name)` in `OPEN_ENUM_FIELDS`.
+    Postcondition: the declared enum is replaced by `str` when `open_enum`, so an upstream value the
+    snapshot does not list still validates; nullability and presence rules are unaffected.
+    """
+    annotation = "str" if open_enum else python_type(schema, context)
     if schema.get("nullable") or not required:
         annotation = f"{annotation} | None"
     return annotation
@@ -406,7 +419,8 @@ def render_model(name: str, schema: JsonObject) -> list[str]:
     properties: dict[str, JsonObject] = schema.get("properties", {})
     for wire_name, field in properties.items():
         attribute = python_name(wire_name)
-        annotation = field_type(field, wire_name in required, f"{name}.{wire_name}")
+        open_enum = (name, wire_name) in OPEN_ENUM_FIELDS
+        annotation = field_type(field, wire_name in required, f"{name}.{wire_name}", open_enum=open_enum)
         default = "" if wire_name in required else "None"
         if attribute != wire_name:
             arguments = ", ".join([*([default] if default else []), f"alias={json.dumps(wire_name)}"])
@@ -590,7 +604,28 @@ def format_python(source: str, path: Path) -> str:
 # --- entry point ----------------------------------------------------------------------------------
 
 
+def check_open_enum_fields(snapshots: dict[Service, JsonObject]) -> None:
+    """Precondition: every `OPEN_ENUM_FIELDS` entry still names a string enum field of a snapshot.
+
+    Postcondition: a stale entry fails generation instead of silently doing nothing, which would
+    quietly narrow the field back to the enum. Entries are dropped only together with the upstream
+    enum, and that is a deliberate edit here.
+    """
+    found: set[tuple[str, str]] = set()
+    for snapshot in snapshots.values():
+        schemas = snapshot["components"]["schemas"]
+        for name, wire_name in OPEN_ENUM_FIELDS:
+            field = schemas.get(name, {}).get("properties", {}).get(wire_name)
+            if field is not None and "enum" not in field:
+                raise GenerationError(f"OPEN_ENUM_FIELDS lists {name}.{wire_name}, which is no longer an enum")
+            if field is not None:
+                found.add((name, wire_name))
+    if stale := sorted(OPEN_ENUM_FIELDS - found):
+        raise GenerationError(f"OPEN_ENUM_FIELDS lists fields missing from the snapshots: {stale}")
+
+
 def expected_files(snapshots: dict[Service, JsonObject]) -> dict[Path, str]:
+    check_open_enum_fields(snapshots)
     files: dict[Path, str] = {}
     for service, snapshot in snapshots.items():
         files[snapshot_path(service)] = render_snapshot(snapshot)
