@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from datetime import UTC, datetime
 from inspect import unwrap
 from types import SimpleNamespace
@@ -14,6 +15,7 @@ from controllers.console.workspace import snippets as snippets_module
 from models.account import Account, TenantAccountRole
 from models.snippet import CustomizedSnippet
 from services.snippet_dsl_service import ImportStatus, SnippetImportInfo
+from services.tag_application_service import TagApplicationService
 from tests.helpers.unit.controllers.error_body import raised_error
 from tests.helpers.unit.model_factories import make_account
 
@@ -27,7 +29,7 @@ def _account(account_id: str = "account-1") -> Account:
     )
 
 
-def _snippet(**overrides) -> CustomizedSnippet:
+def _snippet(**overrides: object) -> CustomizedSnippet:
     """Build a real ``CustomizedSnippet`` row so session-backed accessors run against the test schema.
 
     The SQLite fixtures in ``tests/unit_tests/conftest.py`` provide the full schema, so the
@@ -54,7 +56,7 @@ def _snippet(**overrides) -> CustomizedSnippet:
     return snippet
 
 
-def test_snippet_list_query_reads_repeated_values(app: Flask):
+def test_snippet_list_query_reads_repeated_values(app: Flask) -> None:
     tag_id = "11111111-1111-1111-1111-111111111111"
     other_tag_id = "22222222-2222-2222-2222-222222222222"
 
@@ -69,7 +71,7 @@ def test_snippet_list_query_reads_repeated_values(app: Flask):
     assert query.keyword == "search"
 
 
-def test_snippet_list_query_reads_creator_ids_alias(app: Flask):
+def test_snippet_list_query_reads_creator_ids_alias(app: Flask) -> None:
     with app.test_request_context(
         "/workspaces/current/customized-snippets?creator_ids=account-a&creator_ids=account-b"
     ):
@@ -78,7 +80,7 @@ def test_snippet_list_query_reads_creator_ids_alias(app: Flask):
     assert query.creators == ["account-a", "account-b"]
 
 
-def test_snippet_list_query_ignores_indexed_values(app: Flask):
+def test_snippet_list_query_ignores_indexed_values(app: Flask) -> None:
     tag_id = "11111111-1111-1111-1111-111111111111"
     with app.test_request_context(f"/workspaces/current/customized-snippets?tag_ids[0]={tag_id}&creators[0]=account-a"):
         query = snippets_module._snippet_list_query_from_request()
@@ -89,8 +91,8 @@ def test_snippet_list_query_ignores_indexed_values(app: Flask):
 
 @pytest.mark.usefixtures("app_query_services")
 def test_list_snippets_returns_pagination(
-    application_tags, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+    application_tags: TagApplicationService, app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippets = [_snippet()]
     tag_id = "11111111-1111-1111-1111-111111111111"
     get_snippets = Mock(return_value=(snippets, 1, False))
@@ -144,7 +146,7 @@ def test_list_snippets_returns_pagination(
 
 def test_create_snippet_defaults_unknown_type_and_returns_created(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     user = _account("account-1")
     snippet = _snippet()
     create_snippet = Mock(return_value=snippet)
@@ -178,7 +180,7 @@ def test_create_snippet_defaults_unknown_type_and_returns_created(
 @pytest.mark.parametrize("implicit_returning", [True, False])
 def test_create_snippet_returns_database_defaults_without_committing(
     app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, implicit_returning: bool
-):
+) -> None:
     monkeypatch.setattr(CustomizedSnippet.__table__, "implicit_returning", implicit_returning)
     monkeypatch.setattr(CustomizedSnippet.__mapper__, "_compiled_cache", {})
     api = snippets_module.CustomizedSnippetsApi()
@@ -196,7 +198,9 @@ def test_create_snippet_returns_database_defaults_without_committing(
     assert sqlite_session.scalar(select(CustomizedSnippet).where(CustomizedSnippet.id == snippet_id)) is None
 
 
-def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_create_snippet_rejects_forbidden_nodes(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     user = _account("account-1")
     create_snippet = Mock()
     monkeypatch.setattr(snippets_module.SnippetService, "create_snippet", create_snippet)
@@ -232,11 +236,15 @@ def test_create_snippet_rejects_forbidden_nodes(app: Flask, monkeypatch: pytest.
         response, status_code = raised_error(lambda: handler(api, req_data, sqlite_session, "tenant-1", user))
 
     assert status_code == 400
-    assert "knowledge-retrieval" in response["message"]
+    message = response["message"]
+    assert isinstance(message, str)
+    assert "knowledge-retrieval" in message
     create_snippet.assert_not_called()
 
 
-def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_get_snippet_detail_raises_when_missing(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetDetailApi()
@@ -247,7 +255,9 @@ def test_get_snippet_detail_raises_when_missing(app: Flask, monkeypatch: pytest.
             handler(api, sqlite_session, "tenant-1", snippet_id="snippet-1")
 
 
-def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_get_snippet_detail_returns_snippet(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippet = _snippet()
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
 
@@ -264,7 +274,7 @@ def test_get_snippet_detail_returns_snippet(app: Flask, monkeypatch: pytest.Monk
 
 def test_get_snippet_detail_resolves_creator_through_the_request_session(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     """The injected session is the one the accessors query, so a persisted creator resolves."""
     author = _account("11111111-1111-1111-1111-111111111111")
     sqlite_session.add(author)
@@ -286,7 +296,7 @@ def test_get_snippet_detail_resolves_creator_through_the_request_session(
 
 def test_patch_snippet_returns_400_for_empty_payload(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     snippet = _snippet()
     user = _account("user-1")
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
@@ -309,7 +319,9 @@ def test_patch_snippet_returns_400_for_empty_payload(
     assert response == {"code": "invalid_param", "message": "No valid fields to update"}
 
 
-def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_patch_snippet_updates_and_commits(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     _persist_snippet(sqlite_session)
     user = _account("account-1")
     snippet = _snippet()
@@ -344,7 +356,7 @@ def test_patch_snippet_updates_and_commits(app: Flask, monkeypatch: pytest.Monke
 
 def test_patch_snippet_does_not_report_a_committed_write_as_a_bad_request(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     """The ``except ValueError`` must scope the update call only, never the serialization.
 
     ``ValidationError`` subclasses ``ValueError``. Both routes end at a 400 either way — the app
@@ -379,7 +391,7 @@ def test_patch_snippet_does_not_report_a_committed_write_as_a_bad_request(
 
 def test_patch_snippet_does_not_persist_a_rejected_update(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     """A rejected update must raise, not return a 400 tuple.
 
     ``with_session`` commits on any normal return, so returning ``{"message": ...}, 400`` would
@@ -401,7 +413,9 @@ def test_patch_snippet_does_not_persist_a_rejected_update(
     view = unwrap(api.patch)
 
     @snippets_module.with_session
-    def patch_through_decorator(resource, session: Session, snippet_id: str):
+    def patch_through_decorator(
+        resource: snippets_module.CustomizedSnippetDetailApi, session: Session, snippet_id: str
+    ) -> object:
         return view(resource, req_data, session, "tenant-1", user, snippet_id=snippet_id)
 
     with app.test_request_context(
@@ -415,7 +429,9 @@ def test_patch_snippet_does_not_persist_a_rejected_update(
     assert _persisted_name(sqlite_session) == "Snippet"
 
 
-def _apply_update(*, session: Session, snippet: CustomizedSnippet, account_id: str, data: dict) -> CustomizedSnippet:
+def _apply_update(
+    *, session: Session, snippet: CustomizedSnippet, account_id: str, data: Mapping[str, object]
+) -> CustomizedSnippet:
     """Stand in for ``SnippetService.update_snippet``: write the payload onto the merged row."""
     del session, account_id
     for field, value in data.items():
@@ -423,7 +439,9 @@ def _apply_update(*, session: Session, snippet: CustomizedSnippet, account_id: s
     return snippet
 
 
-def _reject_update(*, session: Session, snippet: CustomizedSnippet, account_id: str, data: dict) -> CustomizedSnippet:
+def _reject_update(
+    *, session: Session, snippet: CustomizedSnippet, account_id: str, data: Mapping[str, object]
+) -> CustomizedSnippet:
     """Stand in for an ``update_snippet`` that writes some fields and then rejects the payload."""
     _apply_update(session=session, snippet=snippet, account_id=account_id, data=data)
     raise ValueError("name already in use")
@@ -450,7 +468,9 @@ def _persisted_name(session: Session) -> str | None:
 
 
 @pytest.mark.usefixtures("app_query_services")
-def test_delete_snippet_delegates_to_service(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_delete_snippet_delegates_to_service(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippet = _snippet()
     user = _account()
     delete_snippet = Mock()
@@ -472,7 +492,9 @@ def test_delete_snippet_delegates_to_service(app: Flask, monkeypatch: pytest.Mon
 
 
 @pytest.mark.usefixtures("app_query_services")
-def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_export_snippet_returns_yaml_attachment(
+    app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     snippet = _snippet(name="Snippet One")
     export_snippet_dsl = Mock(return_value="version: 0.1.0\nkind: snippet\n")
 
@@ -501,7 +523,7 @@ def test_export_snippet_returns_yaml_attachment(app: Flask, monkeypatch: pytest.
 @pytest.mark.usefixtures("app_query_services")
 def test_export_snippet_raises_not_found_for_missing_workflow(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     snippet = _snippet(name="Snippet One")
 
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=snippet))
@@ -525,7 +547,7 @@ def test_export_snippet_raises_not_found_for_missing_workflow(
 @pytest.mark.usefixtures("app_query_services")
 def test_import_snippet_returns_202_for_pending_confirmation(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.PENDING, imported_dsl_version="999.0.0")
     import_snippet = Mock(return_value=result)
@@ -555,7 +577,7 @@ def test_import_snippet_returns_202_for_pending_confirmation(
 @pytest.mark.usefixtures("app_query_services")
 def test_import_snippet_returns_400_for_failed_import(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.FAILED, error="Invalid DSL")
     import_snippet = Mock(return_value=result)
@@ -584,7 +606,7 @@ def test_import_snippet_returns_400_for_failed_import(
 @pytest.mark.usefixtures("app_query_services")
 def test_import_confirm_returns_200_for_completed_import(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     user = _account("account-1")
     result = SnippetImportInfo(id="import-1", status=ImportStatus.COMPLETED, snippet_id="snippet-1")
     confirm_import = Mock(return_value=result)
@@ -610,7 +632,7 @@ def test_import_confirm_returns_200_for_completed_import(
 
 def test_check_dependencies_raises_when_snippet_missing(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetCheckDependenciesApi()
@@ -624,7 +646,7 @@ def test_check_dependencies_raises_when_snippet_missing(
 @pytest.mark.usefixtures("app_query_services")
 def test_check_dependencies_returns_dependency_result(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     snippet = _snippet()
     check_dependencies = Mock(return_value=SimpleNamespace(model_dump=Mock(return_value={"leaked_dependencies": []})))
 
@@ -648,7 +670,7 @@ def test_check_dependencies_returns_dependency_result(
 
 def test_increment_use_count_raises_when_snippet_missing(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     monkeypatch.setattr(snippets_module.SnippetService, "get_snippet_by_id", Mock(return_value=None))
 
     api = snippets_module.CustomizedSnippetUseCountIncrementApi()
@@ -664,7 +686,7 @@ def test_increment_use_count_raises_when_snippet_missing(
 
 def test_increment_use_count_returns_refreshed_count(
     app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
-):
+) -> None:
     snippet = _snippet(use_count=2)
 
     def increment_use_count(*, session: Session, snippet: CustomizedSnippet) -> None:
