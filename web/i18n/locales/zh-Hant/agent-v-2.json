@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "進階設定",
   "agentDetail.configure.answer.activity.ranCommands": "已執行命令",
   "agentDetail.configure.answer.activity.runningCommands": "正在執行命令",
+  "agentDetail.configure.answer.activity.startingCommands": "開始執行命令",
   "agentDetail.configure.answer.duration.minute": "{{count}}分",
   "agentDetail.configure.answer.duration.second": "{{count}}秒",
   "agentDetail.configure.answer.responseEnded": "回覆已結束",

@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "ການຕັ້ງຄ່າຂັ້ນສູງ",
   "agentDetail.configure.answer.activity.ranCommands": "ຄຳສັ່ງທີ່ເຮັດວຽກແລ້ວ",
   "agentDetail.configure.answer.activity.runningCommands": "ກຳລັງປະຕິບັດຄຳສັ່ງ",
+  "agentDetail.configure.answer.activity.startingCommands": "ກຳລັງເລີ່ມປະຕິບັດຄຳສັ່ງ",
   "agentDetail.configure.answer.duration.minute": "{{count}} ນາທີ",
   "agentDetail.configure.answer.duration.second": "{{count}} ວິນາທີ",
   "agentDetail.configure.answer.responseEnded": "ການຕອບກັບສິ້ນສຸດແລ້ວ",

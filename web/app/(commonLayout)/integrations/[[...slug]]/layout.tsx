@@ -25,6 +25,11 @@ const getIntegrationSectionTitle = async (section: IntegrationSection) => {
     return t(($) => $['categorySingle.extension'], { ns: 'plugin' })
   }
 
+  if (section === 'file-scan') {
+    const { t } = await getTranslation(locale, 'fileScan')
+    return t(($) => $['settings.title'], { ns: 'fileScan' })
+  }
+
   const { t } = await getTranslation(locale, 'navigation')
   if (section === 'provider') return t(($) => $['settings.provider'], { ns: 'navigation' })
   if (section === 'builtin') return t(($) => $['toolsPage.toolPlugin'], { ns: 'navigation' })

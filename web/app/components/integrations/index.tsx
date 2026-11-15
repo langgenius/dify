@@ -56,7 +56,8 @@ const IntegrationsDocumentTitle = ({ title }: { title: string }) => {
   return null
 }
 
-const headerDescriptionDocPaths = {
+// Sections without a documentation page, such as the malware scanners, show no learn-more link.
+const headerDescriptionDocPaths: Partial<Record<IntegrationSection, DocPathWithoutLang>> = {
   provider: '/use-dify/workspace/model-providers',
   'data-source':
     '/develop-plugin/dev-guides-and-walkthroughs/datasource-plugin#data-source-plugin-types',
@@ -68,7 +69,7 @@ const headerDescriptionDocPaths = {
   trigger: '/develop-plugin/dev-guides-and-walkthroughs/trigger-plugin',
   extension: '/use-dify/workspace/api-extension/api-extension',
   'agent-strategy': '/develop-plugin/dev-guides-and-walkthroughs/agent-strategy-plugin',
-} satisfies Partial<Record<IntegrationSection, DocPathWithoutLang>>
+}
 
 type DescriptionWithLearnMoreProps = {
   children: ReactNode
@@ -161,6 +162,7 @@ export default function IntegrationsPage({
     activeItem,
     customEndpointItem,
     dataSourceItem,
+    fileScanItem,
     integrationHeader,
     providerItem,
     secondaryItems,
@@ -179,6 +181,7 @@ export default function IntegrationsPage({
     section === 'provider' ||
     section === 'data-source' ||
     section === 'custom-endpoint' ||
+    section === 'file-scan' ||
     isToolSection ||
     isPluginCategory
   const scrollAreaLabel = sectionTitle
@@ -342,6 +345,13 @@ export default function IntegrationsPage({
               onSelect={onSectionChange ? handleSelectSection : undefined}
               section={section}
             />
+            {fileScanItem && (
+              <IntegrationSidebarNavItem
+                item={fileScanItem}
+                onSelect={onSectionChange ? handleSelectSection : undefined}
+                section={section}
+              />
+            )}
           </nav>
         </div>
         {showUtilityActions && (
