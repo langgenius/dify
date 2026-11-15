@@ -72,7 +72,6 @@ class TestBillingServiceSubscriptionInfo:
         reply = billing.GetModelProviderPaymentLinkReply(url="https://payment.example.com/provider")
 
         with patch.object(billing, "model_provider_get_model_provider_payment_link", return_value=reply) as get:
-            # pyrefly: ignore [deprecated]
             result = BillingService.get_model_provider_payment_link("anthropic", TENANT_ID, ACCOUNT_ID, "a@b.com")
 
         assert result is reply
