@@ -37,7 +37,9 @@ from controllers.common.errors import (
 )
 from fields.file_fields import FileResponse
 from models import App, EndUser
+from models.enums import CreatorUserRole
 from services.file_service import FileService
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 class TestFileResponse:
@@ -245,25 +247,17 @@ class TestFileApiPost:
 
         from controllers.service_api.app.file import FileApi
 
-        mock_upload = Mock()
-        mock_upload.id = str(uuid.uuid4())
-        mock_upload.name = "test.pdf"
-        mock_upload.size = 1024
-        mock_upload.extension = "pdf"
-        mock_upload.mime_type = "application/pdf"
-        mock_upload.created_by = mock_end_user.id
-        mock_upload.created_by_role = "end_user"
-        mock_upload.created_at = 1700000000
-        mock_upload.preview_url = None
-        mock_upload.source_url = None
-        mock_upload.original_url = None
-        mock_upload.reference = None
-        mock_upload.user_id = None
-        mock_upload.tenant_id = mock_end_user.tenant_id
-        mock_upload.conversation_id = None
-        mock_upload.file_key = None
+        upload_file = make_upload_file(
+            tenant_id=mock_end_user.tenant_id,
+            name="test.pdf",
+            size=1024,
+            extension="pdf",
+            mime_type="application/pdf",
+            created_by=mock_end_user.id,
+            created_by_role=CreatorUserRole.END_USER,
+        )
         file_service = mock_application_services.return_value.files
-        file_service.upload_file.return_value = mock_upload
+        file_service.upload_file.return_value = upload_file
 
         data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
 
@@ -281,7 +275,7 @@ class TestFileApiPost:
             )
 
         assert status == 201
-        assert response["id"] == mock_upload.id
+        assert response["id"] == upload_file.id
         assert response["name"] == "test.pdf"
         assert response["tenant_id"] == mock_end_user.tenant_id
         file_service.upload_file.assert_called_once_with(
