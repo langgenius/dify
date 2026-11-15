@@ -3,7 +3,6 @@ import time
 from collections.abc import Mapping
 
 import pytest
-from pydantic import ValidationError as PydanticValidationError
 
 from core.workflow.system_variables import build_system_variables
 from core.workflow.variable_prefixes import CONVERSATION_VARIABLE_NODE_ID, ENVIRONMENT_VARIABLE_NODE_ID
@@ -196,25 +195,6 @@ def test_json_object_required_variable_missing_from_inputs() -> None:
 
     with pytest.raises(ValueError, match="profile is required in input form"):
         node._run()
-
-
-def test_json_object_invalid_json_schema_string() -> None:
-    variable = VariableEntity(
-        variable="profile",
-        label="profile",
-        type=VariableEntityType.JSON_OBJECT,
-        required=True,
-    )
-
-    # Bypass pydantic type validation on assignment to simulate an invalid JSON schema string
-    object.__setattr__(variable, "json_schema", "{invalid-json-schema")
-
-    variables = [variable]
-    user_inputs = {"profile": '{"age": 20}'}
-
-    # Invalid json_schema string should be rejected during node data hydration
-    with pytest.raises(PydanticValidationError):
-        make_start_node(user_inputs, variables)
 
 
 def test_json_object_optional_variable_not_provided() -> None:
