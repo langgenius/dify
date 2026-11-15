@@ -21,6 +21,7 @@ from models.model import EndUser
 from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.data_source.credential_gateway import DatasourceProviderCredentialStore
+from services.entities.feature_entities import FeatureModel
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -336,6 +337,65 @@ def test_generate_published_pipeline_rejects_when_document_creation_limits_excee
 
     check_limits.assert_called_once_with(len(datasource_info_list), features)
     assert sqlite_session.scalars(select(Document)).all() == []
+
+
+def test_generate_published_pipeline_validates_inputs_before_creating_documents(
+    generator, mocker: MockerFixture, sqlite_session: Session
+):
+    """Given a persisted pipeline, rejected inputs leave no pending document rows."""
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+
+    mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}])
+    mocker.patch.object(
+        generator,
+        "_prepare_user_inputs",
+        side_effect=ValueError("source_files is required in input form"),
+    )
+    get_features = mocker.patch("services.feature_service.FeatureService.get_features")
+    build_document = mocker.patch.object(generator, "_build_document")
+
+    with pytest.raises(ValueError, match="source_files is required in input form"):
+        generator.generate(
+            session=sqlite_session,
+            pipeline=pipeline,
+            workflow=workflow,
+            user=_build_user(),
+            args=_build_args(),
+            invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+            streaming=False,
+        )
+
+    get_features.assert_not_called()
+    build_document.assert_not_called()
+    assert not sqlite_session.new
+
+
+def test_generate_published_pipeline_prepares_inputs_once(generator, mocker: MockerFixture, sqlite_session: Session):
+    """Given two datasource items, prepare inputs once and pass the result to both runs."""
+    pipeline, _, workflow = _persist_pipeline_scope(sqlite_session)
+
+    mocker.patch.object(generator, "_format_datasource_info_list", return_value=[{"name": "file1"}, {"name": "file2"}])
+    prepare_inputs = mocker.patch.object(generator, "_prepare_user_inputs", return_value={"k": "v"})
+    mocker.patch("services.knowledge.dataset_service.DocumentService.get_documents_position", return_value=1)
+    mocker.patch("services.feature_service.FeatureService.get_features", return_value=FeatureModel())
+    mocker.patch("services.knowledge.dataset_service.DocumentService.check_document_creation_limits")
+    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_execution_repository")
+    mocker.patch.object(module.DifyCoreRepositoryFactory, "create_workflow_node_execution_repository")
+    task_proxy_cls = mocker.patch.object(module, "RagPipelineTaskProxy")
+
+    generator.generate(
+        session=sqlite_session,
+        pipeline=pipeline,
+        workflow=workflow,
+        user=_build_user(),
+        args=_build_args(),
+        invoke_from=InvokeFrom.PUBLISHED_PIPELINE,
+        streaming=False,
+    )
+
+    prepare_inputs.assert_called_once()
+    invoke_entities = task_proxy_cls.call_args.args[2]
+    assert [entity["application_generate_entity"]["inputs"] for entity in invoke_entities] == [{"k": "v"}, {"k": "v"}]
 
 
 def test_generate_is_retry_calls_generate(generator, mocker: MockerFixture, sqlite_session: Session):
@@ -720,6 +780,57 @@ def test_build_document_supports_online_drive_datasource_type(generator):
 
     assert DataSourceType(document.data_source_type) == DataSourceType.ONLINE_DRIVE
     assert document.name == "drive.pdf"
+
+
+def _build_document_for(generator, datasource_type: DatasourceProviderType, datasource_info: dict):
+    return generator._build_document(
+        tenant_id="tenant",
+        dataset_id="ds",
+        built_in_field_enabled=True,
+        datasource_type=datasource_type,
+        datasource_info=datasource_info,
+        created_from="rag-pipeline",
+        position=1,
+        account=_build_user(),
+        batch="batch",
+        document_form="text",
+    )
+
+
+def test_build_document_truncates_overlong_website_title(generator):
+    # A crawler can return the whole page body as the title, which overflows documents.name.
+    title = "# Docs " + "x" * 5000
+
+    document = _build_document_for(
+        generator,
+        DatasourceProviderType.WEBSITE_CRAWL,
+        {"title": title, "source_url": "https://example.com/llms.txt"},
+    )
+
+    assert len(document.name) == module.DOCUMENT_NAME_MAX_LENGTH
+    assert document.name.startswith("# Docs x")
+    assert document.doc_metadata[BuiltInField.document_name] == document.name
+
+
+@pytest.mark.parametrize(
+    ("datasource_type", "datasource_info", "expected"),
+    [
+        (
+            DatasourceProviderType.WEBSITE_CRAWL,
+            {"title": "", "source_url": "https://example.com/a"},
+            "https://example.com/a",
+        ),
+        (DatasourceProviderType.WEBSITE_CRAWL, {"title": None}, "untitled"),
+        (DatasourceProviderType.WEBSITE_CRAWL, {"title": "  Page  title \n"}, "Page  title"),
+        (DatasourceProviderType.LOCAL_FILE, {}, "untitled"),
+        (DatasourceProviderType.LOCAL_FILE, {"name": "   "}, "untitled"),
+        (DatasourceProviderType.ONLINE_DOCUMENT, {"page": None}, "untitled"),
+        (DatasourceProviderType.ONLINE_DOCUMENT, {"page": {"page_name": "p" * 300}}, "p" * 255),
+        (DatasourceProviderType.ONLINE_DRIVE, {"name": 123}, "untitled"),
+    ],
+)
+def test_build_document_normalizes_name(generator, datasource_type, datasource_info, expected):
+    assert _build_document_for(generator, datasource_type, datasource_info).name == expected
 
 
 def test_build_document_invalid_datasource_type(generator):
