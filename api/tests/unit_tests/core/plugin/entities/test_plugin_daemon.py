@@ -35,9 +35,7 @@ from graphon.model_runtime.entities.message_entities import (
 
 
 class TestEndpointEntity:
-    def test_endpoint_entity_with_instance_renders_url(
-        self, config_overrides: Callable[..., None]
-    ) -> None:
+    def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(ENDPOINT_URL_TEMPLATE="https://dify.test/{hook_id}")
         now = datetime.datetime.now(datetime.UTC)
 
@@ -206,9 +204,7 @@ class TestPluginParameterEntities:
             (PluginParameterType.ANY, object(), "var selector must be"),
         ],
     )
-    def test_cast_parameter_value_selectors_invalid(
-        self, parameter_type: StrEnum, value: object, message: str
-    ) -> None:
+    def test_cast_parameter_value_selectors_invalid(self, parameter_type: StrEnum, value: object, message: str) -> None:
         with pytest.raises(ValueError, match=message):
             cast_parameter_value(parameter_type, value)
 
