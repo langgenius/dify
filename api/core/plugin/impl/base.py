@@ -118,10 +118,28 @@ def _normalize_plugin_daemon_response_for_type(json_response: Any, type_: type[o
 
 
 class BasePluginClient:
-    def __init__(self, *, plugin_unique_identifier: str | None = None) -> None:
+    def __init__(
+        self,
+        *,
+        plugin_unique_identifier: str | None = None,
+        httpx_client: httpx.Client | None = None,
+    ) -> None:
+        """
+        :param plugin_unique_identifier: identifier forwarded to the plugin dispatch headers
+        :param httpx_client: real ``httpx.Client`` to use for plugin daemon calls. Callers that
+            need to observe the wire traffic (tests, custom transports) inject one here instead
+            of relying on the module level pooled client.
+        """
         if plugin_unique_identifier == "":
             raise ValueError("Plugin unique identifier must not be empty")
         self._plugin_unique_identifier = plugin_unique_identifier
+        self._httpx_client_override = httpx_client
+
+    @property
+    def _http_client(self) -> httpx.Client:
+        """The client used to talk to the plugin daemon: injected one, else the pooled one."""
+
+        return self._httpx_client_override if self._httpx_client_override is not None else _httpx_client
 
     def _request(
         self,
@@ -151,7 +169,7 @@ class BasePluginClient:
             request_kwargs["content"] = prepared_data
 
         try:
-            response = _httpx_client.request(**request_kwargs)
+            response = self._http_client.request(**request_kwargs)
         except httpx.RequestError as caught_error:
             logger.exception("Request to Plugin Daemon Service failed")
             raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed") from caught_error
@@ -253,12 +271,12 @@ class BasePluginClient:
             stream_kwargs["content"] = prepared_data
 
         try:
-            with _httpx_client.stream(**stream_kwargs) as response:
+            with self._http_client.stream(**stream_kwargs) as response:
+                # httpx.Response.iter_lines() yields already decoded str; decode nothing here.
                 for raw_line in response.iter_lines():
                     if not raw_line:
                         continue
-                    line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
-                    line = line.strip()
+                    line = raw_line.strip()
                     if line.startswith("data:"):
                         line = line[5:].strip()
                     if line:

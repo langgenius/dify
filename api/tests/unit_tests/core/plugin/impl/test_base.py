@@ -1,9 +1,8 @@
 import json
 from collections.abc import Callable
-from types import TracebackType
-from typing import Self
 from urllib.parse import quote
 
+import httpx
 import pytest
 from pytest_mock import MockerFixture
 
@@ -19,34 +18,10 @@ from core.trigger.errors import (
 )
 
 
-class _ResponseStub:
-    def __init__(self, payload: dict[str, object] | list[object]) -> None:
-        self._payload = payload
+def _response(payload: dict[str, object] | list[object]) -> httpx.Response:
+    """Build a real httpx.Response instead of a stub, so the client sees its own type."""
 
-    def raise_for_status(self) -> None:
-        return None
-
-    def json(self) -> dict[str, object] | list[object]:
-        return self._payload
-
-
-class _StreamContext:
-    def __init__(self, lines: list[bytes | str]) -> None:
-        self._lines = lines
-
-    def __enter__(self) -> Self:
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> bool:
-        return False
-
-    def iter_lines(self) -> list[bytes | str]:
-        return self._lines
+    return httpx.Response(200, json=payload, request=httpx.Request("GET", "http://plugin-daemon/test"))
 
 
 class TestBasePluginClientImpl:
@@ -65,17 +40,19 @@ class TestBasePluginClientImpl:
         client._inject_trace_headers(headers_with_existing)
         assert headers_with_existing["TraceParent"] == "exists"
 
-    def test_stream_request_handles_data_lines_and_dict_payload(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        stream_mock = mocker.patch(
-            "httpx.Client.stream",
-            return_value=_StreamContext([b"", b"data: hello", "world"]),
-        )
+    def test_stream_request_handles_data_lines_and_dict_payload(self) -> None:
+        seen: dict[str, bytes] = {}
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            seen["content"] = request.content
+            return httpx.Response(200, content=b"\n\ndata: hello\nworld\n")
+
+        client = BasePluginClient(httpx_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
         result = list(client._stream_request("POST", "plugin/tenant/stream", data={"k": "v"}))
 
         assert result == ["hello", "world"]
-        assert stream_mock.call_args.kwargs["data"] == {"k": "v"}
+        assert seen["content"] == b"k=v"
 
     @pytest.mark.parametrize(
         "path",
@@ -116,7 +93,7 @@ class TestBasePluginClientImpl:
 
     def test_request_with_plugin_daemon_response_applies_transformer(self, mocker: MockerFixture) -> None:
         client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": True}))
+        mocker.patch.object(client, "_request", return_value=_response({"code": 0, "message": "", "data": True}))
 
         transformed: dict[str, object] = {}
 
@@ -133,7 +110,7 @@ class TestBasePluginClientImpl:
         self, mocker: MockerFixture
     ) -> None:
         client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_ResponseStub({"code": 0, "message": "", "data": []}))
+        mocker.patch.object(client, "_request", return_value=_response({"code": 0, "message": "", "data": []}))
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
@@ -144,7 +121,7 @@ class TestBasePluginClientImpl:
         self, mocker: MockerFixture
     ) -> None:
         client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_ResponseStub([]))
+        mocker.patch.object(client, "_request", return_value=_response([]))
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
