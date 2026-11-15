@@ -22,7 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from operator import itemgetter
-from typing import Any, Literal, cast
+from typing import Any, Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
@@ -241,6 +241,24 @@ class AgentConfigSkillInspectPayload(TypedDict, closed=True):
     files: list[AgentConfigSkillArchiveEntryPayload]
     skill_md: AgentConfigFilePreviewPayload
     warnings: list[str]
+
+
+def _optional_size(value: object) -> int | None:
+    """Return the reported archive size when the workspace layer supplied a usable int.
+
+    ``SkillManagementService.list_runtime_agent_skills`` reports whatever the workspace layer
+    stored, so an absent or unexpected value must degrade to ``None`` rather than fail the listing.
+    Non-negative ints are the only values that can be a real archive size; ``bool`` is rejected
+    because ``isinstance(True, int)`` holds but ``True`` is not a byte count.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value if value >= 0 else None
+
+
+def _optional_text(value: object) -> str | None:
+    """Return the reported string verbatim, or ``None`` when it is absent or not a string."""
+    return value if isinstance(value, str) else None
 
 
 @dataclass(slots=True)
@@ -1569,9 +1587,9 @@ class AgentConfigService:
             "file_id": str(item.get("file_id") or ""),
             "is_missing": False,
             "description": str(item.get("description") or ""),
-            "size": cast(int | None, item.get("size")),
-            "hash": cast(str | None, item.get("hash")),
-            "mime_type": cast(str | None, item.get("mime_type")),
+            "size": _optional_size(item.get("size")),
+            "hash": _optional_text(item.get("hash")),
+            "mime_type": _optional_text(item.get("mime_type")),
         }
 
     @staticmethod
