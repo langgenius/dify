@@ -1405,6 +1405,25 @@ def test_init_trial_provider_records_revives_invalid_existing_record(provider_db
     assert stored_provider.is_valid
 
 
+def test_init_trial_provider_records_skips_conflict_without_a_matching_record(provider_db: Session) -> None:
+    unrelated_provider = _build_unrelated_provider_record()
+    provider_db.add(unrelated_provider)
+    provider_db.commit()
+
+    # The new record reuses the unrelated primary key, so the insert conflicts but no trial record exists.
+    with (
+        patch(
+            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+            {"openai": _build_hosting_provider()},
+        ),
+        patch("models.provider.uuidv7", return_value=unrelated_provider.id),
+    ):
+        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+
+    assert result == {}
+    assert [record.tenant_id for record in provider_db.scalars(select(Provider))] == ["other-tenant"]
+
+
 def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
     fake_redis = _FakeRedis()
 
