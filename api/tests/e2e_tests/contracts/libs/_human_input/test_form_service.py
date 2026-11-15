@@ -140,9 +140,7 @@ class TestFormService:
 
         assert exc_info.value.error_code == "form_not_found"
 
-    def test_get_form_definition_by_id(
-        self, form_service: FormService, sample_form_data: _CreateFormPayload
-    ) -> None:
+    def test_get_form_definition_by_id(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test getting form definition by ID."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -223,9 +221,7 @@ class TestFormService:
         assert form.submitted_action == "submit"
         assert form.submitted_at is not None
 
-    def test_submit_form_missing_inputs(
-        self, form_service: FormService, sample_form_data: _CreateFormPayload
-    ) -> None:
+    def test_submit_form_missing_inputs(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test form submission with missing inputs."""
         # Create form first
         form_service.create_form(**sample_form_data)
@@ -243,9 +239,7 @@ class TestFormService:
         assert "Missing required inputs" in exc_info.value.message
         assert "input" in exc_info.value.message
 
-    def test_submit_form_invalid_action(
-        self, form_service: FormService, sample_form_data: _CreateFormPayload
-    ) -> None:
+    def test_submit_form_invalid_action(self, form_service: FormService, sample_form_data: _CreateFormPayload) -> None:
         """Test form submission with invalid action."""
         # Create form first
         form_service.create_form(**sample_form_data)
