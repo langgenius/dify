@@ -12,6 +12,7 @@ from extensions.application_services.rbac import RBACServices
 from extensions.application_services.tracing import TracingServices
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
+from machinery.context import RequestContext
 from providers.a2a.control_adapters import (
     DifyExternalIconURLs,
     WorkspaceExternalAssetAccess,
@@ -41,7 +42,7 @@ from repositories.external_agents.workflow_bindings import ExternalWorkflowBindi
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.external_agents.asset_service import ExternalAssetService
 from services.external_agents.contracts import ExternalAgentLimits
-from services.external_agents.file_profile import FILE_MODES, FileLimits
+from services.external_agents.file_profile import FILE_MODES, FileLimits, supported_input_file_types
 from services.external_agents.invocation_service import ExternalInvocationService
 from services.external_agents.observability import ExternalObservabilityService
 from services.external_agents.retention import ExternalRetentionService
@@ -101,8 +102,23 @@ class ExternalAgentServices:
             "transport": "HTTP+JSON",
             "authentication": ("none", "bearer"),
             "input_file_modes": tuple(sorted(FILE_MODES)),
+            "input_file_types": tuple(asdict(value) for value in supported_input_file_types(tuple(FILE_MODES))),
             "limits": {**asdict(self.limits), "files": asdict(self.file_limits)},
         }
+
+    def capabilities_for(self, context: RequestContext, *, agent_id: str | None) -> dict:
+        """Present the deployment profile or an admitted Agent's effective file subset.
+
+        The no-Agent response retains its existing MIME modes. Supplying an
+        Agent invokes the same detail permission/visibility gate and only
+        intersects its saved defaults; no network or business task is started.
+        """
+        result = self.capabilities
+        if agent_id is not None:
+            types = self.assets.input_file_types(context, agent_id)
+            result["input_file_modes"] = tuple(value.media_type for value in types)
+            result["input_file_types"] = tuple(asdict(value) for value in types)
+        return result
 
     def enqueue(self) -> None:
         """Wake this capability's dedicated consumer without activating legacy cleanup.

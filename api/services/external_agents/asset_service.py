@@ -28,7 +28,7 @@ from .contracts import (
     VerificationEvidence,
     VerificationFailureReason,
 )
-from .file_profile import normalize_media_type
+from .file_profile import InputFileType, normalize_media_type, supported_input_file_types
 from .protocol import TRACEABILITY_URI, ConnectionSpec, GatewayError, GatewayPort, NoAuth, SealedBearerAuth
 
 
@@ -173,12 +173,7 @@ class ExternalAssetService:
         )
 
     def detail(self, context: RequestContext, agent_id: str) -> dict[str, Any]:
-        self._require(context, manage=False)
-        self._visible(context, agent_id)
-        asset = self._store.get_asset(tenant_id=context.active_workspace_id, agent_id=agent_id)
-        connection = self._store.get_connection(
-            tenant_id=context.active_workspace_id, agent_id=agent_id, revision_id=asset.active_connection_revision_id
-        )
+        asset, connection = self._read_connection(context, agent_id)
         # Only declared display fields are exposed; unknown Card metadata and
         # credential-like provider extensions are not a Console response surface.
         card_keys = (
@@ -209,6 +204,29 @@ class ExternalAssetService:
                 "capabilities": connection.capabilities,
             },
         }
+
+    def _read_connection(self, context: RequestContext, agent_id: str) -> tuple[ExternalAsset, ConnectionRevision]:
+        """Read a current connection under existing detail-role/visibility admission."""
+        self._require(context, manage=False)
+        self._visible(context, agent_id)
+        asset = self._store.get_asset(tenant_id=context.active_workspace_id, agent_id=agent_id)
+        connection = self._store.get_connection(
+            tenant_id=context.active_workspace_id, agent_id=agent_id, revision_id=asset.active_connection_revision_id
+        )
+        return asset, connection
+
+    def input_file_types(self, context: RequestContext, agent_id: str) -> tuple[InputFileType, ...]:
+        """Read file chooser hints from the visible saved Agent's default modes only.
+
+        Current detail admission remains authoritative. This does not Verify,
+        decrypt credentials, submit work or let Skill declarations widen input.
+        Malformed saved defaults fail closed instead of advertising extra types.
+        """
+        _, connection = self._read_connection(context, agent_id)
+        modes = connection.card.get("defaultInputModes")
+        if not isinstance(modes, list) or any(not isinstance(value, str) for value in modes):
+            raise ExternalAgentInvalidInputError("The saved Agent default input modes are invalid.")
+        return supported_input_file_types(modes)
 
     def verify(
         self,
