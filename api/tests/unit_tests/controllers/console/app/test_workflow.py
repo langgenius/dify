@@ -17,6 +17,7 @@ from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
+from werkzeug.local import LocalProxy
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
@@ -33,10 +34,9 @@ from libs import login as login_lib
 from models import Account as _workflow_convert_api_Account
 from models import App as _workflow_convert_api_App
 from models import App as _workflow_human_input_debug_api_App
-from models import Tenant
 from models.account import Account as _workflow_Account
 from models.account import Account as _workflow_human_input_debug_api_Account
-from models.account import AccountStatus, TenantAccountRole
+from models.account import TenantAccountRole
 from models.model import App as _workflow_App
 from models.model import AppMode, IconType
 from models.workflow import Workflow, WorkflowType
@@ -44,7 +44,7 @@ from services import workflow_variable_reference_validator as variable_reference
 from services.app.access import AppAccessFilter
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.controllers.error_body import raised_error
-from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.model_factories import make_account, make_app, make_tenant
 
 
 def _account() -> _workflow_Account:
@@ -77,19 +77,6 @@ EnvironmentVariables = Sequence[VariableBase] | Sequence[Mapping[str, object]]
 def _is_raw(value: EnvironmentVariables) -> TypeIs[Sequence[Mapping[str, object]]]:
     """Report whether stored environment variables are undecoded mappings rather than variable objects."""
     return bool(value) and isinstance(value[0], Mapping)
-
-
-def _set_timestamp(workflow: Workflow, *, attribute: str, value: datetime | None) -> None:
-    """Assign a timestamp column, deliberately including the NULL `updated_at` states the tests model.
-
-    The `updated_at` column is declared non-nullable, but the controllers serialise
-    `workflow.updated_at or workflow.created_at` because a never-persisted draft has no timestamp yet.
-    A `None` therefore has to reach the instance attribute without tripping the column type.
-    """
-    if value is None:
-        vars(workflow)[attribute] = None
-    else:
-        setattr(workflow, attribute, value)
 
 
 def _make_workflow(
@@ -165,7 +152,13 @@ def _make_workflow(
         updated_by=None,
     )
     workflow.created_at = created_at
-    _set_timestamp(workflow, attribute="updated_at", value=updated_at)
+    if updated_at is None:
+        # The controllers serialise `workflow.updated_at or workflow.created_at`, because a draft that
+        # was never persisted has no `updated_at` yet. Dropping the attribute leaves the mapped column
+        # unset, which reads back as `None` without inventing a value for a non-nullable column.
+        del workflow.updated_at
+    else:
+        workflow.updated_at = updated_at
     if _is_raw(environment_variables):
         workflow._environment_variables = json.dumps(
             {str(index): value for index, value in enumerate(environment_variables)}
@@ -1436,17 +1429,13 @@ class TestWorkflowConvertApiCases:
 
 
 def _make_account() -> _workflow_human_input_debug_api_Account:
-    account = _workflow_human_input_debug_api_Account(name="tester", email="tester@example.com")
-    account.status = AccountStatus.ACTIVE
-    account.role = TenantAccountRole.OWNER
-    account.id = "account-123"
-    tenant = Tenant(name="Test tenant")
-    tenant.id = "tenant-123"
-    account._current_tenant = tenant
-    # `current_user` proxies expose `_get_current_object`; a plain Account instance does not,
-    # but `api/libs/login.py` uses it to unwrap the proxy when present.
-    vars(account)["_get_current_object"] = lambda: account
-    return account
+    return make_account(
+        account_id="account-123",
+        name="tester",
+        email="tester@example.com",
+        role=TenantAccountRole.OWNER,
+        tenant=make_tenant(tenant_id="tenant-123", name="Test tenant"),
+    )
 
 
 def _make_app(mode: AppMode) -> _workflow_human_input_debug_api_App:
@@ -1477,7 +1466,9 @@ def _patch_console_guards(
         LOGIN_DISABLED=True,
         INIT_PASSWORD="",
     )
-    monkeypatch.setattr(login_lib, "current_user", account)
+    # The console guards unwrap `current_user` with `_get_current_object()`, so patch in a real
+    # werkzeug proxy rather than handing the guards a bare `Account` that cannot be unwrapped.
+    monkeypatch.setattr(login_lib, "current_user", LocalProxy(lambda: account))
     monkeypatch.setattr(login_lib, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
     monkeypatch.setattr(login_lib, "check_csrf_token", lambda *_, **__: None)
     monkeypatch.setattr(console_wraps, "current_account_with_tenant", lambda: (account, account.current_tenant_id))
