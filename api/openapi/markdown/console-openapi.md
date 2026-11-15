@@ -7905,6 +7905,12 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /external-agents/capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | query | Optional visible Agent ID for its effective default input formats | No | string (uuid) |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -27072,6 +27078,12 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | tracing_enabled | boolean |  | Yes |
 | updated_at | dateTime |  | Yes |
 
+#### ExternalAgentCapabilitiesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string | Optional visible Agent ID for its effective default input formats | No |
+
 #### ExternalAgentCapabilitiesResponse
 
 | Name | Type | Description | Required |
@@ -27079,6 +27091,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | authentication | [ string ] |  | Yes |
 | enabled | boolean |  | Yes |
 | input_file_modes | [ string ] |  | Yes |
+| input_file_types | [ [ExternalInputFileTypeResponse](#externalinputfiletyperesponse) ] | Finite Dify input types; when agent_id is supplied, intersected with saved Agent defaults, never Skills | Yes |
 | limits | object |  | Yes |
 | protocol | string |  | Yes |
 | transport | string |  | Yes |
@@ -27302,6 +27315,13 @@ Flask blueprint initialization.
 | query | [ExternalHitTestingQueryResponse](#externalhittestingqueryresponse) |  | Yes |
 | records | [ [ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
 
+#### ExternalInputFileTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extensions | [ string ] | Common lowercase filename suffixes including dots; MIME/ownership/size checks remain authoritative | Yes |
+| media_type | string |  | Yes |
+
 #### ExternalKnowledgeApiBindingResponse
 
 | Name | Type | Description | Required |
@@ -27466,9 +27486,9 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | ---- | ---- | ----------- | -------- |
 | attempt_count | integer | Number of actually dispatched attempts in this logical test | Yes |
 | elapsed_time | number | Seconds from first dispatch through local end or current read time | Yes |
-| token_reporting_denominator | integer |  | Yes |
-| token_reporting_numerator | integer |  | Yes |
-| total_tokens | integer | Trusted call-total sum only when every dispatched attempt reports usage | Yes |
+| token_reporting_denominator | integer | All dispatched attempts; zero means no dispatch yet | Yes |
+| token_reporting_numerator | integer | Dispatched attempts with a proven call-total token value | Yes |
+| total_tokens | integer | Sum of proven call-total tokens only when every dispatched attempt reports usage. Null means no complete proven total; it is not zero or a failed execution. Zero is a valid reported value. Trace steps are never summed. The default A2A profile has no standardized call-total usage proof. | Yes |
 
 #### ExternalTestStatusResponse
 
