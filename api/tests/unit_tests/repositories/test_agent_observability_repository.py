@@ -1471,20 +1471,33 @@ class TestWorkflowToolAgentStatisticsCases:
         assert foreign["summary"]["total_end_users"] == 0
 
     @staticmethod
+    @pytest.mark.parametrize(
+        ("start", "end", "web_end_users"),
+        [
+            (datetime(2026, 7, 22, 8, 0, 0, 123456), datetime(2026, 7, 22, 8, 0, 0, 123457), 1),
+            (datetime(2026, 7, 22, 8, 0, 0, 123457), None, 0),
+            (None, datetime(2026, 7, 22, 8, 0, 0, 123456), 0),
+        ],
+    )
     def test_nested_agent_end_users_honour_an_invoke_from_alias(
-        sqlite_session: Session, statistics_service: AgentObservabilityQueries
+        sqlite_session: Session,
+        statistics_service: AgentObservabilityQueries,
+        start: datetime | None,
+        end: datetime | None,
+        web_end_users: int,
     ) -> None:
-        """An invoke-from alias narrows the webapp scope. The range count must
-        use the same narrowed population the daily charts do."""
+        """An invoke-from alias and half-open range narrow the webapp scope.
+        The range count must use the same population the daily charts do."""
         app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
         message = sqlite_session.get(Message, "message-1")
         assert message is not None
         message.app_id = app.id
+        message.created_at = datetime(2026, 7, 22, 8, 0, 0, 123456)
         sqlite_session.commit()
 
-        for source, expected in (("web", 1), ("debugger", 0)):
+        for source, expected in (("web", web_end_users), ("debugger", 0)):
             payload = statistics_service.get_statistics_summary(
-                app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source)
+                app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source, start=start, end=end)
             )
             assert payload["summary"]["total_messages"] == expected
             assert payload["summary"]["total_end_users"] == expected
