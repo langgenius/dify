@@ -199,7 +199,7 @@ class WorkflowAcceptance(ConsoleAcceptance):
 
     def assert_external_pause(self, events: list[dict]) -> None:
         require(
-            not any(item["event"] == "error" or item["error"] for item in events),
+            not any(item["event"] == "error" or item.get("error") for item in events),
             "The workflow SSE contained an error while entering an external wait.",
         )
         pauses = [item for item in events if item["event"] == "workflow_paused"]

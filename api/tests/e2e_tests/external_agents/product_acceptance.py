@@ -107,6 +107,8 @@ class ProductAcceptance(WorkflowAcceptance):
                             "conversation_id": item.get("conversation_id"),
                             "status": data.get("status"),
                             "reasons": data.get("reasons") or [],
+                            "error": data.get("error")
+                            or (item.get("message") if item.get("event") == "error" else None),
                         }
                     )
         require(events, "A production API stream returned no events.")
