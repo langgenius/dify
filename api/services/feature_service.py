@@ -100,10 +100,14 @@ class FeatureService:
     def get_knowledge_rate_limit(cls, tenant_id: str):
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
-            knowledge_rate_limit.enabled = True
             limit_info = BillingService.get_knowledge_rate_limit(tenant_id)
-            knowledge_rate_limit.limit = limit_info.get("limit", 10)
-            knowledge_rate_limit.subscription_plan = limit_info.get("subscription_plan", CloudPlan.SANDBOX)
+            knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel.model_validate(
+                {
+                    "enabled": True,
+                    "limit": limit_info.get("limit", 10),
+                    "subscription_plan": limit_info.get("subscription_plan", CloudPlan.SANDBOX),
+                }
+            )
         return knowledge_rate_limit
 
     @classmethod
@@ -182,8 +186,7 @@ class FeatureService:
 
         features_usage_info = BillingService.get_quota_info(tenant_id)
 
-        features.billing.subscription.plan = CloudPlan(billing_info["subscription"]["plan"])
-        features.billing.subscription.interval = billing_info["subscription"]["interval"]
+        features.billing.subscription = feature_entities.SubscriptionModel.model_validate(billing_info["subscription"])
         features.education.activated = billing_info["subscription"].get("education", False)
 
         if features.billing.subscription.plan != CloudPlan.SANDBOX:

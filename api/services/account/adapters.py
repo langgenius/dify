@@ -343,7 +343,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
             result = billing.education_create_education_identity(
                 body=billing.CreateEducationIdentityReq(
                     account_id=account_id,
-                    tenant_id=tenant_id,
+                    curr_tenant_id=tenant_id,
                     token=token,
                     institution=institution,
                     role=role,

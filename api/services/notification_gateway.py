@@ -3,13 +3,19 @@
 from collections.abc import Mapping
 from typing import Any, override
 
+from pydantic import TypeAdapter
+
 from services.billing_service import BillingService
 from services.entities.notification_entities import (
     AccountNotification,
     AccountNotificationBatch,
     NotificationContent,
+    NotificationFrequency,
 )
 from services.notification_service import NotificationGateway
+
+_notification_id = TypeAdapter(str)
+_notification_frequency = TypeAdapter(NotificationFrequency)
 
 
 class BillingNotificationGateway(NotificationGateway):
@@ -31,8 +37,8 @@ class BillingNotificationGateway(NotificationGateway):
         raw_contents = payload.get("contents") or {}
         contents = {language: cls._map_content(content) for language, content in raw_contents.items() if content}
         return AccountNotification(
-            notification_id=payload.get("notificationId"),
-            frequency=payload.get("frequency"),
+            notification_id=_notification_id.validate_python(payload.get("notificationId")),
+            frequency=_notification_frequency.validate_python(payload.get("frequency")),
             contents=contents,
         )
 
