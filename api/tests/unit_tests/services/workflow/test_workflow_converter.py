@@ -21,22 +21,15 @@ from core.app.app_config.entities import (
 )
 from core.helper import encrypter
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from graphon.enums import BuiltinNodeTypes
+from graphon.model_runtime.entities.llm_entities import LLMMode
+from graphon.model_runtime.entities.message_entities import PromptMessageRole
+from graphon.variables.input_entities import VariableEntity, VariableEntityType
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import Account, App, AppMode, AppModelConfig, IconType
 from models.workflow import Workflow, WorkflowType
 from services.workflow import workflow_converter as converter_module
 from services.workflow.workflow_converter import WorkflowConverter, WorkflowGraph
-
-try:
-    from graphon.enums import BuiltinNodeTypes
-    from graphon.model_runtime.entities.llm_entities import LLMMode
-    from graphon.model_runtime.entities.message_entities import PromptMessageRole
-    from graphon.variables.input_entities import VariableEntity, VariableEntityType
-except ModuleNotFoundError:
-    from dify_graph.enums import BuiltinNodeTypes
-    from dify_graph.model_runtime.entities.llm_entities import LLMMode
-    from dify_graph.model_runtime.entities.message_entities import PromptMessageRole
-    from dify_graph.variables.input_entities import VariableEntity, VariableEntityType
 
 
 @pytest.fixture
