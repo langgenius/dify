@@ -278,3 +278,47 @@ def test_committed_snapshots_keep_only_the_reasons_of_called_services() -> None:
 
 def test_committed_client_matches_snapshots() -> None:
     assert generator.check(generator.expected_files({s: generator.load_snapshot(s) for s in generator.SERVICES})) == 0
+
+
+def test_open_enum_field_renders_as_str_instead_of_the_declared_enum() -> None:
+    schema = {"type": "string", "enum": ["", "freeze"]}
+
+    assert generator.field_type(schema, True, "Reply.value", open_enum=True) == "str"
+    assert generator.field_type(schema, True, "Reply.value", open_enum=False) == 'Literal["", "freeze"]'
+
+
+def test_open_enum_field_keeps_nullability_and_presence_rules() -> None:
+    schema = {"type": "string", "enum": ["", "freeze"], "nullable": True}
+
+    assert generator.field_type(schema, True, "Reply.value", open_enum=True) == "str | None"
+    assert generator.field_type(schema, False, "Reply.value", open_enum=True) == "str | None"
+
+
+def test_committed_snapshots_satisfy_the_open_enum_allowlist() -> None:
+    snapshots = {service: generator.load_snapshot(service) for service in generator.SERVICES}
+
+    generator.check_open_enum_fields(snapshots)
+
+    reply = snapshots["saas"]["components"]["schemas"]["CheckAccountInFreezeReply"]
+    assert "enum" in reply["properties"]["freezeType"]
+    assert 'freeze_type: str = Field(alias="freezeType")' in generator.render_module("saas", snapshots["saas"])
+
+
+def test_open_enum_entries_must_still_name_an_enum_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(generator, "OPEN_ENUM_FIELDS", frozenset({("Reply", "value")}))
+    snapshots: dict[generator.Service, generator.JsonObject] = {
+        "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string"}}}}}}
+    }
+
+    with pytest.raises(generator.GenerationError, match="which is no longer an enum"):
+        generator.check_open_enum_fields(snapshots)
+
+
+def test_open_enum_entries_must_exist_in_a_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(generator, "OPEN_ENUM_FIELDS", frozenset({("Reply", "value"), ("Reply", "gone")}))
+    snapshots: dict[generator.Service, generator.JsonObject] = {
+        "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string", "enum": ["a"]}}}}}}
+    }
+
+    with pytest.raises(generator.GenerationError, match="missing from the snapshots"):
+        generator.check_open_enum_fields(snapshots)
