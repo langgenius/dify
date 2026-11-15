@@ -57,6 +57,7 @@ from services.knowledge.datasets.upgrades import (
     KnowledgeFSUpgradeUnavailableError,
     KnowledgeUpgradeApplicationService,
 )
+from services.knowledge.entities.datasets import DatasetAvailabilityFilter
 from services.knowledge.entities.indexing_estimate import (
     NotionEstimateSource,
     UploadFileEstimateSource,
@@ -122,6 +123,7 @@ def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource
 
 
 def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
+    """Given valid list parameters, forward typed filters and serialize the returned page."""
     datasets.list_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
     with app.test_request_context(
         "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c"
@@ -138,7 +140,7 @@ def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
             creator_ids=["c"],
             include_all=True,
             keyword="term",
-            availability="unavailable",
+            availability=DatasetAvailabilityFilter.UNAVAILABLE,
         ),
     )
     assert status == 200
