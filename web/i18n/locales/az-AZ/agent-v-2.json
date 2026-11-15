@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "Əlavə parametrlər",
   "agentDetail.configure.answer.activity.ranCommands": "İcra edilmiş əmrlər",
   "agentDetail.configure.answer.activity.runningCommands": "Əmrlər icra olunur",
+  "agentDetail.configure.answer.activity.startingCommands": "Əmrlər başladılır",
   "agentDetail.configure.answer.duration.minute": "{{count}} dəq",
   "agentDetail.configure.answer.duration.second": "{{count}} san",
   "agentDetail.configure.answer.responseEnded": "Cavab tamamlandı",

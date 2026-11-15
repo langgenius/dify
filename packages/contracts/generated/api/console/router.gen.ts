@@ -24,6 +24,7 @@ import { externalAgentOperations } from './external-agent-operations/orpc.gen.ts
 import { externalAgentTests } from './external-agent-tests/orpc.gen.ts'
 import { externalAgents } from './external-agents/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
+import { fileScan } from './file-scan/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
 import { forgotPassword } from './forgot-password/orpc.gen.ts'
 import { form } from './form/orpc.gen.ts'
@@ -85,6 +86,7 @@ const communityContract = {
   externalAgentTests,
   externalAgents,
   features,
+  fileScan,
   files,
   forgotPassword,
   form,
