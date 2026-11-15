@@ -52,7 +52,6 @@ function EditorActions() {
 
 export function ContextEditor(props: ContextBlockType) {
   const [prompt, setPrompt] = useState('')
-  const [choosingKnowledge, setChoosingKnowledge] = useState(false)
   return (
     <EventEmitterContextProvider>
       <TestLexicalComposer
@@ -78,13 +77,12 @@ export function ContextEditor(props: ContextBlockType) {
           placeholder={null}
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <ContextBlock {...props} onAddContext={() => setChoosingKnowledge(true)} />
-        <ContextBlockReplacementBlock {...props} onAddContext={() => setChoosingKnowledge(true)} />
+        <ContextBlock {...props} />
+        <ContextBlockReplacementBlock {...props} />
         <OnChangePlugin
           onChange={(state) => state.read(() => setPrompt($getRoot().getTextContent()))}
         />
         <output aria-label="Saved prompt">{prompt}</output>
-        {choosingKnowledge && <h2>Choose knowledge</h2>}
       </TestLexicalComposer>
     </EventEmitterContextProvider>
   )

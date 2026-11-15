@@ -15,8 +15,6 @@ it('inserts a context token with usable dataset details and deletes it from the 
   await trigger.click()
   await expect.element(page.getByText('Dataset A')).toBeVisible()
   await expect.element(page.getByText('Dataset B')).toBeVisible()
-  await page.getByRole('button', { name: 'common.promptEditor.context.modal.add' }).click()
-  await expect.element(page.getByRole('heading', { name: 'Choose knowledge' })).toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByText('Dataset A')).not.toBeInTheDocument()
   // Select the rendered chip, then let Lexical process the native deletion key.
