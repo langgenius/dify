@@ -66,11 +66,11 @@ def _register_contract_test_models() -> Iterator[None]:
     openapi_ns.models.pop(ContractResp.__name__, None)
 
 
-def _guard_like(view: Callable[..., object]) -> Callable[..., object]:
+def _guard_like[**P](view: Callable[P, object]) -> Callable[P, object]:
     """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer."""
 
     @wraps(view)
-    def wrapper(*args: object, **kwargs: object) -> object:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> object:
         return view(*args, **kwargs)
 
     return wrapper
