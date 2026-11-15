@@ -1,9 +1,8 @@
 import datetime
 import sqlite3
 import time
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import closing
-from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -17,24 +16,6 @@ from extensions.logstore.repositories.logstore_api_workflow_node_execution_repos
     _dict_to_workflow_node_execution_model,
 )
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
-
-_SqlRepository = tuple[LogstoreAPIWorkflowNodeExecutionRepository, sqlite3.Connection]
-
-
-def _new_logstore_repository() -> LogstoreAPIWorkflowNodeExecutionRepository:
-    """Build the adapter through its constructor.
-
-    The adapter implements the members these tests exercise but not the full maintenance half of
-    the repository protocol, so the class is bound to a protocol-typed factory before it is called.
-    That keeps real construction — and therefore initialization and validation — on the test's path
-    instead of allocating the instance around it. The fixtures patch out endpoint connectivity, so
-    construction performs no network access.
-    """
-    factory = cast(
-        Callable[..., LogstoreAPIWorkflowNodeExecutionRepository],
-        LogstoreAPIWorkflowNodeExecutionRepository,
-    )
-    return factory(session_maker=None)
 
 
 @pytest.fixture
@@ -58,7 +39,7 @@ def sql_repository(
     monkeypatch: pytest.MonkeyPatch,
     mocker: MockerFixture,
     logstore_database: sqlite3.Connection,
-) -> _SqlRepository:
+):
     """Exercise the real protocol adapter while executing its SQL against local records."""
     monkeypatch.setattr(AliyunLogStore, "_instance", None)
     monkeypatch.setattr(AliyunLogStore, "_initialized", False)
@@ -73,24 +54,21 @@ def sql_repository(
     def execute(sql: str, *_args: object) -> list[dict[str, object]]:
         return [dict(row) for row in logstore_database.execute(sql)]
 
-    def get_logs(log_request: GetLogsRequest) -> GetLogsResponse:
-        query = log_request.get_query()
-        assert query is not None
-        search, separator, sql = query.partition(" | ")
+    def get_logs(log_request: GetLogsRequest):
+        search, separator, sql = log_request.get_query().partition(" | ")
         assert separator
         assert search
         assert log_request.get_from() == 0
-        to_time = log_request.get_to()
-        assert to_time is not None
-        assert to_time <= int(time.time())
+        assert log_request.get_to() <= int(time.time())
         return GetLogsResponse({"meta": {"progress": "Complete"}, "data": execute(sql)}, {})
 
     mocker.patch.object(store._pg_client, "execute_sql", side_effect=execute)
     mocker.patch.object(store.client, "get_logs", side_effect=get_logs)
-    return _new_logstore_repository(), logstore_database
+    repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    return repository, logstore_database
 
 
-def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(sql_repository: _SqlRepository) -> None:
+def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(sql_repository) -> None:
     repository, database = sql_repository
     rows = [
         {
@@ -143,22 +121,19 @@ def test_sql_history_excludes_recursive_tool_executions_and_retains_legacy_rows(
     assert latest.id == "legacy"
     assert repository.get_node_last_execution("tenant", "app", "workflow", "unknown") is None
     database.execute("DELETE FROM workflow_node_execution WHERE id IN ('legacy', 'root')")
-    remaining = repository.get_node_last_execution("tenant", "app", "workflow", "same-node")
-    assert remaining is not None
-    assert remaining.id == "null-status"
+    assert repository.get_node_last_execution("tenant", "app", "workflow", "same-node").id == "null-status"
 
 
 def test_sdk_history_searches_use_owner_scope() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = _new_logstore_repository()
-    store_client = MagicMock(supports_pg_protocol=False)
-    store_client.execute_sql.return_value = list[dict[str, object]]()
-    repository.logstore_client = store_client
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
+    repository.logstore_client = MagicMock(supports_pg_protocol=False)
+    repository.logstore_client.execute_sql.return_value = []
 
     repository.get_executions_by_workflow_run(tenant_id="tenant", app_id="app", workflow_run_id="run")
     repository.get_node_last_execution(tenant_id="tenant", app_id="app", workflow_id="workflow", node_id="same-node")
 
-    history_query, latest_query = [call.kwargs for call in store_client.execute_sql.call_args_list]
+    history_query, latest_query = [call.kwargs for call in repository.logstore_client.execute_sql.call_args_list]
     assert latest_query["query"] == (
         'tenant_id: "tenant" and app_id: "app" and workflow_id: "workflow" and node_id: "same-node"'
     )
@@ -167,12 +142,10 @@ def test_sdk_history_searches_use_owner_scope() -> None:
 
 def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope(logstore_database: sqlite3.Connection) -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = _new_logstore_repository()
-    store_client = MagicMock()
-    repository.logstore_client = store_client
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
     database = logstore_database
     database.row_factory = sqlite3.Row
-    base: dict[str, float | int | str | None] = {
+    base = {
         "id": "row-id",
         "node_execution_id": "engine-id",
         "tenant_id": "tenant",
@@ -216,7 +189,7 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope(logstore_d
         assert all(row.keys().isdisjoint({"inputs", "process_data", "outputs"}) for row in result)
         return result
 
-    store_client.execute_sql.side_effect = execute_query
+    repository.logstore_client.execute_sql.side_effect = execute_query
     snapshots = repository.get_execution_snapshots_by_workflow_run(
         tenant_id="tenant",
         app_id="app",
@@ -238,8 +211,8 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope(logstore_d
     assert snapshots[-1].index == 1002
     assert snapshots[-1].iteration_id is None
     assert snapshots[-1].elapsed_time == 4
-    assert store_client.execute_sql.call_count == 2
-    query = store_client.execute_sql.call_args.kwargs
+    assert repository.logstore_client.execute_sql.call_count == 2
+    query = repository.logstore_client.execute_sql.call_args.kwargs
     assert (
         query["query"] == 'tenant_id: "tenant" and app_id: "app" and workflow_run_id: "run" and workflow_id: "workflow"'
     )
@@ -247,7 +220,7 @@ def test_resumption_snapshots_read_latest_nodes_with_full_owner_scope(logstore_d
 
 @pytest.mark.parametrize("requested_id", ["parent-row", "parent-engine"])
 def test_workflow_tool_children_only_fetch_matching_latest_payloads(
-    requested_id: str, sql_repository: _SqlRepository, monkeypatch: pytest.MonkeyPatch
+    requested_id: str, sql_repository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     repository, database = sql_repository
     rows = [
@@ -344,23 +317,8 @@ def test_workflow_tool_children_only_fetch_matching_latest_payloads(
 
     execute_sql = repository.logstore_client.execute_sql
 
-    def execute_query(
-        *,
-        sql: str,
-        logstore: str | None = None,
-        query: str = "*",
-        from_time: int | None = None,
-        to_time: int | None = None,
-        power_sql: bool = False,
-    ) -> list[dict[str, object]]:
-        result = execute_sql(
-            sql=sql,
-            logstore=logstore,
-            query=query,
-            from_time=from_time,
-            to_time=to_time,
-            power_sql=power_sql,
-        )
+    def execute_query(*, sql: str, **kwargs: object) -> list[dict[str, object]]:
+        result = execute_sql(sql=sql, **kwargs)
         fetched_payload_ids.extend(str(row["id"]) for row in result if "outputs" in row)
         return result
 
@@ -377,14 +335,14 @@ def test_workflow_tool_children_only_fetch_matching_latest_payloads(
 
 def test_load_full_process_data_returns_logstore_mapping() -> None:
     with patch("extensions.logstore.repositories.logstore_api_workflow_node_execution_repository.AliyunLogStore"):
-        repository = _new_logstore_repository()
+        repository = LogstoreAPIWorkflowNodeExecutionRepository(session_maker=None)
     execution = WorkflowNodeExecutionModel()
     execution.process_data = '{"__dify_retry_history": [{"retry_index": 1}]}'
 
     assert repository.load_full_process_data(execution) == {"__dify_retry_history": [{"retry_index": 1}]}
 
 
-def test_get_execution_by_id_keeps_process_data_from_highest_failed_log_version(sql_repository: _SqlRepository) -> None:
+def test_get_execution_by_id_keeps_process_data_from_highest_failed_log_version(sql_repository) -> None:
     repository, database = sql_repository
     execution_id, tenant_id = "execution'1", 'tenant"1'
     database.executemany(
@@ -402,14 +360,9 @@ def test_get_execution_by_id_keeps_process_data_from_highest_failed_log_version(
     assert execution.status.value == "failed"
     assert execution.process_data_dict == {"workflow_agent_binding_id": "binding-1"}
     if not repository.logstore_client.supports_pg_protocol:
-        get_logs_mock = repository.logstore_client.client.get_logs
-        assert isinstance(get_logs_mock, MagicMock)
-        sdk_query = get_logs_mock.call_args.args[0].get_query()
-        assert sdk_query is not None
+        sdk_query = repository.logstore_client.client.get_logs.call_args.args[0].get_query()
         assert sdk_query.startswith('id: "execution\'1" and tenant_id: "tenant\\"1" | ')
-    same_tenant = repository.get_execution_by_id(execution_id)
-    assert same_tenant is not None
-    assert same_tenant.id == execution_id
+    assert repository.get_execution_by_id(execution_id).id == execution_id
     assert repository.get_execution_by_id(execution_id, "other-tenant") is None
     assert repository.get_execution_by_id("unknown") is None
     assert repository.get_execution_by_id("execution' OR '1'='1") is None
