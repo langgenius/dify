@@ -143,10 +143,12 @@ class ExcelExtractor(BaseExtractor):
                     page_content = []
                     for k, v in series_row.items():
                         if pd.notna(v):
-                            # Escape embedded double quotes like the .xlsx branch
-                            # does, so quoted cell values do not corrupt the row.
+                            # Escape embedded double quotes in both the header and
+                            # the value, like the .xlsx branch does, so quoted
+                            # headers or cell values do not corrupt the row.
+                            key = str(k).replace('"', '\\"')
                             value = str(v).replace('"', '\\"')
-                            page_content.append(f'"{k}":"{value}"')
+                            page_content.append(f'"{key}":"{value}"')
                     documents.append(
                         Document(page_content=";".join(page_content), metadata={"source": self._file_path})
                     )
