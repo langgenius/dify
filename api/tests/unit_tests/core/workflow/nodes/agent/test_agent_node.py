@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
+from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.nodes.agent.agent_node import AgentNode
 from core.workflow.nodes.agent.entities import AgentNodeData
-from core.workflow.nodes.agent.events import AgentLogEvent, NodeRunAgentLogEvent
 from graphon.engine_events import NodeRunStreamChunkEvent
 from graphon.enums import BuiltinNodeTypes
 from graphon.node_events import StreamChunkEvent

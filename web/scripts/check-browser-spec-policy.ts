@@ -72,20 +72,8 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
     reason: legacyMockDebt,
   },
   {
-    path: 'app/components/header/account-setting/ip-policies-page/__tests__/policy-item.browser.spec.tsx',
-    specifier: '@/app/components/base/amplitude',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
     path: 'app/components/header/account-setting/members-page/__tests__/delete-member.browser.spec.tsx',
     specifier: '@/features/contacts/management/feature-flag',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'app/components/main-nav/components/__tests__/web-apps-section.browser.spec.tsx',
-    specifier: '@/context/permission-state',
     occurrence: 1,
     reason: legacyMockDebt,
   },
@@ -140,12 +128,6 @@ const MOCK_ALLOWLIST: MockAllowance[] = [
   {
     path: 'app/components/workflow/nodes/human-input/components/__tests__/form-content.hitl-v2.browser.spec.tsx',
     specifier: '@/app/components/workflow/store',
-    occurrence: 1,
-    reason: legacyMockDebt,
-  },
-  {
-    path: 'features/network-access/app-binding/__tests__/focus.browser.spec.tsx',
-    specifier: '@/app/components/base/amplitude',
     occurrence: 1,
     reason: legacyMockDebt,
   },
