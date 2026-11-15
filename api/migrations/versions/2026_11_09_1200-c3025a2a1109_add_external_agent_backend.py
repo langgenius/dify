@@ -1,7 +1,7 @@
 """Add owned external agents, durable dispatches and observation delivery.
 
 Revision ID: c3025a2a1109
-Revises: ad1816d009b8, 53c10126d551
+Revises: e4f9a2c7b681 (Agent dev-only bridge)
 Create Date: 2026-11-09
 """
 
@@ -11,7 +11,9 @@ from alembic import op
 from models.types import AdjustedJSON, StringUUID
 
 revision = "c3025a2a1109"
-down_revision = ("ad1816d009b8", "53c10126d551")
+# Dev integration only: preserve the deployed Agent migration ancestry.
+# The main backend PR retains its own original parents unchanged.
+down_revision = "e4f9a2c7b681"
 branch_labels = None
 depends_on = None
 

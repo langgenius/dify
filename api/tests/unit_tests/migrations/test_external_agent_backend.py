@@ -120,7 +120,14 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert sa.inspect(connection).get_table_names() == [legacy.name]
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
-    assert ScriptDirectory(str(API / "migrations")).get_heads() == ["c3025dflt1112"]
+    scripts = ScriptDirectory(str(API / "migrations"))
+    assert scripts.get_heads() == ["d3046fe1115"]
+    external = scripts.get_revision("c3025a2a1109")
+    assert external is not None
+    assert external.down_revision == "e4f9a2c7b681"
+    merged = scripts.get_revision("d3046fe1115")
+    assert merged is not None
+    assert merged.down_revision == ("d3025a2a1112", "b2e4c6d8a013")
 
 
 @pytest.mark.parametrize("dialect", [postgresql.dialect(), mysql.dialect()])
