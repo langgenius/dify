@@ -350,12 +350,13 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
         return {"schema": processed_schema, "name": "llm_response"}
 
 
-def remove_additional_properties(schema: dict[str, Any]) -> None:
+def remove_additional_properties(schema: object) -> None:
     """
     Remove additionalProperties fields from JSON schema.
     Used for models like Gemini that don't support this property.
 
-    :param schema: JSON schema to modify in-place
+    :param schema: JSON schema to modify in-place; values that are not a
+        mapping are left untouched
     """
     if not isinstance(schema, dict):
         return

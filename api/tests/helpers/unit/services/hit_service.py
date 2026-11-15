@@ -26,6 +26,18 @@ pytestmark = [
 ]
 
 
+def _mapping(value: object) -> dict[str, object]:
+    """Narrow a response fragment to a mapping so the assertions can index it."""
+    assert isinstance(value, dict)
+    return value
+
+
+def _object_list(value: object) -> list[object]:
+    """Narrow a response fragment to a list so the assertions can size and index it."""
+    assert isinstance(value, list)
+    return value
+
+
 class HitTestingTestDataFactory:
     """
     Factory class for creating test data and mock objects for hit testing service tests.
@@ -40,7 +52,7 @@ class HitTestingTestDataFactory:
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
         retrieval_model: dict[str, Any] | None = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> Dataset:
         """
         Create a dataset with specified attributes.
@@ -68,7 +80,7 @@ class HitTestingTestDataFactory:
     def create_user_mock(
         user_id: str = "user-789",
         tenant_id: str = "tenant-123",
-        **kwargs,
+        **kwargs: Any,
     ) -> Account:
         """
         Create a mock user (Account) with specified attributes.
@@ -99,7 +111,7 @@ class HitTestingTestDataFactory:
     def create_retrieval_record_mock(
         content: str = "Test content",
         score: float = 0.95,
-        **kwargs,
+        **kwargs: Any,
     ) -> Mock:
         """
         Create a mock retrieval record.
@@ -129,7 +141,7 @@ class TestHitTestingServiceRetrieve:
     various retrieval model configurations, metadata filtering, and query logging.
     """
 
-    def test_retrieve_success_with_default_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_success_with_default_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test successful retrieval with default retrieval model.
 
@@ -179,7 +191,7 @@ class TestHitTestingServiceRetrieve:
             assert query_log.created_by == account.id
             assert json.loads(query_log.content) == [{"content_type": "text_query", "content": query}]
 
-    def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_success_with_custom_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test successful retrieval with custom retrieval model.
 
@@ -229,7 +241,7 @@ class TestHitTestingServiceRetrieve:
             assert call_kwargs["score_threshold"] == 0.7
             assert call_kwargs["reranking_model"] == retrieval_model["reranking_model"]
 
-    def test_retrieve_with_metadata_filtering(self, sqlite_session: Session):
+    def test_retrieve_with_metadata_filtering(self, sqlite_session: Session) -> None:
         """
         Test retrieval with metadata filtering conditions.
 
@@ -284,7 +296,7 @@ class TestHitTestingServiceRetrieve:
             call_kwargs = mock_retrieve.call_args[1]
             assert call_kwargs["document_ids_filter"] == ["doc-1", "doc-2"]
 
-    def test_retrieve_with_metadata_filtering_no_documents(self, sqlite_session: Session):
+    def test_retrieve_with_metadata_filtering_no_documents(self, sqlite_session: Session) -> None:
         """
         Test retrieval with metadata filtering that returns no documents.
 
@@ -307,7 +319,7 @@ class TestHitTestingServiceRetrieve:
         external_retrieval_model = {}
 
         mock_dataset_retrieval = MagicMock()
-        mock_dataset_retrieval.get_metadata_filter_condition.return_value = ({}, True)
+        mock_dataset_retrieval.get_metadata_filter_condition.return_value = (dict[str, object](), True)
 
         with (
             patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
@@ -316,7 +328,7 @@ class TestHitTestingServiceRetrieve:
             ) as mock_format,
         ):
             mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
-            mock_format.return_value = []
+            mock_format.return_value = list[object]()
 
             # Act
             result = HitTestingService.retrieve(
@@ -327,7 +339,7 @@ class TestHitTestingServiceRetrieve:
             assert result["query"]["content"] == query
             assert result["records"] == []
 
-    def test_retrieve_with_dataset_retrieval_model(self, sqlite_session: Session):
+    def test_retrieve_with_dataset_retrieval_model(self, sqlite_session: Session) -> None:
         """
         Test retrieval using dataset's retrieval model when not provided.
 
@@ -381,7 +393,7 @@ class TestHitTestingServiceExternalRetrieve:
     including query escaping, response formatting, and provider validation.
     """
 
-    def test_external_retrieve_success(self, sqlite_session: Session):
+    def test_external_retrieve_success(self, sqlite_session: Session) -> None:
         """
         Test successful external retrieval.
 
@@ -397,7 +409,7 @@ class TestHitTestingServiceExternalRetrieve:
 
         external_documents = [
             {"content": "External doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
-            {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
+            {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": dict[str, object]()},
         ]
 
         with (
@@ -420,11 +432,13 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            assert result["query"]["content"] == query
-            assert len(result["records"]) == 2
-            assert result["records"][0]["content"] == "External doc 1"
-            assert result["records"][0]["title"] == "Title 1"
-            assert result["records"][0]["score"] == 0.95
+            response = _mapping(result)
+            assert _mapping(response["query"])["content"] == query
+            records = _object_list(response["records"])
+            assert len(records) == 2
+            assert _mapping(records[0])["content"] == "External doc 1"
+            assert _mapping(records[0])["title"] == "Title 1"
+            assert _mapping(records[0])["score"] == 0.95
             mock_external_retrieve.assert_called_once()
             # Verify query was escaped
             assert mock_external_retrieve.call_args[1]["query"] == 'test query with \\"quotes\\"'
@@ -434,7 +448,7 @@ class TestHitTestingServiceExternalRetrieve:
             assert query_log.content == query
             assert query_log.created_by == account.id
 
-    def test_external_retrieve_non_external_provider(self, sqlite_session: Session):
+    def test_external_retrieve_non_external_provider(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with non-external provider (should return empty).
 
@@ -454,11 +468,12 @@ class TestHitTestingServiceExternalRetrieve:
         )
 
         # Assert
-        assert result["query"]["content"] == query
-        assert result["records"] == []
+        response = _mapping(result)
+        assert _mapping(response["query"])["content"] == query
+        assert response["records"] == []
         assert sqlite_session.scalar(select(DatasetQuery)) is None
 
-    def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session):
+    def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with metadata filtering conditions.
 
@@ -472,7 +487,7 @@ class TestHitTestingServiceExternalRetrieve:
         external_retrieval_model = {"top_k": 3}
         metadata_filtering_conditions = {"category": "test"}
 
-        external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}]
+        external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": dict[str, object]()}]
 
         with (
             patch(
@@ -494,12 +509,13 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            assert result["query"]["content"] == query
-            assert len(result["records"]) == 1
+            response = _mapping(result)
+            assert _mapping(response["query"])["content"] == query
+            assert len(_object_list(response["records"])) == 1
             call_kwargs = mock_external_retrieve.call_args[1]
             assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
 
-    def test_external_retrieve_empty_documents(self, sqlite_session: Session):
+    def test_external_retrieve_empty_documents(self, sqlite_session: Session) -> None:
         """
         Test external retrieval with empty document list.
 
@@ -520,7 +536,7 @@ class TestHitTestingServiceExternalRetrieve:
             patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
-            mock_external_retrieve.return_value = []
+            mock_external_retrieve.return_value = list[object]()
 
             # Act
             result = HitTestingService.external_retrieve(
@@ -533,8 +549,9 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            assert result["query"]["content"] == query
-            assert result["records"] == []
+            response = _mapping(result)
+            assert _mapping(response["query"])["content"] == query
+            assert response["records"] == []
 
 
 class TestHitTestingServiceCompactRetrieveResponse:
@@ -545,7 +562,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
     ensuring documents are properly formatted into retrieval records.
     """
 
-    def test_compact_retrieve_response_success(self, sqlite_session: Session):
+    def test_compact_retrieve_response_success(self, sqlite_session: Session) -> None:
         """
         Test successful response formatting.
 
@@ -582,7 +599,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
             assert mock_format.call_args.args[0].get_bind() is sqlite_session.get_bind()
             assert mock_format.call_args.args[1] == documents
 
-    def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session):
+    def test_compact_retrieve_response_empty_documents(self, sqlite_session: Session) -> None:
         """
         Test response formatting with empty document list.
 
@@ -596,7 +613,7 @@ class TestHitTestingServiceCompactRetrieveResponse:
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
         ) as mock_format:
-            mock_format.return_value = []
+            mock_format.return_value = list[object]()
 
             # Act
             result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
@@ -618,7 +635,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
     retrieval, ensuring proper field extraction and provider validation.
     """
 
-    def test_compact_external_retrieve_response_external_provider(self):
+    def test_compact_external_retrieve_response_external_provider(self) -> None:
         """
         Test external response formatting for external provider.
 
@@ -630,7 +647,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         query = "test query"
         documents = [
             {"content": "Doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
-            {"content": "Doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
+            {"content": "Doc 2", "title": "Title 2", "score": 0.85, "metadata": dict[str, object]()},
         ]
 
         # Act
@@ -644,7 +661,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["records"][0]["score"] == 0.95
         assert result["records"][0]["metadata"] == {"key": "value"}
 
-    def test_compact_external_retrieve_response_non_external_provider(self):
+    def test_compact_external_retrieve_response_non_external_provider(self) -> None:
         """
         Test external response formatting for non-external provider.
 
@@ -663,7 +680,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["query"]["content"] == query
         assert result["records"] == []
 
-    def test_compact_external_retrieve_response_missing_fields(self):
+    def test_compact_external_retrieve_response_missing_fields(self) -> None:
         """
         Test external response formatting with missing optional fields.
 
@@ -698,7 +715,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
     meet the required criteria (non-empty, max 250 characters).
     """
 
-    def test_hit_testing_args_check_success(self):
+    def test_hit_testing_args_check_success(self) -> None:
         """
         Test successful argument validation.
 
@@ -710,7 +727,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         # Act & Assert (should not raise)
         HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_empty_query(self):
+    def test_hit_testing_args_check_empty_query(self) -> None:
         """
         Test validation fails with empty query.
 
@@ -723,20 +740,20 @@ class TestHitTestingServiceHitTestingArgsCheck:
         with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_none_query(self):
+    def test_hit_testing_args_check_none_query(self) -> None:
         """
         Test validation fails with None query.
 
         Verifies that None queries raise a ValueError with appropriate message.
         """
         # Arrange
-        args = {"query": None}
+        args: dict[str, str | None] = {"query": None}
 
         # Act & Assert
         with pytest.raises(ValueError, match="Query or attachment_ids is required"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_too_long_query(self):
+    def test_hit_testing_args_check_too_long_query(self) -> None:
         """
         Test validation fails with query exceeding 250 characters.
 
@@ -749,7 +766,7 @@ class TestHitTestingServiceHitTestingArgsCheck:
         with pytest.raises(ValueError, match="Query cannot exceed 250 characters"):
             HitTestingService.hit_testing_args_check(args)
 
-    def test_hit_testing_args_check_exactly_250_characters(self):
+    def test_hit_testing_args_check_exactly_250_characters(self) -> None:
         """
         Test validation succeeds with exactly 250 characters.
 
@@ -771,7 +788,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
     ensuring special characters are properly escaped.
     """
 
-    def test_escape_query_for_search_with_quotes(self):
+    def test_escape_query_for_search_with_quotes(self) -> None:
         """
         Test escaping quotes in query.
 
@@ -787,7 +804,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == 'test query with \\"quotes\\"'
 
-    def test_escape_query_for_search_without_quotes(self):
+    def test_escape_query_for_search_without_quotes(self) -> None:
         """
         Test query without quotes (no change).
 
@@ -802,7 +819,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == query
 
-    def test_escape_query_for_search_multiple_quotes(self):
+    def test_escape_query_for_search_multiple_quotes(self) -> None:
         """
         Test escaping multiple quotes in query.
 
@@ -818,7 +835,7 @@ class TestHitTestingServiceEscapeQueryForSearch:
         # Assert
         assert result == 'test \\"query\\" with \\"multiple\\" quotes'
 
-    def test_escape_query_for_search_empty_string(self):
+    def test_escape_query_for_search_empty_string(self) -> None:
         """
         Test escaping empty string.
 
