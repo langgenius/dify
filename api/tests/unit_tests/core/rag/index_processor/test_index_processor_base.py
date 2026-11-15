@@ -62,9 +62,15 @@ def _account() -> Account:
 
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
+    """Call the abstract base implementations so their NotImplementedError can be asserted.
+
+    The base methods are abstract, so they are called through the class explicitly;
+    pyrefly rejects `super()` calls to abstract methods without an implementation.
+    """
+
     @override
     def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: object) -> list[Document]:
-        return super().extract(extract_setting, session=session, **kwargs)
+        return BaseIndexProcessor.extract(self, extract_setting, session=session, **kwargs)
 
     @override
     def transform(
@@ -75,7 +81,7 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
         session: Session,
         **kwargs: object,
     ) -> list[Document]:
-        return super().transform(documents, current_user=current_user, session=session, **kwargs)
+        return BaseIndexProcessor.transform(self, documents, current_user=current_user, session=session, **kwargs)
 
     @override
     def generate_summary_preview(
@@ -87,7 +93,8 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
         *,
         session: Session,
     ) -> list[PreviewDetail]:
-        return super().generate_summary_preview(
+        return BaseIndexProcessor.generate_summary_preview(
+            self,
             tenant_id=tenant_id,
             preview_texts=preview_texts,
             summary_index_setting=summary_index_setting,
@@ -106,7 +113,8 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
         session: Session,
         **kwargs: object,
     ) -> None:
-        return super().load(
+        return BaseIndexProcessor.load(
+            self,
             dataset=dataset,
             documents=documents,
             multimodal_documents=multimodal_documents,
@@ -125,15 +133,17 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
         session: Session,
         **kwargs: object,
     ) -> None:
-        return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs)
+        return BaseIndexProcessor.clean(
+            self, dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs
+        )
 
     @override
     def index(self, dataset: Dataset, document: DatasetDocument, chunks: object, session: Session) -> None:
-        return super().index(dataset=dataset, document=document, chunks=chunks, session=session)
+        return BaseIndexProcessor.index(self, dataset=dataset, document=document, chunks=chunks, session=session)
 
     @override
     def format_preview(self, chunks: object) -> Mapping[str, object]:
-        return super().format_preview(chunks)
+        return BaseIndexProcessor.format_preview(self, chunks)
 
 
 class TestBaseIndexProcessor:
