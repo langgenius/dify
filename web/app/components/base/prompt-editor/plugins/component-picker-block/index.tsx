@@ -196,18 +196,18 @@ const ComponentPicker = ({
       const isFlat = variables.length === 1
       if (isFlat) {
         const varName = variables[0]
-        if (varName === 'current')
-          editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+        if (varName === 'current') editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, undefined)
         else if (varName === 'error_message')
-          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
-        else if (varName === 'last_run') editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
+        else if (varName === 'last_run')
+          editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
       } else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
       } else {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
       }
     },
-    [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString],
+    [editor, checkForTriggerMatch, triggerString],
   )
 
   const resetTypeaheadState = useCallback(() => {

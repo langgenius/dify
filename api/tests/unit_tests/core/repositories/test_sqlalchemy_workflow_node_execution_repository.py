@@ -881,7 +881,14 @@ def _fail_inserts(
     insert_attempts: list[str] = []
     rollbacks: list[bool] = []
 
-    def fail_insert(_connection, _cursor, statement, parameters, _context, _executemany) -> None:
+    def fail_insert(
+        _connection: Any,
+        _cursor: Any,
+        statement: str,
+        parameters: Any,
+        _context: Any,
+        _executemany: Any,
+    ) -> None:
         if not statement.lstrip().upper().startswith("INSERT INTO WORKFLOW_NODE_EXECUTIONS"):
             return
         insert_attempts.append(statement)
@@ -1157,7 +1164,7 @@ class TestWorkflowNodeExecutionTruncationCases:
                 assert session.get_bind() is sqlite_engine
             return repository
 
-        def test_to_domain_model_without_offload_data(self, sqlite_engine: Engine):
+        def test_to_domain_model_without_offload_data(self, sqlite_engine: Engine) -> None:
             """Test _to_domain_model correctly handles models without offload data."""
             repo = self.create_repository(sqlite_engine)
 
@@ -1193,7 +1200,7 @@ class TestWorkflowNodeExecutionTruncationCases:
     class TestWorkflowNodeExecutionModelTruncatedProperties:
         """Test the truncated properties on WorkflowNodeExecutionModel."""
 
-        def test_inputs_truncated_with_offload_data(self):
+        def test_inputs_truncated_with_offload_data(self) -> None:
             """Test inputs_truncated property when offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             offload = create_offload(ExecutionOffLoadType.INPUTS)
@@ -1203,7 +1210,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.process_data_truncated is False
             assert model.outputs_truncated is False
 
-        def test_outputs_truncated_with_offload_data(self):
+        def test_outputs_truncated_with_offload_data(self) -> None:
             """Test outputs_truncated property when offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
 
@@ -1215,7 +1222,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.process_data_truncated is False
             assert model.outputs_truncated is True
 
-        def test_process_data_truncated_with_offload_data(self):
+        def test_process_data_truncated_with_offload_data(self) -> None:
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             offload = create_offload(ExecutionOffLoadType.PROCESS_DATA)
             model.offload_data = [offload]
@@ -1223,7 +1230,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False
 
-        def test_truncated_properties_without_offload_data(self):
+        def test_truncated_properties_without_offload_data(self) -> None:
             """Test truncated properties when no offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             model.offload_data = []
@@ -1232,7 +1239,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.outputs_truncated is False
             assert model.process_data_truncated is False
 
-        def test_truncated_properties_without_offload_attribute(self):
+        def test_truncated_properties_without_offload_attribute(self) -> None:
             """Test truncated properties when offload_data attribute doesn't exist."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             # Don't set offload_data attribute at all

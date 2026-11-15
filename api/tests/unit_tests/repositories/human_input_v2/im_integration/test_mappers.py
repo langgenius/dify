@@ -1,5 +1,6 @@
 """Bidirectional mapping tests for every IM Control Plane record."""
 
+from dataclasses import replace
 from datetime import datetime
 
 import pytest
@@ -23,6 +24,12 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
 )
 from core.human_input_v2.im_integration.adapters import ProviderUserId
+from core.human_input_v2.im_integration.sync_records import (
+    AccountIMSyncInitiator,
+    IMSyncInitiator,
+    SysUserId,
+    SysUserIMSyncInitiator,
+)
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
@@ -52,7 +59,7 @@ def _run() -> IMSyncRun:
         sync_run_id=IMSyncRunId("run-1"),
         channel_revision=IMChannelRevision(str(_CHANNEL_ID), 1),
         provider=IMProvider.FEISHU,
-        started_by_account_id=AccountId("account-1"),
+        started_by=AccountIMSyncInitiator(AccountId("account-1")),
         now=_NOW,
     )
 
@@ -94,10 +101,28 @@ def _result() -> SyncResultFact:
     )
 
 
-def test_sync_run_mapping_round_trips_captured_revision_and_counts() -> None:
-    run = _run()
+@pytest.mark.parametrize(
+    "started_by",
+    [AccountIMSyncInitiator(AccountId("account-1")), SysUserIMSyncInitiator(SysUserId("sys-user-1"))],
+)
+def test_sync_run_mapping_round_trips_captured_revision_counts_and_initiator(started_by: IMSyncInitiator) -> None:
+    run = replace(_run(), started_by=started_by)
 
     assert sync_run_from_record(sync_run_to_record(run)) == run
+
+
+@pytest.mark.parametrize(
+    ("account_id", "sys_user_id"),
+    [(None, None), ("account-1", "sys-user-1")],
+    ids=["missing-initiator", "multiple-initiators"],
+)
+def test_sync_run_mapping_rejects_invalid_initiator_columns(account_id: str | None, sys_user_id: str | None) -> None:
+    record = sync_run_to_record(_run())
+    record.started_by_account_id = account_id
+    record.started_by_sys_user_id = sys_user_id
+
+    with pytest.raises(AssertionError):
+        sync_run_from_record(record)
 
 
 def test_sync_result_mapping_round_trips_all_structured_snapshots() -> None:

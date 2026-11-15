@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "เลือกผู้ที่สามารถตอบในขั้นตอนข้อมูลจากมนุษย์นี้",
   "nodes.humanInputV2.recipients.initiator": "ผู้ใช้ที่เริ่มการทำงานครั้งนี้ผ่าน Web App หรือ CLI สามารถอนุมัติได้",
   "nodes.humanInputV2.recipients.initiatorDescription": "ผู้ที่เริ่มการเรียกใช้เวิร์กโฟลว์นี้สามารถตอบได้",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "การทำงานที่เริ่มด้วยทริกเกอร์ไม่มีผู้เริ่มที่สามารถรับคำขออนุมัติได้ เลือกผู้ติดต่อหรือใช้ตัวแปรเพื่อระบุที่อยู่อีเมล",
   "nodes.humanInputV2.recipients.inputHelp": "พิมพ์หรือวางหลายอีเมลโดยคั่นด้วยเครื่องหมายจุลภาค กด / เพื่อแทรกตัวแปร",
   "nodes.humanInputV2.recipients.insertVariable": "แทรกตัวแปร",
   "nodes.humanInputV2.recipients.loadError": "ไม่สามารถโหลดผู้ติดต่อได้ ID ผู้ติดต่อที่บันทึกไว้ยังคงอยู่",

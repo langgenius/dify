@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "Izberite, kdo lahko odgovori v tem koraku človeškega vnosa.",
   "nodes.humanInputV2.recipients.initiator": "Uporabnik, ki zažene to izvajanje prek Web App ali CLI, lahko odobri",
   "nodes.humanInputV2.recipients.initiatorDescription": "Odgovori lahko oseba, ki zažene ta delovni tok.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "Izvajanja, ki jih zažene sprožilec, nimajo pobudnika, ki bi lahko prejel zahteve za odobritev. Izberite stik ali določite e-poštni naslov s spremenljivko.",
   "nodes.humanInputV2.recipients.inputHelp": "Vnesite ali prilepite več e-poštnih naslovov, ločenih z vejicami. Pritisnite /, da vstavite spremenljivko.",
   "nodes.humanInputV2.recipients.insertVariable": "Vstavi spremenljivko",
   "nodes.humanInputV2.recipients.loadError": "Stikov ni bilo mogoče naložiti. Shranjeni ID-ji stikov so ohranjeni.",

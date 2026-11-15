@@ -19,7 +19,8 @@ from core.human_input_v2.im_integration import (
     SyncResultFact,
     SyncResultPage,
 )
-from core.human_input_v2.shared import AccountId, IMSyncResultId, IMSyncRunId
+from core.human_input_v2.im_integration.sync_records import IMSyncInitiator
+from core.human_input_v2.shared import IMSyncResultId, IMSyncRunId
 from libs.uuid_utils import uuidv7
 from models.human_input_v2 import HumanInputIMChannel, HumanInputIMSyncResult, HumanInputIMSyncRun
 from repositories.human_input_v2.im_binding_repository import IMBindingRepository
@@ -42,9 +43,14 @@ class SQLAlchemyIMControlPlaneRepository:
         self,
         *,
         sync_run_id: IMSyncRunId,
-        started_by_account_id: AccountId | None,
+        started_by: IMSyncInitiator,
         now: NaiveDatetime,
     ) -> ActiveRunDecision:
+        """Persist one initiating identity or return the unchanged active run.
+
+        The caller owns the transaction. The Channel lock serializes creation;
+        a stale revision returns without creating a run.
+        """
         revision = IMChannelRevision(
             str(self._channel.id),
             self._channel.config_version,
@@ -78,7 +84,7 @@ class SQLAlchemyIMControlPlaneRepository:
             sync_run_id=sync_run_id,
             channel_revision=revision,
             provider=self._channel.provider,
-            started_by_account_id=started_by_account_id,
+            started_by=started_by,
             now=now,
         )
         record = sync_run_to_record(run)

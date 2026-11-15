@@ -41,7 +41,7 @@ const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentPr
       data-roster-reference-id={token.id}
       data-roster-reference-warning={warning ? true : undefined}
       className={cn(
-        'inline-flex min-w-4.5 items-center gap-0.5 overflow-hidden rounded-[5px] border py-px pr-1 pl-px align-middle shadow-xs shadow-shadow-shadow-3',
+        'inline-flex min-w-4.5 items-center gap-0.5 overflow-hidden rounded-[5px] border py-px ps-px pe-1 align-middle shadow-xs shadow-shadow-shadow-3',
         warning
           ? 'border-components-badge-status-light-warning-halo bg-state-warning-hover'
           : 'border-state-accent-hover-alt bg-state-accent-hover',
@@ -64,7 +64,7 @@ const RosterReferenceBlockComponent = ({ text }: RosterReferenceBlockComponentPr
           warning ? 'text-text-warning' : 'text-text-accent',
         )}
       >
-        {token.label}
+        {rosterReferenceBlock?.getLabel?.(token) ?? token.label}
       </span>
       {warning && (
         <span aria-hidden className="i-ri-alert-fill size-3 shrink-0 text-text-warning" />

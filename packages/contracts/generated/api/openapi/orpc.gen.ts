@@ -286,6 +286,8 @@ import {
   zPostWorkspacesByWorkspaceIdSkillsImportsBody,
   zPostWorkspacesByWorkspaceIdSkillsImportsPath,
   zPostWorkspacesByWorkspaceIdSkillsImportsResponse,
+  zPostWorkspacesByWorkspaceIdSwitchPath,
+  zPostWorkspacesByWorkspaceIdSwitchResponse,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsBody,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath,
   zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse,
@@ -392,12 +394,23 @@ export const sessions = {
   bySessionId,
 }
 
+/**
+ * Return account details with workspace visibility bounded by PAT scope
+ *
+ * The account snapshot supplies current memberships and the default workspace.
+ * A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+ * present only when its workspace remains visible. Non-PAT requests have no
+ * workspace filter. This handler is read-only and does not change membership.
+ */
 export const get5 = oc
   .route({
+    description:
+      "The account snapshot supplies current memberships and the default workspace.\nA PAT's admitted workspace IDs narrow that snapshot; the returned default is\npresent only when its workspace remains visible. Non-PAT requests have no\nworkspace filter. This handler is read-only and does not change membership.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccount',
     path: '/account',
+    summary: 'Return account details with workspace visibility bounded by PAT scope',
     tags: ['openapi'],
   })
   .output(zGetAccountResponse)
@@ -2539,6 +2552,21 @@ export const tools = {
   get: get57,
 }
 
+export const post34 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postWorkspacesByWorkspaceIdSwitch',
+    path: '/workspaces/{workspace_id}:switch',
+    tags: ['openapi'],
+  })
+  .input(z.object({ params: zPostWorkspacesByWorkspaceIdSwitchPath }))
+  .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
+
+export const switch_ = {
+  post: post34,
+}
+
 export const get58 = oc
   .route({
     inputStructure: 'detailed',
@@ -2564,6 +2592,7 @@ export const byWorkspaceId = {
   skills,
   toolProviders,
   tools,
+  switch: switch_,
 }
 
 export const get59 = oc

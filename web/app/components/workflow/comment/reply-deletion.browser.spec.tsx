@@ -1,30 +1,8 @@
 import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Suspense, useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
-import { consoleQueryKey } from '@/test/console/operation-hooks'
-import { EditorResourceScope } from '../editor-resource/provider'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
 import { CommentThread } from './thread'
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({ flowToScreenPosition: (position: { x: number; y: number }) => position }),
-  useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-}))
-const store = vi.hoisted(() => ({
-  mentionableUsersCache: { 'app-1': [] },
-  setCommentPreviewHovering: () => {},
-}))
-vi.mock('../store', () => ({
-  useStore: (selector: (state: typeof store) => unknown) => selector(store),
-  useWorkflowStore: () => ({ getState: () => store }),
-}))
-vi.mock('@/features/account-profile/client', () => ({
-  userProfileQueryOptions: () => ({
-    queryKey: consoleQueryKey('account.profile.get'),
-    queryFn: async () => ({ profile: { id: 'author', name: 'Alice', avatar_url: null } }),
-  }),
-}))
 
 const author = { id: 'author', name: 'Alice', email: 'alice@example.com', avatar_url: null }
 const comment: WorkflowCommentDetail = {
@@ -50,28 +28,19 @@ const comment: WorkflowCommentDetail = {
 }
 
 function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
-  const [queryClient] = useState(
-    () => new QueryClient({ defaultOptions: { queries: { retry: false } } }),
-  )
   return (
-    <QueryClientProvider client={queryClient}>
-      <EditorResourceScope
-        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
-      >
-        <Suspense fallback={<p>Loading profile</p>}>
-          <button type="button">Outside thread</button>
-          <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>
-            <CommentThread
-              comment={comment}
-              onClose={() => {}}
-              onReply={() => {}}
-              onReplyEdit={() => {}}
-              onReplyDeleteDirect={onDelete}
-            />
-          </div>
-        </Suspense>
-      </EditorResourceScope>
-    </QueryClientProvider>
+    <>
+      <button type="button">Outside thread</button>
+      <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>
+        <CommentThread
+          comment={comment}
+          onClose={() => {}}
+          onReply={() => {}}
+          onReplyEdit={() => {}}
+          onReplyDeleteDirect={onDelete}
+        />
+      </div>
+    </>
   )
 }
 
@@ -79,7 +48,13 @@ it('lets keyboard users request reply deletion and returns focus to reply action
   // Native Tab and CSS visibility expose regressions hidden by DOM-only tests.
   await page.viewport(1200, 800)
   const onDelete = vi.fn()
-  const screen = await render(<Fixture onDelete={onDelete} />)
+  const { queryClient } = createConsoleQueryWrapper({
+    accountProfile: { id: 'author', name: 'Alice', avatar_url: null },
+  })
+  const screen = await render(<Fixture onDelete={onDelete} />, {
+    queryClient,
+    initialStoreState: { mentionableUsersCache: { 'app-1': [] } },
+  })
   const replyInput = screen.getByRole('textbox')
   await expect.element(replyInput).toHaveFocus()
   await userEvent.tab({ shift: true })

@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from uuid import uuid4
 
 import pytest
@@ -12,7 +13,7 @@ from core.workflow.human_input_policy import (
     HumanInputSurface,
     disposition_for_surface,
 )
-from models.human_input import HumanInputFormRecipient, RecipientType
+from models.human_input import ApprovalChannel, HumanInputFormRecipient, RecipientType
 
 TABLES = (HumanInputFormRecipient,)
 
@@ -35,14 +36,15 @@ def _persist_recipients(session: Session, recipients: list[HumanInputFormRecipie
 @pytest.mark.parametrize(
     ("surface", "expected_token"),
     [
-        # Unfiltered (no surface) picks the highest-priority recipient: backstage.
-        (None, "backstage-token"),
+        (HumanInputSurface.CONSOLE, "backstage-token"),
         # SERVICE_API may only act on the web-app recipient.
         (HumanInputSurface.SERVICE_API, "web-token"),
     ],
 )
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
-def test_load_form_tokens_picks_token_for_surface(surface, expected_token, sqlite_session: Session) -> None:
+def test_load_form_tokens_picks_token_for_surface(
+    surface: HumanInputSurface, expected_token: str, sqlite_session: Session
+) -> None:
     _persist_recipients(
         sqlite_session,
         [
@@ -68,7 +70,7 @@ def test_load_form_tokens_drops_forms_without_actionable_token(sqlite_session: S
         ],
     )
 
-    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session) == {}
+    assert load_form_tokens_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.CONSOLE) == {}
 
 
 @pytest.mark.parametrize("sqlite_session", [TABLES], indirect=True)
@@ -98,7 +100,7 @@ def test_load_dispositions_openapi_webapp_form_is_resumable(sqlite_session: Sess
     )
 
     assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.OPENAPI) == {
-        "form-1": FormDisposition(form_token="web-token", approval_channels=["console"])
+        "form-1": FormDisposition(form_token="web-token", approval_channels=[ApprovalChannel.CONSOLE])
     }
 
 
@@ -110,7 +112,7 @@ def test_load_dispositions_openapi_backstage_only_form_yields_channels_not_token
     )
 
     assert load_form_dispositions_by_form_id(["form-1"], session=sqlite_session, surface=HumanInputSurface.OPENAPI) == {
-        "form-1": FormDisposition(form_token=None, approval_channels=["console"])
+        "form-1": FormDisposition(form_token=None, approval_channels=[ApprovalChannel.CONSOLE])
     }
 
 
@@ -127,16 +129,21 @@ _EMAIL_EXTERNAL = (RecipientType.EMAIL_EXTERNAL, "t2")
     ("recipients", "surface", "expected"),
     [
         # Token surface acts on the web-app recipient; blocked recipients become channels.
-        ([_BACKSTAGE, _WEB], HumanInputSurface.OPENAPI, FormDisposition("tok_web", ["console"])),
-        ([_EMAIL_MEMBER, _EMAIL_EXTERNAL], HumanInputSurface.OPENAPI, FormDisposition(None, ["email"])),
-        ([_EMAIL_MEMBER, _BACKSTAGE], HumanInputSurface.OPENAPI, FormDisposition(None, ["console", "email"])),
+        ([_BACKSTAGE, _WEB], HumanInputSurface.OPENAPI, FormDisposition("tok_web", [ApprovalChannel.CONSOLE])),
+        ([_EMAIL_MEMBER, _EMAIL_EXTERNAL], HumanInputSurface.OPENAPI, FormDisposition(None, [ApprovalChannel.EMAIL])),
+        (
+            [_EMAIL_MEMBER, _BACKSTAGE],
+            HumanInputSurface.OPENAPI,
+            FormDisposition(None, [ApprovalChannel.CONSOLE, ApprovalChannel.EMAIL]),
+        ),
         # CONSOLE acts on console/backstage; a web-app recipient is blocked → web_app channel.
-        ([_CONSOLE, _WEB], HumanInputSurface.CONSOLE, FormDisposition("tok_c", ["web_app"])),
-        ([_WEB], HumanInputSurface.CONSOLE, FormDisposition(None, ["web_app"])),
-        # No surface: unfiltered priority token, channels never populated.
-        ([_BACKSTAGE], None, FormDisposition("tok_b", [])),
-        ([_WEB, _EMAIL_MEMBER], None, FormDisposition("tok_web", [])),
+        ([_CONSOLE, _WEB], HumanInputSurface.CONSOLE, FormDisposition("tok_c", [ApprovalChannel.WEB_APP])),
+        ([_WEB], HumanInputSurface.CONSOLE, FormDisposition(None, [ApprovalChannel.WEB_APP])),
     ],
 )
-def test_disposition_for_surface_partitions_token_and_channels(recipients, surface, expected) -> None:
+def test_disposition_for_surface_partitions_token_and_channels(
+    recipients: Sequence[tuple[RecipientType, str]],
+    surface: HumanInputSurface,
+    expected: FormDisposition,
+) -> None:
     assert disposition_for_surface(recipients, surface=surface) == expected

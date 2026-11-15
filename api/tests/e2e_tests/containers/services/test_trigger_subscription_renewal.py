@@ -11,12 +11,12 @@ from sqlalchemy import Connection, Engine, event
 
 from core.helper.encrypter import encrypt_token
 from core.plugin.entities.plugin_daemon import CredentialType
-from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url
-from core.trigger.utils.locks import build_trigger_refresh_lock_key
 from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.enums import PermissionEnum
 from models.trigger import TriggerSubscription
+from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
+from repositories.trigger.subscription_repository import build_trigger_refresh_lock_key
 from services.plugin.dispatch_identity import PLUGIN_IDENTIFIER_HEADER
 from services.trigger.subscription_service import TriggerSubscriptionChangedError, TriggerSubscriptionLeaseLostError
 from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
@@ -79,7 +79,7 @@ def _prepare_responses(harness: _Harness, daemon: _Daemon) -> None:
 def _refresh(harness: _Harness, subscription_id: str) -> None:
     def run() -> None:
         with harness.app.app_context():
-            application_services().workspaces.trigger_subscription_renewal.refresh_if_due(
+            application_services().triggers.subscription_renewal.refresh_if_due(
                 tenant_id=harness.tenant_id, subscription_id=subscription_id, now=100
             )
 
@@ -192,7 +192,7 @@ def test_oauth_refresh_uses_token_schema_and_pinned_client_then_invalidates_cach
             else {}
         )
         with harness.app.app_context():
-            application_services().workspaces.trigger_oauth_clients.save(
+            application_services().triggers.oauth_clients.save(
                 tenant_id=harness.tenant_id,
                 provider_id=harness.metadata.provider.provider_id,
                 client_params=expected_client,

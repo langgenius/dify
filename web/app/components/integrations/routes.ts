@@ -6,6 +6,7 @@ export const INTEGRATION_SECTION_VALUES = [
   'workflow-tool',
   'data-source',
   'custom-endpoint',
+  'file-scan',
   'trigger',
   'agent-strategy',
   'extension',
@@ -89,6 +90,7 @@ const integrationPathBySection: Record<IntegrationSection, string> = {
   mcp: '/integrations/tools/mcp',
   'data-source': '/integrations/data-source',
   'custom-endpoint': '/integrations/custom-endpoint',
+  'file-scan': '/integrations/file-scan',
   trigger: '/integrations/trigger',
   'agent-strategy': '/integrations/agent-strategy',
   extension: '/integrations/extension',
@@ -188,6 +190,8 @@ export const getIntegrationRouteTargetBySlug = (
       return { type: 'section', section: 'data-source' }
     case 'custom-endpoint':
       return { type: 'section', section: 'custom-endpoint' }
+    case 'file-scan':
+      return { type: 'section', section: 'file-scan' }
     case 'trigger':
       return { type: 'section', section: 'trigger' }
     case 'agent-strategy':

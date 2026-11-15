@@ -1,48 +1,36 @@
 import type { MarketplaceCollection } from '@dify/contracts/marketplace'
 import type { Plugin } from '@/app/components/plugins/types'
 import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import plugin from '@/i18n/locales/en-US/plugin.json'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import Carousel from '../carousel'
 import ListWithCollection from '../list-with-collection'
 
-vi.mock('#i18n', async () => {
-  const { withSelectorKey } = await import('@/test/i18n-mock')
-  const translations: Record<string, string> = {
-    'marketplace.becomePartner': 'Torne-se um parceiro',
-    'marketplace.carousel.scrollPrevious': 'Previous',
-    'marketplace.carousel.scrollNext': 'Next',
-  }
+vi.unmock('react-i18next')
 
-  return {
-    useLocale: () => 'en-US',
-    useTranslation: () => ({
-      t: withSelectorKey((key: string) => translations[key] ?? key),
-    }),
-  }
-})
-
-vi.mock('@/i18n/metadata', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/i18n/metadata')>()),
-  getPluginLanguage: (locale: string) => locale,
-}))
-
-vi.mock('../../atoms', () => ({
-  useMarketplaceMoreClick: () => vi.fn(),
-}))
-
-vi.mock('../card-wrapper', () => ({
-  default: ({ plugin }: { plugin: Plugin }) => <div>{plugin.name}</div>,
-}))
-
-vi.mock('@/utils/marketplace-site-track', () => ({
-  trackMarketplaceSiteEvent: vi.fn(),
-}))
+async function renderWithProviders(node: React.ReactNode) {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { plugin } },
+  })
+  const { wrapper: UrlState } = createNuqsTestWrapper({ hasMemory: true })
+  return render(
+    <I18nextProvider i18n={i18n}>
+      <UrlState>{node}</UrlState>
+    </I18nextProvider>,
+  )
+}
 
 const partnerCollection: MarketplaceCollection = {
   name: 'partners',
-  label: { 'en-US': 'Partners' },
-  description: { 'en-US': 'Plugins verified by Dify partners.' },
+  label: { en_US: 'Partners' },
+  description: { en_US: 'Plugins verified by Dify partners.' },
   rule: 'partners',
   created_at: '',
   updated_at: '',
@@ -60,19 +48,21 @@ describe('Partner collection header layout', () => {
     'keeps the mobile call to action clear of carousel controls in %s',
     async (direction) => {
       await page.viewport(320, 844)
-      const screen = await render(
+      const screen = await renderWithProviders(
         <DirectionProvider direction={direction}>
           <div dir={direction} data-marketplace-standalone style={{ width: 280 }}>
             <ListWithCollection
               marketplaceCollections={[partnerCollection]}
               marketplaceCollectionPluginsMap={{ partners: partnerPlugins }}
+              cardRender={(plugin) => <div>{plugin.name}</div>}
+              onCollectionMoreClick={vi.fn()}
             />
           </div>
         </DirectionProvider>,
       )
 
-      await expect.element(screen.getByRole('button', { name: 'Previous' })).toBeVisible()
-      await expect.element(screen.getByRole('link', { name: 'Torne-se um parceiro' })).toBeVisible()
+      await expect.element(screen.getByRole('button', { name: 'Previous page' })).toBeVisible()
+      await expect.element(screen.getByRole('link', { name: 'Become a Partner' })).toBeVisible()
       const titleRect = screen
         .getByText('Partners', { exact: true })
         .element()
@@ -82,11 +72,11 @@ describe('Partner collection header layout', () => {
         .element()
         .getBoundingClientRect()
       const partnerLinkRect = screen
-        .getByRole('link', { name: 'Torne-se um parceiro' })
+        .getByRole('link', { name: 'Become a Partner' })
         .element()
         .getBoundingClientRect()
       const previousButtonRect = screen
-        .getByRole('button', { name: 'Previous' })
+        .getByRole('button', { name: 'Previous page' })
         .element()
         .getBoundingClientRect()
 
@@ -107,7 +97,7 @@ describe('Marketplace carousel direction', () => {
     'keeps the next and previous pages inside the viewport in %s',
     async (direction) => {
       // Real Embla transforms can place an ARIA-visible slide outside the viewport.
-      const screen = await render(
+      const screen = await renderWithProviders(
         <DirectionProvider direction={direction}>
           <div dir={direction} style={{ width: 280, paddingTop: 48 }}>
             <Carousel
@@ -122,8 +112,8 @@ describe('Marketplace carousel direction', () => {
       )
       const carousel = screen.getByRole('region', { name: 'Featured plugins' })
       for (const [action, pageNumber] of [
-        ['Next', 2],
-        ['Previous', 1],
+        ['Next page', 2],
+        ['Previous page', 1],
       ] as const) {
         await screen.getByRole('button', { name: action, exact: true }).click()
         const slide = screen.getByRole('group', { name: `${pageNumber} / 3` })

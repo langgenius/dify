@@ -30,6 +30,7 @@ from .rbac import (
     migrate_member_roles_to_rbac,
     migrate_only_me_resource_whitelist_scopes_to_automatic_include,
     migrate_resource_whitelist_scopes_to_automatic_include,
+    retry_resource_access,
 )
 from .retention import (
     archive_workflow_runs,
@@ -101,6 +102,7 @@ __all__ = [
     "reset_encrypt_key_pair",
     "reset_password",
     "restore_workflow_runs",
+    "retry_resource_access",
     "setup_datasource_oauth_client",
     "setup_system_tool_oauth_client",
     "setup_system_trigger_oauth_client",

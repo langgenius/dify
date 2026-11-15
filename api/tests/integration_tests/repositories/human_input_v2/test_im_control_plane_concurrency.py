@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import ActiveRunDecisionKind
+from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncRunId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -99,7 +100,7 @@ def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: o
         with session_maker.begin() as session:
             decision = SQLAlchemyIMControlPlaneRepository(session, channel).create_or_get_active_run(
                 sync_run_id=IMSyncRunId(str(uuidv7())),
-                started_by_account_id=None,
+                started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
                 now=naive_utc_now(),
             )
             return decision.kind

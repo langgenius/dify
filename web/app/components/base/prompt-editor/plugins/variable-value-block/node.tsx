@@ -39,13 +39,13 @@ export class VariableValueBlockNode extends TextNode {
 
   override exportJSON(): SerializedTextNode {
     return {
+      ...super.exportJSON(),
       detail: this.getDetail(),
       format: this.getFormat(),
       mode: this.getMode(),
       style: this.getStyle(),
       text: this.getTextContent(),
       type: 'variable-value-block',
-      version: 1,
     }
   }
 

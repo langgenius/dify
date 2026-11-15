@@ -6,7 +6,12 @@ from types import TracebackType
 from typing import Self
 
 import pytest
+from flask import Flask
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
+from extensions.ext_database import db
+from models.account import Account, Tenant
 from tests.e2e_tests.containers import conftest as container_conftest
 
 
@@ -95,7 +100,22 @@ def test_container_environment_fixture_composes_resource_fixtures() -> None:
     assert set(fixture_parameters) == {
         "postgres_container",
         "redis_container",
-        "dify_sandbox_container",
-        "dify_plugin_daemon_container",
         "storage_environment",
     }
+
+
+def test_database_cleanup_removes_commits_from_independent_sessions(
+    flask_app_with_containers: Flask,
+) -> None:
+    """Verify the container app's reset removes rows committed by independent sessions."""
+    with flask_app_with_containers.app_context():
+        with Session(db.engine) as session, session.begin():
+            session.add(Account(name="Cleanup probe", email="cleanup-probe@example.com"))
+        with Session(db.engine) as session, session.begin():
+            session.add(Tenant(name="Cleanup probe"))
+
+        container_conftest._truncate_container_database(flask_app_with_containers)
+
+        with Session(db.engine) as session:
+            assert session.scalar(select(Account).where(Account.email == "cleanup-probe@example.com")) is None
+            assert session.scalar(select(Tenant).where(Tenant.name == "Cleanup probe")) is None
