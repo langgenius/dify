@@ -1,5 +1,3 @@
-from unittest.mock import MagicMock
-
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, InvokeFrom, UserFrom
@@ -16,23 +14,30 @@ from graphon.nodes.list_operator.entities import (
 )
 from graphon.nodes.list_operator.exc import InvalidKeyError
 from graphon.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
-from graphon.runtime import InitParams
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayFileSegment
 
+SOURCE_NODE_ID = "test_source_node"
+SOURCE_VARIABLE_NAME = "test_variable"
 
-def _build_list_operator_node(node_data: ListOperatorNodeData, graph_init_params: InitParams) -> ListOperatorNode:
+
+def _build_list_operator_node(
+    node_data: ListOperatorNodeData,
+    graph_init_params: InitParams,
+    runtime_state: RuntimeState,
+) -> ListOperatorNode:
     return ListOperatorNode(
         node_id="test_node_id",
         data=node_data,
         init_params=graph_init_params,
-        runtime_state=MagicMock(),
+        runtime_state=runtime_state,
     )
 
 
 @pytest.fixture
 def list_operator_node() -> ListOperatorNode:
     config = {
-        "variable": ["test_variable"],
+        "variable": [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
         "filter_by": FilterBy(
             enabled=True,
             conditions=[
@@ -60,12 +65,13 @@ def list_operator_node() -> ListOperatorNode:
         call_depth=0,
         run_context=run_context,
     )
+    runtime_state = RuntimeState(
+        workflow_id="test_workflow",
+        variable_pool=VariablePool(),
+        start_at=0.0,
+    )
 
-    node = _build_list_operator_node(node_data, graph_init_params)
-    runtime_state: MagicMock = MagicMock()
-    runtime_state.variable_pool = MagicMock()
-    node.runtime_state = runtime_state
-    return node
+    return _build_list_operator_node(node_data, graph_init_params, runtime_state)
 
 
 def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
@@ -100,9 +106,10 @@ def test_filter_files_by_type(list_operator_node: ListOperatorNode) -> None:
             storage_key="",
         ),
     ]
-    variable = ArrayFileSegment(value=files)
-    variable_pool: MagicMock = list_operator_node.runtime_state.variable_pool
-    variable_pool.get.return_value = variable
+    list_operator_node.runtime_state.variable_pool.add(
+        [SOURCE_NODE_ID, SOURCE_VARIABLE_NAME],
+        ArrayFileSegment(value=files),
+    )
 
     # Run the node
     result = list_operator_node._run()
