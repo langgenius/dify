@@ -7,11 +7,13 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from repositories.agent_observability_repository import SQLAlchemyAgentObservabilityRepository
 from repositories.agent_roster_repository import SQLAlchemyAgentRosterRepository
 from repositories.agent_version_repository import SQLAlchemyAgentVersionRepository
 from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.invite_options import AgentInviteOptionsService
+from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
@@ -100,3 +102,8 @@ def build_agent_invite_options_service(
         store=SQLAlchemyAgentRosterRepository(session_factory=database_client),
         visibility=AgentListVisibilityGateway(members=rbac_members),
     )
+
+
+def build_agent_observability(*, database_client: sessionmaker[Session]) -> AgentObservability:
+    """Wire Agent runtime observability for both roster and workflow-only Agents."""
+    return SQLAlchemyAgentObservabilityRepository(session_factory=database_client)
