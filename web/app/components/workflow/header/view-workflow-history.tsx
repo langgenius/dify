@@ -50,7 +50,6 @@ const ViewWorkflowHistory = () => {
       else redo(diff)
 
       const { edges, nodes } = store.getState()
-      if (edges.length === 0 && nodes.length === 0) return
 
       const shouldBroadcast = collaborationManager.isConnected()
       const { setEdges, setNodes } = collaborativeWorkflow.getState()
