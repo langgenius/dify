@@ -198,6 +198,10 @@ class WorkflowAcceptance(ConsoleAcceptance):
         raise AcceptanceError(f"Workflow polling expired during {self.phase}.")
 
     def assert_external_pause(self, events: list[dict]) -> None:
+        require(
+            not any(item["event"] == "error" or item["error"] for item in events),
+            "The workflow SSE contained an error while entering an external wait.",
+        )
         pauses = [item for item in events if item["event"] == "workflow_paused"]
         require(
             pauses and any(reason.get("TYPE") == "external_wait" for item in pauses for reason in item["reasons"]),
