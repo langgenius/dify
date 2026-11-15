@@ -3,16 +3,22 @@ from dataclasses import dataclass
 from unittest.mock import Mock, patch
 
 import pytest
+from pydantic import TypeAdapter
 from pytest_mock import MockerFixture
 
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
 from services import feature_service as feature_service_module
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
+from services.billing_service import BillingInfo, TenantFeatureQuotaInfo, _VectorSpaceQuota
 from services.entities.feature_entities import FeatureModel, LimitationModel
 from services.feature_service import FeatureService
 from services.system_feature_service import SystemFeatureService
 from tests.helpers import billing_builders as builders
+
+_legacy_subscription = TypeAdapter(BillingInfo)
+_legacy_feature_quota = TypeAdapter(TenantFeatureQuotaInfo)
+_legacy_vector_space = TypeAdapter(_VectorSpaceQuota)
 
 
 def test_education_feature_is_disabled_by_default() -> None:
@@ -163,7 +169,9 @@ def test_get_vector_space_converts_billing_float_size(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: builders.vector_space(size=5120.75, limit=20480),
+        lambda _tenant_id: _legacy_vector_space.validate_python(
+            builders.vector_space(size=5120.75, limit=20480).model_dump(exclude_none=True)
+        ),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -180,7 +188,9 @@ def test_get_vector_space_preserves_unknown_usage(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_vector_space",
-        lambda _tenant_id: builders.vector_space(size=0.0, limit=50, usage_unknown=True),
+        lambda _tenant_id: _legacy_vector_space.validate_python(
+            builders.vector_space(size=0.0, limit=50, usage_unknown=True).model_dump(exclude_none=True)
+        ),
     )
 
     result = FeatureService.get_vector_space("tenant-1")
@@ -215,7 +225,11 @@ def test_get_knowledge_file_size_limit(
         KNOWLEDGE_UPLOAD_FILE_SIZE_LIMIT_FOR_PAID_PLAN=50,
     )
     get_info = mocker.patch.object(
-        feature_service_module.BillingService, "get_info", return_value=builders.subscription_info(plan)
+        feature_service_module.BillingService,
+        "get_info",
+        return_value=_legacy_subscription.validate_python(
+            builders.subscription_info(plan).model_dump(exclude_none=True)
+        ),
     )
 
     assert FeatureService.get_knowledge_file_size_limit(tenant_id) == expected
@@ -237,7 +251,9 @@ def test_paid_knowledge_file_size_limit_never_reduces_default(
     monkeypatch.setattr(
         feature_service_module.BillingService,
         "get_info",
-        lambda *_args, **_kwargs: builders.subscription_info("professional"),
+        lambda *_args, **_kwargs: _legacy_subscription.validate_python(
+            builders.subscription_info("professional").model_dump(exclude_none=True)
+        ),
     )
 
     assert FeatureService.get_knowledge_file_size_limit("tenant-1") == 100
@@ -358,16 +374,18 @@ def test_get_trial_models_filters_providers_by_workspace_plan(
 
 def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_overrides: Callable[..., None]) -> None:
     tenant_id = "tenant-id"
-    billing_info = builders.subscription_info(
-        subscription=builders.subscription_plan("professional", interval="month", education=True),
-        members=billing.SubscriptionQuota(size=1, limit=10),
-        apps=billing.SubscriptionQuota(size=2, limit=20),
-        documents_upload_quota=billing.SubscriptionQuota(size=3, limit=100),
-        annotation_quota_limit=billing.SubscriptionQuota(size=4, limit=50),
-        can_replace_logo=True,
-        model_load_balancing_enabled=True,
-        knowledge_pipeline_publish_enabled=True,
-        next_credit_reset_date=1775001600,
+    billing_info = _legacy_subscription.validate_python(
+        builders.subscription_info(
+            subscription=builders.subscription_plan("professional", interval="month", education=True),
+            members=billing.SubscriptionQuota(size=1, limit=10),
+            apps=billing.SubscriptionQuota(size=2, limit=20),
+            documents_upload_quota=billing.SubscriptionQuota(size=3, limit=100),
+            annotation_quota_limit=billing.SubscriptionQuota(size=4, limit=50),
+            can_replace_logo=True,
+            model_load_balancing_enabled=True,
+            knowledge_pipeline_publish_enabled=True,
+            next_credit_reset_date=1775001600,
+        ).model_dump(exclude_none=True)
     )
 
     config_overrides(
@@ -380,9 +398,11 @@ def test_get_features_exclude_vector_space_sets_vector_space_to_none(config_over
         patch("services.feature_service.BillingService.get_info", return_value=billing_info) as get_info,
         patch(
             "services.feature_service.BillingService.get_quota_info",
-            return_value=billing.QuotaGetInfoReply(
-                trigger_event=billing.QuotaFeatureInfo(usage=1, limit=3000, reset_date=0),
-                api_rate_limit=billing.QuotaFeatureInfo(usage=2, limit=5000, reset_date=0),
+            return_value=_legacy_feature_quota.validate_python(
+                billing.QuotaGetInfoReply(
+                    trigger_event=billing.QuotaFeatureInfo(usage=1, limit=3000, reset_date=0),
+                    api_rate_limit=billing.QuotaFeatureInfo(usage=2, limit=5000, reset_date=0),
+                ).model_dump(exclude_none=True)
             ),
         ),
     ):
@@ -408,7 +428,13 @@ def test_full_features_keep_treating_unknown_vector_usage_as_zero() -> None:
 
     FeatureService._fulfill_vector_space_from_billing_info(
         vector_space,
-        builders.subscription_info(vector_space=builders.vector_space(size=0.0, limit=50, usage_unknown=True)),
+        _legacy_subscription.validate_python(
+            builders.subscription_info(
+                vector_space=_legacy_vector_space.validate_python(
+                    builders.vector_space(size=0.0, limit=50, usage_unknown=True).model_dump(exclude_none=True)
+                )
+            ).model_dump(exclude_none=True)
+        ),
     )
 
     assert vector_space.size == 0

@@ -279,7 +279,9 @@ def test_reserve_credits_commits_billing_reservation_once() -> None:
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         reservation = CreditPoolService.reserve_credits(
             tenant_id="tenant-1",
@@ -327,7 +329,9 @@ def test_reserve_credits_releases_billing_reservation() -> None:
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         reservation = CreditPoolService.reserve_credits(
             tenant_id="tenant-1",
@@ -419,7 +423,9 @@ def test_check_and_deduct_credits_uses_billing_reserve_and_commit_when_enabled(
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         result = CreditPoolService.check_and_deduct_credits(
             tenant_id=tenant_id,
@@ -463,7 +469,9 @@ def test_check_and_deduct_credits_forwards_deterministic_billing_identity(
         patch("services.billing_service.BillingService.quota_reserve") as quota_reserve,
         patch("services.billing_service.BillingService.quota_commit") as quota_commit,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         result = CreditPoolService.check_and_deduct_credits(
             tenant_id="tenant-1",
@@ -520,7 +528,9 @@ def test_check_and_deduct_credits_releases_billing_reservation_when_commit_fails
         patch("services.billing_service.BillingService.quota_commit", side_effect=RuntimeError("commit failed")),
         patch("services.billing_service.BillingService.quota_release") as quota_release,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         with pytest.raises(RuntimeError, match="commit failed"):
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)
@@ -545,7 +555,9 @@ def test_check_and_deduct_credits_logs_when_billing_release_fails(
             "services.billing_service.BillingService.quota_release", side_effect=RuntimeError("release failed")
         ) as quota_release,
     ):
-        quota_reserve.return_value = billing.QuotaReserveReply(reservation_id="reservation-1", available=7, reserved=3).model_dump()
+        quota_reserve.return_value = billing.QuotaReserveReply(
+            reservation_id="reservation-1", available=7, reserved=3
+        ).model_dump()
 
         with pytest.raises(RuntimeError, match="commit failed"):
             CreditPoolService.check_and_deduct_credits(tenant_id="tenant-1", credits_required=3)

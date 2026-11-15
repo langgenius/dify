@@ -15,5 +15,5 @@ def test_domain_hash_preserves_shared_canonical_bytes_and_application_export() -
 
 @pytest.mark.parametrize("value", [{"amount": 1.0}, {"optional": None}, {"非ascii": "value"}])
 def test_domain_hash_keeps_protocol_rejections(value: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="canonical"):
         canonical_hash(value)

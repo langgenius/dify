@@ -566,7 +566,7 @@ def test_manifest_rejects_each_duplicate_identity(field: str) -> None:
 def test_canonical_hash_forbids_float_and_null() -> None:
     invalid_payloads: tuple[dict[str, object], ...] = ({"amount": 1.2}, {"key": None})
     for value in invalid_payloads:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="canonical payload cannot contain float or null"):
             canonical_hash(value)
 
 

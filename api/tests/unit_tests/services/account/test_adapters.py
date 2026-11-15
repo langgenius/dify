@@ -221,7 +221,7 @@ def test_education_gateway_maps_verification_status(
 ) -> None:
     gateway = BillingAccountEducationGateway()
 
-    with patch("services.account.adapters.BillingService.EducationIdentity.verify", return_value=reply):
+    with patch("services.account.adapters.billing.education_verify_education_identity", return_value=reply):
         result = gateway.verify(account_id="account-1")
 
     assert result == expected
@@ -264,7 +264,7 @@ def test_education_gateway_reads_billing_status_timestamp() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
-        "services.account.adapters.BillingService.EducationIdentity.status",
+        "services.account.adapters.billing.education_get_education_identity_status",
         return_value=billing.GetEducationIdentityStatusReply(
             result=True,
             is_student=True,
@@ -288,7 +288,7 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
-        "services.account.adapters.BillingService.EducationIdentity.activate",
+        "services.account.adapters.billing.education_create_education_identity",
         return_value=billing.CreateEducationIdentityReply(message="success"),
     ) as activate:
         result = gateway.activate(
@@ -301,11 +301,13 @@ def test_education_gateway_activates_with_primitive_account_context() -> None:
 
     assert result == AccountEducationActivation(message="success")
     activate.assert_called_once_with(
-        account_id="account-1",
-        tenant_id="workspace-1",
-        token="education-token",
-        institution="Dify University",
-        role="Student",
+        body=billing.CreateEducationIdentityReq(
+            account_id="account-1",
+            curr_tenant_id="workspace-1",
+            token="education-token",
+            institution="Dify University",
+            role="Student",
+        )
     )
 
 
@@ -313,7 +315,7 @@ def test_education_gateway_maps_autocomplete_reply() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
-        "services.account.adapters.BillingService.EducationIdentity.autocomplete",
+        "services.account.adapters.billing.education_autocomplete_education_institution",
         return_value=billing.AutocompleteEducationInstitutionReply(
             data=["Example University"], curr_page=0, has_next=True
         ),
@@ -327,7 +329,7 @@ def test_education_gateway_reads_no_identity_expiry() -> None:
     gateway = BillingAccountEducationGateway()
 
     with patch(
-        "services.account.adapters.BillingService.EducationIdentity.status",
+        "services.account.adapters.billing.education_get_education_identity_status",
         return_value=billing.GetEducationIdentityStatusReply(
             result=False,
             is_student=False,
@@ -579,7 +581,7 @@ def test_education_gateway_maps_billing_reason(
     error = billing.BillingEducationUpstreamInvalidResponseError(status_code=400, reason=reason)
 
     with (
-        patch("services.account.adapters.BillingService.EducationIdentity.verify", side_effect=error),
+        patch("services.account.adapters.billing.education_verify_education_identity", side_effect=error),
         pytest.raises(expected) as exc_info,
     ):
         BillingAccountEducationGateway().verify(account_id="account-1")
@@ -603,7 +605,7 @@ def test_education_gateway_leaves_generic_reasons_to_billing_errors(
     error: billing.BillingEducationUpstreamError,
 ) -> None:
     with (
-        patch("services.account.adapters.BillingService.EducationIdentity.status", side_effect=error),
+        patch("services.account.adapters.billing.education_get_education_identity_status", side_effect=error),
         pytest.raises(BillingUpstreamError) as exc_info,
     ):
         BillingAccountEducationGateway().status("account-1")

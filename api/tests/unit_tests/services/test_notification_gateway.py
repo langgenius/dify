@@ -5,7 +5,8 @@ import httpx
 import pytest
 
 from machinery.context import RequestContext
-from services.billing_client import saas, transport
+from services import billing_service
+from services.billing_client import saas
 from services.entities.notification_entities import NotificationItem
 from services.notification_gateway import BillingNotificationGateway
 from services.notification_service import NotificationService
@@ -34,7 +35,9 @@ def test_get_active_maps_billing_proto_json_contract() -> None:
         }
     )
 
-    with patch("services.notification_gateway.BillingService.get_account_notification", return_value=reply):
+    with patch(
+        "services.notification_gateway.BillingService.get_account_notification", return_value=reply.model_dump()
+    ):
         result = BillingNotificationGateway().get_active("account-1")
 
     assert result.should_show is True
@@ -75,7 +78,8 @@ def test_get_active_falls_back_to_english_for_empty_upstream_translation(
     service = NotificationService(notifications=BillingNotificationGateway())
     config_overrides(BILLING_API_URL="http://billing/v1")
     with httpx.Client(transport=httpx.MockTransport(lambda _: httpx.Response(200, json=payload))) as client:
-        monkeypatch.setattr(transport, "_http_client", client)
+        monkeypatch.setattr(billing_service, "_http_client", client)
+        monkeypatch.setattr(billing_service.BillingService, "base_url", "http://billing/v1")
         result = service.get_active(context, "zh-Hans")
 
     assert result.should_show is True
