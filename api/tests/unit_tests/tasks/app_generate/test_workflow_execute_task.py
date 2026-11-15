@@ -609,20 +609,53 @@ def test_publish_streaming_response_publishes_every_event_as_it_arrives_when_the
     assert recording_topic.events() == [["workflow_started"], ["text_chunk_1"], ["text_chunk_2"], ["workflow_finished"]]
 
 
-@pytest.mark.parametrize("events_after_the_failed_send", [[_chunk(3)], []])
+@pytest.mark.parametrize("events_after_the_failed_send", [[_chunk(2)], []])
 def test_publish_streaming_response_falls_back_when_sending_held_events_fails_while_the_listener_waits(
     recording_topic: _RecordingTopic, events_after_the_failed_send: list[dict[str, object]]
 ) -> None:
     recording_topic.failures.append(RuntimeError("redis went away"))
-    bursts = [[_chunk(1), _chunk(2)], events_after_the_failed_send]
+    events_seen_by_the_listener: list[int] = []
+
+    def _response_stream() -> Generator[Mapping[str, object]]:
+        hint = queued_events_hint.get()
+        assert hint is not None
+        hint.more_queued = True
+        yield _chunk(1)
+        # Sending the held chunk fails here, inside the listener, which must not see the error.
+        hint.before_wait()
+        events_seen_by_the_listener.append(1)
+        yield from events_after_the_failed_send
 
     with pytest.raises(RuntimeError, match="redis went away"):
-        _publish_workflow_stream(_queued_bursts(bursts, sent_before_each_wait=[], topic=recording_topic))
+        _publish_workflow_stream(_response_stream())
 
+    assert events_seen_by_the_listener == [1]
     assert recording_topic.events() == [["workflow_started"], ["workflow_finished"]]
     failed = json.loads(recording_topic.round_trips[-1][0])
     assert failed["data"]["status"] == WorkflowExecutionStatus.FAILED
     assert failed["data"]["error"] == "redis went away"
+
+
+def test_publish_streaming_response_adds_no_fallback_when_the_stream_breaks_after_its_terminal_event(
+    recording_topic: _RecordingTopic,
+) -> None:
+    def _response_stream() -> Generator[Mapping[str, object] | BaseModel]:
+        yield _STARTED
+        yield _StreamEventModel(event="text_chunk", task_id="task-id")
+        yield _FINISHED
+        raise RuntimeError("stream exploded")
+
+    with pytest.raises(RuntimeError, match="stream exploded"):
+        _publish_streaming_response(
+            _response_stream(),
+            "workflow-run-id",
+            app_mode=AppMode.WORKFLOW,
+            workflow_id="workflow-id",
+            inputs={},
+            started_reason=WorkflowStartReason.INITIAL,
+        )
+
+    assert recording_topic.events() == [["workflow_started"], ["text_chunk"], ["workflow_finished"]]
 
 
 def test_publish_streaming_response_sends_held_events_before_the_fallback_when_the_stream_breaks(
