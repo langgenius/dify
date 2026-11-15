@@ -28,6 +28,7 @@ from controllers.console.datasets.rag_pipeline.datasource_auth import (
     DatasourceUpdateNamePayload,
     DatasourceUpdateProviderNameApi,
 )
+from core.plugin.entities.plugin_daemon import PluginOAuthCredentialsResponse
 from core.plugin.impl.oauth import OAuthHandler
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -258,11 +259,12 @@ class TestDatasourceOAuthCallback:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        expires_at = datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC)
-        oauth_response.expires_at = expires_at
-        oauth_response.metadata = {"name": "Workspace Bot", "avatar_url": "https://avatar.example.com/bot.png"}
+        expires_at = int(datetime(2024, 1, 2, 3, 4, 5, tzinfo=UTC).timestamp())
+        oauth_response = PluginOAuthCredentialsResponse(
+            credentials={"token": "abc"},
+            expires_at=expires_at,
+            metadata={"name": "Workspace Bot", "avatar_url": "https://avatar.example.com/bot.png"},
+        )
 
         context = {
             "user_id": "user-1",
@@ -368,10 +370,8 @@ class TestDatasourceOAuthCallback:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        oauth_response.expires_at = None
-        oauth_response.metadata = dict[str, object]()  # avatar + name missing
+        # avatar + name missing
+        oauth_response = PluginOAuthCredentialsResponse(credentials={"token": "abc"})
 
         context = {
             "user_id": "user-1",
@@ -419,10 +419,7 @@ class TestDatasourceOAuthCallback:
         api = DatasourceOAuthCallback()
         method = inspect.unwrap(api.get)
 
-        oauth_response = MagicMock()
-        oauth_response.credentials = {"token": "abc"}
-        oauth_response.expires_at = None
-        oauth_response.metadata = dict[str, object]()
+        oauth_response = PluginOAuthCredentialsResponse(credentials={"token": "abc"})
 
         context = {
             "user_id": "user-1",
