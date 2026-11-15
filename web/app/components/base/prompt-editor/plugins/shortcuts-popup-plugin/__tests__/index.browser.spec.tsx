@@ -1,6 +1,7 @@
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { SHORTCUTS_EMPTY_CONTENT } from '../index'
 import { PopupEditor } from './editor-fixture'
 
 const modifier = detectPlatform() === 'mac' ? 'Meta' : 'Control'
@@ -9,19 +10,19 @@ const actions = () => page.getByRole('region', { name: 'Prompt actions' })
 const editor = () => page.getByRole('textbox', { name: 'Prompt' })
 
 it('opens only for the configured editor shortcut and dismisses with Escape', async () => {
-  await render(<PopupEditor hotkey="Mod+K" />)
+  await render(<PopupEditor hotkey="Mod+K" withActions={false} />)
   await page.getByRole('textbox', { name: 'Outside' }).click()
   await userEvent.keyboard(shortcut('k'))
-  await expect.element(actions()).not.toBeInTheDocument()
+  await expect.element(page.getByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
   await editor().fill('Prompt text')
   await userEvent.keyboard(shortcut())
-  await expect.element(actions()).not.toBeInTheDocument()
+  await expect.element(page.getByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
   await userEvent.keyboard(`{${modifier}>}{Alt>}k{/Alt}{/${modifier}}`)
-  await expect.element(actions()).not.toBeInTheDocument()
+  await expect.element(page.getByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
   await userEvent.keyboard(shortcut('k'))
-  await expect.element(actions()).toBeVisible()
+  await expect.element(page.getByText(SHORTCUTS_EMPTY_CONTENT)).toBeVisible()
   await userEvent.keyboard('{Escape}')
-  await expect.element(actions()).not.toBeInTheDocument()
+  await expect.element(page.getByText(SHORTCUTS_EMPTY_CONTENT)).not.toBeInTheDocument()
 })
 
 it.each([true, false])(

@@ -13,10 +13,12 @@ export function PopupEditor({
   withContainer = true,
   hotkey,
   displayMode,
+  withActions = true,
 }: {
   withContainer?: boolean
   hotkey?: HotkeyChord
   displayMode?: ShortcutPopupDisplayMode
+  withActions?: boolean
 }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   return (
@@ -46,25 +48,27 @@ export function PopupEditor({
           hotkey={hotkey}
           displayMode={displayMode}
         >
-          {(close, onInsert) => (
-            <section aria-label="Prompt actions" style={{ width: 240, padding: 16 }}>
-              <button
-                type="button"
-                onClick={() => onInsert(CONTROLLED_TEXT_INSERTION_COMMAND, 'inserted text')}
-              >
-                Insert
-              </button>
-              <button type="button" onClick={close}>
-                Close actions
-              </button>
-              <Popover>
-                <PopoverTrigger>Details</PopoverTrigger>
-                <PopoverContent>
-                  <button type="button">Nested action</button>
-                </PopoverContent>
-              </Popover>
-            </section>
-          )}
+          {withActions
+            ? (close, onInsert) => (
+                <section aria-label="Prompt actions" style={{ width: 240, padding: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => onInsert(CONTROLLED_TEXT_INSERTION_COMMAND, 'inserted text')}
+                  >
+                    Insert
+                  </button>
+                  <button type="button" onClick={close}>
+                    Close actions
+                  </button>
+                  <Popover>
+                    <PopoverTrigger>Details</PopoverTrigger>
+                    <PopoverContent>
+                      <button type="button">Nested action</button>
+                    </PopoverContent>
+                  </Popover>
+                </section>
+              )
+            : undefined}
         </ShortcutsPopupPlugin>
       </div>
     </TestLexicalComposer>
