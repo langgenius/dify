@@ -1,0 +1,17 @@
+test(api): bring four more modules under strict pyrefly
+
+Graduate `node_spec`, `mock_nodes`, `test_file_service` and
+`test_base_app_generator` out of `project-excludes`.
+
+`mock_nodes` needed the most work: the twelve mock node classes now declare
+`@override` on `version` and `_run`, the result-style ones return a real
+`NodeRunResult`, and the mixin declares `_node_id` instead of relying on an
+attribute it only assigns at runtime.
+
+`test_advanced_prompt_transform` keeps its exclude entry. Its one remaining
+diagnostic comes from a case that passes a list of non-`ChatModelMessage`
+values to exercise the fall-through branch of `get_prompt`, but every value in
+the declared domain -- including an empty list -- matches one of the two `case`
+branches, so that branch cannot be reached from a value the type system allows.
+The other 28 diagnostics in that file are fixed here; only the fabricated case
+stays behind.

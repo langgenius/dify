@@ -7,7 +7,7 @@ allowing tests to run without external dependencies.
 
 import time
 from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any, Literal, Optional, override
 from unittest.mock import MagicMock
 
 from core.app.llm.model_access import DifyCredentialsProvider, DifyModelFactory
@@ -25,7 +25,7 @@ from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
-from graphon.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
+from graphon.node_events import NodeEventPayload, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
 from graphon.nodes.code import CodeNode
 from graphon.nodes.document_extractor import DocumentExtractorNode
 from graphon.nodes.http_request import HttpRequestNode
@@ -58,6 +58,9 @@ class _TestJinja2Renderer(Jinja2TemplateRenderer):
 
 class MockNodeMixin:
     """Mixin providing common mock functionality."""
+
+    # Assigned by ``Node.__init__``; declared here so the mixin's helpers resolve it.
+    _node_id: str
 
     def __init__(
         self,
@@ -107,13 +110,14 @@ class MockNodeMixin:
             kwargs.setdefault("runtime_support", MagicMock())
             kwargs.setdefault("message_transformer", MagicMock())
 
-        super().__init__(
-            node_id=node_id,
-            data=data,
-            init_params=init_params,
-            runtime_state=runtime_state,
+        init_kwargs: dict[str, Any] = {
+            "node_id": node_id,
+            "data": data,
+            "init_params": init_params,
+            "runtime_state": runtime_state,
             **kwargs,
-        )
+        }
+        super().__init__(**init_kwargs)
         self.mock_config = mock_config
 
     def _get_mock_outputs(self, default_outputs: dict[str, Any]) -> dict[str, Any]:
@@ -156,12 +160,14 @@ class MockNodeMixin:
 class MockLLMNode(MockNodeMixin, LLMNode):
     """Mock implementation of LLMNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    def _run(self) -> Generator[NodeEventPayload]:
         """Execute mock LLM node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -250,12 +256,14 @@ class MockLLMNode(MockNodeMixin, LLMNode):
 class MockAgentNode(MockNodeMixin, AgentNode):
     """Mock implementation of AgentNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    def _run(self) -> Generator[NodeEventPayload]:
         """Execute mock agent node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -302,12 +310,14 @@ class MockAgentNode(MockNodeMixin, AgentNode):
 class MockToolNode(MockNodeMixin, ToolNode):
     """Mock implementation of ToolNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    def _run(self) -> Generator[NodeEventPayload]:
         """Execute mock tool node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -355,12 +365,15 @@ class MockToolNode(MockNodeMixin, ToolNode):
 class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
     """Mock implementation of KnowledgeRetrievalNode for testing."""
 
+    @override
     @classmethod
-    def version(cls) -> str:
+    def version(cls) -> Literal["1"]:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    @override
+    def _run(self) -> NodeRunResult:
         """Execute mock knowledge retrieval node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -368,16 +381,13 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response
         default_response = (
@@ -396,28 +406,29 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
         )
 
         # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"query": "mock query"},
-                process_data={
-                    "retrieval_method": "mock",
-                    "documents_count": 1,
-                },
-                outputs=outputs,
-            )
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"query": "mock query"},
+            process_data={
+                "retrieval_method": "mock",
+                "documents_count": 1,
+            },
+            outputs=outputs,
         )
 
 
 class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
     """Mock implementation of HttpRequestNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    @override
+    def _run(self) -> NodeRunResult:
         """Execute mock HTTP request node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -425,16 +436,13 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response
         default_response = (
@@ -449,28 +457,29 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         outputs = self._get_mock_outputs(default_response)
 
         # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"url": "http://mock.url", "method": "GET"},
-                process_data={
-                    "request_url": "http://mock.url",
-                    "request_method": "GET",
-                },
-                outputs=outputs,
-            )
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"url": "http://mock.url", "method": "GET"},
+            process_data={
+                "request_url": "http://mock.url",
+                "request_method": "GET",
+            },
+            outputs=outputs,
         )
 
 
 class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
     """Mock implementation of QuestionClassifierNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    @override
+    def _run(self) -> NodeRunResult:
         """Execute mock question classifier node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -478,16 +487,13 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response - default to first class
         outputs = self._get_mock_outputs(
@@ -497,28 +503,29 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
         )
 
         # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"query": "mock query"},
-                process_data={
-                    "classification": outputs.get("class_name", "class_1"),
-                },
-                outputs=outputs,
-                edge_source_handle=outputs.get("class_name", "class_1"),  # Branch based on classification
-            )
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"query": "mock query"},
+            process_data={
+                "classification": outputs.get("class_name", "class_1"),
+            },
+            outputs=outputs,
+            edge_source_handle=outputs.get("class_name", "class_1"),  # Branch based on classification
         )
 
 
 class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
     """Mock implementation of ParameterExtractorNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    @override
+    def _run(self) -> NodeRunResult:
         """Execute mock parameter extractor node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -526,16 +533,13 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response
         outputs = self._get_mock_outputs(
@@ -548,27 +552,28 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
         )
 
         # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"text": "mock text"},
-                process_data={
-                    "extracted_parameters": outputs.get("parameters", {}),
-                },
-                outputs=outputs,
-            )
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"text": "mock text"},
+            process_data={
+                "extracted_parameters": outputs.get("parameters", {}),
+            },
+            outputs=outputs,
         )
 
 
 class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
     """Mock implementation of DocumentExtractorNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
-    def _run(self) -> Generator:
+    @override
+    @override
+    def _run(self) -> NodeRunResult:
         """Execute mock document extractor node."""
         # Simulate delay if configured
         self._simulate_delay()
@@ -576,16 +581,13 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         # Check for simulated error
         error = self._should_simulate_error()
         if error:
-            yield StreamCompletedEvent(
-                node_run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=error,
-                    inputs={},
-                    process_data={},
-                    error_type="MockError",
-                )
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=error,
+                inputs={},
+                process_data={},
+                error_type="MockError",
             )
-            return
 
         # Get mock response
         outputs = self._get_mock_outputs(
@@ -599,21 +601,20 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         )
 
         # Send completion event
-        yield StreamCompletedEvent(
-            node_run_result=NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs={"file": "mock_file.pdf"},
-                process_data={
-                    "extraction_method": "mock",
-                },
-                outputs=outputs,
-            )
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs={"file": "mock_file.pdf"},
+            process_data={
+                "extraction_method": "mock",
+            },
+            outputs=outputs,
         )
 
 
 class MockIterationNode(MockNodeMixin, IterationNode):
     """Mock implementation of IterationNode that preserves mock configuration."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
@@ -623,6 +624,7 @@ class MockIterationNode(MockNodeMixin, IterationNode):
 class MockLoopNode(MockNodeMixin, LoopNode):
     """Mock implementation of LoopNode that preserves mock configuration."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
@@ -632,11 +634,13 @@ class MockLoopNode(MockNodeMixin, LoopNode):
 class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
     """Mock implementation of TemplateTransformNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         """Execute mock template transform node."""
         # Simulate delay if configured
@@ -718,11 +722,13 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
 class MockCodeNode(MockNodeMixin, CodeNode):
     """Mock implementation of CodeNode for testing."""
 
+    @override
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
         return "1"
 
+    @override
     def _run(self) -> NodeRunResult:
         """Execute mock code node."""
         # Simulate delay if configured
@@ -739,7 +745,7 @@ class MockCodeNode(MockNodeMixin, CodeNode):
             )
 
         # Get mock outputs - use configured outputs or default based on output schema
-        default_outputs = {}
+        default_outputs: dict[str, object] = {}
         if hasattr(self._node_data, "outputs") and self._node_data.outputs:
             # Generate default outputs based on schema
             for output_name, output_config in self._node_data.outputs.items():
