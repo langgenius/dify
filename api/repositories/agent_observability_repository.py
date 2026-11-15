@@ -1,7 +1,10 @@
+"""SQLAlchemy queries for Agent runtime logs and statistics."""
+
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -10,13 +13,16 @@ from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import and_, func, or_, select
-from sqlalchemy.orm import aliased
+from sqlalchemy.orm import Session, aliased, sessionmaker
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.node_execution_process_data import WORKFLOW_AGENT_BINDING_ID_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
+from libs.datetime_utils import parse_time_range
 from libs.helper import convert_datetime_to_date, escape_like_pattern, to_timestamp
+from machinery.context import RequestContext
+from models.account import Account
 from models.agent import WorkflowAgentNodeBinding
 from models.enums import CreatorUserRole, FeedbackFromSource, FeedbackRating, MessageStatus
 from models.model import App, Conversation, Message, MessageFeedback
@@ -27,6 +33,8 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from repositories.app.agent_runtime_app import resolve_agent_runtime_app
+from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError, AgentStatisticsQuery
 
 
 @dataclass(frozen=True)
@@ -60,7 +68,9 @@ class AgentSourceFilter:
     invoke_from: InvokeFrom | None = None
 
 
-class AgentObservabilityService:
+class AgentObservabilityQueries:
+    """Query and project Agent log and statistics data within the supplied session."""
+
     _SOURCE_ALIASES: dict[str, InvokeFrom] = {
         "api": InvokeFrom.SERVICE_API,
         "service-api": InvokeFrom.SERVICE_API,
@@ -78,7 +88,7 @@ class AgentObservabilityService:
         "trigger": InvokeFrom.TRIGGER,
     }
 
-    def __init__(self, session: Any):
+    def __init__(self, session: Session) -> None:
         self._session = session
 
     @classmethod
@@ -415,11 +425,10 @@ class AgentObservabilityService:
         rates: dict[str, dict[str, float]] = {}
         for row in self._session.execute(stmt).all():
             rate = self._positive_feedback_rate(like_count=row.like_count, total_count=row.total_count)
-            if rate is None:
-                continue
-            source = self._enum_value(row.from_source)
-            rate_key = "user_rate" if source == FeedbackFromSource.USER.value else "operation_rate"
-            rates.setdefault(row.conversation_id, {})[rate_key] = rate
+            if rate is not None:
+                source = self._enum_value(row.from_source)
+                rate_key = "user_rate" if source == FeedbackFromSource.USER.value else "operation_rate"
+                rates.setdefault(row.conversation_id, {})[rate_key] = rate
         return rates
 
     @staticmethod
@@ -827,12 +836,11 @@ class AgentObservabilityService:
                 ("user_prompt", "text"),
             ):
                 for layer in layers:
-                    if not isinstance(layer, Mapping) or layer.get("name") != layer_name:
-                        continue
-                    config = cls._mapping_value(layer, "config")
-                    user_prompt = config.get(prompt_key)
-                    if isinstance(user_prompt, str) and user_prompt.strip():
-                        prompts.append(user_prompt.strip())
+                    if isinstance(layer, Mapping) and layer.get("name") == layer_name:
+                        config = cls._mapping_value(layer, "config")
+                        user_prompt = config.get(prompt_key)
+                        if isinstance(user_prompt, str) and user_prompt.strip():
+                            prompts.append(user_prompt.strip())
         return "\n\n".join(prompts) or fallback
 
     @staticmethod
@@ -987,7 +995,7 @@ WHERE
             args["end"] = params.end
         sql_query += " GROUP BY date ORDER BY date"
 
-        return [dict(row._mapping) for row in self._session.execute(sa.text(sql_query), args).all()]
+        return [row._asdict() for row in self._session.execute(sa.text(sql_query), args).all()]
 
     @staticmethod
     def _statistics_webapp_message_scope_sql(source_filter: AgentSourceFilter) -> str:
@@ -1079,7 +1087,7 @@ SELECT
 FROM agent_run_usage aru
 GROUP BY date
 ORDER BY date"""
-        rows = [dict(row._mapping) for row in self._session.execute(sa.text(run_query), args).all()]
+        rows = [row._asdict() for row in self._session.execute(sa.text(run_query), args).all()]
         rows.extend(
             self._load_workflow_chat_daily_context(
                 app=app,
@@ -1138,7 +1146,7 @@ WHERE
             args["end"] = params.end
         sql_query += " GROUP BY date ORDER BY date"
 
-        return [dict(row._mapping) for row in self._session.execute(sa.text(sql_query), args).all()]
+        return [row._asdict() for row in self._session.execute(sa.text(sql_query), args).all()]
 
     @staticmethod
     def _statistics_workflow_binding_filters_sql(source_filter: AgentSourceFilter) -> str:
@@ -1307,3 +1315,76 @@ WHERE
             "tokens_per_second": round(total_answer_tokens / total_latency, 4) if total_latency else 0,
             "user_satisfaction_rate": round(total_likes * 100 / total_messages, 2) if total_messages else 0,
         }
+
+
+class SQLAlchemyAgentObservabilityRepository:
+    """Return detached observability payloads for Agents in the admitted workspace."""
+
+    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    @contextmanager
+    def _runtime(self, context: RequestContext, agent_id: str) -> Generator[tuple[Session, App]]:
+        """Resolve the tenant's runtime App and close the session after its query."""
+        with self._session_factory() as session:
+            app = resolve_agent_runtime_app(session, tenant_id=context.active_workspace_id, agent_id=agent_id)
+            if app is None:
+                raise AgentObservabilityNotFoundError
+            yield session, app
+
+    @staticmethod
+    def _timezone(session: Session, context: RequestContext) -> str:
+        """Read the admitted account's timezone, falling back to UTC for an unset value."""
+        account = session.get(Account, context.account_id)
+        return (account.timezone if account is not None else None) or "UTC"
+
+    @classmethod
+    def _log_params(cls, session: Session, context: RequestContext, query: AgentLogQuery) -> AgentLogQueryParams:
+        """Interpret local date bounds in the admitted account's timezone."""
+        start, end = parse_time_range(query.start, query.end, cls._timezone(session, context))
+        return AgentLogQueryParams(
+            page=query.page,
+            limit=query.limit,
+            keyword=query.keyword,
+            statuses=query.statuses,
+            sources=query.sources,
+            sort_by=query.sort_by,
+            sort_order=query.sort_order,
+            start=start,
+            end=end,
+        )
+
+    def list_logs(self, context: RequestContext, agent_id: str, query: AgentLogQuery) -> dict[str, object]:
+        """Return matching conversation logs after closing their database session."""
+        with self._runtime(context, agent_id) as (session, app):
+            return AgentObservabilityQueries(session).list_logs(
+                app=app, agent_id=agent_id, params=self._log_params(session, context, query)
+            )
+
+    def list_log_messages(
+        self, context: RequestContext, agent_id: str, conversation_id: str, query: AgentLogQuery
+    ) -> dict[str, object]:
+        """Return matching messages after closing their database session."""
+        with self._runtime(context, agent_id) as (session, app):
+            return AgentObservabilityQueries(session).list_log_messages(
+                app=app,
+                agent_id=agent_id,
+                conversation_id=conversation_id,
+                params=self._log_params(session, context, query),
+            )
+
+    def list_log_sources(self, context: RequestContext, agent_id: str) -> dict[str, object]:
+        """Return available sources after closing their database session."""
+        with self._runtime(context, agent_id) as (session, app):
+            return AgentObservabilityQueries(session).list_log_sources(app=app, agent_id=agent_id)
+
+    def statistics(self, context: RequestContext, agent_id: str, query: AgentStatisticsQuery) -> dict[str, object]:
+        """Return the Agent's account-timezone summary after closing its session."""
+        with self._runtime(context, agent_id) as (session, app):
+            timezone = self._timezone(session, context)
+            start, end = parse_time_range(query.start, query.end, timezone)
+            return AgentObservabilityQueries(session).get_statistics_summary(
+                app=app,
+                agent_id=agent_id,
+                params=AgentStatisticsQueryParams(source=query.source, start=start, end=end, timezone=timezone),
+            )
