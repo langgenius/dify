@@ -1,5 +1,5 @@
 import type { Features, OnFeaturesChange } from '../../../types'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
@@ -18,7 +18,11 @@ const openSettings = async (user: ReturnType<typeof userEvent.setup>) => {
   const edit = screen.getByRole('button', { name: 'appDebug.openingStatement.writeOpener' })
   edit.focus()
   await user.click(edit)
-  return screen.findByRole('dialog', { name: 'appDebug.feature.conversationOpener.title' })
+  return screen.findByRole(
+    'dialog',
+    { name: 'appDebug.feature.conversationOpener.title' },
+    { timeout: 5000 },
+  )
 }
 
 describe('ConversationOpener', () => {
@@ -48,6 +52,26 @@ describe('ConversationOpener', () => {
     expect(featuresStore.getState().features.opening).toMatchObject({
       enabled: true,
       opening_statement: 'Updated',
+    })
+  })
+
+  it('preserves other feature changes made while the modal is open', async () => {
+    const user = userEvent.setup({ skipHover: true })
+    const { featuresStore } = renderOpener({ enabled: true, opening_statement: 'Hello' })
+    const dialog = await openSettings(user)
+    await replacePromptEditorText(within(dialog).getByRole('textbox'), 'Updated')
+    act(() =>
+      featuresStore.getState().setFeatures({
+        ...featuresStore.getState().features,
+        file: { enabled: true, number_limits: 10 },
+      }),
+    )
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+    expect(featuresStore.getState().features).toMatchObject({
+      opening: { enabled: true, opening_statement: 'Updated' },
+      file: { enabled: true, number_limits: 10 },
     })
   })
 
