@@ -1,5 +1,4 @@
-from collections.abc import Callable
-from typing import TypedDict
+from collections.abc import Callable, Mapping
 
 import pytest
 
@@ -11,21 +10,13 @@ from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment, Segment
 
 
-class _NodeConfig(TypedDict):
-    title: str
-    variable: list[str]
-    filter_by: dict[str, object]
-    order_by: dict[str, object]
-    limit: dict[str, object]
-
-
 class TestListOperatorNode:
     """Comprehensive tests for ListOperatorNode."""
 
     @staticmethod
     def _build_node(
         *,
-        data: ListOperatorNodeData | _NodeConfig,
+        data: ListOperatorNodeData | Mapping[str, object],
         init_params: InitParams,
         runtime_state: RuntimeState,
     ) -> ListOperatorNode:
@@ -72,8 +63,8 @@ class TestListOperatorNode:
     ) -> Callable[..., ListOperatorNode]:
         """Factory fixture for creating ListOperatorNode instances."""
 
-        def _create_node(config: _NodeConfig, variable: Segment) -> ListOperatorNode:
-            graph_runtime_state.variable_pool.add(config["variable"], variable)
+        def _create_node(config: ListOperatorNodeData, variable: Segment) -> ListOperatorNode:
+            graph_runtime_state.variable_pool.add(config.variable, variable)
             return self._build_node(
                 data=config,
                 init_params=graph_init_params,
@@ -84,13 +75,15 @@ class TestListOperatorNode:
 
     def test_run_with_string_array(self, list_operator_node_factory: Callable[..., ListOperatorNode]) -> None:
         """Test with string array."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "banana", "cherry"])
         node = list_operator_node_factory(config, variable)
@@ -102,16 +95,18 @@ class TestListOperatorNode:
 
     def test_run_with_empty_array(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test with empty array."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=[])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -128,16 +123,18 @@ class TestListOperatorNode:
 
     def test_run_with_filter_contains(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test filter with contains condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": self._filter_by("contains", "app"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": self._filter_by("contains", "app"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -156,16 +153,18 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test filter with not contains condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": self._filter_by("not contains", "app"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": self._filter_by("not contains", "app"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "cherry"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -184,16 +183,18 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test filter with greater than condition on numbers."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "numbers"],
-            "filter_by": self._filter_by(">", "5"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "numbers"],
+                "filter_by": self._filter_by(">", "5"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayNumberSegment(value=[1, 3, 5, 7, 9, 11])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -208,19 +209,21 @@ class TestListOperatorNode:
 
     def test_run_with_order_ascending(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test ordering in ascending order."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {
-                "enabled": True,
-                "value": "asc",
-            },
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {
+                    "enabled": True,
+                    "value": "asc",
+                },
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["cherry", "apple", "banana"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -235,19 +238,21 @@ class TestListOperatorNode:
 
     def test_run_with_order_descending(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test ordering in descending order."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {
-                "enabled": True,
-                "value": "desc",
-            },
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {
+                    "enabled": True,
+                    "value": "desc",
+                },
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["cherry", "apple", "banana"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -262,19 +267,21 @@ class TestListOperatorNode:
 
     def test_run_with_limit(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test with limit enabled."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {
-                "enabled": True,
-                "size": 2,
-            },
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {
+                    "enabled": True,
+                    "size": 2,
+                },
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "banana", "cherry", "date"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -293,22 +300,24 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test with filter, order, and limit combined."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "numbers"],
-            "filter_by": self._filter_by(">", "3"),
-            "order_by": {
-                "enabled": True,
-                "value": "desc",
-            },
-            "limit": {
-                "enabled": True,
-                "size": 3,
-            },
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "numbers"],
+                "filter_by": self._filter_by(">", "3"),
+                "order_by": {
+                    "enabled": True,
+                    "value": "desc",
+                },
+                "limit": {
+                    "enabled": True,
+                    "size": 3,
+                },
+            }
+        )
 
         variable = ArrayNumberSegment(value=[1, 2, 3, 4, 5, 6, 7, 8, 9])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -327,13 +336,15 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test when variable is not found."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "missing"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "missing"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         node = self._build_node(
             data=config,
@@ -352,16 +363,18 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test first_record and last_record outputs."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": {"enabled": False},
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["first", "middle", "last"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -377,16 +390,18 @@ class TestListOperatorNode:
 
     def test_run_with_filter_startswith(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test filter with startswith condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": self._filter_by("start with", "app"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": self._filter_by("start with", "app"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "application", "banana", "apricot"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -401,16 +416,18 @@ class TestListOperatorNode:
 
     def test_run_with_filter_endswith(self, graph_runtime_state: RuntimeState, graph_init_params: InitParams) -> None:
         """Test filter with endswith condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": self._filter_by("end with", "le"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "items"],
+                "filter_by": self._filter_by("end with", "le"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayStringSegment(value=["apple", "banana", "pineapple", "table"])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -429,16 +446,18 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test number filter with equals condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "numbers"],
-            "filter_by": self._filter_by("=", "5"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "numbers"],
+                "filter_by": self._filter_by("=", "5"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayNumberSegment(value=[1, 3, 5, 5, 7, 9])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -457,16 +476,18 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test number filter with not equals condition."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "numbers"],
-            "filter_by": self._filter_by("≠", "5"),
-            "order_by": {"enabled": False},
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "numbers"],
+                "filter_by": self._filter_by("≠", "5"),
+                "order_by": {"enabled": False},
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayNumberSegment(value=[1, 3, 5, 7, 9])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
@@ -485,19 +506,21 @@ class TestListOperatorNode:
         graph_init_params: InitParams,
     ) -> None:
         """Test number ordering in ascending order."""
-        config: _NodeConfig = {
-            "title": "Test",
-            "variable": ["sys", "numbers"],
-            "filter_by": {"enabled": False},
-            "order_by": {
-                "enabled": True,
-                "value": "asc",
-            },
-            "limit": {"enabled": False},
-        }
+        config = ListOperatorNodeData.model_validate(
+            {
+                "title": "Test",
+                "variable": ["sys", "numbers"],
+                "filter_by": {"enabled": False},
+                "order_by": {
+                    "enabled": True,
+                    "value": "asc",
+                },
+                "limit": {"enabled": False},
+            }
+        )
 
         variable = ArrayNumberSegment(value=[9, 3, 7, 1, 5])
-        graph_runtime_state.variable_pool.add(config["variable"], variable)
+        graph_runtime_state.variable_pool.add(config.variable, variable)
 
         node = self._build_node(
             data=config,
