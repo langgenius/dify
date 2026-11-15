@@ -1,4 +1,4 @@
-// An overlay that opens behind an existing modal must wait before creating its own body portal.
+// Wait until the active modal releases its background before opening or focusing tour UI.
 export function waitForAccessibleElement(element: HTMLElement, onReady: () => void) {
   let observer: MutationObserver | undefined
   function check() {

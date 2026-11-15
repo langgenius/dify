@@ -7,6 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
 import { useEffect, useId } from 'react'
+import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 export type FloatingChecklistProps = {
   className?: string
@@ -128,7 +129,8 @@ function TourCompletionPrompt({
   const titleId = useId()
   const descriptionId = useId()
   useEffect(() => {
-    closeButtonRef.current?.focus({ preventScroll: true })
+    const button = closeButtonRef.current
+    if (button) return waitForAccessibleElement(button, () => button.focus({ preventScroll: true }))
   }, [closeButtonRef])
 
   return (
