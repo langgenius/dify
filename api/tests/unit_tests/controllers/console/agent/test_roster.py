@@ -32,13 +32,8 @@ from controllers.console.agent.roster import (
     AgentBuildDraftCheckoutPayload,
     AgentDebugConversationRefreshApi,
     AgentInviteOptionsApi,
-    AgentLogMessagesApi,
-    AgentLogsApi,
-    AgentLogSourcesApi,
     AgentPublishApi,
     AgentPublishPayload,
-    AgentStatisticsQuery,
-    AgentStatisticsSummaryApi,
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
@@ -46,7 +41,6 @@ from controllers.console.app.error import CompletionRequestError
 from models.account import Account, TenantAccountRole
 from models.agent import Agent, AgentConfigDraftType, AgentScope, AgentSource
 from models.model import App, AppMode, IconType
-from services.agent.observability_service import AgentLogQueryParams, AgentStatisticsQueryParams
 from services.entities.agent_entities import (
     ComposerSavePayload,
     ComposerSaveStrategy,
@@ -479,192 +473,6 @@ def test_agent_publish_and_build_draft_routes_call_composer_service(
     assert discarded == {"result": "success"}
     captured["discard"].pop("session", None)
     assert captured["discard"] == {"tenant_id": "tenant-1", "agent_id": agent_id, "account_id": account_id}
-
-
-def test_agent_observability_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    app_model = _app_detail_obj(id="app-1")
-    captured: dict[str, object] = {}
-
-    class FakeObservabilityService:
-        def list_logs(self, *, app: App, agent_id: str, params: AgentLogQueryParams) -> dict[str, object]:
-            captured["logs"] = {"app": app, "agent_id": agent_id, "params": params}
-            return {
-                "data": [
-                    {
-                        "conversation_id": "conversation-1",
-                        "id": "conversation-1",
-                        "title": "Debug",
-                        "end_user_id": "end-user-1",
-                        "message_count": 2,
-                        "user_rate": None,
-                        "operation_rate": None,
-                        "unread": True,
-                        "source": {
-                            "id": "webapp:app-1",
-                            "type": "webapp",
-                            "app_id": "app-1",
-                            "app_name": "Iris",
-                            "app_icon_type": "emoji",
-                            "app_icon": "robot",
-                            "app_icon_background": "#fff",
-                            "workflow_id": None,
-                            "workflow_version": None,
-                            "node_id": None,
-                        },
-                        "status": "success",
-                        "created_at": 1,
-                        "updated_at": 2,
-                    }
-                ],
-                "page": 2,
-                "limit": 5,
-                "total": 6,
-                "has_more": False,
-            }
-
-        def list_log_messages(
-            self, *, app: App, agent_id: str, conversation_id: str, params: AgentLogQueryParams
-        ) -> dict[str, object]:
-            captured["messages"] = {
-                "app": app,
-                "agent_id": agent_id,
-                "conversation_id": conversation_id,
-                "params": params,
-            }
-            return {
-                "data": [
-                    {
-                        "id": "message-1",
-                        "message_id": "message-1",
-                        "conversation_id": "conversation-1",
-                        "query": "hello",
-                        "answer": "hi",
-                        "status": "success",
-                        "error": None,
-                        "from_end_user_id": None,
-                        "from_account_id": account_id,
-                        "message_tokens": 1,
-                        "answer_tokens": 2,
-                        "total_tokens": 3,
-                        "total_price": "0",
-                        "currency": "USD",
-                        "latency": 1.2,
-                        "created_at": 1,
-                        "updated_at": 2,
-                    }
-                ],
-                "page": 1,
-                "limit": 20,
-                "total": 1,
-                "has_more": False,
-            }
-
-        def list_log_sources(self, *, app: App, agent_id: str) -> dict[str, object]:
-            captured["sources"] = {"app": app, "agent_id": agent_id}
-            return {
-                "data": [
-                    {
-                        "id": "webapp:app-1",
-                        "type": "webapp",
-                        "app_id": "app-1",
-                        "app_name": "Iris",
-                        "app_icon_type": "emoji",
-                        "app_icon": "robot",
-                        "app_icon_background": "#fff",
-                        "workflow_id": None,
-                        "workflow_version": None,
-                        "node_id": None,
-                    }
-                ],
-                "groups": [{"type": "webapp", "label": "WEBAPP", "sources": []}],
-            }
-
-        def get_statistics_summary(
-            self, *, app: App, agent_id: str, params: AgentStatisticsQueryParams
-        ) -> dict[str, object]:
-            captured["statistics"] = {"app": app, "agent_id": agent_id, "params": params}
-            return {
-                "source": "all",
-                "summary": {
-                    "total_messages": 1,
-                    "total_conversations": 1,
-                    "total_end_users": 1,
-                    "total_tokens": 3,
-                    "total_price": "0",
-                    "currency": "USD",
-                    "average_session_interactions": 1,
-                    "average_response_time": 1200,
-                    "tokens_per_second": 2,
-                    "user_satisfaction_rate": 100,
-                },
-                "charts": {
-                    "daily_messages": [{"date": "2026-06-17", "message_count": 1}],
-                    "daily_conversations": [{"date": "2026-06-17", "conversation_count": 1}],
-                    "daily_end_users": [{"date": "2026-06-17", "terminal_count": 1}],
-                    "token_usage": [{"date": "2026-06-17", "token_count": 3, "total_price": "0", "currency": "USD"}],
-                    "average_session_interactions": [{"date": "2026-06-17", "interactions": 1}],
-                    "average_response_time": [{"date": "2026-06-17", "latency": 1200}],
-                    "tokens_per_second": [{"date": "2026-06-17", "tps": 2}],
-                    "user_satisfaction_rate": [{"date": "2026-06-17", "rate": 100}],
-                },
-            }
-
-    monkeypatch.setattr(roster_controller, "_resolve_agent_runtime_app_model", lambda _session, **kwargs: app_model)
-    monkeypatch.setattr(roster_controller, "_agent_observability_service", lambda *_args: FakeObservabilityService())
-    account = _account(account_id=account_id, timezone="UTC")
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/logs?page=2&limit=5&keyword=hello&statuses=success&statuses=failed&sources=webapp:app-1&sources=workflow:app-2:workflow-1:v1:node-1&sort_by=created_at&sort_order=asc"
-    ):
-        logs = unwrap(AgentLogsApi.get)(AgentLogsApi(), MagicMock(), "tenant-1", account, agent_id)
-    assert logs["data"][0]["id"] == "conversation-1"
-    assert logs["data"][0]["source"]["id"] == "webapp:app-1"
-    logs_call = cast(dict[str, object], captured["logs"])
-    assert logs_call["app"] is app_model
-    assert logs_call["agent_id"] == agent_id
-    logs_params = cast(Any, logs_call["params"])
-    assert logs_params.page == 2
-    assert logs_params.limit == 5
-    assert logs_params.keyword == "hello"
-    assert logs_params.statuses == ("success", "failed")
-    assert logs_params.sources == ("webapp:app-1", "workflow:app-2:workflow-1:v1:node-1")
-    assert logs_params.sort_by == "created_at"
-    assert logs_params.sort_order == "asc"
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/logs/00000000-0000-0000-0000-000000000002/messages"
-    ):
-        messages = unwrap(AgentLogMessagesApi.get)(
-            AgentLogMessagesApi(), MagicMock(), "tenant-1", account, agent_id, "00000000-0000-0000-0000-000000000002"
-        )
-    assert messages["data"][0]["id"] == "message-1"
-    messages_call = cast(dict[str, object], captured["messages"])
-    assert messages_call["app"] is app_model
-    assert messages_call["agent_id"] == agent_id
-    assert messages_call["conversation_id"] == "00000000-0000-0000-0000-000000000002"
-    messages_params = cast(Any, messages_call["params"])
-    assert messages_params.sources == ()
-    assert messages_params.statuses == ()
-    with app.test_request_context("/console/api/agent/00000000-0000-0000-0000-000000000001/log-sources"):
-        sources = unwrap(AgentLogSourcesApi.get)(AgentLogSourcesApi(), MagicMock(), "tenant-1", account, agent_id)
-    assert sources["data"][0]["id"] == "webapp:app-1"
-    sources_call = cast(dict[str, object], captured["sources"])
-    assert sources_call["app"] is app_model
-    assert sources_call["agent_id"] == agent_id
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/statistics/summary?source=api"
-    ):
-        statistics = unwrap(AgentStatisticsSummaryApi.get)(
-            AgentStatisticsSummaryApi(), AgentStatisticsQuery(source="api"), MagicMock(), "tenant-1", account, agent_id
-        )
-    assert statistics["summary"]["total_messages"] == 1
-    stats_call = cast(dict[str, object], captured["statistics"])
-    assert stats_call["app"] is app_model
-    assert stats_call["agent_id"] == agent_id
-    stats_params = cast(Any, stats_call["params"])
-    assert stats_params.source == "api"
-    assert stats_params.timezone == "UTC"
 
 
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(
