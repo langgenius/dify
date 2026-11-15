@@ -107,6 +107,7 @@ def test_engine_indices_are_available_before_delivery_and_match_persistence(
         ),
         workflow_execution_repository=execution_repo,
         workflow_node_execution_repository=node_repo,
+        trace_scope=None,
     )
     layer.set_node_run_indices(index.indices)
     layer.set_node_execution_history(persisted_history)

@@ -4,12 +4,12 @@ import type { useToolMarketplace } from './hooks'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { useRouter } from '@/next/navigation'
 import { toolsContentInsetClassNames, toolsUnifiedContentFrameClassName } from '../content-inset'
 
@@ -33,7 +33,7 @@ const Marketplace = ({
 }: MarketplaceProps) => {
   const locale = useLocale()
   const { t } = useTranslation(['common', 'plugin'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const router = useRouter()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const { isLoading, marketplaceCollections, marketplaceCollectionPluginsMap, plugins, page } =

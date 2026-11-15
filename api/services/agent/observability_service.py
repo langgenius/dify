@@ -812,17 +812,25 @@ class AgentObservabilityService:
 
     @classmethod
     def _workflow_node_query(cls, inputs: Mapping[str, Any], *, fallback: str) -> str:
+        """Read task and context text from persisted runtime inputs in prompt order.
+
+        File payloads are excluded; inputs without nonblank prompts return the fallback.
+        """
         request_data = cls._mapping_value(inputs, "agent_backend_request")
         composition = cls._mapping_value(request_data, "composition")
         layers = composition.get("layers")
         prompts: list[str] = []
         if isinstance(layers, list):
-            for layer_name in ("workflow_node_job_prompt", "workflow_user_prompt"):
+            for layer_name, prompt_key in (
+                ("workflow_node_job_prompt", "user"),
+                ("workflow_user_prompt", "user"),
+                ("user_prompt", "text"),
+            ):
                 for layer in layers:
                     if not isinstance(layer, Mapping) or layer.get("name") != layer_name:
                         continue
                     config = cls._mapping_value(layer, "config")
-                    user_prompt = config.get("user")
+                    user_prompt = config.get(prompt_key)
                     if isinstance(user_prompt, str) and user_prompt.strip():
                         prompts.append(user_prompt.strip())
         return "\n\n".join(prompts) or fallback

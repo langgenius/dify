@@ -1,9 +1,11 @@
 """Real provider resolution keeps naming metadata and the caller's session isolated."""
 
+import json
 from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.events import ConversationNamed, TraceEvent
 from flask import Flask
 from sqlalchemy import Connection, event, select
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -18,8 +20,11 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.errors.invoke import InvokeServerUnavailableError
 from models import App, AppMode, Tenant
 from models.provider import Provider, TenantDefaultModel
-from services.conversation_name_generator import generate_conversation_name
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
+from services.conversation_name_generator import DefaultModelConversationNameGenerator
+from services.tracing.scopes import TraceScopes
 from tests.helpers.unit.services.conversation_name_fixtures import _MODEL, _PROVIDER, NamingPlugin
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 pytest_plugins = ("tests.helpers.unit.services.conversation_name_fixtures",)
 
@@ -85,7 +90,7 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
                 inherited_metadata = dict(get_credit_usage_metadata() or {})
                 if fail_invoke:
                     with pytest.raises(InvokeServerUnavailableError, match="Title provider unavailable"):
-                        generate_conversation_name(
+                        DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes())(
                             tenant_id=tenant.id,
                             app_id=target.id,
                             conversation_id=str(uuid4()),
@@ -93,7 +98,7 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
                             app_mode=target.mode,
                         )
                 else:
-                    name = generate_conversation_name(
+                    name = DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes())(
                         tenant_id=tenant.id,
                         app_id=target.id,
                         conversation_id=str(uuid4()),
@@ -121,12 +126,8 @@ def test_real_provider_invocation_releases_preparation_session_and_preserves_cal
         assert caller_app.name == "Pending caller edit"
         assert all(session is not caller_session for session in naming_sessions)
         assert all(not session.in_transaction() and not session.identity_map for session in naming_sessions)
-        if fail_invoke:
-            assert naming_sessions == preparation_sessions
-        else:
-            # Trace configuration is read after invocation using a new inner session.
-            assert len(naming_sessions) > len(preparation_sessions)
-            assert naming_sessions[-1] not in preparation_sessions
+        # Tracing reads its policy through its own store, so preparation is the only scoped session.
+        assert naming_sessions == preparation_sessions
         with sqlite_session_factory() as session:
             assert session.scalar(select(App.name).where(App.id == target.id)) == "Original app"
 
@@ -198,7 +199,7 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
             with use_credit_usage_metadata({"request_id": "name-request"}):
                 inherited_metadata = dict(get_credit_usage_metadata() or {})
                 with pytest.raises(ProviderTokenNotInitError, match="^Default model not found for llm$"):
-                    generate_conversation_name(
+                    DefaultModelConversationNameGenerator(trace_scopes=untraced_scopes())(
                         tenant_id=target.tenant_id,
                         app_id=target.id,
                         conversation_id=str(uuid4()),
@@ -232,3 +233,57 @@ def test_provider_resolution_failure_closes_inner_session_and_preserves_caller_c
             stored_app = session.get(App, target.id)
             assert stored_app is not None
             assert stored_app.name == "Original app"
+
+
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.mark.usefixtures("naming_plugin")
+def test_naming_reports_the_generated_name_to_a_traced_apps_trace(
+    naming_app: Flask, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tenant = Tenant(name="Naming workspace")
+    target = App(
+        id=str(uuid4()),
+        tenant_id=tenant.id,
+        name="Traced app",
+        mode=AppMode.CHAT,
+        enable_site=True,
+        enable_api=True,
+        tracing=json.dumps({"enabled": True, "tracing_provider": "langfuse"}),
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                tenant,
+                target,
+                Provider(tenant_id=tenant.id, provider_name=_PROVIDER, is_valid=True),
+                TenantDefaultModel(
+                    tenant_id=tenant.id, provider_name=_PROVIDER, model_name=_MODEL, model_type=ModelType.LLM
+                ),
+            ]
+        )
+    recorder = _TraceRecorder()
+    generator = DefaultModelConversationNameGenerator(
+        trace_scopes=TraceScopes(
+            emitter=recorder,
+            policies=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
+            enterprise_enabled=lambda: False,
+        )
+    )
+    conversation_id = str(uuid4())
+
+    with naming_app.app_context():
+        name = generator(
+            tenant_id=tenant.id, app_id=target.id, conversation_id=conversation_id, query="First query", app_mode="chat"
+        )
+
+    (event,) = recorder.events
+    assert (event.tenant_id, event.app_id) == (tenant.id, target.id)
+    assert isinstance(event.payload, ConversationNamed)
+    assert (event.payload.conversation_id, event.payload.name) == (conversation_id, name)

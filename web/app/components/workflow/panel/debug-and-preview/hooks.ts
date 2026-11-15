@@ -4,7 +4,7 @@ import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { ChatItem, ChatItemInTree, Inputs } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { IOtherOptions } from '@/service/base'
-import type { ReasoningChunkResponse } from '@/types/workflow'
+import type { NodeTracing, ReasoningChunkResponse } from '@/types/workflow'
 import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
 import { useAtomValue } from 'jotai'
@@ -484,6 +484,31 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
+        onExternalWorkflowSnapshot: (run, executions) => {
+          const previous = new Map(
+            responseItem.workflowProcess?.tracing?.map((execution) => [execution.id, execution]),
+          )
+          responseItem.workflowProcess = {
+            ...responseItem.workflowProcess!,
+            status: run.status as WorkflowRunningStatus,
+            error: run.error ?? undefined,
+            tracing: executions.map(
+              (execution) => ({ ...previous.get(execution.id), ...execution }) as NodeTracing,
+            ),
+          }
+          if (run.outputs && typeof run.outputs === 'object' && !Array.isArray(run.outputs)) {
+            const values = Object.values(run.outputs)
+            if (values.length === 1 && typeof values[0] === 'string')
+              responseItem.content = values[0]
+          }
+          handleResponding(run.status === 'paused' || run.status === 'running')
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
         onIterationStart: ({ data }) => {
           responseItem.workflowProcess!.tracing!.push({
             ...data,
@@ -697,7 +722,10 @@ export const useChat = (
     formToken: string,
     formData: HumanInputFormSubmitData,
   ) => {
-    await submitHumanInputForm(formToken, formData)
+    const form = threadMessages
+      .flatMap((item) => item.humanInputFormDataList ?? [])
+      .find((item) => item.form_token === formToken)
+    await submitHumanInputForm(formToken, formData, form?.form_version)
   }
 
   const getHumanInputNodeData = (nodeID: string) => {

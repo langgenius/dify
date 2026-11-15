@@ -25,10 +25,13 @@ from models.account import (
     TenantPluginAutoUpgradeStrategy,
 )
 from models.enums import ProviderQuotaType
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import account_errors
 from services.account import login_adapters as adapters
@@ -53,6 +56,7 @@ from services.entities.account_login_entities import (
     RefreshAccountStatus,
 )
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
+from services.workspace import gateways
 from services.workspace import gateways as workspace_gateways
 from services.workspace.contracts import CreatedWorkspace
 from services.workspace.provisioning_service import WorkspaceProvisioningService
@@ -343,6 +347,12 @@ def test_workspace_provisioning_persists_owner_workspace(
         assert membership is not None
         assert membership.role == TenantAccountRole.OWNER
         assert session.get(Tenant, membership.tenant_id) is not None
+        assert (
+            session.scalar(
+                select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == "account-1")
+            )
+            is not None
+        )
 
 
 def test_workspace_provisioning_rejects_missing_account(
@@ -436,7 +446,7 @@ def test_turnstile_gateway_maps_provider_failures(
     assert (record.exc_info is not None) is has_exception_info
 
 
-def test_provisioning_persists_account_and_workspace_atomically(
+def test_provisioning_persists_account_contact_and_workspace_atomically(
     account_domain: AccountDomain,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -457,6 +467,66 @@ def test_provisioning_persists_account_and_workspace_atomically(
         assert account.normalized_email == "user@example.com"
         assert account.timezone == "UTC"
         assert membership is not None
+        contact = session.scalars(
+            select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account_id)
+        ).one()
+        assert contact.subject_type == ContactSubjectType.ACCOUNT
+
+
+def test_provisioning_rolls_back_when_contact_creation_fails(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = account_domain.provisioning
+
+    def fail_contact(*_args: object, **_kwargs: object) -> None:
+        raise ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")
+
+    monkeypatch.setattr(SQLAlchemyContactRepository, "provision_account_backed_contact", fail_contact)
+
+    with pytest.raises(ContactError, match="Contact creation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
+
+
+def test_provisioning_rolls_back_account_and_contact_when_workspace_creation_fails(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = account_domain.provisioning
+
+    def fail_key_pair(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("Key generation failed")
+
+    monkeypatch.setattr(gateways, "generate_key_pair", fail_key_pair)
+
+    with pytest.raises(ValueError, match="Key generation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
 
 
 def test_provisioning_rejects_equivalent_normalized_email(

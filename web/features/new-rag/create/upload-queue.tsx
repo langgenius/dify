@@ -146,7 +146,6 @@ export function CreateUploadQueue({
             className="mt-2"
             disabled={disabled}
             fileSizeLimitMb={fileSizeLimitMb}
-            idleStatus={t(($) => $.uploadCharactersUnavailable, { ns: 'knowledgeCreate' })}
             items={uploads}
             uploadProgress={uploadPhases}
             variant="compact"

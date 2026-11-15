@@ -200,7 +200,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({
       <DialogContent
         initialFocus={repoUrlInputRef}
         backdropProps={{ forceRender: true }}
-        className={cn('w-140', modalClassName, 'max-h-[calc(100dvh-48px)]')}
+        className={cn('w-140', modalClassName, 'max-h-[calc(100dvh-3rem)]')}
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>

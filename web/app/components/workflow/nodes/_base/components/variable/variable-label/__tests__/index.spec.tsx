@@ -52,5 +52,29 @@ describe('variable-label index', () => {
 
       expect(await screen.findByText('Invalid variable')).toBeVisible()
     })
+
+    it('discloses unsupported input warnings while giving reference errors priority', async () => {
+      const user = userEvent.setup()
+      const view = render(
+        <VariableLabelInEditor
+          variables={['source', 'files']}
+          warningMsg="This agent does not support files"
+        />,
+      )
+      await user.hover(screen.getByText('files'))
+      expect(await screen.findByText('This agent does not support files')).toBeVisible()
+
+      await user.unhover(screen.getByText('files'))
+      view.rerender(
+        <VariableLabelInEditor
+          variables={['source', 'files']}
+          warningMsg="This agent does not support files"
+          errorMsg="Invalid variable"
+        />,
+      )
+      await user.hover(screen.getByText('files'))
+      expect(await screen.findByText('Invalid variable')).toBeVisible()
+      expect(screen.queryByText('This agent does not support files')).not.toBeInTheDocument()
+    })
   })
 })

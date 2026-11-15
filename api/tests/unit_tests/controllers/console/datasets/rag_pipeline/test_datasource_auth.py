@@ -2,7 +2,7 @@ import inspect
 from datetime import UTC, datetime
 from importlib import import_module
 from types import SimpleNamespace
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -565,7 +565,7 @@ class TestDatasourceAuth:
 
 
 class TestDatasourceAuthDeleteApi:
-    def test_delete_success(self, app: Flask):
+    def test_delete_success(self, app: Flask, unbound_session: Session):
         api = DatasourceAuthDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -581,7 +581,7 @@ class TestDatasourceAuthDeleteApi:
             ) as remove_datasource_credentials,
         ):
             req_data = DatasourceCredentialDeletePayload.model_validate(payload)
-            response, status = method(api, req_data, "tenant-1", _PROVIDER_ID)
+            response, status = method(api, req_data, unbound_session, "tenant-1", _PROVIDER_ID)
 
         assert response == _success_response()
         assert status == 200
@@ -590,10 +590,10 @@ class TestDatasourceAuthDeleteApi:
             auth_id="cred-1",
             provider="notion",
             plugin_id="langgenius/notion_datasource",
-            session=ANY,
+            session=unbound_session,
         )
 
-    def test_delete_missing_credential_id(self, app: Flask):
+    def test_delete_missing_credential_id(self, app: Flask, unbound_session: Session):
         api = DatasourceAuthDeleteApi()
         method = inspect.unwrap(api.post)
 
@@ -606,7 +606,13 @@ class TestDatasourceAuthDeleteApi:
             with pytest.raises(
                 ValueError, match="1 validation error for DatasourceCredentialDeletePayload\\\ncredential_id"
             ):
-                method(api, DatasourceCredentialDeletePayload.model_validate(payload), "tenant-1", "notion")
+                method(
+                    api,
+                    DatasourceCredentialDeletePayload.model_validate(payload),
+                    unbound_session,
+                    "tenant-1",
+                    "notion",
+                )
 
 
 class TestDatasourceAuthUpdateApi:
@@ -711,7 +717,7 @@ class TestDatasourceAuthUpdateApi:
 
 
 class TestDatasourceAuthListApi:
-    def test_list_success(self, app: Flask):
+    def test_list_success(self, app: Flask, unbound_session: Session):
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -724,15 +730,16 @@ class TestDatasourceAuthListApi:
                 return_value=[_datasource_auth()],
             ) as get_all,
         ):
-            response, status = method(api, "tenant-1", user)
+            response, status = method(api, unbound_session, "tenant-1", user)
 
         assert status == 200
         assert response == {"result": [_datasource_auth()]}
         # user is threaded through so list_datasource_credentials applies the
         # visibility filter for the current viewer.
         assert get_all.call_args.kwargs["user"] is user
+        assert get_all.call_args.kwargs["session"] is unbound_session
 
-    def test_auth_list_empty(self, app: Flask):
+    def test_auth_list_empty(self, app: Flask, unbound_session: Session):
         api = DatasourceAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -745,12 +752,12 @@ class TestDatasourceAuthListApi:
                 return_value=[],
             ),
         ):
-            response, status = method(api, "tenant-1", user)
+            response, status = method(api, unbound_session, "tenant-1", user)
 
         assert status == 200
         assert response["result"] == []
 
-    def test_hardcode_list_empty(self, app: Flask):
+    def test_hardcode_list_empty(self, app: Flask, unbound_session: Session):
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -763,14 +770,14 @@ class TestDatasourceAuthListApi:
                 return_value=[],
             ),
         ):
-            response, status = method(api, "tenant-1", user)
+            response, status = method(api, unbound_session, "tenant-1", user)
 
         assert status == 200
         assert response["result"] == []
 
 
 class TestDatasourceHardCodeAuthListApi:
-    def test_list_success(self, app: Flask):
+    def test_list_success(self, app: Flask, unbound_session: Session):
         api = DatasourceHardCodeAuthListApi()
         method = inspect.unwrap(api.get)
         user = MagicMock(id="user-1")
@@ -783,10 +790,11 @@ class TestDatasourceHardCodeAuthListApi:
                 return_value=[_datasource_auth()],
             ) as get_hardcode,
         ):
-            response, status = method(api, "tenant-1", user)
+            response, status = method(api, unbound_session, "tenant-1", user)
 
         assert status == 200
         assert get_hardcode.call_args.kwargs["user"] is user
+        assert get_hardcode.call_args.kwargs["session"] is unbound_session
 
 
 class TestDatasourceAuthOauthCustomClient:

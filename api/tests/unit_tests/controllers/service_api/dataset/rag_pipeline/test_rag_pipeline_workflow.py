@@ -43,7 +43,6 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.data_source.credential_repository import SQLAlchemyDatasourceCredentialRepository
-from services.data_source.provider_service import DatasourceProviderService
 from services.errors.file import FileTooLargeError as FileTooLargeServiceError
 from services.errors.file import UnsupportedFileTypeError
 from services.rag_pipeline.entity.pipeline_service_api_entities import (
@@ -51,6 +50,7 @@ from services.rag_pipeline.entity.pipeline_service_api_entities import (
     PipelineRunApiEntity,
 )
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 from tests.helpers.unit.model_factories import make_upload_file
 
 """
@@ -101,7 +101,7 @@ class TestRagPipelineWorkflowCases:
         session_proxy = scoped_session(sqlite_session_factory)
         monkeypatch.setattr(workflow_module.db, "session", session_proxy)
         query = CredentialQueryRepository(session_factory=sqlite_session_factory)
-        providers = DatasourceProviderService(
+        providers = build_datasource_provider_service(
             credentials=SQLAlchemyDatasourceCredentialRepository(session_factory=sqlite_session_factory)
         )
         monkeypatch.setattr(

@@ -8,6 +8,7 @@ import { useMemo } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
 import { ModelModeType } from '@/types/app'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import { getErrorMessage } from '@/utils/error-message'
 
 type ModelChangeHandlerOptions = {
   chatPromptLength: number
@@ -111,8 +112,8 @@ export const createModelChangeHandler =
         )
 
       setCompletionParams(filtered)
-    } catch {
-      toast.error(t(($) => $.error, { ns: 'common' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.error, { ns: 'common' }))
       setCompletionParams({})
     }
   }

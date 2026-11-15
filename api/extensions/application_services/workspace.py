@@ -4,14 +4,22 @@ from dataclasses import dataclass
 
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.application_services.external_agent_lifecycle import (
+    fence_external_workspace as _fence_external_workspace,
+)
 from extensions.ext_redis import RedisClientWrapper
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.app.console_repository import ConsoleAppRepository
+from repositories.credentials.query_repository import CredentialQueryRepository
 from repositories.knowledge.dataset_repository import SQLAlchemyDatasetRepository
 from repositories.workspace.resource_cleanup_repository import WorkspaceResourceCleanupRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
 from services.file_service import FileService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
+from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
+from services.trigger.provider_loader import PluginTriggerProviderLoader
+from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
     DeploymentWorkspaceFeatureGateway,
@@ -47,6 +55,7 @@ class WorkspaceServices:
     invitations: WorkspaceInvitationService
     identity: WorkspaceIdentityGateway
     resource_cleanup: WorkspaceResourceCleanupService
+    plugin_parameters: PluginParameterService
 
 
 def build_workspace_membership_services(
@@ -82,6 +91,10 @@ def build_workspace_services(
     provisioning: WorkspaceProvisioningService,
     registration: InvitedAccountRegistration,
     invitation_tokens: RedisInvitationTokenStore,
+    credentials: CredentialQueryRepository,
+    trigger_subscriptions: PluginParameterSubscriptions,
+    trigger_builders: TriggerSubscriptionBuilderQuery,
+    trigger_providers: PluginTriggerProviderLoader,
 ) -> WorkspaceServices:
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -114,5 +127,12 @@ def build_workspace_services(
             apps=ConsoleAppRepository(session_factory=database_client),
             datasets=SQLAlchemyDatasetRepository(session_factory=database_client),
             agent_resources=WorkspaceResourceCleanupRepository(session_factory=database_client),
+            external_cleanup=_fence_external_workspace,
+        ),
+        plugin_parameters=PluginParameterService(
+            credentials=credentials,
+            subscriptions=trigger_subscriptions,
+            builders=trigger_builders,
+            plugins=DaemonPluginParameterGateway(providers=trigger_providers),
         ),
     )

@@ -1,5 +1,7 @@
 import type {
   AppMode,
+  TraceAppConfigResponse,
+  TraceConfigPayload,
   TraceProviderCapabilitiesResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
@@ -21,8 +23,19 @@ vi.mock('@/service/base', () => ({ request }))
 
 const langfuseConfig = {
   public_key: 'public-key',
-  secret_key: '[__MASKED__]',
+  secret_key: 'secret-key',
   host: 'https://cloud.langfuse.com',
+}
+const langfuseSecrets = ['public_key', 'secret_key']
+
+/** The trace-config response for a stored Langfuse config: secrets are reported, never returned. */
+function presentLangfuse(stored: TraceConfigPayload['tracing_config']): TraceAppConfigResponse {
+  return {
+    tracing_config: Object.fromEntries(
+      Object.entries(stored).filter(([name]) => !langfuseSecrets.includes(name)),
+    ),
+    configured_secrets: langfuseSecrets.filter((name) => !!stored[name]),
+  }
 }
 
 const capabilities: TraceProviderCapabilitiesResponse = {
@@ -44,7 +57,7 @@ function mockServer(
   initialStatus = { enabled: configured, tracing_provider: configured ? 'langfuse' : null },
 ) {
   let status = initialStatus
-  let config: Record<string, unknown> | null = configured ? langfuseConfig : null
+  let config: TraceConfigPayload['tracing_config'] | null = configured ? langfuseConfig : null
   const writes: Array<{ method: string; body: unknown }> = []
   request.mockImplementation(async (_url, _init, { request: sent }) => {
     const url = new URL(sent.url)
@@ -63,7 +76,9 @@ function mockServer(
     }
     if (sent.method === 'GET') {
       const providerConfig = url.searchParams.get('tracing_provider') === 'langfuse' ? config : null
-      return Response.json({ tracing_config: providerConfig, has_not_configured: !providerConfig })
+      return Response.json(
+        providerConfig ? presentLangfuse(providerConfig) : { has_not_configured: true },
+      )
     }
     if (sent.method === 'DELETE') {
       config = null
@@ -73,7 +88,8 @@ function mockServer(
     }
     const body = await sent.json()
     writes.push({ method: sent.method, body })
-    config = { ...body.tracing_config, secret_key: '[__MASKED__]' }
+    // Like the API, a secret left out of the save keeps its stored value.
+    config = { ...config, ...body.tracing_config }
     if (body.activate)
       status = { ...status, enabled: true, tracing_provider: body.tracing_provider }
     return Response.json({ result: 'success' })
@@ -91,6 +107,10 @@ function renderPanel({
   mode = 'chat',
 }: { readOnly?: boolean; searchParams?: string; mode?: AppMode } = {}) {
   const client = createTestQueryClient()
+  client.setQueryData(
+    consoleQuery.systemFeatures.get.queryKey(),
+    createSystemFeaturesFixture({ agent_tracing_api_collection_enabled: agentTracingEnabled }),
+  )
   const QueryWrapper = createQueryClientWrapper(client)
   const { wrapper: NuqsWrapper, onUrlUpdate } = createNuqsTestWrapper({
     searchParams,
@@ -215,31 +235,10 @@ describe('Tracing overview panel', () => {
       await client.invalidateQueries({ queryKey: consoleQuery.systemFeatures.get.queryKey() })
     })
 
-    expect(requested('/system-features')).toHaveLength(2)
+    expect(requested('/system-features')).toHaveLength(1)
     expect(screen.getByRole('switch', { name: 'app.tracing.captureAgent' })).toBeChecked()
     expect(screen.queryByRole('note')).not.toBeInTheDocument()
     expect(writes).toEqual([])
-    expect(requested('/features')).toEqual([])
-  })
-
-  it('does not report a disabled deployment when the initial system-features request fails', async () => {
-    mockServer()
-    const server = request.getMockImplementation()!
-    request.mockImplementation(async (...args) => {
-      if (new URL(args[2].request.url).pathname.endsWith('/system-features'))
-        throw await httpErrorFromResponse(
-          Response.json({ message: 'System features unavailable' }, { status: 500 }),
-        )
-      return server(...args)
-    })
-    renderPanel({ searchParams: 'tracing=configure', mode: 'workflow' })
-
-    await screen.findByRole('group', { name: 'app.tracing.langfuse.title' })
-    expect(screen.queryByRole('note')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('button', { name: 'app.tracing.captureTitle' }),
-    ).not.toBeInTheDocument()
-    expect(requested('/trace-capabilities')).toEqual([])
     expect(requested('/features')).toEqual([])
   })
 
@@ -522,7 +521,10 @@ describe('Tracing overview panel', () => {
     request.mockImplementation(async (...args) => {
       const url = new URL(args[2].request.url)
       if (url.searchParams.get('tracing_provider') === 'langsmith')
-        return Response.json({ tracing_config: { api_key: 'key', project: 'project' } })
+        return Response.json({
+          tracing_config: { project: 'project' },
+          configured_secrets: ['api_key'],
+        })
       if (url.searchParams.get('tracing_provider') === 'phoenix') {
         if (unavailable)
           return Response.json(
@@ -714,10 +716,10 @@ describe('Tracing overview panel', () => {
           Response.json({
             has_not_configured: false,
             tracing_config: {
-              api_key: 'key',
               project: 'project',
               endpoint: 'https://api.smith.langchain.com',
             },
+            configured_secrets: ['api_key'],
           }),
         )
       return original(...args)
@@ -792,7 +794,7 @@ describe('Tracing overview panel', () => {
           method: 'POST',
           body: {
             tracing_provider: 'langfuse',
-            tracing_config: { ...langfuseConfig, secret_key: 'secret-key' },
+            tracing_config: langfuseConfig,
             activate: true,
           },
         },
@@ -814,13 +816,13 @@ describe('Tracing overview panel', () => {
     )
   })
 
-  it('reopens an edited provider from the refreshed masked config', async () => {
+  it('saves a replaced secret and reopens the provider without prefilling secrets', async () => {
     const writes = mockServer()
     const { client } = renderPanel()
     const user = await openConfiguredPanel()
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
     const secret = screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' })
-    await user.clear(secret)
+    expect(secret).toHaveValue('')
     await user.type(secret, 'new-secret')
     await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
     await waitFor(() =>
@@ -830,15 +832,23 @@ describe('Tracing overview panel', () => {
     )
     await waitFor(() => expect(client.isFetching()).toBe(0))
     await user.click(screen.getAllByText('app.tracing.config')[0]!)
-    expect(
-      screen.getByRole('textbox', { name: 'app.tracing.configProvider.secretKey' }),
-    ).toHaveValue('[__MASKED__]')
+    for (const label of [
+      'app.tracing.configProvider.secretKey',
+      'app.tracing.configProvider.publicKey',
+    ]) {
+      const reopened = screen.getByRole('textbox', { name: label })
+      expect(reopened).toHaveValue('')
+      expect(reopened).toHaveAttribute(
+        'placeholder',
+        'app.tracing.configProvider.configuredSecretPlaceholder',
+      )
+    }
     expect(writes).toEqual([
       {
         method: 'PATCH',
         body: {
           tracing_provider: 'langfuse',
-          tracing_config: { ...langfuseConfig, secret_key: 'new-secret' },
+          tracing_config: { host: langfuseConfig.host, secret_key: 'new-secret' },
         },
       },
     ])
@@ -1024,10 +1034,11 @@ describe('Tracing overview panel', () => {
         url.pathname.endsWith('/trace-config') &&
         url.searchParams.get('tracing_provider') === 'langsmith'
       ) {
-        return Response.json({
-          has_not_configured: removed,
-          tracing_config: removed ? null : { api_key: '[__MASKED__]', project: 'project' },
-        })
+        return Response.json(
+          removed
+            ? { has_not_configured: true }
+            : { tracing_config: { project: 'project' }, configured_secrets: ['api_key'] },
+        )
       }
       return server(...args)
     })
@@ -1075,7 +1086,7 @@ describe('Tracing overview panel', () => {
         consoleQuery.apps.byAppId.traceConfig.get.queryKey({
           input: { params: { app_id: 'app-1' }, query: { tracing_provider: 'langfuse' } },
         }),
-        { tracing_config: { ...langfuseConfig, host: 'https://server.langfuse.com' } },
+        presentLangfuse({ ...langfuseConfig, host: 'https://server.langfuse.com' }),
       ),
     )
     expect(host).toHaveValue('https://draft.langfuse.com')

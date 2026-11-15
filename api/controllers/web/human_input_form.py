@@ -26,6 +26,7 @@ from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import RateLimiter, dump_response, extract_remote_ip, to_timestamp
 from models.account import TenantStatus
+from models.human_input import RecipientType
 from models.model import App, AppMode, Site
 from services.feature_service import FeatureService
 from services.human_input_service import (
@@ -137,6 +138,7 @@ class HumanInputFormUploadTokenApi(Resource):
             raise WebFormRateLimitExceededError()
         _FORM_UPLOAD_TOKEN_RATE_LIMITER.increment_rate_limit(ip_address)
 
+        _get_public_form_by_token(HumanInputService(db.engine), form_token)
         try:
             token = application_services().human_input_file_uploads.issue_upload_token(form_token)
         except FormNotFoundError as caught_error:
@@ -183,12 +185,7 @@ class HumanInputFormApi(Resource):
         _FORM_ACCESS_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        # TODO(QuantumGhost): forbid submission for form tokens
-        # that are only for console.
-        form = service.get_form_by_token(form_token)
-
-        if form is None:
-            raise NotFoundError("Form not found")
+        form = _get_public_form_by_token(service, form_token)
 
         service.ensure_form_active(form)
         app_model, site = _get_app_site_from_form(form)
@@ -255,9 +252,7 @@ class HumanInputFormApi(Resource):
         _FORM_SUBMIT_RATE_LIMITER.increment_rate_limit(ip_address)
 
         service = HumanInputService(db.engine)
-        form = service.get_form_by_token(form_token)
-        if form is None:
-            raise NotFoundError("Form not found")
+        form = _get_public_form_by_token(service, form_token)
 
         if (recipient_type := form.recipient_type) is None:
             logger.warning("Recipient type is None for form, form_id=%s", form.id)
@@ -275,6 +270,22 @@ class HumanInputFormApi(Resource):
             raise NotFoundError("Form not found") from caught_error
 
         return HumanInputFormSubmitResponse().model_dump(mode="json"), 200
+
+
+def _get_public_form_by_token(service: HumanInputService, form_token: str) -> Form:
+    """Reject internal Console/Backstage tokens before public form operations.
+
+    Email delivery links also use this Web API, so email recipients remain
+    allowed alongside standalone Web App recipients.
+    """
+    form = service.get_form_by_token(form_token)
+    if form is None or form.recipient_type not in {
+        RecipientType.STANDALONE_WEB_APP,
+        RecipientType.EMAIL_MEMBER,
+        RecipientType.EMAIL_EXTERNAL,
+    }:
+        raise NotFoundError("Form not found")
+    return form
 
 
 def _get_app_site_from_form(form: Form) -> tuple[App, Site]:

@@ -11,20 +11,24 @@ import {
 } from '@langgenius/dify-ui/scroll-area'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { Suspense, useRef } from 'react'
+import { lazy, Suspense, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { useDocLink } from '@/context/i18n'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import {
+  currentWorkspaceAtom,
   isCurrentWorkspaceDatasetOperatorAtom,
   isCurrentWorkspaceManagerAtom,
   isCurrentWorkspaceOwnerAtom,
 } from '@/context/workspace-state'
 import { env } from '@/env'
+import { selectIMCentrallyManaged } from '@/features/contacts/im-capability'
+import { isContactsImPlatformEnabled } from '@/features/contacts/im-platform/feature-flag'
 import { canReadNetworkAccessAtom } from '@/features/network-access/permissions'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
@@ -36,6 +40,12 @@ import PermissionsPage from './permissions-page'
 import PreferencePage from './preference-page'
 import ResourceAccessTokenPage from './resource-access-token-page'
 import WorkflowLogArchivesPage from './workflow-log-archives-page'
+
+const ContactsImPlatformAccountSettingPage = lazy(() =>
+  import('@/features/contacts/im-platform/account-setting-page').then((module) => ({
+    default: module.ContactsImPlatformAccountSettingPage,
+  })),
+)
 
 const iconClassName = `
   size-4 shrink-0 sm:me-2
@@ -52,6 +62,7 @@ type GroupItem = {
   name: string
   title?: string
   description?: string
+  docLink?: { href: string; label: string }
   icon: React.JSX.Element
   activeIcon: React.JSX.Element
 }
@@ -68,15 +79,15 @@ export default function AccountSetting({
     'custom',
     'navigation',
     'accountSettings',
+    'contacts',
   ])
-  const { data: enableReplaceWebAppLogo } = useQuery(
-    consoleQuery.features.get.queryOptions({
-      select: (features) => features.can_replace_logo,
-    }),
-  )
+  const featuresQuery = useQuery(consoleQuery.features.get.queryOptions())
+  const enableReplaceWebAppLogo = featuresQuery.data?.can_replace_logo
+  const docLink = useDocLink()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
+  const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceOwner = useAtomValue(isCurrentWorkspaceOwnerAtom)
   const isCurrentWorkspaceDatasetOperator = useAtomValue(isCurrentWorkspaceDatasetOperatorAtom)
   const isRbacEnabled = systemFeatures.rbac_enabled
@@ -87,6 +98,10 @@ export default function AccountSetting({
     systemFeatures.deployment_edition === 'CLOUD' && !isCurrentWorkspaceDatasetOperator
   const canViewWorkflowLogArchives =
     systemFeatures.deployment_edition === 'CLOUD' && isCurrentWorkspaceManager
+  const canViewContactsImPlatform =
+    isCurrentWorkspaceManager &&
+    featuresQuery.isSuccess &&
+    isContactsImPlatformEnabled(selectIMCentrallyManaged(featuresQuery.data))
   const canViewIpPolicies = useAtomValue(canReadNetworkAccessAtom)
   const activeMenu = (() => {
     if (activeTab === ACCOUNT_SETTING_TAB.IP_POLICIES && !canViewIpPolicies)
@@ -94,6 +109,8 @@ export default function AccountSetting({
     if (activeTab === ACCOUNT_SETTING_TAB.BILLING && !canViewBilling)
       return ACCOUNT_SETTING_TAB.PREFERENCES
     if (activeTab === ACCOUNT_SETTING_TAB.WORKFLOW_LOG_ARCHIVES && !canViewWorkflowLogArchives)
+      return ACCOUNT_SETTING_TAB.MEMBERS
+    if (activeTab === ACCOUNT_SETTING_TAB.IM_PLATFORM && !canViewContactsImPlatform)
       return ACCOUNT_SETTING_TAB.MEMBERS
     if (
       (activeTab === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS ||
@@ -113,6 +130,17 @@ export default function AccountSetting({
       name: t(($) => $['settings.members'], { ns: 'navigation' }),
       icon: <span className={cn('i-ri-group-2-line', iconClassName)} />,
       activeIcon: <span className={cn('i-ri-group-2-fill', iconClassName)} />,
+    },
+    {
+      key: ACCOUNT_SETTING_TAB.IM_PLATFORM,
+      name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
+      description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
+      docLink: {
+        href: docLink('/use-dify/nodes/human-input'),
+        label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
+      },
+      icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,
+      activeIcon: <span className={cn('i-ri-chat-ai-fill', iconClassName)} />,
     },
     {
       key: ACCOUNT_SETTING_TAB.IP_POLICIES,
@@ -175,6 +203,8 @@ export default function AccountSetting({
 
     visibleTabs.push(ACCOUNT_SETTING_TAB.MEMBERS)
     if (canViewIpPolicies) visibleTabs.push(ACCOUNT_SETTING_TAB.IP_POLICIES)
+
+    if (canViewContactsImPlatform) visibleTabs.push(ACCOUNT_SETTING_TAB.IM_PLATFORM)
 
     if (canManageWorkspaceRoles) {
       visibleTabs.push(ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS)
@@ -275,7 +305,18 @@ export default function AccountSetting({
                   </h3>
                   {activeItem?.description && (
                     <p className="mt-1 system-sm-regular wrap-break-word whitespace-normal text-text-tertiary">
-                      {activeItem?.description}
+                      {activeItem.description}
+                      {activeItem?.docLink && (
+                        <a
+                          href={activeItem.docLink.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="ms-0.5 inline-flex items-center text-text-accent focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                        >
+                          {activeItem.docLink.label}
+                          <span aria-hidden className="i-ri-external-link-line size-3" />
+                        </a>
+                      )}
                     </p>
                   )}
                 </div>
@@ -294,6 +335,12 @@ export default function AccountSetting({
                   {/* First-use translations and queries must not suspend the dialog shell. */}
                   <Suspense fallback={<LoadingPlaceholder className="py-10" />}>
                     {activeMenu === ACCOUNT_SETTING_TAB.MEMBERS && <MembersPage />}
+                    {activeMenu === ACCOUNT_SETTING_TAB.IM_PLATFORM && (
+                      <ContactsImPlatformAccountSettingPage
+                        canManage={isCurrentWorkspaceManager}
+                        organizationId={currentWorkspace.id}
+                      />
+                    )}
                     {activeMenu === ACCOUNT_SETTING_TAB.IP_POLICIES && <IpPoliciesPage />}
                     {activeMenu === ACCOUNT_SETTING_TAB.ROLES_AND_PERMISSIONS && (
                       <PermissionsPage containerRef={scrollContainerRef} />

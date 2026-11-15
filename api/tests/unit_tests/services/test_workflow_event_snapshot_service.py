@@ -27,17 +27,28 @@ from core.app.layers.pause_state_persist_layer import (
     _WorkflowGenerateEntityWrapper,
 )
 from core.workflow.human_input_policy import FormDisposition, HumanInputSurface
-from core.workflow.nodes.human_input.entities import SelectInputConfig, StringListSource
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    FormInputConfig,
+    SelectInputConfig,
+    StringListSource,
+)
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus, ValueSourceType
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
 from graphon.runtime import RuntimeState, VariablePool
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.datetime_utils import to_utc_timestamp
-from models.enums import ConversationFromSource, CreatorUserRole
+from models.enums import ConversationFromSource, CreatorUserRole, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient, RecipientType
 from models.model import AppMode, Message
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowPause, WorkflowRun
+from models.workflow import (
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionTriggeredFrom,
+    WorkflowPause,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_node_execution_repository import WorkflowNodeExecutionSnapshot
 from repositories.entities.workflow_pause import WorkflowPauseEntity
@@ -54,6 +65,9 @@ from services.workflow_event_snapshot_service import (
     _resolve_task_id,
     build_workflow_event_stream,
 )
+from services.workflow_event_snapshot_service import (
+    _build_paused_snapshot_events as _build_checkpoint_snapshot_events,
+)
 
 
 @dataclass(frozen=True)
@@ -61,7 +75,7 @@ class _FakePauseEntity(WorkflowPauseEntity):
     pause_id: str
     workflow_run_id: str
     paused_at_value: datetime
-    pause_reasons: Sequence[HumanInputRequired]
+    pause_reasons: Sequence[HumanInputRequired] | None = None
 
     @property
     @override
@@ -87,10 +101,6 @@ class _FakePauseEntity(WorkflowPauseEntity):
     def paused_at(self) -> datetime:
         return self.paused_at_value
 
-    @override
-    def get_pause_reasons(self) -> Sequence[HumanInputRequired]:
-        return self.pause_reasons
-
 
 def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
     workflow_run = WorkflowRun(
@@ -99,7 +109,7 @@ def _build_workflow_run(status: WorkflowExecutionStatus) -> WorkflowRun:
         app_id="app-1",
         workflow_id="workflow-1",
         type=ModelWorkflowType("workflow"),
-        triggered_from="app-run",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs=json.dumps({"input": "value"}),
@@ -134,7 +144,13 @@ def _build_snapshot(status: WorkflowNodeExecutionStatus) -> WorkflowNodeExecutio
     )
 
 
-def _build_resumption_context(task_id: str, *, select_options: list[str] | None = None) -> WorkflowResumptionContext:
+def _build_resumption_context(
+    task_id: str,
+    *,
+    select_options: list[str] | None = None,
+    pause_reasons: Sequence[HumanInputRequired] | None = None,
+    invoke_from: InvokeFrom = InvokeFrom.EXPLORE,
+) -> WorkflowResumptionContext:
     app_config = WorkflowUIBasedAppConfig(
         tenant_id="tenant-1",
         app_id="app-1",
@@ -142,20 +158,31 @@ def _build_resumption_context(task_id: str, *, select_options: list[str] | None 
         workflow_id="workflow-1",
     )
     generate_entity = WorkflowAppGenerateEntity(
-        user_from=UserFrom.ACCOUNT,
+        user_from=UserFrom.ACCOUNT if invoke_from.runs_as_account() else UserFrom.END_USER,
         task_id=task_id,
         app_config=app_config,
         inputs={},
         files=[],
         user_id="user-1",
         stream=True,
-        invoke_from=InvokeFrom.EXPLORE,
+        invoke_from=invoke_from,
         call_depth=0,
         workflow_execution_id="run-1",
     )
     runtime_state = RuntimeState(workflow_id="test-workflow", variable_pool=VariablePool(), start_at=0.0)
     if select_options is not None:
         runtime_state.variable_pool.add(("start", "options"), select_options)
+    from graphon.entities.pause_reason import HitlRequired
+
+    reasons = (
+        pause_reasons
+        if pause_reasons is not None
+        else [_human_input_reason("form-1").model_copy(update={"node_id": "node-1"})]
+    )
+    for reason in reasons:
+        runtime_state.graph_execution.pause(
+            HitlRequired(session_id=reason.form_id, node_id=reason.node_id, node_title=reason.node_title)
+        )
     runtime_state.set_output("result", "value")
     wrapper = _WorkflowGenerateEntityWrapper(entity=generate_entity)
     return WorkflowResumptionContext(
@@ -179,8 +206,6 @@ def test_build_snapshot_events_applies_message_context() -> None:
         node_snapshots=[snapshot],
         task_id="task-1",
         message_context=message_context,
-        pause_entity=None,
-        resumption_context=None,
         node_executions={},
     )
 
@@ -205,7 +230,7 @@ def test_build_snapshot_events_applies_message_context() -> None:
         (None, None, "run-1"),
     ],
 )
-def test_resolve_task_id_priority(context_task_id, buffered_task_id, expected) -> None:
+def test_resolve_task_id_priority(context_task_id: str | None, buffered_task_id: str | None, expected: str) -> None:
     resumption_context = _build_resumption_context(context_task_id) if context_task_id else None
     buffer_state = BufferState(
         queue=queue.Queue(),
@@ -227,7 +252,7 @@ def _build_workflow_run_additional(status: WorkflowExecutionStatus = WorkflowExe
         app_id="app-1",
         workflow_id="workflow-1",
         type=ModelWorkflowType("workflow"),
-        triggered_from="app-run",
+        triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
         version="v1",
         graph=None,
         inputs=json.dumps({"query": "hello"}),
@@ -334,7 +359,9 @@ def _persist_human_input_form(
     session_maker: sessionmaker[Session],
     *,
     recipients: Sequence[HumanInputFormRecipient] = (),
+    inputs: Sequence[FormInputConfig] = (),
     form_id: str = "form-1",
+    node_id: str = "node-1",
     status: HumanInputFormStatus = HumanInputFormStatus.WAITING,
 ) -> datetime:
     expiration_time = datetime(2024, 1, 1)
@@ -344,14 +371,31 @@ def _persist_human_input_form(
         app_id="app-1",
         workflow_run_id="run-1",
         conversation_id=None,
-        node_id="node-1",
-        form_definition='{"display_in_ui": true}',
+        node_id=node_id,
+        form_definition=FormDefinition(
+            form_content="content",
+            rendered_content="content",
+            inputs=list(inputs),
+            expiration_time=expiration_time,
+            display_in_ui=True,
+        ).model_dump_json(),
         rendered_content="content",
         expiration_time=expiration_time,
         status=status,
     )
     with session_maker.begin() as session:
         session.add(form)
+        session.add(
+            WorkflowPauseReason.from_entity(
+                pause_id="pause-1",
+                pause_reason=HumanInputRequired(
+                    form_id=form_id,
+                    node_id=node_id,
+                    node_title="Human Input",
+                    form_content="content",
+                ),
+            )
+        )
         session.add_all(recipients)
     return expiration_time
 
@@ -407,10 +451,6 @@ class _PauseEntity(WorkflowPauseEntity):
     @override
     def get_state(self) -> bytes:
         return self.state
-
-    @override
-    def get_pause_reasons(self) -> list[Any]:
-        return []
 
 
 def test_get_message_context_by_conversation_should_return_none_when_no_message(
@@ -517,7 +557,7 @@ def test_get_message_context_by_conversation_should_default_created_at_to_zero_w
     session_maker = MagicMock()
     message = Message(id="msg-1", conversation_id="conv-1", answer="answer")
     # Exercise a legacy row without a timestamp.
-    message.created_at = None  # pyrefly: ignore[bad-assignment]
+    message.created_at = None  # pyrefly: ignore[bad-argument-type]
     session_maker.return_value.__enter__.return_value.scalar.return_value = message
 
     result = service_module._get_message_context_by_conversation(
@@ -794,7 +834,8 @@ def test_console_snapshot_replays_node_details_without_exposing_them_by_default(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
-            **({"include_node_details": True} if include_node_details else {}),
+            human_input_surface=HumanInputSurface.CONSOLE,
+            include_node_details=include_node_details,
         )
     )
     started, finished = [
@@ -873,6 +914,7 @@ def test_build_workflow_event_stream_should_emit_ping_and_terminal_snapshot_even
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=session_maker,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -948,6 +990,7 @@ def test_build_advanced_chat_snapshot_requires_conversation_context(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=unbound_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     conversation_lookup.assert_not_called()
     app_lookup.assert_not_called()
@@ -985,6 +1028,7 @@ def test_build_non_suspended_advanced_chat_snapshot_uses_app_scoped_fallback(
         tenant_id="tenant-1",
         app_id="app-1",
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
 
     # Assert
@@ -1044,6 +1088,7 @@ def test_build_workflow_event_stream_should_emit_periodic_ping_and_stop_after_id
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
             idle_timeout=20.0,
             ping_interval=5.0,
         )
@@ -1090,6 +1135,7 @@ def test_build_workflow_event_stream_should_exit_when_buffer_done_and_empty(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -1134,12 +1180,14 @@ def test_build_workflow_event_stream_should_continue_when_pause_loading_fails(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
     # Assert
     assert events[0] == StreamEvent.PING
-    assert snapshot_builder.call_args.kwargs["pause_entity"] is None
+    assert events == [StreamEvent.PING, {"event": StreamEvent.WORKFLOW_FINISHED}]
+    assert buffer_state.stop_event.is_set()
 
 
 def test_is_terminal_event_respects_close_on_pause_flag() -> None:
@@ -1170,18 +1218,9 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-                form_token="wtok",
-            )
-        ],
     )
 
-    events = _build_snapshot_events(
+    events = _build_checkpoint_snapshot_events(
         workflow_run=workflow_run,
         node_snapshots=[snapshot],
         task_id="task-ctx",
@@ -1189,45 +1228,42 @@ def test_build_snapshot_events_preserves_public_form_token(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
     assert events[-2]["event"] == StreamEvent.HUMAN_INPUT_REQUIRED
     assert events[-2]["data"]["form_token"] == "wtok"
+    assert events[-2]["data"]["form_version"] == "1"
     assert events[-2]["data"]["expiration_time"] == to_utc_timestamp(expiration_time)
     pause_data = events[-1]["data"]
     assert pause_data["reasons"][0]["form_token"] == "wtok"
+    assert pause_data["reasons"][0]["form_version"] == "1"
     assert pause_data["reasons"][0]["expiration_time"] == to_utc_timestamp(expiration_time)
 
 
 def _build_recipient_snapshot_events(
     session_maker: sessionmaker[Session],
     recipients: Sequence[HumanInputFormRecipient],
+    *,
+    surface: HumanInputSurface,
 ) -> list[Mapping[str, Any]]:
-    """Drive the reconnect snapshot pause path for the OPENAPI surface.
+    """Replay a Web App run through the requested response surface.
 
     Persisting the recipients lets the real disposition query derive the same token
     and approval channels as the live path for the same recipient set.
     """
     workflow_run = _build_workflow_run(WorkflowExecutionStatus.PAUSED)
     snapshot = _build_snapshot(WorkflowNodeExecutionStatus.PAUSED)
-    resumption_context = _build_resumption_context("task-ctx")
+    resumption_context = _build_resumption_context("task-ctx", invoke_from=InvokeFrom.WEB_APP)
     expiration_time = _persist_human_input_form(session_maker, recipients=recipients)
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=expiration_time,
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
     )
 
-    return _build_snapshot_events(
+    return _build_checkpoint_snapshot_events(
         workflow_run=workflow_run,
         node_snapshots=[snapshot],
         task_id="task-ctx",
@@ -1235,16 +1271,20 @@ def _build_recipient_snapshot_events(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=session_maker,
-        human_input_surface=HumanInputSurface.OPENAPI,
+        human_input_surface=surface,
         node_executions={},
     )
 
 
+@pytest.mark.parametrize("surface", [HumanInputSurface.SERVICE_API, HumanInputSurface.OPENAPI])
 def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
     sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
 ) -> None:
+    """Given only internal/email recipients, replay channels without an actionable API token."""
     events = _build_recipient_snapshot_events(
         sqlite_session_factory,
+        surface=surface,
         recipients=[
             HumanInputFormRecipient(
                 form_id="form-1",
@@ -1273,11 +1313,15 @@ def test_reconnect_pause_without_web_app_recipient_emits_approval_channels(
     assert pause_data["reasons"][0]["approval_channels"] == ["console", "email"]
 
 
+@pytest.mark.parametrize("surface", [HumanInputSurface.SERVICE_API, HumanInputSurface.OPENAPI])
 def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
     sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
 ) -> None:
+    """Given web and backstage recipients, replay the stored web token on either API surface."""
     events = _build_recipient_snapshot_events(
         sqlite_session_factory,
+        surface=surface,
         recipients=[
             HumanInputFormRecipient(
                 form_id="form-1",
@@ -1306,6 +1350,48 @@ def test_reconnect_pause_with_web_app_recipient_sets_token_and_channels(
     assert pause_data["reasons"][0]["approval_channels"] == ["console"]
 
 
+@pytest.mark.parametrize(
+    ("surface", "include_web_recipient", "expected_token", "expected_channels"),
+    [
+        (HumanInputSurface.WEB_APP, True, "web-app-token", ["console", "email"]),
+        (HumanInputSurface.WEB_APP, False, None, ["console", "email"]),
+        (HumanInputSurface.CONSOLE, True, "backstage-token", ["email", "web_app"]),
+    ],
+)
+def test_reconnect_uses_current_surface_for_web_app_run(
+    sqlite_session_factory: sessionmaker[Session],
+    surface: HumanInputSurface,
+    include_web_recipient: bool,
+    expected_token: str | None,
+    expected_channels: list[str],
+) -> None:
+    recipient_tokens = [
+        (RecipientType.BACKSTAGE, "backstage-token"),
+        (RecipientType.EMAIL_MEMBER, "email-token"),
+    ]
+    if include_web_recipient:
+        recipient_tokens.append((RecipientType.STANDALONE_WEB_APP, "web-app-token"))
+    events = _build_recipient_snapshot_events(
+        sqlite_session_factory,
+        recipients=[
+            HumanInputFormRecipient(
+                form_id="form-1",
+                delivery_id=f"delivery-{index}",
+                recipient_type=recipient_type,
+                recipient_payload="{}",
+                access_token=token,
+            )
+            for index, (recipient_type, token) in enumerate(recipient_tokens)
+        ],
+        surface=surface,
+    )
+
+    human_input_data = events[-2]["data"]
+    pause_reason = events[-1]["data"]["reasons"][0]
+    assert human_input_data["form_token"] == pause_reason["form_token"] == expected_token
+    assert human_input_data["approval_channels"] == pause_reason["approval_channels"] == expected_channels
+
+
 def test_build_snapshot_events_resolves_pause_reason_select_options(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
@@ -1320,32 +1406,26 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
             "form-1": FormDisposition(form_token="wtok", approval_channels=[])
         },
     )
-    _persist_human_input_form(sqlite_session_factory)
+    _persist_human_input_form(
+        sqlite_session_factory,
+        inputs=[
+            SelectInputConfig(
+                output_variable_name="decision",
+                option_source=StringListSource(
+                    type=ValueSourceType.VARIABLE,
+                    selector=["start", "options"],
+                    value=[],
+                ),
+            )
+        ],
+    )
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                inputs=[
-                    SelectInputConfig(
-                        output_variable_name="decision",
-                        option_source=StringListSource(
-                            type=ValueSourceType.VARIABLE,
-                            selector=["start", "options"],
-                            value=[],
-                        ),
-                    )
-                ],
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
     )
 
-    events = _build_snapshot_events(
+    events = _build_checkpoint_snapshot_events(
         workflow_run=workflow_run,
         node_snapshots=[snapshot],
         task_id="task-ctx",
@@ -1353,6 +1433,7 @@ def test_build_snapshot_events_resolves_pause_reason_select_options(
         pause_entity=pause_entity,
         resumption_context=resumption_context,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
@@ -1373,14 +1454,6 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
         pause_id="pause-1",
         workflow_run_id="run-1",
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
-        pause_reasons=[
-            HumanInputRequired(
-                form_id="form-1",
-                form_content="content",
-                node_id="node-1",
-                node_title="Human Input",
-            )
-        ],
     )
     workflow_run_repo = SimpleNamespace(get_workflow_pause=MagicMock(return_value=pause_entity))
     node_repo = SimpleNamespace(get_execution_snapshots_by_workflow_run=MagicMock(return_value=[]))
@@ -1410,6 +1483,7 @@ def test_build_workflow_event_stream_loads_pause_tokens_without_flask_app_contex
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
         )
     )
 
@@ -1435,7 +1509,7 @@ def _build_paused_snapshot_events(
     pause_reason_form_ids: Sequence[str] | None = None,
 ) -> list[Mapping[str, Any]]:
     for form_id, status in forms.items():
-        _persist_human_input_form(session_maker, form_id=form_id, status=status)
+        _persist_human_input_form(session_maker, form_id=form_id, node_id=f"node-{form_id}", status=status)
     reason_form_ids = list(forms) if pause_reason_form_ids is None else pause_reason_form_ids
     pause_entity = _FakePauseEntity(
         pause_id="pause-1",
@@ -1443,24 +1517,28 @@ def _build_paused_snapshot_events(
         paused_at_value=datetime(2024, 1, 1, tzinfo=UTC),
         pause_reasons=[_human_input_reason(form_id) for form_id in reason_form_ids],
     )
-    return _build_snapshot_events(
+    return _build_checkpoint_snapshot_events(
         workflow_run=_build_workflow_run(WorkflowExecutionStatus.PAUSED),
         node_snapshots=[_build_snapshot(WorkflowNodeExecutionStatus.PAUSED)],
         task_id="task-ctx",
         message_context=None,
         pause_entity=pause_entity,
-        resumption_context=_build_resumption_context("task-ctx"),
+        resumption_context=_build_resumption_context("task-ctx", pause_reasons=pause_entity.pause_reasons),
         session_maker=session_maker,
+        human_input_surface=HumanInputSurface.CONSOLE,
         node_executions={},
     )
 
 
 class _PausedRunRepo:
-    def __init__(self, pause_entity: WorkflowPauseEntity) -> None:
+    def __init__(self, pause_entity: _FakePauseEntity) -> None:
         self._pause_entity = pause_entity
 
     def get_workflow_pause(self, _workflow_run_id: str) -> WorkflowPauseEntity:
         return self._pause_entity
+
+    def get_legacy_pause_reasons(self, _session: Session, _pause_id: str) -> Sequence[HumanInputRequired]:
+        return self._pause_entity.pause_reasons or ()
 
 
 class _EmptyNodeRepo:
@@ -1551,6 +1629,7 @@ def test_stream_continues_with_live_events_when_all_forms_submitted(
             tenant_id="tenant-1",
             app_id="app-1",
             session_maker=sqlite_session_factory,
+            human_input_surface=HumanInputSurface.CONSOLE,
             close_on_pause=True,
         )
     )
@@ -1607,6 +1686,7 @@ def test_authorized_snapshot_indexes_legacy_pause_for_stop(
         tenant_id=run.tenant_id,
         app_id=run.app_id,
         session_maker=sqlite_session_factory,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
     stream.close()
     sqlite_session.expire_all()

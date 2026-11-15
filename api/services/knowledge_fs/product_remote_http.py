@@ -214,7 +214,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
-            except (ValueError, ValidationError) as exc:
+            except ValueError as exc:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
         finally:
             response.close()
@@ -304,7 +304,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
-            except (ValueError, ValidationError) as exc:
+            except ValueError as exc:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
         finally:
             response.close()
@@ -507,7 +507,7 @@ class HTTPKnowledgeFSProductRemoteClient:
                 )
             try:
                 return _JSON_ADAPTER.validate_python(response.json())
-            except (ValueError, ValidationError) as exc:
+            except ValueError as exc:
                 raise KnowledgeFSProductRemoteError("KnowledgeFS returned invalid JSON") from exc
         finally:
             response.close()
@@ -574,7 +574,7 @@ def _public_failure_from_response(response: httpx.Response) -> KnowledgeFSPublic
         if not isinstance(failure, dict):
             return None
         return KnowledgeFSPublicFailureResponse.model_validate(failure)
-    except (ValueError, ValidationError):
+    except ValueError:
         return None
 
 

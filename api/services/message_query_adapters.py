@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from pydantic import JsonValue
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import DatabaseFileAccessController
 from factories import file_factory
@@ -17,6 +18,7 @@ from services.entities.message_entities import (
     MessageFileReference,
     MessageInputValue,
 )
+from services.message_extra_content_service import load_message_extra_contents
 
 
 class MessageFileResolver:
@@ -101,11 +103,17 @@ class MessageFileResolver:
 
 
 class ExecutionExtraContentReader:
-    def __init__(self, *, repository: ExecutionExtraContentRepository) -> None:
+    def __init__(self, *, repository: ExecutionExtraContentRepository, session_factory: sessionmaker[Session]) -> None:
         self._repository: ExecutionExtraContentRepository = repository
+        self._session_factory: sessionmaker[Session] = session_factory
 
     def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[dict[str, JsonValue]]]:
+        contents = load_message_extra_contents(
+            repository=self._repository,
+            message_ids=message_ids,
+            session_factory=self._session_factory,
+        )
         return [
             [cast(dict[str, JsonValue], item.model_dump(mode="json", exclude_none=True)) for item in items]
-            for items in self._repository.get_by_message_ids(message_ids)
+            for items in contents
         ]

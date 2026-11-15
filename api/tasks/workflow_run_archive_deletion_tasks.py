@@ -5,6 +5,7 @@ import logging
 from celery import shared_task
 
 from core.db.session_factory import get_session_maker
+from extensions.application_services.external_agent_lifecycle import fence_external_archived_runs
 from extensions.ext_redis import redis_client
 from libs.archive_storage import ArchiveStorageError, get_archive_storage, get_export_storage
 from repositories.workflow_run_archive_repository import WorkflowRunArchiveBundleQueryRepository
@@ -35,6 +36,7 @@ def delete_workflow_run_archive_task(tenant_id: str, year: int, month: int) -> N
         archive_storage_provider=get_archive_storage,
         download_storage_provider=get_export_storage,
         month_lock=RedisWorkflowRunArchiveMonthLock(redis=redis_client),
+        external_run_cleanup=fence_external_archived_runs,
     ).delete(tenant_id=tenant_id, year=year, month=month)
     if result.status is WorkflowRunArchiveDeletionStatus.FAILED:
         # The deleter persists FAILED durably but swallows the fault: without

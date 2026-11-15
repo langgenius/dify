@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from hashlib import sha256
+from uuid import NAMESPACE_URL, uuid5
 
 import pytest
 from sqlalchemy import select
@@ -106,6 +107,43 @@ def test_remove_member_reassigns_owned_control_space_before_deleting_membership(
     assert revision.space_acl_epoch == 1
     assert command is not None
     assert revoke_payload(command)["reason_code"] == "workspace_membership_removed"
+    assert (
+        sqlite_session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == tenant.id,
+                TenantAccountJoin.account_id == member.id,
+            )
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("sqlite_session", [_TABLES], indirect=True)
+def test_remove_member_with_only_greenfield_audit_anchor(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tenant, owner, member = _workspace_accounts(sqlite_session)
+    provisioning_key = f"dify-kfs-greenfield-activation:{tenant.id}"
+    anchor_id = str(uuid5(NAMESPACE_URL, provisioning_key))
+    anchor = KnowledgeFSControlSpace(
+        tenant_id=tenant.id,
+        owner_account_id=member.id,
+        provisioning_key=provisioning_key,
+        state=KnowledgeFSControlSpaceState.DELETED,
+        lifecycle_operation_id=anchor_id,
+    )
+    anchor.id = anchor_id
+    sqlite_session.add(anchor)
+    sqlite_session.commit()
+
+    WorkspaceRepository(sqlite_session_factory).remove_member(
+        workspace_id=tenant.id, account_id=member.id, owner_id=owner.id, actor_account_id=owner.id
+    )
+    sqlite_session.expire_all()
+
+    assert anchor.owner_account_id == member.id
+    assert sqlite_session.scalar(select(KnowledgeFSAuthorizationRevision)) is None
+    assert sqlite_session.scalar(select(KnowledgeFSLifecycleOutbox)) is None
     assert (
         sqlite_session.scalar(
             select(TenantAccountJoin).where(

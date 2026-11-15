@@ -29,7 +29,7 @@ export function PricingContent() {
   const educationQuery = useQuery(
     consoleQuery.account.education.get.queryOptions({
       enabled: educationEnabled,
-      select: ({ is_student }) => is_student ?? false,
+      select: ({ is_student }) => is_student,
     }),
   )
   const canManageBilling = useAtomValue(isCurrentWorkspaceManagerAtom)

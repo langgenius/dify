@@ -78,7 +78,7 @@ def _mint(app: Flask, payload: dict[str, object]) -> dict[str, object]:
     with app.test_request_context("/", method="POST", json=payload):
         with patch(f"{CONTROLLER_MODULE}.inner_api_ns") as mock_ns:
             mock_ns.payload = payload
-            return inspect.unwrap(handler.post)(handler)
+            return inspect.unwrap(EnterpriseFileGrantApi.post)(handler)
 
 
 def _subject_of(response: dict[str, object]) -> str:

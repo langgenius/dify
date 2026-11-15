@@ -37,11 +37,14 @@ export function RenameDocumentForm({
 
     setSaveLoadingTrue()
     try {
-      await renameDocumentName({
-        datasetId,
-        documentId,
-        name: newName,
-      })
+      await renameDocumentName(
+        {
+          datasetId,
+          documentId,
+          name: newName,
+        },
+        { silent: true },
+      )
       onSaved()
       onClose()
     } catch (error) {
@@ -65,7 +68,7 @@ export function RenameDocumentForm({
             <Input
               className="h-10"
               value={newName}
-              placeholder={t(($) => $['placeholder.input'], { ns: 'common' }) || ''}
+              placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
               onValueChange={setNewName}
             />
           </Field>

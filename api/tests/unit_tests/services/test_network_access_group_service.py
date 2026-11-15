@@ -24,10 +24,10 @@ from services.network_access_group_service import (
     NetworkAccessGroupControlPlane,
     NetworkAccessGroupEntitlement,
     NetworkAccessGroupInvalidPolicyError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupService,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
-    NetworkAccessGroupUpstreamError,
     WorkspaceMembershipRoleQuery,
 )
 
@@ -792,9 +792,9 @@ def test_current_ip_check_rejects_role_before_policy_or_ip_lookup(role: str | No
 
 def test_current_ip_check_does_not_read_ip_when_tenant_scoped_policy_lookup_fails() -> None:
     harness = _harness(role="admin")
-    harness.control_plane.get_group.side_effect = NetworkAccessGroupUpstreamError(404)
+    harness.control_plane.get_group.side_effect = NetworkAccessGroupNotFoundError
 
-    with pytest.raises(NetworkAccessGroupUpstreamError):
+    with pytest.raises(NetworkAccessGroupNotFoundError):
         harness.service.check_current_ip(_context(), group_id=GROUP_ID, client_ip_supplier=_unexpected_client_ip_read)
 
 

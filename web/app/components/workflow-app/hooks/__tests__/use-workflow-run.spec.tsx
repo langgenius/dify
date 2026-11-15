@@ -42,6 +42,12 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useWorkflowRun } from '../use-workflow-run'
 
 const api = vi.hoisted(() => ({
+  runDetail:
+    vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.get>(),
+  executions:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflowRuns.byRunId.nodeExecutions.get
+    >(),
   sync: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
   ssePost: vi.fn<typeof import('@/service/base').ssePost>(),
   sseGet: vi.fn<typeof import('@/service/base').sseGet>(),
@@ -68,6 +74,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.post': api.sync,
+      'apps.byAppId.workflowRuns.byRunId.get': api.runDetail,
+      'apps.byAppId.workflowRuns.byRunId.nodeExecutions.get': api.executions,
     }),
   }
 })
@@ -143,7 +151,6 @@ async function setup() {
   const queryClient = createConsoleQueryClient()
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     queryClient,
-    systemFeatures: { enable_collaboration_mode: false },
   })
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: 'workflow' }))
   queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
@@ -172,7 +179,9 @@ async function setup() {
   function Providers({ children }: { children: ReactNode }) {
     return (
       <ConsoleProvider>
-        <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+        <EditorResourceScope
+          resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+        >
           {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector requires its Provider API. */}
           <WorkflowContext.Provider value={store}>
             <FeaturesContext value={features}>
@@ -221,6 +230,8 @@ beforeEach(() => {
     .mockResolvedValue({ result: 'success', hash: 'saved', updated_at: 1700000000 })
   api.ssePost.mockReset()
   api.sseGet.mockReset()
+  api.runDetail.mockReset()
+  api.executions.mockReset()
   api.post.mockReset()
   api.stop.mockReset().mockResolvedValue({ result: 'success' })
   api.inspect.mockReset().mockResolvedValue([])
@@ -282,7 +293,12 @@ it('saves the graph before running and applies streamed results to the real work
     result: { status: WorkflowRunningStatus.Succeeded, outputs: { answer: 'Result' } },
     resultText: 'Result',
   })
-  expect(api.inspect).toHaveBeenCalledWith({ kind: 'app', appId: 'app-1', mode: 'workflow' })
+  expect(api.inspect).toHaveBeenCalledWith({
+    kind: 'app',
+    collaborationEnabled: false,
+    appId: 'app-1',
+    mode: 'workflow',
+  })
 })
 
 it('marks the active node failed and reports the current trace in bounded analytics chunks', async () => {
@@ -358,7 +374,7 @@ it.each([
     expect(api.post).toHaveBeenCalledWith(
       `/apps/app-1/workflows/draft/trigger/${url}`,
       expect.objectContaining({ body, signal: expect.any(AbortSignal) }),
-      { needAllResponseContent: true },
+      { needAllResponseContent: true, silent: true },
     )
     expect(store.getState().isListening).toBe(true)
     const request = api.post.mock.lastCall?.[1]
@@ -573,6 +589,65 @@ it.each([false, true])(
     expect(onFinished).toHaveBeenCalledExactlyOnceWith(finished)
   },
 )
+
+it('observes an external wait to completion using reads without a new Run or a human resume stream', async () => {
+  const { result, store } = await setup()
+  const onSnapshot = vi.fn()
+  const onCompleted = vi.fn()
+  api.runDetail
+    .mockResolvedValueOnce({ id: 'run-1', status: 'paused', inputs: {}, outputs: {}, graph: {} })
+    .mockResolvedValue({
+      id: 'run-1',
+      status: 'succeeded',
+      inputs: {},
+      outputs: { result: 'Remote finished' },
+      graph: {},
+    })
+  api.executions.mockResolvedValue({
+    data: [
+      {
+        id: 'execution-1',
+        node_id: 'node-1',
+        node_type: 'agent',
+        status: 'succeeded',
+        process_data: { external_invocation_id: 'invocation-1' },
+      },
+    ],
+  })
+  await act(async () =>
+    result.current.run.handleRun(
+      { inputs: {} },
+      { onExternalWorkflowSnapshot: onSnapshot, onCompleted },
+    ),
+  )
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+  const callbacks = api.ssePost.mock.lastCall?.[2]
+  assert(callbacks?.onWorkflowStarted && callbacks.onWorkflowPaused)
+  await act(async () => {
+    callbacks.onWorkflowStarted?.(started)
+    callbacks.onWorkflowPaused?.({
+      ...paused,
+      data: { ...paused.data, reasons: [{ TYPE: 'external_wait', node_id: 'node-1' }] },
+    })
+    callbacks.onCompleted?.(false)
+  })
+  expect(store.getState().workflowRunningData?.result).toMatchObject({
+    status: 'paused',
+    external_wait: true,
+    human_input_wait: false,
+  })
+  expect(onCompleted).not.toHaveBeenCalled()
+  expect(api.sseGet).not.toHaveBeenCalled()
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1500)
+  })
+  expect(store.getState().workflowRunningData?.result.status).toBe('succeeded')
+  expect(store.getState().workflowRunningData?.resultText).toBe('Remote finished')
+  expect(onSnapshot).toHaveBeenCalledTimes(2)
+  expect(onCompleted).toHaveBeenCalledOnce()
+  expect(api.ssePost).toHaveBeenCalledOnce()
+  expect(api.sseGet).not.toHaveBeenCalled()
+})
 
 it('honors the trigger retry interval before consuming the eventual run stream', async () => {
   const { result, store } = await setup()

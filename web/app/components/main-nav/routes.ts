@@ -6,16 +6,19 @@ const DATASET_COLLECTION_ROUTES = new Set(['create', 'create-from-pipeline', 'co
 
 export type MainNavRouteConfig = {
   key: string
+  ns?: 'navigation' | 'contacts'
   href: string
   active: (pathname: string) => boolean
   icon: string
   activeIcon: string
   visibility: MainNavRouteVisibility
-  feature?: 'agentV2' | 'marketplace'
+  feature?: 'agentV2' | 'contacts' | 'marketplace'
 } & ({ label: string; labelKey?: never } | { label?: never; labelKey: string })
 
 export type MainNavRouteVisibilityOptions = {
   agentV2Enabled: boolean
+  canViewContacts: boolean
+  contactsEnabled: boolean
   canViewSkills: boolean
   isCurrentWorkspaceDatasetOperator: boolean
   marketplaceEnabled: boolean
@@ -28,6 +31,7 @@ export type DetailSidebarVisibilityOptions = Pick<
 >
 
 const VISIBLE_TO_ALL: MainNavRouteVisibility = () => true
+const CAN_VIEW_CONTACTS: MainNavRouteVisibility = (options) => options.canViewContacts
 const SKILL_ENABLED_FOR_WORKSPACE: MainNavRouteVisibility = (options) =>
   options.skillEnabled && options.canViewSkills && !options.isCurrentWorkspaceDatasetOperator
 
@@ -61,7 +65,8 @@ export const MAIN_NAV_ROUTES = [
     key: 'roster',
     href: '/agents',
     label: 'Agents',
-    active: (path: string) => isPathUnderRoute(path, '/agents'),
+    active: (path: string) =>
+      isPathUnderRoute(path, '/agents') || isPathUnderRoute(path, '/external-agent'),
     icon: 'i-custom-vender-main-nav-agent',
     activeIcon: 'i-custom-vender-main-nav-agent-active',
     visibility: VISIBLE_TO_ALL,
@@ -75,6 +80,17 @@ export const MAIN_NAV_ROUTES = [
     icon: 'i-custom-vender-main-nav-knowledge-v2',
     activeIcon: 'i-custom-vender-main-nav-knowledge-v2-active',
     visibility: VISIBLE_TO_ALL,
+  },
+  {
+    key: 'contacts',
+    href: '/contacts',
+    labelKey: 'directory.title',
+    ns: 'contacts',
+    active: (path: string) => isPathUnderRoute(path, '/contacts'),
+    icon: 'i-ri-contacts-book-2-line',
+    activeIcon: 'i-ri-contacts-book-2-fill',
+    visibility: CAN_VIEW_CONTACTS,
+    feature: 'contacts',
   },
   {
     key: 'skills',
@@ -118,6 +134,8 @@ export function isMainNavRouteVisible(
 
   if (route.feature === 'marketplace' && !options.marketplaceEnabled) return false
 
+  if (route.feature === 'contacts' && !options.contactsEnabled) return false
+
   return route.visibility(options)
 }
 
@@ -147,10 +165,7 @@ export function shouldHideMainNavigation(pathname: string) {
   const [section, namespace, knowledgeSpaceId] = pathname.split('/').filter(Boolean)
 
   return (
-    (section === 'datasets' &&
-      namespace === 'new' &&
-      !!knowledgeSpaceId &&
-      knowledgeSpaceId !== 'create') ||
+    (section === 'datasets' && namespace === 'new' && !!knowledgeSpaceId) ||
     isSkillDetailPathname(pathname)
   )
 }
@@ -158,7 +173,7 @@ export function shouldHideMainNavigation(pathname: string) {
 function isAgentDetailPathname(pathname: string) {
   const [section, agentId] = pathname.split('/').filter(Boolean)
 
-  return section === 'agents' && !!agentId
+  return (section === 'agents' || section === 'external-agent') && !!agentId
 }
 
 function isSnippetDetailPathname(pathname: string) {

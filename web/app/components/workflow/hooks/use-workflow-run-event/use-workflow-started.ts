@@ -34,6 +34,8 @@ export const useWorkflowStarted = () => {
             ...draft?.result,
             ...data,
             status: WorkflowRunningStatus.Running,
+            external_wait: false,
+            human_input_wait: false,
           }
           draft.resultText = ''
           draft.resultTextSelectorKey = undefined

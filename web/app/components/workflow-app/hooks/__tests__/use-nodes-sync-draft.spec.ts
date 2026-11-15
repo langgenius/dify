@@ -10,10 +10,13 @@ import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowCanvasHook } from '@/app/components/workflow/__tests__/workflow-test-env'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { markAppDeletionFailed, markAppDeletionStarted } from '@/service/app-deletion'
 import { createHttpError } from '@/service/http-error'
+import { createExternalAgentAsset } from '@/test/console/external-agents'
 import { createConsoleQueryWrapper, seedAppDetail } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
@@ -127,9 +130,7 @@ const renderSyncDraft = <R>(
   }: SyncDraftCanvas = {},
 ) => {
   const featuresStore = createFeaturesStore(features ? { features } : undefined)
-  const { queryClient } = createConsoleQueryWrapper({
-    systemFeatures: { enable_collaboration_mode: isCollaborationEnabled },
-  })
+  const { queryClient } = createConsoleQueryWrapper()
   seedAppDetail(queryClient, createAppDetailFixture({ id: 'app-1', mode: appMode }))
 
   return renderWorkflowCanvasHook(hook, {
@@ -138,6 +139,7 @@ const renderSyncDraft = <R>(
       kind: 'app',
       appId: 'app-1',
       mode: appMode === 'advanced-chat' ? 'advanced-chat' : 'workflow',
+      collaborationEnabled: isCollaborationEnabled,
     },
     nodes,
     edges,
@@ -205,6 +207,30 @@ describe('useNodesSyncDraft', () => {
   })
 
   describe('payload', () => {
+    it('saves a full draft when collaboration is disabled', async () => {
+      const { result } = renderUseNodesSyncDraft({
+        isCollaborationEnabled: false,
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledOnce()
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(expect.not.objectContaining({ _is_collaborative: expect.anything() })),
+      )
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledWith(
+        draftRequest(
+          expect.objectContaining({
+            features: expect.anything(),
+            conversation_variables: expect.anything(),
+          }),
+        ),
+      )
+      expect(mockCollaborationRequestWorkflowSync).not.toHaveBeenCalled()
+    })
+
     it.each(['draft sync', 'page close'] as const)(
       'removes Workflow LLM memory from %s without changing the canvas nodes',
       async (savePath) => {
@@ -414,6 +440,85 @@ describe('useNodesSyncDraft', () => {
           }),
         }),
       )
+    })
+
+    it('saves external agent configuration and its connected edges in the workflow draft', async () => {
+      const agent = createExternalAgentAsset()
+      const externalAgentData = {
+        ...createExternalAgentWorkflowPreviewData(agent),
+        agent_binding: {
+          binding_type: 'roster_agent' as const,
+          agent_id: agent.id,
+          binding_epoch: 'server-epoch',
+        },
+        agent_task: 'Review {{#n1.contract#}} and identify compliance risks.',
+        agent_declared_outputs: [
+          {
+            name: 'risk_summary',
+            type: 'string' as const,
+            required: true,
+            description: 'Contract risks and suggested revisions',
+          },
+        ],
+        external_wait: {
+          enabled: true,
+          wait_seconds: 900,
+          on_timeout: 'cancel_and_retry' as const,
+          additional_retries: 2,
+          retry_interval_seconds: 45,
+        },
+      }
+      const externalAgent = createNode({
+        id: 'external-agent',
+        data: { type: BlockEnum.Agent, ...externalAgentData },
+      })
+      const connection = createEdge({
+        source: startNode.id,
+        sourceHandle: 'source',
+        target: externalAgent.id,
+        targetHandle: 'target',
+        data: { sourceType: BlockEnum.Start, targetType: BlockEnum.Agent },
+      })
+      const { result } = renderUseNodesSyncDraft({
+        nodes: [startNode, externalAgent],
+        edges: [connection],
+      })
+
+      await act(async () => {
+        await result.current.doSyncWorkflowDraft()
+      })
+
+      expect(mockSyncWorkflowDraft).toHaveBeenCalledExactlyOnceWith(
+        expect.objectContaining({
+          params: expect.objectContaining({
+            graph: expect.objectContaining({
+              nodes: [
+                savedStartNode,
+                expect.objectContaining({
+                  id: externalAgent.id,
+                  data: expect.objectContaining({
+                    type: BlockEnum.Agent,
+                    agent_node_kind: 'external_a2a',
+                    version: '2',
+                    agent_binding: {
+                      binding_type: 'roster_agent',
+                      agent_id: agent.id,
+                      binding_epoch: 'server-epoch',
+                    },
+                    agent_task: externalAgentData.agent_task,
+                    agent_declared_outputs: externalAgentData.agent_declared_outputs,
+                    external_wait: externalAgentData.external_wait,
+                    error_strategy: ErrorHandleTypeEnum.failBranch,
+                  }),
+                }),
+              ],
+              edges: [expect.objectContaining(connection)],
+            }),
+          }),
+        }),
+      )
+      const savedNode = mockSyncWorkflowDraft.mock.lastCall![0].params.graph.nodes[1]
+      expect(savedNode.data).not.toHaveProperty('_isTempNode')
     })
 
     it('keeps pending inline Agent v2 nodes in draft without incomplete bindings', async () => {

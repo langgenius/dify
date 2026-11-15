@@ -223,7 +223,7 @@ const JinaReader: FC<Props> = ({
             )}
             {showError && (
               <ErrorMessage
-                className="rounded-b-xl"
+                className="mx-4 mt-2 mb-4"
                 title={t(($) => $[`${I18N_PREFIX}.exceptionErrorTitle`], { ns: 'datasetCreation' })}
                 errorMsg={crawlErrorMessage}
               />

@@ -1,6 +1,7 @@
 from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import MagicMock, patch
+from uuid import UUID
 
 import pytest
 from flask import Flask, Response
@@ -142,6 +143,6 @@ class TestToolFileApi:
         with patch.object(module, "application_services") as application_services:
             with app.test_request_context("/files/tools/file-id.txt"):
                 with pytest.raises(UnprocessableEntity):
-                    module.ToolFileApi().get("file-id", "txt")
+                    module.ToolFileApi().get(UUID(int=1), "txt")
 
         application_services.assert_not_called()

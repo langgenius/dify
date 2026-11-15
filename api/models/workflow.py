@@ -22,9 +22,9 @@ from sqlalchemy import (
     orm,
     select,
 )
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
-from core.trigger.constants import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
+from constants.trigger import TRIGGER_PLUGIN_NODE_TYPE, is_trigger_node_type
 from core.workflow.environment_variables import load_environment_variables
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable, dump_environment_variable
@@ -74,7 +74,6 @@ from libs import helper
 
 from .account import Account
 from .base import DefaultFieldsDCMixin, TypeBase
-from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType, WorkflowRunTriggeredFrom
 
 # UploadFile and workflow execution models use TypeBase; importing the class object keeps
@@ -92,10 +91,10 @@ SerializedWorkflowValue = dict[str, Any]
 SerializedWorkflowVariables = dict[str, SerializedWorkflowValue]
 
 
-def _resolve_workflow_app_tenant_id(app_id: str) -> str:
+def _resolve_workflow_app_tenant_id(session: Session, app_id: str) -> str:
     from .model import App
 
-    tenant_id = db.session.scalar(select(App.tenant_id).where(App.id == app_id))
+    tenant_id = session.scalar(select(App.tenant_id).where(App.id == app_id))
     if not tenant_id:
         raise ValueError(f"Unable to resolve tenant_id for app {app_id}")
     return tenant_id
@@ -854,14 +853,14 @@ class WorkflowRun(TypeBase):
     inputs: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, server_default=sa.text("0"), default=0)
-    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, server_default=sa.text("0"), default=0)
-    total_steps: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, nullable=False, default=0)
+    total_tokens: Mapped[int] = mapped_column(sa.BigInteger, default=0)
+    total_steps: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
-    exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True, default=0)
+    exceptions_count: Mapped[int] = mapped_column(sa.Integer, nullable=True, default=0)
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         lambda: WorkflowPause,
@@ -1085,7 +1084,7 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
     process_data: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default=None)
     error: Mapped[str | None] = mapped_column(LongText, default=None)
-    elapsed_time: Mapped[float] = mapped_column(sa.Float, server_default=sa.text("0"), default=0)
+    elapsed_time: Mapped[float] = mapped_column(sa.Float, default=0)
     execution_metadata: Mapped[str | None] = mapped_column(LongText, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp(), init=False)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime, default=None)
@@ -1159,9 +1158,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
 
     @property
     def extras(self) -> dict[str, Any]:
+        from core.plugin.impl.trigger import PluginTriggerClient
         from core.tools.entities.tool_entities import ToolProviderType
         from core.tools.tool_manager import ToolManager
-        from core.trigger.trigger_manager import TriggerManager
+        from models.provider_ids import TriggerProviderID
+        from models.utils.trigger_endpoint import generate_trigger_plugin_icon_url
 
         extras: dict[str, Any] = {}
         execution_metadata = self.execution_metadata_dict
@@ -1186,9 +1187,11 @@ class WorkflowNodeExecutionModel(TypeBase):  # This model is expected to have `o
                 trigger_info = execution_metadata[WorkflowNodeExecutionMetadataKey.TRIGGER_INFO] or {}
                 provider_id = trigger_info.get("provider_id")
                 if provider_id:
-                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
-                        tenant_id=self.tenant_id,
-                        provider_id=provider_id,
+                    provider = PluginTriggerClient().fetch_trigger_provider(
+                        self.tenant_id, TriggerProviderID(provider_id)
+                    )
+                    extras["icon"] = generate_trigger_plugin_icon_url(
+                        self.tenant_id, provider.declaration.identity.icon
                     )
         return extras
 
@@ -1401,19 +1404,6 @@ class WorkflowAppLog(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-
-    @property
-    def workflow_run(self):
-        if self.workflow_run_id:
-            from sqlalchemy.orm import sessionmaker
-
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
-
-        return None
 
     def created_by_account(self, session: orm.Session) -> Account | None:
         created_by_role = CreatorUserRole(self.created_by_role)
@@ -1784,11 +1774,11 @@ class WorkflowDraftVariable(TypeBase):
     def _set_selector(self, value: list[str]):
         self.selector = json.dumps(value)
 
-    def _loads_value(self) -> Segment:
+    def _loads_value(self, *, session: Session) -> Segment:
         value = json.loads(self.value)
-        return self.build_segment_from_serialized_value(self.value_type, value)
+        return self.build_segment_from_serialized_value(self.value_type, value, session=session)
 
-    def _rebuild_file_types(self, value: Any):
+    def _rebuild_file_types(self, value: Any, *, session: Session):
         # NOTE(QuantumGhost): Temporary workaround for structured data handling.
         # By this point, `output` has been converted to dict by
         # `WorkflowEntry.handle_special_values`, so we need to
@@ -1803,7 +1793,7 @@ class WorkflowDraftVariable(TypeBase):
             case dict():
                 if not maybe_file_object(value):
                     return cast(Any, value)
-                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                tenant_id = _resolve_workflow_app_tenant_id(session, self.app_id)
                 return build_file_from_stored_mapping(
                     file_mapping=cast(dict[str, Any], value),
                     tenant_id=tenant_id,
@@ -1813,7 +1803,7 @@ class WorkflowDraftVariable(TypeBase):
                 first: Any = value_list[0]
                 if not maybe_file_object(first):
                     return cast(Any, value)
-                tenant_id = _resolve_workflow_app_tenant_id(self.app_id)
+                tenant_id = _resolve_workflow_app_tenant_id(session, self.app_id)
                 file_list: list[File] = []
                 for item in value_list:
                     file_list.append(
@@ -1826,7 +1816,9 @@ class WorkflowDraftVariable(TypeBase):
             case _:
                 return cast(Any, value)
 
-    def build_segment_from_serialized_value(self, segment_type: SegmentType, value: Any) -> Segment:
+    def build_segment_from_serialized_value(
+        self, segment_type: SegmentType, value: Any, *, session: Session
+    ) -> Segment:
         # Persisted draft variable rows may contain historical file payloads.
         # Rebuild them through the file factory so tenant ownership, signed URLs,
         # and storage-backed metadata come from canonical records instead of the
@@ -1837,14 +1829,14 @@ class WorkflowDraftVariable(TypeBase):
                     case File():
                         return build_segment_with_type(segment_type, value)
                     case dict():
-                        file = self._rebuild_file_types(value)
+                        file = self._rebuild_file_types(value, session=session)
                         return build_segment_with_type(segment_type, file)
                     case _:
                         raise TypeMismatchError(f"expected dict or File for FileSegment, got {type(value)}")
             case SegmentType.ARRAY_FILE:
                 if not isinstance(value, list):
                     raise TypeMismatchError(f"expected list for ArrayFileSegment, got {type(value)}")
-                file_list = self._rebuild_file_types(value)
+                file_list = self._rebuild_file_types(value, session=session)
                 return build_segment_with_type(segment_type=segment_type, value=file_list)
             case _:
                 return build_segment_with_type(segment_type=segment_type, value=value)
@@ -1899,7 +1891,7 @@ class WorkflowDraftVariable(TypeBase):
             case _:
                 return build_segment_with_type(segment_type=segment_type, value=value)
 
-    def get_value(self) -> Segment:
+    def get_value(self, *, session: Session) -> Segment:
         """Decode the serialized value into its corresponding `Segment` object.
 
         This method caches the result, so repeated calls will return the same
@@ -1917,7 +1909,7 @@ class WorkflowDraftVariable(TypeBase):
 
         if self.__value is not None:
             return self.__value
-        value = self._loads_value()
+        value = self._loads_value(session=session)
         self.__value = value
         return value
 
@@ -2220,6 +2212,12 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
 
 
 class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
+    """Legacy HITL v1 pause details. New code must use the Graph State snapshot.
+
+    Historical scheduling rows remain readable; new pause kinds must not write
+    this table. HITL v2 forms are never referenced here.
+    """
+
     __tablename__ = "workflow_pause_reasons"
 
     # `pause_id` represents the identifier of the pause,
@@ -2274,13 +2272,20 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
     ) -> "WorkflowPauseReason":
         match pause_reason:
             case HitlRequired():
+                node_version, form_id = default_session_binding.resolve_form_id_from_session_id(
+                    session_id=pause_reason.session_id
+                )
+                if node_version != "1":
+                    raise ValueError("The legacy pause reason table only accepts HITL v1 forms")
                 return cls(
                     pause_id=pause_id,
                     type_=PauseReasonType.HITL_REQUIRED,
-                    form_id=default_session_binding.resolve_form_id_from_session_id(session_id=pause_reason.session_id),
+                    form_id=form_id,
                     node_id=pause_reason.node_id,
                 )
             case HumanInputRequired():
+                if pause_reason.form_version != "1":
+                    raise ValueError("The legacy pause reason table only accepts HITL v1 forms")
                 return cls(
                     pause_id=pause_id,
                     type_=PauseReasonType.HITL_REQUIRED,
@@ -2302,7 +2307,7 @@ class WorkflowPauseReason(DefaultFieldsDCMixin, TypeBase):
             )
         elif self.type_ == PauseReasonType.HITL_REQUIRED:
             return HitlRequired(
-                session_id=default_session_binding.issue_session_id_for_form(form_id=self.form_id),
+                session_id=default_session_binding.issue_session_id_for_form(node_version="1", form_id=self.form_id),
                 node_id=self.node_id,
                 node_title="",
             )

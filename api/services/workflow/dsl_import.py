@@ -19,6 +19,7 @@ from core.file import remote_fetcher
 from factories import variable_factory
 from graphon.variables import SecretVariable, SegmentType, VariableBase
 from graphon.variables.exc import VariableError
+from libs.url_utils import github_blob_to_raw_url
 from machinery.context import RequestContext
 from models import AppMode, Workflow
 from services.dsl_content import DSL_MAX_SIZE, dsl_content_size
@@ -77,14 +78,8 @@ def fetch_yaml_url(yaml_url: str) -> str:
     """The YAML text at a URL, fetched as AppDslService.import_app does; a GitHub blob link reads its raw file."""
     try:
         parsed_url = urlparse(yaml_url)
-        if (
-            parsed_url.scheme == "https"
-            and parsed_url.netloc == "github.com"
-            and parsed_url.path.endswith((".yml", ".yaml"))
-            and "/blob/" in parsed_url.path
-        ):
-            yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
-            yaml_url = yaml_url.replace("/blob/", "/")
+        if parsed_url.path.endswith((".yml", ".yaml")):
+            yaml_url = github_blob_to_raw_url(yaml_url)
         response = remote_fetcher.make_request("GET", yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
         response.raise_for_status()
         raw_content = response.content

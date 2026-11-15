@@ -271,10 +271,10 @@ const ProviderDetail = ({ collection, onHide, onRefreshData }: Props) => {
         <DrawerViewport className="pointer-events-none">
           <DrawerPopup
             className={cn(
-              'pointer-events-auto touch-auto justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl data-[swipe-direction=right]:border-[0.5px] data-[swipe-direction=right]:border-components-panel-border',
+              'pointer-events-auto touch-auto justify-start bg-components-panel-bg! p-0! shadow-xl data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-100 data-[swipe-direction=right]:max-w-[calc(100vw-1rem)] data-[swipe-direction=right]:rounded-2xl',
             )}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="flex h-full flex-col p-4">
                 <div className="shrink-0">
                   <div className="mb-3 flex">

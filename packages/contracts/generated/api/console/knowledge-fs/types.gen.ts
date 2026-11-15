@@ -80,6 +80,7 @@ export type KnowledgeFsInitialSourcePreviewResponse = {
   documents?: Array<KnowledgeFsInitialSourcePreviewDocumentResponse>
   files?: Array<KnowledgeFsInitialSourcePreviewFileResponse>
   kind: 'online_document' | 'online_drive' | 'website_crawl'
+  next_cursor?: string | null
   next_page_parameters?: {
     [key: string]: JsonValue
   } | null
@@ -1535,9 +1536,11 @@ export type KnowledgeFsPublicFailureResponse = {
 export type JsonValue = unknown
 
 export type KnowledgeFsInitialSourcePreviewDocumentResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   name: string
   page_id: string
+  parent_id?: string | null
   provider_item_id: string
   type: string
   workspace_id: string
@@ -2595,6 +2598,7 @@ export type KnowledgeFsSourceFileResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -5716,6 +5720,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

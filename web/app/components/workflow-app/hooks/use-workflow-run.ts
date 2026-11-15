@@ -26,6 +26,7 @@ import { usePathname } from '@/next/navigation'
 import { ssePost } from '@/service/base'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateAllLastRun, useInvalidateWorkflowRunHistory } from '@/service/use-workflow'
+import { useExternalWaitRun } from './use-external-wait-run'
 import { useNodesSyncDraft, useNodesSyncDraftByCanEdit } from './use-nodes-sync-draft'
 import {
   createBaseWorkflowRunCallbacks,
@@ -129,6 +130,23 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
   const invalidateRunHistory = useInvalidateWorkflowRunHistory()
 
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
+  const externalCallbacksRef = useRef<IOtherOptions>({})
+  const updateExternalRunSnapshot = useCallback<
+    NonNullable<IOtherOptions['onExternalWorkflowSnapshot']>
+  >((run, executions) => {
+    externalCallbacksRef.current.onExternalWorkflowSnapshot?.(run, executions)
+  }, [])
+  const completeExternalWaitRun = useCallback(() => {
+    void fetchInspectVars({})
+    invalidAllLastRun()
+    invalidateRunHistory(buildRunHistoryUrl(appDetail))
+    externalCallbacksRef.current.onCompleted?.(false)
+  }, [appDetail, fetchInspectVars, invalidAllLastRun, invalidateRunHistory])
+  const discardExternalWaitRun = useExternalWaitRun(
+    appId,
+    completeExternalWaitRun,
+    updateExternalRunSnapshot,
+  )
 
   const abortControllerRef = useRef<AbortController | null>(null)
 
@@ -196,6 +214,8 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       options?: HandleRunOptions,
     ) => {
       const runMode = options?.mode ?? TriggerType.UserInput
+      discardExternalWaitRun()
+      externalCallbacksRef.current = callback ?? {}
       const resolvedParams: WorkflowRunParams = params ?? {}
       const { getNodes, setNodes } = store.getState()
       const newNodes = produce(getNodes(), (draft: Node[]) => {
@@ -476,6 +496,7 @@ const useWorkflowRunBase = (doSyncWorkflowDraft: DoSyncWorkflowDraft) => {
       handleWorkflowNodeHumanInputRequired,
       handleWorkflowNodeHumanInputFormFilled,
       handleWorkflowNodeHumanInputFormTimeout,
+      discardExternalWaitRun,
     ],
   )
 

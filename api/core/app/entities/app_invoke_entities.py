@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Literal
 
+from dify_trace_sdk.emitter import TraceScope
 from pydantic import (
     BaseModel,
     ConfigDict,
@@ -31,7 +32,6 @@ from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
 if TYPE_CHECKING:
     from core.app.llm.message_billing import ClassicMessageBilling
-    from core.ops.ops_trace_manager import TraceQueueManager
 
 
 DIFY_RUN_CONTEXT_KEY = "_dify"
@@ -222,8 +222,8 @@ class AppGenerateEntity(BaseModel):
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = Field(default_factory=dict)
 
-    # tracing instance
-    trace_manager: "TraceQueueManager | None" = Field(default=None, exclude=True, repr=False)
+    # Process-local: a resumed execution creates its scope again.
+    trace_scope: TraceScope | None = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -406,17 +406,3 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     document_id: str | None = None
     original_document_id: str | None = None
     start_node_id: str | None = None
-
-
-# Resolve circular model references after model definitions.
-from core.ops.ops_trace_manager import TraceQueueManager  # noqa: E402
-
-AppGenerateEntity.model_rebuild()
-EasyUIBasedAppGenerateEntity.model_rebuild()
-ConversationAppGenerateEntity.model_rebuild()
-ChatAppGenerateEntity.model_rebuild()
-CompletionAppGenerateEntity.model_rebuild()
-AgentChatAppGenerateEntity.model_rebuild()
-AdvancedChatAppGenerateEntity.model_rebuild()
-WorkflowAppGenerateEntity.model_rebuild()
-RagPipelineGenerateEntity.model_rebuild()

@@ -362,7 +362,7 @@ describe('SwitchAppModal', () => {
       expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
       await act(async () => rejectDeletion(new Error('Failed to delete original')))
       await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/app/converted-app/workflow'))
-      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'app.appDeleteFailed' })
+      expect(notify).toHaveBeenCalledWith({ type: 'error', message: 'Failed to delete original' })
       expect(mockConvertToWorkflow).toHaveBeenCalledTimes(1)
     })
 
@@ -377,7 +377,7 @@ describe('SwitchAppModal', () => {
       await waitFor(() => {
         expect(notify).toHaveBeenCalledWith({
           type: 'error',
-          message: 'app.newApp.appCreateFailed',
+          message: 'fail',
         })
       })
       expect(onOpenChange).not.toHaveBeenCalled()

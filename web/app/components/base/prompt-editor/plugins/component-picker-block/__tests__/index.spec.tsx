@@ -12,7 +12,6 @@ import type {
 } from '../../../types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -32,6 +31,7 @@ import { GeneratorType } from '@/app/components/app/configuration/config/automat
 import { VarType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
@@ -185,7 +185,7 @@ const MinimalEditor: React.FC<{
 
   return (
     <EventEmitterContextProvider>
-      <LexicalComposer initialConfig={initialConfig}>
+      <TestLexicalComposer initialConfig={initialConfig}>
         <RichTextPlugin
           contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_TEST_ID} />}
           placeholder={null}
@@ -205,7 +205,7 @@ const MinimalEditor: React.FC<{
           errorMessageBlock={errorMessageBlock}
           lastRunBlock={lastRunBlock}
         />
-      </LexicalComposer>
+      </TestLexicalComposer>
     </EventEmitterContextProvider>
   )
 }
@@ -405,7 +405,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(currentLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, GeneratorType.prompt)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select error_message (flat).
     await setEditorText(editor, '{', true)
@@ -415,7 +415,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(errorMessageLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select last_run (flat).
     await setEditorText(editor, '{', true)
@@ -425,7 +425,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(lastRunLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
 
     // Re-open menu and press Escape in the VarReferenceVars search input to exercise handleClose().
     await setEditorText(editor, '{', true)
@@ -552,6 +552,103 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     ])
     await waitFor(() => expect(readEditorText(editor)).not.toContain('/child'))
   })
+
+  it('keeps the slash query when a visible parent is not selectable and permits its supported child', async () => {
+    const captures: Captures = { editor: null, eventEmitter: null }
+    const user = userEvent.setup()
+    const source = makeWorkflowVarNode('source', 'Source', [
+      makeWorkflowNodeVar('payload', VarType.object, [makeWorkflowNodeVar('name', VarType.string)]),
+      makeWorkflowNodeVar('hidden_file', VarType.file),
+    ])
+    render(
+      <MinimalEditor
+        triggerString="/"
+        workflowVariableBlock={makeWorkflowVariableBlock(
+          {
+            selectableVariables: [{ ...source, vars: source.vars.slice(0, 1) }],
+            filterVar: (_variable, selector) => selector.at(-1) === 'name',
+          },
+          [source],
+        )}
+        captures={captures}
+      />,
+    )
+    const editor = await waitForEditor(captures)
+    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+    await setEditorText(editor, '/', true)
+    const root = await screen.findByText('payload')
+    expect(screen.queryByText('hidden_file')).not.toBeInTheDocument()
+    await user.click(root)
+    expect(readEditorText(editor)).toBe('/')
+    expect(dispatchSpy).not.toHaveBeenCalledWith(
+      INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+      expect.anything(),
+    )
+
+    await user.hover(root)
+    await user.click(await screen.findByText('name'))
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [
+      'source',
+      'payload',
+      'name',
+    ])
+    await waitFor(() => expect(readEditorText(editor)).toBe(''))
+  })
+
+  it.each<[string, string, string[]]>([
+    ['start', 'sys.files', ['sys', 'files', 'name']],
+    ['env', 'env.PROFILE', ['env', 'PROFILE', 'name']],
+    ['conversation', 'conversation.PROFILE', ['conversation', 'PROFILE', 'name']],
+    ['rag', 'rag.PROFILE', ['rag', 'PROFILE', 'name']],
+    ['source.with.dots', 'payload', ['source.with.dots', 'payload', 'name']],
+  ])(
+    'guards and inserts the same nested selector for %s / %s',
+    async (nodeId, variableName, expectedSelector) => {
+      const captures: Captures = { editor: null, eventEmitter: null }
+      const user = userEvent.setup()
+      const variable = {
+        ...makeWorkflowNodeVar(variableName, VarType.object, [
+          makeWorkflowNodeVar('name', VarType.string),
+          makeWorkflowNodeVar('blocked', VarType.number),
+        ]),
+        des: variableName,
+      }
+      const filterVar = vi.fn((_variable: Var, selector: string[]) => selector.at(-1) === 'name')
+      render(
+        <MinimalEditor
+          triggerString="/"
+          workflowVariableBlock={makeWorkflowVariableBlock({ filterVar }, [
+            makeWorkflowVarNode(nodeId, 'Source', [variable]),
+          ])}
+          captures={captures}
+        />,
+      )
+      const editor = await waitForEditor(captures)
+      const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
+      await setEditorText(editor, '/', true)
+      const root = document.querySelector(`[title="${variableName}"]`)
+      expect(root).not.toBeNull()
+      await user.hover(root as HTMLElement)
+      await user.click(await screen.findByText('blocked'))
+      expect(filterVar).toHaveBeenLastCalledWith(variable, [
+        ...expectedSelector.slice(0, -1),
+        'blocked',
+      ])
+      expect(readEditorText(editor)).toBe('/')
+      expect(dispatchSpy).not.toHaveBeenCalledWith(
+        INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+        expect.anything(),
+      )
+
+      await user.click(screen.getByText('name'))
+      expect(filterVar).toHaveBeenLastCalledWith(variable, expectedSelector)
+      expect(dispatchSpy).toHaveBeenCalledWith(
+        INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND,
+        expectedSelector,
+      )
+      await waitFor(() => expect(readEditorText(editor)).toBe(''))
+    },
+  )
 
   it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
     const captures: Captures = { editor: null, eventEmitter: null }

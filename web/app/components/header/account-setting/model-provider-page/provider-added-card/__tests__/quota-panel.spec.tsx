@@ -192,7 +192,8 @@ describe('QuotaPanel', () => {
     credits = undefined
 
     renderQuotaPanel(<QuotaPanel providers={mockProviders} />)
-    expect(screen.getByRole('progressbar')).toBeInTheDocument()
+    expect(screen.getByRole('status', { name: 'common.loading' })).toBeInTheDocument()
+    expect(screen.queryByText(/modelProvider\.used/)).not.toBeInTheDocument()
   })
 
   it('shows Tokener balance and monthly usage without legacy credit or reset labels', () => {

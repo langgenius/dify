@@ -62,6 +62,7 @@ export function useNodeActionsMenuModel({
   }, [data.provider_id, data.provider_type, data.type, workflowTools])
 
   const handleRun = useCallback(() => {
+    if (!canRun) return
     const store = workflowStore.getState()
     store.setInitShowLastRunTab(true)
     store.setPendingSingleRun({
@@ -70,7 +71,7 @@ export function useNodeActionsMenuModel({
     })
     handleNodeSelect(id)
     onClose()
-  }, [handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
+  }, [canRun, handleNodeSelect, id, isSingleRunning, onClose, workflowStore])
 
   const handleCopy = useCallback(() => {
     onClose()

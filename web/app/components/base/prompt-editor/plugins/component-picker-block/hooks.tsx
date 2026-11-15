@@ -329,7 +329,11 @@ export const useOptions = (
 
   const workflowVariableOptions = useMemo(() => {
     if (!workflowVariableBlockType?.show) return []
-    const res = [...(workflowVariableBlockType.variables || [])]
+    const res = [
+      ...(workflowVariableBlockType.selectableVariables ??
+        workflowVariableBlockType.variables ??
+        []),
+    ]
     if (errorMessageBlockType?.show && res.findIndex((v) => v.nodeId === 'error_message') === -1) {
       res.unshift({
         nodeId: 'error_message',
@@ -374,6 +378,7 @@ export const useOptions = (
   }, [
     workflowVariableBlockType?.show,
     workflowVariableBlockType?.variables,
+    workflowVariableBlockType?.selectableVariables,
     errorMessageBlockType?.show,
     lastRunBlockType?.show,
     currentBlockType?.show,

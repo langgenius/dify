@@ -36,7 +36,7 @@ const NoteNode = ({ data }: NodeProps<NoteNodeType>) => {
             <div className={cn(data.selected && 'nodrag nopan nowheel cursor-text')}>
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' }) || ''}
+                placeholder={t(($) => $['nodes.note.editor.placeholder'], { ns: 'workflow' })}
               />
             </div>
           </div>

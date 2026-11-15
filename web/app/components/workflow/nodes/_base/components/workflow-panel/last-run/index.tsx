@@ -8,7 +8,10 @@ import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { editorResourceAtom } from '@/app/components/workflow/editor-resource/state'
-import { isBoundAgentV2Execution } from '@/app/components/workflow/nodes/agent-v2/execution'
+import {
+  getExternalAgentInvocationId,
+  isBoundAgentV2Execution,
+} from '@/app/components/workflow/nodes/agent-v2/execution'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { isNotFoundError } from '@/service/http-error'
@@ -25,6 +28,7 @@ type Props = Readonly<{
   onSingleRunClicked: () => void
   singleRunResult?: NodeTracing
   isPaused?: boolean
+  onExternalRunCompleted?: (result: NodeTracing) => Promise<void>
 }> &
   Partial<ResultPanelProps>
 
@@ -38,6 +42,7 @@ const LastRun: FC<Props> = ({
   onSingleRunClicked,
   singleRunResult,
   isPaused,
+  onExternalRunCompleted,
   ...otherResultPanelProps
 }) => {
   const finishedStatuses: readonly NodeRunningStatus[] = [
@@ -63,18 +68,34 @@ const LastRun: FC<Props> = ({
     !isRunAfterSingleRun ||
     isOneStepRunSucceed ||
     isOneStepRunFailed ||
-    (pageHasHide && hidePageOneStepRunFinished)
-  const { data: lastRunResult, isFetching, error } = useLastRun(resource, nodeId, canRunLastRun)
+    (pageHasHide && hidePageOneStepRunFinished) ||
+    oneStepRunRunningStatus === NodeRunningStatus.Paused ||
+    Boolean(singleRunResult && getExternalAgentInvocationId(singleRunResult))
+  const expectedExecutionId =
+    isRunAfterSingleRun && singleRunResult && getExternalAgentInvocationId(singleRunResult)
+      ? singleRunResult.id
+      : undefined
+  const {
+    data: lastRunResult,
+    isFetching,
+    error,
+  } = useLastRun(resource, nodeId, canRunLastRun, expectedExecutionId)
   const hasAuthoritativeLastRun = canRunLastRun && !!lastRunResult
+  const hasExternalLastRun = lastRunResult && Boolean(getExternalAgentInvocationId(lastRunResult))
   const isRunning =
     !isPaused &&
     (isRunAfterSingleRun
       ? !hasAuthoritativeLastRun && activeStatuses.includes(oneStepRunRunningStatus!)
-      : isFetching)
+      : isFetching && !hasExternalLastRun)
 
   const noLastRun = isNotFoundError(error)
-  const runResult = (canRunLastRun ? lastRunResult : singleRunResult) || lastRunResult || {}
+  const runResult =
+    (canRunLastRun ? lastRunResult : singleRunResult) ||
+    lastRunResult ||
+    (expectedExecutionId ? singleRunResult : undefined) ||
+    {}
   const lastRunNode = runResult as Partial<NodeTracing>
+  const externalInvocationId = getExternalAgentInvocationId(lastRunNode)
   const externalTrace =
     resource.kind === 'app' && isBoundAgentV2Execution(lastRunNode) && lastRunNode.id
       ? { appId: resource.appId, kind: 'node' as const, nodeExecutionId: lastRunNode.id }
@@ -85,6 +106,35 @@ const LastRun: FC<Props> = ({
     resolvedStatus = NodeRunningStatus.Stopped
   else if (oneStepRunRunningStatus === NodeRunningStatus.Listening)
     resolvedStatus = NodeRunningStatus.Listening
+
+  useEffect(() => {
+    if (
+      !lastRunResult ||
+      !expectedExecutionId ||
+      !getExternalAgentInvocationId(lastRunResult) ||
+      (expectedExecutionId && lastRunResult.id !== expectedExecutionId)
+    )
+      return
+    const status = lastRunResult.status
+    if (
+      status &&
+      Object.values(NodeRunningStatus).includes(status as NodeRunningStatus) &&
+      status !== oneStepRunRunningStatus
+    ) {
+      updateNodeRunningStatus(status as NodeRunningStatus)
+      if (!['paused', 'running'].includes(status)) {
+        void onExternalRunCompleted?.(lastRunResult as NodeTracing).catch(() => {
+          // The request layer reports variable-refresh failures.
+        })
+      }
+    }
+  }, [
+    lastRunResult,
+    expectedExecutionId,
+    oneStepRunRunningStatus,
+    onExternalRunCompleted,
+    updateNodeRunningStatus,
+  ])
 
   const resetHidePageStatus = useCallback(() => {
     setPageHasHide(false)
@@ -134,7 +184,7 @@ const LastRun: FC<Props> = ({
     }
   }, [handlePageVisibilityChange])
 
-  if (isFetching && !isRunAfterSingleRun) {
+  if (isFetching && !isRunAfterSingleRun && !hasExternalLastRun) {
     return (
       <div className="flex h-0 grow flex-col items-center justify-center">
         <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
@@ -154,7 +204,7 @@ const LastRun: FC<Props> = ({
         {...otherResultPanelProps}
         status={resolvedStatus}
         total_tokens={
-          (runResult as any)?.execution_metadata?.total_tokens ||
+          (runResult as any)?.execution_metadata?.total_tokens ??
           otherResultPanelProps?.total_tokens
         }
         created_by={
@@ -163,6 +213,7 @@ const LastRun: FC<Props> = ({
         nodeInfo={runResult as NodeTracing}
         showSteps={false}
         externalTrace={externalTrace}
+        externalInvocationId={externalInvocationId}
       />
     </div>
   )

@@ -2,7 +2,7 @@ import type {
   AgentInviteOptionResponse,
   AgentInviteOptionsResponse,
 } from '@dify/contracts/api/console/agent/types.gen'
-import type { ReactElement } from 'react'
+import type { ReactElement, ReactNode } from 'react'
 import type { Node as FlowNode } from 'reactflow'
 import type { NodeDefault } from '../../types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -12,6 +12,7 @@ import ReactFlow, { ReactFlowProvider, useNodes } from 'reactflow'
 import { EditorResourceScope } from '../../editor-resource/provider'
 import { HooksStoreContext } from '../../hooks-store/provider'
 import { createHooksStore } from '../../hooks-store/store'
+import { HumanInputMigrationContext } from '../../nodes/human-input-v2/migration/context'
 import { BlockEnum } from '../../types'
 import Blocks from '../blocks'
 import { BlockClassification } from '../types'
@@ -185,6 +186,123 @@ describe('Blocks', () => {
     expect(screen.getByText('workflow.tabs.noResult')).toBeInTheDocument()
   })
 
+  it('keeps Human Input searchable but disables it while a legacy node exists', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    const openMigrationDialog = vi.fn()
+    const contextValue = {
+      policy: {
+        hasLegacyHumanInput: true,
+        canAddHumanInputV2: false,
+        canAddLegacyHumanInput: false,
+        candidateCount: 1 as const,
+      },
+      canEdit: true,
+      pending: false,
+      openMigrationDialog,
+    }
+    runtimeState.nodes = [
+      {
+        id: 'legacy',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '' },
+      },
+    ]
+
+    const { rerender } = render(
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+
+    const humanInputButton = screen.getByRole('button', { name: /^Human Input/ })
+    expect(humanInputButton).toHaveAttribute('aria-disabled', 'true')
+    expect(humanInputButton).toHaveAccessibleDescription(
+      expect.stringContaining('workflow.nodes.humanInputMigration.disabledReason'),
+    )
+    expect(screen.getByText('workflow.nodes.humanInputMigration.disabledBadge')).toBeInTheDocument()
+
+    await user.click(humanInputButton)
+    expect(onSelect).not.toHaveBeenCalled()
+    await user.hover(humanInputButton)
+    const migrateNow = await screen.findByRole('button', {
+      name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+    })
+    expect(
+      await screen.findByText('workflow.nodes.humanInputMigration.preview.author'),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByText('workflow.nodes.humanInputMigration.preview.description'),
+    ).toBeInTheDocument()
+    await user.click(migrateNow)
+    expect(openMigrationDialog).toHaveBeenCalledTimes(1)
+
+    runtimeState.nodes = []
+    rerender(
+      <HumanInputMigrationContext value={contextValue}>
+        <Blocks
+          searchText="Human"
+          onSelect={onSelect}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+    const enabledButton = screen.getByRole('button', { name: /^Human Input/ })
+    expect(enabledButton).toHaveAttribute('aria-disabled', 'false')
+    await user.click(enabledButton)
+    expect(onSelect).toHaveBeenCalledWith(BlockEnum.HumanInputV2)
+  })
+
+  it('keeps migration preview guidance read-only when editing is unavailable', async () => {
+    const user = userEvent.setup()
+    runtimeState.nodes = [
+      {
+        id: 'legacy',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.HumanInput, title: 'Human Input', desc: '' },
+      },
+    ]
+
+    render(
+      <HumanInputMigrationContext
+        value={{
+          policy: {
+            hasLegacyHumanInput: true,
+            canAddHumanInputV2: false,
+            canAddLegacyHumanInput: false,
+            candidateCount: 1,
+          },
+          canEdit: false,
+          pending: false,
+          openMigrationDialog: vi.fn(),
+        }}
+      >
+        <Blocks
+          searchText="Human"
+          onSelect={vi.fn()}
+          availableBlocksTypes={[BlockEnum.HumanInputV2]}
+          blocks={[createBlock(BlockEnum.HumanInputV2, 'Human Input')]}
+        />
+      </HumanInputMigrationContext>,
+    )
+
+    await user.hover(screen.getByRole('button', { name: /^Human Input/ }))
+    expect(
+      await screen.findByText('workflow.nodes.humanInputMigration.preview.description'),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', {
+        name: /workflow.nodes.humanInputMigration.action.migrateNow/,
+      }),
+    ).not.toBeInTheDocument()
+  })
+
   it('opens the agent selector on Agent block hover', async () => {
     const user = userEvent.setup()
     mockInviteOptionsResponse([])
@@ -271,7 +389,7 @@ describe('Blocks', () => {
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
     expect(screen.getByText('Researcher')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('button', { name: /Nadia.*Researcher/ }))
 
     expect(onSelect).toHaveBeenCalledWith(BlockEnum.AgentV2, {
       agent_binding: {
@@ -393,11 +511,14 @@ describe('Blocks', () => {
     await user.click(screen.getByRole('button', { name: /Agent/ }))
     expect(await screen.findByText('Nadia')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('menuitem', { name: 'Nadia Researcher' }))
+    await user.click(screen.getByRole('button', { name: /Nadia.*Researcher/ }))
 
-    await waitFor(() =>
-      expect(queryMocks.toastError).toHaveBeenCalledWith('workflow.nodes.agent.modelNotSelected'),
+    expect(screen.getByRole('button', { name: /Nadia.*Researcher/ })).toHaveAttribute(
+      'aria-disabled',
+      'true',
     )
+    expect(screen.getByText('workflow.nodes.agent.modelNotSelected')).toBeInTheDocument()
+    expect(queryMocks.toastError).not.toHaveBeenCalled()
     expect(onSelect).not.toHaveBeenCalled()
   })
 
@@ -428,14 +549,14 @@ describe('Blocks', () => {
     )
 
     await user.click(screen.getByRole('button', { name: /Agent/ }))
-    const consoleLink = await screen.findByRole('menuitem', {
+    const consoleLink = await screen.findByRole('link', {
       name: 'agentRoster.roster.nodeSelector.manageInAgentConsole',
     })
     expect(consoleLink).toHaveAttribute('href', '/agents')
     expect(consoleLink).toHaveAttribute('target', '_blank')
     expect(consoleLink).toHaveAttribute('rel', 'noopener noreferrer')
     await user.click(
-      await screen.findByRole('menuitem', {
+      await screen.findByRole('button', {
         name: 'agentRoster.roster.nodeSelector.startFromScratch',
       }),
     )
@@ -450,18 +571,22 @@ describe('Blocks', () => {
   })
 })
 
-function ReadyBlocks({ children }: { children: ReactElement }) {
+function ReadyBlocks({ children }: { children: ReactNode }) {
   const nodes = useNodes()
   return nodes.length === runtimeState.nodes.length ? children : null
 }
 
 function render(ui: ReactElement) {
-  return baseRender(
-    <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
-      <ReactFlowProvider>
-        <ReactFlow nodes={runtimeState.nodes} edges={[]} />
-        <ReadyBlocks>{ui}</ReadyBlocks>
-      </ReactFlowProvider>
-    </EditorResourceScope>,
-  )
+  return baseRender(ui, {
+    wrapper: ({ children }) => (
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
+        <ReactFlowProvider>
+          <ReactFlow nodes={runtimeState.nodes} edges={[]} />
+          <ReadyBlocks>{children}</ReadyBlocks>
+        </ReactFlowProvider>
+      </EditorResourceScope>
+    ),
+  })
 }

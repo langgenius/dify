@@ -1,8 +1,8 @@
 import type { LexicalEditor } from 'lexical'
 import type { ComponentProps } from 'react'
+import type { WorkflowVariableBlockType } from '../../../types'
 import type WorkflowVariableBlockComponent from '../component'
 import type { WorkflowNodesMap } from '../node'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -10,20 +10,16 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { $createParagraphNode, $getRoot } from 'lexical'
+import { useStoreApi } from 'reactflow'
 import { renderWorkflowFlowComponent } from '@/app/components/workflow/__tests__/workflow-test-env'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { TestLexicalComposer } from '@/test/lexical'
+import { WorkflowVariableWarningContext } from '../context'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../index'
 import { $createWorkflowVariableBlockNode, WorkflowVariableBlockNode } from '../node'
-
-// The editor owns the jump coordinates; ReactFlow owns applying them to its canvas.
-const setViewport = vi.hoisted(() => vi.fn())
-vi.mock('reactflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('reactflow')>()
-  return { ...actual, useReactFlow: () => ({ ...actual.useReactFlow(), setViewport }) }
-})
 
 type Props = Omit<ComponentProps<typeof WorkflowVariableBlockComponent>, 'nodeKey'>
 const nodeMap: WorkflowNodesMap = {
@@ -40,9 +36,11 @@ const availableVariables = [
 ]
 
 function renderVariables(props: Props[], hasContainer = true) {
+  let flowStore: ReturnType<typeof useStoreApi>
   let editor: LexicalEditor
   function Capture() {
     ;[editor] = useLexicalComposerContext()
+    flowStore = useStoreApi()
     return null
   }
   const { queryClient } = createConsoleQueryWrapper()
@@ -50,58 +48,67 @@ function renderVariables(props: Props[], hasContainer = true) {
     data: [],
     plugins: {},
   })
-  const view = renderWorkflowFlowComponent(
+  const renderEditor = (getWarning?: WorkflowVariableBlockType['getWarning']) => (
     <div id={hasContainer ? 'workflow-container' : undefined}>
-      <LexicalComposer
-        initialConfig={{
-          namespace: 'workflow-variable-test',
-          nodes: [WorkflowVariableBlockNode],
-          onError: (error: Error) => {
-            throw error
-          },
-          editorState: () => {
-            $getRoot().append(
-              $createParagraphNode().append(
-                ...props.map((props) =>
-                  $createWorkflowVariableBlockNode(
-                    props.variables,
-                    props.workflowNodesMap,
-                    props.getVarType,
-                    props.availableVariables,
+      <WorkflowVariableWarningContext value={getWarning}>
+        <TestLexicalComposer
+          initialConfig={{
+            namespace: 'workflow-variable-test',
+            nodes: [WorkflowVariableBlockNode],
+            onError: (error: Error) => {
+              throw error
+            },
+            editorState: () => {
+              $getRoot().append(
+                $createParagraphNode().append(
+                  ...props.map((props) =>
+                    $createWorkflowVariableBlockNode(
+                      props.variables,
+                      props.workflowNodesMap,
+                      props.getVarType,
+                      props.availableVariables,
+                    ),
                   ),
                 ),
-              ),
-            )
-          },
-        }}
-      >
-        <RichTextPlugin
-          contentEditable={<ContentEditable aria-label="Prompt" />}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
-        <Capture />
-      </LexicalComposer>
-    </div>,
-    { queryClient, reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } } },
+              )
+            },
+          }}
+        >
+          <RichTextPlugin
+            contentEditable={<ContentEditable aria-label="Prompt" />}
+            ErrorBoundary={LexicalErrorBoundary}
+          />
+          <Capture />
+        </TestLexicalComposer>
+      </WorkflowVariableWarningContext>
+    </div>
   )
+  const view = renderWorkflowFlowComponent(renderEditor(), {
+    queryClient,
+    reactFlowProps: { fitView: false, defaultViewport: { x: 0, y: 0, zoom: 2 } },
+  })
   const container = document.getElementById('workflow-container')
   if (container) {
     Object.defineProperty(container, 'clientWidth', { value: 1000, configurable: true })
     Object.defineProperty(container, 'clientHeight', { value: 800, configurable: true })
   }
-  return { ...view, editor: editor! }
+  return {
+    ...view,
+    editor: editor!,
+    flowStore: flowStore!,
+    rerenderWarning: (getWarning?: WorkflowVariableBlockType['getWarning']) =>
+      view.rerender(renderEditor(getWarning)),
+  }
 }
 
 describe('WorkflowVariableBlockComponent', () => {
   it('requests a canvas jump to the referenced node while preserving zoom', async () => {
     const user = userEvent.setup()
-    renderVariables([
+    const { flowStore } = renderVariables([
       { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
     ])
     await user.click(await screen.findByText('output'))
-    await waitFor(() =>
-      expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 0, y: 140, zoom: 2 }),
-    )
+    await waitFor(() => expect(flowStore.getState().transform).toEqual([0, 140, 2]))
   })
 
   it('updates every rendered variable after a workflow node-map broadcast', async () => {
@@ -135,7 +142,7 @@ describe('WorkflowVariableBlockComponent', () => {
     expect(screen.getByText('Renamed B')).toBeInTheDocument()
     expect(screen.queryByText('Node A')).not.toBeInTheDocument()
     expect(screen.queryByText('Node B')).not.toBeInTheDocument()
-    await user.hover(screen.getByText('output').closest('[data-base-ui-tooltip-trigger]')!)
+    await user.hover(screen.getByText('output'))
     expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
   })
 
@@ -144,15 +151,35 @@ describe('WorkflowVariableBlockComponent', () => {
     renderVariables([
       { variables: ['node-1', 'missing'], workflowNodesMap: nodeMap, availableVariables },
     ])
-    await user.hover(
-      (await screen.findByText('missing')).closest('[data-base-ui-tooltip-trigger]')!,
-    )
+    await user.hover(await screen.findByText('missing'))
     expect(await screen.findByText('workflow.errorMsg.invalidVariable')).toBeInTheDocument()
+  })
+
+  it('updates an existing token warning when input capabilities change without changing its reference', async () => {
+    const user = userEvent.setup()
+    const { editor, rerenderWarning } = renderVariables([
+      { variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables },
+    ])
+    const warning = 'This agent does not support this input type'
+    rerenderWarning((selector) => (selector[1] === 'output' ? warning : undefined))
+    await user.hover(await screen.findByText('output'))
+    expect(await screen.findByText(warning)).toBeVisible()
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      '{{#node-1.output#}}',
+    )
+
+    await user.unhover(screen.getByText('output'))
+    rerenderWarning()
+    await user.hover(screen.getByText('output'))
+    await waitFor(() => expect(screen.queryByText(warning)).not.toBeInTheDocument())
+    expect(editor.getEditorState().read(() => $getRoot().getTextContent())).toBe(
+      '{{#node-1.output#}}',
+    )
   })
 
   it('shows the nested path and computed type in the real preview', async () => {
     const user = userEvent.setup()
-    const getVarType = vi.fn(() => Type.number)
+    const getVarType = () => Type.number
     renderVariables([
       {
         variables: ['node-1', 'output', 'field'],
@@ -162,12 +189,6 @@ describe('WorkflowVariableBlockComponent', () => {
       },
     ])
     await user.hover(await screen.findByText('field'))
-    await waitFor(() =>
-      expect(getVarType).toHaveBeenCalledWith({
-        nodeId: 'node-1',
-        valueSelector: ['node-1', 'output', 'field'],
-      }),
-    )
     expect(await screen.findByText('output')).toBeInTheDocument()
     expect(screen.getByText('number')).toBeInTheDocument()
   })
@@ -177,27 +198,27 @@ describe('WorkflowVariableBlockComponent', () => {
     async (namespace) => {
       const user = userEvent.setup()
       const variables = namespace === 'rag' ? ['rag', 'shared', 'answer'] : [namespace, 'answer']
-      renderVariables([{ variables, workflowNodesMap: {} }])
+      const { flowStore } = renderVariables([{ variables, workflowNodesMap: {} }])
       const label = await screen.findByText(namespace === 'sys' ? 'sys.answer' : 'answer')
       await user.click(label)
-      expect(setViewport).not.toHaveBeenCalled()
+      expect(flowStore.getState().transform).toEqual([0, 0, 2])
       expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
     },
   )
 
   it('does not jump when the canvas container is absent', async () => {
     const user = userEvent.setup()
-    renderVariables(
+    const { flowStore } = renderVariables(
       [{ variables: ['node-1', 'output'], workflowNodesMap: nodeMap, availableVariables }],
       false,
     )
     await user.click(await screen.findByText('output'))
-    expect(setViewport).not.toHaveBeenCalled()
+    expect(flowStore.getState().transform).toEqual([0, 0, 2])
   })
 
   it('keeps the viewport finite when a source node has not been measured', async () => {
     const user = userEvent.setup()
-    renderVariables([
+    const { flowStore } = renderVariables([
       {
         variables: ['node-1', 'output'],
         workflowNodesMap: {
@@ -207,8 +228,6 @@ describe('WorkflowVariableBlockComponent', () => {
       },
     ])
     await user.click(await screen.findByText('output'))
-    await waitFor(() =>
-      expect(setViewport).toHaveBeenCalledExactlyOnceWith({ x: 200, y: 240, zoom: 2 }),
-    )
+    await waitFor(() => expect(flowStore.getState().transform).toEqual([200, 240, 2]))
   })
 })

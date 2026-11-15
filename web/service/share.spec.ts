@@ -175,8 +175,8 @@ describe('console commands shared with public apps', () => {
     await stopWorkflowMessage('app', 'workflow-task', AppSourceType.webApp)
     await stopWorkflowMessage('app', '', AppSourceType.installedApp, 'installed')
     expect(publicPost.mock.calls).toEqual([
-      ['chat-messages/chat-task/stop'],
-      ['workflows/tasks/workflow-task/stop'],
+      ['chat-messages/chat-task/stop', {}, undefined],
+      ['workflows/tasks/workflow-task/stop', {}, undefined],
     ])
     expect(request).not.toHaveBeenCalled()
   })

@@ -196,7 +196,7 @@ export type WorkflowPausedResponse = {
   data: {
     outputs: any // todo: remove any
     paused_nodes: string[]
-    reasons: any[] // todo: remove any
+    reasons: unknown[]
     workflow_run_id: string
   }
 }
@@ -345,6 +345,7 @@ export type AgentLogResponse = {
 }
 
 export type HumanInputFormData = {
+  form_version?: '1' | '2'
   form_id: string
   node_id: string
   node_title: string

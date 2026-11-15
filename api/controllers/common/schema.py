@@ -63,6 +63,11 @@ class SchemaNameCollisionError(ValueError):
 # names depending on which model pulled it in. Types that share a class name with
 # another documented type get a fixed, unique component name here instead.
 SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
+    "services.external_agents.io_contracts.JsonValue": "ExternalAgentJsonValue",
+    "services.external_agents.io_contracts.JsonObject": "ExternalAgentJsonObject",
+    "services.external_agents.io_contracts.OutputField": "ExternalAgentOutputField",
+    "services.external_agents.runtime_contracts.WaitPolicy": "ExternalAgentWaitPolicy",
+    "services.external_agents.runtime_contracts.TimeoutPolicy": "ExternalAgentTimeoutPolicy",
     "services.agent_config_service.AgentConfigVersionKind": "AgentConfigTargetVersionKind",
     "graphon.model_runtime.entities.common_entities.I18nObject": "ModelRuntimeI18nObject",
     "services.knowledge.entities.knowledge_entities.FileInfo": "KnowledgeFileInfo",
@@ -75,7 +80,8 @@ SCHEMA_NAME_OVERRIDES: Mapping[str, str] = {
     "core.app.entities.task_entities.WorkflowAppBlockingResponse.Data": "WorkflowAppBlockingResponseData",
 }
 
-_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],])")
+# Pydantic can append metadata such as "_Strict(strict=False)" after a process-local type ID.
+_REF_ID_SUFFIX = re.compile(r":\d+(?=$|[\[\],_])")
 _MODULE_PREFIX = re.compile(r"(?:[^.[\],]+\.)+([^.[\],]+)")
 
 # Normalized component name -> (component name, fully qualified source type, schema), per namespace.

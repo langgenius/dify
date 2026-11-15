@@ -37,12 +37,12 @@ type Props = Readonly<{
 }>
 
 const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: Props) => {
-  const { t } = useTranslation(['workflowHumanInput'])
+  const { t } = useTranslation(['workflowHumanInput', 'common'])
   const contentList = splitByOutputVar(data.form_content)
   const renderedFormInputs = getRenderedFormInputs(data.inputs, data.form_content)
   const defaultInputs = initializeInputs(renderedFormInputs, data.resolved_default_values || {})
   const [inputs, setInputs] = useState(defaultInputs)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submission, setSubmission] = useState<'idle' | 'submitting' | 'failed'>('idle')
 
   const handleInputsChange = (name: string, value: HumanInputFieldValue) => {
     setInputs((prev) => ({
@@ -54,9 +54,13 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
   const hasEmptySelectOrFileInput = hasInvalidSelectOrFileInput(renderedFormInputs, inputs)
 
   const submit = async (actionID: string) => {
-    setIsSubmitting(true)
-    await onSubmit?.({ inputs, action: actionID })
-    setIsSubmitting(false)
+    setSubmission('submitting')
+    try {
+      await onSubmit?.({ inputs, action: actionID })
+      setSubmission('idle')
+    } catch {
+      setSubmission('failed')
+    }
   }
 
   return (
@@ -67,7 +71,7 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
             <BreadcrumbItem className="shrink-0">
               <button
                 type="button"
-                className="flex cursor-pointer items-center gap-1 rounded-sm text-left system-sm-semibold-uppercase text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                className="flex cursor-pointer items-center gap-1 rounded-sm text-start system-sm-semibold-uppercase text-text-accent focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                 onClick={handleBack}
               >
                 <span className="i-ri-arrow-left-line size-4" aria-hidden />
@@ -96,11 +100,16 @@ const FormContent = ({ nodeName, data, showBackButton, handleBack, onSubmit }: P
             onInputChange={handleInputsChange}
           />
         ))}
+        {submission === 'failed' && (
+          <p role="alert" className="system-sm-regular text-text-destructive">
+            {t(($) => $['api.actionFailed'], { ns: 'common' })}
+          </p>
+        )}
         <div className="flex flex-wrap gap-1 py-1">
           {data.actions.map((action: UserAction) => (
             <Button
               key={action.id}
-              disabled={isSubmitting || hasEmptySelectOrFileInput}
+              disabled={submission === 'submitting' || hasEmptySelectOrFileInput}
               variant={getButtonStyle(action.button_style)}
               onClick={() => submit(action.id)}
             >

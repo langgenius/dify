@@ -19,6 +19,10 @@ import { datasets } from './datasets/orpc.gen.ts'
 import { emailCodeLogin } from './email-code-login/orpc.gen.ts'
 import { emailRegister } from './email-register/orpc.gen.ts'
 import { explore } from './explore/orpc.gen.ts'
+import { externalAgentInvocations } from './external-agent-invocations/orpc.gen.ts'
+import { externalAgentOperations } from './external-agent-operations/orpc.gen.ts'
+import { externalAgentTests } from './external-agent-tests/orpc.gen.ts'
+import { externalAgents } from './external-agents/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
 import { forgotPassword } from './forgot-password/orpc.gen.ts'
@@ -76,6 +80,10 @@ const communityContract = {
   emailCodeLogin,
   emailRegister,
   explore,
+  externalAgentInvocations,
+  externalAgentOperations,
+  externalAgentTests,
+  externalAgents,
   features,
   files,
   forgotPassword,

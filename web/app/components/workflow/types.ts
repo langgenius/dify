@@ -55,6 +55,7 @@ export const BlockEnum = {
   LoopStart: 'loop-start',
   LoopEnd: 'loop-end',
   HumanInput: 'human-input',
+  HumanInputV2: 'human-input-v2',
   DataSource: 'datasource',
   DataSourceEmpty: 'datasource-empty',
   KnowledgeBase: 'knowledge-index',
@@ -476,6 +477,8 @@ export type WorkflowRunningData = {
       download_url: string
     }
     status: string
+    external_wait?: boolean
+    human_input_wait?: boolean
     error?: string
     elapsed_time?: number
     total_tokens?: number

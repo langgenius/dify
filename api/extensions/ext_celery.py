@@ -2,8 +2,8 @@ import logging
 import ssl
 from datetime import timedelta
 from typing import Any, NotRequired
+from zoneinfo import ZoneInfo
 
-import pytz  # type: ignore[import-untyped]
 from celery import Celery, Task
 from celery.schedules import crontab
 from celery.signals import beat_init
@@ -16,6 +16,23 @@ from extensions.redis_names import normalize_redis_key_prefix
 from extensions.workflow_warm_shutdown import setup_workflow_warm_shutdown_handler
 
 logger = logging.getLogger(__name__)
+
+_celery_application_factory: type[Celery] = Celery
+_celery_application_created = False
+
+
+def configure_worker_application_factory(factory: type[Celery]) -> None:
+    """Select an internal worker bootstrap factory before creating any Dify app.
+
+    Ordinary API/worker startup retains Celery and its existing FlaskTask closure.
+    The dedicated cold-spawn bootstrap supplies a process-local reconstruction
+    subclass. Changing factories after construction is rejected so one process
+    cannot silently mix worker serialization or application-context contracts.
+    """
+    global _celery_application_factory
+    if _celery_application_created and factory is not _celery_application_factory:
+        raise RuntimeError("The worker application factory must be selected before Dify initialization.")
+    _celery_application_factory = factory
 
 
 class _CelerySentinelKwargsDict(TypedDict):
@@ -131,6 +148,8 @@ def get_celery_redis_global_keyprefix() -> str | None:
 
 
 def init_app(app: DifyApp) -> Celery:
+    global _celery_application_created
+
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             from core.logging.context import init_request_context
@@ -142,12 +161,13 @@ def init_app(app: DifyApp) -> Celery:
 
     broker_transport_options = get_celery_broker_transport_options()
 
-    celery_app = Celery(
+    celery_app = _celery_application_factory(
         app.name,
         task_cls=FlaskTask,
         broker=dify_config.CELERY_BROKER_URL,
         backend=dify_config.CELERY_BACKEND,
     )
+    _celery_application_created = True
 
     celery_app.conf.update(
         result_backend=dify_config.CELERY_RESULT_BACKEND,
@@ -156,9 +176,18 @@ def init_app(app: DifyApp) -> Celery:
         worker_log_format=dify_config.LOG_FORMAT,
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
-        timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
+        timezone=ZoneInfo(dify_config.LOG_TZ or "UTC"),
         task_ignore_result=True,
         task_annotations=dify_config.CELERY_TASK_ANNOTATIONS,
+        task_routes={
+            "tasks.external_agent_task.drain_external_commands": {"queue": "retention"},
+            "tasks.external_agent_task.maintain_external_agents": {"queue": "retention"},
+            "tasks.external_agent_task.execute_external_trace_delivery": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "tasks.external_agent_task.*": {"queue": dify_config.EXTERNAL_AGENTS_QUEUE},
+            "tasks.trace_delivery_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "tasks.application_trace_task.*": {"queue": dify_config.OPS_TRACE_QUEUE},
+            "schedule.collect_agent_sandbox_usage.collect_agent_sandbox_usage": {"queue": dify_config.OPS_TRACE_QUEUE},
+        },
     )
 
     if dify_config.CELERY_BACKEND == "redis":
@@ -188,6 +217,7 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "tasks.external_agent_task",
         "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
@@ -202,17 +232,32 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.install_default_plugins_task",  # tenant default plugin installation
         "tasks.refresh_billing_vector_space_task",  # billing vector-space cache refresh
         "tasks.workflow_run_archive_download_tasks",  # workflow-run archive download preparation
+        "tasks.im_message_inbox_tasks",  # durable IM callback processing
+        "tasks.human_input_im_card_tasks",  # post-submission IM card updates
+        "tasks.im_contact_sync_tasks",  # durable IM Contact directory synchronization
         "tasks.knowledge_fs_initial_source_preview_tasks",  # datasource previews use the standard dataset queue
         "tasks.knowledge_fs_agent_investigation_tasks",
         "tasks.knowledge_fs_failed_retrieval_tasks",  # best-effort Workflow quality capture uses dataset workers
         "tasks.knowledge_fs_upgrade_tasks",  # legacy Dataset upgrades use a dedicated queue and worker
         "tasks.knowledge_fs_background_tasks",  # local-engine tasks on dedicated prefork queues
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
+        "tasks.trace_delivery_task",  # trace delivery and provider export retries
+        "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    beat_schedule["external_agent_commands"] = {
+        "task": "tasks.external_agent_task.drain_external_commands",
+        "schedule": timedelta(seconds=1 if dify_config.EXTERNAL_AGENTS_ENABLED else 5),
+        "options": {"queue": "retention", "expires": 30},
+    }
+    beat_schedule["external_agent_maintenance"] = {
+        "task": "tasks.external_agent_task.maintain_external_agents",
+        "schedule": timedelta(seconds=dify_config.EXTERNAL_AGENTS_SWEEP_SECONDS),
+        "options": {"queue": "retention", "expires": 60},
+    }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 
@@ -252,6 +297,11 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["knowledge_fs_upgrade_file_cleanup"] = {
             "task": "tasks.knowledge_fs_upgrade_tasks.cleanup_deferred_knowledge_fs_upgrade_files",
             "schedule": timedelta(seconds=dify_config.KNOWLEDGE_FS_LIFECYCLE_POLL_INTERVAL_SECONDS),
+        }
+    if dify_config.ENABLE_TRACE_PAYLOAD_SWEEP_TASK:
+        beat_schedule["sweep_trace_payloads"] = {
+            "task": "tasks.trace_delivery_task.sweep_trace_payloads",
+            "schedule": crontab(minute="30", hour="3"),
         }
     if dify_config.OPS_AGENT_TRACE_ENABLED:
         imports.append("tasks.application_trace_task")

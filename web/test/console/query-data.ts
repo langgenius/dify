@@ -135,8 +135,10 @@ export const seedEducationStatus = (
 ): EducationStatusResponse => {
   const data: EducationStatusResponse = {
     allow_refresh: false,
+    can_redeem_discount: false,
     expire_at: null,
     is_student: false,
+    result: false,
     ...overrides,
   }
   queryClient.setQueryData(consoleQuery.account.education.get.queryOptions().queryKey, data)

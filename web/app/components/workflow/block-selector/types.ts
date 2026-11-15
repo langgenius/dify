@@ -9,6 +9,7 @@ import type {
 } from '../../plugins/types'
 import type { Collection, CollectionProviderType, Event } from '../../tools/types'
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { ExternalAgentWorkflowPreviewDefaultValue } from '@/features/agent-v2/external-agent/workflow-preview/types'
 
 export const TabType = {
   Start: 'start',
@@ -123,7 +124,10 @@ type AgentDefaultValue = {
 
 export type PluginDefaultValue = ToolDefaultValue | DataSourceDefaultValue | TriggerDefaultValue
 
-export type BlockDefaultValue = PluginDefaultValue | AgentDefaultValue
+export type BlockDefaultValue =
+  | PluginDefaultValue
+  | AgentDefaultValue
+  | ExternalAgentWorkflowPreviewDefaultValue
 
 export type ToolValue = {
   provider_name: string

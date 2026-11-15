@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from pytest_mock import MockerFixture
 
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
@@ -18,7 +19,7 @@ def _publish_mock(manager: MessageBasedAppQueueManager) -> MagicMock:
 
 class TestOutputModeration:
     @pytest.fixture
-    def queue_manager(self) -> MessageBasedAppQueueManager:
+    def queue_manager(self, mocker: MockerFixture) -> MessageBasedAppQueueManager:
         with patch("core.app.apps.base_app_queue_manager.redis_client.setex"):
             manager = MessageBasedAppQueueManager(
                 task_id="test-task",
@@ -28,7 +29,7 @@ class TestOutputModeration:
                 app_mode="chat",
                 message_id="test-message",
             )
-        manager.publish = MagicMock(wraps=manager.publish)
+        mocker.patch.object(manager, "publish", wraps=manager.publish)
         return manager
 
     @pytest.fixture

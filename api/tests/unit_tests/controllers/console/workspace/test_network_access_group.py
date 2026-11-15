@@ -12,10 +12,11 @@ from flask import Flask, Response
 from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import sessionmaker
-from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, HTTPException, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadGateway, HTTPException, NotFound, ServiceUnavailable
 from werkzeug.test import TestResponse
 
 from controllers.console.app.error import AppNotFoundError
+from controllers.console.workspace import error as console_errors
 from controllers.console.workspace.network_access_group import (
     AppNetworkAccessGroupApi,
     AppNetworkAccessGroupStatusApi,
@@ -29,18 +30,19 @@ from controllers.console.workspace.network_access_group import (
     NetworkAccessGroupDeleteQuery,
     NetworkAccessGroupUpdatePayload,
     _translate_service_error,
-    _translate_upstream_error,
 )
 from controllers.console.wraps import validate_request
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError
 from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from extensions.ext_login import DifyLoginManager
+from libs.exception import BaseHTTPException
 from libs.login import AccountWithTenant
 from machinery.context import RequestContext
 from models.account import Account, AccountStatus
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
+from services.billing_client import saas, transport
 from services.entities.network_access_group_entities import (
     NetworkAccessAppConfig,
     NetworkAccessAppStatus,
@@ -55,15 +57,23 @@ from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
     NetworkAccessGroupAppNotFoundError,
     NetworkAccessGroupAppRecord,
+    NetworkAccessGroupBoundError,
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
+    NetworkAccessGroupForbiddenError,
+    NetworkAccessGroupInvalidInputError,
     NetworkAccessGroupInvalidPolicyError,
     NetworkAccessGroupInvalidResponseError,
+    NetworkAccessGroupNameConflictError,
+    NetworkAccessGroupNotEntitledError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupService,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
+    NetworkAccessGroupVersionConflictError,
 )
+from tests.helpers.unit.config_override import config_overrides_context
 
 TENANT_ID = "11111111-1111-4111-8111-111111111111"
 ACCOUNT_ID = "22222222-2222-4222-8222-222222222222"
@@ -348,8 +358,13 @@ def test_app_status_uses_minimal_upstream_route_and_filters_scopes_for_current_m
     assert len(requests) == 1
     assert requests[0].method == "GET"
     assert requests[0].url.path == f"/tenants/{TENANT_ID}/apps/{APP_ID}/network-access-group/status"
-    assert dict(requests[0].url.params) == {"actor_account_id": ACCOUNT_ID}
+    assert dict(requests[0].url.params) == {"actorAccountId": ACCOUNT_ID}
     assert requests[0].headers["Billing-Api-Secret-Key"] == "synthetic"
+
+
+def _status_wire(**overrides: object) -> dict[str, object]:
+    reply = saas.GetAppNetworkAccessGroupStatusReply(entitled=False, configured=False, enabled=False, access_points=[])
+    return {**reply.model_dump(mode="json"), **overrides}
 
 
 @pytest.mark.parametrize(
@@ -358,12 +373,12 @@ def test_app_status_uses_minimal_upstream_route_and_filters_scopes_for_current_m
         ({}, True, {"entitled": False, "configured": False, "enabled": False, "covered_count": 0}),
         ({"entitled": True}, True, {"entitled": True, "configured": False, "enabled": False, "covered_count": 0}),
         (
-            {"entitled": True, "configured": True, "access_points": ["webapp"]},
+            {"entitled": True, "configured": True, "accessPoints": ["webapp"]},
             True,
             {"entitled": True, "configured": True, "enabled": False, "covered_count": 1},
         ),
         (
-            {"entitled": True, "configured": True, "enabled": True, "access_points": ["webapp"]},
+            {"entitled": True, "configured": True, "enabled": True, "accessPoints": ["webapp"]},
             False,
             {"entitled": False, "configured": True, "enabled": True, "covered_count": 1},
         ),
@@ -375,7 +390,7 @@ def test_app_status_preserves_saved_state_and_applies_local_entitlement(
     paid: bool,
     expected: dict[str, object],
 ) -> None:
-    response, _requests = _typed_status_http_response(account_application_services, wire, paid=paid)
+    response, _requests = _typed_status_http_response(account_application_services, _status_wire(**wire), paid=paid)
 
     assert response.status_code == 200
     assert response.get_json() == {**expected, "available_count": 4}
@@ -391,11 +406,13 @@ def test_app_status_rejects_disallowed_roles_before_upstream_read(
     assert requests == []
 
 
-@pytest.mark.parametrize("upstream_status", [403, 404])
+@pytest.mark.parametrize(("upstream_status", "reason"), [(403, "NETWORK_ACCESS_NOT_ENTITLED"), (404, "APP_NOT_FOUND")])
 def test_app_status_does_not_fall_back_to_full_binding_after_upstream_error(
-    account_application_services: ApplicationServices, upstream_status: int
+    account_application_services: ApplicationServices, upstream_status: int, reason: str
 ) -> None:
-    response, requests = _typed_status_http_response(account_application_services, {}, upstream_status=upstream_status)
+    response, requests = _typed_status_http_response(
+        account_application_services, {"code": upstream_status, "reason": reason}, upstream_status=upstream_status
+    )
 
     assert response.status_code == upstream_status
     assert len(requests) == 1
@@ -403,11 +420,11 @@ def test_app_status_does_not_fall_back_to_full_binding_after_upstream_error(
 
 
 @pytest.mark.parametrize("field", ["entitled", "configured", "enabled"])
-@pytest.mark.parametrize("value", ["false", "true", 0, 1, None])
+@pytest.mark.parametrize("value", ["maybe", 2, None])
 def test_app_status_rejects_non_boolean_flags(
     account_application_services: ApplicationServices, field: str, value: object
 ) -> None:
-    response, _requests = _typed_status_http_response(account_application_services, {field: value})
+    response, _requests = _typed_status_http_response(account_application_services, _status_wire(**{field: value}))
 
     assert response.status_code == 502
 
@@ -415,48 +432,45 @@ def test_app_status_rejects_non_boolean_flags(
 @pytest.mark.parametrize(
     "wire",
     [
-        {"access_points": "webapp"},
-        {"access_points": [1]},
-        {"access_points": ["webapp"], "accessPoints": ["mcp"]},
+        {"accessPoints": "webapp"},
+        {"accessPoints": [1]},
+        {"accessPoints": None},
     ],
 )
-def test_app_status_rejects_malformed_or_conflicting_scopes(
+def test_app_status_rejects_malformed_scopes(
     account_application_services: ApplicationServices, wire: Mapping[str, object]
 ) -> None:
-    response, _requests = _typed_status_http_response(account_application_services, wire)
+    response, _requests = _typed_status_http_response(account_application_services, _status_wire(**wire))
 
     assert response.status_code == 502
 
 
 @pytest.mark.parametrize(
-    ("status_code", "expected_exception"),
+    ("service_error", "expected_code", "expected_status"),
     [
-        (400, BadRequest),
-        (401, ServiceUnavailable),
-        (403, Forbidden),
-        (404, NotFound),
-        (409, Conflict),
-        (500, ServiceUnavailable),
-        (418, BadGateway),
+        (NetworkAccessGroupUpstreamError(unavailable=True), "billing_unavailable", 503),
+        (NetworkAccessGroupUpstreamError(unavailable=False), "billing_operation_failed", 502),
+        (NetworkAccessGroupInvalidInputError(), "network_access_invalid_input", 400),
+        (NetworkAccessGroupForbiddenError(), "network_access_forbidden", 403),
+        (NetworkAccessGroupNotEntitledError(), "network_access_not_entitled", 403),
+        (NetworkAccessGroupNotFoundError(), "network_access_group_not_found", 404),
+        (NetworkAccessGroupVersionConflictError(), "network_access_version_conflict", 409),
+        (NetworkAccessGroupNameConflictError(), "network_access_group_name_conflict", 409),
+        (NetworkAccessGroupBoundError(), "network_access_group_bound", 409),
+        (NetworkAccessGroupAppNotFoundError(), "app_not_found", 404),
+        (NetworkAccessGroupAccessDeniedError(), "network_access_role_denied", 403),
+        (NetworkAccessGroupUnsupportedAppModeError("channel"), "network_access_unsupported_app_mode", 400),
+        (NetworkAccessGroupUnsupportedAccessPointsError(["trigger"]), "network_access_unsupported_access_points", 400),
     ],
 )
-def test_upstream_error_mapping(status_code: int, expected_exception: type[HTTPException]) -> None:
-    assert isinstance(_translate_upstream_error(NetworkAccessGroupUpstreamError(status_code)), expected_exception)
+def test_control_plane_error_maps_to_console_error_code(
+    service_error: NetworkAccessGroupError, expected_code: str, expected_status: int
+) -> None:
+    error = _translate_service_error(service_error)
 
-
-@pytest.mark.parametrize(
-    ("reason", "expected_message"),
-    [
-        ("NETWORK_ACCESS_VERSION_CONFLICT", "changed"),
-        ("NETWORK_ACCESS_GROUP_NAME_CONFLICT", "An IP policy with this name already exists."),
-        ("NETWORK_ACCESS_GROUP_LIMIT", "reached"),
-    ],
-)
-def test_conflict_error_mapping_preserves_safe_actionable_reason(reason: str, expected_message: str) -> None:
-    error = _translate_upstream_error(NetworkAccessGroupUpstreamError(409, reason))
-    assert isinstance(error, Conflict)
-    assert error.description is not None
-    assert expected_message in error.description
+    assert isinstance(error, BaseHTTPException)
+    assert error.error_code == expected_code
+    assert error.code == expected_status
 
 
 @pytest.mark.parametrize("mutation", ["create", "update"])
@@ -464,7 +478,7 @@ def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(
     account_application_services: ApplicationServices, mocker: MockerFixture, mutation: str
 ) -> None:
     service = account_application_services.network_access_groups
-    upstream_error = NetworkAccessGroupUpstreamError(409, "NETWORK_ACCESS_GROUP_NAME_CONFLICT")
+    upstream_error = NetworkAccessGroupNameConflictError()
     mock_create_group = mocker.patch.object(service, "create_group", side_effect=upstream_error)
     mock_update_group = mocker.patch.object(service, "update_group", side_effect=upstream_error)
 
@@ -487,32 +501,35 @@ def test_duplicate_policy_name_mutations_preserve_conflict_and_public_message(
                 group_id=UUID(GROUP_ID),
             )
 
-    with _application_services(account_application_services), pytest.raises(Conflict) as exc_info:
+    with (
+        _application_services(account_application_services),
+        pytest.raises(console_errors.NetworkAccessGroupNameConflictError) as exc_info,
+    ):
         invoke_mutation()
 
     assert exc_info.value.code == 409
     assert exc_info.value.description == "An IP policy with this name already exists."
     assert exc_info.value.__cause__ is upstream_error
-    assert upstream_error.reason == "NETWORK_ACCESS_GROUP_NAME_CONFLICT"
     assert mock_create_group.call_count == (1 if mutation == "create" else 0)
     assert mock_update_group.call_count == (1 if mutation == "update" else 0)
-
-
-def test_internal_secret_error_is_not_reported_as_tenant_input_failure() -> None:
-    assert isinstance(
-        _translate_upstream_error(NetworkAccessGroupUpstreamError(400, "INVALID_SECRET_KEY")),
-        ServiceUnavailable,
-    )
 
 
 @pytest.mark.parametrize(
     ("service_error", "expected_exception", "expected_message"),
     [
-        (NetworkAccessGroupAccessDeniedError(), Forbidden, "workspace role"),
+        (NetworkAccessGroupAccessDeniedError(), console_errors.NetworkAccessRoleDeniedError, "workspace role"),
         (NetworkAccessGroupEntitlementUnavailableError(), ServiceUnavailable, "temporarily unavailable"),
         (NetworkAccessGroupAppNotFoundError(), AppNotFoundError, "not found"),
-        (NetworkAccessGroupUnsupportedAppModeError("channel"), BadRequest, "channel"),
-        (NetworkAccessGroupUnsupportedAccessPointsError(["trigger"]), BadRequest, "trigger"),
+        (
+            NetworkAccessGroupUnsupportedAppModeError("channel"),
+            console_errors.NetworkAccessUnsupportedAppModeError,
+            "channel",
+        ),
+        (
+            NetworkAccessGroupUnsupportedAccessPointsError(["trigger"]),
+            console_errors.NetworkAccessUnsupportedAccessPointsError,
+            "trigger",
+        ),
         (NetworkAccessGroupInvalidPolicyError(), ServiceUnavailable, "cannot be evaluated"),
         (NetworkAccessGroupInvalidResponseError(), BadGateway, "invalid response"),
     ],
@@ -594,7 +611,10 @@ def test_controller_maps_service_error_before_serialization(
     service = account_application_services.network_access_groups
     mocker.patch.object(service, "list_groups", side_effect=NetworkAccessGroupAccessDeniedError)
 
-    with _application_services(account_application_services), pytest.raises(Forbidden, match="workspace role"):
+    with (
+        _application_services(account_application_services),
+        pytest.raises(console_errors.NetworkAccessRoleDeniedError, match="workspace role"),
+    ):
         unwrap(CurrentWorkspaceNetworkAccessGroupsApi().get)(
             CurrentWorkspaceNetworkAccessGroupsApi(),
             request_context=_request_context(),
@@ -890,7 +910,7 @@ def test_current_ip_read_maps_role_denial_without_resolving_ip(
             "controllers.console.workspace.network_access_group.resolve_network_access_client_ip"
         ) as resolve_client_ip,
     ):
-        with pytest.raises(Forbidden, match="workspace role") as exc_info:
+        with pytest.raises(console_errors.NetworkAccessRoleDeniedError, match="workspace role") as exc_info:
             unwrap(api.get)(api, request_context=_request_context())
         response = app.process_response(app.make_response(exc_info.value.get_response()))
 
@@ -961,7 +981,7 @@ def test_current_ip_read_response_schema_exposes_only_client_ip() -> None:
     assert schema["properties"]["client_ip"]["type"] == "string"
 
 
-@pytest.mark.parametrize("group_field", ["group_id", "groupId", "policy_id", "policyId"])
+@pytest.mark.parametrize("group_field", ["group_id", "groupId"])
 @pytest.mark.parametrize("stale_only", [False, True])
 def test_typed_gateway_service_controller_pipeline_preserves_binding_configuration(
     account_application_services: ApplicationServices, group_field: str, stale_only: bool
@@ -979,6 +999,7 @@ def test_typed_gateway_service_controller_pipeline_preserves_binding_configurati
             group_field: GROUP_ID,
             "accessPoints": ["future_scope"] if stale_only else ["webapp"],
             "version": "3",
+            "updatedByAccountId": "",
             "createdAt": "2026-08-21T00:00:00Z",
             "updatedAt": "2026-08-21T00:00:00Z",
         },
@@ -1002,7 +1023,8 @@ def test_malformed_upstream_response_maps_to_http_502_before_business_truthiness
         {
             "tenantId": TENANT_ID,
             "appId": APP_ID,
-            "entitled": "false",
+            "entitled": "maybe",
+            "binding": None,
             "effectiveEnabled": False,
         },
     )
@@ -1015,13 +1037,12 @@ def _typed_binding_http_response(services: ApplicationServices, wire: Mapping[st
     apps = SQLAlchemyNetworkAccessGroupAppRepository(session_factory=sessionmaker())
     memberships = WorkspaceRepository(session_factory=sessionmaker())
     entitlement = BillingNetworkAccessGroupEntitlementGateway()
-    with httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=wire))) as client:
-        gateway = NetworkAccessGroupGateway(
-            base_url="https://test.invalid",
-            fallback_base_url="",
-            secret_key="synthetic",
-            http_client=client,
-        )
+    with (
+        httpx.Client(transport=httpx.MockTransport(lambda _request: httpx.Response(200, json=wire))) as client,
+        patch.object(transport, "_http_client", client),
+        config_overrides_context(NETWORK_ACCESS_API_URL="https://test.invalid"),
+    ):
+        gateway = NetworkAccessGroupGateway()
         service = NetworkAccessGroupService(
             control_plane=gateway, apps=apps, memberships=memberships, entitlement=entitlement
         )
@@ -1066,13 +1087,12 @@ def _typed_status_http_response(
             return httpx.Response(403, json={"reason": "FORBIDDEN"})
         return httpx.Response(upstream_status, json=wire)
 
-    with httpx.Client(transport=httpx.MockTransport(respond)) as client:
-        gateway = NetworkAccessGroupGateway(
-            base_url="https://test.invalid",
-            fallback_base_url="",
-            secret_key="synthetic",
-            http_client=client,
-        )
+    with (
+        httpx.Client(transport=httpx.MockTransport(respond)) as client,
+        patch.object(transport, "_http_client", client),
+        config_overrides_context(NETWORK_ACCESS_API_URL="https://test.invalid", BILLING_API_SECRET_KEY="synthetic"),
+    ):
+        gateway = NetworkAccessGroupGateway()
         service = NetworkAccessGroupService(
             control_plane=gateway, apps=apps, memberships=memberships, entitlement=entitlement
         )

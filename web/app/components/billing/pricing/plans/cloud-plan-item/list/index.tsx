@@ -1,141 +1,142 @@
 import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
+import type { TFunction } from 'i18next'
+import type { PlanInfo } from '../../../../type'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
+import { ALL_PLANS } from '../../../../config'
 import { CloudPlanFeature } from './item'
+
+type PlanFeature = {
+  id: string
+  label: string
+  description?: string
+}
+
+function getPlanFeatureGroups(planInfo: PlanInfo, t: TFunction<['billing']>): PlanFeature[][] {
+  const { messageRequest, triggerEvents, startNodes, workflowExecution, logHistory, apiRateLimit } =
+    planInfo
+
+  return [
+    [
+      {
+        id: 'messageRequest',
+        label: messageRequest.perMonth
+          ? t(($) => $['plansCommon.messageRequest.titlePerMonth'], {
+              count: messageRequest.count,
+            })
+          : t(($) => $['plansCommon.messageRequest.title'], { count: messageRequest.count }),
+        description: t(($) => $['plansCommon.messageRequest.tooltip']),
+      },
+      { id: 'teamWorkspace', label: t(($) => $['plansCommon.teamWorkspace'], { count: 1 }) },
+      {
+        id: 'teamMembers',
+        label: t(($) => $['plansCommon.teamMember'], { count: planInfo.teamMembers }),
+      },
+      {
+        id: 'buildApps',
+        label: t(($) => $['plansCommon.buildApps'], { count: planInfo.buildApps }),
+      },
+    ],
+    [
+      {
+        id: 'documents',
+        label: t(($) => $['plansCommon.documents'], { count: planInfo.documents }),
+        description: t(($) => $['plansCommon.documentsTooltip']),
+      },
+      {
+        id: 'vectorSpace',
+        label: t(($) => $['plansCommon.vectorSpace'], { size: planInfo.vectorSpace }),
+        description: t(($) => $['plansCommon.vectorSpaceTooltip']),
+      },
+      {
+        id: 'documentsRequestQuota',
+        label: t(($) => $['plansCommon.documentsRequestQuota'], {
+          count: planInfo.documentsRequestQuota,
+        }),
+        description: t(($) => $['plansCommon.documentsRequestQuotaTooltip']),
+      },
+      {
+        id: 'documentProcessingPriority',
+        label: [
+          t(($) => $[`plansCommon.priority.${planInfo.documentProcessingPriority}`]),
+          t(($) => $['plansCommon.documentProcessingPriority']),
+        ].join(''),
+      },
+    ],
+    [
+      {
+        id: 'triggerEvents',
+        label:
+          triggerEvents === 'unlimited'
+            ? t(($) => $['plansCommon.triggerEvents.unlimited'])
+            : triggerEvents.perMonth
+              ? t(($) => $['plansCommon.triggerEvents.professional'], {
+                  count: triggerEvents.count,
+                })
+              : t(($) => $['plansCommon.triggerEvents.sandbox'], { count: triggerEvents.count }),
+        description: t(($) => $['plansCommon.triggerEvents.tooltip']),
+      },
+      {
+        id: 'startNodes',
+        label:
+          startNodes === 'unlimited'
+            ? t(($) => $['plansCommon.startNodes.unlimited'])
+            : t(($) => $['plansCommon.startNodes.limited'], { count: startNodes }),
+      },
+      {
+        id: 'workflowExecution',
+        label: t(($) => $[`plansCommon.workflowExecution.${workflowExecution}`]),
+        description: t(($) => $['plansCommon.workflowExecution.tooltip']),
+      },
+    ],
+    [
+      {
+        id: 'annotatedResponse',
+        label: t(($) => $['plansCommon.annotatedResponse.title'], {
+          count: planInfo.annotatedResponse,
+        }),
+        description: t(($) => $['plansCommon.annotatedResponse.tooltip']),
+      },
+      {
+        id: 'logHistory',
+        label: t(($) => $['plansCommon.logsHistory'], {
+          days:
+            logHistory === 'unlimited'
+              ? t(($) => $['plansCommon.unlimited'])
+              : `${logHistory} ${t(($) => $['plansCommon.days'])}`,
+        }),
+      },
+      apiRateLimit === 'unlimited'
+        ? { id: 'apiRateLimit', label: t(($) => $['plansCommon.unlimitedApiRate']) }
+        : {
+            id: 'apiRateLimit',
+            label: `${t(($) => $['plansCommon.apiRateLimitUnit'], { count: apiRateLimit })} ${t(($) => $['plansCommon.apiRateLimit'])}/${t(($) => $['plansCommon.month'])}`,
+            description: t(($) => $['plansCommon.apiRateLimitTooltip']),
+          },
+    ],
+    [{ id: 'modelProviders', label: t(($) => $['plansCommon.modelProviders']) }],
+  ]
+}
 
 export function CloudPlanFeatures({ plan }: { plan: CloudPlan }) {
   const { t } = useTranslation(['billing'])
-  const isFreePlan = plan === 'sandbox'
-  const planInfo = ALL_PLANS[plan]
+  const featureGroups = getPlanFeatureGroups(ALL_PLANS[plan], t)
 
   return (
     <div className="flex flex-col gap-y-2.5 p-6">
-      <CloudPlanFeature
-        label={
-          isFreePlan
-            ? t(($) => $['plansCommon.messageRequest.title'], {
-                ns: 'billing',
-                count: planInfo.messageRequest,
-              })
-            : t(($) => $['plansCommon.messageRequest.titlePerMonth'], {
-                ns: 'billing',
-                count: planInfo.messageRequest,
-              })
-        }
-        description={t(($) => $['plansCommon.messageRequest.tooltip'], { ns: 'billing' }) as string}
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.teamWorkspace'], {
-          ns: 'billing',
-          count: planInfo.teamWorkspace,
-        })}
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.teamMember'], {
-          ns: 'billing',
-          count: planInfo.teamMembers,
-        })}
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.buildApps'], { ns: 'billing', count: planInfo.buildApps })}
-      />
-      <Separator className="my-2 from-divider-accent" variant="gradient" />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.documents'], { ns: 'billing', count: planInfo.documents })}
-        description={t(($) => $['plansCommon.documentsTooltip'], { ns: 'billing' }) as string}
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.vectorSpace'], {
-          ns: 'billing',
-          size: planInfo.vectorSpace,
-        })}
-        description={t(($) => $['plansCommon.vectorSpaceTooltip'], { ns: 'billing' }) as string}
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.documentsRequestQuota'], {
-          ns: 'billing',
-          count: planInfo.documentsRequestQuota,
-        })}
-        description={t(($) => $['plansCommon.documentsRequestQuotaTooltip'], { ns: 'billing' })}
-      />
-      <CloudPlanFeature
-        label={[
-          t(($) => $[`plansCommon.priority.${planInfo.documentProcessingPriority}`], {
-            ns: 'billing',
-          }),
-          t(($) => $['plansCommon.documentProcessingPriority'], { ns: 'billing' }),
-        ].join('')}
-      />
-      <Separator className="my-2 from-divider-accent" variant="gradient" />
-      <CloudPlanFeature
-        label={
-          planInfo.triggerEvents === NUM_INFINITE
-            ? t(($) => $['plansCommon.triggerEvents.unlimited'], { ns: 'billing' })
-            : plan === 'sandbox'
-              ? t(($) => $['plansCommon.triggerEvents.sandbox'], {
-                  ns: 'billing',
-                  count: planInfo.triggerEvents,
-                })
-              : t(($) => $['plansCommon.triggerEvents.professional'], {
-                  ns: 'billing',
-                  count: planInfo.triggerEvents,
-                })
-        }
-        description={t(($) => $['plansCommon.triggerEvents.tooltip'], { ns: 'billing' }) as string}
-      />
-      <CloudPlanFeature
-        label={
-          plan === 'sandbox'
-            ? t(($) => $['plansCommon.startNodes.limited'], { ns: 'billing', count: 2 })
-            : t(($) => $['plansCommon.startNodes.unlimited'], { ns: 'billing' })
-        }
-      />
-      <CloudPlanFeature
-        label={
-          plan === 'sandbox'
-            ? t(($) => $['plansCommon.workflowExecution.standard'], { ns: 'billing' })
-            : plan === 'professional'
-              ? t(($) => $['plansCommon.workflowExecution.faster'], { ns: 'billing' })
-              : t(($) => $['plansCommon.workflowExecution.priority'], { ns: 'billing' })
-        }
-        description={
-          t(($) => $['plansCommon.workflowExecution.tooltip'], { ns: 'billing' }) as string
-        }
-      />
-      <Separator className="my-2 from-divider-accent" variant="gradient" />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.annotatedResponse.title'], {
-          ns: 'billing',
-          count: planInfo.annotatedResponse,
-        })}
-        description={
-          t(($) => $['plansCommon.annotatedResponse.tooltip'], { ns: 'billing' }) as string
-        }
-      />
-      <CloudPlanFeature
-        label={t(($) => $['plansCommon.logsHistory'], {
-          ns: 'billing',
-          days:
-            planInfo.logHistory === NUM_INFINITE
-              ? (t(($) => $['plansCommon.unlimited'], { ns: 'billing' }) as string)
-              : `${planInfo.logHistory} ${t(($) => $['plansCommon.days'], { ns: 'billing' })}`,
-        })}
-      />
-      <CloudPlanFeature
-        label={
-          planInfo.apiRateLimit === NUM_INFINITE
-            ? t(($) => $['plansCommon.unlimitedApiRate'], { ns: 'billing' })
-            : `${t(($) => $['plansCommon.apiRateLimitUnit'], { ns: 'billing', count: planInfo.apiRateLimit })} ${t(($) => $['plansCommon.apiRateLimit'], { ns: 'billing' })}/${t(($) => $['plansCommon.month'], { ns: 'billing' })}`
-        }
-        description={
-          planInfo.apiRateLimit === NUM_INFINITE
-            ? undefined
-            : (t(($) => $['plansCommon.apiRateLimitTooltip'], { ns: 'billing' }) as string)
-        }
-      />
-      <Separator className="my-2 from-divider-accent" variant="gradient" />
-      <CloudPlanFeature label={t(($) => $['plansCommon.modelProviders'], { ns: 'billing' })} />
+      {featureGroups.map((features, groupIndex) => (
+        <Fragment key={features[0]!.id}>
+          {groupIndex > 0 && <Separator className="my-2 from-divider-accent" variant="gradient" />}
+          {features.map((feature) => (
+            <CloudPlanFeature
+              key={feature.id}
+              label={feature.label}
+              description={feature.description}
+            />
+          ))}
+        </Fragment>
+      ))}
     </div>
   )
 }

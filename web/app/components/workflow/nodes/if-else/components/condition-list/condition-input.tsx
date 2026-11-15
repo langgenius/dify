@@ -30,7 +30,7 @@ const ConditionInput = ({
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' }) || ''}
+      placeholder={t(($) => $['nodes.ifElse.enterValue'], { ns: 'workflowLogic' })}
       workflowVariableBlock={{
         show: true,
         variables: nodesOutputVars || [],

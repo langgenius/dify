@@ -362,7 +362,7 @@ describe('CredentialPanel', () => {
     await waitFor(() =>
       expect(mockToastNotify).toHaveBeenCalledWith({
         type: 'error',
-        message: 'common.actionMsg.modifiedUnsuccessfully',
+        message: 'Unavailable',
       }),
     )
     expect(apiKey).toBeEnabled()

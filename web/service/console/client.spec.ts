@@ -1,3 +1,4 @@
+import type { AgentAppPagination } from '@dify/contracts/api/console/agent/types.gen'
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
 import type { AppSiteResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { TagResponse as Tag } from '@dify/contracts/api/console/tags/types.gen'
@@ -5,6 +6,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createExternalAgentCapabilities } from '@/test/console/external-agents'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -212,6 +214,46 @@ describe('consoleQuery transport context', () => {
     expect(uploaded.name).toBe(file.name)
     expect(uploaded.type).toBe(file.type)
     expect(await uploaded.text()).toBe('GIF89a')
+  })
+
+  it('uploads external agent test files with a page session as multipart data', async () => {
+    const file = new File(['test content'], 'notes.txt', { type: 'text/plain' })
+    const response = {
+      lease_id: 'lease-1',
+      filename: file.name,
+      media_type: file.type,
+      size: file.size,
+      expires_at: '2099-01-01T00:00:00Z',
+    }
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify(response), {
+        status: 201,
+        headers: { 'content-type': 'application/json' },
+      }),
+    )
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const mutation = new MutationObserver(
+      createQueryClient(),
+      consoleQuery.externalAgents.byAgentId.testFiles.post.mutationOptions(),
+    )
+    // The generated input omits the multipart body accepted by this existing endpoint.
+    await expect(
+      mutation.mutate({
+        params: { agent_id: 'agent-1' },
+        body: { file, page_session_id: 'page-1' },
+      } as Parameters<typeof mutation.mutate>[0]),
+    ).resolves.toEqual(response)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(outgoing.url).toContain('/external-agents/agent-1/test-files')
+    expect(outgoing.headers.get('content-type')).toContain('multipart/form-data; boundary=')
+    const form = await outgoing.formData()
+    expect(Array.from(form.keys()).sort()).toEqual(['file', 'page_session_id'])
+    expect(form.get('page_session_id')).toBe('page-1')
+    const uploaded = form.get('file')
+    if (!(uploaded instanceof File)) throw new TypeError('Expected an uploaded test file')
+    expect(uploaded.name).toBe(file.name)
+    expect(uploaded.type).toBe(file.type)
+    expect(await uploaded.text()).toBe('test content')
   })
 
   afterEach(() => {
@@ -538,6 +580,28 @@ describe('consoleQuery transport context', () => {
 
 // Scenario: console OpenAPI query arrays follow backend parser expectations.
 describe('normalizeConsoleOpenAPIURL', () => {
+  it.each(['contact-options', 'contacts'])(
+    'serializes %s batch IDs as repeated parameters for the backend getlist parser',
+    (resource) => {
+      const url = normalizeConsoleOpenAPIURL(
+        `https://example.com/console/api/workspaces/current/human-input/v2/${resource}/batch?contact_ids%5B1%5D=contact-2&contact_ids%5B0%5D=contact-1&keyword=kept`,
+      )
+      const searchParams = new URL(url).searchParams
+
+      expect(searchParams.getAll('contact_ids')).toEqual(['contact-1', 'contact-2'])
+      expect(searchParams.has('contact_ids[0]')).toBe(false)
+      expect(searchParams.has('contact_ids[1]')).toBe(false)
+      expect(searchParams.get('keyword')).toBe('kept')
+    },
+  )
+
+  it('does not rewrite contact IDs on other endpoints', () => {
+    const url =
+      'https://example.com/console/api/workspaces/current/human-input/v2/contacts?contact_ids%5B0%5D=contact-1'
+
+    expect(normalizeConsoleOpenAPIURL(url)).toBe(url)
+  })
+
   it('should serialize repeated-only query arrays as repeated params', () => {
     const url = normalizeConsoleOpenAPIURL(
       'https://example.com/console/api/agent/agent-1/logs?sources%5B1%5D=debug&sources%5B0%5D=api&statuses%5B0%5D=success&keyword=test',
@@ -643,6 +707,23 @@ describe('consoleQuery agent query retries', () => {
   })
 })
 
+describe('consoleQuery external agent capabilities', () => {
+  it('reads capabilities from the Console API', async () => {
+    const capabilities = createExternalAgentCapabilities({ enabled: false })
+    const request = vi.fn().mockResolvedValue(Response.json(capabilities))
+    const consoleQuery = await loadConsoleQueryWithRequest(request)
+    const queryClient = createQueryClient()
+
+    await expect(
+      queryClient.query(consoleQuery.externalAgents.capabilities.get.queryOptions()),
+    ).resolves.toEqual(capabilities)
+    expect(request).toHaveBeenCalledTimes(1)
+    const outgoing = request.mock.calls[0]?.[2]?.request as Request
+    expect(new URL(outgoing.url).pathname).toBe('/console/api/external-agents/capabilities')
+    expect(outgoing.method).toBe('GET')
+  })
+})
+
 describe('consoleQuery education defaults', () => {
   it('should not retry education status failures', async () => {
     const request = vi.fn().mockRejectedValue(new Error('education status failed'))
@@ -666,7 +747,13 @@ describe('consoleQuery education defaults', () => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
       const key = consoleQuery.account.education.get.queryKey()
-      const cached = { is_student: false, allow_refresh: false, expire_at: null }
+      const cached = {
+        is_student: false,
+        allow_refresh: false,
+        can_redeem_discount: false,
+        expire_at: null,
+        result: false,
+      }
       queryClient.setQueryData(key, cached)
       const unrelatedKey = ['unrelated-account-data']
       queryClient.setQueryData(unrelatedKey, { name: 'User' })
@@ -1453,6 +1540,72 @@ describe('consoleQuery agent mutation defaults', () => {
     })
   })
 
+  it.each([true, false])(
+    'preserves roster publication and reference data when renaming an agent with published state %s',
+    async (isPublished) => {
+      const consoleQuery = await loadConsoleQuery()
+      const queryClient = createQueryClient()
+      const agent = {
+        ...createAgent(),
+        active_config_is_published: isPublished,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 1,
+        published_references: [{ app_id: 'workflow-1', app_name: 'Research Workflow' }],
+      }
+      const otherAgent = {
+        ...createAgent({ id: 'agent-2', name: 'Other Agent' }),
+        active_config_is_published: false,
+        hidden_app_backed: false,
+        is_starred: false,
+        published_reference_count: 0,
+      }
+      const rosterPage = {
+        data: [agent, otherAgent],
+        has_more: false,
+        limit: 30,
+        page: 1,
+        publication_counts: { drafts: isPublished ? 1 : 2, published: isPublished ? 1 : 0 },
+        total: 2,
+      } satisfies AgentAppPagination
+      const listQueryKey = consoleQuery.agent.get.queryKey({
+        input: { query: { page: 1, limit: 30 } },
+      })
+      const infiniteQueryKey = consoleQuery.agent.get.infiniteOptions({
+        input: (pageParam) => ({ query: { page: Number(pageParam), limit: 30 } }),
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => (lastPage.has_more ? lastPage.page + 1 : undefined),
+      }).queryKey
+      queryClient.setQueryData(listQueryKey, rosterPage)
+      queryClient.setQueryData(infiniteQueryKey, { pages: [rosterPage], pageParams: [1] })
+      const updatedAgent = createAgent({ name: 'Updated Agent' })
+
+      await consoleQuery.agent.byAgentId.put.mutationOptions().onSuccess!(
+        updatedAgent,
+        { params: { agent_id: agent.id }, body: { name: updatedAgent.name } },
+        undefined,
+        createMutationContext(queryClient),
+      )
+
+      const expectedPage = {
+        ...rosterPage,
+        data: [{ ...agent, name: updatedAgent.name }, otherAgent],
+      }
+      expect(queryClient.getQueryData(listQueryKey)).toEqual(expectedPage)
+      expect(queryClient.getQueryData(infiniteQueryKey)).toEqual({
+        pages: [expectedPage],
+        pageParams: [1],
+      })
+      expect(
+        queryClient.getQueryData(
+          consoleQuery.agent.byAgentId.get.queryKey({
+            input: { params: { agent_id: agent.id } },
+          }),
+        ),
+      ).toEqual(updatedAgent)
+    },
+  )
+
   it('should invalidate invite option lists after updating an agent', async () => {
     const consoleQuery = await loadConsoleQuery()
     const queryClient = createQueryClient()
@@ -1763,6 +1916,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1771,7 +1925,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

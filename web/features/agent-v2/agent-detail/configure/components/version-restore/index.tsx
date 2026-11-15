@@ -21,6 +21,7 @@ import { toast } from '@/app/notifications'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
 import { deploymentEditionAtom } from '@/features/system-features/state'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 
 type RestoreActions = {
   requestRestore: (version: AgentConfigSnapshotSummaryResponse) => void
@@ -59,6 +60,7 @@ export function AgentVersionRestore({
     externallyDisabled || !canRestore || (deploymentEdition === 'CLOUD' && plan === undefined)
   const mutation = useMutation(
     consoleQuery.agent.byAgentId.versions.byVersionId.restore.post.mutationOptions({
+      context: { silent: true },
       onMutate: async () => {
         await onBeforeRestore?.()
       },
@@ -82,8 +84,8 @@ export function AgentVersionRestore({
         setStage('closed')
         toast.success(t(($) => $['api.actionSuccess'], { ns: 'common' }))
       },
-      onError: () => {
-        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(getErrorMessage(error) ?? t(($) => $['api.actionFailed'], { ns: 'common' }))
       },
     }),
   )

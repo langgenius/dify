@@ -1,15 +1,6 @@
 import { render } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import AudioBlock from '../audio-block'
-
-// Mock the nested AudioPlayer used by AudioGallery (do not mock AudioGallery itself)
-const audioPlayerMock = vi.fn()
-vi.mock('@/app/components/base/audio-gallery/AudioPlayer', () => ({
-  default: (props: { srcs: string[] }) => {
-    audioPlayerMock(props)
-    return null
-  },
-})) // adjust path if AudioBlock sits elsewhere
 
 describe('AudioBlock source extraction', () => {
   it('renders AudioGallery with multiple srcs extracted from node.children', () => {
@@ -22,9 +13,13 @@ describe('AudioBlock source extraction', () => {
       properties: {},
     }
 
-    render(<AudioBlock node={node} />)
+    const { container } = render(<AudioBlock node={node} />)
 
-    expect(audioPlayerMock).toHaveBeenCalledWith({ srcs: ['one.mp3', 'two.mp3'] })
+    expect(
+      Array.from(container.querySelectorAll('audio source'), (source) =>
+        source.getAttribute('src'),
+      ),
+    ).toEqual(['one.mp3', 'two.mp3'])
   })
 
   it('renders AudioGallery with single src from node.properties when no children with properties', () => {
@@ -33,9 +28,9 @@ describe('AudioBlock source extraction', () => {
       properties: { src: 'single.mp3' },
     }
 
-    render(<AudioBlock node={node} />)
+    const { container } = render(<AudioBlock node={node} />)
 
-    expect(audioPlayerMock).toHaveBeenCalledWith({ srcs: ['single.mp3'] })
+    expect(container.querySelector('audio source')).toHaveAttribute('src', 'single.mp3')
   })
 
   it('returns null when there are no audio sources', () => {
@@ -46,6 +41,5 @@ describe('AudioBlock source extraction', () => {
 
     const { container } = render(<AudioBlock node={node} />)
     expect(container.firstChild).toBeNull()
-    expect(audioPlayerMock).not.toHaveBeenCalled()
   })
 })

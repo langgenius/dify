@@ -1,14 +1,15 @@
-import type { ReactElement } from 'react'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { renderWithConsoleQuery as renderWithoutUrlState } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import RosterPage from '../page'
 
 const listAgents = vi.hoisted(() => vi.fn())
 const queryValues = vi.hoisted(() => ({
+  agent_type: 'dify',
   created_by_me: false,
+  external_status: 'all',
   filter: 'all',
   keyword: '',
   sort_by: 'last_modified',
@@ -31,22 +32,18 @@ vi.mock('../components/agent-roster-list', () => ({
 }))
 
 const onUrlUpdate = vi.fn()
-const render = (ui: ReactElement, options?: Parameters<typeof renderWithoutUrlState>[1]) =>
-  renderWithoutUrlState(
-    <NuqsTestingAdapter
-      hasMemory
-      onUrlUpdate={onUrlUpdate}
-      searchParams={{ ...queryValues, created_by_me: String(queryValues.created_by_me) }}
-    >
-      {ui}
-    </NuqsTestingAdapter>,
-    options,
-  )
+const render = createNuqsTestRenderer(renderWithoutUrlState, () => ({
+  hasMemory: true,
+  onUrlUpdate,
+  searchParams: { ...queryValues, created_by_me: String(queryValues.created_by_me) },
+}))
 
 describe('RosterPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    queryValues.agent_type = 'dify'
     queryValues.created_by_me = false
+    queryValues.external_status = 'all'
     queryValues.filter = 'all'
     queryValues.keyword = ''
     queryValues.sort_by = 'last_modified'

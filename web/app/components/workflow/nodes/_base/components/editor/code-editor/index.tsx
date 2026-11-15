@@ -8,8 +8,7 @@ import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { getFilesInLogs } from '@/app/components/base/file-uploader/utils'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { basePath } from '@/utils/var'
 import Base from '../base'
 import { serializeCodeEditorValue } from './utils'
@@ -76,7 +75,7 @@ const CodeEditor: FC<Props> = ({
   const [isMounted, setIsMounted] = React.useState(false)
   const minHeight = height || 200
   const [editorContentHeight, setEditorContentHeight] = useState(56)
-  const { theme: appTheme } = useTheme()
+  const appTheme = useResolvedTheme()
   const valueRef = useRef(value)
   useEffect(() => {
     valueRef.current = value
@@ -113,7 +112,7 @@ const CodeEditor: FC<Props> = ({
       setIsFocus(false)
     })
 
-    monaco.editor.setTheme(appTheme === Theme.light ? 'light' : 'vs-dark') // Fix: sometimes not load the default theme
+    monaco.editor.setTheme(appTheme === 'light' ? 'light' : 'vs-dark') // Fix: sometimes not load the default theme
 
     onMount?.(editor, monaco)
     setIsMounted(true)
@@ -122,7 +121,7 @@ const CodeEditor: FC<Props> = ({
   const outPutValue = serializeCodeEditorValue(value, isJSONStringifyBeauty)
 
   const theme = useMemo(() => {
-    if (appTheme === Theme.light) return 'light'
+    if (appTheme === 'light') return 'light'
     return 'vs-dark'
   }, [appTheme])
 
@@ -157,7 +156,7 @@ const CodeEditor: FC<Props> = ({
         onMount={handleEditorDidMount}
       />
       {!outPutValue && !isFocus && (
-        <div className="pointer-events-none absolute top-0 left-9 text-[13px] leading-4.5 font-normal text-components-input-text-placeholder">
+        <div className="pointer-events-none absolute inset-s-9 top-0 text-[13px] leading-4.5 font-normal text-components-input-text-placeholder">
           {placeholder}
         </div>
       )}

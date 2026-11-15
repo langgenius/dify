@@ -15,8 +15,11 @@ import {
 } from '@langgenius/dify-ui/dialog'
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
+import {
+  PasswordField,
+  PasswordFieldInput,
+  PasswordFieldToggle,
+} from '@langgenius/dify-ui/password-field'
 import { ORPCError } from '@orpc/client'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
@@ -32,37 +35,23 @@ type ChangePasswordFormValues = {
   'confirm-password': string
 }
 
-type PasswordFieldProps = {
+type ChangePasswordFieldProps = {
   name: keyof ChangePasswordFormValues
   label: string
   autoComplete: 'current-password' | 'new-password'
   readOnly: boolean
 }
 
-function PasswordField({ name, label, autoComplete, readOnly }: PasswordFieldProps) {
+function ChangePasswordField({ name, label, autoComplete, readOnly }: ChangePasswordFieldProps) {
   const { t } = useTranslation(['login'])
-  const [visible, setVisible] = useState(false)
 
   return (
     <Field name={name}>
       <FieldLabel className="system-sm-semibold">{label}</FieldLabel>
-      <InputGroup>
-        <InputGroupInput
-          type={visible ? 'text' : 'password'}
-          autoComplete={autoComplete}
-          spellCheck={false}
-          readOnly={readOnly}
-        />
-        <InputGroupAddon align="inline-end">
-          <IconButton
-            size="lg"
-            aria-label={t(($) => $[visible ? 'hidePassword' : 'showPassword'], { ns: 'login' })}
-            onClick={() => setVisible(!visible)}
-          >
-            <span aria-hidden="true">{visible ? '👀' : '😝'}</span>
-          </IconButton>
-        </InputGroupAddon>
-      </InputGroup>
+      <PasswordField>
+        <PasswordFieldInput autoComplete={autoComplete} readOnly={readOnly} />
+        <PasswordFieldToggle aria-label={t(($) => $.showPassword, { ns: 'login' })} />
+      </PasswordField>
     </Field>
   )
 }
@@ -117,14 +106,14 @@ function ChangePasswordForm({
       </DialogHeader>
       <DialogBody className="space-y-8">
         {isPasswordSet && (
-          <PasswordField
+          <ChangePasswordField
             name="current-password"
             label={t(($) => $['account.currentPassword'], { ns: 'accountSettings' })}
             autoComplete="current-password"
             readOnly={isPending}
           />
         )}
-        <PasswordField
+        <ChangePasswordField
           name="new-password"
           label={
             isPasswordSet
@@ -134,7 +123,7 @@ function ChangePasswordForm({
           autoComplete="new-password"
           readOnly={isPending}
         />
-        <PasswordField
+        <ChangePasswordField
           name="confirm-password"
           label={t(($) => $['account.confirmPassword'], { ns: 'accountSettings' })}
           autoComplete="new-password"

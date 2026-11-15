@@ -85,7 +85,9 @@ it('updates a GitHub plugin using the selected release and the existing installa
   await user.click(await screen.findByRole('option', { name: 'plugin.difypkg' }))
   await user.click(screen.getByRole('button', { name: 'plugin.installModal.next' }))
   const install = await screen.findByRole('button', { name: 'plugin.installModal.install' })
-  expect(uploadGitHub).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v2.0.0', 'plugin.difypkg')
+  expect(uploadGitHub).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v2.0.0', 'plugin.difypkg', {
+    silent: true,
+  })
   await user.click(install)
   await screen.findByRole('dialog', { name: 'plugin.installFromGitHub.installedSuccessfully' })
 

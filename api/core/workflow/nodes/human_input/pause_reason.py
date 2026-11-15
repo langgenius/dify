@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from graphon.entities.pause_reason import PauseReasonType, SchedulingPause
+from graphon.entities.pause_reason import ExternalWaitReason, PauseReasonType, SchedulingPause
 
 from .entities import FormInputConfig, UserActionConfig
 
@@ -22,6 +22,9 @@ class DifyHITLEventType(StrEnum):
 
 
 class HumanInputRequired(BaseModel):
+    # The referenced form determines its storage owner; this is not an entity version.
+    # Clients use it to choose the matching submission API.
+    form_version: Literal["1", "2"] = "1"
     TYPE: Literal[DifyHITLEventType.HUMAN_INPUT_REQUIRED] = DifyHITLEventType.HUMAN_INPUT_REQUIRED
     form_id: str
     form_content: str
@@ -46,4 +49,4 @@ class HumanInputRequired(BaseModel):
     resolved_default_values: Mapping[str, Any] = Field(default_factory=dict)
 
 
-type PauseReason = HumanInputRequired | SchedulingPause
+type PauseReason = HumanInputRequired | SchedulingPause | ExternalWaitReason

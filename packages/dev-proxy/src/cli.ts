@@ -13,6 +13,8 @@ import {
 } from './config'
 import { createDevProxyApp, createWebSocketUpgradeHandler } from './server'
 
+const LOCALHOST_ALIASES = new Set(['127.0.0.1', '::1', '[::1]', '0.0.0.0', '::', '[::]'])
+
 function printUsage() {
   console.log(`Usage:
   dev-proxy --config <path> [options]
@@ -79,6 +81,10 @@ const createDevProxyRuntime = (initialConfig: DevProxyConfig, cliOptions: DevPro
   let reloadTask = Promise.resolve()
 
   console.log(`[dev-proxy] listening on http://${runtime.host}:${runtime.port}`)
+  if (initialConfig.sessionImport) {
+    const sessionImportHost = LOCALHOST_ALIASES.has(runtime.host) ? 'localhost' : runtime.host
+    console.log(`[dev-proxy] import session at http://${sessionImportHost}:${runtime.port}/`)
+  }
 
   const reload = async (nextConfig: unknown, reason: string) => {
     assertDevProxyConfig(nextConfig)

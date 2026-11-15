@@ -31,13 +31,6 @@ import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
-import {
-  ScrollArea,
-  ScrollAreaContent,
-  ScrollAreaScrollbar,
-  ScrollAreaThumb,
-  ScrollAreaViewport,
-} from '@langgenius/dify-ui/scroll-area'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebounce } from 'ahooks'
 import { useQueryState } from 'nuqs'
@@ -55,6 +48,7 @@ import Link from '@/next/link'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatFileSize } from '@/utils/format'
 import { fetchSkillArchiveBlob } from './client'
 import { SkillReferencesList, SkillReferencesListSkeleton } from './detail/skill-metadata'
@@ -200,7 +194,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onCreate}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -224,7 +218,7 @@ function SkillPlaceholderState({
               <button
                 type="button"
                 disabled={actions.creating || actions.importing}
-                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-left outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex w-full cursor-pointer items-center gap-3 overflow-hidden rounded-xl bg-components-button-secondary-bg px-3 py-2.5 text-start outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={actions.onImport}
               >
                 <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-background-section">
@@ -267,7 +261,9 @@ function DeleteSkillDialog({
   const [confirmDeleteInput, setConfirmDeleteInput] = useState('')
   const queryClient = useQueryClient()
   const deleteMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const referencesQuery = useQuery({
     ...consoleQuery.workspaces.current.skills.bySkillId.references.get.queryOptions({
@@ -307,8 +303,8 @@ function DeleteSkillDialog({
           invalidateSkillListQueries(queryClient)
           onOpenChange(false)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.deleteFailed']))
+        onError: (error) => {
+          toast.error(getErrorMessage(error) ?? t(($) => $['skillManagement.deleteFailed']))
         },
       },
     )
@@ -425,15 +421,17 @@ function SkillCard({
   const draftStatusId = useId()
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const duplicateMutation = useMutation(
-    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions(),
+    consoleQuery.workspaces.current.skills.bySkillId.duplicate.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const exportMutation = useMutation({
     mutationFn: () => fetchSkillArchiveBlob(skill.id),
     onSuccess: (blob) => {
       downloadBlob({ data: blob, fileName: `${skill.name}.zip` })
     },
-    onError: () => {
-      toast.error(tCommon(($) => $['operation.downloadFailed']))
+    onError: (error) => {
+      toast.error(getErrorMessage(error) ?? tCommon(($) => $['operation.downloadFailed']))
     },
   })
   const isDraft = !skill.latest_published_version_id
@@ -457,8 +455,12 @@ function SkillCard({
           invalidateSkillListQueries(queryClient)
           router.push(`/skills/${copiedSkill.id}?rename=true`)
         },
-        onError: () => {
-          toast.error(t(($) => $['skillManagement.duplicateFailed']))
+        onError: (error) => {
+          toast.error(
+            getSkillErrorCode(error) === 'skill_limit_exceeded'
+              ? t(($) => $['skillManagement.errors.workspaceLimit'])
+              : (getErrorMessage(error) ?? t(($) => $['skillManagement.duplicateFailed'])),
+          )
         },
       },
     )
@@ -581,7 +583,7 @@ function SkillCard({
           </Menu>
         </div>
       </div>
-      <div className="pointer-events-none absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+      <div className="pointer-events-none absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
         <div className="pointer-events-auto w-full min-w-0">
           <SkillCardTags
             skillId={skill.id}
@@ -1198,8 +1200,15 @@ export default function SkillsPage() {
         }
 
   return (
-    <div className="flex h-0 min-w-0 grow flex-col overflow-hidden bg-background-body">
-      <div className="shrink-0 bg-background-body px-8 pt-4 pb-2">
+    <div
+      role="region"
+      aria-labelledby={titleId}
+      ref={listViewportRef}
+      tabIndex={-1}
+      className="flex h-0 min-w-0 grow flex-col overflow-x-hidden overflow-y-auto overscroll-contain bg-background-body outline-hidden"
+      onScroll={handleListScroll}
+    >
+      <div className="sticky top-0 z-10 shrink-0 bg-background-body px-8 pt-4 pb-2">
         <div className="flex h-6 min-w-0 items-center justify-between gap-4">
           <h1
             id={titleId}
@@ -1220,24 +1229,8 @@ export default function SkillsPage() {
         </div>
       </div>
 
-      <div className="min-h-0 flex-1">
-        <ScrollArea className="h-full min-h-0 min-w-0 overflow-hidden">
-          <ScrollAreaViewport
-            role="region"
-            aria-labelledby={titleId}
-            ref={listViewportRef}
-            tabIndex={-1}
-            className="overscroll-contain"
-            onScroll={handleListScroll}
-          >
-            <ScrollAreaContent className="min-h-full px-8 pt-2 pb-8">
-              <SkillGrid state={skillGridState} />
-            </ScrollAreaContent>
-          </ScrollAreaViewport>
-          <ScrollAreaScrollbar>
-            <ScrollAreaThumb />
-          </ScrollAreaScrollbar>
-        </ScrollArea>
+      <div className="flex-1 px-8 pt-2 pb-8">
+        <SkillGrid state={skillGridState} />
       </div>
       <Dialog
         open={importOpen}

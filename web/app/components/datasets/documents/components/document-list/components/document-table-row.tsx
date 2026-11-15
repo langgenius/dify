@@ -195,6 +195,7 @@ const DocumentTableRow = React.memo(
               'archived',
               'id',
               'data_source_type',
+              'data_source_info',
               'doc_form',
               'display_status',
             ])}

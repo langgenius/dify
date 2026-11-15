@@ -6,8 +6,6 @@ import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
-import { AppDetailPrefetch } from '../app-detail-prefetch'
-import { getAppIdFromPathname } from '../app-detail-route'
 
 function deferredResponse() {
   let resolve!: (response: Response) => void
@@ -32,11 +30,9 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
 }))
 
 function Route() {
-  const appId = getAppIdFromPathname(pathname)
   return (
     <>
       <a href="/apps">Back to Apps</a>
-      {appId && <AppDetailPrefetch appId={appId} />}
       <AppDetailSection />
     </>
   )
@@ -54,7 +50,7 @@ describe('App sidebar route loading', () => {
     request.mockReset()
   })
 
-  it('keeps the shell visible and consumes the in-flight prefetch from the query cache alone', async () => {
+  it('keeps the shell visible while loading the app detail once', async () => {
     const pending = deferredResponse()
     request.mockReturnValue(pending.promise)
     renderWithConsoleQuery(<Route />)
@@ -73,7 +69,7 @@ describe('App sidebar route loading', () => {
     expect(request).toHaveBeenCalledTimes(1)
   })
 
-  it('can load without prefetch and retries a failed query inside the sidebar', async () => {
+  it('retries a failed query inside the sidebar', async () => {
     request.mockRejectedValueOnce(new Error('unavailable'))
     request.mockResolvedValue(Response.json(app('app-1', 'Recovered app')))
     renderWithConsoleQuery(<AppDetailSection />)

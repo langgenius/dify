@@ -1,23 +1,41 @@
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
+import type { ExternalAgentWorkflowPreviewNodeData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { ORPCError } from '@orpc/client'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
+import { useReactFlow } from 'reactflow'
 import {
   createEdge,
   createNode,
   createStartNode,
 } from '@/app/components/workflow/__tests__/fixtures'
 import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
-import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
+import {
+  BlockEnum,
+  InputVarType,
+  NodeRunningStatus,
+  VarType,
+} from '@/app/components/workflow/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { consoleClient } from '@/service/console'
 import useOneStepRun from '../use-one-step-run'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 vi.mock('@/app/components/base/amplitude', () => ({
   trackEvent: vi.fn(),
 }))
 
-const { runTrigger } = vi.hoisted(() => ({
+const { runTrigger, runExternal } = vi.hoisted(() => ({
+  runExternal: vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.run.post>(),
   runTrigger:
     vi.fn<typeof consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post>(),
 }))
@@ -29,6 +47,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post': runTrigger,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.run.post': runExternal,
       'apps.byAppId.workflows.draft.nodes.byNodeId.variables.get': async () => ({ items: [] }),
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -54,7 +73,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
     () =>
       useOneStepRun({
         id: 'if-else-node',
-        resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+        resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
 
         data: {
           type,
@@ -66,7 +85,7 @@ const renderUseOneStepRun = (type: BlockEnum = BlockEnum.IfElse) => {
         isPaused: false,
       }),
     {
-      resource: { kind: 'app', appId: 'app-id', mode: 'workflow' },
+      resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
       nodes,
       edges,
       historyStore: { nodes, edges },
@@ -78,6 +97,7 @@ const originalUrl = window.location.href
 
 describe('useOneStepRun single-run input vars', () => {
   beforeEach(() => {
+    mockHitlIm.enabled = true
     runTrigger.mockReset()
     window.history.replaceState(null, '', '/app/app-id/workflow')
   })
@@ -85,6 +105,58 @@ describe('useOneStepRun single-run input vars', () => {
     window.history.replaceState(null, '', originalUrl)
     vi.restoreAllMocks()
     await act(async () => toast.dismiss())
+  })
+
+  it('preserves the asynchronous external execution status and never pretends local Stop cancelled the remote task', async () => {
+    const data: ExternalAgentWorkflowPreviewNodeData = {
+      type: BlockEnum.Agent,
+      title: 'External agent',
+      desc: '',
+      version: '2',
+      agent_node_kind: 'external_a2a',
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: 'agent-1',
+        binding_epoch: 'epoch-1',
+      },
+      agent_task: 'Review',
+      agent_declared_outputs: [],
+    }
+    runExternal.mockReset().mockResolvedValue({
+      id: 'execution-1',
+      status: 'paused',
+      process_data: { external_invocation_id: 'invocation-1' },
+    })
+    const nodes = [createNode({ id: 'external', data })]
+    const { result } = renderHook(
+      () => ({
+        run: useOneStepRun({
+          id: 'external',
+          resource: { kind: 'app', appId: 'app-id', mode: 'workflow', collaborationEnabled: false },
+          data,
+          defaultRunInputData: {},
+          isRunAfterSingleRun: true,
+          isPaused: false,
+        }),
+        flow: useReactFlow(),
+      }),
+      {
+        resource: { kind: 'app', appId: 'app-id', mode: 'workflow', collaborationEnabled: false },
+        nodes,
+      },
+    )
+    await act(async () => {
+      await result.current.run.handleRun({})
+    })
+    expect(runExternal).toHaveBeenCalledOnce()
+    expect(result.current.run.runResult?.status).toBe('paused')
+    expect(result.current.flow.getNode('external')?.data._singleRunningStatus).toBe(
+      NodeRunningStatus.Paused,
+    )
+    act(() => result.current.run.handleStop())
+    expect(result.current.flow.getNode('external')?.data._singleRunningStatus).toBe(
+      NodeRunningStatus.Paused,
+    )
   })
 
   it('uses value_type when the variable cannot be resolved from output vars', () => {
@@ -167,6 +239,28 @@ describe('useOneStepRun single-run input vars', () => {
     },
   )
 
+  it.each([BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin])(
+    'reports a %s business failure once before stopping the run',
+    async (type) => {
+      runTrigger.mockResolvedValueOnce({
+        id: 'execution-1',
+        status: 'error',
+        message: 'Trigger rejected',
+      })
+      const notifyError = vi.spyOn(toast, 'error')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result, store } = renderUseOneStepRun(type)
+
+      await act(async () => {
+        expect(await result.current.handleRun({})).toBe(false)
+      })
+
+      expect(await screen.findByText('Trigger rejected')).toBeInTheDocument()
+      expect(notifyError).toHaveBeenCalledExactlyOnceWith('Trigger rejected')
+      expect(store.getState().isListening).toBe(false)
+    },
+  )
+
   it('preserves the plugin request error and metadata when reporting a failed run', async () => {
     const error = new ORPCError('forbidden', {
       status: 403,
@@ -187,4 +281,39 @@ describe('useOneStepRun single-run input vars', () => {
     expect(await screen.findByText('Plugin access denied')).toBeInTheDocument()
     expect(reportError).toHaveBeenCalledWith(error)
   })
+  it.each([true, false])(
+    'validates a V2 human-input step against the release gate (enabled: %s)',
+    (enabled) => {
+      mockHitlIm.enabled = enabled
+      const { result } = renderHook(() =>
+        useOneStepRun<HumanInputV2NodeType>({
+          id: 'human-v2',
+          resource: { kind: 'app', collaborationEnabled: false, appId: 'app-id', mode: 'workflow' },
+
+          data: {
+            type: BlockEnum.HumanInput,
+            title: 'Review',
+            desc: '',
+            version: '2',
+            recipients_spec: [{ type: 'initiator' }],
+            message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+            debug_mode: { enabled: false, channels: [] },
+            form_content: 'Please approve',
+            inputs: [],
+            user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+            timeout: 36,
+            timeout_unit: 'hour',
+          },
+          defaultRunInputData: {},
+          isRunAfterSingleRun: false,
+          isPaused: false,
+        }),
+      )
+      expect(result.current.checkValid()).toEqual(
+        enabled
+          ? { isValid: true, errorMessage: '' }
+          : { isValid: false, errorMessage: 'workflow.nodes.humanInputV2.disabled' },
+      )
+    },
+  )
 })

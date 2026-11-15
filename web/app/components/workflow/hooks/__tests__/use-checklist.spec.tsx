@@ -1,9 +1,13 @@
 import type { AgentSoulDifyToolConfig } from '@dify/contracts/api/console/apps/types.gen'
-import type { ToolProviderListResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type {
+  BatchGetContactOptionsResponse,
+  ToolProviderListResponse,
+} from '@dify/contracts/api/console/workspaces/types.gen'
 import type { PluginsFromMarketplaceByInfoResponse } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import type { AvailableNodesMetaData } from '../../hooks-store/store'
 import type { CodeNodeType } from '../../nodes/code/types'
+import type { HumanInputV2Recipient } from '../../nodes/human-input-v2/types'
 import type { CommonEdgeType, CommonNodeType, Edge, Node } from '../../types'
 import type { ChecklistItem } from '../use-checklist'
 import { zWorkflowAgentComposerResponse } from '@dify/contracts/api/console/apps/zod.gen'
@@ -13,7 +17,13 @@ import ReactFlow, { ReactFlowProvider, useEdges, useNodes } from 'reactflow'
 import { CollectionType } from '@/app/components/tools/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
+import { createExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
 import { consoleQuery } from '@/service/console'
+import {
+  createExternalAgentAsset,
+  createExternalAgentCapabilities,
+  createExternalAgentDetail,
+} from '@/test/console/external-agents'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
@@ -38,6 +48,27 @@ import { useStore } from '../../store'
 import { BlockEnum, PromptRole, VarType } from '../../types'
 import { useChecklist, useChecklistBeforePublish, useWorkflowRunValidation } from '../use-checklist'
 
+const mockHitlIm = vi.hoisted(() => ({ enabled: true }))
+const resolveContacts = vi.hoisted(() => vi.fn<() => Promise<BatchGetContactOptionsResponse>>())
+
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.humanInput.v2.contactOptions.batch.get': resolveContacts,
+    }),
+  }
+})
+
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  get ENABLE_HITL_IM() {
+    return mockHitlIm.enabled
+  },
+}))
+
 const marketplace = vi.hoisted(() =>
   vi.fn<
     (url: string, options: unknown) => Promise<{ data: PluginsFromMarketplaceByInfoResponse }>
@@ -55,6 +86,27 @@ function createChecklistQueryClient(builtInTools: ToolProviderListResponse = [])
   queryClient.setQueryData(consoleQuery.workspaces.current.agentProviders.get.queryKey(), [])
   queryClient.setQueryData(consoleQuery.workspaces.current.triggers.get.queryKey({ input: {} }), [])
   queryClient.setQueryData(consoleQuery.spec.schemaDefinitions.get.queryKey(), [])
+  queryClient.setQueryData(
+    consoleQuery.externalAgents.capabilities.get.queryKey(),
+    createExternalAgentCapabilities({ input_file_modes: ['application/pdf'] }),
+  )
+  for (const asset of [
+    createExternalAgentAsset(),
+    createExternalAgentAsset({
+      id: '44444444-4444-4444-8444-444444444444',
+      name: 'Document Review Agent',
+    }),
+  ]) {
+    const detail = createExternalAgentDetail({ asset })
+    if (asset.id === createExternalAgentAsset().id)
+      detail.connection = { ...detail.connection, card: { defaultInputModes: ['text/plain'] } }
+    queryClient.setQueryData(
+      consoleQuery.externalAgents.byAgentId.get.queryKey({
+        input: { params: { agent_id: asset.id } },
+      }),
+      detail,
+    )
+  }
   return queryClient
 }
 
@@ -80,19 +132,27 @@ function createChecklistWrapper({ nodes, edges }: Graph, options: ChecklistOptio
   const queryClient = options.queryClient ?? createChecklistQueryClient()
   const { wrapper: QueryProvider } = createConsoleQueryWrapper({ queryClient })
   const store = createTestWorkflowStore({ nodes })
-  const wrapper = ({ children }: { children: ReactNode }) => (
+  const wrapper = ({
+    children,
+    graph = { nodes, edges },
+  }: {
+    children: ReactNode
+    graph?: Graph
+  }) => (
     <QueryProvider>
-      <EditorResourceScope resource={{ kind: 'app', appId: 'app-1', mode: 'workflow' }}>
+      <EditorResourceScope
+        resource={{ kind: 'app', collaborationEnabled: false, appId: 'app-1', mode: 'workflow' }}
+      >
         <WorkflowContext value={store}>
-          <CatalogProvider>
-            <DatasetsDetailProvider nodes={nodes}>
-              <ReactFlowProvider>
-                <ReactFlow nodes={nodes} edges={edges} />
+          <ReactFlowProvider>
+            <CatalogProvider>
+              <DatasetsDetailProvider nodes={graph.nodes}>
+                <ReactFlow nodes={graph.nodes} edges={graph.edges} />
                 {children}
                 <AppToaster timeout={0} />
-              </ReactFlowProvider>
-            </DatasetsDetailProvider>
-          </CatalogProvider>
+              </DatasetsDetailProvider>
+            </CatalogProvider>
+          </ReactFlowProvider>
         </WorkflowContext>
       </EditorResourceScope>
     </QueryProvider>
@@ -116,6 +176,8 @@ function renderChecklist(nodes: Node[], edges: Edge[], options: ChecklistOptions
 }
 
 beforeEach(() => {
+  mockHitlIm.enabled = true
+  resolveContacts.mockReset().mockResolvedValue({ data: [] })
   resetFixtureCounters()
   marketplace.mockReset().mockImplementation((url: string) => {
     throw new Error(`Unexpected marketplace request: ${url}`)
@@ -140,6 +202,51 @@ function createCodeNode() {
     outputs: { result: { type: VarType.number, children: null } },
   } satisfies CodeNodeType
   return createNode({ id: 'code', data })
+}
+
+function buildExternalAgentTaskGraph({
+  agent = createExternalAgentAsset(),
+  outputType,
+}: {
+  agent?: ReturnType<typeof createExternalAgentAsset>
+  outputType?: VarType
+} = {}) {
+  const startNode = createInputNode()
+  const sourceNode = createNode({
+    id: 'source',
+    data: {
+      type: BlockEnum.Code,
+      title: 'Source',
+      desc: '',
+      code_language: CodeLanguage.python3,
+      code: 'def main():\n    return {}',
+      variables: [],
+      outputs: outputType === undefined ? {} : { attachment: { type: outputType, children: null } },
+    } satisfies CodeNodeType,
+  })
+  const externalAgent = createNode({
+    id: 'external-agent',
+    data: {
+      type: BlockEnum.Agent,
+      title: agent.name,
+      desc: '',
+      ...createExternalAgentWorkflowPreviewData(agent),
+      agent_binding: {
+        binding_type: 'roster_agent',
+        agent_id: agent.id,
+        binding_epoch: 'server-epoch',
+      },
+      agent_task: 'Review {{#source.attachment#}}',
+    },
+  })
+
+  return {
+    nodes: [startNode, sourceNode, externalAgent],
+    edges: [
+      createEdge({ source: startNode.id, target: sourceNode.id }),
+      createEdge({ source: sourceNode.id, target: externalAgent.id }),
+    ],
+  }
 }
 
 function buildConnectedGraph() {
@@ -315,6 +422,83 @@ describe('useChecklist', () => {
     expect(warning).toBeDefined()
     expect(warning!.errorMessages).toContain(
       'workflow.errorMsg.fieldRequired:{"field":"workflow.errorMsg.fields.model"}',
+    )
+  })
+
+  it('updates external agent task warnings when the agent or upstream outputs change', async () => {
+    const graph = buildExternalAgentTaskGraph({ outputType: VarType.file })
+    const { wrapper: Wrapper } = createChecklistWrapper(graph)
+    const documentReview = createExternalAgentAsset({
+      id: '44444444-4444-4444-8444-444444444444',
+      name: 'Document Review Agent',
+    })
+
+    function ChecklistOutput() {
+      const nodes = useNodes<CommonNodeType>()
+      const edges = useEdges<CommonEdgeType>()
+      const checklist = useChecklist(nodes, edges)
+      const warning = checklist.find((item) => item.id === 'external-agent')
+      return (
+        <output aria-label="External Agent checklist">
+          {JSON.stringify(warning?.errorMessages)}
+        </output>
+      )
+    }
+
+    const { rerender } = render(
+      <Wrapper graph={graph}>
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify([
+          'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"file"}',
+        ]),
+      ),
+    )
+
+    rerender(
+      <Wrapper
+        graph={buildExternalAgentTaskGraph({ agent: documentReview, outputType: VarType.file })}
+      >
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        '',
+      ),
+    )
+
+    rerender(
+      <Wrapper
+        graph={buildExternalAgentTaskGraph({ agent: documentReview, outputType: VarType.number })}
+      >
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify([
+          'agentRoster.external.workflow.task.unsupportedType:{"variable":"attachment","type":"number"}',
+        ]),
+      ),
+    )
+
+    rerender(
+      <Wrapper graph={buildExternalAgentTaskGraph({ agent: documentReview })}>
+        <ChecklistOutput />
+      </Wrapper>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'External Agent checklist' })).toHaveTextContent(
+        JSON.stringify(['workflow.errorMsg.invalidVariable']),
+      ),
     )
   })
 
@@ -658,6 +842,52 @@ describe('useChecklistBeforePublish', () => {
 })
 
 describe('useWorkflowRunValidation', () => {
+  it('blocks an unconnected external agent with an empty task before running and publishing', async () => {
+    const graph = buildConnectedGraph()
+    const preview = createNode({
+      id: 'external-preview',
+      data: {
+        type: BlockEnum.Agent,
+        title: 'External Agent',
+        ...createExternalAgentWorkflowPreviewData(createExternalAgentAsset()),
+      },
+    })
+    const { wrapper } = createChecklistWrapper({
+      nodes: [...graph.nodes, preview],
+      edges: [
+        createEdge({ source: 'start', target: preview.id }),
+        createEdge({ source: preview.id, target: 'code' }),
+        createEdge({ source: 'code', target: 'end' }),
+      ],
+    })
+    const { result } = renderHook(
+      () => ({
+        nodes: useNodes<CommonNodeType>(),
+        run: useWorkflowRunValidation(),
+        publish: useChecklistBeforePublish(),
+      }),
+      { wrapper },
+    )
+
+    expect(result.current.run.warningNodes).toContainEqual(
+      expect.objectContaining({
+        id: preview.id,
+        errorMessages: expect.arrayContaining([
+          'agentRoster.external.workflow.unconnected',
+          'workflow.errorMsg.fieldRequired:{"field":"workflowAgent.nodes.agent.task.label"}',
+        ]),
+        canNavigate: true,
+      }),
+    )
+    act(() => {
+      expect(result.current.run.validateBeforeRun()).toBe(false)
+    })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    expect(result.current.nodes.find((node) => node.id === preview.id)?.data.selected).toBe(true)
+  })
+
   it('blocks a run with disconnected nodes and explains why', async () => {
     const { nodes } = buildConnectedGraph()
     const { wrapper } = createChecklistWrapper({ nodes, edges: [] })
@@ -679,5 +909,284 @@ describe('useWorkflowRunValidation', () => {
     expect(result.current.warningNodes).toEqual([])
     expect(result.current.validateBeforeRun()).toBe(true)
     expect(screen.queryByText('workflow.panel.checklistTip')).not.toBeInTheDocument()
+  })
+})
+
+describe('HITL release gate in workflow validation', () => {
+  it.each([
+    { version: '1', enabled: false, allowed: true },
+    { version: '2', enabled: false, allowed: false },
+    { version: '2', enabled: true, allowed: true },
+  ])(
+    'validates V$version with enabled=$enabled before running and publishing',
+    async ({ version, enabled, allowed }) => {
+      mockHitlIm.enabled = enabled
+      const start = createInputNode()
+      const humanInput = createNode({
+        id: 'review',
+        data: {
+          type: BlockEnum.HumanInput,
+          title: 'Review',
+          version,
+          form_content: 'Please approve',
+          inputs: [],
+          user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+          timeout: 36,
+          timeout_unit: 'hour',
+          ...(version === '1'
+            ? { delivery_methods: [{ id: 'webapp', type: 'webapp', enabled: true }] }
+            : {
+                recipients_spec: [{ type: 'initiator' }],
+                message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+                debug_mode: { enabled: false, channels: [] },
+              }),
+        },
+      })
+      const { wrapper } = createChecklistWrapper({
+        nodes: [start, humanInput],
+        edges: [createEdge({ source: 'start', target: 'review' })],
+      })
+      const { result } = renderHook(
+        () => ({
+          run: useWorkflowRunValidation(),
+          publish: useChecklistBeforePublish(),
+        }),
+        { wrapper },
+      )
+
+      expect(result.current.run.hasValidationErrors).toBe(!allowed)
+      if (!allowed) {
+        expect(result.current.run.warningNodes).toEqual([
+          expect.objectContaining({
+            id: 'review',
+            errorMessages: ['workflow.nodes.humanInputV2.disabled'],
+          }),
+        ])
+      }
+      act(() => {
+        expect(result.current.run.validateBeforeRun()).toBe(allowed)
+      })
+      await act(async () => {
+        expect(await result.current.publish.handleCheckBeforePublish()).toBe(allowed)
+      })
+    },
+  )
+})
+
+describe('HITL contact recipient availability', () => {
+  const existingContact = {
+    id: 'existing',
+    name: 'Existing contact',
+    email: 'existing@example.com',
+    type: 'external' as const,
+    im_providers: [],
+  }
+
+  function graphWithRecipients(recipients: HumanInputV2Recipient[], version: '1' | '2' = '2') {
+    return {
+      nodes: [
+        createInputNode(),
+        createNode({
+          id: 'review',
+          data: {
+            type: BlockEnum.HumanInput,
+            title: 'Review',
+            version,
+            form_content: 'Please approve',
+            inputs: [],
+            user_actions: [{ id: 'approve', title: 'Approve', button_style: 'primary' }],
+            timeout: 36,
+            timeout_unit: 'hour',
+            ...(version === '1'
+              ? { delivery_methods: [{ id: 'webapp', type: 'webapp', enabled: true }] }
+              : {
+                  recipients_spec: recipients,
+                  message_template: { subject: 'Review request', body: 'Please review {{#url#}}' },
+                  debug_mode: { enabled: false, channels: [] },
+                }),
+          },
+        }),
+      ],
+      edges: [createEdge({ source: 'start', target: 'review' })],
+    }
+  }
+
+  function renderRecipientValidation(
+    recipients: HumanInputV2Recipient[],
+    version: '1' | '2' = '2',
+  ) {
+    const queryClient = createChecklistQueryClient()
+    const { wrapper } = createChecklistWrapper(graphWithRecipients(recipients, version), {
+      queryClient,
+    })
+    return {
+      ...renderHook(
+        () => ({ run: useWorkflowRunValidation(), publish: useChecklistBeforePublish() }),
+        { wrapper },
+      ),
+      queryClient,
+    }
+  }
+
+  it.each([
+    {
+      label: 'the only recipient',
+      recipients: [{ type: 'contact' as const, contact_id: 'deleted' }],
+    },
+    {
+      label: 'one of several recipients',
+      recipients: [
+        { type: 'contact' as const, contact_id: 'deleted' },
+        { type: 'contact' as const, contact_id: 'existing' },
+      ],
+    },
+  ])(
+    'shows a checklist warning and blocks publication when $label was deleted',
+    async ({ recipients }) => {
+      resolveContacts.mockResolvedValue({ data: [existingContact] })
+      const { result } = renderRecipientValidation(recipients)
+
+      await waitFor(() =>
+        expect(result.current.run.warningNodes).toEqual([
+          expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+        ]),
+      )
+      await act(async () => {
+        expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+      })
+    },
+  )
+
+  it('revalidates cached contacts before publishing and exposes deletion in the checklist', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.warningNodes).toEqual([]))
+
+    resolveContacts.mockResolvedValue({ data: [] })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+      ]),
+    )
+  })
+
+  it('updates the checklist after contact deletion invalidates the active contact query', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result, queryClient } = renderRecipientValidation([
+      { type: 'contact', contact_id: 'existing' },
+    ])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+
+    resolveContacts.mockResolvedValue({ data: [] })
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.humanInput.v2.contactOptions.batch.get.key(),
+      })
+    })
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({ id: 'review', errorMessages: [expect.any(String)] }),
+      ]),
+    )
+    expect(result.current.run.validateBeforeRun()).toBe(false)
+  })
+
+  it('keeps V2 disabled without contact requests when the release gate is off', async () => {
+    mockHitlIm.enabled = false
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    expect(result.current.run.warningNodes).toEqual([
+      expect.objectContaining({
+        id: 'review',
+        errorMessages: ['workflow.nodes.humanInputV2.disabled'],
+      }),
+    ])
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    expect(resolveContacts).not.toHaveBeenCalled()
+  })
+
+  it('does not report contact recipients as invalid while the lookup is pending', async () => {
+    let resolveLookup: (value: { data: (typeof existingContact)[] }) => void = () => {}
+    resolveContacts.mockReturnValue(
+      new Promise((resolve) => {
+        resolveLookup = resolve
+      }),
+    )
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    expect(result.current.run.warningNodes).toEqual([])
+
+    await act(async () => {
+      resolveLookup({ data: [existingContact] })
+    })
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+  })
+
+  it('reports a failed recipient lookup as unverified, blocks publication, and allows a successful retry', async () => {
+    resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+    await waitFor(() =>
+      expect(result.current.run.warningNodes).toEqual([
+        expect.objectContaining({
+          id: 'review',
+          errorMessages: ['workflow.nodes.humanInputV2.error.recipientVerificationFailed'],
+        }),
+      ]),
+    )
+
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(true)
+    })
+    await waitFor(() => expect(result.current.run.warningNodes).toEqual([]))
+  })
+
+  it('does not let cached success bypass a failed fresh lookup', async () => {
+    resolveContacts.mockResolvedValue({ data: [existingContact] })
+    const { result } = renderRecipientValidation([{ type: 'contact', contact_id: 'existing' }])
+    await waitFor(() => expect(resolveContacts).toHaveBeenCalled())
+    await waitFor(() => expect(result.current.run.hasValidationErrors).toBe(false))
+
+    resolveContacts.mockRejectedValue(new Error('Contact lookup unavailable'))
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(false)
+    })
+  })
+
+  it.each([
+    {
+      label: 'V1 delivery settings',
+      version: '1' as const,
+      recipients: [],
+    },
+    {
+      label: 'V2 non-contact recipients',
+      version: '2' as const,
+      recipients: [
+        { type: 'initiator' as const },
+        { type: 'all_workspace_contacts' as const },
+        { type: 'onetime_email' as const, email: 'review@example.com' },
+      ],
+    },
+  ])('keeps $label valid without contact requests', async ({ version, recipients }) => {
+    const { result } = renderRecipientValidation(recipients, version)
+
+    expect(result.current.run.warningNodes).toEqual([])
+    await act(async () => {
+      expect(await result.current.publish.handleCheckBeforePublish()).toBe(true)
+    })
+    expect(resolveContacts).not.toHaveBeenCalled()
   })
 })

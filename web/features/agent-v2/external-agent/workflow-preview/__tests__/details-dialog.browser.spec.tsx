@@ -1,0 +1,353 @@
+import type { ExternalAgentWorkflowPreviewNodeData } from '../types'
+import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
+import type { WorkflowDataUpdater } from '@/app/components/workflow/types'
+import { page } from 'vite-plus/test/browser'
+import { createEdge, createNode } from '@/app/components/workflow/__tests__/fixtures'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleClient } from '@/service/console'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import {
+  createExternalAgentWorkflowGraph,
+  createSerializedWorkflowDraftStorage,
+  renderExternalAgentWorkflow,
+} from './preview-browser-fixture'
+import 'reactflow/dist/style.css'
+
+// boundary: use the fixture's real I18nextProvider resources instead of the global translator double.
+vi.mock('react-i18next', async (importOriginal) => importOriginal())
+
+const draftApi = vi.hoisted(() => ({
+  save: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.post>(),
+  read: vi.fn<typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.get>(),
+  rebind:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post
+    >(),
+  createInline:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put
+    >(),
+}))
+
+// boundary: replace backend draft storage while keeping canvas edits and serialization real.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleClientResponses, withConsoleResponses } =
+    await import('@/test/console/service-responses')
+  const { createWorkflowExternalResponses } = await import('./workflow-api-fixtures')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      ...createWorkflowExternalResponses(),
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+      'apps.byAppId.workflows.draft.nodes.byNodeId.agentComposer.put': draftApi.createInline,
+    }),
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'apps.byAppId.workflows.draft.post': draftApi.save,
+      'apps.byAppId.workflows.draft.get': draftApi.read,
+      'apps.byAppId.workflows.draft.externalAgentBindings.byNodeId.rebind.post': draftApi.rebind,
+    }),
+  }
+})
+
+async function setup(options: Parameters<typeof renderExternalAgentWorkflow>[0] = {}) {
+  const rendered = await renderExternalAgentWorkflow(options)
+  onTestFinished(() => {
+    rendered.workflowStore.getState().debouncedSyncWorkflowDraft.cancel?.()
+    rendered.queryClient.clear()
+  })
+  await expect.element(rendered.panel).toBeVisible()
+  return rendered
+}
+
+const readDraft = () =>
+  consoleClient.apps.byAppId.workflows.draft.get({ params: { app_id: 'external-preview-app' } })
+
+async function saveDraft(
+  expected: Partial<ExternalAgentWorkflowPreviewNodeData> | Partial<AgentV2NodeType>,
+) {
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  await expect
+    .poll(async () => {
+      const saved = await readDraft()
+      return (saved.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data
+    })
+    .toMatchObject(expected)
+  return readDraft()
+}
+
+beforeEach(({ onTestFinished }) => {
+  onTestFinished(guardUnexpectedFetch())
+  const storage = createSerializedWorkflowDraftStorage()
+  draftApi.save.mockImplementation(storage.save)
+  draftApi.read.mockImplementation(storage.read)
+  draftApi.rebind.mockImplementation(storage.rebind)
+  draftApi.createInline.mockReset()
+})
+
+it('opens read-only Contract Review details and returns focus without changing the saved draft', async () => {
+  const { panel } = await setup()
+  await page.viewport(1223, 772)
+  const task = 'Keep the existing contract review instructions.'
+  await panel.getByRole('textbox', { name: 'Agent task', exact: true }).fill(task)
+  const before = await saveDraft({ agent_task: task })
+  const savesBefore = draftApi.save.mock.calls.length
+  const trigger = panel.getByRole('button', { name: /^Contract Review Agent/ })
+  await trigger.click()
+  const details = page.getByRole('dialog', { name: 'Agent details', exact: true })
+  await expect.element(details).toBeVisible()
+  await expect
+    .element(details.getByRole('heading', { name: 'Contract Review Agent', exact: true }))
+    .toBeVisible()
+  await expect.element(details.getByRole('heading', { name: /^Agent skills/ })).toBeVisible()
+  await expect.element(details.getByRole('heading', { name: /^Used in apps/ })).toBeVisible()
+  await expect
+    .element(details.getByRole('heading', { name: 'Connection', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(details.getByRole('heading', { name: 'Service details', exact: true }))
+    .toBeVisible()
+  await expect.element(details.getByRole('button', { name: /^Edit/ })).not.toBeInTheDocument()
+  await expect.element(details.getByRole('switch')).not.toBeInTheDocument()
+  await expect.element(details.getByText('Tracing on', { exact: true })).toBeVisible()
+  const description = details.getByText('Find risky terms in a contract.', { exact: true })
+  const skill = details.getByRole('button', { name: 'Contract review', exact: true })
+  await expect.element(description).toBeVisible()
+  await skill.click()
+  await expect.element(skill).toHaveAttribute('aria-expanded', 'false')
+  await skill.click()
+  await expect.element(skill).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(description).toBeVisible()
+  await details.getByRole('button', { name: 'Example requests', exact: true }).first().click()
+  await expect
+    .element(
+      details.getByText('Review this contract and identify clauses that may expose us to risk.', {
+        exact: true,
+      }),
+    )
+    .toBeVisible()
+  const connection = details.getByRole('button', { name: 'Connection', exact: true })
+  const endpoint = details.getByText('https://agents.example.test/contract', { exact: true })
+  await connection.click()
+  await expect.element(connection).toHaveAttribute('aria-expanded', 'false')
+  await connection.click()
+  await expect.element(connection).toHaveAttribute('aria-expanded', 'true')
+  await expect.element(endpoint).toBeVisible()
+  await details.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect.element(details).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  expect((await readDraft()).graph).toEqual(before.graph)
+  expect(draftApi.save).toHaveBeenCalledTimes(savesBefore)
+})
+
+it('keeps Change as an agent picker and opens the selected Document Review identity and skills', async () => {
+  const { panel } = await setup()
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  await page.getByRole('button', { name: /^Document Review Agent/ }).click()
+  const changed = page.getByRole('region', {
+    name: 'Contract Review Agent Node configuration panel',
+    exact: true,
+  })
+  await expect.element(changed).toBeVisible()
+  const before = await saveDraft({
+    agent_binding: expect.objectContaining({ agent_id: '44444444-4444-4444-8444-444444444444' }),
+  })
+  const savesBefore = draftApi.save.mock.calls.length
+  const trigger = changed.getByRole('button', { name: /^Document Review Agent/ })
+  await trigger.click()
+  const details = page.getByRole('dialog', { name: 'Agent details', exact: true })
+  await expect
+    .element(details.getByRole('heading', { name: 'Document Review Agent', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(details.getByRole('button', { name: 'Document review', exact: true }))
+    .toBeVisible()
+  await expect
+    .element(details.getByText('https://agents.example.test/document', { exact: true }))
+    .toBeVisible()
+  await expect
+    .element(details.getByRole('button', { name: 'Contract review', exact: true }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(details.getByRole('button', { name: 'Clause rewrite', exact: true }))
+    .not.toBeInTheDocument()
+  await details.getByRole('button', { name: 'Example requests', exact: true }).click()
+  await expect
+    .element(
+      details.getByText(
+        'Review this document and summarize the information that needs attention.',
+        { exact: true },
+      ),
+    )
+    .toBeVisible()
+  await details.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect.element(details).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+  await page.getByRole('button', { name: 'Save workflow draft', exact: true }).click()
+  expect((await readDraft()).graph).toEqual(before.graph)
+  expect(draftApi.save).toHaveBeenCalledTimes(savesBefore)
+})
+
+it('uses the shared picker to replace an external agent with a Dify agent', async () => {
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: {
+        agent_task: 'Keep this task',
+        agent_declared_outputs: [{ name: 'external_summary', type: 'string', required: false }],
+      },
+    }),
+  })
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await expect.element(picker.getByRole('tab', { name: 'Dify', exact: true })).toBeVisible()
+  await expect.element(picker.getByRole('tab', { name: 'External', exact: true })).toBeVisible()
+  await expect
+    .element(picker.getByRole('button', { name: 'Start from Scratch', exact: true }))
+    .toBeVisible()
+  await picker.getByRole('tab', { name: 'Dify', exact: true }).click()
+  await picker.getByRole('button', { name: /Research Agent/ }).click()
+  await expect
+    .element(
+      page.getByRole('region', { name: 'Research Agent Node configuration panel', exact: true }),
+    )
+    .toBeVisible()
+  await saveDraft({
+    agent_node_kind: 'dify_agent',
+    agent_binding: { binding_type: 'roster_agent', agent_id: 'dify-agent-1' },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [],
+  })
+  const difyNode = ((await readDraft()).graph as WorkflowDataUpdater).nodes.find(
+    (node) => node.id === 'external-agent',
+  )!
+  expect(difyNode.data).not.toHaveProperty('external_wait')
+  expect(difyNode.data).not.toHaveProperty('error_strategy')
+  expect(draftApi.rebind).not.toHaveBeenCalled()
+  await expect.element(picker).not.toBeInTheDocument()
+})
+
+it('uses the same Change picker on a Dify node to select an external agent', async () => {
+  const graph = createExternalAgentWorkflowGraph()
+  const node = graph.nodes.find((node) => node.id === 'external-agent')!
+  const difyData: AgentV2NodeType = {
+    type: BlockEnum.Agent,
+    title: 'Research Agent',
+    desc: '',
+    selected: true,
+    agent_node_kind: 'dify_agent',
+    version: '2',
+    agent_binding: { binding_type: 'roster_agent', agent_id: 'dify-agent-1' },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [{ name: 'internal_summary', type: 'string', required: false }],
+    agent_output_routes: {
+      enabled: true,
+      routes: [
+        { id: 'accepted', name: 'Accepted' },
+        { id: 'rejected', name: 'Rejected' },
+      ],
+    },
+    _targetBranches: [
+      { id: 'accepted', name: 'Accepted' },
+      { id: 'rejected', name: 'Rejected' },
+    ],
+  }
+  node.data = difyData
+  graph.nodes.push(
+    createNode({ id: 'downstream', data: { type: BlockEnum.End, title: 'Downstream' } }),
+  )
+  graph.edges.push(
+    createEdge({
+      id: 'routed-connection',
+      source: 'external-agent',
+      sourceHandle: 'accepted',
+      target: 'downstream',
+    }),
+  )
+  const { panel: difyPanel } = await setup({ graph })
+  await expect.element(difyPanel).toBeVisible()
+  await difyPanel.getByRole('button', { name: 'Change', exact: true }).click()
+  const difyPicker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await expect.element(difyPicker.getByRole('tab', { name: 'Dify', exact: true })).toBeVisible()
+  await expect.element(difyPicker.getByRole('tab', { name: 'External', exact: true })).toBeVisible()
+  await difyPicker.getByRole('tab', { name: 'External', exact: true }).click()
+  await difyPicker.getByRole('button', { name: /Document Review Agent/ }).click()
+  await expect
+    .element(
+      page.getByRole('region', {
+        name: 'Document Review Agent Node configuration panel',
+        exact: true,
+      }),
+    )
+    .toBeVisible()
+  const saved = await saveDraft({
+    agent_node_kind: 'external_a2a',
+    agent_binding: {
+      binding_type: 'roster_agent',
+      agent_id: '44444444-4444-4444-8444-444444444444',
+    },
+    agent_task: 'Keep this task',
+    agent_declared_outputs: [{ name: 'text', type: 'string', required: true }],
+    external_wait: expect.objectContaining({ enabled: true, wait_seconds: 600 }),
+    error_strategy: 'fail-branch',
+  })
+  const externalNode = (saved.graph as WorkflowDataUpdater).nodes.find(
+    (node) => node.id === 'external-agent',
+  )!
+  expect(externalNode.data).not.toHaveProperty('agent_output_routes')
+  expect(externalNode.data).not.toHaveProperty('_targetBranches')
+  expect((saved.graph as WorkflowDataUpdater).edges).not.toContainEqual(
+    expect.objectContaining({ id: 'routed-connection' }),
+  )
+  expect(draftApi.rebind).not.toHaveBeenCalled()
+})
+
+it('creates an inline Dify agent from the Change picker', async () => {
+  draftApi.createInline.mockImplementation(() => new Promise(() => {}))
+  const { panel } = await setup()
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  const picker = page.getByRole('dialog', { name: 'Select an agent', exact: true })
+  await picker.getByRole('button', { name: 'Start from Scratch', exact: true }).click()
+  await expect.poll(() => draftApi.createInline.mock.calls.length).toBe(1)
+  expect(draftApi.createInline).toHaveBeenCalledWith(
+    expect.objectContaining({
+      params: { app_id: 'external-preview-app', node_id: 'external-agent' },
+      body: expect.objectContaining({ save_strategy: 'node_job_only' }),
+    }),
+  )
+  await expect
+    .poll(async () => {
+      const draft = await readDraft()
+      return (draft.graph as WorkflowDataUpdater).nodes.find((node) => node.id === 'external-agent')
+        ?.data
+    })
+    .toMatchObject({
+      agent_node_kind: 'dify_agent',
+      agent_binding: { binding_type: 'inline_agent' },
+    })
+})
+
+it('restores external settings when inline Dify agent creation fails', async () => {
+  draftApi.createInline.mockRejectedValue(new Error('Unable to create agent'))
+  const originalOutputs = [{ name: 'external_summary', type: 'string' as const, required: false }]
+  const { panel } = await setup({
+    graph: createExternalAgentWorkflowGraph({
+      nodeData: { agent_task: 'Keep this task', agent_declared_outputs: originalOutputs },
+    }),
+  })
+  await panel.getByRole('button', { name: 'Change', exact: true }).click()
+  await page
+    .getByRole('dialog', { name: 'Select an agent', exact: true })
+    .getByRole('button', { name: 'Start from Scratch', exact: true })
+    .click()
+  await expect.poll(() => draftApi.createInline.mock.calls.length).toBe(1)
+  await expect.element(panel).toBeVisible()
+  await saveDraft({
+    agent_node_kind: 'external_a2a',
+    agent_task: 'Keep this task',
+    agent_declared_outputs: originalOutputs,
+    external_wait: expect.objectContaining({ enabled: true, wait_seconds: 600 }),
+    error_strategy: 'fail-branch',
+  })
+})

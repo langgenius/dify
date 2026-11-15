@@ -665,7 +665,7 @@ class TestWorkflowAppRunnerCoreCases:
                     emails.append({"kwargs": kwargs, "queue": queue})
 
             monkeypatch.setattr(
-                "core.app.apps.workflow_app_runner.dispatch_human_input_email_task",
+                "core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task",
                 _Dispatch(),
             )
             enriched_reason = HumanInputRequired(
@@ -1068,7 +1068,7 @@ class TestWorkflowAppRunnerNotificationsCases:
             node_id="node-1",
             node_title="Review",
         )
-        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_email_task", email_task)
+        monkeypatch.setattr("core.app.apps.workflow_app_runner.dispatch_human_input_form_delivery_task", email_task)
 
         runner.handle_event(workflow_entry, event, pause_reasons=[enriched_reason])
 

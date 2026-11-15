@@ -9,6 +9,16 @@ from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class FeatureService:
+    @staticmethod
+    def is_im_centrally_managed() -> bool:
+        """Enterprise centrally manages IM channels and default bindings."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE
+
+    @staticmethod
+    def use_tenant_scoped_email_config() -> bool:
+        """Cloud uses tenant Email Channels instead of the global mail client."""
+        return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""
@@ -25,8 +35,20 @@ class FeatureService:
         return CloudPlan(billing_info["subscription"]["plan"])
 
     @classmethod
+    def can_use_workflow_collaboration(cls, tenant_id: str, *, plan: CloudPlan | None = None) -> bool:
+        """Return the workspace entitlement using its loaded plan, or propagate billing failures."""
+        if not dify_config.ENABLE_COLLABORATION_MODE:
+            return False
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return True
+        if not tenant_id:
+            return False
+        return (plan if plan is not None else cls.get_workspace_plan(tenant_id)).is_paid
+
+    @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
+        features.im_centrally_managed = cls.is_im_centrally_managed()
         if exclude_vector_space:
             features.vector_space = None
 
@@ -47,6 +69,9 @@ class FeatureService:
         features.human_input_email_delivery_enabled = cls._resolve_human_input_email_delivery_enabled(
             features=features,
             tenant_id=tenant_id,
+        )
+        features.workflow_collaboration_enabled = cls.can_use_workflow_collaboration(
+            tenant_id, plan=features.billing.subscription.plan
         )
 
         if tenant_id:

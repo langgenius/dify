@@ -7,6 +7,7 @@ from flask import current_app, got_request_exception
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 
 
@@ -169,7 +170,7 @@ class InvalidArgumentError(BaseHTTPException):
 def register_permission_error_handler(api: ExternalApi) -> None:
     """Preserve the default permission-error response for Console and Service API."""
 
-    @api.errorhandler(NoPermissionError)
+    @api.errorhandler(NoPermissionError)  # pyrefly: ignore[not-callable] - Flask-RESTX errorhandler overload
     def handle_permission_error(error: NoPermissionError) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
         return {
@@ -181,3 +182,27 @@ def register_permission_error_handler(api: ExternalApi) -> None:
     # Flask-RESTX picks the first matching handler, including the generic Exception handler.
     cast(OrderedDict[type[Exception], object], api.error_handlers).move_to_end(NoPermissionError, last=False)
     api.document_error_handler(NoPermissionError, status=HTTPStatus.BAD_REQUEST, code=InvalidArgumentError.error_code)
+
+
+def register_credential_refresh_error_handler(api: ExternalApi) -> None:
+    """Give temporary refresh failures the same retryable response on each API surface.
+
+    Preconditions: The API supports exception-specific error registration.
+    Postconditions: Refresh failures return HTTP 503 before the generic handler.
+    Existing exception handlers and public error documentation remain registered.
+    """
+    register_handler = api.errorhandler(CredentialRefreshUnavailableError)
+    assert callable(register_handler)
+
+    @register_handler
+    def handle_refresh_unavailable(error: CredentialRefreshUnavailableError) -> tuple[dict[str, str | int], int]:
+        got_request_exception.send(current_app, exception=error)
+        status = HTTPStatus.SERVICE_UNAVAILABLE
+        return {"code": "service_unavailable", "message": str(error), "status": status.value}, status.value
+
+    handlers: object = api.error_handlers
+    assert isinstance(handlers, OrderedDict)
+    handlers.move_to_end(CredentialRefreshUnavailableError, last=False)
+    api.document_error_handler(
+        CredentialRefreshUnavailableError, status=HTTPStatus.SERVICE_UNAVAILABLE, code="service_unavailable"
+    )

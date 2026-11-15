@@ -27,6 +27,7 @@ RUN apt-get update \
 # Install Python dependencies (workspace members under providers/vdb/)
 COPY api/pyproject.toml api/uv.lock ./
 COPY api/providers ./providers
+COPY packages/graphon /app/packages/graphon
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.
@@ -56,7 +57,7 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-ARG NODE_PACKAGE_VERSION=24.22.1-1nodesource1
+ARG NODE_PACKAGE_VERSION=24.22.3-1nodesource1
 ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \

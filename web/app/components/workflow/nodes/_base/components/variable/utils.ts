@@ -19,6 +19,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { AgentV2NodeType } from '@/app/components/workflow/nodes/agent-v2/types'
 import type { AgentNodeType } from '@/app/components/workflow/nodes/agent/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputV2NodeType } from '@/app/components/workflow/nodes/human-input-v2/types'
 import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
@@ -36,6 +37,7 @@ import type {
   Var,
   WorkflowPluginCatalogs,
 } from '@/app/components/workflow/types'
+import type { ExternalAgentWorkflowPreviewNodeData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import { uniq } from 'es-toolkit/array'
 import { isArray } from 'es-toolkit/compat'
@@ -55,9 +57,14 @@ import {
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
-import { getAgentV2OutputVars } from '@/app/components/workflow/nodes/agent-v2/output-variables'
+import {
+  getAgentV2OutputVars,
+  getDeclaredOutputVarType,
+} from '@/app/components/workflow/nodes/agent-v2/output-variables'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import HumanInputV2NodeDefault from '@/app/components/workflow/nodes/human-input-v2/default'
+import { isHumanInputV2NodeData } from '@/app/components/workflow/nodes/human-input-v2/types'
 import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import { comparisonOperatorNotRequireValue } from '@/app/components/workflow/nodes/if-else/utils'
@@ -66,6 +73,8 @@ import { resolveVarType } from '@/app/components/workflow/nodes/tool/output-sche
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
+import { externalAgentDefaultOutputs } from '@/features/agent-v2/external-agent/workflow-preview/defaults'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
 import { KNOWLEDGE_RETRIEVAL_V2_OUTPUT_STRUCT } from '../../../knowledge-retrieval-v2/constants'
 import {
@@ -303,6 +312,17 @@ const findExceptVarInObject = (
 
   return res
 }
+
+const getExternalAgentOutputVars = (data: {
+  agent_declared_outputs?: ExternalAgentWorkflowPreviewNodeData['agent_declared_outputs']
+}): Var[] =>
+  (data.agent_declared_outputs?.length
+    ? data.agent_declared_outputs
+    : externalAgentDefaultOutputs
+  ).map((output) => ({
+    variable: output.name,
+    type: getDeclaredOutputVarType(output),
+  }))
 
 const formatItem = (
   item: any,
@@ -561,6 +581,11 @@ const formatItem = (
     }
 
     case BlockEnum.Agent: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res.vars = getExternalAgentOutputVars(data)
+        break
+      }
+
       if (isAgentV2NodeData(data)) {
         res.vars = getAgentV2OutputVars(data)
         break
@@ -581,6 +606,11 @@ const formatItem = (
     }
 
     case BlockEnum.AgentV2: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res.vars = getExternalAgentOutputVars(data)
+        break
+      }
+
       res.vars = getAgentV2OutputVars(data as AgentV2NodeType)
       break
     }
@@ -608,10 +638,13 @@ const formatItem = (
     }
 
     case BlockEnum.HumanInput: {
-      const outputSchema =
-        HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
-          schemaTypeDefinitions,
-        }) || []
+      const outputSchema = isHumanInputV2NodeData(data)
+        ? HumanInputV2NodeDefault.getOutputVars?.(data, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
+        : HumanInputNodeDefault.getOutputVars?.(data as HumanInputNodeType, allPluginInfoList, [], {
+            schemaTypeDefinitions,
+          }) || []
       res.vars = [...outputSchema, ...HUMAN_INPUT_OUTPUT_STRUCT]
       break
     }
@@ -1185,7 +1218,7 @@ export const getNodeInfoById = (nodes: any, id: string) => {
   return nodes.find((node: any) => node.id === id)
 }
 
-const matchNotSystemVars = (prompts: string[]) => {
+export const matchNotSystemVars = (prompts: string[]) => {
   if (!prompts) return []
 
   const allVars: string[] = []
@@ -1346,6 +1379,11 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
       break
     }
     case BlockEnum.Agent: {
+      if (isExternalAgentWorkflowPreviewData(data)) {
+        res = matchNotSystemVars([data.agent_task || ''])
+        break
+      }
+
       if (isAgentV2NodeData(data)) {
         const payload = data
         res = matchNotSystemVars([
@@ -1445,6 +1483,30 @@ export const getNodeUsedVars = (node: Node, { forExecution = false } = {}): Valu
     }
 
     case BlockEnum.HumanInput: {
+      if (isHumanInputV2NodeData(data)) {
+        const payload = data
+        const dynamicRecipientSelectors = payload.recipients_spec.flatMap((recipient) =>
+          recipient.type === 'dynamic_email' ? [recipient.selector] : [],
+        )
+        const inputSelectors = payload.inputs.flatMap((input) => {
+          if (input.type === InputVarType.paragraph && input.default.type === 'variable')
+            return [input.default.selector]
+          if (input.type === InputVarType.select && input.option_source.type === 'variable')
+            return [input.option_source.selector]
+          return []
+        })
+        res = [
+          ...matchNotSystemVars([
+            payload.form_content,
+            payload.message_template.subject,
+            payload.message_template.body,
+          ]),
+          ...dynamicRecipientSelectors,
+          ...inputSelectors,
+        ]
+        break
+      }
+
       const payload = data as HumanInputNodeType
       const formContent = payload.form_content
       const mailTemplates = payload.delivery_methods.flatMap((method) => {
@@ -1776,6 +1838,15 @@ export const updateNodeVars = (
         break
       }
       case BlockEnum.Agent: {
+        if (isExternalAgentWorkflowPreviewData(data)) {
+          data.agent_task = replaceOldVarInText(
+            data.agent_task || '',
+            oldVarSelector,
+            newVarSelector,
+          )
+          break
+        }
+
         if (isAgentV2NodeData(data)) {
           const payload = data
           payload.agent_task = replaceOldVarInText(
@@ -1938,6 +2009,49 @@ export const updateNodeVars = (
         break
       }
       case BlockEnum.HumanInput: {
+        if (isHumanInputV2NodeData(data)) {
+          const payload = data as HumanInputV2NodeType
+          payload.form_content = replaceOldVarInText(
+            payload.form_content,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.subject = replaceOldVarInText(
+            payload.message_template.subject,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.message_template.body = replaceOldVarInText(
+            payload.message_template.body,
+            oldVarSelector,
+            newVarSelector,
+          )
+          payload.recipients_spec = payload.recipients_spec.map((recipient) => {
+            if (
+              recipient.type === 'dynamic_email' &&
+              recipient.selector.join('.') === oldVarSelector.join('.')
+            )
+              return { ...recipient, selector: newVarSelector }
+            return recipient
+          })
+          payload.inputs = payload.inputs.map((input) => {
+            if (
+              input.type === InputVarType.paragraph &&
+              input.default.type === 'variable' &&
+              input.default.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.default.selector = newVarSelector
+            if (
+              input.type === InputVarType.select &&
+              input.option_source.type === 'variable' &&
+              input.option_source.selector.join('.') === oldVarSelector.join('.')
+            )
+              input.option_source.selector = newVarSelector
+            return input
+          })
+          break
+        }
+
         const payload = data as HumanInputNodeType
         payload.form_content = replaceOldVarInText(
           payload.form_content,

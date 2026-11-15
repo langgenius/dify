@@ -35,6 +35,7 @@ from core.entities.parameter_entities import (
 from core.entities.provider_entities import ProviderConfigType
 from core.plugin.impl.exc import PluginPermissionDeniedError
 from fields.base import ResponseModel
+from libs.helper import dump_response
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
@@ -300,6 +301,10 @@ class EndpointListApi(Resource):
     @with_current_tenant_id
     @model_validate(EndpointListQuery)
     def get(self, req_data: EndpointListQuery, tenant_id: str, user_id: str):
+        """Given authorized workspace IDs and a validated query, return JSON endpoint DTOs.
+
+        Service failures propagate. This read does not change endpoint state.
+        """
         endpoints = EndpointService.list_endpoints(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -307,7 +312,7 @@ class EndpointListApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return dump_response(EndpointListResponse, {"endpoints": endpoints})
 
 
 @console_ns.route("/workspaces/current/endpoints/list/plugin")
@@ -329,6 +334,10 @@ class EndpointListForSinglePluginApi(Resource):
     @with_current_tenant_id
     @model_validate(EndpointListForPluginQuery)
     def get(self, req_data: EndpointListForPluginQuery, tenant_id: str, user_id: str):
+        """Given authorized workspace IDs and a validated query, return plugin endpoint DTOs.
+
+        Service failures propagate. This read does not change endpoint state.
+        """
         endpoints = EndpointService.list_endpoints_for_single_plugin(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -337,7 +346,7 @@ class EndpointListForSinglePluginApi(Resource):
             page_size=req_data.page_size,
         )
 
-        return EndpointListResponse(endpoints=endpoints).model_dump(mode="json")
+        return dump_response(EndpointListResponse, {"endpoints": endpoints})
 
 
 @console_ns.route("/workspaces/current/endpoints/<string:id>")

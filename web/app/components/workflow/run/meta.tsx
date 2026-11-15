@@ -12,6 +12,7 @@ type Props = {
   readonly steps?: number
   readonly showSteps?: boolean
   readonly children?: ReactNode
+  readonly preserveUnknownTokens?: boolean
 }
 
 /** One label/value pair; render it inside a `<dl>`. */
@@ -35,8 +36,9 @@ const MetaData: FC<Props> = ({
   steps = 1,
   showSteps = true,
   children,
+  preserveUnknownTokens = false,
 }) => {
-  const { t } = useTranslation(['appLog', 'runLog', 'workflow'])
+  const { t } = useTranslation(['appLog', 'runLog', 'workflow', 'agentRoster'])
   const { formatTime } = useTimestamp()
 
   return (
@@ -85,7 +87,13 @@ const MetaData: FC<Props> = ({
           {['running', 'paused'].includes(status) && (
             <div className="my-1 h-2 w-12 animate-pulse rounded-xs bg-text-quaternary" />
           )}
-          {!['running', 'paused'].includes(status) && <span>{`${tokens || 0} Tokens`}</span>}
+          {!['running', 'paused'].includes(status) && (
+            <span>
+              {preserveUnknownTokens && tokens == null
+                ? t(($) => $['external.overview.testRun.notProvided'], { ns: 'agentRoster' })
+                : `${tokens ?? 0} Tokens`}
+            </span>
+          )}
         </MetaDataRow>
         {showSteps && (
           <MetaDataRow label={t(($) => $['meta.steps'], { ns: 'runLog' })}>

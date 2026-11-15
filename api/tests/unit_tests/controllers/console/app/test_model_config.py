@@ -719,7 +719,6 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     sqlite_engine: Engine,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    App.metadata.create_all(sqlite_engine, tables=[App.__table__, AppModelConfig.__table__])
     make_session = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
     app_id = str(uuid4())
     tenant_id = str(uuid4())

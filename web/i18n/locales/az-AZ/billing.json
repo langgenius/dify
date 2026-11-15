@@ -8,6 +8,9 @@
   "apps.fullTip2": "Plan limitinə çatılıb",
   "apps.fullTip2des": "İstifadə limitini boşaltmaq üçün qeyri-aktiv tətbiqləri silmək və ya bizimlə əlaqə saxlamaq tövsiyə olunur.",
   "buyPermissionDeniedTip": "Abunə olmaq üçün müəssisənizin inzibatçısı ilə əlaqə saxlayın",
+  "errors.operationFailed": "Bu sorğunu tamamlaya bilmədik. Zəhmət olmasa, sonra yenidən cəhd edin. Problem davam edərsə, dəstək xidməti ilə əlaqə saxlayın.",
+  "errors.requestInProgress": "Əvvəlki sorğunuz hələ də emal olunur. Zəhmət olmasa, bir azdan yenidən cəhd edin.",
+  "errors.unavailable": "Bu xidmət müvəqqəti olaraq əlçatan deyil. Zəhmət olmasa, sonra yenidən cəhd edin.",
   "plans.community.btnText": "Başla",
   "plans.community.description": "Açıq mənbə həvəskarları, fərdi proqramçılar və qeyri-kommersiya layihələri üçün",
   "plans.community.features": [

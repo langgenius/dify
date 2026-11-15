@@ -5,7 +5,7 @@ import type {
   SyncDraftResult,
 } from '@/app/components/workflow/hooks-store'
 import { safe } from '@orpc/client'
-import { skipToken, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { useCallback, useEffect, useRef } from 'react'
@@ -13,7 +13,11 @@ import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { collaborationManager } from '@/app/components/workflow/collaboration/core/collaboration-manager'
-import { workflowAppIdentityAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  editorCollaborationEnabledAtom,
+  workflowAppIdentityAtom,
+} from '@/app/components/workflow/editor-resource/state'
+import { useCollaborativeWorkflow } from '@/app/components/workflow/hooks/use-collaborative-workflow'
 import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import {
   useNodesReadOnly,
@@ -27,7 +31,11 @@ import { useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { normalizeWorkflowNodes } from '@/app/components/workflow/utils/normalize-workflow-nodes'
 import { API_PREFIX } from '@/config'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { asRecord } from '@/features/agent-v2/external-agent/model'
+import {
+  isExternalAgentWorkflowBinding,
+  isExternalAgentWorkflowPreviewData,
+} from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { isAppDeletingOrDeleted } from '@/service/app-deletion'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { postWithKeepalive } from '@/service/fetch'
@@ -43,6 +51,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
   const { t } = useTranslation(['workflow'] as const)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const collaborativeWorkflow = useCollaborativeWorkflow()
   const featuresStore = useFeaturesStore()
   const appId = useAtomValue(workflowAppIdentityAtom).appId
   const { data: appMode } = useQuery(
@@ -52,10 +61,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
     }),
   )
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const { data: isCollaborationEnabled } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: (s) => s.enable_collaboration_mode,
-  })
+  const isCollaborationEnabled = useAtomValue(editorCollaborationEnabledAtom)
   const isMountedRef = useRef(false)
   const emptySyncPendingRef = useRef(false)
   const cancelConfirmationRef = useRef<(() => void) | undefined>(undefined)
@@ -301,6 +307,44 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
 
         setSyncWorkflowDraftHash(res.hash, baseParams.params.graph)
         setDraftUpdatedAt(res.updated_at)
+        const hasPendingExternalBinding = baseParams.params.graph.nodes.some(
+          (node) =>
+            isExternalAgentWorkflowPreviewData(node.data) &&
+            node.data.agent_binding?.agent_id &&
+            !node.data.agent_binding.binding_epoch,
+        )
+        if (hasPendingExternalBinding) {
+          const [readError, draft] = await safe(
+            consoleClient.apps.byAppId.workflows.draft.get(
+              { params: { app_id: baseParams.appId } },
+              { context: { silent: true } },
+            ),
+          )
+          if (!readError && Array.isArray(draft.graph.nodes) && isMountedRef.current) {
+            const serverBindings = new Map(
+              draft.graph.nodes.map((value) => {
+                const node = asRecord(value)
+                return [node.id, asRecord(asRecord(node.data).agent_binding)]
+              }),
+            )
+            const current = collaborativeWorkflow.getState()
+            // Only hydrate server-owned bindings, so edits made while saving stay intact.
+            current.setNodes(
+              current.nodes.map((node) => {
+                if (!isExternalAgentWorkflowPreviewData(node.data)) return node
+                const binding = serverBindings.get(node.id)
+                if (
+                  !isExternalAgentWorkflowBinding(binding) ||
+                  !binding.binding_epoch ||
+                  binding.agent_id !== node.data.agent_binding?.agent_id ||
+                  node.data.agent_binding?.binding_epoch
+                )
+                  return node
+                return { ...node, data: { ...node.data, agent_binding: binding } }
+              }),
+            )
+          }
+        }
         callback?.onSuccess?.()
         return { hash: res.hash, updatedAt: res.updated_at }
       } finally {
@@ -315,6 +359,7 @@ const useNodesSyncDraftBase = (getNodesReadOnly: () => boolean) => {
       isCollaborationEnabled,
       t,
       appId,
+      collaborativeWorkflow,
     ],
   )
 

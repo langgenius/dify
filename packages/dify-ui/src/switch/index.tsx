@@ -13,6 +13,7 @@ const switchRootVariants = cva(
     'group relative inline-flex shrink-0 touch-manipulation items-center transition-colors duration-200 ease-in-out motion-reduce:transition-none',
     checkedControlFocusClassName,
     'bg-components-toggle-bg-unchecked hover:bg-components-toggle-bg-unchecked-hover data-checked:bg-components-toggle-bg data-checked:hover:bg-components-toggle-bg-hover',
+    'data-readonly:not-data-disabled:cursor-default data-readonly:not-data-disabled:hover:bg-components-toggle-bg-unchecked data-readonly:not-data-disabled:data-checked:hover:bg-components-toggle-bg',
     'data-disabled:cursor-not-allowed data-disabled:bg-components-toggle-bg-unchecked-disabled data-disabled:hover:bg-components-toggle-bg-unchecked-disabled data-disabled:data-checked:bg-components-toggle-bg-disabled data-disabled:data-checked:hover:bg-components-toggle-bg-disabled',
   ],
   {
@@ -31,7 +32,7 @@ const switchRootVariants = cva(
 )
 
 const switchThumbVariants = cva(
-  'block bg-components-toggle-knob shadow-sm transition-transform duration-200 ease-in-out group-hover:bg-components-toggle-knob-hover group-hover:shadow-md group-data-disabled:bg-components-toggle-knob-disabled group-data-disabled:shadow-none motion-reduce:transition-none',
+  'block bg-components-toggle-knob shadow-sm transition-transform duration-200 ease-in-out group-hover:bg-components-toggle-knob-hover group-hover:shadow-md group-data-disabled:bg-components-toggle-knob-disabled group-data-disabled:shadow-none group-data-readonly:group-not-data-disabled:bg-components-toggle-knob group-data-readonly:group-not-data-disabled:shadow-sm motion-reduce:transition-none',
   {
     variants: {
       size: {

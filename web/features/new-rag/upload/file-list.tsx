@@ -1,6 +1,5 @@
 'use client'
 
-import type { ReactNode } from 'react'
 import type { KnowledgeFsUploadPhase } from './knowledge-fs-upload'
 import type { DocumentUploadIssue } from './policy'
 import { Button } from '@langgenius/dify-ui/button'
@@ -45,7 +44,6 @@ export function DocumentUploadFileList({
   className,
   disabled,
   fileSizeLimitMb,
-  idleStatus,
   items,
   onRemove,
   uploadProgress = new Map(),
@@ -55,7 +53,6 @@ export function DocumentUploadFileList({
   className?: string
   disabled: boolean
   fileSizeLimitMb: number
-  idleStatus?: ReactNode
   items: DocumentUploadFileItem[]
   onRemove: (item: DocumentUploadFileItem) => void
   uploadProgress?: ReadonlyMap<File, KnowledgeFsUploadPhase>
@@ -84,7 +81,7 @@ export function DocumentUploadFileList({
                       size: fileSizeLimitMb,
                     })
                   : t(($) => $[`documentUploadExclusion.${issue}`])
-                : idleStatus
+                : undefined
           return (
             <li
               key={item.id}
@@ -99,7 +96,7 @@ export function DocumentUploadFileList({
               <span className="flex shrink-0 items-start p-3">
                 <span aria-hidden className={cn('size-6', fileIconClass(extension))} />
               </span>
-              <span className="min-w-0 flex-1 py-1 pr-2 text-left">
+              <span className="min-w-0 flex-1 py-1 pe-2 text-start">
                 <span className="block truncate system-xs-medium text-text-primary">
                   {item.file.name}
                 </span>
@@ -122,7 +119,7 @@ export function DocumentUploadFileList({
                   )}
                 </span>
               </span>
-              <span className="flex shrink-0 items-center gap-1 py-2 pr-3">
+              <span className="flex shrink-0 items-center gap-1 py-2 pe-3">
                 {fileUploading ? (
                   <span className="flex size-6 items-center justify-center">
                     <span

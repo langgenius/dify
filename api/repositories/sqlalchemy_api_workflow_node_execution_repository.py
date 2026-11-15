@@ -5,19 +5,29 @@ This module provides a concrete implementation of the service repository protoco
 using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 """
 
+import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
+from itertools import batched
 from typing import Any, cast, override
 
-from sqlalchemy import String, asc, delete, desc, func, or_, select
+from sqlalchemy import JSON, String, Text, asc, delete, desc, func, or_, select, tuple_
+from sqlalchemy import cast as sql_cast
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_storage import storage
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
-from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload, WorkflowNodeExecutionTriggeredFrom
+from models.model import UploadFile
+from models.workflow import (
+    ExecutionOffLoadType,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowNodeExecutionTriggeredFrom,
+)
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
     WorkflowNodeExecutionSnapshot,
     WorkflowNodeExecutionSnapshotRow,
 )
@@ -53,10 +63,64 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         self._session_maker = session_maker
 
     @override
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.INPUTS, execution.inputs_dict)
+
+    @override
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return self._load_full_payload(execution, ExecutionOffLoadType.OUTPUTS, execution.outputs_dict)
+
+    @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
         """Load Process Data from external storage when the execution was offloaded."""
+        return self._load_full_payload(execution, ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict)
+
+    def _load_full_payload(
+        self,
+        execution: WorkflowNodeExecutionModel,
+        type_: ExecutionOffLoadType,
+        inline: Mapping[str, Any] | None,
+    ) -> Mapping[str, Any] | None:
+        offload = next((item for item in execution.offload_data if item.type_ == type_), None)
+        if offload is None:
+            return inline
+        reference = (execution.tenant_id, offload.file_id)
+        return self._load_offloaded_payloads({reference})[reference]
+
+    def _load_offloaded_payloads(
+        self, references: set[tuple[str, str]]
+    ) -> dict[tuple[str, str], Mapping[str, Any] | None]:
+        if not references:
+            return {}
+        keys: dict[tuple[str, str], str] = {}
         with self._session_maker() as session:
-            return execution.load_full_process_data(session, storage)
+            for batch in batched(references, 1000, strict=False):
+                rows = session.execute(
+                    select(UploadFile.tenant_id, UploadFile.id, UploadFile.key).where(
+                        tuple_(UploadFile.tenant_id, UploadFile.id).in_(batch)
+                    )
+                )
+                keys.update(((tenant_id, file_id), key) for tenant_id, file_id, key in rows)
+        for tenant_id, file_id in references:
+            assert (tenant_id, file_id) in keys, f"UploadFile with id {file_id} should exist in the execution's tenant"
+        return {reference: json.loads(storage.load(keys[reference])) for reference in references}
+
+    @override
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        loaded = self._load_offloaded_payloads(
+            {(execution.tenant_id, offload.file_id) for execution in executions for offload in execution.offload_data}
+        )
+        result: dict[str, WorkflowNodeExecutionPayloads] = {}
+        for execution in executions:
+            full = {offload.type_: loaded[execution.tenant_id, offload.file_id] for offload in execution.offload_data}
+            result[execution.id] = WorkflowNodeExecutionPayloads(
+                inputs=full.get(ExecutionOffLoadType.INPUTS, execution.inputs_dict),
+                process_data=full.get(ExecutionOffLoadType.PROCESS_DATA, execution.process_data_dict),
+                outputs=full.get(ExecutionOffLoadType.OUTPUTS, execution.outputs_dict),
+            )
+        return result
 
     @override
     def get_node_last_execution(
@@ -83,6 +147,12 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
             The returned WorkflowNodeExecutionModel will have `offload_data` preloaded.
         """
+        metadata = sql_cast(
+            func.nullif(WorkflowNodeExecutionModel.execution_metadata, ""), JSON().with_variant(Text(), "sqlite")
+        )
+        external_preview_wait = (
+            WorkflowNodeExecutionModel.triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP
+        ) & metadata["agent_log"]["external_wait"].as_boolean().is_(True)
         stmt = select(WorkflowNodeExecutionModel)
         stmt = WorkflowNodeExecutionModel.preload_offload_data(stmt)
         stmt = (
@@ -92,7 +162,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
                 WorkflowNodeExecutionModel.workflow_id == workflow_id,
                 WorkflowNodeExecutionModel.node_id == node_id,
                 WorkflowNodeExecutionModel.triggered_from != WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
-                WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED,
+                or_(WorkflowNodeExecutionModel.status != WorkflowNodeExecutionStatus.PAUSED, external_preview_wait),
             )
             .order_by(desc(WorkflowNodeExecutionModel.created_at))
             .limit(1)

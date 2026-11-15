@@ -44,7 +44,7 @@ export const TagSearchContentView = ({
   const canChangeBindings = requiresTargetEditPermission
     ? canBindOrUnbindTags
     : canBindOrUnbindTags || canManageTags
-  const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' }) || ''
+  const placeholder = t(($) => $['tag.selectorPlaceholder'], { ns: 'common' })
 
   return (
     <>

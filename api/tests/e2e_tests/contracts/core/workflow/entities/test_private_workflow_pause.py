@@ -32,7 +32,7 @@ class TestPrivateWorkflowPauseEntity:
         pause_model = _make_workflow_pause()
 
         # Create entity
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         # Verify initialization
         assert entity._pause_model is pause_model
@@ -42,7 +42,7 @@ class TestPrivateWorkflowPauseEntity:
         """Test id property returns pause model ID."""
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         assert entity.id == "pause-123"
 
@@ -50,7 +50,7 @@ class TestPrivateWorkflowPauseEntity:
         """Test workflow_execution_id property returns workflow run ID."""
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         assert entity.workflow_execution_id == "execution-456"
 
@@ -60,7 +60,7 @@ class TestPrivateWorkflowPauseEntity:
 
         pause_model = _make_workflow_pause(resumed_at=resumed_at)
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         assert entity.resumed_at == resumed_at
 
@@ -68,7 +68,7 @@ class TestPrivateWorkflowPauseEntity:
         """Test resumed_at property returns None when not set."""
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         assert entity.resumed_at is None
 
@@ -80,7 +80,7 @@ class TestPrivateWorkflowPauseEntity:
 
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         # First call should load from storage
         result = entity.get_state()
@@ -97,7 +97,7 @@ class TestPrivateWorkflowPauseEntity:
 
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         # First call
         result1 = entity.get_state()
@@ -116,7 +116,7 @@ class TestPrivateWorkflowPauseEntity:
 
         pause_model = _make_workflow_pause()
 
-        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+        entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
         # Pre-cache data
         entity._cached_state = state_data
@@ -137,7 +137,7 @@ class TestPrivateWorkflowPauseEntity:
 
             pause_model = _make_workflow_pause()
 
-            entity = _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
+            entity = _PrivateWorkflowPauseEntity(pause_model=pause_model)
 
             result = entity.get_state()
 

@@ -1,5 +1,6 @@
 import type { UseQueryOptions } from '@tanstack/react-query'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
+import type { ConsoleClientContext } from '@/service/console'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -13,7 +14,9 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useCallback } from 'react'
+import { getExternalAgentInvocationId } from '@/app/components/workflow/nodes/agent-v2/execution'
 import { consoleClient, consoleQuery } from '@/service/console'
+import { getHttpErrorStatus } from '@/service/http-error'
 // oxlint-disable-next-line no-restricted-imports -- run and version history hooks take prebuilt flow URLs
 import { get } from './base'
 import { legacyWorkflowVersionHistoryKey } from './console/workflow-version-cache'
@@ -92,22 +95,24 @@ export const useResetWorkflowVersionHistory = () => {
 
 type UpdateVersionParams = {
   resource:
-    | Omit<Extract<EditorResource, { kind: 'app' }>, 'mode'>
+    | Omit<Extract<EditorResource, { kind: 'app' }>, 'mode' | 'collaborationEnabled'>
     | Exclude<EditorResource, { kind: 'app' }>
   versionId: string
   title: string
   releaseNotes: string
 }
 
-export const useUpdateWorkflow = () => {
+export const useUpdateWorkflow = (context?: ConsoleClientContext) => {
   const { mutateAsync: updateAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.patch.mutationOptions({ context }),
   )
   const { mutateAsync: updatePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.patch.mutationOptions({
+      context,
+    }),
   )
   const { mutateAsync: updateSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.patch.mutationOptions({ context }),
   )
   const mutateAsync = useCallback(
     ({ resource, versionId, title, releaseNotes }: UpdateVersionParams) => {
@@ -135,15 +140,17 @@ export const useUpdateWorkflow = () => {
   return { mutateAsync }
 }
 
-export const useDeleteWorkflow = (resource: EditorResource) => {
+export const useDeleteWorkflow = (resource: EditorResource, context?: ConsoleClientContext) => {
   const { mutateAsync: deleteAppVersion } = useMutation(
-    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.apps.byAppId.workflows.byWorkflowId.delete.mutationOptions({ context }),
   )
   const { mutateAsync: deletePipelineVersion } = useMutation(
-    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.rag.pipelines.byPipelineId.workflows.byWorkflowId.delete.mutationOptions({
+      context,
+    }),
   )
   const { mutateAsync: deleteSnippetVersion } = useMutation(
-    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions(),
+    consoleQuery.snippets.bySnippetId.workflows.byWorkflowId.delete.mutationOptions({ context }),
   )
 
   return useCallback(
@@ -190,7 +197,12 @@ export const useRestoreWorkflow = (resource: EditorResource) => {
   })
 }
 
-function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: boolean) {
+function lastRunQueryOptions(
+  resource: EditorResource,
+  nodeId: string,
+  enabled: boolean,
+  expectedExecutionId?: string,
+) {
   switch (resource.kind) {
     case 'app':
       return consoleQuery.apps.byAppId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions({
@@ -198,6 +210,24 @@ function lastRunQueryOptions(resource: EditorResource, nodeId: string, enabled: 
         enabled,
         retry: 0,
         context: { silent: true },
+        select: (execution) =>
+          expectedExecutionId && execution.id !== expectedExecutionId ? undefined : execution,
+        refetchInterval: (query) => {
+          const execution = query.state.data
+          if (query.state.error) {
+            if ([401, 403, 404, 410].includes(getHttpErrorStatus(query.state.error) ?? 0))
+              return false
+            return expectedExecutionId || (execution && getExternalAgentInvocationId(execution))
+              ? 1_500
+              : false
+          }
+          if (expectedExecutionId && execution && execution.id !== expectedExecutionId) return 1_500
+          return execution &&
+            getExternalAgentInvocationId(execution) &&
+            ['paused', 'running'].includes(execution.status ?? '')
+            ? 1_500
+            : false
+        },
       })
     case 'knowledge-pipeline':
       return consoleQuery.rag.pipelines.byPipelineId.workflows.draft.nodes.byNodeId.lastRun.get.queryOptions(
@@ -244,8 +274,12 @@ function lastRunQueryKey(resource: EditorResource, nodeId?: string) {
       })
   }
 }
-export const useLastRun = (resource: EditorResource, nodeId: string, enabled: boolean) =>
-  useQuery(lastRunQueryOptions(resource, nodeId, enabled))
+export const useLastRun = (
+  resource: EditorResource,
+  nodeId: string,
+  enabled: boolean,
+  expectedExecutionId?: string,
+) => useQuery(lastRunQueryOptions(resource, nodeId, enabled, expectedExecutionId))
 
 export const useInvalidateLastRun = (resource: EditorResource, nodeId: string) => {
   const queryClient = useQueryClient()

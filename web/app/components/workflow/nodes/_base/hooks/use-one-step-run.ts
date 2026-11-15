@@ -1,4 +1,5 @@
 import type { DraftWorkflowNodeRunPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { Dispatch, SetStateAction } from 'react'
 import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type {
   CommonNodeType,
@@ -27,10 +28,12 @@ import {
   isSystemVar,
   toNodeOutputVars,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getExternalAgentInvocationId } from '@/app/components/workflow/nodes/agent-v2/execution'
 import Assigner from '@/app/components/workflow/nodes/assigner/default'
 import CodeDefault from '@/app/components/workflow/nodes/code/default'
 import DocumentExtractorDefault from '@/app/components/workflow/nodes/document-extractor/default'
 import HTTPDefault from '@/app/components/workflow/nodes/http/default'
+import HumanInputV2Default from '@/app/components/workflow/nodes/human-input-v2/default'
 import HumanInputDefault from '@/app/components/workflow/nodes/human-input/default'
 import IfElseDefault from '@/app/components/workflow/nodes/if-else/default'
 import IterationDefault from '@/app/components/workflow/nodes/iteration/default'
@@ -51,9 +54,11 @@ import {
   VarType,
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
+import { getNodeCatalogType } from '@/app/components/workflow/utils'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { ssePost } from '@/service/base'
 import { consoleClient, consoleQuery } from '@/service/console'
 import { useInvalidateLastRun } from '@/service/use-workflow'
@@ -114,6 +119,7 @@ const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
   [BlockEnum.HumanInput]: checkHumanInputValid,
+  [BlockEnum.HumanInputV2]: HumanInputV2Default.checkValid,
 }
 
 export type Params<T> = {
@@ -246,7 +252,7 @@ const useOneStepRun = <T>({
     return undefined
   }
 
-  const checkValid = checkValidFns[data.type]
+  const checkValid = checkValidFns[getNodeCatalogType(data)]
 
   const [runInputData, setRunInputData] = useState<Record<string, any>>(defaultRunInputData || {})
   const runInputDataRef = useRef(runInputData)
@@ -304,10 +310,37 @@ const useOneStepRun = <T>({
     [workflowStore, store],
   )
   const invalidLastRun = useInvalidateLastRun(resource, id)
-  const [runResult, doSetRunResult] = useState<NodeTracing | null>(null)
+  const externalExecutionScope = isExternalAgentWorkflowPreviewData(data)
+    ? `${flowId}:${id}:${data.agent_binding?.agent_id ?? ''}:${data.agent_binding?.binding_epoch ?? ''}`
+    : undefined
+  const [runResultState, setRunResultState] = useState<{
+    data: NodeTracing | null
+    scope?: string
+  }>({ data: null })
+  const runResult = runResultState.scope === externalExecutionScope ? runResultState.data : null
+  const doSetRunResult = useCallback<Dispatch<SetStateAction<NodeTracing | null>>>(
+    (value) =>
+      setRunResultState((previous) => ({
+        data:
+          typeof value === 'function'
+            ? value(previous.scope === externalExecutionScope ? previous.data : null)
+            : value,
+        scope: externalExecutionScope,
+      })),
+    [externalExecutionScope],
+  )
   const { appendNodeInspectVars, invalidateSysVarValues, invalidateConversationVarValues } =
     useInspectVarsCrud()
   const runningStatus = data._singleRunningStatus || NodeRunningStatus.NotStart
+  const externalScopeRef = useRef(externalExecutionScope)
+  const singleRunTokenRef = useRef(0)
+  const externalRequestRef = useRef<{ scope?: string; active: boolean }>({ active: false })
+  useEffect(() => {
+    externalScopeRef.current = externalExecutionScope
+    return () => {
+      externalScopeRef.current = undefined
+    }
+  }, [externalExecutionScope])
   const webhookSingleRunActiveRef = useRef(false)
   const webhookSingleRunAbortRef = useRef<AbortController | null>(null)
   const webhookSingleRunTimeoutRef = useRef<number | undefined>(undefined)
@@ -332,11 +365,26 @@ const useOneStepRun = <T>({
   const setRunResult = useCallback(
     async (data: NodeTracing | null) => {
       const isPaused = isPausedRef.current
+      const scope = externalExecutionScope
+      const requestToken = singleRunTokenRef.current
 
       // The backend don't support pause the single run, so the frontend handle the pause state.
       if (isPaused) return
 
-      const canRunLastRun = !isRunAfterSingleRun || runningStatus === NodeRunningStatus.Succeeded
+      if (
+        data &&
+        getExternalAgentInvocationId(data) &&
+        ['paused', 'running'].includes(data.status)
+      ) {
+        doSetRunResult(data)
+        return
+      }
+      if (data && getExternalAgentInvocationId(data)) externalRequestRef.current.active = false
+
+      const canRunLastRun =
+        !isRunAfterSingleRun ||
+        runningStatus === NodeRunningStatus.Succeeded ||
+        (data && getExternalAgentInvocationId(data))
       if (!canRunLastRun) {
         doSetRunResult(data)
         return
@@ -344,6 +392,12 @@ const useOneStepRun = <T>({
 
       // run fail may also update the inspect vars when the node set the error default output.
       const vars = await fetchNodeInspectVars(resource, id)
+      if (
+        data &&
+        getExternalAgentInvocationId(data) &&
+        (scope !== externalScopeRef.current || requestToken !== singleRunTokenRef.current)
+      )
+        return
       const { getNodes } = store.getState()
       const nodes = getNodes()
       appendNodeInspectVars(id, vars, nodes)
@@ -367,6 +421,8 @@ const useOneStepRun = <T>({
       isTriggerNode,
       invalidateSysVarValues,
       invalidateConversationVarValues,
+      doSetRunResult,
+      externalExecutionScope,
     ],
   )
 
@@ -376,7 +432,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _singleRunningStatus: NodeRunningStatus.Running,
       },
     })
@@ -455,27 +510,27 @@ const useOneStepRun = <T>({
 
     try {
       const response: any =
-        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post({
-          params: { app_id: resource.appId, node_id: id },
-        })
+        await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
+          {
+            params: { app_id: resource.appId, node_id: id },
+          },
+          { context: { silent: true } },
+        )
 
       if (!response) {
         const message = t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
       if (response?.status === 'error') {
         const message =
           response?.message || t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' })
-        toast.error(message)
         throw new Error(message)
       }
 
       handleNodeDataUpdate({
         id,
         data: {
-          ...data,
           _isSingleRun: false,
           _singleRunningStatus: NodeRunningStatus.Succeeded,
         },
@@ -492,7 +547,11 @@ const useOneStepRun = <T>({
           _singleRunningStatus: NodeRunningStatus.Failed,
         },
       })
-      toast.error(t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }))
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(($) => $['common.scheduleTriggerRunFailed'], { ns: 'workflow' }),
+      )
       throw error
     }
   }, [resource, id, handleNodeDataUpdate, data, t])
@@ -511,7 +570,7 @@ const useOneStepRun = <T>({
         const response: any =
           await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run.post(
             { params: { app_id: resource.appId, node_id: id } },
-            { signal: controller.signal },
+            { context: { silent: true }, signal: controller.signal },
           )
 
         if (!webhookSingleRunActiveRef.current || token !== webhookSingleRunTokenRef.current)
@@ -520,8 +579,6 @@ const useOneStepRun = <T>({
         if (!response) {
           const message =
             response?.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
-          toast.error(message)
-          cancelWebhookSingleRun()
           throw new Error(message)
         }
 
@@ -553,8 +610,6 @@ const useOneStepRun = <T>({
         if (response?.status === 'error') {
           const message =
             response.message || t(($) => $['common.webhookDebugFailed'], { ns: 'workflow' })
-          toast.error(message)
-          cancelWebhookSingleRun()
           throw new Error(message)
         }
 
@@ -577,7 +632,11 @@ const useOneStepRun = <T>({
           return null
         if (controller.signal.aborted) return null
 
-        toast.error(t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }))
+        toast.error(
+          error instanceof Error
+            ? error.message
+            : t(($) => $['common.webhookDebugRequestFailed'], { ns: 'workflow' }),
+        )
         cancelWebhookSingleRun()
         if (error instanceof Error) throw error
         throw new Error(String(error))
@@ -602,7 +661,10 @@ const useOneStepRun = <T>({
       let requestError: unknown
       const response: any =
         await consoleClient.apps.byAppId.workflows.draft.nodes.byNodeId.trigger.run
-          .post({ params: { app_id: resource.appId, node_id: id } }, { signal: controller.signal })
+          .post(
+            { params: { app_id: resource.appId, node_id: id } },
+            { signal: controller.signal, context: { silent: true } },
+          )
           .catch((error: unknown) => {
             requestError = error
             return null
@@ -716,7 +778,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _isSingleRun: false,
       },
     })
@@ -725,7 +786,6 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
         _isSingleRun: true,
       },
     })
@@ -734,6 +794,23 @@ const useOneStepRun = <T>({
     runningStatus === NodeRunningStatus.Succeeded || runningStatus === NodeRunningStatus.Failed
 
   const handleRun = async (submitData: Record<string, any>) => {
+    const isExternalRun = isExternalAgentWorkflowPreviewData(data)
+    if (isExternalRun && externalScopeRef.current !== externalExecutionScope) return false
+    if (
+      isExternalRun &&
+      ((externalRequestRef.current.active &&
+        externalRequestRef.current.scope === externalExecutionScope) ||
+        runningStatus === NodeRunningStatus.Running ||
+        runningStatus === NodeRunningStatus.Paused)
+    )
+      return false
+    if (isExternalRun) externalRequestRef.current = { scope: externalExecutionScope, active: true }
+    const runToken = ++singleRunTokenRef.current
+    const submittedScope = externalExecutionScope
+    const isCurrentRun = () =>
+      !isExternalRun ||
+      (runToken === singleRunTokenRef.current && submittedScope === externalScopeRef.current)
+    if (isExternalRun) doSetRunResult(null)
     if (isWebhookTriggerNode) cancelWebhookSingleRun()
     if (isPluginTriggerNode) cancelPluginSingleRun()
 
@@ -745,7 +822,7 @@ const useOneStepRun = <T>({
     handleNodeDataUpdate({
       id,
       data: {
-        ...data,
+        ...(isExternalRun ? {} : data),
         _isSingleRun: false,
         _singleRunningStatus: isTriggerNode
           ? NodeRunningStatus.Listening
@@ -1010,6 +1087,7 @@ const useOneStepRun = <T>({
       }
       if (res && res.error) throw new Error(res.error)
     } catch (e: any) {
+      if (!isCurrentRun()) return false
       console.error(e)
       hasError = true
       invalidLastRun()
@@ -1018,7 +1096,7 @@ const useOneStepRun = <T>({
         handleNodeDataUpdate({
           id,
           data: {
-            ...data,
+            ...(isExternalRun ? {} : data),
             _isSingleRun: false,
             _singleRunningStatus: NodeRunningStatus.Failed,
           },
@@ -1026,34 +1104,45 @@ const useOneStepRun = <T>({
         return false
       }
     } finally {
+      if (isExternalRun && isCurrentRun() && !['paused', 'running'].includes(res?.status))
+        externalRequestRef.current.active = false
       if (isWebhookTriggerNode) cancelWebhookSingleRun()
       if (isPluginTriggerNode) cancelPluginSingleRun()
       if (isTriggerNode) stopTriggerListening()
-      if (!isIteration && !isLoop) updateNodeInspectRunningState(id, false)
-      if (!isPausedRef.current && !isIteration && !isLoop && res) {
+      if (isCurrentRun() && !isIteration && !isLoop && !(isExternalRun && res?.status === 'paused'))
+        updateNodeInspectRunningState(id, false)
+      if (isCurrentRun() && !isPausedRef.current && !isIteration && !isLoop && res) {
         setRunResult({
           ...res,
-          total_tokens: res.execution_metadata?.total_tokens || 0,
+          total_tokens: isExternalRun
+            ? res.execution_metadata?.total_tokens
+            : res.execution_metadata?.total_tokens || 0,
           created_by: res.created_by_account?.name || '',
         })
       }
     }
-    if (isPausedRef.current) return
+    if (isPausedRef.current || !isCurrentRun()) return
 
     if (!isIteration && !isLoop && !hasError) {
       if (isPausedRef.current) return
       handleNodeDataUpdate({
         id,
         data: {
-          ...data,
+          ...(isExternalRun ? {} : data),
           _isSingleRun: false,
-          _singleRunningStatus: NodeRunningStatus.Succeeded,
+          _singleRunningStatus: isExternalRun
+            ? Object.values(NodeRunningStatus).includes(res?.status)
+              ? res.status
+              : NodeRunningStatus.Running
+            : NodeRunningStatus.Succeeded,
         },
       })
     }
   }
 
   const handleStop = useCallback(() => {
+    // Standalone external tests have no Dify task ID to stop through the run API.
+    if (isExternalAgentWorkflowPreviewData(data)) return
     if (isTriggerNode) {
       const isTriggerActive =
         runningStatus === NodeRunningStatus.Listening ||
@@ -1106,6 +1195,7 @@ const useOneStepRun = <T>({
     stopTriggerListening,
     updateNodeInspectRunningState,
     workflowStore,
+    data,
   ])
 
   const toVarInputs = (variables: Variable[]): InputVar[] => {
@@ -1200,6 +1290,7 @@ const useOneStepRun = <T>({
     setRunInputData: handleSetRunInputData,
     runResult,
     setRunResult: doSetRunResult,
+    completeExternalRun: setRunResult,
     iterationRunResult,
     loopRunResult,
     setNodeRunning,

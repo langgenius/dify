@@ -363,13 +363,19 @@ class SkillPackageService:
 
     @staticmethod
     def _parse_frontmatter(content: str) -> dict[str, object]:
-        if not content.startswith("---"):
+        # Delimiters are standalone lines. A literal "---" inside a YAML value must not end frontmatter.
+        lines = content.split("\n")
+        if not lines or lines[0].strip() != "---":
             return {}
-        parts = content.split("---", 2)
-        if len(parts) < 3:
+        closing_index = None
+        for index, line in enumerate(lines[1:], start=1):
+            if line.strip() == "---":
+                closing_index = index
+                break
+        if closing_index is None:
             return {}
         try:
-            loaded = yaml.safe_load(parts[1])
+            loaded = yaml.safe_load("\n".join(lines[1:closing_index]))
         except yaml.YAMLError as exc:
             raise SkillPackageError(
                 "invalid_frontmatter", "SKILL.md frontmatter is not valid YAML", status_code=400

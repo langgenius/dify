@@ -10,6 +10,7 @@ from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -17,7 +18,6 @@ from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,
@@ -38,7 +38,6 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -56,15 +55,23 @@ from core.workflow.system_variables import (
 )
 from core.workflow.variable_pool_initializer import add_node_inputs_to_pool, add_variables_to_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from domain.workflow.agent_node import is_dify_agent_node_data
 from enterprise.telemetry.draft_trace import enqueue_draft_node_execution_trace
 from enums import CloudPlan, DeploymentEdition
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from factories.file_factory import build_from_mapping, build_from_mappings
-from graphon.engine_events import NodeEvent, NodeRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent
+from graphon.engine_events import (
+    NodeEvent,
+    NodeRunFailedEvent,
+    NodeRunPauseRequestedEvent,
+    NodeRunStartedEvent,
+    NodeRunSucceededEvent,
+)
 from graphon.entities import WorkflowNodeExecution
 from graphon.entities.graph_config import NodeConfigDict
+from graphon.entities.pause_reason import ExternalWaitReason
 from graphon.enums import (
     ErrorStrategy,
     NodeType,
@@ -85,7 +92,7 @@ from graphon.variable_loader import load_into_variable_pool
 from graphon.variables import VariableBase
 from graphon.variables.input_entities import VariableEntityType
 from graphon.variables.variables import Variable
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, to_utc_timestamp
 from models import Account
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
 from models.human_input import HumanInputFormRecipient, RecipientType
@@ -102,6 +109,7 @@ from services.errors.app import (
     WorkflowHashNotEqualError,
     WorkflowNotFoundError,
 )
+from services.external_agents.workflow_runtime import is_external_node
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
 from services.workflow.workflow_converter import WorkflowConverter
@@ -443,6 +451,24 @@ class WorkflowService:
         """
         if environment_variable_upserts is None and deleted_environment_variable_ids:
             raise ValueError("Deleted environment variable ids require an environment variable patch.")
+
+        # Permission RPCs must precede the draft row lock and its atomic save.
+        if sync_agent_bindings:
+            from core.rbac import RBACPermission, RBACResourceScope
+            from services.enterprise.rbac_service import RBACService
+            from services.external_agents.workflow_portability import iter_external_nodes
+
+            for _node_id, data in iter_external_nodes(graph):
+                binding = data.get("agent_binding") or {}
+                identifier = binding.get("agent_id") if isinstance(binding, Mapping) else None
+                if identifier and not RBACService.CheckAccess.check(
+                    app_model.tenant_id,
+                    account.id,
+                    scene=RBACPermission.AGENT_PREVIEW,
+                    resource_type=RBACResourceScope.AGENT,
+                    resource_id=identifier,
+                ):
+                    raise ValueError("The selected External Agent is not accessible.")
 
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow_for_update(app_model=app_model, session=session)
@@ -1182,7 +1208,8 @@ class WorkflowService:
         node_config = draft_workflow.get_node_config_by_id(node_id)
         node_type = Workflow.get_node_type_from_node_config(node_config)
         node_data = node_config["data"]
-        is_agent_preview = is_dify_agent_node_data(node_data)
+        is_external_preview = is_external_node(node_data if isinstance(node_data, Mapping) else node_data.model_dump())
+        is_agent_preview = is_dify_agent_node_data(node_data) or is_external_preview
         if is_agent_preview and (
             draft_workflow.tenant_id != app_model.tenant_id or draft_workflow.app_id != app_model.id
         ):
@@ -1315,17 +1342,23 @@ class WorkflowService:
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
-            node_execution.id = started_event.id
+            node_execution.id = (
+                started_execution.id if is_external_preview and started_execution is not None else started_event.id
+            )
             node_execution.node_execution_id = started_event.id
             node_execution.created_at = started_event.start_at
             node_execution.predecessor_node_id = started_event.predecessor_node_id
         repository.save_synchronously(node_execution)
         # LogStore needs its terminal append in addition to the synchronous SQL caller row.
-        repository.save(node_execution)
+        if not (is_external_preview and node_execution.status == WorkflowNodeExecutionStatus.PAUSED):
+            repository.save(node_execution)
 
         workflow_node_execution = self._node_execution_service_repo.get_execution_by_id(node_execution.id)
         if workflow_node_execution is None:
             raise ValueError(f"WorkflowNodeExecution with id {node_execution.id} not found after saving")
+
+        if is_external_preview and node_execution.status == WorkflowNodeExecutionStatus.PAUSED:
+            return workflow_node_execution
 
         with sessionmaker(db.engine).begin() as session:
             outputs = workflow_node_execution.load_full_outputs(session, storage)
@@ -1774,14 +1807,31 @@ class WorkflowService:
         """
         try:
             node, node_events = invoke_node_fn()
-            node_run_result = next(
+            outcome = next(
                 (
-                    event.node_run_result
+                    event
                     for event in node_events
                     if isinstance(event, (NodeRunSucceededEvent, NodeRunFailedEvent))
+                    or isinstance(event, NodeRunPauseRequestedEvent)
+                    and isinstance(event.reason, ExternalWaitReason)
                 ),
                 None,
             )
+            if isinstance(outcome, NodeRunPauseRequestedEvent) and isinstance(outcome.reason, ExternalWaitReason):
+                node_run_result = NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.PAUSED,
+                    outputs={},
+                    process_data={"external_invocation_id": outcome.reason.wait_id},
+                    metadata={
+                        WorkflowNodeExecutionMetadataKey.AGENT_LOG: {
+                            "invocation_id": outcome.reason.wait_id,
+                            "external_wait": True,
+                            "frame_id": outcome.reason.frame_id,
+                        }
+                    },
+                )
+            else:
+                node_run_result = outcome.node_run_result if outcome is not None else None
 
             if not node_run_result:
                 raise ValueError("Node execution failed - no result returned")
@@ -1793,6 +1843,7 @@ class WorkflowService:
             run_succeeded = node_run_result.status in (
                 WorkflowNodeExecutionStatus.SUCCEEDED,
                 WorkflowNodeExecutionStatus.EXCEPTION,
+                WorkflowNodeExecutionStatus.PAUSED,
             )
             error = node_run_result.error if not run_succeeded else None
             return node, node_run_result, run_succeeded, error
@@ -1845,6 +1896,8 @@ class WorkflowService:
 
             # Set status and error based on result
             node_execution.status = node_run_result.status
+            if node_run_result.status == WorkflowNodeExecutionStatus.PAUSED:
+                node_execution.finished_at = None
             if node_run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
                 node_execution.error = node_run_result.error
         else:
@@ -2079,7 +2132,7 @@ def _setup_variable_pool(
         system_variable_values: dict[str, Any] = {
             "user_id": user_id,
             "app_id": workflow.app_id,
-            "timestamp": int(naive_utc_now().timestamp()),
+            "timestamp": to_utc_timestamp(naive_utc_now()),
             "workflow_id": workflow.id,
             "files": files or [],
             "workflow_execution_id": str(uuid.uuid4()),

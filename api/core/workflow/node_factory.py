@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any, cast, final, override
 from sqlalchemy import select
 
 from configs import dify_config
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
 from core.app.llm.model_access import build_dify_model_access, fetch_model_config
 from core.credit_usage import created_by_from_app_type
@@ -22,7 +23,6 @@ from core.helper.ssrf_proxy import graphon_ssrf_proxy
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.trigger.constants import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph, parse_human_input_delivery_methods
 from core.workflow.llm_environment_variable import (
     parse_llm_model_selector,
@@ -50,14 +50,15 @@ from core.workflow.nodes.agent.plugin_strategy_adapter import (
 from core.workflow.nodes.agent.runtime_support import AgentRuntimeSupport
 from core.workflow.nodes.agent_v2 import DifyAgentNode
 from core.workflow.nodes.agent_v2.binding_resolver import WorkflowAgentBindingResolver
-from core.workflow.nodes.agent_v2.discriminator import is_dify_agent_node_data
 from core.workflow.nodes.agent_v2.output_adapter import WorkflowAgentOutputAdapter
 from core.workflow.nodes.agent_v2.runtime_request_builder import WorkflowAgentRuntimeRequestBuilder
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.entities import HumanInputNodeData as DifyHumanInputNodeData
+from core.workflow.nodes.human_input_v2.node import HumanInputNode as HumanInputV2Node
 from core.workflow.system_variables import SystemVariableKey, get_system_text, system_variable_selector
 from core.workflow.template_rendering import CodeExecutorJinja2TemplateRenderer
 from core.workflow.workflow_tool_node import DifyWorkflowToolNode
+from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.application_services.data_sources import build_data_source_credentials
 from graphon.entities.base_node_data import BaseNodeData
 from graphon.entities.graph_config import NodeConfigDict, NodeConfigDictAdapter
@@ -78,6 +79,7 @@ from graphon.nodes.question_classifier.entities import QuestionClassifierNodeDat
 from graphon.nodes.tool.entities import ToolProviderType
 from graphon.variables.segments import ArrayObjectSegment, ObjectSegment
 from models.model import Conversation
+from services.human_input_v2.composition import WorkflowHumanInputRuntime
 from services.knowledge_fs.knowledge_retrieval_v2.automatic_metadata_filter import (
     KnowledgeFSAutomaticMetadataFilterExtractor,
 )
@@ -87,6 +89,7 @@ if TYPE_CHECKING:
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
     from core.tools.workflow_as_tool.tool import WorkflowTool
     from graphon.runtime import InitParams, RuntimeState
+    from providers.a2a.workflow_node import ExternalAgentNodeDependencies
 
 LATEST_VERSION = "latest"
 _START_NODE_TYPES: frozenset[NodeType] = frozenset(
@@ -155,6 +158,16 @@ def resolve_workflow_node_class(
     node_data: Mapping[str, Any] | BaseNodeData | None = None,
 ) -> type[Node]:
     """Resolve the production node class for the requested type/version."""
+    if node_type == BuiltinNodeTypes.AGENT and node_data is not None:
+        kind = node_data.get("agent_node_kind")
+        if kind == "external_a2a":
+            from providers.a2a.workflow_node import ExternalAgentNode
+
+            if node_version != "2":
+                raise ValueError("External Agent nodes require version=2.")
+            return ExternalAgentNode
+        if kind not in {None, "dify_agent"}:
+            raise ValueError(f"Unsupported Agent node kind: {kind}")
     node_mapping = get_node_type_classes_mapping().get(node_type)
     if not node_mapping:
         raise ValueError(f"No class mapping found for node type: {node_type}")
@@ -344,7 +357,15 @@ class DifyNodeFactory(NodeFactory):
         use_workflow_tool_containers: bool = True,
         workflow_tools: dict[str, "WorkflowTool"] | None = None,
         execution_driver: "WorkflowRunDriver | None" = None,
+        external_agent_dependencies: "ExternalAgentNodeDependencies | None" = None,
     ) -> None:
+        """Bind frame state and capture External ports only for graphs using them.
+
+        A root graph containing External nodes must be initialized inside its
+        admitted application context, or receive already captured ports. Child
+        frame factories reuse those ports and never resolve Flask-local state.
+        Graphs without External nodes retain their context-free construction.
+        """
         self.init_params = init_params
         self.runtime_state = runtime_state
         self._dify_context = self._resolve_dify_context(init_params.run_context)
@@ -358,6 +379,11 @@ class DifyNodeFactory(NodeFactory):
                 if isinstance(human_input_run_context, DifyRunContext)
                 else self._resolve_dify_context(human_input_run_context)
             )
+        )
+        self._external_agent_dependencies = (
+            external_agent_dependencies
+            if external_agent_dependencies is not None
+            else self._capture_external_agent_dependencies()
         )
         self._code_executor: CodeExecutorProtocol = DefaultWorkflowCodeExecutor()
         self._code_limits = CodeNodeLimits(
@@ -421,8 +447,42 @@ class DifyNodeFactory(NodeFactory):
         self._agent_runtime_support = AgentRuntimeSupport()
         self._agent_message_transformer = AgentMessageTransformer()
 
+    def _capture_external_agent_dependencies(self) -> "ExternalAgentNodeDependencies | None":
+        """Capture narrow ports while the root graph still owns its app context.
+
+        Only an explicit External marker in the complete graph admits this
+        lookup. Unsupported cross-App tool delegation fails before resolving
+        services. Graphs without that External profile perform no Flask lookup.
+        """
+        nodes = self.init_params.graph_config.get("nodes", [])
+        has_external = isinstance(nodes, list | tuple) and any(
+            isinstance(node, Mapping)
+            and isinstance(node.get("data"), Mapping | BaseNodeData)
+            and node["data"].get("type") == BuiltinNodeTypes.AGENT
+            and str(node["data"].get("version")) == "2"
+            and node["data"].get("agent_node_kind") == "external_a2a"
+            for node in nodes
+        )
+        if not has_external:
+            return None
+
+        from extensions.ext_application_services import application_services
+        from providers.a2a.workflow_node import ExternalAgentNodeDependencies, ensure_supported_workflow_owner
+
+        ensure_supported_workflow_owner(self._dify_context, self._human_input_run_context.app_id)
+        external = application_services().external_agents
+        return ExternalAgentNodeDependencies(
+            service=external.runtime,
+            store=external.repository,
+            bindings=external.repository,
+            enqueue=external.enqueue,
+            enabled=external.enabled,
+            root_app_id=self._human_input_run_context.app_id,
+        )
+
     @override
     def with_runtime_state(self, runtime_state: "RuntimeState") -> "DifyNodeFactory":
+        """Clone frame-local state while preserving captured ports and root identity."""
         return DifyNodeFactory(
             init_params=self.init_params,
             runtime_state=runtime_state,
@@ -430,6 +490,7 @@ class DifyNodeFactory(NodeFactory):
             use_workflow_tool_containers=self._use_workflow_tool_containers,
             workflow_tools=self.workflow_tools,
             execution_driver=self._execution_driver,
+            external_agent_dependencies=self._external_agent_dependencies,
         )
 
     @override
@@ -472,6 +533,30 @@ class DifyNodeFactory(NodeFactory):
         adapted_node_config, typed_node_config, node_class, resolved_node_data = self._validate_node_config(node_config)
         node_id = typed_node_config["id"]
         node_data = typed_node_config["data"]
+        if node_data.get("agent_node_kind") == "external_a2a":
+            from providers.a2a.workflow_node import ensure_supported_workflow_owner
+
+            ensure_supported_workflow_owner(self._dify_context, self._human_input_run_context.app_id)
+            # Graphon's permissive boundary accepts historical coercing defaults.
+            # Revalidate External defaults from the untouched scoped graph so a
+            # string number/JSON text cannot become a typed External fallback.
+            scoped_nodes = self.init_params.graph_config.get("nodes", [])
+            raw_node = next(
+                (
+                    item
+                    for item in scoped_nodes
+                    if isinstance(item, Mapping) and item.get("id") == typed_node_config["id"]
+                ),
+                None,
+            )
+            raw_data = raw_node.get("data") if isinstance(raw_node, Mapping) else adapted_node_config.get("data")
+            if isinstance(raw_data, Mapping):
+                from providers.a2a.workflow_node import ExternalAgentNodeData
+
+                external_data = node_data.model_dump(exclude_unset=True)
+                external_data["default_value"] = raw_data.get("default_value")
+                node_data = ExternalAgentNodeData.model_validate(external_data)
+                typed_node_config["data"] = node_data
         node_type = node_data.type
         if node_type == BuiltinNodeTypes.LLM:
             resolved_node_data = self._resolve_llm_model_reference(cast(LLMNodeData, resolved_node_data))
@@ -497,12 +582,18 @@ class DifyNodeFactory(NodeFactory):
                 "file_manager": self._http_request_file_manager,
                 "file_reference_factory": self._file_reference_factory,
             },
-            BuiltinNodeTypes.HUMAN_INPUT: lambda: {
-                "hitl_callback": self._build_human_input_callback(
-                    node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
-                    execution_id_getter=lambda: node.execution_id if node is not None else None,
-                ),
-            },
+            BuiltinNodeTypes.HUMAN_INPUT: lambda: (
+                {
+                    "human_input_runtime": WorkflowHumanInputRuntime(self._dify_context),
+                }
+                if node_class is HumanInputV2Node
+                else {
+                    "hitl_callback": self._build_human_input_callback(
+                        node_data=DifyHumanInputNodeData.model_validate(adapted_node_config["data"]),
+                        execution_id_getter=lambda: node.execution_id if node is not None else None,
+                    ),
+                }
+            ),
             BuiltinNodeTypes.LLM: lambda: self._build_llm_compatible_node_init_kwargs(
                 node_class=node_class,
                 node_data=resolved_node_data,
@@ -551,7 +642,9 @@ class DifyNodeFactory(NodeFactory):
             },
         }
         node_init_kwargs = node_init_kwargs_factories.get(node_type, lambda: {})()
-        constructor_node_data = resolved_node_data.model_dump(mode="python", by_alias=True)
+        constructor_node_data = resolved_node_data.model_dump(
+            mode="python", by_alias=True, exclude_unset=resolved_node_data.get("agent_node_kind") == "external_a2a"
+        )
         node = node_class(
             node_id=node_id,
             data=constructor_node_data,
@@ -648,6 +741,12 @@ class DifyNodeFactory(NodeFactory):
         return node_data.model_copy(update={"model": resolved_model})
 
     def _build_agent_node_init_kwargs(self, *, node_class: type[Node]) -> dict[str, object]:
+        from providers.a2a.workflow_node import ExternalAgentNode
+
+        if node_class is ExternalAgentNode:
+            if self._external_agent_dependencies is None:
+                raise ValueError("External node dependencies were not captured by the admitted root graph.")
+            return {"dependencies": self._external_agent_dependencies}
         if issubclass(node_class, DifyAgentNode):
             from clients.agent_backend import AgentBackendRunEventAdapter, AgentBackendRunRequestBuilder
             from clients.agent_backend.factory import create_agent_backend_run_client

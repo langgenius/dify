@@ -60,6 +60,10 @@ vi.mock('../index', () => ({
   ),
 }))
 
+vi.mock('../mobile-nav', () => ({
+  MainNavMobileBar: () => <header data-testid="main-nav-mobile-bar" />,
+}))
+
 vi.mock('@/app/components/app-sidebar/dataset-detail-sidebar', () => ({
   DatasetDetailSidebar: () => <aside aria-label="Knowledge sidebar">Knowledge sidebar</aside>,
 }))
@@ -163,7 +167,11 @@ describe('MainNavLayout', () => {
     expect(main).toHaveTextContent('content')
   })
 
-  it.each(['/datasets/dataset-1/documents', '/datasets/dataset-1/documents/document-1/settings'])(
+  it.each([
+    '/datasets/dataset-1/documents',
+    '/datasets/dataset-1/documents/document-1/settings',
+    '/external-agent/contract-review/overview',
+  ])(
     'renders the detail sidebar slot outside the single skip navigation target on route %s',
     (pathname) => {
       ;(usePathname as Mock).mockReturnValue(pathname)
@@ -181,6 +189,8 @@ describe('MainNavLayout', () => {
       const detailSidebar = screen.getByRole('complementary', { name: 'Detail sidebar' })
 
       expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
       expect(screen.getAllByRole('main')).toHaveLength(1)
       expect(main).toHaveAttribute('id', 'main-content')
       expect(main).toHaveTextContent('dataset detail')
@@ -188,24 +198,29 @@ describe('MainNavLayout', () => {
     },
   )
 
-  it('ignores a retained legacy detail sidebar on New Knowledge routes', () => {
-    ;(usePathname as Mock).mockReturnValue('/datasets/new/knowledge-1/sources')
+  it.each(['/datasets/new/knowledge-1/sources', '/datasets/new/create'])(
+    'hides global navigation and ignores a retained legacy detail sidebar on New Knowledge route %s',
+    (pathname) => {
+      ;(usePathname as Mock).mockReturnValue(pathname)
 
-    render(
-      <MainNavLayout
-        initialDetailSidebarMode="expand"
-        detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
-      >
-        <div>new knowledge detail</div>
-      </MainNavLayout>,
-    )
+      render(
+        <MainNavLayout
+          initialDetailSidebarMode="expand"
+          detailSidebar={<aside aria-label="Legacy dataset sidebar">Legacy dataset sidebar</aside>}
+        >
+          <div>new knowledge detail</div>
+        </MainNavLayout>,
+      )
 
-    expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
-    expect(
-      screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
-    ).not.toBeInTheDocument()
-    expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
-  })
+      expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('complementary', { name: 'Legacy dataset sidebar' }),
+      ).not.toBeInTheDocument()
+      expect(screen.getByRole('main')).toHaveTextContent('new knowledge detail')
+    },
+  )
 
   it('hides the global main nav on a skill detail route', () => {
     ;(usePathname as Mock).mockReturnValue('/skills/skill-1')
@@ -217,6 +232,8 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+
+    expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
     expect(screen.getByRole('main')).toHaveTextContent('skill detail')
   })
 
@@ -230,6 +247,8 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+
+    expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
   })
 
   it.each([
@@ -251,6 +270,7 @@ describe('MainNavLayout', () => {
 
       expect(screen.getByRole('complementary', { name: 'Knowledge sidebar' })).toBeInTheDocument()
       expect(screen.queryByTestId('main-nav')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('main-nav-mobile-bar')).not.toBeInTheDocument()
       expect(screen.getByRole('main')).toHaveTextContent('document upload')
     },
   )
@@ -259,7 +279,6 @@ describe('MainNavLayout', () => {
     '/datasets/create',
     '/datasets/create-from-pipeline',
     '/datasets/connect',
-    '/datasets/new/create',
     '/deployments/create',
   ])('keeps the global main nav on collection and creation route %s', (pathname) => {
     ;(usePathname as Mock).mockReturnValue(pathname)
@@ -274,12 +293,24 @@ describe('MainNavLayout', () => {
     )
 
     expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+
+    expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
     expect(screen.queryByRole('complementary', { name: 'Detail sidebar' })).not.toBeInTheDocument()
   })
 
   it.each([
     { pathname: '/agents/agent-1/configure', datasetOperator: true, agentV2Enabled: true },
     { pathname: '/agents/agent-1/configure', datasetOperator: false, agentV2Enabled: false },
+    {
+      pathname: '/external-agent/contract-review/overview',
+      datasetOperator: true,
+      agentV2Enabled: true,
+    },
+    {
+      pathname: '/external-agent/contract-review/overview',
+      datasetOperator: false,
+      agentV2Enabled: false,
+    },
     {
       pathname: '/deployments/app-instance-1/overview',
       datasetOperator: false,
@@ -300,6 +331,7 @@ describe('MainNavLayout', () => {
         </MainNavLayout>,
       )
       expect(screen.getByTestId('main-nav')).toBeInTheDocument()
+      expect(screen.getByTestId('main-nav-mobile-bar')).toBeInTheDocument()
       expect(
         screen.queryByRole('complementary', { name: 'Detail sidebar' }),
       ).not.toBeInTheDocument()

@@ -822,6 +822,7 @@ class PipelineGenerator(BaseAppGenerator):
                             "id": datasource_info.get("id", ""),
                             "name": datasource_info.get("name", "untitled"),
                             "bucket": datasource_info.get("bucket", None),
+                            "credential_id": datasource_info.get("credential_id"),
                         }
                     )
             return all_files
@@ -891,6 +892,7 @@ class PipelineGenerator(BaseAppGenerator):
                                 "id": file.id,
                                 "name": file.name,
                                 "bucket": bucket,
+                                "credential_id": datasource_info.get("credential_id"),
                             }
                         )
                 is_truncated = files.is_truncated

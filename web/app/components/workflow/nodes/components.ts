@@ -1,5 +1,7 @@
 import type { ComponentProps, ComponentType } from 'react'
 import { createElement } from 'react'
+import { ExternalAgentWorkflowPreviewNode } from '@/features/agent-v2/external-agent/workflow-preview/node'
+import { isExternalAgentWorkflowPreviewData } from '@/features/agent-v2/external-agent/workflow-preview/types'
 import { BlockEnum } from '../types'
 import { AgentV2Node } from './agent-v2/node'
 import { isAgentV2NodeData } from './agent-v2/types'
@@ -11,7 +13,8 @@ import DataSourceNode from './data-source/node'
 import DocExtractorNode from './document-extractor/node'
 import EndNode from './end/node'
 import HttpNode from './http/node'
-import HumanInputNode from './human-input/node'
+import { WorkflowHumanInputNode } from './human-input-router'
+import { HumanInputV2Node } from './human-input-v2/node'
 import IfElseNode from './if-else/node'
 import IterationNode from './iteration/node'
 import KnowledgeBaseNode from './knowledge-base/node'
@@ -35,6 +38,9 @@ type WorkflowAgentNodeProps = ComponentProps<typeof AgentNode> | ComponentProps<
 type WorkflowComponentMap = Record<string, ComponentType<Record<string, never>>>
 
 function WorkflowAgentNode(props: WorkflowAgentNodeProps) {
+  if (isExternalAgentWorkflowPreviewData(props.data))
+    return createElement(ExternalAgentWorkflowPreviewNode, { data: props.data })
+
   if (isAgentV2NodeData(props.data))
     return createElement(AgentV2Node, props as ComponentProps<typeof AgentV2Node>)
 
@@ -64,10 +70,11 @@ export const NodeComponentMap = {
   [BlockEnum.DocExtractor]: DocExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
   [BlockEnum.Agent]: WorkflowAgentNode,
-  [BlockEnum.AgentV2]: AgentV2Node,
+  [BlockEnum.AgentV2]: WorkflowAgentNode,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
-  [BlockEnum.HumanInput]: HumanInputNode,
+  [BlockEnum.HumanInput]: WorkflowHumanInputNode,
+  [BlockEnum.HumanInputV2]: HumanInputV2Node,
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,

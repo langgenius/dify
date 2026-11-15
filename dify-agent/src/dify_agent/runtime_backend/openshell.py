@@ -1,26 +1,26 @@
 """OpenShell backend adapters with shellctl as the command data plane.
 
 One OpenShell sandbox represents both a Binding and its Workspace (the E2B
-shape), addressed by its stable sandbox *name*; sandbox ids change across
-stop/start cycles and are re-resolved on every operation. The gateway replaces
+shape). Sandbox ids change across stop/start cycles, so every operation —
+exec, readiness, and service exposure — addresses the sandbox by its stable
+canonical *name*. The gateway replaces
 the image entrypoint with its supervisor, so shellctl is started through an
 idempotent exec bootstrap on acquire, and the shellctl HTTP data plane is
-reached through a per-lease ``ForwardTcp`` tunnel.
+reached through the gateway's native service exposure (``ExposeService``),
+which proxies requests to the sandbox's loopback port. The endpoint is
+exposed with bearer passthrough, so the shellctl bearer token on
+``Authorization`` reaches shellctl unchanged; the deployment gateway
+credential stays on the gRPC control plane and is never attached to service
+HTTP requests.
 
-Home Snapshots require an operator-provided shared volume mounted into every
-sandbox via ``SandboxTemplate.driver_config``: snapshots are directory copies
-under ``<shared_mount_path>/home-snapshots/<tenant-digest>/`` because OpenShell
-has no native snapshot capability. Landlock is best-effort, so production
-deployments must use one OpenShell workspace and one dedicated volume per
-tenant. Snapshot deletion runs in a short-lived maintenance sandbox that is
-granted that tenant's snapshot root — unlinking the snapshot directory itself
-requires write on its parent under Landlock.
+OpenShell has no native snapshot capability; this backend never creates Home
+Snapshots and materializes every new Binding image-fresh — a supplied
+``home_snapshot_ref`` is ignored rather than honored approximately.
 
 The sandbox policy sent with every create REPLACES OpenShell's built-in
 restrictive default (``restrictive_default_policy()``) instead of merging with
 it, so it restates the default path set and adds ``/dev/pts``
-(shellctl's tmux allocates PTYs via forkpty) plus the tenant snapshot
-directory — not the whole shared mount.
+(shellctl's tmux allocates PTYs via forkpty).
 
 Network egress control is opt-in: when ``egress_allow`` is configured, the
 policy carries one enforced allowlist rule per ``(host, port)`` endpoint and
@@ -32,15 +32,16 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 import logging
 import re
 import shlex
+import ssl
 import threading
-import time
-import uuid
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, NoReturn, Protocol, cast
+from urllib.parse import urlsplit, urlunsplit
 
 import httpx2 as httpx
 from shellctl.client import ShellctlClientError
@@ -52,23 +53,19 @@ from dify_agent.runtime_backend.errors import (
     BindingCreateError,
     BindingDestroyError,
     BindingLostError,
-    HomeSnapshotCreateError,
     SharedWorkspaceUnsupportedError,
     WorkspacePreservationUnsupportedError,
 )
-from dify_agent.runtime_backend.openshell_tunnel import ForwardTcpCall, ForwardTcpTunnel
 from dify_agent.runtime_backend.protocols import (
     ExecutionBindingAllocation,
     ExecutionBindingCreateSpec,
     ExecutionBindingDestroySpec,
-    HomeSnapshotCreateSpec,
     RuntimeLayout,
     RuntimeLease,
 )
 from dify_agent.runtime_backend.shellctl import (
     ShellctlRuntimeLease,
     create_owned_shellctl_lease,
-    run_shellctl_control_command,
 )
 
 if TYPE_CHECKING:
@@ -78,20 +75,20 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 DEFAULT_OPENSHELL_SANDBOX_IMAGE = "langgenius/dify-agent-local-sandbox:latest"
-DEFAULT_OPENSHELL_SHARED_MOUNT_PATH = "/mnt/dify-agent-shared"
-_SNAPSHOT_SUBDIR = "home-snapshots"
 _SAFE_REF_PART = re.compile(r"^[A-Za-z0-9._-]+$")
 _SHELLCTL_READY_MAX_ATTEMPTS = 3
 _SHELLCTL_READY_RETRY_INTERVAL_SECONDS = 0.5
-# The gateway hard-caps ForwardTcp at 3 concurrent streams per session token.
-_TUNNEL_MAX_CONNECTIONS = 3
 # The gateway rejects sandbox names longer than 19 characters, so Binding ids
 # (uuids) cannot appear verbatim; names and labels carry a deterministic
 # digest instead of product identifiers.
 _SANDBOX_NAME_DIGEST_LENGTH = 14
-_SSH_SESSION_RENEWAL_MARGIN_MS = 60_000
 _POLICY_READ_ONLY = ("/usr", "/lib", "/proc", "/dev/urandom", "/app", "/etc", "/var/log")
 _POLICY_READ_WRITE = ("/tmp", "/dev/null", "/dev/pts")
+_EXPOSE_SERVICE_NAME = "shellctl"
+_EXPOSE_SERVICE_TIMEOUT_SECONDS = 30.0
+_EXPOSE_SERVICE_MAX_ATTEMPTS = 3
+_EXPOSED_SERVICE_HOST_SUFFIX = ".openshell.localhost"
+_SERVICE_DATA_PLANE_TIMEOUT_SECONDS = 60.0
 
 
 class OpenShellNotFoundError(RuntimeError):
@@ -101,77 +98,6 @@ class OpenShellNotFoundError(RuntimeError):
     the backends can map confirmed loss to ``BindingLostError`` and treat
     deletes as idempotent.
     """
-
-
-def _now_ms() -> int:
-    return time.time_ns() // 1_000_000
-
-
-@dataclass(slots=True)
-class _SshSessionTokenSupplier:
-    """Thread-safe mint-and-renew supplier for ForwardTcp session tokens.
-
-    The gateway reaps SSH sessions after ``expires_at_ms``; every new tunnel
-    connection presents the current token, so the supplier re-mints one
-    renewal-margin ahead of expiry. A zero ``expires_at_ms`` means the gateway
-    set no expiry and the first token is kept for the tunnel's lifetime.
-
-    A failed re-mint raises: a tunnel must not present a token that the
-    gateway may already have reaped. Renewal covers new tunnel connections
-    only; streams already established with an earlier token live until the
-    gateway reaps that session.
-    """
-
-    mint: Callable[[], tuple[str, int]]
-    clock_ms: Callable[[], int] = _now_ms
-    renewal_margin_ms: int = _SSH_SESSION_RENEWAL_MARGIN_MS
-    _lock: threading.Lock = field(default_factory=threading.Lock, init=False, repr=False)
-    _token: str = field(default="", init=False, repr=False)
-    _expires_at_ms: int = field(default=0, init=False, repr=False)
-
-    def __call__(self) -> str:
-        with self._lock:
-            if not self._token or self._renewal_due():
-                self._token, self._expires_at_ms = self.mint()
-            return self._token
-
-    def _renewal_due(self) -> bool:
-        return self._expires_at_ms > 0 and self.clock_ms() >= self._expires_at_ms - self.renewal_margin_ms
-
-
-@dataclass(slots=True)
-class _ForwardTcpFrameCodec:
-    """Builds ForwardTcp frames for one sandbox port; every connection's init
-    frame presents the supplier's current session token."""
-
-    supplier: _SshSessionTokenSupplier
-    sandbox_id: str
-    port: int
-
-    def init_frame(self) -> object:
-        from openshell._proto import openshell_pb2
-
-        return openshell_pb2.TcpForwardFrame(
-            init=openshell_pb2.TcpForwardInit(
-                sandbox_id=self.sandbox_id,
-                tcp=openshell_pb2.TcpRelayTarget(host="127.0.0.1", port=self.port),
-                authorization_token=self.supplier(),
-            )
-        )
-
-    def data_frame(self, data: bytes) -> object:
-        from openshell._proto import openshell_pb2
-
-        return openshell_pb2.TcpForwardFrame(data=data)
-
-
-class OpenShellTunnelHandle(Protocol):
-    """One open data-plane tunnel to shellctl inside a sandbox."""
-
-    @property
-    def base_url(self) -> str: ...
-
-    async def close(self) -> None: ...
 
 
 class OpenShellControlPlane(Protocol):
@@ -186,11 +112,10 @@ class OpenShellControlPlane(Protocol):
         *,
         name: str,
         labels: dict[str, str],
-        extra_read_write: tuple[str, ...] = (),
     ) -> None: ...
 
     async def wait_ready(self, name: str) -> str:
-        """Wait for READY and return the sandbox's *current* id."""
+        """Wait for READY and return the sandbox's canonical *name*."""
         ...
 
     async def start_sandbox(self, name: str) -> None:
@@ -201,18 +126,20 @@ class OpenShellControlPlane(Protocol):
 
     async def delete_sandbox(self, name: str) -> None: ...
 
-    async def exec_script(self, sandbox_id: str, script: str) -> tuple[int, str]: ...
+    async def exec_script(self, sandbox_name: str, script: str) -> tuple[int, str]: ...
 
-    async def open_tunnel(self, sandbox_id: str, port: int) -> OpenShellTunnelHandle: ...
+    async def expose_service(self, name: str, port: int) -> str:
+        """Upsert the sandbox's exposed service endpoint and return its URL.
 
+        Keyed by the stable sandbox *name* so the endpoint survives sandbox id
+        changes across stop/start cycles; repeated calls refresh the
+        association rather than stacking endpoints.
+        """
+        ...
 
-@dataclass(slots=True)
-class _SdkTunnelHandle:
-    tunnel: ForwardTcpTunnel
-    base_url: str
-
-    async def close(self) -> None:
-        await asyncio.to_thread(self.tunnel.close)
+    def create_service_http_client(self, base_url: str) -> httpx.AsyncClient:
+        """Build the lease-local data-plane HTTP client for a service URL."""
+        ...
 
 
 @dataclass(slots=True)
@@ -235,7 +162,6 @@ class OpenShellSDKControlPlane:
     insecure: bool = False
     image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
     driver_config: dict[str, object] = field(default_factory=dict)
-    shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
     # Opt-in egress allowlist as (host, port) pairs; empty sends no network
     # policy, leaving sandbox egress to the gateway/driver default.
     egress_allow: tuple[tuple[str, int], ...] = ()
@@ -267,7 +193,7 @@ class OpenShellSDKControlPlane:
                 )
             return self._client_cache
 
-    def _sandbox_spec(self, extra_read_write: tuple[str, ...] = ()) -> openshell_pb2.SandboxSpec:
+    def _sandbox_spec(self) -> openshell_pb2.SandboxSpec:
         from google.protobuf.json_format import ParseDict
         from google.protobuf.struct_pb2 import Struct
 
@@ -279,7 +205,7 @@ class OpenShellSDKControlPlane:
             filesystem=sandbox_pb2.FilesystemPolicy(
                 include_workdir=True,
                 read_only=list(_POLICY_READ_ONLY),
-                read_write=[*_POLICY_READ_WRITE, *extra_read_write],
+                read_write=list(_POLICY_READ_WRITE),
             ),
             landlock=sandbox_pb2.LandlockPolicy(compatibility="best_effort"),
             network_policies=self._network_policies(),
@@ -304,7 +230,7 @@ class OpenShellSDKControlPlane:
                         host=host,
                         port=port,
                         protocol="rest",
-                        enforcement="enforce",
+                        enforcement=sandbox_pb2.NETWORK_ENFORCEMENT_MODE_ENFORCE,
                         rules=[sandbox_pb2.L7Rule(allow=sandbox_pb2.L7Allow(method="*", path="/**"))],
                     )
                 ],
@@ -320,13 +246,12 @@ class OpenShellSDKControlPlane:
         *,
         name: str,
         labels: dict[str, str],
-        extra_read_write: tuple[str, ...] = (),
     ) -> None:
         def call() -> None:
             client = self._client()
-            _ = client.create(
+            client.create(
                 workspace=self.workspace,
-                spec=self._sandbox_spec(extra_read_write),
+                spec=self._sandbox_spec(),
                 name=name,
                 labels=labels,
             )
@@ -340,7 +265,7 @@ class OpenShellSDKControlPlane:
                 workspace=self.workspace,
                 timeout_seconds=self.ready_timeout_seconds,
             )
-            return str(ref.id)
+            return ref.name
 
         return await asyncio.to_thread(self._run_normalizing_not_found, call)
 
@@ -368,53 +293,98 @@ class OpenShellSDKControlPlane:
 
         await asyncio.to_thread(self._run_normalizing_not_found, call)
 
-    async def exec_script(self, sandbox_id: str, script: str) -> tuple[int, str]:
+    async def exec_script(self, sandbox_name: str, script: str) -> tuple[int, str]:
         def call() -> tuple[int, str]:
             # The gateway logs a preview of the assembled exec argv; scripts
             # can embed the shellctl token, so they travel via stdin (the
             # gateway logs only its length) and the argv stays secret-free.
+            # The SDK addresses exec by the sandbox's canonical *name*.
             result = self._client().exec(
-                sandbox_id,
+                sandbox_name,
                 ["/bin/sh", "-s"],
+                workspace=self.workspace,
                 stdin=script.encode(),
                 timeout_seconds=self.exec_timeout_seconds,
+                no_login_shell=True,
             )
             output = f"{result.stdout}{result.stderr}"
-            return int(result.exit_code), output
+            return result.exit_code, output
 
         return await asyncio.to_thread(self._run_normalizing_not_found, call)
 
-    async def open_tunnel(self, sandbox_id: str, port: int) -> OpenShellTunnelHandle:
-        def call() -> _SdkTunnelHandle:
-            from openshell._proto import openshell_pb2
+    async def expose_service(self, name: str, port: int) -> str:
+        def call() -> str:
+            import grpc
 
-            client = self._client()
-            # The Python SDK exposes CreateSshSession/ForwardTcp only through
-            # its raw generated stub; sessions authorize ForwardTcp streams.
-            stub = client._stub  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+            from openshell._proto import datamodel_pb2, openshell_pb2
 
-            def mint() -> tuple[str, int]:
-                # Bounded: mint runs under the supplier lock inside tunnel
-                # connection threads, so a hung call must not stall them all.
-                session = stub.CreateSshSession(
-                    openshell_pb2.CreateSshSessionRequest(sandbox_id=sandbox_id),
-                    timeout=30.0,
-                )
-                return str(session.token), int(session.expires_at_ms)
-
-            token_supplier = _SshSessionTokenSupplier(mint=mint)
-            _ = token_supplier()  # mint eagerly so acquire fails here, not mid-run
-
-            def stream_factory(request_iterator: Iterator[object]) -> ForwardTcpCall:
-                return cast(ForwardTcpCall, stub.ForwardTcp(request_iterator))
-
-            tunnel = ForwardTcpTunnel(
-                stream_factory=stream_factory,
-                frame_codec=_ForwardTcpFrameCodec(supplier=token_supplier, sandbox_id=sandbox_id, port=port),
-            )
-            return _SdkTunnelHandle(tunnel=tunnel, base_url=tunnel.open())
+            # The Python SDK exposes service management only through its raw
+            # generated stub; ExposeService upserts by sandbox *name* and
+            # returns the routed URL. Concurrent upserts can ABORT in the
+            # gateway store; the call is idempotent, so retry only that code.
+            stub = self._client()._stub  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+            for attempt in range(_EXPOSE_SERVICE_MAX_ATTEMPTS):
+                try:
+                    response = stub.ExposeService(
+                        openshell_pb2.ExposeServiceRequest(
+                            workspace_scope=datamodel_pb2.WorkspaceSelector(workspace=self.workspace),
+                            name=_EXPOSE_SERVICE_NAME,
+                            target_port=port,
+                            domain=True,
+                            sandbox=name,
+                            authorization_mode=openshell_pb2.SERVICE_AUTHORIZATION_MODE_BEARER_PASSTHROUGH,
+                        ),
+                        timeout=_EXPOSE_SERVICE_TIMEOUT_SECONDS,
+                    )
+                except grpc.RpcError as exc:
+                    if _rpc_status_code(exc) == grpc.StatusCode.ABORTED and attempt + 1 < _EXPOSE_SERVICE_MAX_ATTEMPTS:
+                        continue
+                    raise
+                return _validated_exposed_service_url(response)
+            raise RuntimeError("unreachable")  # pragma: no cover
 
         return await asyncio.to_thread(self._run_normalizing_not_found, call)
+
+    def create_service_http_client(self, base_url: str) -> httpx.AsyncClient:
+        """Build an HTTP client for one exposed service URL.
+
+        ``Authorization`` on this client belongs to the in-sandbox shellctl
+        (the endpoint is exposed with bearer passthrough), so the deployment
+        gateway credential — a gRPC control-plane credential — is deliberately
+        not attached. Redirects stay off so credentials cannot follow a
+        cross-origin redirect. Plain ``http`` is accepted only for loopback
+        and ``*.openshell.localhost`` service hosts; the latter are dialled
+        via ``127.0.0.1`` with the returned authority preserved on ``Host``
+        because wildcard localhost DNS is not reliably resolved and the
+        gateway routes on it. ``https`` keeps the returned host for SNI and
+        routes through the deployment TLS material.
+        """
+        url = _validated_service_url(base_url)
+        parsed = urlsplit(url)
+        headers: dict[str, str] = {}
+        verify: ssl.SSLContext | bool = True
+        if parsed.scheme == "https":
+            context = ssl.create_default_context(cafile=self.tls_ca_path)
+            if self.tls_client_cert_path and self.tls_client_key_path:
+                context.load_cert_chain(self.tls_client_cert_path, self.tls_client_key_path)
+            verify = context
+        else:
+            host = parsed.hostname or ""
+            if not _is_local_service_host(host):
+                raise ValueError("plaintext http service URLs are only accepted for local service hosts")
+            if host not in {"127.0.0.1", "::1", "localhost"}:
+                headers["Host"] = parsed.netloc
+                url = urlunsplit(("http", f"127.0.0.1:{parsed.port or 80}", "/", "", ""))
+        return httpx.AsyncClient(
+            base_url=url,
+            headers=headers,
+            # Redirect following could forward the shellctl bearer cross-origin.
+            follow_redirects=False,
+            # trust_env would route service traffic through HTTP(S)_PROXY.
+            trust_env=False,
+            timeout=httpx.Timeout(_SERVICE_DATA_PLANE_TIMEOUT_SECONDS),
+            verify=verify,
+        )
 
     def _run_normalizing_not_found[ResultT](self, call: Callable[[], ResultT]) -> ResultT:
         import grpc
@@ -422,79 +392,9 @@ class OpenShellSDKControlPlane:
         try:
             return call()
         except grpc.RpcError as exc:
-            code = exc.code() if isinstance(exc, grpc.Call) else None
-            if code == grpc.StatusCode.NOT_FOUND:
+            if _rpc_status_code(exc) == grpc.StatusCode.NOT_FOUND:
                 raise OpenShellNotFoundError(str(exc)) from exc
             raise
-
-
-@dataclass(slots=True)
-class OpenShellHomeSnapshotBackend:
-    """Directory-copy Home Snapshots on the operator-provided shared volume."""
-
-    control_plane: OpenShellControlPlane
-    shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
-
-    async def create_from_runtime(self, *, spec: HomeSnapshotCreateSpec, source: RuntimeLease) -> str:
-        if not isinstance(source, OpenShellRuntimeLease):
-            raise HomeSnapshotCreateError("OpenShell Home Snapshot requires an OpenShell RuntimeLease")
-        snapshot_ref = _snapshot_ref_for(spec.tenant_id, spec.home_snapshot_id)
-        target = _snapshot_dir(self.shared_mount_path, snapshot_ref, error=HomeSnapshotCreateError)
-        script = "\n".join(
-            [
-                "set -eu",
-                f"test -d {shlex.quote(source.layout.home_dir)}",
-                f"mkdir -p {shlex.quote(target)}",
-                f"cp -a {shlex.quote(source.layout.home_dir)}/. {shlex.quote(target)}/",
-                f"chmod 700 {shlex.quote(target)}",
-            ]
-        )
-        try:
-            result = await run_shellctl_control_command(source.commands, script)
-            if result.exit_code != 0:
-                raise HomeSnapshotCreateError(result.output)
-            return snapshot_ref
-        except BaseException as exc:
-            await _remove_partial_snapshot(source.commands, target=target, snapshot_ref=snapshot_ref)
-            _reraise_as(exc, error=HomeSnapshotCreateError)
-
-    async def delete(self, snapshot_ref: str) -> None:
-        """Remove one snapshot directory through a short-lived maintenance sandbox.
-
-        The sandbox is granted the tenant snapshot root rather than the target
-        alone: Landlock requires write on the parent directory to unlink the
-        snapshot directory itself, and the root stays a single-tenant trust
-        boundary.
-        """
-        target = _snapshot_dir(self.shared_mount_path, snapshot_ref, error=BindingDestroyError)
-        tenant_root = target.rsplit("/", 1)[0]
-        gc_name = f"gc-{uuid.uuid4().hex[:16]}"
-        created = False
-        try:
-            await self.control_plane.create_sandbox(
-                name=gc_name,
-                labels={"dify.resource": "snapshot-gc"},
-                extra_read_write=(tenant_root,),
-            )
-            created = True
-            sandbox_id = await self.control_plane.wait_ready(gc_name)
-            exit_code, output = await self.control_plane.exec_script(
-                sandbox_id,
-                f"rm -rf -- {shlex.quote(target)}",
-            )
-            if exit_code != 0:
-                raise BindingDestroyError(output)
-        except BindingDestroyError:
-            raise
-        except Exception as exc:
-            raise BindingDestroyError(str(exc)) from exc
-        finally:
-            if created:
-                await _best_effort(
-                    lambda: self.control_plane.delete_sandbox(gc_name),
-                    message="failed to delete OpenShell snapshot maintenance sandbox",
-                    sandbox_name=gc_name,
-                )
 
 
 @dataclass(slots=True)
@@ -504,17 +404,20 @@ class OpenShellExecutionBindingBackend:
     control_plane: OpenShellControlPlane
     shellctl_auth_token: str = ""
     shellctl_port: int = 5004
-    shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
     layout: RuntimeLayout = field(
         default_factory=lambda: RuntimeLayout(home_dir="/home/dify", workspace_dir="/home/dify/workspace")
     )
 
     async def create_binding(self, spec: ExecutionBindingCreateSpec) -> ExecutionBindingAllocation:
-        """Create one stopped sandbox, optionally materializing a Home Snapshot."""
+        """Create one stopped sandbox with an image-fresh Home.
+
+        This backend has no snapshot capability: ``spec.home_snapshot_ref`` is
+        deliberately ignored rather than honored approximately, so a new
+        Binding always starts from the deployment image's default Home.
+        """
         if spec.existing_workspace_ref is not None:
             raise SharedWorkspaceUnsupportedError("current OpenShell backend cannot attach to an existing Workspace")
         name = _binding_sandbox_name(spec.binding_id)
-        tenant_root = _tenant_snapshot_root(self.shared_mount_path, spec.tenant_id, error=BindingCreateError)
         created = False
         try:
             await self.control_plane.create_sandbox(
@@ -526,13 +429,12 @@ class OpenShellExecutionBindingBackend:
                     "dify.tenant": _opaque_id(spec.tenant_id, error=BindingCreateError),
                     "dify.agent": _opaque_id(spec.agent_id, error=BindingCreateError),
                 },
-                extra_read_write=(tenant_root,),
             )
             created = True
-            sandbox_id = await self.control_plane.wait_ready(name)
+            sandbox_name = await self.control_plane.wait_ready(name)
             exit_code, output = await self.control_plane.exec_script(
-                sandbox_id,
-                self._create_script(spec.home_snapshot_ref),
+                sandbox_name,
+                self._create_script(),
             )
             if exit_code != 0:
                 raise BindingCreateError(output)
@@ -548,14 +450,18 @@ class OpenShellExecutionBindingBackend:
             _reraise_as(exc, error=BindingCreateError)
 
     async def acquire(self, binding_ref: str) -> RuntimeLease:
-        """Start the sandbox when needed, bootstrap shellctl, and open the tunnel."""
-        tunnel: OpenShellTunnelHandle | None = None
+        """Start the sandbox when needed, bootstrap shellctl, and refresh its exposed service.
+
+        A failed acquisition closes only the attempt's lease-local clients; it
+        does not stop the shared sandbox or interrupt other leases on it.
+        """
         data_plane: ShellctlRuntimeLease | None = None
         try:
             await self.control_plane.start_sandbox(binding_ref)
-            sandbox_id = await self.control_plane.wait_ready(binding_ref)
+            sandbox_name = await self.control_plane.wait_ready(binding_ref)
+            token = self._shellctl_token(sandbox_name)
             layout_code, _ = await self.control_plane.exec_script(
-                sandbox_id,
+                sandbox_name,
                 "\n".join(
                     [
                         "set -eu",
@@ -566,13 +472,15 @@ class OpenShellExecutionBindingBackend:
             )
             if layout_code != 0:
                 raise BindingLostError(f"OpenShell Binding {binding_ref!r} no longer contains its Home or Workspace")
-            exit_code, output = await self.control_plane.exec_script(sandbox_id, self._bootstrap_script())
+            exit_code, output = await self.control_plane.exec_script(sandbox_name, self._bootstrap_script(token=token))
             if exit_code != 0:
                 raise BindingAcquireError(f"shellctl bootstrap failed: {output}")
-            tunnel = await self.control_plane.open_tunnel(sandbox_id, self.shellctl_port)
-            data_plane = await self._data_plane(binding_ref, tunnel.base_url)
+            # Expose on every acquire: sandbox ids change across restarts, so
+            # refresh the name-keyed endpoint association before connecting.
+            base_url = await self.control_plane.expose_service(binding_ref, self.shellctl_port)
+            data_plane = await self._data_plane(binding_ref, base_url, token=token)
             await _wait_for_shellctl_ready(data_plane.client)
-            return OpenShellRuntimeLease(tunnel=tunnel, data_plane=data_plane)
+            return OpenShellRuntimeLease(data_plane=data_plane)
         except OpenShellNotFoundError as exc:
             raise BindingLostError(f"OpenShell Binding {binding_ref!r} no longer exists") from exc
         except BaseException as exc:
@@ -582,17 +490,6 @@ class OpenShellExecutionBindingBackend:
                     message="failed to close OpenShell RuntimeLease after acquisition failed",
                     binding_ref=binding_ref,
                 )
-            if tunnel is not None:
-                await _best_effort(
-                    tunnel.close,
-                    message="failed to close OpenShell tunnel after acquisition failed",
-                    binding_ref=binding_ref,
-                )
-            await _best_effort(
-                lambda: self.control_plane.stop_sandbox(binding_ref),
-                message="failed to stop OpenShell sandbox after acquisition failed",
-                binding_ref=binding_ref,
-            )
             _reraise_as(exc, error=BindingAcquireError, passthrough=(BindingLostError,))
 
     async def release(self, lease: RuntimeLease) -> None:
@@ -602,18 +499,13 @@ class OpenShellExecutionBindingBackend:
         # Expiration deletes the sandbox/workspace, so account for active leases and retention before adopting it.
         if not isinstance(lease, OpenShellRuntimeLease):
             raise TypeError("OpenShellExecutionBindingBackend can only release its own RuntimeLease")
-        close_error: Exception | None = None
+        # The exposed endpoint is shared by all leases on the Binding and
+        # outlives them; release only closes the lease-local HTTP client and
+        # deliberately neither deletes the service nor stops the sandbox.
         try:
             await lease.data_plane.close()
         except Exception as exc:
-            close_error = exc
-        finally:
-            try:
-                await lease.tunnel.close()
-            except Exception as exc:
-                close_error = close_error or exc
-        if close_error is not None:
-            raise BindingAcquireError(str(close_error)) from close_error
+            raise BindingAcquireError(str(exc)) from exc
 
     async def destroy_binding(self, spec: ExecutionBindingDestroySpec) -> None:
         """Destroy the coupled physical Binding and Workspace idempotently."""
@@ -630,35 +522,32 @@ class OpenShellExecutionBindingBackend:
         except Exception as exc:
             raise BindingDestroyError(str(exc)) from exc
 
-    def _create_script(self, home_snapshot_ref: str | None) -> str:
+    def _create_script(self) -> str:
         home = shlex.quote(self.layout.home_dir)
         workspace = shlex.quote(self.layout.workspace_dir)
-        lines = ["set -eu"]
-        if home_snapshot_ref is not None:
-            snapshot_dir = shlex.quote(
-                _snapshot_dir(self.shared_mount_path, home_snapshot_ref, error=BindingCreateError)
-            )
-            lines.extend(
-                [
-                    # Fail (not fall back) when the immutable snapshot is missing.
-                    f"test -d {snapshot_dir}",
-                    f"cp -a {snapshot_dir}/. {home}/",
-                    # The snapshot carries the source's shellctl runtime state
-                    # (SQLite job db, tmux socket); a new Binding must not
-                    # resume it.
-                    f"rm -rf -- {home}/.local/share/shellctl",
-                ]
-            )
-        lines.extend(
+        return "\n".join(
             [
+                "set -eu",
                 f"rm -rf -- {workspace}",
                 f"mkdir -p {workspace}",
                 f"chmod 700 {home} {workspace}",
             ]
         )
-        return "\n".join(lines)
 
-    def _bootstrap_script(self) -> str:
+    def _shellctl_token(self, sandbox_name: str) -> str:
+        """Derive the per-sandbox shellctl bearer from the deployment master token.
+
+        Keyed by the canonical stable sandbox name, so each sandbox gets a
+        distinct credential while the master token stays backend-side and
+        never enters the sandbox.
+        """
+        return hmac.new(
+            self.shellctl_auth_token.encode(),
+            f"dify-agent/openshell/shellctl/v1:{sandbox_name}".encode(),
+            hashlib.sha256,
+        ).hexdigest()
+
+    def _bootstrap_script(self, *, token: str) -> str:
         """Idempotently start shellctl on the sandbox loopback.
 
         The supervisor replaces the image entrypoint, so shellctl never starts
@@ -672,7 +561,7 @@ class OpenShellExecutionBindingBackend:
             [
                 "set -eu",
                 f"export HOME={shlex.quote(self.layout.home_dir)}",
-                f"export SHELLCTL_AUTH_TOKEN={shlex.quote(self.shellctl_auth_token)}",
+                f"export SHELLCTL_AUTH_TOKEN={shlex.quote(token)}",
                 "export SHELLCTL_ENABLE_PATH_ISOLATION=false",
                 f"if {health}; then exit 0; fi",
                 f"setsid /usr/local/bin/shellctl serve --listen {listen} </dev/null >>/tmp/shellctl.log 2>&1 &",
@@ -685,32 +574,22 @@ class OpenShellExecutionBindingBackend:
             ]
         )
 
-    async def _data_plane(self, binding_ref: str, base_url: str) -> ShellctlRuntimeLease:
-        http_client = httpx.AsyncClient(
-            base_url=base_url,
-            follow_redirects=True,
-            timeout=httpx.Timeout(60.0),
-            # trust_env would route the loopback tunnel through HTTP(S)_PROXY.
-            trust_env=False,
-            limits=httpx.Limits(
-                max_connections=_TUNNEL_MAX_CONNECTIONS,
-                max_keepalive_connections=_TUNNEL_MAX_CONNECTIONS,
-            ),
-        )
+    async def _data_plane(self, binding_ref: str, base_url: str, *, token: str) -> ShellctlRuntimeLease:
+        http_client = self.control_plane.create_service_http_client(base_url)
 
         def client_factory() -> ShellctlClientProtocol:
             from shellctl.client import ShellctlClient
 
             return cast(
                 ShellctlClientProtocol,
-                cast(object, ShellctlClient(base_url, token=self.shellctl_auth_token, client=http_client)),
+                cast(object, ShellctlClient(base_url, token=token, client=http_client)),
             )
 
         return await create_owned_shellctl_lease(
             handle=binding_ref,
             layout=self.layout,
             entrypoint=base_url,
-            token=self.shellctl_auth_token,
+            token=token,
             client_factory=client_factory,
             owned_transport=http_client,
         )
@@ -718,9 +597,8 @@ class OpenShellExecutionBindingBackend:
 
 @dataclass(slots=True)
 class OpenShellRuntimeLease:
-    """Invocation-local ForwardTcp tunnel plus the owned shellctl data plane."""
+    """The owned shellctl data plane for one invocation."""
 
-    tunnel: OpenShellTunnelHandle
     data_plane: ShellctlRuntimeLease
 
     @property
@@ -736,6 +614,61 @@ class OpenShellRuntimeLease:
         return self.data_plane.commands
 
 
+def _rpc_status_code(exc: BaseException) -> object:
+    """Return the gRPC status code of a stub or SDK failure, when known.
+
+    Raw generated-stub calls raise ``grpc.Call`` errors; SDK helper calls
+    wrap them in ``openshell.GatewayError``, an ``RpcError`` that is not a
+    ``grpc.Call`` but still answers ``code()``.
+    """
+    import grpc
+
+    from openshell import GatewayError
+
+    return exc.code() if isinstance(exc, (grpc.Call, GatewayError)) else None
+
+
+def _validated_exposed_service_url(response: "openshell_pb2.ServiceEndpointResponse") -> str:
+    """Return the exposed service URL, failing when the gateway ignored the requested auth mode.
+
+    Gateways predating ``authorization_mode`` leave the field UNSPECIFIED (or
+    apply STRIP); silently proceeding would send shellctl bearer tokens into a
+    proxy that drops or misroutes them, so this is a hard configuration error.
+    """
+    from openshell._proto import openshell_pb2
+
+    if not response.HasField("endpoint"):
+        raise RuntimeError("gateway returned no service endpoint for the exposed service")
+    if response.endpoint.authorization_mode != openshell_pb2.SERVICE_AUTHORIZATION_MODE_BEARER_PASSTHROUGH:
+        raise RuntimeError(
+            "gateway did not apply bearer-passthrough authorization to the exposed service; "
+            "upgrade the OpenShell gateway to v0.1.3 or newer"
+        )
+    return _validated_service_url(response.url)
+
+
+def _validated_service_url(url: str) -> str:
+    """Return a normalized root http(s) service URL or raise ``ValueError``.
+
+    The URL becomes a client ``base_url`` carrying the shellctl bearer, so
+    reject anything that could smuggle an authority or fragment into requests.
+    """
+    parsed = urlsplit(url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("exposed service URL must be an absolute http(s) URL with a host")
+    if parsed.username is not None or parsed.password is not None or parsed.query or parsed.fragment:
+        raise ValueError("exposed service URL must not contain credentials, a query, or a fragment")
+    if parsed.path not in {"", "/"}:
+        raise ValueError("exposed service URL must be the service root")
+    return urlunsplit((parsed.scheme, parsed.netloc, "/", "", ""))
+
+
+def _is_local_service_host(host: str) -> bool:
+    return host in {"127.0.0.1", "::1", "localhost", "openshell.localhost"} or host.endswith(
+        _EXPOSED_SERVICE_HOST_SUFFIX
+    )
+
+
 def _binding_sandbox_name(binding_id: str) -> str:
     return f"dify-{_opaque_id(binding_id, error=BindingCreateError)}"
 
@@ -743,29 +676,6 @@ def _binding_sandbox_name(binding_id: str) -> str:
 def _opaque_id(value: str, *, error: type[Exception]) -> str:
     digest = hashlib.sha256(_validated_ref_part(value, error=error).encode()).hexdigest()
     return digest[:_SANDBOX_NAME_DIGEST_LENGTH]
-
-
-def _snapshot_ref_for(tenant_id: str, home_snapshot_id: str) -> str:
-    tenant = _opaque_id(tenant_id, error=HomeSnapshotCreateError)
-    name = f"home-{_validated_ref_part(home_snapshot_id, error=HomeSnapshotCreateError)}"
-    return f"{tenant}--{name}"
-
-
-def _split_snapshot_ref(snapshot_ref: str, *, error: type[Exception]) -> tuple[str, str]:
-    normalized = _validated_ref_part(snapshot_ref, error=error)
-    tenant, separator, name = normalized.partition("--")
-    if not separator or not tenant or not name:
-        raise error("runtime backend ref must be a safe path segment")
-    return _validated_ref_part(tenant, error=error), _validated_ref_part(name, error=error)
-
-
-def _tenant_snapshot_root(shared_mount_path: str, tenant_id: str, *, error: type[Exception]) -> str:
-    return f"{shared_mount_path.rstrip('/')}/{_SNAPSHOT_SUBDIR}/{_opaque_id(tenant_id, error=error)}"
-
-
-def _snapshot_dir(shared_mount_path: str, snapshot_ref: str, *, error: type[Exception]) -> str:
-    tenant, name = _split_snapshot_ref(snapshot_ref, error=error)
-    return f"{shared_mount_path.rstrip('/')}/{_SNAPSHOT_SUBDIR}/{tenant}/{name}"
 
 
 def _validated_ref_part(value: str, *, error: type[Exception]) -> str:
@@ -786,19 +696,6 @@ async def _wait_for_shellctl_ready(client: ShellctlClientProtocol) -> None:
             if not 500 <= exc.status_code < 600 or attempt == _SHELLCTL_READY_MAX_ATTEMPTS - 1:
                 raise
         await asyncio.sleep(_SHELLCTL_READY_RETRY_INTERVAL_SECONDS)
-
-
-async def _remove_partial_snapshot(commands: ShellCommandProtocol, *, target: str, snapshot_ref: str) -> None:
-    try:
-        result = await run_shellctl_control_command(commands, f"rm -rf -- {shlex.quote(target)}")
-        if result.exit_code != 0:
-            logger.warning("failed to remove partial OpenShell snapshot", extra={"snapshot_ref": snapshot_ref})
-    except BaseException:
-        logger.warning(
-            "failed to remove partial OpenShell snapshot",
-            exc_info=True,
-            extra={"snapshot_ref": snapshot_ref},
-        )
 
 
 def _reraise_as(
@@ -829,12 +726,9 @@ async def _best_effort(action: Callable[[], Awaitable[object]], *, message: str,
 
 __all__ = [
     "DEFAULT_OPENSHELL_SANDBOX_IMAGE",
-    "DEFAULT_OPENSHELL_SHARED_MOUNT_PATH",
     "OpenShellControlPlane",
     "OpenShellExecutionBindingBackend",
-    "OpenShellHomeSnapshotBackend",
     "OpenShellNotFoundError",
     "OpenShellRuntimeLease",
     "OpenShellSDKControlPlane",
-    "OpenShellTunnelHandle",
 ]

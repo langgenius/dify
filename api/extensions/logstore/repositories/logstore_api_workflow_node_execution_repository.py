@@ -22,6 +22,7 @@ from models.enums import CreatorUserRole
 from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom
 from repositories.api_workflow_node_execution_repository import (
     DifyAPIWorkflowNodeExecutionRepository,
+    WorkflowNodeExecutionPayloads,
     WorkflowNodeExecutionSnapshot,
 )
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
@@ -162,9 +163,30 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         )
 
     @override
+    def load_full_inputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return execution.inputs_dict
+
+    @override
+    def load_full_outputs(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
+        return execution.outputs_dict
+
+    @override
     def load_full_process_data(self, execution: WorkflowNodeExecutionModel) -> Mapping[str, Any] | None:
         """Return complete Process Data already stored inline by LogStore."""
         return execution.process_data_dict
+
+    @override
+    def load_full_payloads(
+        self, executions: Sequence[WorkflowNodeExecutionModel]
+    ) -> Mapping[str, WorkflowNodeExecutionPayloads]:
+        return {
+            execution.id: WorkflowNodeExecutionPayloads(
+                inputs=execution.inputs_dict,
+                process_data=execution.process_data_dict,
+                outputs=execution.outputs_dict,
+            )
+            for execution in executions
+        }
 
     @override
     def get_node_last_execution(
@@ -174,7 +196,25 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         workflow_id: str,
         node_id: str,
     ) -> WorkflowNodeExecutionModel | None:
-        """Return the most recent visible, non-paused execution after selecting each latest version."""
+        """Return latest trace, including the SQL-owned live External Node Test caller.
+
+        External standalone waits and terminal consumption are persisted in SQL
+        before an eventually visible LogStore append. They must retain their
+        caller identity throughout that interval; other paused traces remain
+        excluded from the legacy LogStore query.
+        """
+        sql_external = None
+        if self._session_maker is not None:
+            candidate = DifyAPISQLAlchemyWorkflowNodeExecutionRepository(self._session_maker).get_node_last_execution(
+                tenant_id=tenant_id,
+                app_id=app_id,
+                workflow_id=workflow_id,
+                node_id=node_id,
+            )
+            if candidate is not None and candidate.triggered_from == WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP:
+                agent_log = candidate.execution_metadata_dict.get("agent_log")
+                if isinstance(agent_log, Mapping) and isinstance(agent_log.get("invocation_id"), str):
+                    sql_external = candidate
         filter_values = {"tenant_id": tenant_id, "app_id": app_id, "workflow_id": workflow_id, "node_id": node_id}
         sql_filters = " AND ".join(f"{key} = '{escape_identifier(value)}'" for key, value in filter_values.items())
         search_query = " and ".join(
@@ -195,7 +235,10 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             logstore=AliyunLogStore.workflow_node_execution_logstore,
             query=search_query,
         )
-        return _dict_to_workflow_node_execution_model(results[0]) if results else None
+        logged = _dict_to_workflow_node_execution_model(results[0]) if results else None
+        if sql_external is not None and (logged is None or sql_external.created_at >= logged.created_at):
+            return sql_external
+        return logged
 
     @override
     def get_executions_by_workflow_run(

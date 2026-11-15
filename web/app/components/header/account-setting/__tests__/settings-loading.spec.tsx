@@ -58,10 +58,6 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
   }
 })
-vi.mock('@/hooks/use-breakpoints', () => ({
-  MediaType: { mobile: 'mobile', tablet: 'tablet', pc: 'pc' },
-  default: () => 'pc',
-}))
 vi.mock('@/app/components/billing/billing-page', () => ({ default: () => null }))
 vi.mock('@/app/components/custom/custom-page', () => ({ default: () => null }))
 vi.mock('../access-rules-page', () => ({ default: () => null }))

@@ -3,7 +3,7 @@ from __future__ import annotations
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TypedDict, Unpack, cast
+from typing import Unpack, cast
 from uuid import uuid4
 
 import pytest
@@ -17,6 +17,7 @@ from dify_agent.protocol.knowledge_fs import (
     KnowledgeFsPrepareRequest,
 )
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 from core.app.file_access import FileAccessScope
 from enums import DeploymentEdition
@@ -121,7 +122,7 @@ class FakeRuntime:
     app_capabilities: FakeAppCapabilities = field(default_factory=FakeAppCapabilities)
 
 
-class CommandArgs(TypedDict, total=False):
+class CommandArgs(TypedDict, total=False, closed=True):
     query: str
     path: str
     old_path: str

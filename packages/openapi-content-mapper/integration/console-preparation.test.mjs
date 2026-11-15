@@ -55,6 +55,34 @@ test('every existing Console member retains its name, HTTP method and route', (t
   )
 })
 
+test('Human Input v2 keeps the legacy Console client members', () => {
+  const responses = { 204: { description: 'Success' } }
+  const document = composeConsoleDocuments([
+    {
+      name: 'console',
+      document: {
+        openapi: '3.1.0',
+        paths: {
+          '/form/human_input/{form_token}': { get: { responses }, post: { responses } },
+          '/form/human-input/v2/{form_token}': { get: { responses }, post: { responses } },
+        },
+      },
+    },
+  ])
+  const router = createRouter(describeOperations(document))
+  const humanInput = router.children.get('form')?.children.get('humanInput')
+  for (const method of ['get', 'post']) {
+    assert.equal(
+      humanInput?.children.get('byFormToken')?.methods.get(method)?.path,
+      '/form/human_input/{form_token}',
+    )
+    assert.equal(
+      humanInput?.children.get('v2')?.children.get('byFormToken')?.methods.get(method)?.path,
+      '/form/human-input/v2/{form_token}',
+    )
+  }
+})
+
 test('composition isolates schemas and rejects ambiguous routes and external references', () => {
   const source = (path, type) => ({
     openapi: '3.1.0',

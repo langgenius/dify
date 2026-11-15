@@ -22,7 +22,7 @@ def is_valid_trace_id(trace_id: str) -> bool:
 
     Requirements: 1-128 characters, only letters, numbers, '-', and '_'.
     """
-    return bool(re.match(r"^[a-zA-Z0-9\-_]{1,128}$", trace_id))
+    return bool(re.fullmatch(r"[a-zA-Z0-9\-_]{1,128}", trace_id))
 
 
 def get_external_trace_id(request: Any) -> str | None:

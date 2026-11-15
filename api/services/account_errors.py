@@ -260,6 +260,18 @@ class EducationRateLimitExceededError(AccountApplicationError):
     """Too many education verification or activation requests were made."""
 
 
+class EducationVerificationFailedError(AccountApplicationError):
+    """The billing service could not verify the account's education identity."""
+
+
+class EducationActivationFailedError(AccountApplicationError):
+    """The billing service could not create the account's education identity."""
+
+
+class EducationRequestInProgressError(AccountApplicationError):
+    """An earlier education request for the account is still being processed."""
+
+
 class LoginRateLimitError(AccountApplicationError):
     """Too many failed password-login attempts were made for the address."""
 

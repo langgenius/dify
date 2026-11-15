@@ -8,6 +8,9 @@
   "apps.fullTip2": "Batas paket tercapai",
   "apps.fullTip2des": "Disarankan untuk membersihkan aplikasi yang tidak aktif untuk mengosongkan penggunaan, atau hubungi kami.",
   "buyPermissionDeniedTip": "Hubungi administrator perusahaan Anda untuk berlangganan",
+  "errors.operationFailed": "Kami tidak dapat menyelesaikan permintaan ini. Silakan coba lagi nanti. Jika masalah berlanjut, hubungi dukungan.",
+  "errors.requestInProgress": "Permintaan Anda sebelumnya masih diproses. Silakan coba lagi sebentar lagi.",
+  "errors.unavailable": "Layanan ini sementara tidak tersedia. Silakan coba lagi nanti.",
   "plans.community.btnText": "Mulai dengan Komunitas",
   "plans.community.description": "Untuk Pengguna Individu, Tim Kecil, atau Proyek Non-Komersial",
   "plans.community.features": [

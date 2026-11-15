@@ -81,7 +81,7 @@ describe('human-input/panel', () => {
       createData().user_actions[0],
       {
         id: 'action_2',
-        title: 'Button Text 2',
+        title: 'workflowHumanInput.nodes.humanInput.userActions.defaultTitle:{"index":2}',
         button_style: UserActionButtonType.Default,
       },
     ])
@@ -96,7 +96,11 @@ describe('human-input/panel', () => {
     })
     await user.click(screen.getAllByRole('button', { name: 'common.operation.delete' })[0]!)
     expect(data().user_actions).toEqual([
-      { id: 'action_2', title: 'Button Text 2', button_style: UserActionButtonType.Default },
+      {
+        id: 'action_2',
+        title: 'workflowHumanInput.nodes.humanInput.userActions.defaultTitle:{"index":2}',
+        button_style: UserActionButtonType.Default,
+      },
     ])
     expect(screen.queryByDisplayValue('Accept request')).not.toBeInTheDocument()
     await user.click(
@@ -167,7 +171,7 @@ describe('human-input/panel', () => {
     expect(data().user_actions).toEqual([
       {
         id: 'action_1',
-        title: 'Button Text 1',
+        title: 'workflowHumanInput.nodes.humanInput.userActions.defaultTitle:{"index":1}',
         button_style: UserActionButtonType.Default,
       },
     ])

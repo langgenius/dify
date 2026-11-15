@@ -5,18 +5,6 @@ import HomeHeader from '../home-header'
 import HomeSearch from '../home-search'
 import { HomeShell } from '../home-shell'
 
-vi.mock('../home-catalog-tabs', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-creator-center', () => ({
-  default: () => null,
-}))
-
-vi.mock('../home-guide', () => ({
-  default: () => null,
-}))
-
 const nextFrame = () =>
   new Promise<void>((resolve) => {
     requestAnimationFrame(() => requestAnimationFrame(() => resolve()))

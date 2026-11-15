@@ -1,25 +1,248 @@
 import ssl
+import sys
 from collections.abc import Iterator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
-from types import SimpleNamespace
+from importlib.util import module_from_spec, spec_from_file_location
+from pathlib import Path
+from queue import Empty
+from types import ModuleType, SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
+from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
+from celery.exceptions import Retry
 
+from configs.feature import LoggingConfig
 from dify_app import DifyApp
 from enums import DeploymentEdition
+from extensions import ext_celery
 from extensions.ext_celery import (
     _enqueue_initial_community_telemetry_heartbeat,
     get_celery_broker_transport_options,
     init_app,
 )
+from schedule.collect_agent_sandbox_usage import collect_agent_sandbox_usage
 from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 from services.knowledge_fs.lifecycle_readiness import KnowledgeFSLifecycleWorkerReadiness
-from tests.helpers.unit.config_override import apply_config_overrides
+from tasks.application_trace_task import export_application_trace
+from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
+from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+@pytest.fixture
+def external_worker_application_factory(monkeypatch: pytest.MonkeyPatch) -> Iterator[type[Celery]]:
+    """Load the real dedicated factory while isolating process-start side effects.
+
+    The shared entrypoint boundary supplies actual application objects. Only
+    Billiard's process-wide mode change is intercepted; the selected production
+    Celery class and each Dify constructor execute normally in the tests.
+    """
+    monkeypatch.setattr(ext_celery, "_celery_application_factory", Celery)
+    monkeypatch.setattr(ext_celery, "_celery_application_created", False)
+
+    def select_without_mutating_process_mode(method: str, *, force: bool) -> None:
+        assert method == "spawn"
+        assert force
+
+    monkeypatch.setattr("billiard.set_start_method", select_without_mutating_process_mode)
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        holder = Celery("factory-bootstrap-boundary", broker="memory://", set_as_current=False)
+        shared_entrypoint = ModuleType("celery_entrypoint")
+        shared_entrypoint.__dict__.update(app=DifyApp("factory-bootstrap-boundary"), celery=holder)
+        monkeypatch.setitem(sys.modules, "celery_entrypoint", shared_entrypoint)
+        name = "external_agent_celery_entrypoint"
+        spec = spec_from_file_location(name, Path(__file__).resolve().parents[3] / f"{name}.py")
+        assert spec is not None
+        assert spec.loader is not None
+        module = module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, name, module)
+        try:
+            spec.loader.exec_module(module)
+            factory = module.__dict__["ExternalSpawnCelery"]
+            assert isinstance(factory, type)
+            assert issubclass(factory, Celery)
+            yield factory
+        finally:
+            holder.close()
+
+
+def test_worker_factory_can_be_selected_before_constructing_real_dify_app(
+    external_worker_application_factory: type[Celery],
+) -> None:
+    """Bootstrap selection controls the real constructor without changing normal Celery."""
+    factory = external_worker_application_factory
+    ext_celery.configure_worker_application_factory(factory)
+    application = DifyApp("selected-external-worker")
+    celery_app = init_app(application)
+    try:
+        assert type(celery_app) is factory
+        assert application.extensions["celery"] is celery_app
+        assert celery_app.conf.worker_proc_alive_timeout == 60
+        assert ext_celery._celery_application_created is True
+    finally:
+        celery_app.close()
+
+
+def test_worker_factory_cannot_change_after_constructing_real_dify_app(
+    external_worker_application_factory: type[Celery],
+) -> None:
+    """An initialized process cannot silently switch its serialization/context contract."""
+    factory = external_worker_application_factory
+    application = DifyApp("frozen-external-worker")
+    celery_app = init_app(application)
+    try:
+        with pytest.raises(RuntimeError, match="before Dify initialization"):
+            ext_celery.configure_worker_application_factory(Celery)
+        assert ext_celery._celery_application_factory is factory
+        assert application.extensions["celery"] is celery_app
+        assert type(celery_app) is factory
+    finally:
+        celery_app.close()
+
+
+def test_worker_factory_same_selection_remains_idempotent_after_initialization(
+    external_worker_application_factory: type[Celery],
+) -> None:
+    """Repeating the same bootstrap preserves existing and later application types."""
+    factory = external_worker_application_factory
+    first = init_app(DifyApp("first-external-worker"))
+    second: Celery | None = None
+    try:
+        ext_celery.configure_worker_application_factory(factory)
+        assert ext_celery._celery_application_factory is factory
+        second = init_app(DifyApp("second-external-worker"))
+        assert type(first) is type(second) is factory
+        assert first.conf.worker_proc_alive_timeout == second.conf.worker_proc_alive_timeout == 60
+    finally:
+        first.close()
+        if second is not None:
+            second.close()
+
+
+@pytest.mark.parametrize(
+    ("configured", "iana_name"),
+    [
+        ("utc", "UTC"),
+        ("asia/shanghai", "Asia/Shanghai"),
+    ],
+)
+def test_init_app_uses_validated_logging_timezone(configured: str, iana_name: str) -> None:
+    logging_config = LoggingConfig(LOG_TZ=configured)
+    assert logging_config.LOG_TZ is not None
+
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DISABLE_TELEMETRY=True,
+            LOG_TZ=logging_config.LOG_TZ,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        try:
+            expected_timezone = ZoneInfo(iana_name)
+            for instant in (
+                datetime(2026, 1, 15, 12, tzinfo=UTC),
+                datetime(2026, 7, 15, 12, tzinfo=UTC),
+            ):
+                assert (
+                    instant.astimezone(celery_app.conf.timezone).utcoffset()
+                    == instant.astimezone(expected_timezone).utcoffset()
+                )
+        finally:
+            celery_app.close()
+
+
+@pytest.fixture
+def tracing_celery(request: pytest.FixtureRequest) -> Iterator[Celery]:
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            OPS_TRACE_QUEUE=request.param,
+            OPS_AGENT_TRACE_ENABLED=True,
+            ENABLE_APPLICATION_TRACE_RECONCILE_TASK=True,
+            ENABLE_TRACE_PAYLOAD_SWEEP_TASK=True,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        app = init_app(DifyApp(__name__))
+        try:
+            yield app
+        finally:
+            app.close()
+
+
+@pytest.mark.parametrize("tracing_celery", ["ops_trace_v2", "ops_trace", "tracing-upgrade"], indirect=True)
+def test_tracing_dispatch_and_beat_use_configured_queue(tracing_celery: Celery) -> None:
+    queue = tracing_celery.conf.task_routes["tasks.trace_delivery_task.*"]["queue"]
+    calls = {
+        deliver_trace_event.name: ({"event": "{}"},),
+        retry_trace_export.name: ("trace_payloads/job.json",),
+        export_application_trace.name: ("run-1",),
+        tracing_celery.conf.beat_schedule["sweep_trace_payloads"]["task"]: (),
+        tracing_celery.conf.beat_schedule["reconcile_application_traces"]["task"]: (),
+        collect_agent_sandbox_usage.name: (),
+    }
+    with tracing_celery.connection_for_write() as connection:
+        if queue != "ops_trace":
+            tracing_celery.send_task("tasks.ops_trace_task.process_trace_tasks", args=({},), queue="ops_trace")
+        for name, args in calls.items():
+            tracing_celery.tasks[name].apply_async(args=args)
+        with connection.SimpleQueue(queue) as inbox:
+            for name, args in calls.items():
+                message = inbox.get(block=False)
+                assert message.headers["task"] == name
+                assert message.payload[0] == list(args)
+                message.ack()
+            with pytest.raises(Empty):
+                inbox.get(block=False)
+        if queue != "ops_trace":
+            with connection.SimpleQueue("ops_trace") as legacy:
+                message = legacy.get(block=False)
+                assert message.headers["task"] == "tasks.ops_trace_task.process_trace_tasks"
+                message.ack()
+
+
+@pytest.mark.parametrize("tracing_celery", ["ops_trace"], indirect=True)
+def test_redelivery_stays_on_original_queue_during_switchback(tracing_celery: Celery) -> None:
+    task = tracing_celery.tasks["tasks.trace_delivery_task.deliver_trace_event"]
+    task.push_request(
+        id="trace-redelivery",
+        args=({"event": "{}"},),
+        kwargs={},
+        retries=0,
+        called_directly=False,
+        delivery_info={"exchange": "", "routing_key": "ops_trace_v2"},
+    )
+    try:
+        with pytest.raises(Retry):
+            task.retry(countdown=5)
+        with tracing_celery.connection_for_read() as connection:
+            with connection.SimpleQueue("ops_trace_v2") as original:
+                message = original.get(block=False)
+                assert message.headers["task"] == task.name
+                assert message.headers["retries"] == 1
+                message.ack()
+            with connection.SimpleQueue("ops_trace") as restored:
+                with pytest.raises(Empty):
+                    restored.get(block=False)
+    finally:
+        task.pop_request()
 
 
 class TestCelerySslCases:
@@ -187,6 +410,9 @@ class TestCelerySslCases:
 
             # Mock all the scheduler configs
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.EXTERNAL_AGENTS_ENABLED = False
+            mock_config.EXTERNAL_AGENTS_QUEUE = "external_agents"
+            mock_config.EXTERNAL_AGENTS_SWEEP_SECONDS = 30
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = False
             mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = False
@@ -247,6 +473,9 @@ class TestCelerySslCases:
             mock_config.CELERY_TASK_ANNOTATIONS = {}
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
+            mock_config.EXTERNAL_AGENTS_ENABLED = False
+            mock_config.EXTERNAL_AGENTS_QUEUE = "external_agents"
+            mock_config.EXTERNAL_AGENTS_SWEEP_SECONDS = 30
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED = True
