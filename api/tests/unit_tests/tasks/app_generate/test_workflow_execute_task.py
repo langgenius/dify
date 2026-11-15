@@ -96,6 +96,11 @@ class _ResponsePublisher(queue.Queue[bytes]):
         """Enqueue the payload unchanged for inspection by the consumer."""
         self.put(payload)
 
+    def publish_many(self, payloads: Sequence[bytes]) -> None:
+        """Enqueue the payloads unchanged, in the order given."""
+        for payload in payloads:
+            self.put(payload)
+
 
 @pytest.fixture
 def response_publisher(monkeypatch: pytest.MonkeyPatch) -> _ResponsePublisher:
