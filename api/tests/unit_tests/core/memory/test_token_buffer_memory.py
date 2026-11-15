@@ -6,7 +6,6 @@ from collections.abc import Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
-from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -59,6 +58,16 @@ class Database:
     statements: list[tuple[str, Sequence[object] | Mapping[str, object]]]
 
 
+@dataclass(frozen=True)
+class SessionBinding:
+    """Expose the test session through the factory the memory module calls."""
+
+    sqlite_session: Session
+
+    def session(self) -> Session:
+        return self.sqlite_session
+
+
 @pytest.fixture
 def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[Database]:
     statements: list[tuple[str, Sequence[object] | Mapping[str, object]]] = []
@@ -70,7 +79,7 @@ def database(sqlite_engine: Engine, sqlite_session: Session, monkeypatch: pytest
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement, named=True)
     database = Database(engine=sqlite_engine, session=sqlite_session, statements=statements)
-    monkeypatch.setattr(memory_module, "db", SimpleNamespace(engine=sqlite_engine, session=lambda: sqlite_session))
+    monkeypatch.setattr(memory_module, "db", SessionBinding(sqlite_session=sqlite_session))
     yield database
     event.remove(sqlite_engine, "before_cursor_execute", record_statement)
 
