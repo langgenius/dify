@@ -239,7 +239,7 @@ export function StepByStepTourCoachmark({
       modal={overlay?.interactionPolicy === 'blocked' ? 'trap-focus' : false}
     >
       {overlay && anchoring && (
-        <PopoverPortal key={portalKey} ref={portalRef}>
+        <PopoverPortal key={portalKey} ref={portalRef} className="aria-hidden:invisible">
           {open && (
             <div
               aria-hidden="true"

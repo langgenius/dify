@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import type { ExternalDataTool } from '@/models/common'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { RiDeleteBinLine, RiErrorWarningFill } from '@remixicon/react'
@@ -12,16 +12,16 @@ import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
 import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
-import { toast } from '@/app/components/app/configuration/toast'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useModalContext } from '@/context/modal-context'
 import { getNewVar, getVars } from '@/utils/var'
+import { ExternalDataToolDialogContent } from '../tools/external-data-tool-dialog-content'
 import ConfirmAddVar from './confirm-add-var'
 import MessageTypeSelector from './message-type-selector'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
@@ -70,38 +70,8 @@ const AdvancedPromptInput: FC<Props> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const { setShowExternalDataToolModal } = useModalContext()
-  const handleOpenExternalDataToolModal = () => {
-    setShowExternalDataToolModal({
-      payload: {},
-      onSaveCallback: (newExternalDataTool?: ExternalDataTool) => {
-        if (!newExternalDataTool) return
-        eventEmitter?.emit({
-          type: ADD_EXTERNAL_DATA_TOOL,
-          payload: newExternalDataTool,
-        } as any)
-        eventEmitter?.emit({
-          type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-          payload: newExternalDataTool.variable,
-        } as any)
-      },
-      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
-        for (let i = 0; i < promptVariables.length; i++) {
-          if (promptVariables[i]!.key === newExternalDataTool.variable) {
-            toast.error(
-              t(($) => $['varKeyError.keyAlreadyExists'], {
-                ns: 'appDebug',
-                key: promptVariables[i]!.key,
-              }),
-            )
-            return false
-          }
-        }
+  const [toolDialog] = useState(() => createDialogHandle())
 
-        return true
-      },
-    })
-  }
   const isChatApp = mode !== 'completion'
   const [isCopied, setIsCopied] = React.useState(false)
 
@@ -154,13 +124,13 @@ const AdvancedPromptInput: FC<Props> = ({
   const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
-      className="flex h-11 items-center justify-between rounded-t-xl pt-2 pr-3 pb-1 pl-4"
+      className="flex h-11 items-center justify-between rounded-t-xl ps-4 pe-3 pt-2 pb-1"
       style={{
         background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
       }}
     >
-      <div className="flex items-center pr-2">
-        <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
+      <div className="flex items-center pe-2">
+        <RiErrorWarningFill className="me-1 h-4 w-4 text-[#F79009]" />
         <div className="text-[13px] leading-4.5 font-medium text-[#DC6803]">
           {t(($) => $['promptMode.contextMissing'], { ns: 'appDebug' })}
         </div>
@@ -171,147 +141,166 @@ const AdvancedPromptInput: FC<Props> = ({
     </div>
   )
   return (
-    <div
-      className={`rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}
-    >
-      <div className="rounded-xl bg-background-default">
-        {isContextMissing ? (
-          contextMissing
-        ) : (
-          <div
-            className={cn(
-              s.boxHeader,
-              'flex h-11 items-center justify-between rounded-t-xl bg-background-default pt-2 pr-3 pb-1 pl-4 hover:shadow-xs',
-            )}
-          >
-            {isChatMode ? (
-              <MessageTypeSelector value={type} onChange={onTypeChange} />
-            ) : (
-              <div className="flex items-center space-x-1">
-                <div id={promptLabelId} className="text-sm font-semibold text-indigo-800 uppercase">
-                  {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
-                </div>
-                <Infotip>
-                  <InfotipTrigger aria-labelledby={promptLabelId} className="ml-1" />
-                  <InfotipContent aria-labelledby={promptLabelId} className="w-45">
-                    {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
-                  </InfotipContent>
-                </Infotip>
-              </div>
-            )}
-            <div className={cn(s.optionWrap, 'items-center space-x-1')}>
-              {canDelete && (
-                <RiDeleteBinLine
-                  onClick={onDelete}
-                  className="size-6 cursor-pointer p-1 text-text-tertiary"
-                />
+    <>
+      <div
+        className={`rounded-xl bg-linear-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}
+      >
+        <div className="rounded-xl bg-background-default">
+          {isContextMissing ? (
+            contextMissing
+          ) : (
+            <div
+              className={cn(
+                s.boxHeader,
+                'flex h-11 items-center justify-between rounded-t-xl bg-background-default ps-4 pe-3 pt-2 pb-1 hover:shadow-xs',
               )}
-              <IconButton
-                aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
-                aria-disabled={isCopied}
-                size="md"
-                onClick={() => {
-                  if (isCopied) return
-                  copy(value)
-                  setIsCopied(true)
-                }}
-              >
-                <span
-                  aria-hidden
-                  className={cn(
-                    'size-4',
-                    isCopied
-                      ? 'i-custom-vender-line-files-copy-check'
-                      : 'i-custom-vender-line-files-copy',
-                  )}
-                />
-              </IconButton>
-            </div>
-          </div>
-        )}
-
-        <PromptEditorHeightResizeWrap
-          className="min-h-25.5 overflow-y-auto px-4 text-sm text-text-secondary"
-          height={editorHeight}
-          minHeight={minHeight}
-          onHeightChange={setEditorHeight}
-          footer={
-            <div className="flex pb-2 pl-4">
-              <div className="h-4.5 rounded-md bg-divider-regular px-1 text-xs leading-4.5 text-text-tertiary">
-                {value.length}
+            >
+              {isChatMode ? (
+                <MessageTypeSelector value={type} onChange={onTypeChange} />
+              ) : (
+                <div className="flex items-center space-x-1">
+                  <div
+                    id={promptLabelId}
+                    className="text-sm font-semibold text-indigo-800 uppercase"
+                  >
+                    {t(($) => $['pageTitle.line1'], { ns: 'appDebug' })}
+                  </div>
+                  <Infotip>
+                    <InfotipTrigger aria-labelledby={promptLabelId} className="ms-1" />
+                    <InfotipContent aria-labelledby={promptLabelId} className="w-45">
+                      {t(($) => $.promptTip, { ns: 'appDebug', input: '{{input}}' })}
+                    </InfotipContent>
+                  </Infotip>
+                </div>
+              )}
+              <div className={cn(s.optionWrap, 'items-center space-x-1')}>
+                {canDelete && (
+                  <RiDeleteBinLine
+                    onClick={onDelete}
+                    className="size-6 cursor-pointer p-1 text-text-tertiary"
+                  />
+                )}
+                <IconButton
+                  aria-label={t(($) => $['operation.copy'], { ns: 'common' })}
+                  aria-disabled={isCopied}
+                  size="md"
+                  onClick={() => {
+                    if (isCopied) return
+                    copy(value)
+                    setIsCopied(true)
+                  }}
+                >
+                  <span
+                    aria-hidden
+                    className={cn(
+                      'size-4',
+                      isCopied
+                        ? 'i-custom-vender-line-files-copy-check'
+                        : 'i-custom-vender-line-files-copy',
+                    )}
+                  />
+                </IconButton>
               </div>
             </div>
-          }
-          hideResize={noResize}
-        >
-          <PromptEditor
-            className="min-h-21"
-            value={value}
-            contextBlock={{
-              show: true,
-              selectable: !hasSetBlockStatus.context,
-              datasets: dataSets.map((item) => ({
-                id: item.id,
-                name: item.name,
-                type: item.data_source_type,
-              })),
-              onAddContext: showSelectDataSet,
-            }}
-            variableBlock={{
-              show: true,
-              variables: modelConfig.configs.prompt_variables
-                .filter(
-                  (item) =>
-                    item.type !== 'api' &&
-                    item.key &&
-                    item.key.trim() &&
-                    item.name &&
-                    item.name.trim(),
-                )
-                .map((item) => ({
-                  name: item.name,
-                  value: item.key,
-                })),
-            }}
-            externalToolBlock={{
-              externalTools: modelConfig.configs.prompt_variables
-                .filter((item) => item.type === 'api')
-                .map((item) => ({
-                  name: item.name,
-                  variableName: item.key,
-                  icon: item.icon,
-                  icon_background: item.icon_background,
-                })),
-              onAddExternalTool: handleOpenExternalDataToolModal,
-            }}
-            historyBlock={{
-              show: !isChatMode && isChatApp,
-              selectable: !hasSetBlockStatus.history,
-              history: {
-                user: conversationHistoriesRole?.user_prefix,
-                assistant: conversationHistoriesRole?.assistant_prefix,
-              },
-              onEditRole: showHistoryModal,
-            }}
-            queryBlock={{
-              show: !isChatMode && isChatApp,
-              selectable: !hasSetBlockStatus.query,
-            }}
-            onChange={handlePromptChange}
-            onBlur={handleBlur}
-          />
-        </PromptEditorHeightResizeWrap>
-      </div>
+          )}
 
-      {isShowConfirmAddVar && (
-        <ConfirmAddVar
-          varNameArr={newPromptVariables.map((v) => v.name)}
-          onConfirm={handleAutoAdd(true)}
-          onCancel={handleAutoAdd(false)}
-          onHide={hideConfirmAddVar}
+          <PromptEditorHeightResizeWrap
+            className="min-h-25.5 overflow-y-auto px-4 text-sm text-text-secondary"
+            height={editorHeight}
+            minHeight={minHeight}
+            onHeightChange={setEditorHeight}
+            footer={
+              <div className="flex ps-4 pb-2">
+                <div className="h-4.5 rounded-md bg-divider-regular px-1 text-xs leading-4.5 text-text-tertiary">
+                  {value.length}
+                </div>
+              </div>
+            }
+            hideResize={noResize}
+          >
+            <PromptEditor
+              className="min-h-21"
+              value={value}
+              contextBlock={{
+                show: true,
+                selectable: !hasSetBlockStatus.context,
+                datasets: dataSets.map((item) => ({
+                  id: item.id,
+                  name: item.name,
+                  type: item.data_source_type,
+                })),
+                onAddContext: showSelectDataSet,
+              }}
+              variableBlock={{
+                show: true,
+                variables: modelConfig.configs.prompt_variables
+                  .filter(
+                    (item) =>
+                      item.type !== 'api' &&
+                      item.key &&
+                      item.key.trim() &&
+                      item.name &&
+                      item.name.trim(),
+                  )
+                  .map((item) => ({
+                    name: item.name,
+                    value: item.key,
+                  })),
+              }}
+              externalToolBlock={{
+                externalTools: modelConfig.configs.prompt_variables
+                  .filter((item) => item.type === 'api')
+                  .map((item) => ({
+                    name: item.name,
+                    variableName: item.key,
+                    icon: item.icon,
+                    icon_background: item.icon_background,
+                  })),
+                onAddExternalTool: () => toolDialog.open(null),
+              }}
+              historyBlock={{
+                show: !isChatMode && isChatApp,
+                selectable: !hasSetBlockStatus.history,
+                history: {
+                  user: conversationHistoriesRole?.user_prefix,
+                  assistant: conversationHistoriesRole?.assistant_prefix,
+                },
+                onEditRole: showHistoryModal,
+              }}
+              queryBlock={{
+                show: !isChatMode && isChatApp,
+                selectable: !hasSetBlockStatus.query,
+              }}
+              onChange={handlePromptChange}
+              onBlur={handleBlur}
+            />
+          </PromptEditorHeightResizeWrap>
+        </div>
+
+        {isShowConfirmAddVar && (
+          <ConfirmAddVar
+            varNameArr={newPromptVariables.map((v) => v.name)}
+            onConfirm={handleAutoAdd(true)}
+            onCancel={handleAutoAdd(false)}
+            onHide={hideConfirmAddVar}
+          />
+        )}
+      </div>
+      <Dialog handle={toolDialog} disablePointerDismissal>
+        <ExternalDataToolDialogContent
+          data={{}}
+          usedVariableNames={promptVariables.map((variable) => variable.key)}
+          onSave={(tool) => {
+            eventEmitter?.emit({ type: ADD_EXTERNAL_DATA_TOOL, payload: tool } as any)
+            eventEmitter?.emit({
+              type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+              payload: tool.variable,
+            } as any)
+            toolDialog.close()
+          }}
         />
-      )}
-    </div>
+      </Dialog>
+    </>
   )
 }
 export default React.memo(AdvancedPromptInput)

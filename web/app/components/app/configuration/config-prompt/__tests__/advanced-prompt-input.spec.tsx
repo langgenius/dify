@@ -13,9 +13,6 @@ import AdvancedPromptInput from '../advanced-prompt-input'
 
 const copy = vi.fn()
 vi.mock('copy-to-clipboard', () => ({ default: (...args: unknown[]) => copy(...args) }))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowExternalDataToolModal: vi.fn() }),
-}))
 
 function renderPrompt(initialValue = 'Hello') {
   const onChange = vi.fn()

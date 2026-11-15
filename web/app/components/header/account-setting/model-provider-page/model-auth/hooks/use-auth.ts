@@ -6,11 +6,12 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  useModelModalHandler,
+  openModelCredentials,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { toast } from '@/app/notifications'
@@ -33,7 +34,7 @@ export const useAuth = (
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   extra: {
     isModelCredential?: boolean
-    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onUpdate?: CredentialSaved
     onRemove?: (credentialId: string) => void
     mode?: ModelModalModeEnum
   } = {},
@@ -49,7 +50,6 @@ export const useAuth = (
   const { mutateAsync: deleteModelService } = useMutation(
     consoleQuery.workspaces.current.modelProviders.byProvider.models.delete.mutationOptions(),
   )
-  const handleOpenModelModal = useModelModalHandler()
   const { handleRefreshModel } = useRefreshModel()
   const pendingOperationCredentialId = useRef<string | null>(null)
   const [deleteCredentialId, setDeleteCredentialId] = useState<string | null>(null)
@@ -201,7 +201,7 @@ export const useAuth = (
   )
   const handleOpenModal = useCallback(
     (credential?: Credential, model?: CustomModel) => {
-      handleOpenModelModal(
+      openModelCredentials(
         provider,
         configurationMethod,
         currentCustomConfigurationModelFixedFields,
@@ -215,7 +215,6 @@ export const useAuth = (
       )
     },
     [
-      handleOpenModelModal,
       provider,
       configurationMethod,
       currentCustomConfigurationModelFixedFields,

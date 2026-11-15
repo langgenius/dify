@@ -1,14 +1,9 @@
 import type { PluginDetail } from '../types'
-import type { useModalContext } from '@/context/modal-context'
 import { getI18n } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 
-export async function checkGitHubPluginUpdate(
-  detail: PluginDetail,
-  showUpdateModal: ReturnType<typeof useModalContext>['setShowUpdatePluginModal'],
-  onUpdated: () => void | Promise<void>,
-) {
+export async function checkGitHubPluginUpdate(detail: PluginDetail) {
   const { meta } = detail
   const { author, category, name } = detail.declaration || detail
   if (!meta?.repo || !meta?.version || !meta?.package) {
@@ -28,20 +23,17 @@ export async function checkGitHubPluginUpdate(
   toast(toastProps.message, { type: toastProps.type })
 
   if (needUpdate) {
-    showUpdateModal({
-      onSaveCallback: () => onUpdated(),
-      payload: {
-        category,
-        github: {
-          originalPackageInfo: {
-            id: detail.plugin_unique_identifier,
-            repo: meta.repo,
-            version: meta.version,
-            package: meta.package,
-            releases: fetchedReleases,
-          },
+    return {
+      category,
+      github: {
+        originalPackageInfo: {
+          id: detail.plugin_unique_identifier,
+          repo: meta.repo,
+          version: meta.version,
+          package: meta.package,
+          releases: fetchedReleases,
         },
       },
-    })
+    }
   }
 }

@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import {
@@ -35,14 +36,17 @@ beforeEach(() => {
 function renderModal(overrides: Partial<ComponentProps<typeof ModelModal>> = {}) {
   const onSave = vi.fn()
   renderCredentialComponent(
-    <ModelModal
-      provider={createCredentialProvider()}
-      configurateMethod={ConfigurationMethodEnum.predefinedModel}
-      onCancel={() => {}}
-      onSave={onSave}
-      onRemove={() => {}}
-      {...overrides}
-    />,
+    <Dialog defaultOpen>
+      <DialogContent>
+        <ModelModal
+          provider={createCredentialProvider()}
+          configurateMethod={ConfigurationMethodEnum.predefinedModel}
+          onCancel={() => {}}
+          onSave={onSave}
+          {...overrides}
+        />
+      </DialogContent>
+    </Dialog>,
   )
   return onSave
 }

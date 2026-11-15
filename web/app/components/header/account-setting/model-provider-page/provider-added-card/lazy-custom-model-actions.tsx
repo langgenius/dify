@@ -8,13 +8,12 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../declarations'
-import { useLazyModelProviderDetail, useModelModalHandler } from '../hooks'
+import { openModelCredentials, useLazyModelProviderDetail } from '../hooks'
 
 type ProviderSummary = ModelProviderSummaryResponse | ModelProvider
 
 export default function LazyCustomModelActions({ provider }: { provider: ProviderSummary }) {
   const { t } = useTranslation(['modelProvider'])
-  const handleOpenModelModal = useModelModalHandler()
   const [isAddOpen, setIsAddOpen] = useState(false)
   const [isManageOpen, setIsManageOpen] = useState(false)
   const { providerDetail, loadProviderDetail, isLoadingProviderDetail } =
@@ -33,7 +32,7 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
       return
     }
 
-    handleOpenModelModal(detail, ConfigurationMethodEnum.customizableModel, undefined, {
+    openModelCredentials(detail, ConfigurationMethodEnum.customizableModel, undefined, {
       isModelCredential: true,
       mode: ModelModalModeEnum.configCustomModel,
     })

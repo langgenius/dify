@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { MetaData } from '../types'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -12,15 +12,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import { toast } from '@/app/notifications'
-import { useModalContext } from '@/context/modal-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
@@ -57,7 +57,7 @@ const Action: FC<Props> = ({
   const [isShowPluginInfo, { setTrue: showPluginInfo, setFalse: hidePluginInfo }] =
     useBoolean(false)
   const [deleting, { setTrue: showDeleting, setFalse: hideDeleting }] = useBoolean(false)
-  const { setShowUpdatePluginModal } = useModalContext()
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFetchNewVersion = async () => {
@@ -71,20 +71,15 @@ const Action: FC<Props> = ({
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     toast(toastProps.message, { type: toastProps.type })
     if (needUpdate) {
-      setShowUpdatePluginModal({
-        onSaveCallback: () => {
-          invalidateInstalledPluginList(category)
-        },
-        payload: {
-          category,
-          github: {
-            originalPackageInfo: {
-              id: pluginUniqueIdentifier,
-              repo: meta!.repo,
-              version: meta!.version,
-              package: meta!.package,
-              releases: fetchedReleases,
-            },
+      githubDialog.openWithPayload({
+        category,
+        github: {
+          originalPackageInfo: {
+            id: pluginUniqueIdentifier,
+            repo: meta!.repo,
+            version: meta!.version,
+            package: meta!.package,
+            releases: fetchedReleases,
           },
         },
       })
@@ -119,6 +114,10 @@ const Action: FC<Props> = ({
   ])
   return (
     <div className="flex space-x-1">
+      <GitHubInstallDialog
+        handle={githubDialog}
+        onUpdated={() => invalidateInstalledPluginList(category)}
+      />
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion && (
         <Tooltip>

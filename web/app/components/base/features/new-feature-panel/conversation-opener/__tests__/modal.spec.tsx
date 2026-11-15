@@ -1,10 +1,30 @@
+import type { ComponentProps } from 'react'
 import type { OpeningStatement } from '@/app/components/base/features/types'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { replacePromptEditorText } from '@/app/components/base/prompt-editor/plugins/__tests__/test-helpers'
 import { InputVarType } from '@/app/components/workflow/types'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
-import OpeningSettingModal from '../modal'
+import FormContent from '../modal'
+
+function OpeningSettingModal({
+  onCancel,
+  ...props
+}: ComponentProps<typeof FormContent> & { onCancel: () => void }) {
+  return (
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent>
+        <FormContent {...props} />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const defaultData: OpeningStatement = {
   enabled: true,

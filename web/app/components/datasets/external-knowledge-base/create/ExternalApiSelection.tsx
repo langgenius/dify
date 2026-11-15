@@ -1,16 +1,28 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
+import {
+  createDialogHandle,
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
+import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useModalContext } from '@/context/modal-context'
+import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import ExternalApiSelect from './ExternalApiSelect'
+
+const ExternalApiEditor = dynamic(
+  () => import('@/app/components/datasets/external-api/external-api-modal'),
+  { ssr: false },
+)
 
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
@@ -25,15 +37,15 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
 }) => {
   const { t } = useTranslation(['dataset'])
   const router = useRouter()
-  const queryClient = useQueryClient()
   const externalKnowledgeApiQueryOptions =
     consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
   const { data } = useQuery(externalKnowledgeApiQueryOptions)
   const externalKnowledgeApiList = data?.data ?? []
   const externalKnowledgeApiLabelId = useId()
   const externalKnowledgeIdInputId = useId()
-  const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
-  const { setShowExternalKnowledgeAPIModal } = useModalContext()
+  const selectedApiId = external_knowledge_api_id || externalKnowledgeApiList[0]?.id || ''
+  const [dialog] = useState(() => createDialogHandle())
+  const save = useSaveExternalApi()
 
   const apiItems = externalKnowledgeApiList.map((api) => ({
     value: api.id,
@@ -42,78 +54,79 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   }))
 
   useEffect(() => {
-    if (apiItems.length > 0) {
-      const newSelectedId = external_knowledge_api_id || apiItems[0]!.value
-      setSelectedApiId(newSelectedId)
-      if (newSelectedId !== external_knowledge_api_id)
-        onChange({ external_knowledge_api_id: newSelectedId, external_knowledge_id })
-    }
-  }, [apiItems, external_knowledge_api_id, external_knowledge_id, onChange])
-
-  const handleAddNewAPI = () => {
-    setShowExternalKnowledgeAPIModal({
-      payload: { name: '', settings: { endpoint: '', api_key: '' } },
-      onSaveCallback: async () => {
-        await queryClient.invalidateQueries({
-          queryKey: externalKnowledgeApiQueryOptions.queryKey,
-        })
-        router.refresh()
-      },
-      isEditMode: false,
-    })
-  }
-
-  useEffect(() => {
-    if (!external_knowledge_api_id && apiItems.length > 0)
-      onChange({ external_knowledge_api_id: apiItems[0]!.value, external_knowledge_id })
-  }, [])
+    if (!external_knowledge_api_id && selectedApiId)
+      onChange({ external_knowledge_api_id: selectedApiId, external_knowledge_id })
+  }, [selectedApiId, external_knowledge_api_id, external_knowledge_id, onChange])
 
   return (
-    <form className="flex flex-col gap-4 self-stretch">
-      <div className="flex flex-col gap-1 self-stretch">
-        <div className="flex flex-col self-stretch">
-          <span id={externalKnowledgeApiLabelId} className="system-sm-semibold text-text-secondary">
-            {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
-          </span>
-        </div>
-        {apiItems.length > 0 ? (
-          <ExternalApiSelect
-            aria-labelledby={externalKnowledgeApiLabelId}
-            items={apiItems}
-            value={selectedApiId}
-            onSelect={(e) => {
-              setSelectedApiId(e.value)
-              onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
-            }}
-          />
-        ) : (
-          <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start">
-            <RiAddLine className="size-4 text-text-tertiary" />
-            <span className="system-sm-regular text-text-tertiary">
-              {t(($) => $.noExternalKnowledge, { ns: 'dataset' })}
+    <Dialog
+      handle={dialog}
+      disablePointerDismissal
+      onOpenChange={(open, details) => {
+        if (!open && save.isPending && details.reason !== 'imperative-action') details.cancel()
+      }}
+    >
+      <form className="flex flex-col gap-4 self-stretch">
+        <div className="flex flex-col gap-1 self-stretch">
+          <div className="flex flex-col self-stretch">
+            <span
+              id={externalKnowledgeApiLabelId}
+              className="system-sm-semibold text-text-secondary"
+            >
+              {t(($) => $.externalAPIPanelTitle, { ns: 'dataset' })}
             </span>
-          </Button>
-        )}
-      </div>
-      <div className="flex flex-col gap-1 self-stretch">
-        <div className="flex flex-col self-stretch">
-          <label
-            htmlFor={externalKnowledgeIdInputId}
-            className="system-sm-semibold text-text-secondary"
-          >
-            {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
-          </label>
+          </div>
+          {apiItems.length > 0 ? (
+            <ExternalApiSelect
+              aria-labelledby={externalKnowledgeApiLabelId}
+              items={apiItems}
+              value={selectedApiId}
+              onSelect={(e) => {
+                onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
+              }}
+            />
+          ) : (
+            <DialogTrigger render={<Button variant="tertiary" className="justify-start" />}>
+              <RiAddLine className="size-4 text-text-tertiary" />
+              <span className="system-sm-regular text-text-tertiary">
+                {t(($) => $.noExternalKnowledge, { ns: 'dataset' })}
+              </span>
+            </DialogTrigger>
+          )}
         </div>
-        <Input
-          id={externalKnowledgeIdInputId}
-          value={external_knowledge_id}
-          onValueChange={(value) =>
-            onChange({ external_knowledge_id: value, external_knowledge_api_id })
+        <div className="flex flex-col gap-1 self-stretch">
+          <div className="flex flex-col self-stretch">
+            <label
+              htmlFor={externalKnowledgeIdInputId}
+              className="system-sm-semibold text-text-secondary"
+            >
+              {t(($) => $.externalKnowledgeId, { ns: 'dataset' })}
+            </label>
+          </div>
+          <Input
+            id={externalKnowledgeIdInputId}
+            value={external_knowledge_id}
+            onValueChange={(value) =>
+              onChange({ external_knowledge_id: value, external_knowledge_api_id })
+            }
+            placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' })}
+          />
+        </div>
+      </form>
+      <DialogContent>
+        <ExternalApiEditor
+          pending={save.isPending}
+          onSubmit={(values) =>
+            save.mutate(values, {
+              onSuccess: () => {
+                dialog.close()
+                router.refresh()
+              },
+            })
           }
-          placeholder={t(($) => $.externalKnowledgeIdPlaceholder, { ns: 'dataset' })}
         />
-      </div>
-    </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 

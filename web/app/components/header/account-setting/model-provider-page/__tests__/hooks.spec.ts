@@ -23,12 +23,12 @@ import {
 } from '../declarations'
 import {
   getCurrentProviderAndModel,
+  openModelCredentials,
   useDefaultModel,
   useInvalidateDefaultModel,
   useLanguage,
   useMarketplaceAllPlugins,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
-  useModelModalHandler,
   useRefreshModel,
   useTextGenerationCurrentProviderAndModelAndModelList,
   useUpdateModelList,
@@ -797,19 +797,18 @@ describe('hooks', () => {
     )
   })
 
-  describe('useModelModalHandler', () => {
+  describe('openModelCredentials', () => {
     beforeAll(async () => {
       // Load the real lazy dialog before measuring its user interactions.
       await import('../model-modal')
     })
 
-    function ModalLauncher({
-      args,
-    }: {
-      args: Parameters<ReturnType<typeof useModelModalHandler>>
-    }) {
-      const open = useModelModalHandler()
-      return createElement('button', { onClick: () => open(...args) }, 'Configure model')
+    function ModalLauncher({ args }: { args: Parameters<typeof openModelCredentials> }) {
+      return createElement(
+        'button',
+        { onClick: () => openModelCredentials(...args) },
+        'Configure model',
+      )
     }
     async function fillAndSave(user: ReturnType<typeof userEvent.setup>) {
       const key = await screen.findByLabelText(/API key/)
@@ -904,14 +903,7 @@ describe('hooks', () => {
         },
       })
       expect(onUpdate).toHaveBeenCalledExactlyOnceWith(
-        expect.objectContaining({
-          currentProvider: provider,
-          currentConfigurationMethod: ConfigurationMethodEnum.predefinedModel,
-          isModelCredential: true,
-          credential,
-          model,
-          mode: ModelModalModeEnum.configModelCredential,
-        }),
+        credential,
         expect.objectContaining({ api_key: 'new-key', __authorization_name__: 'My key' }),
       )
       expect(saveProvider).not.toHaveBeenCalled()

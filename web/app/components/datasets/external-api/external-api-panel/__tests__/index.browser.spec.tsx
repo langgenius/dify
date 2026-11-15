@@ -6,7 +6,6 @@ import { render } from 'vitest-browser-react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -70,12 +69,12 @@ async function setup(canManage = true) {
       <NuqsTestingAdapter>
         <EventEmitterContextProvider>
           <FeaturesContext value={featuresStore}>
-            <ModalContextProvider>
+            <>
               {/* RootLayout isolates page z-indices from body-portalled dialogs. */}
               <div className="isolate">
                 <PanelOwner />
               </div>
-            </ModalContextProvider>
+            </>
           </FeaturesContext>
         </EventEmitterContextProvider>
       </NuqsTestingAdapter>

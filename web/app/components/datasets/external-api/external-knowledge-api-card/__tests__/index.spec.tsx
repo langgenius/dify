@@ -3,12 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
-import {
-  checkUsageExternalAPI,
-  deleteExternalAPI,
-  fetchExternalAPI,
-  updateExternalAPI,
-} from '@/service/datasets'
+import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI } from '@/service/datasets'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
 import { createConsoleQueryClient } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -17,16 +12,22 @@ import ExternalKnowledgeAPICard from '../index'
 vi.mock('@/service/datasets', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/datasets')>()),
   fetchExternalAPI: vi.fn(),
-  updateExternalAPI: vi.fn(),
   deleteExternalAPI: vi.fn(),
   checkUsageExternalAPI: vi.fn(),
 }))
-const { getApis } = vi.hoisted(() => ({ getApis: vi.fn() }))
+const { getApis, updateExternalAPI } = vi.hoisted(() => ({
+  getApis: vi.fn(),
+  updateExternalAPI: vi.fn(),
+}))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch': updateExternalAPI,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'datasets.externalKnowledgeApi.get': getApis,
     }),
@@ -141,10 +142,13 @@ it('saves edits through the modal and refreshes the displayed card', async () =>
   }
   await user.click(within(dialog).getByRole('button', { name: 'dataset.externalAPIForm.save' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  expect(updateExternalAPI).toHaveBeenCalledWith({
-    apiTemplateId: api.id,
-    body: { name: updated.name, settings: updated.settings },
-  })
+  expect(updateExternalAPI).toHaveBeenCalledWith(
+    {
+      params: { external_knowledge_api_id: api.id },
+      body: { name: updated.name, settings: updated.settings },
+    },
+    { context: { silent: true } },
+  )
   expect(await screen.findByText(updated.name)).toBeVisible()
   expect(screen.getByText(updated.settings.endpoint)).toBeVisible()
   expect(screen.queryByText(api.name)).not.toBeInTheDocument()

@@ -1,9 +1,10 @@
 'use client'
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import {
   Menu,
   MenuContent,
@@ -17,7 +18,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useMarketplace } from '@/features/marketplace/client'
@@ -60,7 +61,7 @@ const InstallPluginMenu = ({
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [selectedAction, setSelectedAction] = useState<string | null>(null)
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const buttonLabel = triggerLabel ?? t(($) => $.installPlugin, { ns: 'plugin' })
   const enable_marketplace = useMarketplace() !== null
@@ -76,13 +77,11 @@ const InstallPluginMenu = ({
 
     if (file) {
       setSelectedFile(file)
-      setSelectedAction('local')
       setIsMenuOpen(false)
     }
   }
 
   const handleCloseLocalInstaller = () => {
-    setSelectedAction(null)
     setSelectedFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -138,7 +137,7 @@ const InstallPluginMenu = ({
     }
 
     queueMicrotask(() => {
-      setSelectedAction(action)
+      githubDialog.open(null)
     })
   }
 
@@ -166,7 +165,7 @@ const InstallPluginMenu = ({
               className={cn('size-full p-2 data-popup-open:bg-state-base-hover', triggerClassName)}
             >
               <RiAddCircleFill className="size-4 shrink-0" />
-              <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-left')}>
+              <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-start')}>
                 {buttonLabel}
               </span>
               {showTriggerArrow && <RiArrowDownSLine className="size-4" />}
@@ -187,14 +186,8 @@ const InstallPluginMenu = ({
           </MenuGroup>
         </MenuContent>
       </div>
-      {selectedAction === 'github' && (
-        <InstallFromGitHub
-          installContextCategory={installContextCategory}
-          onSuccess={noop}
-          onClose={() => setSelectedAction(null)}
-        />
-      )}
-      {selectedAction === 'local' && selectedFile && (
+      <GitHubInstallDialog handle={githubDialog} installContextCategory={installContextCategory} />
+      {selectedFile && (
         <InstallFromLocalPackage
           file={selectedFile}
           installContextCategory={installContextCategory}

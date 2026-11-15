@@ -36,7 +36,7 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelModalHandler: () => mockOpenModelModal,
+  openModelCredentials: (...args: unknown[]) => mockOpenModelModal(...args),
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
 }))
 

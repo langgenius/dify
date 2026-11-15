@@ -17,9 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
   DialogBody,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -51,7 +49,6 @@ type ModelModalProps = {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   onCancel: () => void
   onSave: (formValues?: Record<string, any>) => void
-  onRemove: (formValues?: Record<string, any>) => void
   model?: CustomModel
   credential?: Credential
   isModelCredential?: boolean
@@ -298,13 +295,6 @@ const ModelModal: FC<ModelModalProps> = ({
   const isOfficialOpenAIProvider =
     provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) onCancel()
-    },
-    [onCancel],
-  )
-
   const handleConfirmOpenChange = useCallback(
     (open: boolean) => {
       if (!open) closeConfirmDelete()
@@ -313,120 +303,119 @@ const ModelModal: FC<ModelModalProps> = ({
   )
 
   return (
-    <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent backdropProps={{ forceRender: true }} className="w-160">
-        <DialogHeader>
-          {modalTitle}
-          {modalDesc}
-          {modalModel}
-          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
-        </DialogHeader>
-        <DialogBody>
-          {mode === ModelModalModeEnum.configCustomModel && (
-            <AuthForm
-              formSchemas={
-                modelNameAndTypeFormSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={modelNameAndTypeFormValues}
-              inputClassName="justify-start"
-              ref={formRef1}
-              onChange={handleModelNameAndTypeChange}
-            />
-          )}
-          {mode === ModelModalModeEnum.addCustomModelToModelList && (
-            <CredentialSelector
-              credentials={available_credentials || []}
-              onSelect={setSelectedCredential}
-              selectedCredential={selectedCredential}
-              disabled={isLoading}
-              notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
-            />
-          )}
-          {showCredentialLabel && (
-            <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
-              <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
-            </div>
-          )}
-          {isLoading && (
-            <div className="mt-3 flex items-center justify-center">
-              <LoadingPlaceholder />
-            </div>
-          )}
-          {!isLoading && showCredentialForm && (
-            <AuthForm
-              formSchemas={
-                formSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                    showRadioUI: formSchema.type === FormTypeEnum.radio,
-                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
-                      ? {
-                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
-                            ns: 'modelProvider',
-                          }),
-                        }
-                      : {}),
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={formValues}
-              inputClassName="justify-start"
-              ref={formRef2}
-            />
-          )}
-        </DialogBody>
-        <DialogFooter>
-          {provider.help && (provider.help.title || provider.help.url) && (
-            <a
-              href={provider.help?.url[language] || provider.help?.url.en_US}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="me-auto inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help?.url && e.preventDefault()}
-            >
-              {provider.help.title?.[language] ||
-                provider.help.url[language] ||
-                provider.help.title?.en_US ||
-                provider.help.url.en_US}
-              <span
-                aria-hidden
-                className="ms-1 -mt-0.5 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle rtl:-scale-x-100"
-              />
-            </a>
-          )}
-          {isEditMode && (
-            <Button
-              variant="primary"
-              tone="destructive"
-              onClick={() => openConfirmDelete(credential, model)}
-            >
-              {t(($) => $['operation.remove'], { ns: 'common' })}
-            </Button>
-          )}
-          <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            disabled={isLoading || doingAction || !canSaveCredentialChange}
-          >
-            {saveButtonText}
-          </Button>
-        </DialogFooter>
-        {(mode === ModelModalModeEnum.configCustomModel ||
-          mode === ModelModalModeEnum.configProviderCredential) && (
-          <EncryptedBottom
-            front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
-            back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+    <>
+      <DialogHeader>
+        {modalTitle}
+        {modalDesc}
+        {modalModel}
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+      </DialogHeader>
+      <DialogBody>
+        {mode === ModelModalModeEnum.configCustomModel && (
+          <AuthForm
+            formSchemas={
+              modelNameAndTypeFormSchemas.map((formSchema) => {
+                return {
+                  ...formSchema,
+                  name: formSchema.variable,
+                }
+              }) as FormSchema[]
+            }
+            defaultValues={modelNameAndTypeFormValues}
+            inputClassName="justify-start"
+            ref={formRef1}
+            onChange={handleModelNameAndTypeChange}
           />
         )}
-      </DialogContent>
+        {mode === ModelModalModeEnum.addCustomModelToModelList && (
+          <CredentialSelector
+            credentials={available_credentials || []}
+            onSelect={setSelectedCredential}
+            selectedCredential={selectedCredential}
+            disabled={isLoading}
+            notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
+          />
+        )}
+        {showCredentialLabel && (
+          <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
+            <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
+          </div>
+        )}
+        {isLoading && (
+          <div className="mt-3 flex items-center justify-center">
+            <LoadingPlaceholder />
+          </div>
+        )}
+        {!isLoading && showCredentialForm && (
+          <AuthForm
+            formSchemas={
+              formSchemas.map((formSchema) => {
+                return {
+                  ...formSchema,
+                  name: formSchema.variable,
+                  showRadioUI: formSchema.type === FormTypeEnum.radio,
+                  ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                    ? {
+                        description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                          ns: 'modelProvider',
+                        }),
+                      }
+                    : {}),
+                }
+              }) as FormSchema[]
+            }
+            defaultValues={formValues}
+            inputClassName="justify-start"
+            ref={formRef2}
+          />
+        )}
+      </DialogBody>
+      <DialogFooter>
+        {provider.help && (provider.help.title || provider.help.url) && (
+          <a
+            href={provider.help?.url[language] || provider.help?.url.en_US}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+            onClick={(e) => !provider.help?.url && e.preventDefault()}
+          >
+            {provider.help.title?.[language] ||
+              provider.help.url[language] ||
+              provider.help.title?.en_US ||
+              provider.help.url.en_US}
+            <span
+              aria-hidden
+              className="ms-1 -mt-0.5 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle rtl:-scale-x-100"
+            />
+          </a>
+        )}
+        {isEditMode && (
+          <Button
+            variant="primary"
+            tone="destructive"
+            onClick={() => openConfirmDelete(credential, model)}
+          >
+            {t(($) => $['operation.remove'], { ns: 'common' })}
+          </Button>
+        )}
+        <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+        <Button
+          variant="primary"
+          onClick={handleSave}
+          disabled={isLoading || doingAction || !canSaveCredentialChange}
+        >
+          {saveButtonText}
+        </Button>
+      </DialogFooter>
+      {(mode === ModelModalModeEnum.configCustomModel ||
+        mode === ModelModalModeEnum.configProviderCredential) && (
+        <EncryptedBottom
+          front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+          back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+        />
+      )}
+
       <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
@@ -444,7 +433,7 @@ const ModelModal: FC<ModelModalProps> = ({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </>
   )
 }
 

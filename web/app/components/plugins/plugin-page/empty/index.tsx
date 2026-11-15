@@ -1,14 +1,15 @@
 'use client'
 import type { PluginPageContentInset } from '../content-inset'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useMarketplace } from '@/features/marketplace/client'
@@ -42,7 +43,7 @@ const Empty = ({
 }: EmptyProps) => {
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [selectedAction, setSelectedAction] = useState<string | null>(null)
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const enable_marketplace = useMarketplace() !== null
   const { data: plugin_installation_permission } = useSuspenseQuery({
@@ -54,14 +55,12 @@ const Empty = ({
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (!canInstall) {
       setSelectedFile(null)
-      setSelectedAction(null)
       return
     }
 
     const file = event.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setSelectedAction('local')
     }
   }
   const filters = usePluginPageContext((v) => v.filters)
@@ -136,8 +135,8 @@ const Empty = ({
                   aria-hidden
                   className="i-custom-vender-other-group size-5 text-text-tertiary"
                 />
-                <Line className="absolute top-1/2 -right-px -translate-y-1/2" />
-                <Line className="absolute top-1/2 -left-px -translate-y-1/2" />
+                <Line className="absolute -inset-e-px top-1/2 -translate-y-1/2" />
+                <Line className="absolute -inset-s-px top-1/2 -translate-y-1/2" />
                 <Line className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
                 <Line className="absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90" />
               </div>
@@ -162,32 +161,29 @@ const Empty = ({
                       if (action === 'local') fileInputRef.current?.click()
                       else if (action === 'marketplace')
                         onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
-                      else setSelectedAction(action)
+                      else githubDialog.open(null)
                     }}
                   >
                     <span
                       aria-hidden
                       className={cn(iconClassName, 'size-4 text-components-button-secondary-text')}
                     />
-                    <span className="min-w-0 flex-1 truncate text-left">{text}</span>
+                    <span className="min-w-0 flex-1 truncate text-start">{text}</span>
                   </Button>
                 ))}
               </div>
             </div>
           </div>
         </div>
-        {selectedAction === 'github' && (
-          <InstallFromGitHub
-            installContextCategory={installContextCategory}
-            onSuccess={noop}
-            onClose={() => setSelectedAction(null)}
-          />
-        )}
-        {selectedAction === 'local' && selectedFile && (
+        <GitHubInstallDialog
+          handle={githubDialog}
+          installContextCategory={installContextCategory}
+        />
+        {selectedFile && (
           <InstallFromLocalPackage
             file={selectedFile}
             installContextCategory={installContextCategory}
-            onClose={() => setSelectedAction(null)}
+            onClose={() => setSelectedFile(null)}
             onSuccess={noop}
           />
         )}

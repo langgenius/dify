@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -36,7 +36,6 @@ import {
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useEducationExpireNotice } from '@/app/education/expire-notice/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -154,7 +153,6 @@ export default function StepByStepTourMount({
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
   const [educationExpireNotice] = useEducationExpireNotice()
   const [settingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -251,9 +249,31 @@ export default function StepByStepTourMount({
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
+  const [hostReady, setHostReady] = useState(false)
+  const mountTourHost = useCallback((host: HTMLDivElement | null) => {
+    if (!host) return
+    // A suspended tour can mount after a modal has already hidden the navigation.
+    // Wait for that boundary to release it before opening a new portal above the modal.
+    let observer: MutationObserver | undefined
+    function waitForHost() {
+      observer?.disconnect()
+      const boundary = host?.closest('[aria-hidden="true"], [inert]')
+      if (boundary) {
+        observer ??= new MutationObserver(waitForHost)
+        observer.observe(boundary, { attributeFilter: ['aria-hidden', 'inert'] })
+      } else {
+        setHostReady(true)
+      }
+    }
+    waitForHost()
+    return () => {
+      observer?.disconnect()
+      setHostReady(false)
+    }
+  }, [])
   const overlayVisible =
+    hostReady &&
     visible &&
-    !hasBlockingModalOpen &&
     pricing !== 'open' &&
     !settingsDestination &&
     !(pathname === '/apps' && educationExpireNotice)
@@ -728,7 +748,7 @@ export default function StepByStepTourMount({
           )
 
           return (
-            <div className={cn('relative', className)}>
+            <div ref={mountTourHost} className={cn('relative', className)}>
               {overlayVisible && !allTasksCompleted && activeTask && activeGuide && (
                 <StepByStepTourCoachmark
                   guide={{
@@ -796,7 +816,7 @@ export default function StepByStepTourMount({
                     />
                   )}
                   {overlayVisible && (
-                    <PopoverPortal>
+                    <PopoverPortal className="aria-hidden:invisible">
                       <PopoverPositioner
                         side="top"
                         align="start"
@@ -827,7 +847,7 @@ export default function StepByStepTourMount({
               )}
               {recoveryAnchorRef && (
                 <SkipRecoveryPrompt
-                  open={recoveryVisible}
+                  open={hostReady && recoveryVisible}
                   anchorRef={recoveryAnchorRef}
                   label={t(($) => $['stepByStepTour.skipRecovery.label'], { ns: 'onboarding' })}
                   message={t(($) => $['stepByStepTour.skipRecovery.message'], { ns: 'onboarding' })}
@@ -873,7 +893,7 @@ function SkipRecoveryPrompt({
         onOpenChange(nextOpen)
       }}
     >
-      <PopoverPortal>
+      <PopoverPortal className="aria-hidden:invisible">
         <PopoverPositioner
           side="top"
           align="end"
