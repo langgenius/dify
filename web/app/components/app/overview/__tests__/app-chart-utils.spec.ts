@@ -145,7 +145,8 @@ describe('app-chart-utils', () => {
 
       const series = options.series as LineSeriesOption[]
       const tooltipFormatter = series[0]!.tooltip!.formatter
-      if (typeof tooltipFormatter !== 'function') throw new Error('Expected a tooltip formatter')
+      if (typeof tooltipFormatter !== 'function')
+        throw new TypeError('Expected a tooltip formatter')
 
       expect(
         tooltipFormatter(

@@ -1,7 +1,7 @@
 import type { StepByStepTourGuideGroup, StepByStepTourTaskId } from './types'
 import type { IntegrationSection } from '@/app/components/integrations/routes'
 import type { DocPathWithoutLang } from '@/types/doc-paths'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { I18nKeysWithoutVariables } from '@/types/i18n'
 
 export const STEP_BY_STEP_TOUR_TARGETS = {
   home: 'step-by-step-tour-home',
@@ -51,7 +51,7 @@ export const STEP_BY_STEP_TOUR_TARGETS = {
   integrationCustomEndpointEmpty: 'step-by-step-tour-integration-custom-endpoint-empty',
 } as const
 
-type StepByStepTourGuideCopyKey = I18nKeysWithPrefix<'onboarding', 'stepByStepTour.'>
+type StepByStepTourGuideCopyKey = I18nKeysWithoutVariables<'onboarding', 'stepByStepTour.'>
 
 export type StepByStepTourGuideKind = 'action' | 'walkthrough'
 

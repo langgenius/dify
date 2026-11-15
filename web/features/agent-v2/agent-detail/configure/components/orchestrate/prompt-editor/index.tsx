@@ -828,6 +828,19 @@ export function AgentPromptEditor() {
     [getConfiguredToolIcon, tools],
   )
 
+  const getRosterReferenceLabel = useCallback(
+    (token: RosterReferenceToken) => {
+      if (token.kind !== 'skill') return undefined
+
+      return skills.find((skill) =>
+        [skill.id, skill.skillMdKey].some(
+          (id) => id !== undefined && (id === token.id || encodeURIComponent(id) === token.id),
+        ),
+      )?.name
+    },
+    [skills],
+  )
+
   const getRosterReferenceWarning = useCallback(
     (token: RosterReferenceToken) => {
       const warning = t(($) => $['agentDetail.configure.prompt.referenceMissing'], {
@@ -1152,6 +1165,7 @@ export function AgentPromptEditor() {
               }}
               rosterReferenceBlock={{
                 show: true,
+                getLabel: getRosterReferenceLabel,
                 renderIcon: renderRosterReferenceIcon,
                 getWarning: getRosterReferenceWarning,
               }}

@@ -13,7 +13,7 @@ from configs import dify_config
 from enums import DeploymentEdition
 from models.account import Account, Tenant
 from models.model import App, AppMode
-from models.trigger import AppTrigger, WorkflowPluginTrigger
+from models.trigger import AppTrigger, WorkflowPluginTrigger, WorkflowSchedulePlan
 from models.workflow import Workflow
 from services.workflow_service import WorkflowService
 
@@ -61,7 +61,17 @@ def test_publish_signal_shares_workflow_and_binding_transaction(
                     "event_name": "issues",
                     "subscription_id": next_subscription_id,
                 },
-            }
+            },
+            {
+                "id": "schedule-event",
+                "data": {
+                    "type": "trigger-schedule",
+                    "title": "Daily schedule",
+                    "mode": "cron",
+                    "cron_expression": "0 9 * * *",
+                    "timezone": "UTC",
+                },
+            },
         ],
         "edges": [],
     }
@@ -136,3 +146,7 @@ def test_publish_signal_shares_workflow_and_binding_transaction(
         assert saved_binding.subscription_id == (next_subscription_id if commit else previous_subscription_id)
         assert saved_binding.event_name == ("issues" if commit else "push")
         assert (reader.get(Workflow, new_workflow_id) is not None) == commit
+        assert (reader.scalar(select(AppTrigger.id).where(AppTrigger.app_id == app_id)) is not None) == commit
+        assert (
+            reader.scalar(select(WorkflowSchedulePlan.id).where(WorkflowSchedulePlan.app_id == app_id)) is not None
+        ) == commit

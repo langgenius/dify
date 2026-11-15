@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "この人間の入力ステップに回答できる人を選択します。",
   "nodes.humanInputV2.recipients.initiator": "Web App または CLI から今回の実行を開始したユーザーが承認できます",
   "nodes.humanInputV2.recipients.initiatorDescription": "このワークフローの実行を開始した人が回答できます。",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "トリガーから開始した実行には、承認リクエストを受け取る開始者がいません。連絡先を選択するか、変数でメールアドレスを指定してください。",
   "nodes.humanInputV2.recipients.inputHelp": "複数のメールアドレスをカンマで区切って入力または貼り付けます。/ を押すと変数を挿入できます。",
   "nodes.humanInputV2.recipients.insertVariable": "変数を挿入",
   "nodes.humanInputV2.recipients.loadError": "連絡先を読み込めませんでした。保存済みの連絡先 ID は保持されています。",

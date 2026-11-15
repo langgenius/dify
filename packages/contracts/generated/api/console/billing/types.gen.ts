@@ -44,6 +44,17 @@ export type BillingSubscriptionResponse = {
   url: string
 }
 
+export type AnnualDiscountActiveErrorResponse = {
+  code: 'annual_discount_active'
+  message: string
+  status: 409
+}
+
+export type AnnualDiscountActiveError = ErrorResponse & {
+  code: 'annual_discount_active'
+  status: 409
+}
+
 export type BillingUnprocessableEntityErrorResponse = {
   code: 'unprocessable_entity'
   message: string
@@ -85,6 +96,7 @@ export type GetBillingSubscriptionData = {
 
 export type GetBillingSubscriptionErrors = {
   403: ErrorResponse
+  409: AnnualDiscountActiveErrorResponse | AnnualDiscountActiveError | ErrorResponse
   422: BillingUnprocessableEntityErrorResponse | ErrorResponse
   502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
   503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse

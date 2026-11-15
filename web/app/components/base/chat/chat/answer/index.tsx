@@ -23,6 +23,7 @@ import { OrderedResponseContent } from './ordered-response-content'
 import ReasoningPanel from './reasoning-panel'
 import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
+import WorkflowToolActivity from './workflow-tool-activity'
 
 type AnswerProps = {
   footer?: ReactNode
@@ -83,6 +84,7 @@ const Answer: FC<AnswerProps> = ({
   const hasAgentResponseParts = !!item.agent_response_parts?.length
   const hasAgentContent = hasAgentThoughts || hasAgentResponseParts
   const hasHumanInputs = !!humanInputFormDataList?.length || !!humanInputFilledFormDataList?.length
+  const hasWorkflowActivities = !!item.workflowAgentActivities?.length
   // Truthy only when there is real reasoning text. Rehydrated messages carry an empty
   // `{}` (the field is always persisted), and `!!{}` would otherwise be truthy.
   const hasReasoning = !!item.reasoningContent && Object.values(item.reasoningContent).some(Boolean)
@@ -264,7 +266,12 @@ const Answer: FC<AnswerProps> = ({
 
         {/* Block 2: Response Content (when human inputs exist) */}
         {hasHumanInputs &&
-          (responding || !contentIsEmpty || hasAgentContent || hasReasoning || hasGenerativeUI) && (
+          (responding ||
+            !contentIsEmpty ||
+            hasAgentContent ||
+            hasReasoning ||
+            hasGenerativeUI ||
+            hasWorkflowActivities) && (
             <div className={cn('group relative mt-2 pe-10', chatAnswerContainerInner)}>
               <div className="absolute inset-s-6 -top-2 h-3 w-0.5 bg-chat-answer-human-input-form-divider-bg" />
               <div
@@ -290,11 +297,15 @@ const Answer: FC<AnswerProps> = ({
                   contentIsEmpty &&
                   !hasAgentContent &&
                   !hasReasoning &&
-                  !hasGenerativeUI && (
+                  !hasGenerativeUI &&
+                  !hasWorkflowActivities && (
                     <div className="flex h-5 w-6 items-center justify-center">
                       <LoadingAnim type="text" />
                     </div>
                   )}
+                {hasWorkflowActivities && (
+                  <WorkflowToolActivity item={item} responding={responding} />
+                )}
                 {responseContent}
                 {!!allFiles?.length && (
                   <FileList
@@ -383,11 +394,15 @@ const Answer: FC<AnswerProps> = ({
                 contentIsEmpty &&
                 !hasAgentContent &&
                 !hasReasoning &&
-                !hasGenerativeUI && (
+                !hasGenerativeUI &&
+                !hasWorkflowActivities && (
                   <div className="flex h-5 w-6 items-center justify-center">
                     <LoadingAnim type="text" />
                   </div>
                 )}
+              {hasWorkflowActivities && (
+                <WorkflowToolActivity item={item} responding={responding} />
+              )}
               {responseContent}
               {!!allFiles?.length && (
                 <FileList

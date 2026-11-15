@@ -3,14 +3,14 @@ import re
 import unittest
 from datetime import UTC, datetime
 from typing import Any
-from unittest.mock import MagicMock
 from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
-from core.workflow.nodes.trigger_schedule.entities import VisualConfig
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
+from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
+from graphon.entities.graph_config import NodeConfigDict
 from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.workflow import Workflow
 from services.trigger.schedule_service import ScheduleService
@@ -20,7 +20,7 @@ from tests.helpers.unit.model_factories import make_workflow
 class TestScheduleService(unittest.TestCase):
     """Test cases for ScheduleService class."""
 
-    def test_calculate_next_run_at_valid_cron(self):
+    def test_calculate_next_run_at_valid_cron(self) -> None:
         """Test calculating next run time with valid cron expression."""
         # Test daily cron at 10:30 AM
         cron_expr = "30 10 * * *"
@@ -34,7 +34,7 @@ class TestScheduleService(unittest.TestCase):
         assert next_run.minute == 30
         assert next_run.day == 29
 
-    def test_calculate_next_run_at_with_timezone(self):
+    def test_calculate_next_run_at_with_timezone(self) -> None:
         """Test calculating next run time with different timezone."""
         cron_expr = "0 9 * * *"  # 9:00 AM
         timezone = "America/New_York"
@@ -47,7 +47,7 @@ class TestScheduleService(unittest.TestCase):
         expected_utc_hour = 13
         assert next_run.hour == expected_utc_hour
 
-    def test_calculate_next_run_at_with_last_day_of_month(self):
+    def test_calculate_next_run_at_with_last_day_of_month(self) -> None:
         """Test calculating next run time with 'L' (last day) syntax."""
         cron_expr = "0 10 L * *"  # 10:00 AM on last day of month
         timezone = "UTC"
@@ -60,7 +60,7 @@ class TestScheduleService(unittest.TestCase):
         assert next_run.day == 28
         assert next_run.month == 2
 
-    def test_calculate_next_run_at_invalid_cron(self):
+    def test_calculate_next_run_at_invalid_cron(self) -> None:
         """Test calculating next run time with invalid cron expression."""
         cron_expr = "invalid cron"
         timezone = "UTC"
@@ -75,7 +75,7 @@ class TestScheduleService(unittest.TestCase):
         ):
             calculate_next_run_at(cron_expr, timezone)
 
-    def test_calculate_next_run_at_invalid_timezone(self):
+    def test_calculate_next_run_at_invalid_timezone(self) -> None:
         """Test calculating next run time with invalid timezone."""
         cron_expr = "30 10 * * *"
         timezone = "Invalid/Timezone"
@@ -83,7 +83,7 @@ class TestScheduleService(unittest.TestCase):
         with pytest.raises(ZoneInfoNotFoundError):
             calculate_next_run_at(cron_expr, timezone)
 
-    def test_calculate_next_run_at_malformed_timezone(self):
+    def test_calculate_next_run_at_malformed_timezone(self) -> None:
         """Test that a malformed timezone raises ValueError with the value escaped."""
         cron_expr = "30 10 * * *"
 
@@ -103,19 +103,19 @@ class TestScheduleService(unittest.TestCase):
 class TestVisualToCron(unittest.TestCase):
     """Test cases for visual configuration to cron conversion."""
 
-    def test_visual_to_cron_hourly(self):
+    def test_visual_to_cron_hourly(self) -> None:
         """Test converting hourly visual config to cron."""
         visual_config = VisualConfig(on_minute=15)
         result = ScheduleService.visual_to_cron("hourly", visual_config)
         assert result == "15 * * * *"
 
-    def test_visual_to_cron_daily(self):
+    def test_visual_to_cron_daily(self) -> None:
         """Test converting daily visual config to cron."""
         visual_config = VisualConfig(time="2:30 PM")
         result = ScheduleService.visual_to_cron("daily", visual_config)
         assert result == "30 14 * * *"
 
-    def test_visual_to_cron_weekly(self):
+    def test_visual_to_cron_weekly(self) -> None:
         """Test converting weekly visual config to cron."""
         visual_config = VisualConfig(
             time="10:00 AM",
@@ -124,7 +124,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("weekly", visual_config)
         assert result == "0 10 * * 1,3,5"
 
-    def test_visual_to_cron_monthly_with_specific_days(self):
+    def test_visual_to_cron_monthly_with_specific_days(self) -> None:
         """Test converting monthly visual config with specific days."""
         visual_config = VisualConfig(
             time="11:30 AM",
@@ -133,7 +133,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "30 11 1,15 * *"
 
-    def test_visual_to_cron_monthly_with_last_day(self):
+    def test_visual_to_cron_monthly_with_last_day(self) -> None:
         """Test converting monthly visual config with last day using 'L' syntax."""
         visual_config = VisualConfig(
             time="11:30 AM",
@@ -142,7 +142,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "30 11 1,L * *"
 
-    def test_visual_to_cron_monthly_only_last_day(self):
+    def test_visual_to_cron_monthly_only_last_day(self) -> None:
         """Test converting monthly visual config with only last day."""
         visual_config = VisualConfig(
             time="9:00 PM",
@@ -151,7 +151,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "0 21 L * *"
 
-    def test_visual_to_cron_monthly_with_end_days_and_last(self):
+    def test_visual_to_cron_monthly_with_end_days_and_last(self) -> None:
         """Test converting monthly visual config with days 29, 30, 31 and 'last'."""
         visual_config = VisualConfig(
             time="3:45 PM",
@@ -161,44 +161,44 @@ class TestVisualToCron(unittest.TestCase):
         # Should have 29,30,31,L - the L handles all possible last days
         assert result == "45 15 29,30,31,L * *"
 
-    def test_visual_to_cron_invalid_frequency(self):
+    def test_visual_to_cron_invalid_frequency(self) -> None:
         """Test converting with invalid frequency."""
         with pytest.raises(ScheduleConfigError, match="Unsupported frequency: invalid"):
             ScheduleService.visual_to_cron("invalid", VisualConfig())
 
-    def test_visual_to_cron_weekly_no_weekdays(self):
+    def test_visual_to_cron_weekly_no_weekdays(self) -> None:
         """Test converting weekly with no weekdays specified."""
         visual_config = VisualConfig(time="10:00 AM")
         with pytest.raises(ScheduleConfigError, match="Weekdays are required for weekly schedules"):
             ScheduleService.visual_to_cron("weekly", visual_config)
 
-    def test_visual_to_cron_hourly_no_minute(self):
+    def test_visual_to_cron_hourly_no_minute(self) -> None:
         """Test converting hourly with no on_minute specified."""
         visual_config = VisualConfig()  # on_minute defaults to 0
         result = ScheduleService.visual_to_cron("hourly", visual_config)
         assert result == "0 * * * *"  # Should use default value 0
 
-    def test_visual_to_cron_daily_no_time(self):
+    def test_visual_to_cron_daily_no_time(self) -> None:
         """Test converting daily with no time specified."""
         visual_config = VisualConfig(time=None)
         with pytest.raises(ScheduleConfigError, match="time is required for daily schedules"):
             ScheduleService.visual_to_cron("daily", visual_config)
 
-    def test_visual_to_cron_weekly_no_time(self):
+    def test_visual_to_cron_weekly_no_time(self) -> None:
         """Test converting weekly with no time specified."""
         visual_config = VisualConfig(weekdays=["mon"])
         visual_config.time = None  # Override default
         with pytest.raises(ScheduleConfigError, match="time is required for weekly schedules"):
             ScheduleService.visual_to_cron("weekly", visual_config)
 
-    def test_visual_to_cron_monthly_no_time(self):
+    def test_visual_to_cron_monthly_no_time(self) -> None:
         """Test converting monthly with no time specified."""
         visual_config = VisualConfig(monthly_days=[1])
         visual_config.time = None  # Override default
         with pytest.raises(ScheduleConfigError, match="time is required for monthly schedules"):
             ScheduleService.visual_to_cron("monthly", visual_config)
 
-    def test_visual_to_cron_monthly_duplicate_days(self):
+    def test_visual_to_cron_monthly_duplicate_days(self) -> None:
         """Test monthly with duplicate days should be deduplicated."""
         visual_config = VisualConfig(
             time="10:00 AM",
@@ -207,7 +207,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "0 10 1,15,31 * *"  # Should be deduplicated
 
-    def test_visual_to_cron_monthly_unsorted_days(self):
+    def test_visual_to_cron_monthly_unsorted_days(self) -> None:
         """Test monthly with unsorted days should be sorted."""
         visual_config = VisualConfig(
             time="2:30 PM",
@@ -216,7 +216,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "30 14 1,5,10,15,20 * *"  # Should be sorted
 
-    def test_visual_to_cron_weekly_all_weekdays(self):
+    def test_visual_to_cron_weekly_all_weekdays(self) -> None:
         """Test weekly with all weekdays."""
         visual_config = VisualConfig(
             time="8:00 AM",
@@ -225,7 +225,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("weekly", visual_config)
         assert result == "0 8 * * 0,1,2,3,4,5,6"
 
-    def test_visual_to_cron_hourly_boundary_values(self):
+    def test_visual_to_cron_hourly_boundary_values(self) -> None:
         """Test hourly with boundary minute values."""
         # Minimum value
         visual_config = VisualConfig(on_minute=0)
@@ -237,7 +237,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("hourly", visual_config)
         assert result == "59 * * * *"
 
-    def test_visual_to_cron_daily_midnight_noon(self):
+    def test_visual_to_cron_daily_midnight_noon(self) -> None:
         """Test daily at special times (midnight and noon)."""
         # Midnight
         visual_config = VisualConfig(time="12:00 AM")
@@ -249,7 +249,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("daily", visual_config)
         assert result == "0 12 * * *"
 
-    def test_visual_to_cron_monthly_mixed_with_last_and_duplicates(self):
+    def test_visual_to_cron_monthly_mixed_with_last_and_duplicates(self) -> None:
         """Test monthly with mixed days, 'last', and duplicates."""
         visual_config = VisualConfig(
             time="11:45 PM",
@@ -258,7 +258,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("monthly", visual_config)
         assert result == "45 23 1,15,30,L * *"  # Deduplicated and sorted with L at end
 
-    def test_visual_to_cron_weekly_single_day(self):
+    def test_visual_to_cron_weekly_single_day(self) -> None:
         """Test weekly with single weekday."""
         visual_config = VisualConfig(
             time="6:30 PM",
@@ -267,7 +267,7 @@ class TestVisualToCron(unittest.TestCase):
         result = ScheduleService.visual_to_cron("weekly", visual_config)
         assert result == "30 18 * * 0"
 
-    def test_visual_to_cron_monthly_all_possible_days(self):
+    def test_visual_to_cron_monthly_all_possible_days(self) -> None:
         """Test monthly with all 31 days plus 'last'."""
         all_days = list(range(1, 32)) + ["last"]
         visual_config = VisualConfig(
@@ -278,13 +278,13 @@ class TestVisualToCron(unittest.TestCase):
         expected_days = ",".join([str(i) for i in range(1, 32)]) + ",L"
         assert result == f"1 0 {expected_days} * *"
 
-    def test_visual_to_cron_monthly_no_days(self):
+    def test_visual_to_cron_monthly_no_days(self) -> None:
         """Test monthly without any days specified should raise error."""
         visual_config = VisualConfig(time="10:00 AM", monthly_days=[])
         with pytest.raises(ScheduleConfigError, match="Monthly days are required for monthly schedules"):
             ScheduleService.visual_to_cron("monthly", visual_config)
 
-    def test_visual_to_cron_weekly_empty_weekdays_list(self):
+    def test_visual_to_cron_weekly_empty_weekdays_list(self) -> None:
         """Test weekly with empty weekdays list should raise error."""
         visual_config = VisualConfig(time="10:00 AM", weekdays=[])
         with pytest.raises(ScheduleConfigError, match="Weekdays are required for weekly schedules"):
@@ -294,51 +294,51 @@ class TestVisualToCron(unittest.TestCase):
 class TestParseTime(unittest.TestCase):
     """Test cases for time parsing function."""
 
-    def test_parse_time_am(self):
+    def test_parse_time_am(self) -> None:
         """Test parsing AM time."""
         hour, minute = convert_12h_to_24h("9:30 AM")
         assert hour == 9
         assert minute == 30
 
-    def test_parse_time_pm(self):
+    def test_parse_time_pm(self) -> None:
         """Test parsing PM time."""
         hour, minute = convert_12h_to_24h("2:45 PM")
         assert hour == 14
         assert minute == 45
 
-    def test_parse_time_noon(self):
+    def test_parse_time_noon(self) -> None:
         """Test parsing 12:00 PM (noon)."""
         hour, minute = convert_12h_to_24h("12:00 PM")
         assert hour == 12
         assert minute == 0
 
-    def test_parse_time_midnight(self):
+    def test_parse_time_midnight(self) -> None:
         """Test parsing 12:00 AM (midnight)."""
         hour, minute = convert_12h_to_24h("12:00 AM")
         assert hour == 0
         assert minute == 0
 
-    def test_parse_time_invalid_format(self):
+    def test_parse_time_invalid_format(self) -> None:
         """Test parsing invalid time format."""
         with pytest.raises(ValueError, match="Invalid time format"):
             convert_12h_to_24h("25:00")
 
-    def test_parse_time_invalid_hour(self):
+    def test_parse_time_invalid_hour(self) -> None:
         """Test parsing invalid hour."""
         with pytest.raises(ValueError, match="Invalid hour: 13"):
             convert_12h_to_24h("13:00 PM")
 
-    def test_parse_time_invalid_minute(self):
+    def test_parse_time_invalid_minute(self) -> None:
         """Test parsing invalid minute."""
         with pytest.raises(ValueError, match="Invalid minute: 60"):
             convert_12h_to_24h("10:60 AM")
 
-    def test_parse_time_empty_string(self):
+    def test_parse_time_empty_string(self) -> None:
         """Test parsing empty string."""
         with pytest.raises(ValueError, match="Time string cannot be empty"):
             convert_12h_to_24h("")
 
-    def test_parse_time_invalid_period(self):
+    def test_parse_time_invalid_period(self) -> None:
         """Test parsing invalid period."""
         with pytest.raises(ValueError, match="Invalid period"):
             convert_12h_to_24h("10:30 XM")
@@ -347,7 +347,7 @@ class TestParseTime(unittest.TestCase):
 class TestExtractScheduleConfig(unittest.TestCase):
     """Test cases for extracting schedule configuration from workflow."""
 
-    def test_extract_schedule_config_with_cron_mode(self):
+    def test_extract_schedule_config_with_cron_mode(self) -> None:
         """Test extracting schedule config in cron mode."""
         workflow = Workflow(
             graph=json.dumps(
@@ -367,14 +367,14 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
 
         assert config is not None
         assert config.node_id == "schedule-node"
         assert config.cron_expression == "0 10 * * *"
         assert config.timezone == "America/New_York"
 
-    def test_extract_schedule_config_with_visual_mode(self):
+    def test_extract_schedule_config_with_visual_mode(self) -> None:
         """Test extracting schedule config in visual mode."""
         workflow = Workflow(
             graph=json.dumps(
@@ -395,14 +395,14 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
 
         assert config is not None
         assert config.node_id == "schedule-node"
         assert config.cron_expression == "30 10 * * *"
         assert config.timezone == "UTC"
 
-    def test_extract_schedule_config_no_schedule_node(self):
+    def test_extract_schedule_config_no_schedule_node(self) -> None:
         """Test extracting config when no schedule node exists."""
         workflow = Workflow(
             graph=json.dumps(
@@ -417,23 +417,23 @@ class TestExtractScheduleConfig(unittest.TestCase):
             ),
         )
 
-        config = ScheduleService.extract_schedule_config(workflow)
+        config = ScheduleService.extract_schedule_config(workflow.graph_dict)
         assert config is None
 
-    def test_extract_schedule_config_invalid_graph(self):
+    def test_extract_schedule_config_invalid_graph(self) -> None:
         """Test extracting config with invalid graph data."""
         workflow = Workflow(
             graph="",
         )
 
         with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
-            ScheduleService.extract_schedule_config(workflow)
+            ScheduleService.extract_schedule_config(workflow.graph_dict)
 
 
 class TestScheduleWithTimezone(unittest.TestCase):
     """Test cases for schedule with timezone handling."""
 
-    def test_visual_schedule_with_timezone_integration(self):
+    def test_visual_schedule_with_timezone_integration(self) -> None:
         """Test complete flow: visual config → cron → execution in different timezones.
 
         This test verifies that when a user in Shanghai sets a schedule for 10:30 AM,
@@ -468,7 +468,7 @@ class TestScheduleWithTimezone(unittest.TestCase):
         assert next_run.hour == 2  # 02:30 UTC
         assert next_run.minute == 30
 
-    def test_visual_schedule_different_timezones_same_local_time(self):
+    def test_visual_schedule_different_timezones_same_local_time(self) -> None:
         """Test that same visual config in different timezones runs at different UTC times.
 
         This verifies that a schedule set for "9:00 AM" runs at 9 AM local time
@@ -500,7 +500,7 @@ class TestScheduleWithTimezone(unittest.TestCase):
         assert tokyo_next.day == 6
         assert tokyo_next.hour == 0  # 9 AM JST = 0 AM UTC
 
-    def test_visual_schedule_daily_across_dst_change(self):
+    def test_visual_schedule_daily_across_dst_change(self) -> None:
         """Test that daily schedules adjust correctly during DST changes.
 
         A schedule set for "10:00 AM" should always run at 10 AM local time,
@@ -536,14 +536,16 @@ def _workflow(*, graph_dict: dict[str, Any]) -> Workflow:
 
 def test_to_schedule_config_should_build_from_cron_mode() -> None:
     # Arrange
-    node_config: dict[str, Any] = {
-        "id": "node-1",
-        "data": {
-            "mode": "cron",
-            "cron_expression": "0 12 * * *",
-            "timezone": "Asia/Kolkata",
-        },
-    }
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate(
+            {
+                "mode": "cron",
+                "cron_expression": "0 12 * * *",
+                "timezone": "Asia/Kolkata",
+            }
+        ),
+    )
 
     # Act
     result = ScheduleService.to_schedule_config(node_config=node_config)
@@ -556,25 +558,29 @@ def test_to_schedule_config_should_build_from_cron_mode() -> None:
 
 def test_to_schedule_config_should_raise_for_cron_mode_without_expression() -> None:
     # Arrange
-    node_config = {"id": "node-1", "data": {"mode": "cron", "cron_expression": ""}}
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate({"mode": "cron", "cron_expression": ""}),
+    )
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Cron expression is required for cron mode"):
         ScheduleService.to_schedule_config(node_config=node_config)
 
 
-def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_to_schedule_config_should_build_from_visual_mode() -> None:
     # Arrange
-    node_config = {
-        "id": "node-1",
-        "data": {
-            "mode": "visual",
-            "frequency": "daily",
-            "visual_config": {"time": "9:30 AM"},
-            "timezone": "UTC",
-        },
-    }
-    monkeypatch.setattr(ScheduleService, "visual_to_cron", MagicMock(return_value="30 9 * * *"))
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate(
+            {
+                "mode": "visual",
+                "frequency": "daily",
+                "visual_config": {"time": "9:30 AM"},
+                "timezone": "UTC",
+            }
+        ),
+    )
 
     # Act
     result = ScheduleService.to_schedule_config(node_config=node_config)
@@ -585,7 +591,10 @@ def test_to_schedule_config_should_build_from_visual_mode(monkeypatch: pytest.Mo
 
 def test_to_schedule_config_should_raise_for_invalid_mode() -> None:
     # Arrange
-    node_config = {"id": "node-1", "data": {"mode": "manual"}}
+    node_config = NodeConfigDict(
+        id="node-1",
+        data=TriggerScheduleNodeData.model_validate({"mode": "manual"}),
+    )
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: manual"):
@@ -598,7 +607,7 @@ def test_extract_schedule_config_should_raise_when_graph_is_empty() -> None:
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
-        ScheduleService.extract_schedule_config(workflow=workflow)
+        ScheduleService.extract_schedule_config(graph_data=workflow.graph_dict)
 
 
 def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
@@ -619,7 +628,7 @@ def test_extract_schedule_config_should_raise_when_mode_invalid() -> None:
 
     # Act / Assert
     with pytest.raises(ScheduleConfigError, match="Invalid schedule mode: invalid"):
-        ScheduleService.extract_schedule_config(workflow=workflow)
+        ScheduleService.extract_schedule_config(graph_data=workflow.graph_dict)
 
 
 if __name__ == "__main__":

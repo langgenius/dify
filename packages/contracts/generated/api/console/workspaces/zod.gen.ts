@@ -1752,6 +1752,7 @@ export const zUnchangedInput = z.object({
 export const zHumanInputContactSummary = z.object({
   avatar_url: z.string().optional().default(''),
   created_at: z.int(),
+  email: z.string().nullish(),
   id: z.string(),
   name: z.string(),
 })
@@ -3393,8 +3394,8 @@ export const zImSyncRunStatus = z.enum(['failed', 'queued', 'running', 'succeede
  *
  * One IM sync run snapshot.
  *
- * The latest-only UI displays ``finished_at`` as the explicit sync time. The
- * transport contract intentionally does not expose a ``started_by`` actor.
+ * The latest-only UI displays ``finished_at`` as the explicit sync time.
+ * The initiator display name is resolved from the initiating Dify Account.
  */
 export const zImSyncRun = z.object({
   channel_config_version: z.int().gte(1),
@@ -3402,6 +3403,7 @@ export const zImSyncRun = z.object({
   error_message: z.string().nullish(),
   finished_at: z.int().nullish(),
   id: z.string(),
+  initiator_display_name: z.string(),
   provider: zImProvider,
   result_counts: zImSyncRunResultCounts,
   started_at: z.int().nullish(),

@@ -338,10 +338,22 @@ export type TextReplaceResponse = {
   }
 }
 
+export type AgentLogStreamData = {
+  node_execution_id: string
+  id: string
+  label: string
+  parent_id?: string | null
+  error?: string | null
+  status: string
+  data: Record<string, unknown>
+  metadata?: Record<string, unknown>
+  node_id: string
+}
+
 export type AgentLogResponse = {
   task_id: string
   event: string
-  data: AgentLogItemWithChildren
+  data: AgentLogStreamData
 }
 
 export type HumanInputFormData = {

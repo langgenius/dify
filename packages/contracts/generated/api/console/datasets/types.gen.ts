@@ -252,7 +252,7 @@ export type KnowledgeConfig = {
   duplicate?: boolean
   embedding_model?: string | null
   embedding_model_provider?: string | null
-  indexing_technique: 'economy' | 'high_quality'
+  indexing_technique: IndexTechniqueType
   is_multimodal?: boolean
   name?: string | null
   original_document_id?: string | null
@@ -615,6 +615,20 @@ export type ExternalHitTestingPayload = {
 export type ExternalHitTestingResponse = {
   query: ExternalHitTestingQueryResponse
   records: Array<ExternalHitTestingRecordResponse>
+}
+
+export type FileScanPolicyResponse = {
+  enabled: boolean
+  on_unavailable: string
+  on_unscannable: string
+  provider_id?: string | null
+}
+
+export type FileScanPolicyPayload = {
+  enabled: boolean
+  on_unavailable?: FileScanFallbackAction
+  on_unscannable?: FileScanFallbackAction
+  provider_id?: string | null
 }
 
 export type HitTestingPayload = {
@@ -1036,6 +1050,8 @@ export type ExternalHitTestingRecordResponse = {
   score?: number | null
   title?: string | null
 }
+
+export type FileScanFallbackAction = 'allow' | 'block'
 
 export type HitTestingQuery = {
   content: string
@@ -3010,6 +3026,52 @@ export type PostDatasetsByDatasetIdExternalHitTestingResponses = {
 
 export type PostDatasetsByDatasetIdExternalHitTestingResponse =
   PostDatasetsByDatasetIdExternalHitTestingResponses[keyof PostDatasetsByDatasetIdExternalHitTestingResponses]
+
+export type GetDatasetsByDatasetIdFileScanPolicyData = {
+  body?: never
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/file-scan-policy'
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyError =
+  GetDatasetsByDatasetIdFileScanPolicyErrors[keyof GetDatasetsByDatasetIdFileScanPolicyErrors]
+
+export type GetDatasetsByDatasetIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type GetDatasetsByDatasetIdFileScanPolicyResponse =
+  GetDatasetsByDatasetIdFileScanPolicyResponses[keyof GetDatasetsByDatasetIdFileScanPolicyResponses]
+
+export type PutDatasetsByDatasetIdFileScanPolicyData = {
+  body: FileScanPolicyPayload
+  path: {
+    dataset_id: string
+  }
+  query?: never
+  url: '/datasets/{dataset_id}/file-scan-policy'
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyErrors = {
+  default: ErrorResponse
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyError =
+  PutDatasetsByDatasetIdFileScanPolicyErrors[keyof PutDatasetsByDatasetIdFileScanPolicyErrors]
+
+export type PutDatasetsByDatasetIdFileScanPolicyResponses = {
+  200: FileScanPolicyResponse
+}
+
+export type PutDatasetsByDatasetIdFileScanPolicyResponse =
+  PutDatasetsByDatasetIdFileScanPolicyResponses[keyof PutDatasetsByDatasetIdFileScanPolicyResponses]
 
 export type PostDatasetsByDatasetIdHitTestingData = {
   body: HitTestingPayload

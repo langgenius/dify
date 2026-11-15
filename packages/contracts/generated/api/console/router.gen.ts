@@ -20,6 +20,7 @@ import { emailCodeLogin } from './email-code-login/orpc.gen.ts'
 import { emailRegister } from './email-register/orpc.gen.ts'
 import { explore } from './explore/orpc.gen.ts'
 import { features } from './features/orpc.gen.ts'
+import { fileScan } from './file-scan/orpc.gen.ts'
 import { files } from './files/orpc.gen.ts'
 import { forgotPassword } from './forgot-password/orpc.gen.ts'
 import { form } from './form/orpc.gen.ts'
@@ -77,6 +78,7 @@ const communityContract = {
   emailRegister,
   explore,
   features,
+  fileScan,
   files,
   forgotPassword,
   form,

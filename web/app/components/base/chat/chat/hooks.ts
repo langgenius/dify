@@ -38,6 +38,7 @@ import { useParams, usePathname } from '@/next/navigation'
 import { sseGet, ssePost } from '@/service/base'
 import { TransferMethod } from '@/types/app'
 import { getThreadMessages } from '../utils'
+import { upsertWorkflowToolActivity } from '../workflow-agent-tool-activity'
 import { getProcessedInputs, processOpeningStatement } from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
@@ -846,6 +847,12 @@ export const useChat = (
             }
           })
         },
+        onAgentLog(agentLog) {
+          if (requestGeneration !== workflowRequestGenerationRef.current) return
+          updateChatTreeNode(messageId, (responseItem) => {
+            upsertWorkflowToolActivity(responseItem, agentLog.data)
+          })
+        },
         onMessageEnd: (messageEnd) => {
           if (options.isNewAgent && messageEnd.conversation_id)
             conversationIdRef.current = messageEnd.conversation_id
@@ -1570,6 +1577,16 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
+        onAgentLog(agentLog) {
+          if (!isCurrentRequest()) return
+          upsertWorkflowToolActivity(responseItem, agentLog.data)
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: data.parent_message_id,
+          })
+        },
         onMessageEnd: (messageEnd) => {
           responseItem.agent_response_is_partial = messageEnd.metadata?.agent_response_is_partial
           if (messageEnd.metadata?.content_blocks)
@@ -2046,6 +2063,7 @@ export const useChat = (
   )
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- The existing clearChatList command resets the imperative chat session and acknowledges it to its owner.
     if (clearChatList) handleRestart(() => clearChatListCallback?.(false))
   }, [clearChatList, clearChatListCallback, handleRestart])
 

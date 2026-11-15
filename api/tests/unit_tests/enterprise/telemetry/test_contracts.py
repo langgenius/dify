@@ -107,37 +107,45 @@ class TestTelemetryEnvelope:
     def test_missing_required_case(self) -> None:
         """Verify missing case field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                tenant_id="tenant-123",
-                event_id="event-456",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "tenant_id": "tenant-123",
+                    "event_id": "event-456",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_tenant_id(self) -> None:
         """Verify missing tenant_id field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                event_id="event-456",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "event_id": "event-456",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_event_id(self) -> None:
         """Verify missing event_id field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                tenant_id="tenant-123",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "tenant_id": "tenant-123",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_payload(self) -> None:
         """Verify missing payload field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                tenant_id="tenant-123",
-                event_id="event-456",
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "tenant_id": "tenant-123",
+                    "event_id": "event-456",
+                }
             )
 
     def test_metadata_none(self) -> None:

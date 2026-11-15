@@ -1,10 +1,10 @@
 import type { ComponentProps, ReactNode } from 'react'
 import type { EventEmitterValue } from '@/context/event-emitter'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { UPDATE_DATASETS_EVENT_EMITTER } from '../../../constants'
 import ContextBlockComponent from '../component'
 import { ContextBlockNode } from '../node'
@@ -25,7 +25,7 @@ function renderContext(props: Partial<ComponentProps<typeof ContextBlockComponen
     return (
       <EventEmitterContextProvider>
         <CaptureEmitter />
-        <LexicalComposer
+        <TestLexicalComposer
           initialConfig={{
             namespace: 'context-test',
             nodes: [ContextBlockNode],
@@ -35,7 +35,7 @@ function renderContext(props: Partial<ComponentProps<typeof ContextBlockComponen
           }}
         >
           {children}
-        </LexicalComposer>
+        </TestLexicalComposer>
       </EventEmitterContextProvider>
     )
   }

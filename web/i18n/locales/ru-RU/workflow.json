@@ -459,6 +459,7 @@
   "nodes.humanInputV2.recipients.help": "Выберите, кто может ответить на этом шаге ввода человека.",
   "nodes.humanInputV2.recipients.initiator": "Пользователь, запустивший это выполнение через Web App или CLI, может его одобрить",
   "nodes.humanInputV2.recipients.initiatorDescription": "Ответить может пользователь, запустивший этот рабочий процесс.",
+  "nodes.humanInputV2.recipients.initiatorUnavailableInTriggerWorkflow": "При запуске по триггеру нет инициатора, который мог бы получить запрос на согласование. Выберите контакт или укажите адрес электронной почты с помощью переменной.",
   "nodes.humanInputV2.recipients.inputHelp": "Введите или вставьте несколько адресов электронной почты через запятую. Нажмите /, чтобы вставить переменную.",
   "nodes.humanInputV2.recipients.insertVariable": "Вставить переменную",
   "nodes.humanInputV2.recipients.loadError": "Не удалось загрузить контакты. Сохранённые ID контактов не изменены.",

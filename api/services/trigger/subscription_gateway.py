@@ -6,11 +6,12 @@ from typing import Any
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.trigger.entities.entities import Subscription, UnsubscribeResult
 from core.trigger.errors import TriggerProviderCredentialValidationError
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.trigger_manager import TriggerManager
-from core.trigger.utils.encryption import TriggerProviderPropertiesCache
 from models.provider_ids import TriggerProviderID
+from services.trigger.credential_encryption import TriggerProviderPropertiesCache
+from services.trigger.plugin_provider import PluginTriggerProvider
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob
 from services.trigger.subscription_service import (
     TriggerSubscriptionInvalidError,
     TriggerSubscriptionProviderError,
@@ -18,7 +19,10 @@ from services.trigger.subscription_service import (
 
 
 class PluginTriggerSubscriptionGateway:
-    """Reuse TriggerManager's context cache for a synchronous subscription operation."""
+    """Reuse PluginTriggerProviderLoader's context cache for a synchronous subscription operation."""
+
+    def __init__(self, *, providers: PluginTriggerProviderLoader) -> None:
+        self._providers = providers
 
     def get_schemas(
         self, *, tenant_id: str, provider_id: TriggerProviderID, credential_type: CredentialType
@@ -96,10 +100,9 @@ class PluginTriggerSubscriptionGateway:
             subscription=subscription, credentials=credentials, credential_type=credential_type
         )
 
-    @staticmethod
-    def _provider(*, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProviderController:
+    def _provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider:
         try:
-            return TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+            return self._providers.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
         except Exception as error:
             raise TriggerSubscriptionProviderError(f"Failed to load trigger provider {provider_id}.") from error
 
@@ -108,3 +111,13 @@ def invalidate_subscription_properties(*, tenant_id: str, provider_id: str, subs
     TriggerProviderPropertiesCache(
         tenant_id=tenant_id, provider_id=provider_id, subscription_id=subscription_id
     ).delete()
+
+
+def enqueue_subscription_refresh(job: TriggerSubscriptionRefreshJob) -> None:
+    from tasks.trigger_subscription_refresh_tasks import trigger_subscription_refresh
+
+    # Keep the two-argument task contract for older workers during rolling upgrades.
+    trigger_subscription_refresh.apply_async(
+        kwargs={"tenant_id": job.subscription.tenant_id, "subscription_id": job.subscription.subscription_id},
+        headers={"reservation_token": job.token},
+    )
