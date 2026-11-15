@@ -6,13 +6,11 @@ import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import FormContent from '../external-data-tool-modal'
 
-function ExternalDataToolModal(
-  props: Omit<ComponentProps<typeof FormContent>, 'usedVariableNames'>,
-) {
+function ExternalDataToolModal(props: Omit<ComponentProps<typeof FormContent>, 'isVariableUsed'>) {
   return (
     <Dialog defaultOpen>
       <DialogContent>
-        <FormContent {...props} usedVariableNames={[]} />
+        <FormContent {...props} isVariableUsed={() => false} />
       </DialogContent>
     </Dialog>
   )

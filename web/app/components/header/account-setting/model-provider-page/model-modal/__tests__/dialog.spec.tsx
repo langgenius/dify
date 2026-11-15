@@ -94,8 +94,7 @@ describe('ModelModal dialog branches', () => {
           <ModelModal
             provider={createProvider({ help: undefined })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onCancel={vi.fn()}
-            onSave={vi.fn()}
+            onSubmit={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -118,8 +117,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onCancel={vi.fn()}
-            onSave={vi.fn()}
+            onSubmit={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -145,8 +143,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onCancel={vi.fn()}
-            onSave={vi.fn()}
+            onSubmit={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -167,8 +164,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onCancel={vi.fn()}
-            onSave={vi.fn()}
+            onSubmit={vi.fn()}
           />
         </DialogContent>
       </Dialog>,

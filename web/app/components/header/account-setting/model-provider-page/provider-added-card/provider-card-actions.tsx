@@ -204,7 +204,9 @@ function ProviderCardActions(props: Props) {
 
   return (
     <>
-      <GitHubInstallDialog handle={githubDialog} onUpdated={handlePluginChanged} />
+      {canUpdatePlugin && isFromGitHub && (
+        <GitHubInstallDialog handle={githubDialog} onUpdated={handlePluginChanged} />
+      )}
       <Menu open={!!version && versionMenuOpen} onOpenChange={setVersionMenuRequested}>
         {!!version &&
           (canChangeVersion ? (

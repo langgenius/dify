@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleClient, consoleQuery } from '@/service/console'
 
-export function useSaveExternalApi(id?: string) {
+export function useSaveExternalApi() {
   const queryClient = useQueryClient()
   const { t } = useTranslation(['common'])
   return useMutation({
-    mutationFn: (body: CreateExternalAPIReq) =>
+    mutationFn: ({ id, body }: { id?: string; body: CreateExternalAPIReq }) =>
       id
         ? consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch(
             { params: { external_knowledge_api_id: id }, body },

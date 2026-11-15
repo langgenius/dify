@@ -104,24 +104,28 @@ const ExternalApiEditor = ({ api, pending, onSubmit }: ExternalApiEditorProps) =
     if (val.settings.endpoint !== formData.settings.endpoint) setEndpointError(undefined)
     setFormData(val)
   }
-  const handleSave = () => {
+  const submit = () => {
+    setShowConfirm(false)
+    onSubmit({
+      ...formData,
+      settings: { ...formData.settings, endpoint: formData.settings.endpoint.trim() },
+    })
+  }
+  const handleSubmit = () => {
+    if (hasEmptyInputs || pending) return
+
     const endpoint = formData.settings.endpoint.trim()
     if (!isValidHttpEndpoint(endpoint)) {
       setEndpointError(t(($) => $['validation.invalidHttpUrl'], { ns: 'dataset' }))
       return
     }
-    if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
+    if (formData.settings.api_key.length < 5) {
       toast.error(t(($) => $['apiBasedExtension.modal.apiKey.lengthError'], { ns: 'common' }))
       return
     }
-    onSubmit({ ...formData, settings: { ...formData.settings, endpoint } })
-  }
-
-  const handleSubmit = () => {
-    if (hasEmptyInputs || pending) return
 
     if (api && (datasetBindings?.length ?? 0) > 0) setShowConfirm(true)
-    else void handleSave()
+    else submit()
   }
 
   return (
@@ -179,17 +183,19 @@ const ExternalApiEditor = ({ api, pending, onSubmit }: ExternalApiEditorProps) =
         />
       </DialogHeader>
       <DialogBody>
-        <ExternalAPIForm
-          id={formId}
-          value={formData}
-          onChange={handleDataChange}
-          onSubmit={(event) => {
-            event.preventDefault()
-            handleSubmit()
-          }}
-          formSchemas={formSchemas}
-          errors={{ endpoint: endpointError }}
-        />
+        <fieldset disabled={pending}>
+          <ExternalAPIForm
+            id={formId}
+            value={formData}
+            onChange={handleDataChange}
+            onSubmit={(event) => {
+              event.preventDefault()
+              handleSubmit()
+            }}
+            formSchemas={formSchemas}
+            errors={{ endpoint: endpointError }}
+          />
+        </fieldset>
       </DialogBody>
       <DialogFooter>
         <DialogClose render={<Button disabled={pending} type="button" variant="secondary" />}>
@@ -215,7 +221,9 @@ const ExternalApiEditor = ({ api, pending, onSubmit }: ExternalApiEditorProps) =
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Warning</AlertDialogTitle>
+            <AlertDialogTitle>
+              {t(($) => $.editExternalAPIFormTitle, { ns: 'dataset' })}
+            </AlertDialogTitle>
             <AlertDialogDescription>
               {`${t(($) => $['editExternalAPIConfirmWarningContent.front'], { ns: 'dataset' })} ${datasetBindings?.length} ${t(($) => $['editExternalAPIConfirmWarningContent.end'], { ns: 'dataset' })}`}
             </AlertDialogDescription>
@@ -224,7 +232,7 @@ const ExternalApiEditor = ({ api, pending, onSubmit }: ExternalApiEditorProps) =
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton onClick={handleSave}>
+            <AlertDialogConfirmButton onClick={submit}>
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

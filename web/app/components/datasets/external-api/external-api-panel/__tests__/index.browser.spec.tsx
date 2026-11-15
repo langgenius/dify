@@ -12,6 +12,7 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ExternalAPIPanel from '../index'
 
 const api = vi.hoisted(() => ({
+  get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
   list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
 }))
@@ -26,6 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'datasets.externalKnowledgeApi.post': api.create,
+      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get': api.get,
     }),
   }
 })
@@ -51,6 +53,7 @@ const response: ExternalKnowledgeApiListResponse = {
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
+  api.get.mockReset().mockResolvedValue(response.data[0]!)
   api.list.mockReset().mockResolvedValue(response)
   api.create.mockReset().mockResolvedValue(response.data[0]!)
 })
@@ -149,4 +152,15 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   await expect
     .element(screen.getByRole('button', { name: /common.operation.delete Product knowledge/ }))
     .toBeVisible()
+})
+
+it('opens the card editor as the only top-level dialog', async () => {
+  const screen = await setup()
+  const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
+  await edit.click()
+  const editor = screen.getByRole('dialog', { name: 'dataset.editExternalAPIFormTitle' })
+  await expect.element(editor).toBeVisible()
+  await expect.element(editor).not.toHaveAttribute('data-nested')
+  await editor.getByRole('button', { name: 'dataset.externalAPIForm.cancel' }).click()
+  await expect.element(edit).toHaveFocus()
 })

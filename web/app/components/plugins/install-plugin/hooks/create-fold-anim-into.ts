@@ -13,6 +13,11 @@ function getElemCenter(elem: HTMLElement) {
 }
 
 const createFoldAnimInto = (onClose: () => void) => {
+  let active = true
+  let isInstalling = false
+  const close = () => {
+    if (active) onClose()
+  }
   let countDownRunId: number
   const clearCountDown = () => {
     clearTimeout(countDownRunId)
@@ -26,7 +31,7 @@ const createFoldAnimInto = (onClose: () => void) => {
       document.querySelector('.plugins-nav-button')
 
     if (!modalElem || !pluginTaskTriggerElem) {
-      onClose()
+      close()
       return
     }
 
@@ -39,20 +44,31 @@ const createFoldAnimInto = (onClose: () => void) => {
     modalElem.style.transition = `all cubic-bezier(0.4, 0, 0.2, 1) ${animTime}ms`
     modalElem.style.transform = `translate(${xDiff}px, ${yDiff}px) scale(${scale})`
     await sleep(animTime)
-    onClose()
-  }
-
-  const countDownFoldIntoAnim = async () => {
-    countDownRunId = window.setTimeout(() => {
-      foldIntoAnim()
-    }, COUNT_DOWN_TIME)
+    close()
   }
 
   return {
     modalClassName,
+    close,
+    requestClose: () => {
+      if (isInstalling) void foldIntoAnim()
+      else close()
+    },
+    dispose: () => {
+      active = false
+      clearCountDown()
+    },
+    startInstalling: () => {
+      isInstalling = true
+      clearCountDown()
+      countDownRunId = window.setTimeout(foldIntoAnim, COUNT_DOWN_TIME)
+    },
+    setIsInstalling: (value: boolean) => {
+      isInstalling = value
+      if (!value) clearCountDown()
+    },
     foldIntoAnim,
     clearCountDown,
-    countDownFoldIntoAnim,
   }
 }
 

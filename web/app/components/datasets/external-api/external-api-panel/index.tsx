@@ -1,28 +1,20 @@
+import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import {
-  createDialogHandle,
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { RiAddLine, RiBookOpenLine, RiCloseLine } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
-import dynamic from 'next/dynamic'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { ExternalApiDialogContent } from '@/app/components/datasets/external-api/external-api-modal/dialog-content'
 import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
+import { fetchExternalAPI } from '@/service/datasets'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
-
-const ExternalApiEditor = dynamic(
-  () => import('@/app/components/datasets/external-api/external-api-modal'),
-  { ssr: false },
-)
 
 type ExternalAPIPanelProps = {
   canManageExternalKnowledgeApi: boolean
@@ -35,7 +27,10 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
 }) => {
   const { t } = useTranslation(['common', 'dataset'])
   const docLink = useDocLink()
-  const [dialog] = useState(() => createDialogHandle())
+  const [dialog] = useState(() => createDialogHandle<ExternalKnowledgeApiResponse>())
+  const details = useMutation({
+    mutationFn: (apiTemplateId: string) => fetchExternalAPI({ apiTemplateId }),
+  })
   const save = useSaveExternalApi()
   const externalKnowledgeApiQueryOptions =
     consoleQuery.datasets.externalKnowledgeApi.get.queryOptions({ input: {} })
@@ -43,13 +38,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const externalKnowledgeApiList = data?.data ?? []
 
   return (
-    <Dialog
-      handle={dialog}
-      disablePointerDismissal
-      onOpenChange={(open, details) => {
-        if (!open && save.isPending && details.reason !== 'imperative-action') details.cancel()
-      }}
-    >
+    <>
       <div
         tabIndex={-1}
         className={cn('absolute inset-e-0 top-14 bottom-2 z-10 flex outline-hidden')}
@@ -81,7 +70,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
             <div className="flex items-center">
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-                onClick={() => onClose()}
+                onClick={onClose}
               >
                 <RiCloseLine aria-hidden className="size-4 text-text-tertiary" />
               </IconButton>
@@ -90,6 +79,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           {canManageExternalKnowledgeApi && (
             <div className="flex flex-col items-start justify-center gap-2 self-stretch px-4 py-3">
               <DialogTrigger
+                handle={dialog}
                 render={
                   <Button
                     variant="primary"
@@ -112,6 +102,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
                 <ExternalKnowledgeAPICard
                   key={api.id}
                   api={api}
+                  onEdit={() =>
+                    details.mutate(api.id, {
+                      onSuccess: (detail) => dialog.openWithPayload(detail),
+                    })
+                  }
                   canManageExternalKnowledgeApi={canManageExternalKnowledgeApi}
                   position={index + 1}
                 />
@@ -120,19 +115,25 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
           </div>
         </div>
       </div>
-      <DialogContent>
-        <ExternalApiEditor
-          pending={save.isPending}
-          onSubmit={(values) =>
-            save.mutate(values, {
-              onSuccess: () => {
-                dialog.close()
-              },
-            })
-          }
-        />
-      </DialogContent>
-    </Dialog>
+      <Dialog
+        handle={dialog}
+        disablePointerDismissal
+        onOpenChange={(open, event) => {
+          if (open) details.reset()
+          if (!open && save.isPending && event.reason !== 'imperative-action') event.cancel()
+        }}
+      >
+        {({ payload }) => (
+          <ExternalApiDialogContent
+            api={payload}
+            pending={save.isPending}
+            onSubmit={(body) =>
+              save.mutate({ id: payload?.id, body }, { onSuccess: () => dialog.close() })
+            }
+          />
+        )}
+      </Dialog>
+    </>
   )
 }
 

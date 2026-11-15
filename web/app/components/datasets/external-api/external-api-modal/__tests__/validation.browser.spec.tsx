@@ -50,7 +50,7 @@ async function setup(endpoint: string, key = 'secret-key') {
           <DialogContent>
             <ExternalApiEditor
               pending={save.isPending}
-              onSubmit={(values) => save.mutate(values, { onSuccess: () => setOpen(false) })}
+              onSubmit={(body) => save.mutate({ body }, { onSuccess: () => setOpen(false) })}
             />
           </DialogContent>
         </Dialog>

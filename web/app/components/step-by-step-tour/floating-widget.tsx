@@ -6,7 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { PopoverDescription, PopoverTitle } from '@langgenius/dify-ui/popover'
-import { useEffect } from 'react'
+import { useEffect, useId } from 'react'
 
 export type FloatingChecklistProps = {
   className?: string
@@ -125,6 +125,8 @@ function TourCompletionPrompt({
 }: NonNullable<FloatingChecklistProps['completionPrompt']> & {
   closeButtonRef: RefObject<HTMLButtonElement | null>
 }) {
+  const titleId = useId()
+  const descriptionId = useId()
   useEffect(() => {
     closeButtonRef.current?.focus({ preventScroll: true })
   }, [closeButtonRef])
@@ -132,7 +134,6 @@ function TourCompletionPrompt({
   return (
     <section
       aria-label={label}
-      aria-live="polite"
       className="mt-1 flex w-full flex-col items-center rounded-xl bg-background-section px-6 py-5 text-center"
     >
       <span
@@ -141,10 +142,15 @@ function TourCompletionPrompt({
       >
         <span className="i-ri-check-line size-3.5" />
       </span>
-      <h3 className="system-md-semibold text-text-primary">{title}</h3>
-      <p className="mt-1 system-sm-regular text-text-tertiary">{description}</p>
+      <h3 id={titleId} className="system-md-semibold text-text-primary">
+        {title}
+      </h3>
+      <p id={descriptionId} className="mt-1 system-sm-regular text-text-tertiary">
+        {description}
+      </p>
       <Button
         ref={closeButtonRef}
+        aria-describedby={`${titleId} ${descriptionId}`}
         variant="secondary"
         size="medium"
         className="mt-4 min-w-20"

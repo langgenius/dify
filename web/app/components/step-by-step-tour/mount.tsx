@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -71,6 +71,7 @@ import {
 } from './target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from './tasks'
 import { useStepByStepTourTarget } from './use-tour-target'
+import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 type StepByStepTourTask = (typeof STEP_BY_STEP_TOUR_TASKS)[number]
 
@@ -249,30 +250,8 @@ export default function StepByStepTourMount({
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
-  const [hostReady, setHostReady] = useState(false)
-  const mountTourHost = useCallback((host: HTMLDivElement | null) => {
-    if (!host) return
-    // A suspended tour can mount after a modal has already hidden the navigation.
-    // Wait for that boundary to release it before opening a new portal above the modal.
-    let observer: MutationObserver | undefined
-    function waitForHost() {
-      observer?.disconnect()
-      const boundary = host?.closest('[aria-hidden="true"], [inert]')
-      if (boundary) {
-        observer ??= new MutationObserver(waitForHost)
-        observer.observe(boundary, { attributeFilter: ['aria-hidden', 'inert'] })
-      } else {
-        setHostReady(true)
-      }
-    }
-    waitForHost()
-    return () => {
-      observer?.disconnect()
-      setHostReady(false)
-    }
-  }, [])
+  const [tourHost, setTourHost] = useState<HTMLDivElement | null>(null)
   const overlayVisible =
-    hostReady &&
     visible &&
     pricing !== 'open' &&
     !settingsDestination &&
@@ -448,6 +427,9 @@ export default function StepByStepTourMount({
   }, [skipped])
 
   const recoveryVisible = Boolean(recoveryAnchorRef) && skipRecoveryVisible
+
+  const checklistOpen = useTourPopupOpen(tourHost, overlayVisible && expanded)
+  const recoveryOpen = useTourPopupOpen(tourHost, recoveryVisible)
 
   if (!visible && !recoveryVisible) return null
   return (
@@ -748,7 +730,7 @@ export default function StepByStepTourMount({
           )
 
           return (
-            <div ref={mountTourHost} className={cn('relative', className)}>
+            <div ref={setTourHost} className={cn('relative', className)}>
               {overlayVisible && !allTasksCompleted && activeTask && activeGuide && (
                 <StepByStepTourCoachmark
                   guide={{
@@ -779,7 +761,7 @@ export default function StepByStepTourMount({
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
                 <Popover
-                  open={overlayVisible && expanded}
+                  open={checklistOpen}
                   onOpenChange={(open, { event, reason }) => {
                     if (open) {
                       setChecklistMinimized(false)
@@ -802,7 +784,7 @@ export default function StepByStepTourMount({
                       setChecklistMinimized(true)
                   }}
                 >
-                  {(!expanded || overlayVisible) && (
+                  {(!expanded || checklistOpen) && (
                     <PopoverTrigger
                       ref={restoreTriggerRef}
                       render={(props) => (
@@ -847,7 +829,7 @@ export default function StepByStepTourMount({
               )}
               {recoveryAnchorRef && (
                 <SkipRecoveryPrompt
-                  open={hostReady && recoveryVisible}
+                  open={recoveryOpen}
                   anchorRef={recoveryAnchorRef}
                   label={t(($) => $['stepByStepTour.skipRecovery.label'], { ns: 'onboarding' })}
                   message={t(($) => $['stepByStepTour.skipRecovery.message'], { ns: 'onboarding' })}
@@ -863,6 +845,19 @@ export default function StepByStepTourMount({
       </Translation>
     </Suspense>
   )
+}
+
+function useTourPopupOpen(host: HTMLElement | null, requested: boolean) {
+  const [readyHost, setReadyHost] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (!host || !requested) return
+    const stopWaiting = waitForAccessibleElement(host, () => setReadyHost(host))
+    return () => {
+      stopWaiting()
+      setReadyHost(null)
+    }
+  }, [host, requested])
+  return requested && !!host && readyHost === host
 }
 
 function SkipRecoveryPrompt({

@@ -1087,9 +1087,6 @@
     }
   },
   "web/app/components/base/features/new-feature-panel/conversation-opener/modal.tsx": {
-    "dify/require-disable-directive-description": {
-      "count": 1
-    },
     "jsx-a11y/click-events-have-key-events": {
       "count": 2
     },
@@ -2687,7 +2684,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/model-modal/index.tsx": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 1
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item.tsx": {

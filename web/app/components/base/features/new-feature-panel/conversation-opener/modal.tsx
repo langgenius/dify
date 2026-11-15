@@ -16,7 +16,7 @@ import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/inf
 import { Separator } from '@langgenius/dify-ui/separator'
 import { produce } from 'immer'
 import * as React from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
@@ -46,10 +46,6 @@ const OpeningSettingModal = ({
 
   const { t } = useTranslation(['appDebug', 'common'])
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
-  useEffect(() => {
-    // oxlint-disable-next-line eslint-react/set-state-in-effect
-    setTempValue(data.opening_statement || '')
-  }, [data.opening_statement])
   const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(
     data.suggested_questions || [],
   )

@@ -18,6 +18,7 @@ import {
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -47,8 +48,7 @@ type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
-  onCancel: () => void
-  onSave: (formValues?: Record<string, any>) => void
+  onSubmit: (perform: () => Promise<void>, savedValues?: Record<string, unknown>) => void
   model?: CustomModel
   credential?: Credential
   isModelCredential?: boolean
@@ -59,8 +59,7 @@ const ModelModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
-  onCancel,
-  onSave,
+  onSubmit,
   model,
   credential,
   isModelCredential,
@@ -94,11 +93,11 @@ const ModelModal: FC<ModelModalProps> = ({
   const language = useLanguage()
   const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
     useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
-  const formRef1 = useRef<FormRefObject>(null)
+  const modelFormRef = useRef<FormRefObject>(null)
   const [selectedCredential, setSelectedCredential] = useState<
     (Credential & { addNewCredential?: boolean }) | undefined
   >()
-  const formRef2 = useRef<FormRefObject>(null)
+  const credentialFormRef = useRef<FormRefObject>(null)
   const isEditMode =
     !!credential &&
     !!Object.keys(formSchemasValue || {}).filter((key) => {
@@ -106,7 +105,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }).length &&
     canManageCredential
 
-  const handleSave = useCallback(async () => {
+  const handleSave = useCallback(() => {
     if (
       mode === ModelModalModeEnum.addCustomModelToModelList &&
       selectedCredential &&
@@ -114,8 +113,7 @@ const ModelModal: FC<ModelModalProps> = ({
     ) {
       if (!canUseCredential) return
 
-      handleActiveCredential(selectedCredential, model)
-      onCancel()
+      onSubmit(() => handleActiveCredential(selectedCredential, model))
       return
     }
 
@@ -123,10 +121,10 @@ const ModelModal: FC<ModelModalProps> = ({
     if (!canSubmitCredentialForm) return
 
     let modelNameAndTypeIsCheckValidated = true
-    let modelNameAndTypeValues: Record<string, any> = {}
+    let modelNameAndTypeValues: Record<string, unknown> = {}
 
     if (mode === ModelModalModeEnum.configCustomModel) {
-      const formResult = formRef1.current?.getFormValues({
+      const formResult = modelFormRef.current?.getFormValues({
         needCheckValidatedValues: true,
       }) || { isCheckValidated: false, values: {} }
       modelNameAndTypeIsCheckValidated = formResult.isCheckValidated
@@ -153,7 +151,7 @@ const ModelModal: FC<ModelModalProps> = ({
         __model_type: modelContext.model_type,
       }
     }
-    const { isCheckValidated, values } = formRef2.current?.getFormValues({
+    const { isCheckValidated, values } = credentialFormRef.current?.getFormValues({
       needCheckValidatedValues: true,
       needTransformWhenSecretFieldIsPristine: true,
     }) || { isCheckValidated: false, values: {} }
@@ -166,24 +164,18 @@ const ModelModal: FC<ModelModalProps> = ({
       mode === ModelModalModeEnum.configModelCredential ||
       (mode === ModelModalModeEnum.addCustomModelToModelList &&
         selectedCredential?.addNewCredential)
-    if (shouldSaveModelCredential) {
-      if (!__model_name || !__model_type) return
+    if (shouldSaveModelCredential && (!__model_name || !__model_type)) return
 
-      await handleSaveCredential({
-        credential_id: credential?.credential_id,
-        credentials: rest,
-        name: __authorization_name__,
-        model: __model_name,
-        model_type: __model_type,
-      })
-    } else {
-      await handleSaveCredential({
-        credential_id: credential?.credential_id,
-        credentials: rest,
-        name: __authorization_name__,
-      })
-    }
-    onSave(values)
+    onSubmit(
+      () =>
+        handleSaveCredential({
+          credential_id: credential?.credential_id,
+          credentials: rest,
+          name: __authorization_name__,
+          ...(shouldSaveModelCredential ? { model: __model_name, model_type: __model_type } : {}),
+        }),
+      values,
+    )
   }, [
     mode,
     selectedCredential,
@@ -192,9 +184,8 @@ const ModelModal: FC<ModelModalProps> = ({
     canUseCredential,
     canCreateCredential,
     canManageCredential,
-    onSave,
+    onSubmit,
     handleActiveCredential,
-    onCancel,
     handleSaveCredential,
     credential,
   ])
@@ -282,25 +273,12 @@ const ModelModal: FC<ModelModalProps> = ({
         ? canManageCredential
         : canCreateCredential
 
-  const handleDeleteCredential = useCallback(() => {
-    handleConfirmDelete()
-    onCancel()
-  }, [handleConfirmDelete, onCancel])
-
-  const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
-    const { getForm } = (formRef2.current as FormRefObject) || {}
-    if (getForm()) getForm()?.setFieldValue(field, value)
+  const handleModelNameAndTypeChange = useCallback((field: string, value: unknown) => {
+    credentialFormRef.current?.getForm().setFieldValue(field, value)
   }, [])
   const notAllowCustomCredential = provider.allow_custom_token === false
   const isOfficialOpenAIProvider =
     provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
-
-  const handleConfirmOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) closeConfirmDelete()
-    },
-    [closeConfirmDelete],
-  )
 
   return (
     <>
@@ -308,11 +286,17 @@ const ModelModal: FC<ModelModalProps> = ({
         {modalTitle}
         {modalDesc}
         {modalModel}
-        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        <DialogHeaderCloseButton
+          disabled={doingAction}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+        />
       </DialogHeader>
       <DialogBody>
         {mode === ModelModalModeEnum.configCustomModel && (
           <AuthForm
+            disabled={doingAction}
+            preventDefaultSubmit
+            onSubmit={handleSave}
             formSchemas={
               modelNameAndTypeFormSchemas.map((formSchema) => {
                 return {
@@ -323,7 +307,7 @@ const ModelModal: FC<ModelModalProps> = ({
             }
             defaultValues={modelNameAndTypeFormValues}
             inputClassName="justify-start"
-            ref={formRef1}
+            ref={modelFormRef}
             onChange={handleModelNameAndTypeChange}
           />
         )}
@@ -332,7 +316,7 @@ const ModelModal: FC<ModelModalProps> = ({
             credentials={available_credentials || []}
             onSelect={setSelectedCredential}
             selectedCredential={selectedCredential}
-            disabled={isLoading}
+            disabled={isLoading || doingAction}
             notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
           />
         )}
@@ -349,6 +333,9 @@ const ModelModal: FC<ModelModalProps> = ({
         )}
         {!isLoading && showCredentialForm && (
           <AuthForm
+            disabled={doingAction}
+            preventDefaultSubmit
+            onSubmit={handleSave}
             formSchemas={
               formSchemas.map((formSchema) => {
                 return {
@@ -367,7 +354,7 @@ const ModelModal: FC<ModelModalProps> = ({
             }
             defaultValues={formValues}
             inputClassName="justify-start"
-            ref={formRef2}
+            ref={credentialFormRef}
           />
         )}
       </DialogBody>
@@ -394,12 +381,15 @@ const ModelModal: FC<ModelModalProps> = ({
           <Button
             variant="primary"
             tone="destructive"
+            disabled={doingAction}
             onClick={() => openConfirmDelete(credential, model)}
           >
             {t(($) => $['operation.remove'], { ns: 'common' })}
           </Button>
         )}
-        <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
+        <DialogClose render={<Button disabled={doingAction} />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
         <Button
           variant="primary"
           onClick={handleSave}
@@ -416,7 +406,14 @@ const ModelModal: FC<ModelModalProps> = ({
         />
       )}
 
-      <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
+      <AlertDialog
+        open={!!deleteCredentialId}
+        onOpenChange={(open, details) => {
+          if (open) return
+          if (doingAction) details.cancel()
+          else closeConfirmDelete()
+        }}
+      >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -424,10 +421,13 @@ const ModelModal: FC<ModelModalProps> = ({
             </AlertDialogTitle>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={doingAction}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteCredential}>
+            <AlertDialogConfirmButton
+              disabled={doingAction}
+              onClick={() => onSubmit(handleConfirmDelete)}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>

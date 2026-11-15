@@ -1,28 +1,18 @@
 'use client'
 
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  createDialogHandle,
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from '@langgenius/dify-ui/dialog'
+import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
-import dynamic from 'next/dynamic'
 import * as React from 'react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ExternalApiDialogContent } from '@/app/components/datasets/external-api/external-api-modal/dialog-content'
 import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
 import { useRouter } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import ExternalApiSelect from './ExternalApiSelect'
-
-const ExternalApiEditor = dynamic(
-  () => import('@/app/components/datasets/external-api/external-api-modal'),
-  { ssr: false },
-)
 
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
@@ -113,19 +103,20 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
           />
         </div>
       </form>
-      <DialogContent>
-        <ExternalApiEditor
-          pending={save.isPending}
-          onSubmit={(values) =>
-            save.mutate(values, {
+      <ExternalApiDialogContent
+        pending={save.isPending}
+        onSubmit={(body) =>
+          save.mutate(
+            { body },
+            {
               onSuccess: () => {
                 dialog.close()
                 router.refresh()
               },
-            })
-          }
-        />
-      </DialogContent>
+            },
+          )
+        }
+      />
     </Dialog>
   )
 }

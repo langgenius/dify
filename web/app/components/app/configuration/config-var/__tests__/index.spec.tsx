@@ -1,7 +1,7 @@
 import type { IConfigVarProps } from '../index'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
 import { toast } from '@/app/components/app/configuration/toast'
@@ -10,6 +10,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { consoleQuery } from '@/service/console'
 import { renderWithConfigurationModals } from '@/test/configuration-modals'
 import { createConsoleQueryClient } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createDebugConfigurationFixture } from '@/test/fixtures/debug-configuration'
 import ConfigVar, { ADD_EXTERNAL_DATA_TOOL } from '../index'
@@ -33,11 +34,12 @@ const apiVariable = variable('api_var', {
   config: { api_based_extension_id: 'extension-1' },
 })
 
-function ExternalToolEventSource() {
+function ExternalToolEventSource({ ready }: { ready?: Promise<void> }) {
   const { eventEmitter } = useEventEmitterContextContext()
   return (
     <button
-      onClick={() =>
+      onClick={async () => {
+        await ready
         eventEmitter?.emit({
           type: ADD_EXTERNAL_DATA_TOOL,
           payload: {
@@ -48,7 +50,7 @@ function ExternalToolEventSource() {
             config: { api_based_extension_id: 'extension-1' },
           } satisfies ExternalDataTool,
         })
-      }
+      }}
     >
       Install external data tool
     </button>
@@ -58,6 +60,7 @@ function ExternalToolEventSource() {
 const renderConfigVar = (
   { promptVariables = [], ...props }: Partial<IConfigVarProps> = {},
   debugOverrides: Parameters<typeof createDebugConfigurationFixture>[0] = {},
+  externalToolReady?: Promise<void>,
 ) => {
   const queryClient = createConsoleQueryClient()
   queryClient.setQueryData(
@@ -79,7 +82,7 @@ const renderConfigVar = (
     const [variables, setVariables] = useState(promptVariables)
     return (
       <DebugConfigurationContext.Provider value={context}>
-        <ExternalToolEventSource />
+        <ExternalToolEventSource ready={externalToolReady} />
         <ConfigVar {...props} promptVariables={variables} onPromptVariablesChange={setVariables} />
       </DebugConfigurationContext.Provider>
     )
@@ -133,7 +136,7 @@ it('adds a text variable from the empty state and saves its configuration', asyn
   expect(screen.getByText('topic')).toBeInTheDocument()
 })
 
-it('removes the provisional API variable on cancel and preserves existing variables', async () => {
+it('preserves existing variables when a new API variable is canceled', async () => {
   const user = userEvent.setup()
   renderConfigVar({ promptVariables: [variable('existing')] })
   await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -143,6 +146,34 @@ it('removes the provisional API variable on cancel and preserves existing variab
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(screen.getByText('existing')).toBeInTheDocument()
   expect(screen.getAllByRole('button', { name: 'common.operation.edit' })).toHaveLength(1)
+})
+
+it('appends a new API variable after an external tool arrives while the form is open', async () => {
+  const user = userEvent.setup()
+  const ready = createDeferred()
+  renderConfigVar({}, {}, ready.promise)
+  await user.click(screen.getByRole('button', { name: 'Install external data tool' }))
+  await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+  await user.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
+  const dialog = within(await screen.findByRole('dialog'))
+  await act(async () => ready.resolve())
+  await user.type(
+    dialog.getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    'New API',
+  )
+  await user.type(
+    dialog.getByPlaceholderText('appDebug.feature.tools.modal.variableName.placeholder'),
+    'new_api',
+  )
+  await user.click(
+    dialog.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
+  )
+  await user.click(await screen.findByRole('button', { name: /Search API/ }))
+  await save(user)
+  expect(screen.getAllByText(/^(api_var|new_api)$/).map((item) => item.textContent)).toEqual([
+    'api_var',
+    'new_api',
+  ])
 })
 
 it('saves a basic variable label and restores it when editing again', async () => {

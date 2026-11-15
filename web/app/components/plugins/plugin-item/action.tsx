@@ -114,10 +114,12 @@ const Action: FC<Props> = ({
   ])
   return (
     <div className="flex space-x-1">
-      <GitHubInstallDialog
-        handle={githubDialog}
-        onUpdated={() => invalidateInstalledPluginList(category)}
-      />
+      {isShowFetchNewVersion && (
+        <GitHubInstallDialog
+          handle={githubDialog}
+          onUpdated={() => invalidateInstalledPluginList(category)}
+        />
+      )}
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion && (
         <Tooltip>

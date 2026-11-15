@@ -42,12 +42,12 @@ import {
 type ExternalDataToolModalProps = {
   data: ExternalDataTool
   onSave: (externalDataTool: ExternalDataTool) => void
-  usedVariableNames: string[]
+  isVariableUsed: (name: string) => boolean
 }
 const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   data,
   onSave,
-  usedVariableNames,
+  isVariableUsed,
 }) => {
   const { t } = useTranslation(['appDebug', 'common', 'app'])
   const docLink = useDocLink()
@@ -113,7 +113,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
     const formattedData = formatExternalDataTool(localeData, currentProvider, !!data.type)
 
-    if (formattedData.variable && usedVariableNames.includes(formattedData.variable)) {
+    if (formattedData.variable && isVariableUsed(formattedData.variable)) {
       toast.error(
         t(($) => $['varKeyError.keyAlreadyExists'], {
           ns: 'appDebug',

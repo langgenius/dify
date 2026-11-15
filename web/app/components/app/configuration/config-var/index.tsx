@@ -37,16 +37,6 @@ import VarItem from './var-item'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
-type ExternalDataToolParams = {
-  key: string
-  type: string
-  index: number
-  name: string
-  config?: PromptVariable['config']
-  icon?: string
-  icon_background?: string
-}
-
 const BASIC_INPUT_TYPES = new Set(['string', 'paragraph', 'select', 'number', 'checkbox'])
 
 const toInputVar = (item: PromptVariable): InputVar => ({
@@ -130,12 +120,12 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     [currIndex, onPromptVariablesChange, promptVariables, t],
   )
 
-  const [toolDialog] = useState(() => createDialogHandle<ExternalDataToolParams>())
+  const [toolDialog] = useState(() => createDialogHandle<PromptVariable | null>())
 
   const handleAddVar = useCallback(
     (type: string) => {
       if (type === 'api') {
-        toolDialog.openWithPayload({ type, key: '', name: '', index: promptVariables.length })
+        toolDialog.openWithPayload(null)
         return
       }
       onPromptVariablesChange?.([...promptVariables, getNewVar('', type)])
@@ -192,14 +182,13 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)
 
   const handleConfig = useCallback(
-    ({ key, type, index, name, config, icon, icon_background }: ExternalDataToolParams) => {
-      // setCurrKey(key)
-      setCurrIndex(index)
-      if (!BASIC_INPUT_TYPES.has(type)) {
-        toolDialog.openWithPayload({ key, type, index, name, config, icon, icon_background })
+    (item: PromptVariable, index: number) => {
+      if (!BASIC_INPUT_TYPES.has(item.type)) {
+        toolDialog.openWithPayload(item)
         return
       }
 
+      setCurrIndex(index)
       showEditModal()
     },
     [toolDialog, showEditModal],
@@ -284,7 +273,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
               animation={150}
             >
               {promptVariablesWithIds.map((item, index) => {
-                const { key, name, type, required, config, icon, icon_background } = item.variable
+                const { key, name, type, required } = item.variable
                 return (
                   <VarItem
                     key={key}
@@ -294,17 +283,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                     label={name}
                     required={!!required}
                     type={type}
-                    onEdit={() =>
-                      handleConfig({
-                        type,
-                        key,
-                        index: getItemKey(index),
-                        name,
-                        config,
-                        icon,
-                        icon_background,
-                      })
-                    }
+                    onEdit={() => handleConfig(item.variable, getItemKey(index))}
                     onRemove={() => handleRemoveVar(getItemKey(index))}
                     canDrag={canDrag}
                   />
@@ -363,40 +342,45 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         </AlertDialog>
       </Panel>
       <Dialog handle={toolDialog} disablePointerDismissal>
-        {({ payload: variable }) =>
-          variable && (
-            <ExternalDataToolDialogContent
-              data={{
-                type: variable.type,
-                variable: variable.key,
-                label: variable.name,
-                config: variable.config,
-                icon: variable.icon,
-                icon_background: variable.icon_background,
-              }}
-              usedVariableNames={promptVariables
-                .filter((_, i) => i !== variable.index)
-                .map((item) => item.key)}
-              onSave={(tool) => {
-                const next = {
-                  ...promptVariables[variable.index],
-                  key: tool.variable!,
-                  name: tool.label!,
-                  enabled: tool.enabled,
-                  type: tool.type!,
-                  config: tool.config,
-                  icon: tool.icon,
-                  icon_background: tool.icon_background,
-                  required: promptVariables[variable.index]?.required ?? true,
-                }
-                const variables = [...promptVariables]
-                variables[variable.index] = next
-                onPromptVariablesChange?.(variables)
-                toolDialog.close()
-              }}
-            />
-          )
-        }
+        {({ payload: variable }) => (
+          <ExternalDataToolDialogContent
+            data={
+              variable
+                ? {
+                    type: variable.type,
+                    variable: variable.key,
+                    label: variable.name,
+                    config: variable.config,
+                    icon: variable.icon,
+                    icon_background: variable.icon_background,
+                    enabled: variable.enabled,
+                  }
+                : {}
+            }
+            isVariableUsed={(name) =>
+              name !== variable?.key && promptVariables.some((item) => item.key === name)
+            }
+            onSave={(tool) => {
+              const updated = {
+                key: tool.variable!,
+                name: tool.label!,
+                enabled: tool.enabled,
+                type: tool.type!,
+                config: tool.config,
+                icon: tool.icon,
+                icon_background: tool.icon_background,
+              }
+              onPromptVariablesChange?.(
+                variable
+                  ? promptVariables.map((item) =>
+                      item.key === variable.key ? { ...item, ...updated } : item,
+                    )
+                  : [...promptVariables, { ...updated, required: true }],
+              )
+              toolDialog.close()
+            }}
+          />
+        )}
       </Dialog>
     </>
   )

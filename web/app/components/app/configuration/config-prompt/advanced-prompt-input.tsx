@@ -289,7 +289,7 @@ const AdvancedPromptInput: FC<Props> = ({
       <Dialog handle={toolDialog} disablePointerDismissal>
         <ExternalDataToolDialogContent
           data={{}}
-          usedVariableNames={promptVariables.map((variable) => variable.key)}
+          isVariableUsed={(name) => promptVariables.some((variable) => variable.key === name)}
           onSave={(tool) => {
             eventEmitter?.emit({ type: ADD_EXTERNAL_DATA_TOOL, payload: tool } as any)
             eventEmitter?.emit({

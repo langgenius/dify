@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ExternalApiEditor from '../index'
 import { useSaveExternalApi } from '../use-save-external-api'
@@ -35,7 +36,7 @@ beforeEach(() => {
 async function setup(existing?: ExternalKnowledgeApiResponse) {
   const { wrapper: Providers } = createConsoleQueryWrapper()
   function Caller() {
-    const save = useSaveExternalApi(existing?.id)
+    const save = useSaveExternalApi()
     const [open, setOpen] = useState(true)
     const [saved, setSaved] = useState<ExternalKnowledgeApiResponse>()
     return (
@@ -45,13 +46,16 @@ async function setup(existing?: ExternalKnowledgeApiResponse) {
             <ExternalApiEditor
               api={existing}
               pending={save.isPending}
-              onSubmit={(values) =>
-                save.mutate(values, {
-                  onSuccess: (saved) => {
-                    setSaved(saved)
-                    setOpen(false)
+              onSubmit={(body) =>
+                save.mutate(
+                  { id: existing?.id, body },
+                  {
+                    onSuccess: (saved) => {
+                      setSaved(saved)
+                      setOpen(false)
+                    },
                   },
-                })
+                )
               }
             />
           </DialogContent>
@@ -151,3 +155,23 @@ it.each(['dataset.externalAPIForm.cancel', 'common.operation.close'])(
     expect(api.create).not.toHaveBeenCalled()
   },
 )
+
+it('validates a bound API before confirmation and locks the draft while saving', async () => {
+  const request = createDeferred<ExternalKnowledgeApiResponse>()
+  api.edit.mockReturnValueOnce(request.promise)
+  const screen = await setup({ ...response, dataset_bindings: [{ id: 'ds', name: 'Guide' }] })
+  const endpoint = screen.getByLabelText(/API Endpoint/)
+  await endpoint.fill('invalid')
+  await save(screen).click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  expect(api.edit).not.toHaveBeenCalled()
+  await endpoint.fill(data.settings.endpoint)
+  await save(screen).click()
+  const confirm = screen.getByRole('alertdialog')
+  await confirm.getByRole('button', { name: 'common.operation.confirm' }).click()
+  await expect.element(confirm).not.toBeInTheDocument()
+  await expect.element(endpoint).toBeDisabled()
+  request.resolve(response)
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  expect(api.edit).toHaveBeenCalledTimes(1)
+})

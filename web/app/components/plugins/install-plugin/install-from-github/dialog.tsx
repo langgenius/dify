@@ -3,9 +3,9 @@
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { UpdatePluginPayload } from '../../types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { lazy, Suspense, useRef } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { PluginCategoryEnum } from '../../types'
-import useHideLogic from '../hooks/use-hide-logic'
+import createFoldAnimInto from '../hooks/create-fold-anim-into'
 
 const Installer = lazy(() => import('./index'))
 
@@ -18,43 +18,47 @@ export function GitHubInstallDialog({
   installContextCategory?: PluginCategoryEnum
   onUpdated?: () => void | Promise<void>
 }) {
-  const { modalClassName, foldAnimInto, setIsInstalling, handleStartToInstall } = useHideLogic(() =>
-    handle.close(),
-  )
+  const [session, setSession] = useState<ReturnType<typeof createFoldAnimInto>>()
+  useEffect(() => session?.dispose, [session])
   return (
     <Dialog
       handle={handle}
       onOpenChange={(open, details) => {
-        if (!open && details.reason !== 'imperative-action') {
+        if (open) {
+          setSession(createFoldAnimInto(() => handle.close()))
+        } else if (details.reason === 'imperative-action') {
+          session?.dispose()
+        } else if (session) {
           details.cancel()
-          foldAnimInto()
+          session.requestClose()
         }
-        if (!open && details.reason === 'imperative-action') setIsInstalling(false)
       }}
     >
-      {({ payload }) => (
-        <GitHubInstallContent className={modalClassName}>
-          <Installer
-            updatePayload={payload?.github}
-            installContextCategory={installContextCategory}
-            onStartInstalling={handleStartToInstall}
-            onFinishInstalling={() => setIsInstalling(false)}
-            onClose={() => handle.close()}
-            onSuccess={
-              payload &&
-              (async () => {
-                if (payload.category === PluginCategoryEnum.model) {
-                  await onUpdated?.()
-                  handle.close()
-                } else {
-                  handle.close()
-                  await onUpdated?.()
-                }
-              })
-            }
-          />
-        </GitHubInstallContent>
-      )}
+      {({ payload }) =>
+        session && (
+          <GitHubInstallContent className={session.modalClassName}>
+            <Installer
+              updatePayload={payload?.github}
+              installContextCategory={installContextCategory}
+              onStartInstalling={session.startInstalling}
+              onFinishInstalling={() => session.setIsInstalling(false)}
+              onClose={session.close}
+              onSuccess={
+                payload &&
+                (async () => {
+                  if (payload.category === PluginCategoryEnum.model) {
+                    await onUpdated?.()
+                    session.close()
+                  } else {
+                    session.close()
+                    await onUpdated?.()
+                  }
+                })
+              }
+            />
+          </GitHubInstallContent>
+        )
+      }
     </Dialog>
   )
 }
