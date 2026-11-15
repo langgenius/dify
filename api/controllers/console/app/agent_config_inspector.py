@@ -53,8 +53,15 @@ from models.model import App, AppMode
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
 from services.agent_config_service import (
+    AgentConfigFileBindingPayload,
+    AgentConfigFileListPayload,
+    AgentConfigFilePreviewPayload,
+    AgentConfigManifestPayload,
+    AgentConfigNamedFilePreviewPayload,
     AgentConfigService,
     AgentConfigServiceError,
+    AgentConfigSkillBindingPayload,
+    AgentConfigSkillListPayload,
     AgentConfigVersionKind,
     ConfigPushFileItem,
     ConfigPushPayload,
@@ -514,7 +521,7 @@ def _with_app_route_target(
         _handle(exc)
 
 
-def _manifest_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
+def _manifest_response(target: _ResolvedConsoleTarget) -> AgentConfigManifestPayload:
     return _service().manifest(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -524,7 +531,7 @@ def _manifest_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
     )
 
 
-def _skill_list_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
+def _skill_list_response(target: _ResolvedConsoleTarget) -> AgentConfigSkillListPayload:
     return _service().list_skills(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -534,7 +541,7 @@ def _skill_list_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
     )
 
 
-def _file_list_response(target: _ResolvedConsoleTarget) -> dict[str, object]:
+def _file_list_response(target: _ResolvedConsoleTarget) -> AgentConfigFileListPayload:
     return _service().list_files(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -553,7 +560,7 @@ def _read_single_upload() -> tuple[bytes, str]:
     return upload.stream.read(), upload.filename or ""
 
 
-def _skill_upload_response(target: _ResolvedConsoleTarget) -> tuple[dict[str, object], int]:
+def _skill_upload_response(target: _ResolvedConsoleTarget) -> tuple[AgentConfigSkillBindingPayload, int]:
     assert target.account_id is not None
     return _upload_skill_for_target(
         tenant_id=target.tenant_id,
@@ -573,7 +580,7 @@ def _upload_skill_for_target(
     version_kind: AgentConfigVersionKind,
     content: bytes | None = None,
     filename: str = "",
-) -> tuple[dict[str, object], int]:
+) -> tuple[AgentConfigSkillBindingPayload, int]:
     if content is None:
         content, filename = _read_single_upload()
     manifest = _service().upload_skill_for_console(
@@ -590,7 +597,7 @@ def _upload_skill_for_target(
 
 def _file_upload_response(
     target: _ResolvedConsoleTarget, payload: AgentConfigFileUploadPayload
-) -> tuple[dict[str, object], int]:
+) -> tuple[AgentConfigFileBindingPayload, int]:
     assert target.account_id is not None
     manifest = _service().push_file_for_console(
         tenant_id=target.tenant_id,
@@ -646,7 +653,7 @@ def _skill_download_response(target: _ResolvedConsoleTarget, name: str) -> Respo
     )
 
 
-def _skill_file_preview_response(target: _ResolvedConsoleTarget, name: str, path: str) -> dict[str, object]:
+def _skill_file_preview_response(target: _ResolvedConsoleTarget, name: str, path: str) -> AgentConfigFilePreviewPayload:
     return _service().preview_skill_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
@@ -718,7 +725,7 @@ def _skill_delete_response(target: _ResolvedConsoleTarget, name: str) -> dict[st
     return {"result": "success", "removed_names": [name]}
 
 
-def _file_preview_response(target: _ResolvedConsoleTarget, name: str) -> dict[str, object]:
+def _file_preview_response(target: _ResolvedConsoleTarget, name: str) -> AgentConfigNamedFilePreviewPayload:
     return _service().preview_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,

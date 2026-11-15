@@ -79,18 +79,6 @@ def _soul(**updates: object) -> AgentSoulConfig:
     return AgentSoulConfig.model_validate(payload)
 
 
-def _mapping(value: object) -> dict[str, object]:
-    assert isinstance(value, dict)
-    return value
-
-
-def _mappings(value: object) -> list[dict[str, object]]:
-    assert isinstance(value, list)
-    for item in value:
-        assert isinstance(item, dict)
-    return value
-
-
 def _agent(*, tenant_id: str = TENANT) -> Agent:
     return Agent(
         id=AGENT,
@@ -1025,11 +1013,8 @@ def test_inspect_skill_falls_back_to_workspace_runtime_skill() -> None:
 
     assert result["id"] == "skill-1"
     assert result["source"] == "config_skill_zip"
-    assert (
-        _mapping(result["skill_md"])["text"]
-        == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
-    )
-    assert [item["path"] for item in _mappings(result["files"])] == ["SKILL.md", "references", "references/policy.md"]
+    assert result["skill_md"]["text"] == "---\nname: workspace-skill\ndescription: Workspace skill.\n---\n# Workspace"
+    assert [item["path"] for item in result["files"]] == ["SKILL.md", "references", "references/policy.md"]
 
 
 def test_manifest_uses_items_shape_without_download_urls() -> None:
@@ -1106,8 +1091,8 @@ def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqli
         skill_management_service.return_value.list_runtime_agent_skills.return_value = list[dict[str, object]]()
         manifest = service._manifest_for_target(target)
 
-    assert _mappings(_mapping(manifest["skills"])["items"])[0]["is_missing"] is True
-    assert _mappings(_mapping(manifest["files"])["items"])[0]["is_missing"] is True
+    assert manifest["skills"]["items"][0]["is_missing"] is True
+    assert manifest["files"]["items"][0]["is_missing"] is True
     with pytest.raises(AgentConfigServiceError) as skill_error:
         service.request_download(
             tenant_id=TENANT,
@@ -1186,8 +1171,8 @@ def test_manifest_appends_published_workspace_skills() -> None:
         ]
         manifest = AgentConfigService._manifest_for_target(target)
 
-    assert [item["name"] for item in _mappings(_mapping(manifest["skills"])["items"])] == ["alpha", "beta"]
-    assert _mappings(_mapping(manifest["skills"])["items"])[1]["file_id"] == "tool-file-2"
+    assert [item["name"] for item in manifest["skills"]["items"]] == ["alpha", "beta"]
+    assert manifest["skills"]["items"][1]["file_id"] == "tool-file-2"
 
 
 def test_list_skills_excludes_workspace_skill_bindings() -> None:
@@ -1223,7 +1208,7 @@ def test_list_skills_excludes_workspace_skill_bindings() -> None:
             user_id=None,
         )
 
-    assert [item["name"] for item in _mappings(result["items"])] == ["alpha"]
+    assert [item["name"] for item in result["items"]] == ["alpha"]
     skill_management_service.return_value.list_runtime_agent_skills.assert_not_called()
 
 
