@@ -772,13 +772,17 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     monkeypatch.setattr(app_wraps_module, "_load_app_model", load_app_model)
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", fail_signal)
 
-    method: Callable[..., object] = model_config_module.ModelConfigResource.post
-    while not os.path.normpath(method.__code__.co_filename).endswith(
-        os.path.join("controllers", "common", "session.py")
-    ):
-        inner = vars(method).get("__wrapped__")
-        assert callable(inner)
-        method = inner
+    # `with_session` sits in the middle of the decorator chain (controllers/common/session.py),
+    # not at its end, so unwrap only down to that layer and take the wrapped view below it.
+    def is_controller_session_layer(candidate: Callable[..., object]) -> bool:
+        return os.path.normpath(candidate.__code__.co_filename).endswith(
+            os.path.join("controllers", "common", "session.py")
+        )
+
+    method: Callable[..., object] = unwrap(
+        model_config_module.ModelConfigResource.post, stop=is_controller_session_layer
+    )
+    assert is_controller_session_layer(method)
     wrapped_view = vars(method)["__wrapped__"]
     assert callable(wrapped_view)
     assert os.path.normpath(wrapped_view.__code__.co_filename).endswith(
