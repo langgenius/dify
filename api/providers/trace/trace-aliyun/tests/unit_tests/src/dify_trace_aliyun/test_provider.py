@@ -3,7 +3,7 @@ from collections.abc import Iterable
 from urllib.parse import unquote, urlsplit
 
 import pytest
-from dify_trace_aliyun.config import AliyunConfig
+from dify_trace_aliyun.byoa_config import AliyunConfig
 from dify_trace_aliyun.provider import AliyunProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (

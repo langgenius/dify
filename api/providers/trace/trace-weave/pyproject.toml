@@ -3,6 +3,7 @@ name = "dify-trace-weave"
 version = "0.0.1"
 dependencies = [
     "dify-trace-sdk",
+    "weave==0.52.36",
 ]
 description = "Dify ops tracing provider (Weave)."
 

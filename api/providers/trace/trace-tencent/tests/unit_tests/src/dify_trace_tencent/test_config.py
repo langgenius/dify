@@ -2,7 +2,7 @@ import traceback
 
 import pytest
 from dify_trace_sdk.config import FormField
-from dify_trace_tencent.config import TencentConfig
+from dify_trace_tencent.byoa_config import TencentConfig
 from pydantic import ValidationError
 
 TOKEN = "synthetic-token"
@@ -140,3 +140,16 @@ def test_required_fields_have_no_defaults(field: str) -> None:
     del stored[field]
     with pytest.raises(ValidationError):
         TencentConfig.model_validate(stored)
+
+
+def test_native_tencent_configuration_remains_a_distinct_real_model() -> None:
+    from dify_trace_tencent import config as native_config
+
+    from core.ops.entities.config_entity import BaseTracingConfig
+
+    value = native_config.TencentConfig(
+        token=TOKEN, endpoint="https://apm.tencentcloudapi.com", service_name="dify-app"
+    )
+    assert isinstance(value, BaseTracingConfig)
+    assert not isinstance(value, TencentConfig)
+    assert value.service_name == "dify-app"

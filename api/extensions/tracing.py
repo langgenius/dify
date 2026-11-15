@@ -14,6 +14,7 @@ from dify_trace_sdk.events import TraceCorrelation
 from flask import Flask, current_app, has_app_context
 
 from core.helper.trace_id_helper import ParentTraceContext
+from machinery.legacy_tracing import LegacyTraceCapturePort, LegacyTraceOwnershipUnavailableError
 
 if TYPE_CHECKING:
     from dify_agent.layers.execution_context import ApplicationTracingContext
@@ -26,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 _SCOPES_KEY = "trace_scopes"
 _HOOKS_KEY = "application_tracing_hooks"
+_LEGACY_CAPTURE_KEY = "legacy_ops_trace_terminal_capture"
 
 
 @runtime_checkable
@@ -153,3 +155,16 @@ def application_tracing_hooks() -> ApplicationTracingHooks | None:
         return None
     hooks = current_app.extensions.get(_HOOKS_KEY)
     return hooks if isinstance(hooks, ApplicationTracingHooks) else None
+
+
+def bind_legacy_trace_capture(app: Flask, capture: LegacyTraceCapturePort) -> None:
+    """Bind the concrete old-wire compatibility owner separately from SDK hooks."""
+    app.extensions[_LEGACY_CAPTURE_KEY] = capture
+
+
+def legacy_trace_capture() -> LegacyTraceCapturePort:
+    """Return the bound legacy capture owner, or fail without authorizing export."""
+    value = current_app.extensions.get(_LEGACY_CAPTURE_KEY)
+    if not isinstance(value, LegacyTraceCapturePort):
+        raise LegacyTraceOwnershipUnavailableError("Legacy trace compatibility owner is not registered")
+    return value

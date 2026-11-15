@@ -12,7 +12,7 @@ from dify_trace_sdk.errors import (
 )
 from dify_trace_sdk.provider import SendResult
 from dify_trace_sdk.testing import MESSAGE_ID, RecordingEgress, message_trace, tool_fragment, workflow_trace
-from dify_trace_tencent.config import TencentConfig
+from dify_trace_tencent.byoa_config import TencentConfig
 from dify_trace_tencent.provider import TencentProvider
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import (
     ExportTraceServiceRequest,

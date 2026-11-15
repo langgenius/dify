@@ -35,7 +35,7 @@ from mlflow.tracing.utils.otlp import MLFLOW_EXPERIMENT_ID_HEADER, OTLP_TRACES_P
 
 from dify_trace_mlflow._databricks import DatabricksStore, trace_info, upload_trace_data
 from dify_trace_mlflow._spans import mlflow_spans, otlp_request, standalone, trace_data
-from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+from dify_trace_mlflow.byoa_config import DatabricksConfig, MLflowConfig
 
 VERIFY_TIMEOUT_SECONDS = 10.0
 _GET_EXPERIMENT_PATH = "/api/2.0/mlflow/experiments/get"

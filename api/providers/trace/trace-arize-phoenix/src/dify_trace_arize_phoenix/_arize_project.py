@@ -16,7 +16,7 @@ from urllib.parse import quote, urlencode, urlsplit
 from dify_trace_sdk.egress import Egress
 from dify_trace_sdk.errors import EgressError
 
-from dify_trace_arize_phoenix.config import ArizeConfig
+from dify_trace_arize_phoenix.byoa_config import ArizeConfig
 
 API_BASE = "https://api.arize.com/v2"
 UI_BASE = "https://app.arize.com"

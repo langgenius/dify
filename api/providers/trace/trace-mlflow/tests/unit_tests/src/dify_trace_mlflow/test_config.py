@@ -1,5 +1,5 @@
 import pytest
-from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+from dify_trace_mlflow.byoa_config import DatabricksConfig, MLflowConfig
 from dify_trace_sdk.config import FormField
 from pydantic import ValidationError
 
@@ -58,3 +58,14 @@ def test_databricks_config_fields() -> None:
         FormField(name="client_secret", secret=True, required=False),
         FormField(name="personal_access_token", secret=True, required=False),
     )
+
+
+def test_native_mlflow_configuration_remains_a_distinct_real_model() -> None:
+    from dify_trace_mlflow import config as native_config
+
+    from core.ops.entities.config_entity import BaseTracingConfig
+
+    value = native_config.MLflowConfig(tracking_uri="http://localhost:5000", experiment_id="42")
+    assert isinstance(value, BaseTracingConfig)
+    assert not isinstance(value, MLflowConfig)
+    assert value.experiment_id == "42"

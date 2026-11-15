@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-from dify_trace_opik.config import OpikConfig
+from dify_trace_opik.byoa_config import OpikConfig
 from dify_trace_opik.provider import OpikProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (

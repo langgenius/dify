@@ -150,6 +150,20 @@ class TraceRecordRepository(TraceRecordSource):
         # App, workspace, and credential names are enterprise telemetry dimensions only.
         self._enterprise_details = enterprise_details
 
+    def legacy_app_tenant(self, app_id: str) -> str | None:
+        """Resolve a trusted legacy queue reference without loading payload or secrets.
+
+        The task validates its stored App reference before this call. This short
+        read returns only the authoritative tenant ID; all subsequent source
+        reads retain that tenant and App chain. Store failures remain explicit.
+        """
+        with tracing_store_errors(), self._sessions() as session:
+            if app_id.startswith("tenant-"):
+                from models.account import Tenant
+
+                return session.scalar(select(Tenant.id).where(Tenant.id == app_id.removeprefix("tenant-")))
+            return session.scalar(select(App.tenant_id).where(App.id == app_id))
+
     @override
     def assemble(self, event: TraceEvent) -> BaseTraceInfo:
         match event.payload:

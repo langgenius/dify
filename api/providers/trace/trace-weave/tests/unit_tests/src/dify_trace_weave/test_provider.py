@@ -26,7 +26,7 @@ from dify_trace_sdk.testing import (
     tool_fragment,
     workflow_trace,
 )
-from dify_trace_weave.config import WeaveConfig
+from dify_trace_weave.byoa_config import WeaveConfig
 from dify_trace_weave.provider import WeaveProvider
 from pydantic import JsonValue
 

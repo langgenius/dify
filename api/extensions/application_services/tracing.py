@@ -1,6 +1,7 @@
 """Composition of the trace pipeline, Agent trace collection, and tracing provider configurations."""
 
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -21,6 +22,7 @@ from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.collection import AgentTraceSettings
 from services.tracing.delivery import TraceDeliveryService
 from services.tracing.egress import SSRFEgress
+from services.tracing.legacy_capture import LegacyTraceCaptureService
 from services.tracing.provider_configs import ProviderConfigGateway, TraceProviderCapabilitiesQuery
 from services.tracing.providers import ProviderConfigCodec
 from services.tracing.registry import EntryPointTraceProviderCatalog
@@ -34,6 +36,7 @@ class TracingServices:
     scopes: TraceScopes
     delivery: TraceDeliveryService
     agent_traces: ApplicationTracingService
+    legacy_capture: LegacyTraceCaptureService
     hooks: RuntimeApplicationTracingHooks | None
     """``None`` when the deployment does not collect Agent traces."""
     provider_configs: ProviderConfigGateway
@@ -59,18 +62,19 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
         retention_days=dify_config.OPS_AGENT_TRACE_RETENTION_DAYS,
     )
     agent_trace_runs = ApplicationTraceRepository(database_client)
+    agent_records = TraceRecordRepository(
+        database_client,
+        workflow_runs=workflow_runs,
+        node_executions=node_executions,
+        files_url=dify_config.FILES_URL,
+        enterprise_details=False,
+    )
     agent_traces = ApplicationTracingService(
         runs=agent_trace_runs,
         run_query=agent_trace_runs,
         sources=agent_trace_runs,
         # App, workspace, and credential names are enterprise telemetry dimensions only.
-        records=TraceRecordRepository(
-            database_client,
-            workflow_runs=workflow_runs,
-            node_executions=node_executions,
-            files_url=dify_config.FILES_URL,
-            enterprise_details=False,
-        ),
+        records=agent_records,
         builder=builder,
         providers=providers,
         codec=codec,
@@ -78,18 +82,19 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
         schedule_export=schedule_agent_trace_export,
         settings=agent_settings,
     )
+    delivery_records = TraceRecordRepository(
+        database_client,
+        workflow_runs=workflow_runs,
+        node_executions=node_executions,
+        files_url=dify_config.FILES_URL,
+        enterprise_details=enterprise_telemetry,
+    )
     return TracingServices(
         scopes=TraceScopes(
             emitter=CeleryTraceEmitter(), policies=configs, enterprise_enabled=is_enterprise_telemetry_enabled
         ),
         delivery=TraceDeliveryService(
-            records=TraceRecordRepository(
-                database_client,
-                workflow_runs=workflow_runs,
-                node_executions=node_executions,
-                files_url=dify_config.FILES_URL,
-                enterprise_details=enterprise_telemetry,
-            ),
+            records=delivery_records,
             destinations=configs,
             providers=providers,
             codec=codec,
@@ -101,6 +106,14 @@ def build_tracing_services(*, database_client: sessionmaker[Session]) -> Tracing
             max_export_attempts=dify_config.OPS_TRACE_EXPORT_MAX_ATTEMPTS,
         ),
         agent_traces=agent_traces,
+        legacy_capture=LegacyTraceCaptureService(
+            owners=agent_records,
+            records=agent_records,
+            enterprise_records=delivery_records,
+            enterprise_sink=send_to_enterprise_telemetry,
+            collector=agent_traces,
+            now=lambda: datetime.now(UTC),
+        ),
         hooks=RuntimeApplicationTracingHooks(agent_traces) if agent_settings.enabled else None,
         provider_configs=ProviderConfigGateway(providers=providers, codec=codec, egress=egress),
         provider_capabilities=TraceProviderCapabilitiesQuery(

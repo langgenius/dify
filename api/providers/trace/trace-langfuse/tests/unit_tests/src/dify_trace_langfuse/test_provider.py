@@ -2,7 +2,7 @@ import base64
 import json
 
 import pytest
-from dify_trace_langfuse.config import LangfuseConfig
+from dify_trace_langfuse.byoa_config import LangfuseConfig
 from dify_trace_langfuse.provider import MAX_REQUEST_BYTES, LangfuseProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (

@@ -19,7 +19,7 @@ from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTrace
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import TraceServiceStub
 
 from dify_trace_arize_phoenix import _arize_project
-from dify_trace_arize_phoenix.config import DEFAULT_PROJECT, ArizeConfig, PhoenixConfig
+from dify_trace_arize_phoenix.byoa_config import DEFAULT_PROJECT, ArizeConfig, PhoenixConfig
 
 SERVICE_NAME = "dify-application"
 JSON_MIME_TYPE = "application/json"

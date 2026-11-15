@@ -29,7 +29,7 @@ from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
-from dify_trace_weave.config import DEFAULT_HOST, WeaveConfig
+from dify_trace_weave.byoa_config import DEFAULT_HOST, WeaveConfig
 
 VERIFY_TIMEOUT_SECONDS = 10.0
 PUBLIC_CONSOLE_URL = "https://wandb.ai"

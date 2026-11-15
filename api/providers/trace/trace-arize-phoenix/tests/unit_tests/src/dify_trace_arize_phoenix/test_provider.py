@@ -3,7 +3,7 @@ from concurrent import futures
 
 import grpc  # type: ignore[import-untyped]
 import pytest
-from dify_trace_arize_phoenix.config import ArizeConfig, PhoenixConfig
+from dify_trace_arize_phoenix.byoa_config import ArizeConfig, PhoenixConfig
 from dify_trace_arize_phoenix.provider import ArizeProvider, PhoenixProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (

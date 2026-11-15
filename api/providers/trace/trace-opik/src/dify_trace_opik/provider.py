@@ -28,7 +28,7 @@ from dify_trace_sdk.model import Span, SpanKind, SpanStatus, Trace
 from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
 from pydantic import JsonValue
 
-from dify_trace_opik.config import DEFAULT_PROJECT, OpikConfig
+from dify_trace_opik.byoa_config import DEFAULT_PROJECT, OpikConfig
 
 VERIFY_TIMEOUT_SECONDS = 30.0
 MAX_SPANS_PER_BATCH = 1000

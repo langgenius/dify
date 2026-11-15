@@ -15,6 +15,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -1589,6 +1590,35 @@ class OpsTraceConfig(BaseSettings):
         default=6,
         description="Attempts to send one trace to its provider when the provider is temporarily unavailable.",
     )
+
+    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
+        description="Enable unified ops tracing for providers registered in the unified registry.",
+        default=False,
+    )
+
+    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
+        default=780,
+    )
+
+    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
+        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
+        default=5,
+    )
+
+    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
+        description="Retention in seconds for unified tracing parent contexts.",
+        default=3900,
+    )
+
+    @model_validator(mode="after")
+    def validate_parent_context_retention(self) -> "OpsTraceConfig":
+        if not self.OPS_TRACE_UNIFIED_ENABLED:
+            return self
+        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
+        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
+            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
+        return self
 
 
 class CeleryBeatConfig(BaseSettings):

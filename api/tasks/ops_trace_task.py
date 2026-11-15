@@ -1,30 +1,189 @@
-"""Retired entry point of the previous trace pipeline.
+"""
+Celery task for asynchronous ops trace dispatch.
 
-Producers from before an upgrade may still enqueue this task. Its payload uses
-the previous record format, so the message is dropped and its payload deleted;
-only old workers can export it. Keep new workers off the old queue until it has
-drained. The new pipeline's sweeper leaves legacy payloads alone.
+Trace providers may report retryable dispatch failures through the core
+exception contract. Unknown acceptance is terminal to prevent automatic replay
+of a possibly accepted prefix. The task preserves the payload file only
+when Celery accepts the retry request; successful dispatches and terminal
+failures clean up the stored payload.
+
+One concrete producer today is Phoenix nested workflow tracing. The outer
+workflow tool span publishes a restorable parent span context asynchronously,
+while the nested workflow trace may be picked up by Celery first. In that
+ordering window, the provider raises a retryable core exception instead of
+dropping the trace or emitting it under the wrong parent. The task intentionally
+does not know that the provider is Phoenix; it only honors the core retryable
+dispatch contract.
 """
 
+import json
 import logging
 import re
+from copy import deepcopy
 
 from celery import shared_task
+from celery.exceptions import Retry
+from flask import current_app
 
+from configs import dify_config
+from core.ops.entities.config_entity import OPS_FILE_PATH, OPS_TRACE_FAILED_KEY
+from core.ops.entities.trace_entity import trace_info_info_map
+from core.ops.exceptions import RetryableTraceDispatchError
+from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from machinery.legacy_tracing import LegacyTraceOwnershipUnavailableError
+from models.model import Message
+from models.workflow import WorkflowRun
 
 logger = logging.getLogger(__name__)
 
 _PAYLOAD_SEGMENT = re.compile(r"[A-Za-z0-9-]+")
 
+_RETRYABLE_TRACE_DISPATCH_LIMIT = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES
+_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS = dify_config.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
 
-@shared_task(queue="ops_trace")
-def process_trace_tasks(file_info: dict[str, object]) -> None:
-    app_id, file_id = file_info.get("app_id"), file_info.get("file_id")
-    if isinstance(app_id, str) and isinstance(file_id, str):
-        if _PAYLOAD_SEGMENT.fullmatch(app_id) and _PAYLOAD_SEGMENT.fullmatch(file_id):
+
+@shared_task(
+    queue="ops_trace",
+    bind=True,
+    max_retries=_RETRYABLE_TRACE_DISPATCH_LIMIT,
+    default_retry_delay=_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS,
+)
+def process_trace_tasks(self, file_info):
+    """
+    Async process trace tasks
+    Usage: process_trace_tasks.delay(tasks_data)
+    """
+    from core.ops.ops_trace_manager import OpsTraceManager
+
+    app_id = file_info.get("app_id")
+    file_id = file_info.get("file_id")
+    if not isinstance(app_id, str) or not isinstance(file_id, str):
+        raise ValueError("Invalid legacy trace payload reference")
+    if not _PAYLOAD_SEGMENT.fullmatch(app_id) or not _PAYLOAD_SEGMENT.fullmatch(file_id):
+        raise ValueError("Invalid legacy trace payload reference")
+    file_path = f"{OPS_FILE_PATH}{app_id}/{file_id}.json"
+    file_data = json.loads(storage.load(file_path))
+    raw_trace_info = file_data.get("trace_info")
+    # Keep the persisted JSON independent of ORM hydration. The private EE
+    # acknowledgement must remain serializable when a retry is retained.
+    trace_info = deepcopy(raw_trace_info)
+    trace_info_type = file_data.get("trace_info_type")
+    enterprise_trace_dispatched = bool(file_data.get("_enterprise_trace_dispatched"))
+
+    if trace_info.get("message_data"):
+        trace_info["message_data"] = Message.from_dict(data=trace_info["message_data"])
+    if trace_info.get("workflow_data"):
+        trace_info["workflow_data"] = WorkflowRun.from_dict(data=trace_info["workflow_data"])
+    if trace_info.get("documents"):
+        trace_info["documents"] = [Document.model_validate(doc) for doc in trace_info["documents"]]
+
+    should_delete_file = True
+
+    try:
+        trace_type = trace_info_info_map.get(trace_info_type)
+        if trace_type:
+            trace_info = trace_type(**trace_info)
+
+        application_trace_captured = False
+        if dify_config.OPS_AGENT_TRACE_ENABLED:
+            # This is the old wire format, not the SDK event format. The two
+            # hook generations share a Flask key but have different protocols;
+            # resolve an explicit compatibility owner instead of casting one.
+            from extensions.tracing import legacy_trace_capture
+
             try:
-                storage.delete(f"ops_trace/{app_id}/{file_id}.json")
+                with current_app.app_context():
+                    application_trace_captured = legacy_trace_capture().capture(
+                        app_id=app_id,
+                        event_id=f"legacy:{app_id}:{file_id}",
+                        trace_info_type=trace_info_type,
+                        info=raw_trace_info,
+                    )
             except Exception:
-                logger.warning("Legacy trace payload cleanup failed: app_id=%s", app_id, exc_info=True)
-    logger.info("Dropped a trace task enqueued before the trace pipeline upgrade: app_id=%s", app_id)
+                # An unknown owner cannot authorize a second export. The
+                # existing bounded retry path retains the original payload.
+                raise RetryableTraceDispatchError("Legacy trace ownership is temporarily unavailable") from None
+
+        from extensions.ext_enterprise_telemetry import is_enabled as is_ee_telemetry_enabled
+
+        if is_ee_telemetry_enabled() and not enterprise_trace_dispatched:
+            from extensions.tracing import legacy_trace_capture
+
+            try:
+                with current_app.app_context():
+                    legacy_trace_capture().emit_enterprise(
+                        app_id=app_id,
+                        event_id=f"legacy:{app_id}:{file_id}",
+                        trace_info_type=trace_info_type,
+                        info=raw_trace_info,
+                    )
+            except LegacyTraceOwnershipUnavailableError:
+                raise RetryableTraceDispatchError("Legacy enterprise trace source is temporarily unavailable") from None
+            except Exception:
+                logger.exception("Enterprise trace failed for app_id: %s", app_id)
+            else:
+                file_data["_enterprise_trace_dispatched"] = True
+                enterprise_trace_dispatched = True
+
+        if not application_trace_captured:
+            trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
+            if trace_instance:
+                with current_app.app_context():
+                    trace_instance.trace(trace_info)
+
+        logger.info("Processing trace tasks success, app_id: %s", app_id)
+    except RetryableTraceDispatchError as e:
+        # Only confirmed retryable failures, including transient parent ordering
+        # gaps, may replay. Unknown acceptance must terminate without retry.
+        # Keep the payload only after
+        # Celery accepts the retry request; otherwise this attempt becomes a
+        # terminal failure and the stored file is cleaned up in `finally`.
+        #
+        # Enterprise telemetry runs before provider dispatch. If it already ran
+        # and provider dispatch asks for a retry, persist that private flag so
+        # the next attempt does not emit the same enterprise trace twice.
+        if e.acceptance_unknown:
+            # Provider exception details can contain private request content.
+            logger.exception("Trace acceptance unknown; automatic retry suppressed, app_id: %s", app_id, exc_info=False)
+            failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+            redis_client.incr(failed_key)
+        elif self.request.retries >= _RETRYABLE_TRACE_DISPATCH_LIMIT:
+            logger.exception("Retryable trace dispatch budget exhausted, app_id: %s", app_id)
+            failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+            redis_client.incr(failed_key)
+        else:
+            logger.warning(
+                "Retryable trace dispatch failure, scheduling retry %s/%s for app_id %s: %s",
+                self.request.retries + 1,
+                _RETRYABLE_TRACE_DISPATCH_LIMIT,
+                app_id,
+                type(e).__name__,
+            )
+            try:
+                if enterprise_trace_dispatched:
+                    storage.save(file_path, json.dumps(file_data).encode("utf-8"))
+                raise self.retry(exc=e, countdown=_RETRYABLE_TRACE_DISPATCH_DELAY_SECONDS)
+            except Retry:
+                should_delete_file = False
+                raise
+            except Exception:
+                logger.exception("Failed to schedule trace dispatch retry, app_id: %s", app_id)
+                failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+                redis_client.incr(failed_key)
+    except Exception:
+        logger.exception("Processing trace tasks failed, app_id: %s", app_id)
+        failed_key = f"{OPS_TRACE_FAILED_KEY}_{app_id}"
+        redis_client.incr(failed_key)
+    finally:
+        if should_delete_file:
+            try:
+                storage.delete(file_path)
+            except Exception as e:
+                logger.warning(
+                    "Failed to delete trace file %s for app_id %s: %s",
+                    file_path,
+                    app_id,
+                    e,
+                )

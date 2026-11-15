@@ -1,7 +1,7 @@
 import threading
 
 import pytest
-from dify_trace_langsmith.config import LangSmithConfig
+from dify_trace_langsmith.byoa_config import LangSmithConfig
 from dify_trace_langsmith.provider import LangSmithProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (

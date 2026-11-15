@@ -56,7 +56,7 @@ from extensions.application_services.workspace import (
 )
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
-from extensions.tracing import bind_tracing
+from extensions.tracing import bind_legacy_trace_capture, bind_tracing
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -976,6 +976,7 @@ def init_app(app: Flask) -> None:
     )
     app.extensions[_EXTENSION_KEY] = services
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
+    bind_legacy_trace_capture(app, services.tracing.legacy_capture)
     bind_account_loader(app, services.accounts.identity.load_user)
     bind_account_only_loader(app, services.accounts.identity.get_account_by_id)
 

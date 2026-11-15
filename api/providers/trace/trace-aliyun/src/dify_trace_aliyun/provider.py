@@ -17,7 +17,7 @@ from dify_trace_sdk.otlp import encode_trace, post_otlp, read_otlp_ack
 from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvider
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 
-from dify_trace_aliyun.config import AliyunConfig
+from dify_trace_aliyun.byoa_config import AliyunConfig
 
 VERIFY_TIMEOUT_SECONDS = 10.0
 _DESTINATION = "Aliyun"

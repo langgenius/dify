@@ -8,7 +8,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import dify_trace_mlflow
 import pytest
-from dify_trace_mlflow.config import DatabricksConfig, MLflowConfig
+from dify_trace_mlflow.byoa_config import DatabricksConfig, MLflowConfig
 from dify_trace_mlflow.provider import DatabricksProvider, MLflowProvider
 from dify_trace_sdk.egress import EgressResponse
 from dify_trace_sdk.errors import (
@@ -851,7 +851,11 @@ class TestIsolation:
 
     @staticmethod
     def test_the_package_imports_nothing_from_the_application_or_the_process() -> None:
-        for path in Path(dify_trace_mlflow.__file__).parent.glob("*.py"):
+        package = Path(dify_trace_mlflow.__file__).parent
+        sdk_modules = {"__init__", "provider", "byoa_config", "_spans", "_databricks"}
+        sdk_paths = [package / f"{module}.py" for module in sorted(sdk_modules)]
+        assert all(path.is_file() for path in sdk_paths)
+        for path in sdk_paths:
             for node in ast.walk(ast.parse(path.read_text())):
                 if isinstance(node, ast.Import):
                     modules = [alias.name for alias in node.names]
@@ -861,5 +865,9 @@ class TestIsolation:
                     continue
                 for module in modules:
                     assert module.split(".")[0] in ALLOWED_IMPORTS, f"{path.name} imports {module}"
+                    if module.startswith("dify_trace_mlflow."):
+                        assert module.removeprefix("dify_trace_mlflow.") in sdk_modules, (
+                            f"{path.name} imports an unreviewed SDK module {module}"
+                        )
                     if module.startswith("mlflow"):
                         assert module.startswith(ALLOWED_MLFLOW_IMPORTS), f"{path.name} imports {module}"

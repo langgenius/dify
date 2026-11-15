@@ -21,7 +21,7 @@ from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvi
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from pydantic import JsonValue
 
-from dify_trace_langfuse.config import LangfuseConfig
+from dify_trace_langfuse.byoa_config import LangfuseConfig
 
 DESTINATION = "Langfuse"
 SERVICE_NAME = "dify"

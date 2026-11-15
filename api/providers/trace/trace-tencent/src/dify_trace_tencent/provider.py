@@ -17,7 +17,7 @@ from dify_trace_sdk.provider import ProviderCapabilities, SendResult, TraceProvi
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2 import ExportTraceServiceRequest
 from opentelemetry.proto.collector.trace.v1.trace_service_pb2_grpc import TraceServiceStub
 
-from dify_trace_tencent.config import SERVICE_NAME, TencentConfig
+from dify_trace_tencent.byoa_config import SERVICE_NAME, TencentConfig
 
 DEFAULT_GRPC_PORT = 4317
 VERIFY_TIMEOUT_SECONDS = 10.0

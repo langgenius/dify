@@ -33,7 +33,7 @@ from langsmith import Client
 from pydantic import JsonValue
 from urllib3.util.retry import Retry
 
-from dify_trace_langsmith.config import LangSmithConfig
+from dify_trace_langsmith.byoa_config import LangSmithConfig
 
 VERIFY_TIMEOUT_SECONDS = 10.0
 DEFAULT_WEB_URL = "https://smith.langchain.com"
