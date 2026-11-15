@@ -61,7 +61,7 @@ class QueuedEventsHint:
     __slots__ = ("_before_wait", "more_queued")
 
     def __init__(self, before_wait: Callable[[], None]) -> None:
-        self.more_queued = False
+        self.more_queued: bool = False
         self._before_wait = before_wait
 
     def before_wait(self) -> None:
