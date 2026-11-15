@@ -23,6 +23,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import Link from '@/next/link'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 
 type PasswordFormValues = {
   password: string
@@ -33,7 +34,7 @@ const ChangePasswordForm = () => {
   const { t } = useTranslation(['login', 'accountSettings'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const token = decodeURIComponent(searchParams.get('token') || '')
+  const token = safeDecodeURIComponent(searchParams.get('token'))
 
   const formActionsRef = useRef<FormActions>(null)
   const confirmPasswordRef = useRef<HTMLInputElement>(null)

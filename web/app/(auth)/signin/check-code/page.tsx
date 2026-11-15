@@ -19,6 +19,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { getBrowserTimezone } from '@/utils/timezone'
 import { basePath } from '@/utils/var'
 import Turnstile from '../components/turnstile'
@@ -34,9 +35,9 @@ export default function CheckCode() {
   const queryClient = useQueryClient()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const searchParams = useSearchParams()
-  const email = decodeURIComponent(searchParams.get('email') as string)
-  const token = decodeURIComponent(searchParams.get('token') as string)
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const email = safeDecodeURIComponent(searchParams.get('email'))
+  const token = safeDecodeURIComponent(searchParams.get('token'))
+  const invite_token = safeDecodeURIComponent(searchParams.get('invite_token'))
   const language = i18n.language
   const [loading, setLoading] = useState(false)
   const [isResending, setIsResending] = useState(false)

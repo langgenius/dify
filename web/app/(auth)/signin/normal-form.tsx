@@ -12,6 +12,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleClient } from '@/service/console'
 import { isUnauthorizedError } from '@/service/http-error'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { basePath } from '@/utils/var'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -42,8 +43,8 @@ function NormalForm() {
     refetchOnWindowFocus: false,
   })
   const isLoggedIn = !!userResp && !probeError
-  const message = decodeURIComponent(searchParams.get('message') || '')
-  const inviteToken = decodeURIComponent(searchParams.get('invite_token') || '')
+  const message = safeDecodeURIComponent(searchParams.get('message'))
+  const inviteToken = safeDecodeURIComponent(searchParams.get('invite_token'))
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const isNonCloudEdition =
     systemFeatures.deployment_edition === 'COMMUNITY' ||

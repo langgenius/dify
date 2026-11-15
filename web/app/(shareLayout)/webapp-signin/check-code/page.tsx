@@ -20,14 +20,15 @@ import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { getClientLoginFallback } from '@/utils/login-redirect'
 import { replaceLoginRedirect } from '@/utils/login-redirect.client'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 import { basePath } from '@/utils/var'
 
 export default function CheckCode() {
   const { t } = useTranslation(['login'])
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = decodeURIComponent(searchParams.get('email') as string)
-  const token = decodeURIComponent(searchParams.get('token') as string)
+  const email = safeDecodeURIComponent(searchParams.get('email'))
+  const token = safeDecodeURIComponent(searchParams.get('token'))
   const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
   const locale = useLocale()

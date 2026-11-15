@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
+import { safeDecodeURIComponent } from '@/utils/safe-decode'
 
 type SSOAuthProps = {
   protocol: SsoProtocol
@@ -26,7 +27,7 @@ const SSOAuth: FC<SSOAuthProps> = ({ protocol }) => {
   const router = useRouter()
   const { t } = useTranslation(['login'])
   const searchParams = useSearchParams()
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+  const invite_token = safeDecodeURIComponent(searchParams.get('invite_token'))
 
   const [isLoading, setIsLoading] = useState(false)
 
