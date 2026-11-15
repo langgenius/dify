@@ -1731,16 +1731,6 @@
       "count": 3
     }
   },
-  "web/app/components/billing/pricing/content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/billing/pricing/header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/billing/priority-label/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -4179,11 +4169,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/title-description-input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },
