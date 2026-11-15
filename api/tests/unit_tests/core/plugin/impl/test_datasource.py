@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import NotRequired, TypedDict, Unpack
+from typing import TypedDict, Unpack
 
 from pytest_mock import MockerFixture
 
@@ -10,45 +10,23 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     OnlineDriveDownloadMessage,
 )
-from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.datasource import (
+    PluginDatasourceListPayload,
+    PluginDatasourceManager,
+    PluginDatasourceSinglePayload,
+)
 
 
-class _ProviderIdentity(TypedDict):
-    provider: str
+class PluginDatasourceListRequestKwargs(TypedDict):
+    """Keyword arguments the manager passes when listing providers."""
+
+    transformer: Callable[[PluginDatasourceListPayload], PluginDatasourceListPayload]
 
 
-class _DeclarationIdentity(TypedDict):
-    name: str
+class PluginDatasourceSingleRequestKwargs(TypedDict):
+    """Keyword arguments the manager passes when resolving one provider."""
 
-
-class _DatasourceEntry(TypedDict):
-    identity: _ProviderIdentity
-    output_schema: dict[str, object]
-
-
-class _Declaration(TypedDict):
-    identity: NotRequired[_DeclarationIdentity]
-    datasources: list[_DatasourceEntry]
-
-
-class _ProviderEntry(TypedDict):
-    declaration: _Declaration
-
-
-class _ListPayload(TypedDict):
-    data: list[_ProviderEntry]
-
-
-class _SinglePayload(TypedDict):
-    data: _ProviderEntry
-
-
-class _ListRequestKwargs(TypedDict):
-    transformer: Callable[[_ListPayload], _ListPayload]
-
-
-class _SingleRequestKwargs(TypedDict):
-    transformer: Callable[[_SinglePayload], _SinglePayload]
+    transformer: Callable[[PluginDatasourceSinglePayload], PluginDatasourceSinglePayload]
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -69,10 +47,10 @@ class TestPluginDatasourceManager:
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
         def fake_request(
-            method: str, path: str, type_: object, **kwargs: Unpack[_ListRequestKwargs]
+            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: _ListPayload = {
+            payload: PluginDatasourceListPayload = {
                 "data": [
                     {
                         "declaration": {
@@ -104,10 +82,10 @@ class TestPluginDatasourceManager:
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
         def fake_request(
-            method: str, path: str, type_: object, **kwargs: Unpack[_ListRequestKwargs]
+            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: _ListPayload = {
+            payload: PluginDatasourceListPayload = {
                 "data": [
                     {
                         "declaration": {
@@ -140,10 +118,10 @@ class TestPluginDatasourceManager:
         mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs", return_value={"resolved": True})
 
         def fake_request(
-            method: str, path: str, type_: object, **kwargs: Unpack[_SingleRequestKwargs]
+            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            payload: _SinglePayload = {
+            payload: PluginDatasourceSinglePayload = {
                 "data": {
                     "declaration": {
                         "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]

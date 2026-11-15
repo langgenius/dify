@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Any
+from typing import Any, NotRequired, TypedDict
 
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -22,13 +22,53 @@ from services.plugin.dispatch_identity import plugin_dispatch_headers
 from services.tools.tools_transform_service import ToolTransformService
 
 
+class PluginDatasourceProviderPayload(TypedDict):
+    """A datasource provider as the plugin daemon sends it in its JSON payload."""
+
+    declaration: "PluginDatasourceDeclarationPayload"
+
+
+class PluginDatasourceDeclarationPayload(TypedDict):
+    """The declaration block of a datasource provider payload."""
+
+    identity: NotRequired["PluginProviderIdentityPayload"]
+    datasources: list["PluginDatasourceEntryPayload"]
+
+
+class PluginProviderIdentityPayload(TypedDict):
+    name: str
+
+
+class PluginDatasourceEntryPayload(TypedDict):
+    """A single datasource entry, including the refs the manager rewrites."""
+
+    identity: "PluginDatasourceIdentityPayload"
+    output_schema: NotRequired[dict[str, Any]]
+
+
+class PluginDatasourceIdentityPayload(TypedDict):
+    provider: str
+
+
+class PluginDatasourceListPayload(TypedDict):
+    """The payload returned when the daemon lists datasource providers."""
+
+    data: list[PluginDatasourceProviderPayload]
+
+
+class PluginDatasourceSinglePayload(TypedDict):
+    """The payload returned when the daemon resolves one datasource provider."""
+
+    data: PluginDatasourceProviderPayload
+
+
 class PluginDatasourceManager(BasePluginClient):
     def fetch_datasource_providers(self, tenant_id: str) -> list[PluginDatasourceProviderEntity]:
         """
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: PluginDatasourceListPayload) -> PluginDatasourceListPayload:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -70,7 +110,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: PluginDatasourceListPayload) -> PluginDatasourceListPayload:
             if json_response.get("data"):
                 for provider in json_response.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -112,7 +152,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: PluginDatasourceSinglePayload) -> PluginDatasourceSinglePayload:
             data = json_response.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
