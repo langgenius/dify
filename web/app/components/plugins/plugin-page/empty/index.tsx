@@ -4,13 +4,14 @@ import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/p
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { beginGitHubPluginIntent } from '@/app/components/plugins/update-plugin/check-github-update'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -43,6 +44,7 @@ const Empty = ({
 }: EmptyProps) => {
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const queryClient = useQueryClient()
   const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const enable_marketplace = useMarketplace() !== null
@@ -161,7 +163,10 @@ const Empty = ({
                       if (action === 'local') fileInputRef.current?.click()
                       else if (action === 'marketplace')
                         onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
-                      else githubDialog.open(null)
+                      else {
+                        beginGitHubPluginIntent(queryClient)
+                        githubDialog.open(null)
+                      }
                     }}
                   >
                     <span

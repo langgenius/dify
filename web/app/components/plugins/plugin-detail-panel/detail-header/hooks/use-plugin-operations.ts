@@ -5,14 +5,17 @@ import type { PluginDetail } from '../../../types'
 import type { ModalStates } from './use-detail-header-state'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'
 import { createDialogHandle } from '@langgenius/dify-ui/dialog'
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { PluginSource } from '../../../types'
-import { checkGitHubPluginUpdate } from '../../../update-plugin/check-github-update'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '../../../update-plugin/check-github-update'
 
 type UsePluginOperationsParams = {
   canDeletePlugin?: boolean
@@ -37,6 +40,7 @@ export const usePluginOperations = ({
   modalStates,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
+  const queryClient = useQueryClient()
   const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
@@ -55,14 +59,15 @@ export const usePluginOperations = ({
   const handleUpdate = useCallback(async () => {
     if (!canUpdatePlugin) return
 
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     if (isFromMarketplace) {
       modalStates.showUpdateModal()
       return
     }
 
-    const update = await checkGitHubPluginUpdate(detail)
+    const update = await checkGitHubPluginUpdate(detail, isCurrent)
     if (update) githubDialog.openWithPayload(update)
-  }, [canUpdatePlugin, isFromMarketplace, detail, modalStates, githubDialog])
+  }, [canUpdatePlugin, isFromMarketplace, detail, modalStates, githubDialog, queryClient])
 
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({

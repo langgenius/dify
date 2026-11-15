@@ -1,13 +1,13 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { consoleClient } from '@/service/console'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import ExternalApiEditor from '../index'
+import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
 import { data, response } from './fixtures'
 
@@ -42,23 +42,21 @@ async function setup(existing?: ExternalKnowledgeApiResponse) {
     return (
       <>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent>
-            <ExternalApiEditor
-              api={existing}
-              pending={save.isPending}
-              onSubmit={(body) =>
-                save.mutate(
-                  { id: existing?.id, body },
-                  {
-                    onSuccess: (saved) => {
-                      setSaved(saved)
-                      setOpen(false)
-                    },
+          <ExternalApiDialogContent
+            api={existing}
+            pending={save.isPending}
+            onSubmit={(body) =>
+              save.mutate(
+                { id: existing?.id, body },
+                {
+                  onSuccess: (saved) => {
+                    setSaved(saved)
+                    setOpen(false)
                   },
-                )
-              }
-            />
-          </DialogContent>
+                },
+              )
+            }
+          />
         </Dialog>
         {saved && <p>Saved {saved.name}</p>}
         <AppToaster />

@@ -3,7 +3,7 @@
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { UpdatePluginPayload } from '../../types'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
-import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { PluginCategoryEnum } from '../../types'
 import createFoldAnimInto from '../hooks/create-fold-anim-into'
 
@@ -36,7 +36,7 @@ export function GitHubInstallDialog({
     >
       {({ payload }) =>
         session && (
-          <GitHubInstallContent className={session.modalClassName}>
+          <GitHubInstallContent popupRef={session.popupRef}>
             <Installer
               updatePayload={payload?.github}
               installContextCategory={installContextCategory}
@@ -65,17 +65,16 @@ export function GitHubInstallDialog({
 
 export function GitHubInstallContent({
   children,
-  className = '',
+  popupRef,
 }: {
   children: React.ReactNode
-  className?: string
+  popupRef: React.RefObject<HTMLDivElement | null>
 }) {
-  const popupRef = useRef<HTMLDivElement>(null)
   return (
     <Suspense fallback={null}>
       <DialogContent
         ref={popupRef}
-        className={`max-h-[calc(100dvh-3rem)] w-140 ${className}`}
+        className="max-h-[calc(100dvh-3rem)] w-140"
         backdropProps={{ forceRender: true }}
         initialFocus={(interaction) =>
           interaction === 'touch'

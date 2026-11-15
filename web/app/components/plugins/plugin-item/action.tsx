@@ -15,16 +15,19 @@ import {
 import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useQueryClient } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
-import { toast } from '@/app/notifications'
 import { uninstallPlugin } from '@/service/plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { checkForUpdates, fetchReleases } from '../install-plugin/hooks'
 import PluginInfoContent from '../plugin-page/plugin-info'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '../update-plugin/check-github-update'
 
 const i18nPrefix = 'action'
 
@@ -60,30 +63,17 @@ const Action: FC<Props> = ({
   const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
+  const queryClient = useQueryClient()
   const handleFetchNewVersion = async () => {
-    const owner = meta!.repo.split('/')[0] || author
-    const repo = meta!.repo.split('/')[1] || pluginName
-    const fetchedReleases = await fetchReleases(owner, repo).catch(() => {
-      toast.error(t(($) => $['error.fetchReleasesError'], { ns: 'plugin' }))
-      return undefined
-    })
-    if (!fetchedReleases?.length) return
-    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
-    toast(toastProps.message, { type: toastProps.type })
-    if (needUpdate) {
-      githubDialog.openWithPayload({
-        category,
-        github: {
-          originalPackageInfo: {
-            id: pluginUniqueIdentifier,
-            repo: meta!.repo,
-            version: meta!.version,
-            package: meta!.package,
-            releases: fetchedReleases,
-          },
-        },
-      })
-    }
+    const update = await checkGitHubPluginUpdate(
+      {
+        meta,
+        plugin_unique_identifier: pluginUniqueIdentifier,
+        declaration: { author, category, name: pluginName },
+      },
+      beginGitHubPluginIntent(queryClient),
+    )
+    if (update) githubDialog.openWithPayload(update)
   }
 
   const [isShowDeleteConfirm, { setTrue: showDeleteConfirm, setFalse: hideDeleteConfirm }] =

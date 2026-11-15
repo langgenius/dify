@@ -1,7 +1,7 @@
+import { createRef } from 'react'
 import { sleep } from '@/utils'
 
 const animTime = 750
-const modalClassName = 'install-modal'
 const COUNT_DOWN_TIME = 15000 // 15s
 
 function getElemCenter(elem: HTMLElement) {
@@ -13,6 +13,7 @@ function getElemCenter(elem: HTMLElement) {
 }
 
 const createFoldAnimInto = (onClose: () => void) => {
+  const popupRef = createRef<HTMLDivElement>()
   let active = true
   let isInstalling = false
   const close = () => {
@@ -25,7 +26,7 @@ const createFoldAnimInto = (onClose: () => void) => {
   // modalElem fold into plugin install task btn
   const foldIntoAnim = async () => {
     clearCountDown()
-    const modalElem = document.querySelector(`.${modalClassName}`) as HTMLElement
+    const modalElem = popupRef.current
     const pluginTaskTriggerElem =
       document.getElementById('plugin-task-trigger') ||
       document.querySelector('.plugins-nav-button')
@@ -48,7 +49,7 @@ const createFoldAnimInto = (onClose: () => void) => {
   }
 
   return {
-    modalClassName,
+    popupRef,
     close,
     requestClose: () => {
       if (isInstalling) void foldIntoAnim()

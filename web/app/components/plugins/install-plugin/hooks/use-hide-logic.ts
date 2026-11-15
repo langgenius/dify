@@ -11,7 +11,7 @@ const useHideLogic = (onClose: () => void) => {
   useEffect(() => controller.clearCountDown, [controller])
 
   return {
-    modalClassName: controller.modalClassName,
+    popupRef: controller.popupRef,
     foldAnimInto: controller.requestClose,
     foldIntoTaskTrigger: controller.foldIntoAnim,
     setIsInstalling: controller.setIsInstalling,

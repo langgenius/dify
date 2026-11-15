@@ -106,7 +106,7 @@ it('loads API details and bindings into the real edit dialog', async () => {
   await user.click(edit())
   const dialog = await screen.findByRole('dialog', { name: 'dataset.editExternalAPIFormTitle' })
   expect(fetchExternalAPI).toHaveBeenCalledWith({ apiTemplateId: api.id })
-  expect(within(dialog).getByLabelText(/Name/)).toHaveValue(api.name)
+  expect(await within(dialog).findByLabelText(/Name/)).toHaveValue(api.name)
   expect(within(dialog).getByLabelText(/API Endpoint/)).toHaveValue(api.settings.endpoint)
   expect(within(dialog).getByLabelText(/API Key/)).toHaveValue(api.settings.api_key)
   expect(dialog).toHaveTextContent('1 dataset.editExternalAPIFormWarning.end')

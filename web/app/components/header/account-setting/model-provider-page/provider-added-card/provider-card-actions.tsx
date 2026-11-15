@@ -32,7 +32,10 @@ import { OperationMenu } from '@/app/components/plugins/plugin-detail-panel/oper
 import PluginInfoContent from '@/app/components/plugins/plugin-page/plugin-info'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { PluginCategoryEnum, PluginSource } from '@/app/components/plugins/types'
-import { checkGitHubPluginUpdate } from '@/app/components/plugins/update-plugin/check-github-update'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '@/app/components/plugins/update-plugin/check-github-update'
 import MarketplaceUpdateDialog from '@/app/components/plugins/update-plugin/from-market-place'
 import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -173,11 +176,12 @@ function ProviderCardActions(props: Props) {
   }
   const handleUpdate = async () => {
     if (!canUpdatePlugin) return
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     try {
       const loaded = await loadDetail()
-      if (!loaded) return
+      if (!loaded || !isCurrent()) return
       if (isFromGitHub) {
-        const update = await checkGitHubPluginUpdate(loaded)
+        const update = await checkGitHubPluginUpdate(loaded, isCurrent)
         if (update) githubDialog.openWithPayload(update)
       } else if (latestVersion && latestIdentifier) {
         setUpdate({

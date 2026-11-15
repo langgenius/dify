@@ -1,5 +1,5 @@
 import type { consoleClient } from '@/service/console'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { createInstance } from 'i18next'
 import { useState } from 'react'
 import { I18nextProvider } from 'react-i18next'
@@ -10,7 +10,7 @@ import common from '@/i18n/locales/en-US/common.json'
 import dataset from '@/i18n/locales/en-US/dataset.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import ExternalApiEditor from '../index'
+import { ExternalApiDialogContent } from '../dialog-content'
 import { useSaveExternalApi } from '../use-save-external-api'
 import { response } from './fixtures'
 
@@ -47,12 +47,10 @@ async function setup(endpoint: string, key = 'secret-key') {
     return (
       <>
         <Dialog open={open} onOpenChange={setOpen}>
-          <DialogContent>
-            <ExternalApiEditor
-              pending={save.isPending}
-              onSubmit={(body) => save.mutate({ body }, { onSuccess: () => setOpen(false) })}
-            />
-          </DialogContent>
+          <ExternalApiDialogContent
+            pending={save.isPending}
+            onSubmit={(body) => save.mutate({ body }, { onSuccess: () => setOpen(false) })}
+          />
         </Dialog>
         <AppToaster />
       </>

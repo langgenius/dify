@@ -12,7 +12,9 @@ import Installer from '../index'
 function InstallFromGitHub(
   props: Omit<ComponentProps<typeof Installer>, 'onStartInstalling' | 'onFinishInstalling'>,
 ) {
-  const { foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(props.onClose)
+  const { popupRef, foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(
+    props.onClose,
+  )
   return (
     <Dialog
       open
@@ -20,7 +22,7 @@ function InstallFromGitHub(
         if (!open) foldAnimInto()
       }}
     >
-      <GitHubInstallContent>
+      <GitHubInstallContent popupRef={popupRef}>
         <Installer
           {...props}
           onStartInstalling={handleStartToInstall}

@@ -14,12 +14,13 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { RiAddCircleFill, RiArrowDownSLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { beginGitHubPluginIntent } from '@/app/components/plugins/update-plugin/check-github-update'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -61,6 +62,7 @@ const InstallPluginMenu = ({
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const queryClient = useQueryClient()
   const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const buttonLabel = triggerLabel ?? t(($) => $.installPlugin, { ns: 'plugin' })
@@ -136,8 +138,9 @@ const InstallPluginMenu = ({
       return
     }
 
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     queueMicrotask(() => {
-      githubDialog.open(null)
+      if (isCurrent()) githubDialog.open(null)
     })
   }
 

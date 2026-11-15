@@ -19,9 +19,10 @@ it('keeps focus inside the dialog while the editor code is loading', async () =>
     </Dialog>,
   )
   await user.click(screen.getByRole('button', { name: 'Edit API' }))
-  expect(await screen.findByRole('dialog', { name: 'common.loading' })).toBeVisible()
+  expect(await screen.findByRole('dialog', { name: 'dataset.createExternalAPI' })).toBeVisible()
   await user.tab()
   expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
   chunk.resolve()
   expect(await screen.findByRole('textbox', { name: 'API name' })).toBeVisible()
+  expect(screen.getByRole('dialog')).toContainElement(document.activeElement as HTMLElement)
 })

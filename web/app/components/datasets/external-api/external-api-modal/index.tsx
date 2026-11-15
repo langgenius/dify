@@ -11,16 +11,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DialogBody,
-  DialogClose,
-  DialogFooter,
-  DialogHeader,
-  DialogHeaderCloseButton,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
-import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import { RiBook2Line, RiInformation2Line } from '@remixicon/react'
+import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
@@ -130,58 +121,6 @@ const ExternalApiEditor = ({ api, pending, onSubmit }: ExternalApiEditorProps) =
 
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
-          {api
-            ? t(($) => $.editExternalAPIFormTitle, { ns: 'dataset' })
-            : t(($) => $.createExternalAPI, { ns: 'dataset' })}
-        </DialogTitle>
-        {api && (datasetBindings?.length ?? 0) > 0 && (
-          <div className="flex items-center system-xs-regular text-text-tertiary">
-            {t(($) => $['editExternalAPIFormWarning.front'], { ns: 'dataset' })}
-            <span className="flex cursor-pointer items-center text-text-accent">
-              &nbsp;
-              {datasetBindings?.length}{' '}
-              {t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
-              &nbsp;
-              <Popover>
-                <PopoverTrigger
-                  openOnHover
-                  aria-label={t(($) => $['editExternalAPIFormWarning.end'], { ns: 'dataset' })}
-                  render={
-                    <button
-                      type="button"
-                      className="flex size-3.5 items-center justify-center rounded-sm hover:bg-state-base-hover"
-                    >
-                      <RiInformation2Line className="size-3.5" />
-                    </button>
-                  }
-                />
-                <PopoverContent className="flex w-[320px] items-center self-stretch px-3 py-2">
-                  <div className="p-1">
-                    <div className="flex items-start self-stretch ps-2 pe-3 pt-1 pb-0.5">
-                      <div className="system-xs-medium-uppercase text-text-tertiary">{`${datasetBindings?.length} ${t(($) => $.editExternalAPITooltipTitle, { ns: 'dataset' })}`}</div>
-                    </div>
-                    {datasetBindings?.map((binding) => (
-                      <div
-                        key={binding.id}
-                        className="flex items-center gap-1 self-stretch px-2 py-1"
-                      >
-                        <RiBook2Line className="size-4 text-text-secondary" />
-                        <div className="system-sm-medium text-text-secondary">{binding.name}</div>
-                      </div>
-                    ))}
-                  </div>
-                </PopoverContent>
-              </Popover>
-            </span>
-          </div>
-        )}
-        <DialogHeaderCloseButton
-          disabled={pending}
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        />
-      </DialogHeader>
       <DialogBody>
         <fieldset disabled={pending}>
           <ExternalAPIForm
