@@ -341,7 +341,13 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
         )
     assert messages[0].content == "Hello John"
 
-    bad_prompt_template = [ChatModelMessage.model_construct(text="bad", role=PromptMessageRole.USER, edition_type="x")]
+    bad_prompt_template = [
+        ChatModelMessage.model_construct(
+            text="bad",
+            role=PromptMessageRole.USER,
+            edition_type="x",  # pyrefly: ignore[bad-argument-type]
+        )
+    ]
     with pytest.raises(ValueError, match="Invalid edition type"):
         transform._get_chat_model_prompt_messages(
             prompt_template=bad_prompt_template,
