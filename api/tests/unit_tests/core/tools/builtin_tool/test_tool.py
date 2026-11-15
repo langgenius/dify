@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Generator
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import patch
 
@@ -13,7 +12,8 @@ from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage, ToolProviderType
-from graphon.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 
 
 class _BuiltinDummyTool(BuiltinTool):
@@ -125,7 +125,11 @@ def test_builtin_tool_summary_short_and_long_content_paths() -> None:
             with patch.object(
                 _BuiltinDummyTool,
                 "invoke_model",
-                return_value=SimpleNamespace(message=SimpleNamespace(content="S")),
+                return_value=LLMResult(
+                    model="dummy-model",
+                    message=AssistantPromptMessage(content="S"),
+                    usage=LLMUsage.empty_usage(),
+                ),
             ):
                 result = tool.summary(user_id="u1", content="x" * 30 + "\n" + "y" * 5)
 
@@ -144,11 +148,15 @@ def test_builtin_tool_summary_does_not_duplicate_lines_when_merging_chunks() -> 
 
     captured_chunks: list[str] = []
 
-    def _record_invoke(user_id: str, prompt_messages: list[PromptMessage], stop: list[str]) -> SimpleNamespace:
+    def _record_invoke(user_id: str, prompt_messages: list[PromptMessage], stop: list[str]) -> LLMResult:
         content = prompt_messages[-1].content
         assert isinstance(content, str)
         captured_chunks.append(content)
-        return SimpleNamespace(message=SimpleNamespace(content="S"))
+        return LLMResult(
+            model="dummy-model",
+            message=AssistantPromptMessage(content="S"),
+            usage=LLMUsage.empty_usage(),
+        )
 
     content = "\n".join(["a" * 20, "b" * 20, "c" * 20])
 
