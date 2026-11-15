@@ -6015,6 +6015,7 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Education subscriptions are not supported with Tokener billing | **application/json**: [TokenerEducationCheckoutUnsupportedErrorResponse](#tokenereducationcheckoutunsupportederrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7856,6 +7857,12 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /external-agents/capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | query | Optional visible Agent ID for its effective default input formats | No | string (uuid) |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -24797,11 +24804,14 @@ The current workspace has been archived.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| credits | integer | Remaining credits in the effective pool; -1 means unlimited. | Yes |
+| credits | integer | Remaining legacy credits; -1 means unlimited, null means unavailable or not managed by legacy credits. | Yes |
 | id | string |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | Yes |
 | plan | [CloudPlan](#cloudplan) |  | Yes |
 | role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 
 #### CustomConfigurationResponse
 
@@ -26879,6 +26889,12 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | tracing_enabled | boolean |  | Yes |
 | updated_at | dateTime |  | Yes |
 
+#### ExternalAgentCapabilitiesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string | Optional visible Agent ID for its effective default input formats | No |
+
 #### ExternalAgentCapabilitiesResponse
 
 | Name | Type | Description | Required |
@@ -26886,6 +26902,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | authentication | [ string ] |  | Yes |
 | enabled | boolean |  | Yes |
 | input_file_modes | [ string ] |  | Yes |
+| input_file_types | [ [ExternalInputFileTypeResponse](#externalinputfiletyperesponse) ] | Finite Dify input types; when agent_id is supplied, intersected with saved Agent defaults, never Skills | Yes |
 | limits | object |  | Yes |
 | protocol | string |  | Yes |
 | transport | string |  | Yes |
@@ -27109,6 +27126,13 @@ Flask blueprint initialization.
 | query | [ExternalHitTestingQueryResponse](#externalhittestingqueryresponse) |  | Yes |
 | records | [ [ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
 
+#### ExternalInputFileTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extensions | [ string ] | Common lowercase filename suffixes including dots; MIME/ownership/size checks remain authoritative | Yes |
+| media_type | string |  | Yes |
+
 #### ExternalKnowledgeApiBindingResponse
 
 | Name | Type | Description | Required |
@@ -27273,9 +27297,9 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | ---- | ---- | ----------- | -------- |
 | attempt_count | integer | Number of actually dispatched attempts in this logical test | Yes |
 | elapsed_time | number | Seconds from first dispatch through local end or current read time | Yes |
-| token_reporting_denominator | integer |  | Yes |
-| token_reporting_numerator | integer |  | Yes |
-| total_tokens | integer | Trusted call-total sum only when every dispatched attempt reports usage | Yes |
+| token_reporting_denominator | integer | All dispatched attempts; zero means no dispatch yet | Yes |
+| token_reporting_numerator | integer | Dispatched attempts with a proven call-total token value | Yes |
+| total_tokens | integer | Sum of proven call-total tokens only when every dispatched attempt reports usage. Null means no complete proven total; it is not zero or a failed execution. Zero is a valid reported value. Trace steps are never summed. The default A2A profile has no standardized call-total usage proof. | Yes |
 
 #### ExternalTestStatusResponse
 
@@ -27438,6 +27462,8 @@ Effective feature availability and limits for the current workspace.
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
 | knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
 | members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | Yes |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | Yes |
 | model_load_balancing_enabled | boolean |  | Yes |
 | trigger_event | [Quota](#quota) |  | Yes |
 | webapp_copyright_enabled | boolean |  | Yes |
@@ -32417,11 +32443,15 @@ Enum class for model property key.
 | exhausted_at | integer |  | Yes |
 | is_exhausted | boolean |  | Yes |
 | is_unlimited | boolean |  | Yes |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | next_credit_reset_date | integer |  | Yes |
 | pool_type | string, <br>**Available values:** "paid", "trial" |  | Yes |
 | quota_limit | integer | Credit limit for the effective pool; -1 means unlimited. | Yes |
 | quota_used | integer |  | Yes |
 | remaining_credits | integer | Remaining credits; -1 means unlimited. | Yes |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
+| tokener_metering | [TokenerMeteringResponse](#tokenermeteringresponse) |  | No |
 
 #### ModelProviderCustomConfigurationSummaryResponse
 
@@ -36962,11 +36992,14 @@ Tag type
 | custom_config | [WorkspaceCustomConfigResponse](#workspacecustomconfigresponse) |  | No |
 | id | string |  | Yes |
 | in_trial | boolean |  | No |
+| model_billing_migration_status | string, <br>**Available values:** "active", "none", "preparing", "processing", <br>**Default:** none | *Enum:* `"active"`, `"none"`, `"preparing"`, `"processing"` | No |
+| model_billing_source | string, <br>**Available values:** "legacy_message_credits", "tokener", <br>**Default:** legacy_message_credits | *Enum:* `"legacy_message_credits"`, `"tokener"` | No |
 | name | string |  | No |
 | next_credit_reset_date | integer |  | No |
 | plan | [CloudPlan](#cloudplan) |  | No |
 | role | string |  | No |
 | status | string |  | No |
+| tokener_bootstrap_status | string, <br>**Available values:** "configuring_provider", "failed", "installing_plugin", "pending", "provisioning", "ready" |  | No |
 | trial_credits | integer |  | No |
 | trial_credits_exhausted_at | integer |  | No |
 | trial_credits_used | integer |  | No |
@@ -37095,6 +37128,58 @@ Timeout unit for form expiration.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TimeoutUnit_Strict_strict_False_ | string | Timeout unit for form expiration. |  |
+
+#### TokenerAllowanceMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| amount_usd_micro | string |  | Yes |
+| available_usd_micro | string |  | Yes |
+| ends_at | string |  | Yes |
+| source_ref | string |  | Yes |
+| starts_at | string |  | Yes |
+| window_id | string |  | Yes |
+
+#### TokenerCurrentMonthAvailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| billed_usd_micro | string |  | Yes |
+| end_date | string |  | Yes |
+| request_count | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerCurrentMonthUnavailableMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| end_date | string |  | Yes |
+| error_code | string |  | Yes |
+| start_date | string |  | Yes |
+| status | string |  | Yes |
+
+#### TokenerEducationCheckoutUnsupportedErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
+#### TokenerMeteringResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowance | [TokenerAllowanceMeteringResponse](#tokenerallowancemeteringresponse) |  | No |
+| available_usd_micro | string |  | Yes |
+| balance_generated_at | string |  | Yes |
+| currency | string |  | Yes |
+| current_month | [TokenerCurrentMonthAvailableMeteringResponse](#tokenercurrentmonthavailablemeteringresponse)<br>[TokenerCurrentMonthUnavailableMeteringResponse](#tokenercurrentmonthunavailablemeteringresponse) |  | Yes |
+| entitlement_error_code | string |  | No |
+| entitlement_status | string, <br>**Available values:** "active", "failed", "processing", "retrying" |  | No |
+| tenant_id | string |  | Yes |
+| usage_generated_at | string |  | No |
 
 #### TokensPerSecondStatisticItem
 

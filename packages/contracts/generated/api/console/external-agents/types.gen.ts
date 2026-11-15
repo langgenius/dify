@@ -44,6 +44,7 @@ export type ExternalAgentCapabilitiesResponse = {
   authentication: Array<string>
   enabled: boolean
   input_file_modes: Array<string>
+  input_file_types: Array<ExternalInputFileTypeResponse>
   limits: {
     [key: string]: unknown
   }
@@ -222,6 +223,11 @@ export type ExternalTracingConfigurationResponse = {
   }
 }
 
+export type ExternalInputFileTypeResponse = {
+  extensions: Array<string>
+  media_type: string
+}
+
 export type ExternalAgentConnectionWarningsResponse = {
   business: Array<string>
   technical: Array<string>
@@ -353,7 +359,9 @@ export type PostExternalAgentsResponse =
 export type GetExternalAgentsCapabilitiesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    agent_id?: string
+  }
   url: '/external-agents/capabilities'
 }
 

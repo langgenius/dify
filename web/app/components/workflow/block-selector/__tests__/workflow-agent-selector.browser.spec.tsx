@@ -144,6 +144,8 @@ beforeEach(({ onTestFinished }) => {
     return {
       items,
       total: items.length,
+      enabled_count: items.filter((agent) => agent.enabled).length,
+      disabled_count: items.filter((agent) => !agent.enabled).length,
       limit: input?.query?.limit ?? 20,
       page: input?.query?.page ?? 1,
     }
@@ -298,6 +300,8 @@ it('loads another server page before selecting an external agent outside the fir
   mocks.fetchExternal.mockImplementation(async (input) => ({
     items: input?.query?.page === 2 ? [later] : [createExternalAgentAsset()],
     total: 2,
+    enabled_count: 2,
+    disabled_count: 0,
     page: input?.query?.page ?? 1,
     limit: 1,
   }))

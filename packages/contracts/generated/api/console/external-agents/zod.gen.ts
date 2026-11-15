@@ -38,18 +38,6 @@ export const zExternalAgentOperationResponse = z.object({
 })
 
 /**
- * ExternalAgentCapabilitiesResponse
- */
-export const zExternalAgentCapabilitiesResponse = z.object({
-  authentication: z.array(z.string()),
-  enabled: z.boolean(),
-  input_file_modes: z.array(z.string()),
-  limits: z.record(z.string(), z.unknown()),
-  protocol: z.string(),
-  transport: z.string(),
-})
-
-/**
  * ExternalAgentVerifyPayload
  */
 export const zExternalAgentVerifyPayload = z.object({
@@ -199,6 +187,27 @@ export const zExternalTracingConfigurationResponse = z.object({
  */
 export const zExternalTracingConfigEnvelopeResponse = z.object({
   configuration: zExternalTracingConfigurationResponse.nullable(),
+})
+
+/**
+ * ExternalInputFileTypeResponse
+ */
+export const zExternalInputFileTypeResponse = z.object({
+  extensions: z.array(z.string()),
+  media_type: z.string(),
+})
+
+/**
+ * ExternalAgentCapabilitiesResponse
+ */
+export const zExternalAgentCapabilitiesResponse = z.object({
+  authentication: z.array(z.string()),
+  enabled: z.boolean(),
+  input_file_modes: z.array(z.string()),
+  input_file_types: z.array(zExternalInputFileTypeResponse),
+  limits: z.record(z.string(), z.unknown()),
+  protocol: z.string(),
+  transport: z.string(),
 })
 
 /**
@@ -441,6 +450,10 @@ export const zPostExternalAgentsBody = zExternalAgentCreatePayload
  * Committed save operation
  */
 export const zPostExternalAgentsResponse = zExternalAgentOperationResponse
+
+export const zGetExternalAgentsCapabilitiesQuery = z.object({
+  agent_id: z.uuid().optional(),
+})
 
 /**
  * Authenticated effective profile

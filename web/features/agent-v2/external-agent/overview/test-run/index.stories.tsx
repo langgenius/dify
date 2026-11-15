@@ -14,6 +14,13 @@ const result: TestAgentRun = {
     outputs: { text: 'The contract requires review of the payment deadline.' },
     error_code: null,
     error_message: null,
+    statistics: {
+      elapsed_time: 4.2,
+      total_tokens: null,
+      attempt_count: 1,
+      token_reporting_numerator: 0,
+      token_reporting_denominator: 1,
+    },
     metadata: {},
   },
 }

@@ -30,6 +30,7 @@ import {
   zGetExternalAgentsByAgentIdTracingConfigByProviderResponse,
   zGetExternalAgentsByAgentIdTracingConfigPath,
   zGetExternalAgentsByAgentIdTracingConfigResponse,
+  zGetExternalAgentsCapabilitiesQuery,
   zGetExternalAgentsCapabilitiesResponse,
   zGetExternalAgentsQuery,
   zGetExternalAgentsResponse,
@@ -73,6 +74,7 @@ export const get = oc
     path: '/external-agents/capabilities',
     tags: ['console'],
   })
+  .input(z.object({ query: zGetExternalAgentsCapabilitiesQuery.optional() }).optional())
   .output(zGetExternalAgentsCapabilitiesResponse)
 
 export const capabilities = {

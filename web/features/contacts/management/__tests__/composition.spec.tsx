@@ -74,6 +74,8 @@ function renderRuntime(deploymentEdition: 'COMMUNITY' | 'ENTERPRISE', hydrateWor
       plan: null,
       role: 'owner',
       credits: null,
+      model_billing_source: 'legacy_message_credits',
+      model_billing_migration_status: 'none',
     })
   const store = createStore()
   store.set(queryClientAtom, queryClient)

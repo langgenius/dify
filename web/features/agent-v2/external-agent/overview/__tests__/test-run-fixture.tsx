@@ -25,6 +25,13 @@ export function testResult(
     outputs: state === 'succeeded' ? { text: 'Result supplied by the agent.' } : null,
     error_code: null,
     error_message: null,
+    statistics: {
+      elapsed_time: state === 'waiting' ? null : 0,
+      total_tokens: null,
+      attempt_count: state === 'waiting' ? 0 : 1,
+      token_reporting_numerator: 0,
+      token_reporting_denominator: state === 'waiting' ? 0 : 1,
+    },
     metadata: {
       agent_id: agentId,
       anchor_invocation_id: anchorId,
