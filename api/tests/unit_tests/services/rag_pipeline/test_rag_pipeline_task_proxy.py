@@ -49,9 +49,7 @@ class TestRagPipelineTaskProxyCases:
         dispatch_mock.assert_not_called()
 
     @staticmethod
-    def test_delay_with_entities_calls_dispatch(
-        mocker: MockerFixture, proxy: RagPipelineTaskProxy
-    ) -> None:
+    def test_delay_with_entities_calls_dispatch(mocker: MockerFixture, proxy: RagPipelineTaskProxy) -> None:
         dispatch_mock = mocker.patch.object(proxy, "_dispatch")
 
         proxy.delay()
@@ -94,9 +92,7 @@ class TestRagPipelineTaskProxyCases:
 
     @staticmethod
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_dispatch_no_billing_uses_priority_direct_queue(
-        mocker: MockerFixture, proxy: RagPipelineTaskProxy
-    ) -> None:
+    def test_dispatch_no_billing_uses_priority_direct_queue(mocker: MockerFixture, proxy: RagPipelineTaskProxy) -> None:
         upload_mock = mocker.patch.object(proxy, "_upload_invoke_entities", return_value="file-1")
         send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
 
@@ -110,9 +106,7 @@ class TestRagPipelineTaskProxyCases:
 
     @staticmethod
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
-    def test_dispatch_raises_on_empty_upload_file_id(
-        mocker: MockerFixture, proxy: RagPipelineTaskProxy
-    ) -> None:
+    def test_dispatch_raises_on_empty_upload_file_id(mocker: MockerFixture, proxy: RagPipelineTaskProxy) -> None:
         mocker.patch.object(proxy, "_upload_invoke_entities", return_value="")
 
         features = SimpleNamespace(billing=SimpleNamespace(subscription=SimpleNamespace(plan="free")))
@@ -124,9 +118,7 @@ class TestRagPipelineTaskProxyCases:
     # --- _send_to_direct_queue ---
 
     @staticmethod
-    def test_send_to_direct_queue_calls_task_func_delay(
-        mocker: MockerFixture, proxy: RagPipelineTaskProxy
-    ) -> None:
+    def test_send_to_direct_queue_calls_task_func_delay(mocker: MockerFixture, proxy: RagPipelineTaskProxy) -> None:
         task_func = Mock()
 
         proxy._send_to_direct_queue("file-1", task_func)

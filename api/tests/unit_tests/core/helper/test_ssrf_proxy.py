@@ -221,9 +221,7 @@ def test_retry_exhaustion_without_a_response_keeps_no_status(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_retry_then_success_returns_the_later_response(
-    mock_get_client: Mock, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_retry_then_success_returns_the_later_response(mock_get_client: Mock, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("core.helper.ssrf_proxy.time.sleep", lambda _seconds: None)
     responses = iter([httpx.Response(503), httpx.Response(200, content=b"ok")])
     sends = 0
@@ -435,9 +433,7 @@ class TestFollowRedirectsParameter:
     """
 
     @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-    def test_follow_redirects_passed_to_request(
-        self, mock_get_client: Mock, client_factory: _ClientFactory
-    ) -> None:
+    def test_follow_redirects_passed_to_request(self, mock_get_client: Mock, client_factory: _ClientFactory) -> None:
         """Verify follow_redirects IS passed to client.send()."""
         mock_response = httpx.Response(200)
         mock_client, send_calls = client_factory(mock_response)
@@ -572,9 +568,7 @@ def _build_squid_blocked_response(status_code: int = 403) -> httpx.Response:
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_squid_block_raises_actionable_tool_ssrf_error(
-    mock_get_client: Mock, client_factory: _ClientFactory
-) -> None:
+def test_squid_block_raises_actionable_tool_ssrf_error(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     """A 403 from Squid must raise ToolSSRFError whose message tells the user
     exactly which env var to set. Pre-#38443 the message had no remediation
     hint, so users hit dead ends when their internal API was blocked."""
@@ -678,9 +672,7 @@ def test_forwarded_via_only_response_without_server_is_returned(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_forwarded_403_through_squid_cdn_is_returned(
-    mock_get_client: Mock, client_factory: _ClientFactory
-) -> None:
+def test_forwarded_403_through_squid_cdn_is_returned(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     """A Squid-based CDN adds ``Via: ... (squid/...)`` to every response, so an
     upstream 403 that kept its own Server header was forwarded by the proxy and
     must be returned with its body intact instead of being reported as an SSRF
@@ -705,9 +697,7 @@ def test_forwarded_403_through_squid_cdn_is_returned(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_forwarded_401_through_squid_cdn_is_returned(
-    mock_get_client: Mock, client_factory: _ClientFactory
-) -> None:
+def test_forwarded_401_through_squid_cdn_is_returned(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     """Same as above for a 401 from an origin that identifies itself: the proxy
     forwarded the response, so the authorization error belongs to the caller."""
     response = httpx.Response(401, headers={"server": "nginx/1.25", "via": "1.1 edge (squid/6.13)"})
@@ -720,9 +710,7 @@ def test_forwarded_401_through_squid_cdn_is_returned(
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client", autospec=True)
-def test_non_squid_403_is_not_treated_as_ssrf_block(
-    mock_get_client: Mock, client_factory: _ClientFactory
-) -> None:
+def test_non_squid_403_is_not_treated_as_ssrf_block(mock_get_client: Mock, client_factory: _ClientFactory) -> None:
     """A 403 from the *target server* (not Squid) must NOT be re-raised as
     a ToolSSRFError — that would mislead the user into editing SSRF config
     when the real problem is application-level authorization on the target.

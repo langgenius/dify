@@ -184,9 +184,7 @@ class TestOrganizeUserQuery:
         )
 
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
-    def test_organize_user_query_with_text_file_no_config(
-        self, mock_to_prompt: MagicMock, runner: DummyRunner
-    ) -> None:
+    def test_organize_user_query_with_text_file_no_config(self, mock_to_prompt: MagicMock, runner: DummyRunner) -> None:
         mock_to_prompt.return_value = TextPromptMessageContent(data="file_content")
         runner.files = [File(type=FileType.DOCUMENT, transfer_method=FileTransferMethod.LOCAL_FILE, reference="file1")]
         runner.application_generate_entity = _generate_entity(file_upload_config=None)
@@ -220,9 +218,7 @@ class TestOrganizePromptMessages:
         runner._agent_scratchpad = [AgentScratchpadUnit(agent_response="done")]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([
-            m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)
-        ])
+        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
         assert "Final Answer: done" in combined
 
     def test_with_thought_action_observation(self, runner: DummyRunner, mocker: MockerFixture) -> None:
@@ -238,9 +234,7 @@ class TestOrganizePromptMessages:
         ]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([
-            m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)
-        ])
+        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
         assert "Thought: thinking" in combined
         assert "Action: action" in combined
         assert "Observation: observe" in combined
@@ -257,8 +251,6 @@ class TestOrganizePromptMessages:
         ]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([
-            m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)
-        ])
+        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
         assert "Thought: t1" in combined
         assert "Final Answer: done" in combined

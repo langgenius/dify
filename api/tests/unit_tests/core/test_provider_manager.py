@@ -1406,9 +1406,7 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
 
     credential_query_count = 0
 
-    def count_credential_queries(
-        _conn, _cursor, statement: str, _parameters, _context, _executemany
-    ) -> None:
+    def count_credential_queries(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         nonlocal credential_query_count
         if statement.lstrip().upper().startswith("SELECT") and "provider_model_credentials" in statement:
             credential_query_count += 1
@@ -1493,9 +1491,7 @@ def test_provider_configuration_cache_skips_write_when_version_changes_during_lo
     provider_db.commit()
     version_bumped = False
 
-    def bump_version_on_credential_query(
-        _conn, _cursor, statement: str, _parameters, _context, _executemany
-    ) -> None:
+    def bump_version_on_credential_query(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         nonlocal version_bumped
         if (
             not version_bumped
@@ -1621,9 +1617,7 @@ def test_get_all_provider_load_balancing_configs_returns_empty_when_cached_flag_
 ) -> None:
     statements: list[str] = []
 
-    def record_statement(
-        _conn, _cursor, statement: str, _parameters, _context, _executemany
-    ) -> None:
+    def record_statement(_conn, _cursor, statement: str, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)
