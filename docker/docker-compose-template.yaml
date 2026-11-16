@@ -1,8 +1,6 @@
 # Shared configuration using YAML anchors and env_file
 x-shared-api-config: &shared-api-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -76,8 +74,6 @@ x-shared-api-config: &shared-api-config
 
 x-shared-worker-config: &shared-worker-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -159,8 +155,6 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
   # Match the two-hour default task deadline plus shutdown margin for long document jobs.
   stop_grace_period: 125m
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -203,8 +197,6 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
 
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -630,8 +622,6 @@ services:
     image: langgenius/dify-plugin-daemon:0.6.14-local
     restart: always
     env_file:
-      - path: ./envs/core-services/shared.env
-        required: false
       - path: ./envs/core-services/api-worker.env
         required: false
       - path: ./envs/core-services/plugin-daemon.env

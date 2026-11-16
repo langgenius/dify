@@ -532,7 +532,6 @@ class ComposeEnvironmentTests(unittest.TestCase):
         assert_connections(defaults)
         for source, target in (
             ("core-services/api-worker.defaults", "core-services/api-worker.env"),
-            ("core-services/api-worker.defaults", "core-services/shared.env"),
             ("vectorstores/weaviate.defaults", "vectorstores/weaviate.env"),
         ):
             with self.subTest(source=target):
@@ -613,8 +612,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     root.write_text(original)
 
         self.override_root({"VECTOR_STORE": "qdrant"})
-        legacy = self.project / "envs/core-services/shared.env"
-        legacy.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
+        override = self.project / "envs/core-services/api-worker.env"
+        override.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
         services = self.render()
         for name in ("api", "worker", "worker_beat"):
             values = services[name]["environment"]
@@ -699,7 +698,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         # Compare the entire configuration, including extra variables introduced by an unsafe copy.
         self.assertEqual(self.render(), baseline)
 
-    def test_api_worker_overrides_preserve_legacy_settings_and_precedence(self):
+    def test_shared_env_is_ignored_until_migrated_to_api_worker_env(self):
         consumers = (
             "api",
             "api_websocket",
@@ -716,30 +715,21 @@ class ComposeEnvironmentTests(unittest.TestCase):
         baseline = self.render()
         legacy = self.project / "envs/core-services/shared.env"
         legacy.write_text("DB_HOST=legacy-db\n")
+        self.assertEqual(self.render(), baseline, "Removed shared.env must not affect current settings")
 
+        target = self.project / "envs/core-services/api-worker.env"
+        legacy.rename(target)
         services = self.render()
         for name in consumers:
             self.assertEqual(services[name]["environment"]["DB_HOST"], "legacy-db", name)
-
-        source = "envs/core-services/api-worker.defaults"
-        target = "envs/core-services/api-worker.env"
-        # An unchanged copy must not mask existing shared.env customizations.
-        self.copy_template(source, target)
-        self.assertEqual(self.render(), services)
-
-        self.copy_template(source, target, {"DB_HOST": "api-worker-db"})
-        services = self.render()
-        for name in consumers:
-            self.assertEqual(services[name]["environment"]["DB_HOST"], "api-worker-db", name)
         for name in baseline.keys() - set(consumers):
             self.assertEqual(services[name], baseline[name], name)
 
-        # Change only the root file while retaining both local override files.
         self.override_root({"DB_HOST": "root-db"})
         services = self.render()
         for name in consumers:
             self.assertEqual(services[name]["environment"]["DB_HOST"], "root-db", name)
-        self.assertEqual(legacy.read_text(), "DB_HOST=legacy-db\n")
+        self.assertEqual(target.read_text(), "DB_HOST=legacy-db\n")
 
     def test_consolidated_settings_reach_consumers_and_respect_root_precedence(self):
         api_services = ("api", "api_websocket")
@@ -835,8 +825,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
 
-    def test_shared_urls_preserve_legacy_overrides_until_explicitly_changed(self):
-        for name in ("shared", "api-worker", "api", "worker", "worker-beat", "web"):
+    def test_shared_urls_preserve_service_overrides_until_explicitly_changed(self):
+        for name in ("api-worker", "api", "worker", "worker-beat", "web"):
             (self.project / f"envs/core-services/{name}.env").write_text(
                 f"CONSOLE_API_URL=https://{name}.example.test\n"
             )
@@ -872,7 +862,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 for name in baseline.keys() - expected.keys():
                     self.assertEqual(services[name], baseline[name], name)
 
-    def test_existing_shared_overrides_and_empty_value_cleanup(self):
+    def test_existing_api_worker_overrides_and_empty_value_cleanup(self):
         values = {
             "API_WEBSOCKET_WORKER_AMOUNT": "3",
             "CELERY_MAX_WORKERS": "5",
@@ -883,7 +873,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             "SERVER_WORKER_CLASS": "",
             "GUNICORN_TIMEOUT": "",
         }
-        override = self.project / "envs/core-services/shared.env"
+        override = self.project / "envs/core-services/api-worker.env"
         override.write_text("\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
         services = self.render()
         for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat"):

@@ -1,6 +1,5 @@
 # Common API and worker configuration, including Beat. Copy this file to api-worker.env to customize it.
-# Edit the copy; docker/.env takes precedence. Existing shared.env files remain supported.
-# If both override files exist, api-worker.env takes precedence over shared.env.
+# Edit the copy; docker/.env takes precedence.
 # Active assignments preserve Docker defaults and explicit overrides, including empty values.
 # Optional application/provider settings are commented examples: uncomment only what you need.
 # Do not uncomment empty values or placeholders unless you intend to set them.
@@ -486,7 +485,7 @@ OPENDAL_FS_ROOT=${OPENDAL_FS_ROOT-storage}
 # ------------------------------
 # Set VECTOR_STORE and COMPOSE_PROFILES in docker/.env to select a bundled provider.
 # Compose loads that provider's ../vectorstores/<VECTOR_STORE>.defaults automatically.
-# Provider .env overrides reach API, workers and Beat; existing shared.env overrides still work.
+# Provider .env overrides reach API, workers and Beat; api-worker.env overrides remain supported.
 # KnowledgeFS uses the API vector bridge, not its own vector provider connection.
 VECTOR_STORE=${VECTOR_STORE-weaviate}
 # Prefix used to create collection names in the vector database.
