@@ -61,6 +61,20 @@ def _account() -> Account:
     return account
 
 
+def _image_response(
+    url: str,
+    *,
+    headers: Mapping[str, str],
+    content: bytes = b"",
+    stream: httpx.SyncByteStream | None = None,
+) -> httpx.Response:
+    """Build a real httpx response so ``_download_image`` runs against actual httpx behavior."""
+    request = httpx.Request("GET", url)
+    if stream is not None:
+        return httpx.Response(200, headers=headers, stream=stream, request=request)
+    return httpx.Response(200, headers=headers, content=content, request=request)
+
+
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
     def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: object) -> list[Document]:
@@ -335,14 +349,15 @@ class TestBaseIndexProcessor:
         content_disposition: str,
         expected_filename: str,
     ) -> None:
-        response = Mock()
-        response.headers = {
-            "Content-Length": "4",
-            "content-disposition": content_disposition,
-            "content-type": "image/png",
-        }
-        response.raise_for_status.return_value = None
-        response.iter_bytes.return_value = [b"data"]
+        response = _image_response(
+            "https://example.com/test.png",
+            headers={
+                "Content-Length": "4",
+                "content-disposition": content_disposition,
+                "content-type": "image/png",
+            },
+            content=b"data",
+        )
         upload_result = _upload(upload_id=str(uuid4()), name=expected_filename)
         current_user = _account()
 
@@ -366,26 +381,28 @@ class TestBaseIndexProcessor:
         )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        too_large = Mock()
-        too_large.headers = {"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"}
-        too_large.raise_for_status.return_value = None
+        too_large = _image_response(
+            "https://example.com/too-large.png",
+            headers={"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"},
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert processor._download_image("https://example.com/too-large.png", current_user=_account()) is None
 
-        empty = Mock()
-        empty.headers = {"Content-Length": "0", "content-type": "image/png"}
-        empty.raise_for_status.return_value = None
-        empty.iter_bytes.return_value = list[bytes]()
+        empty = _image_response(
+            "https://example.com/empty.png",
+            headers={"Content-Length": "0", "content-type": "image/png"},
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=_account()) is None
 
     def test_download_image_limits_stream_size(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        response = Mock()
-        response.headers = {"content-type": "image/png"}
-        response.raise_for_status.return_value = None
-        response.iter_bytes.return_value = [b"a" * (3 * 1024 * 1024)]
+        response = _image_response(
+            "https://example.com/big-stream.png",
+            headers={"content-type": "image/png"},
+            stream=httpx.ByteStream(b"a" * (3 * 1024 * 1024)),
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response):
             assert processor._download_image("https://example.com/big-stream.png", current_user=_account()) is None
