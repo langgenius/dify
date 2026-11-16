@@ -718,7 +718,9 @@ class TestRagPipelineWorkflowCases:
             response = handler(api, req_data, session, _account(), pipeline.id)
 
         assert response == {"ok": True}
-        load_pipeline.assert_called_once_with(session, pipeline.id)
+        load_pipeline.assert_called_once_with(
+            session, pipeline.id, tenant_id=_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_TENANT_ID
+        )
         assert generate.call_args.kwargs["session"] is session
         assert generate.call_args.kwargs["generator"] is pipeline_application
         assert session.get_bind() is sqlite_engine

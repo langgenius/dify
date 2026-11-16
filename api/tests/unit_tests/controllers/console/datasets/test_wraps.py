@@ -1,235 +1,177 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from inspect import unwrap
+from uuid import uuid4
 
 import pytest
-from pytest_mock import MockerFixture
-from sqlalchemy.orm import Session, scoped_session, sessionmaker
+from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import DataSourceContentPreviewApi
 from controllers.console.datasets.rag_pipeline.rag_pipeline import PublishCustomizedPipelineTemplateApi
-from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline
-from extensions.ext_database import db
+from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline, require_tenant_id
+from machinery.errors import ActiveWorkspaceRequiredError
 from models.account import Account
 from models.dataset import Pipeline
-
-
-@pytest.fixture
-def database_session(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
-) -> Iterator[scoped_session[Session]]:
-    """Install a real scoped SQLite session for the legacy decorator entrypoint."""
-    session = scoped_session(sqlite_session_factory)
-    monkeypatch.setattr(db, "session", session)
-    yield session
-    session.remove()
-
-
-@pytest.fixture
-def current_account() -> Account:
-    account = Account(name="Test User", email="test@example.com")
-    account.id = "account-1"
-    return account
-
-
-class TestGetRagPipeline:
-    def test_missing_pipeline_id(self) -> None:
-        @get_rag_pipeline
-        def dummy_view(**_kwargs: object) -> str:
-            return "ok"
-
-        with pytest.raises(ValueError, match="missing pipeline_id"):
-            dummy_view()
-
-    def test_pipeline_not_found(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        current_account: Account,
-    ) -> None:
-        @get_rag_pipeline
-        def dummy_view(**_kwargs: object) -> str:
-            return "ok"
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=None,
-        )
-
-        with pytest.raises(PipelineNotFoundError):
-            dummy_view(pipeline_id="pipeline-1")
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=database_session())
-
-    def test_pipeline_found_and_injected(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        current_account: Account,
-    ) -> None:
-        pipeline = Pipeline(
-            tenant_id="tenant-1",
-            name="Test Pipeline",
-        )
-        pipeline.id = "pipeline-1"
-
-        @get_rag_pipeline
-        def dummy_view(**kwargs: object) -> object:
-            return kwargs["pipeline"]
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
-
-        result = dummy_view(pipeline_id="pipeline-1")
-
-        assert result is pipeline
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=database_session())
-
-    def test_load_rag_pipeline_uses_provided_session(
-        self, mocker: MockerFixture, sqlite_session: Session, current_account: Account
-    ) -> None:
-        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
-
-        result = load_rag_pipeline(sqlite_session, "pipeline-1")
-
-        assert result is pipeline
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=sqlite_session)
-
-    def test_pipeline_id_removed_from_kwargs(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        current_account: Account,
-    ) -> None:
-        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
-
-        @get_rag_pipeline
-        def dummy_view(**kwargs: object) -> str:
-            assert "pipeline_id" not in kwargs
-            return "ok"
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
-
-        result = dummy_view(pipeline_id="pipeline-1")
-
-        assert result == "ok"
-        assert db.session is database_session
-
-    def test_pipeline_id_cast_to_string(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        current_account: Account,
-    ) -> None:
-        pipeline = Pipeline(tenant_id="tenant-id", name="Test Pipeline")
-
-        @get_rag_pipeline
-        def dummy_view(**kwargs: object) -> object:
-            return kwargs["pipeline"]
-
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
-
-        result = dummy_view(pipeline_id=123)
-
-        assert result is pipeline
-        get_pipeline_by_id.assert_called_once_with("123", "tenant-1", session=database_session())
+from tests.helpers.unit.model_factories import make_account, make_tenant
 
 
 class _Resource:
     """Stands in for the ``Resource`` instance that ``with_session`` passes as ``self``."""
 
 
-class TestGetRagPipelineInjectedSession:
-    def test_loads_through_the_session_injected_above_it(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        sqlite_session: Session,
-        current_account: Account,
-    ) -> None:
-        """``@with_session`` composed above the decorator puts its session at ``args[1]``."""
-        pipeline = Pipeline(tenant_id="tenant-1", name="Test Pipeline")
+def _persist_pipeline(
+    session: Session,
+    *,
+    tenant_id: str,
+    name: str = "Test Pipeline",
+    pipeline_id: str | None = None,
+) -> Pipeline:
+    pipeline = Pipeline(tenant_id=tenant_id, name=name, description="")
+    if pipeline_id is not None:
+        pipeline.id = pipeline_id
+    session.add(pipeline)
+    session.commit()
+    return pipeline
 
-        @get_rag_pipeline
-        def dummy_view(_self: _Resource, session: Session, **kwargs: object) -> tuple[Session, object]:
-            return session, kwargs["pipeline"]
 
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
+def _committed_name(factory: sessionmaker[Session], pipeline_id: str) -> str:
+    """Read the pipeline name from a session other than the one that wrote it."""
+    with factory() as other:
+        stored = other.get(Pipeline, pipeline_id)
+        assert stored is not None
+        return stored.name
 
-        result = dummy_view(_Resource(), sqlite_session, pipeline_id="pipeline-1")
 
-        assert result == (sqlite_session, pipeline)
-        assert sqlite_session is not database_session()
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=sqlite_session)
+def test_missing_pipeline_id() -> None:
+    @get_rag_pipeline
+    def dummy_view(**_kwargs: object) -> str:
+        return "ok"
 
-    def test_falls_back_when_the_slot_holds_another_injected_value(
-        self,
-        mocker: MockerFixture,
-        database_session: scoped_session[Session],
-        current_account: Account,
-    ) -> None:
-        """An unmigrated handler may get an ``Account`` from ``with_current_user`` in that slot."""
-        pipeline = Pipeline(tenant_id="tenant-1", name="Test Pipeline")
+    with pytest.raises(ValueError, match="missing pipeline_id"):
+        dummy_view()
 
-        @get_rag_pipeline
-        def dummy_view(_self: _Resource, current_user: Account, **kwargs: object) -> object:
-            assert current_user is current_account
-            return kwargs["pipeline"]
 
-        mocker.patch(
-            "controllers.console.datasets.wraps.current_account_with_tenant",
-            return_value=(current_account, "tenant-1"),
-        )
-        get_pipeline_by_id = mocker.patch(
-            "controllers.console.datasets.wraps.RagPipelineService.get_pipeline_by_id",
-            return_value=pipeline,
-        )
+def test_load_rag_pipeline_reads_the_committed_row(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tenant_id = str(uuid4())
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id, name="Stored pipeline")
 
-        assert dummy_view(_Resource(), current_account, pipeline_id="pipeline-1") is pipeline
-        get_pipeline_by_id.assert_called_once_with("pipeline-1", "tenant-1", session=database_session())
+    loaded = load_rag_pipeline(sqlite_session, pipeline.id, tenant_id=tenant_id)
+
+    assert loaded.id == pipeline.id
+    assert loaded.name == "Stored pipeline"
+    assert object_session(loaded) is sqlite_session
+    assert _committed_name(sqlite_session_factory, pipeline.id) == "Stored pipeline"
+
+
+def test_load_rag_pipeline_rejects_another_tenants_row(sqlite_session: Session) -> None:
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()))
+
+    with pytest.raises(PipelineNotFoundError):
+        load_rag_pipeline(sqlite_session, pipeline.id, tenant_id=str(uuid4()))
+
+
+def test_load_rag_pipeline_rejects_a_missing_row(sqlite_session: Session) -> None:
+    with pytest.raises(PipelineNotFoundError):
+        load_rag_pipeline(sqlite_session, str(uuid4()), tenant_id=str(uuid4()))
+
+
+def test_require_tenant_id_reads_the_account_workspace() -> None:
+    tenant = make_tenant()
+    account = make_account(tenant=tenant)
+
+    assert require_tenant_id(account) == tenant.id
+
+
+def test_require_tenant_id_rejects_an_account_without_a_workspace() -> None:
+    with pytest.raises(ActiveWorkspaceRequiredError):
+        require_tenant_id(make_account())
+
+
+def test_pipeline_id_removed_from_kwargs(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()))
+
+    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(**kwargs: object) -> str:
+        assert "pipeline_id" not in kwargs
+        found = kwargs["pipeline"]
+        assert isinstance(found, Pipeline)
+        return found.name
+
+    assert dummy_view(pipeline_id=pipeline.id) == pipeline.name
+    assert _committed_name(sqlite_session_factory, pipeline.id) == pipeline.name
+
+
+def test_pipeline_id_is_loaded_as_a_string(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    tenant_id = str(uuid4())
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id, pipeline_id="123")
+
+    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: tenant_id)
+    def dummy_view(**kwargs: object) -> Pipeline:
+        found = kwargs["pipeline"]
+        assert isinstance(found, Pipeline)
+        return found
+
+    loaded = dummy_view(pipeline_id=123)
+
+    assert loaded.id == "123"
+    assert object_session(loaded) is sqlite_session
+    assert _committed_name(sqlite_session_factory, "123") == pipeline.name
+
+
+def test_loads_through_the_session_injected_above_it(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """``@with_session`` composed above the decorator puts its session at ``args[1]``."""
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()), name="Injected pipeline")
+
+    def unused_session_factory() -> Session:
+        raise AssertionError("injected session path must not open the legacy session")
+
+    @get_rag_pipeline(session_factory=unused_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(_self: _Resource, session: Session, **kwargs: object) -> tuple[Session, Pipeline]:
+        found = kwargs["pipeline"]
+        assert isinstance(found, Pipeline)
+        return session, found
+
+    handler_session, loaded = dummy_view(_Resource(), sqlite_session, pipeline_id=pipeline.id)
+
+    assert handler_session is sqlite_session
+    assert loaded.id == pipeline.id
+    assert loaded.name == "Injected pipeline"
+    assert object_session(loaded) is sqlite_session
+    assert _committed_name(sqlite_session_factory, pipeline.id) == "Injected pipeline"
+
+
+def test_unmigrated_handler_uses_the_session_factory(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    """An unmigrated handler may get an ``Account`` from ``with_current_user`` in that slot."""
+    pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()), name="Legacy pipeline")
+    account = Account(name="Test User", email="test@example.com")
+    account.id = "account-1"
+
+    @get_rag_pipeline(session_factory=sqlite_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(_self: _Resource, current_user: Account, **kwargs: object) -> Pipeline:
+        assert current_user is account
+        found = kwargs["pipeline"]
+        assert isinstance(found, Pipeline)
+        return found
+
+    loaded = dummy_view(_Resource(), account, pipeline_id=pipeline.id)
+    loaded_session = object_session(loaded)
+
+    assert loaded.id == pipeline.id
+    assert loaded.name == "Legacy pipeline"
+    assert loaded_session is not None
+    assert loaded_session is not sqlite_session
+    loaded_session.close()
+    assert _committed_name(sqlite_session_factory, pipeline.id) == "Legacy pipeline"
 
 
 def _decorator_layers(view: Callable[..., object]) -> list[str]:
