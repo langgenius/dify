@@ -15,11 +15,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
+from core.rag.entities.metadata_entities import Condition, MetadataFilteringCondition
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account, Tenant
 from models.dataset import Dataset, DatasetQuery
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalRetrievalRecord
 from services.hit_testing_service import HitTestingService
 
 pytestmark = [
@@ -184,7 +185,14 @@ class TestHitTestingServiceRetrieve:
             "top_k": 5,
             "score_threshold_enabled": True,
             "score_threshold": 0.7,
-            "weights": {"vector_setting": 0.5, "keyword_setting": 0.5},
+            "weights": {
+                "vector_setting": {
+                    "vector_weight": 0.5,
+                    "embedding_provider_name": "openai",
+                    "embedding_model_name": "text-embedding-3-small",
+                },
+                "keyword_setting": {"keyword_weight": 0.5},
+            },
         }
         external_retrieval_model: dict[str, object] = {}
 
@@ -227,12 +235,11 @@ class TestHitTestingServiceRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
+        metadata_filtering_conditions = MetadataFilteringCondition(
+            conditions=[Condition(name="category", comparison_operator="is", value="test")]
+        ).model_dump()
         retrieval_model = {
-            "metadata_filtering_conditions": {
-                "conditions": [
-                    {"name": "category", "comparison_operator": "is", "value": "test"},
-                ],
-            },
+            "metadata_filtering_conditions": metadata_filtering_conditions,
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
@@ -282,19 +289,18 @@ class TestHitTestingServiceRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
+        metadata_filtering_conditions = MetadataFilteringCondition(
+            conditions=[Condition(name="category", comparison_operator="is", value="test")]
+        ).model_dump()
         retrieval_model = {
-            "metadata_filtering_conditions": {
-                "conditions": [
-                    {"name": "category", "comparison_operator": "is", "value": "test"},
-                ],
-            },
+            "metadata_filtering_conditions": metadata_filtering_conditions,
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
         external_retrieval_model: dict[str, object] = {}
 
         mock_dataset_retrieval = MagicMock()
-        metadata_filter: dict[str, object] = {}
+        metadata_filter: dict[str, list[str]] = {}
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = (metadata_filter, True)
 
         with (
@@ -381,7 +387,7 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = 'test query with "quotes"'
-        external_retrieval_model = {"top_k": 5, "score_threshold": 0.8}
+        external_retrieval_model: dict[str, object] = {"top_k": 5, "score_threshold": 0.8}
         metadata_filtering_conditions = {}
 
         external_documents: list[ExternalRetrievalRecord] = [
@@ -459,7 +465,9 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {"top_k": 3}
+        external_retrieval_model: dict[str, object] = {"top_k": 3}
+        # Deliberately non-canonical shape: external_retrieve passes the mapping
+        # through untouched, and the assertion below checks exact passthrough.
         metadata_filtering_conditions = {"category": "test"}
 
         external_documents: list[ExternalRetrievalRecord] = [

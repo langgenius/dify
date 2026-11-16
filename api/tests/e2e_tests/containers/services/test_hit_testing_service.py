@@ -11,12 +11,12 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom, DocumentDocType, SegmentStatus
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalRetrievalRecord
 from services.hit_testing_service import HitTestingService
 
 

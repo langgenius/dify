@@ -2,6 +2,7 @@ from collections.abc import Mapping
 
 from configs import dify_config
 from graphon.dsl import SandboxCodeExecutor
+from graphon.nodes.base.entities import VariableSelector
 from graphon.nodes.code.code_node import CodeNode
 from graphon.nodes.code.entities import CodeLanguage, CodeNodeData
 from graphon.nodes.code.exc import (
@@ -274,38 +275,36 @@ class TestCodeNodeExtractVariableSelector:
 
     def test_extract_empty_variables(self) -> None:
         """Test extraction with no variables."""
-        node_data: dict[str, object] = {
-            "title": "Test",
-            "variables": [],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert result == {}
 
     def test_extract_single_variable(self) -> None:
         """Test extraction with single variable."""
-        node_data: dict[str, object] = {
-            "title": "Test",
-            "variables": [
-                {"variable": "input_text", "value_selector": ["start", "text"]},
-            ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[VariableSelector(variable="input_text", value_selector=["start", "text"])],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_1",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert "node_1.input_text" in result
@@ -313,22 +312,22 @@ class TestCodeNodeExtractVariableSelector:
 
     def test_extract_multiple_variables(self) -> None:
         """Test extraction with multiple variables."""
-        node_data: dict[str, object] = {
-            "title": "Test",
-            "variables": [
-                {"variable": "var1", "value_selector": ["node_a", "output1"]},
-                {"variable": "var2", "value_selector": ["node_b", "output2"]},
-                {"variable": "var3", "value_selector": ["node_c", "output3"]},
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[
+                VariableSelector(variable="var1", value_selector=["node_a", "output1"]),
+                VariableSelector(variable="var2", value_selector=["node_b", "output2"]),
+                VariableSelector(variable="var3", value_selector=["node_c", "output3"]),
             ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="code_node",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert len(result) == 3
@@ -338,20 +337,18 @@ class TestCodeNodeExtractVariableSelector:
 
     def test_extract_with_nested_selector(self) -> None:
         """Test extraction with nested value selector."""
-        node_data: dict[str, object] = {
-            "title": "Test",
-            "variables": [
-                {"variable": "deep_var", "value_selector": ["node", "obj", "nested", "value"]},
-            ],
-            "code_language": "python3",
-            "code": "def main(): return {}",
-            "outputs": {},
-        }
+        node_data = CodeNodeData(
+            title="Test",
+            variables=[VariableSelector(variable="deep_var", value_selector=["node", "obj", "nested", "value"])],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {}",
+            outputs={},
+        )
 
         result = CodeNode._extract_variable_selector_to_variable_mapping(
             graph_config={},
             node_id="node_x",
-            node_data=CodeNodeData.model_validate(node_data, from_attributes=True),
+            node_data=node_data,
         )
 
         assert result["node_x.deep_var"] == ["node", "obj", "nested", "value"]
@@ -442,13 +439,13 @@ class TestCodeNodeInitialization:
     def test_init_node_data_python3(self) -> None:
         """Test init_node_data with Python3 configuration."""
         node = _build_code_node()
-        data: dict[str, object] = {
-            "title": "Test Node",
-            "variables": [],
-            "code_language": "python3",
-            "code": "def main(): return {'x': 1}",
-            "outputs": {"x": {"type": "number"}},
-        }
+        data = CodeNodeData(
+            title="Test Node",
+            variables=[],
+            code_language=CodeLanguage.PYTHON3,
+            code="def main(): return {'x': 1}",
+            outputs={"x": CodeNodeData.Output(type=SegmentType.NUMBER)},
+        )
 
         node.init_node_data(data)
 
@@ -458,13 +455,13 @@ class TestCodeNodeInitialization:
     def test_init_node_data_javascript(self) -> None:
         """Test init_node_data with JavaScript configuration."""
         node = _build_code_node()
-        data: dict[str, object] = {
-            "title": "JS Node",
-            "variables": [],
-            "code_language": "javascript",
-            "code": "function main() { return { x: 1 }; }",
-            "outputs": {"x": {"type": "number"}},
-        }
+        data = CodeNodeData(
+            title="JS Node",
+            variables=[],
+            code_language=CodeLanguage.JAVASCRIPT,
+            code="function main() { return { x: 1 }; }",
+            outputs={"x": CodeNodeData.Output(type=SegmentType.NUMBER)},
+        )
 
         node.init_node_data(data)
 

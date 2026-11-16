@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from constants import HIDDEN_VALUE
 from core.helper import ssrf_proxy
-from core.rag.entities import MetadataFilteringCondition
+from core.rag.entities import ExternalRetrievalRecord, MetadataFilteringCondition
 from extensions.ext_database import db  # noqa: F401
 from graphon.nodes.http_request.exc import InvalidHttpMethodError
 from libs.datetime_utils import naive_utc_now
@@ -25,7 +25,6 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
     Authorization,
     ExternalDatasetCreatePayload,
     ExternalKnowledgeApiSetting,
-    ExternalRetrievalRecord,
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError

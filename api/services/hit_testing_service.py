@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from core.app.app_config.entities import ModelConfig
 from core.rag.datasource.retrieval_service import DefaultRetrievalModelDict, RetrievalService
 from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.entities import ExternalRetrievalRecord
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
@@ -20,7 +21,6 @@ from models import Account
 from models.dataset import Dataset, DatasetQuery
 from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole, DatasetQuerySource
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalRetrievalRecord
 
 logger = logging.getLogger(__name__)
 
