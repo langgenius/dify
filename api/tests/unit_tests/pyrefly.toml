@@ -1,4 +1,4 @@
-preset = "strict"
+﻿preset = "strict"
 project-includes = [".", "../helpers/unit", "../helpers/workflow", "../e2e_tests/contracts"]
 search-path = ["../.."]
 python-platform = "linux"
@@ -18,7 +18,6 @@ project-excludes = [
   "controllers/console/datasets/test_datasets_document.py",
   "controllers/console/test_files.py",
   "controllers/console/test_wraps.py",
-  "controllers/console/workspace/test_plugin.py",
   "controllers/console/workspace/test_tool_providers.py",
   "controllers/inner_api/plugin/test_plugin.py",
   "controllers/inner_api/plugin/test_wraps.py",
@@ -62,11 +61,11 @@ project-excludes = [
   "core/app/features/rate_limiting/test_rate_limit.py",
   "core/app/task_pipeline/test_easy_ui_based_generate_task_pipeline.py",
   "core/app/task_pipeline/test_message_cycle_manager.py",
+  "extensions/test_ext_celery.py",
   "services/test_workflow_persistence.py",
   "core/workflow/test_node_factory.py",
   "core/app/workflow/layers/test_observability.py",
   "core/callback_handler/test_workflow_tool_callback_handler.py",
-  "core/datasource/entities/test_datasource_entities.py",
   "core/helper/test_ssrf_proxy.py",
   "core/llm_generator/output_parser/test_structured_output.py",
   "core/llm_generator/test_llm_generator.py",
@@ -85,7 +84,6 @@ project-excludes = [
   "core/plugin/entities/test_plugin_daemon.py",
   "core/plugin/impl/test_plugin.py",
   "core/prompt/test_advanced_prompt_transform.py",
-  "core/prompt/utils/test_extract_thread_messages.py",
   "core/rag/data_post_processor/test_data_post_processor.py",
   "core/rag/datasource/test_retrieval_service.py",
   "core/rag/datasource/vdb/test_vector_factory.py",
@@ -98,7 +96,6 @@ project-excludes = [
   "core/rag/retrieval/test_dataset_retrieval.py",
   "core/rag/splitter/test_text_splitter.py",
   "core/repositories/test_celery_workflow_node_execution_repository.py",
-  "core/repositories/test_sqlalchemy_workflow_execution_repository.py",
   "core/test_provider_manager.py",
   "core/tools/builtin_tool/test_tool.py",
   "core/tools/builtin_tool/providers/time/tools/test_localtime_to_timestamp.py",
@@ -124,18 +121,15 @@ project-excludes = [
   "../e2e_tests/contracts/core/workflow/nodes/test_document_extractor_node.py",
   "../e2e_tests/contracts/core/workflow/nodes/test_if_else.py",
   "../e2e_tests/contracts/core/workflow/nodes/tool/test_tool_node.py",
-  "core/workflow/test_node_runtime.py",
   "core/workflow/nodes/trigger_webhook/test_node.py",
   "core/workflow/test_workflow_entry.py",
   "dev/test_generate_knowledge_fs_contract.py",
   "enterprise/telemetry/test_enterprise_trace.py",
   "events/test___init__.py",
   "extensions/logstore/repositories/test_logstore_api_workflow_node_execution_repository.py",
-  "extensions/test_ext_celery.py",
   "../e2e_tests/contracts/libs/_human_input/test_form_service.py",
   "libs/broadcast_channel/redis/test_pubsub_channel.py",
   "libs/broadcast_channel/redis/test_streams_channel.py",
-  "services/agent/test_dsl_service.py",
   "services/agent/test_roster_service.py",
   "../helpers/unit/services/controller_api.py",
   "services/data_migration/test_import_service.py",
@@ -162,6 +156,8 @@ project-excludes = [
   "services/tools/test_tools_transform_service.py",
   "services/test_workflow_draft_variable_service.py",
   "tasks/app_generate/test_workflow_execute_task.py",
+  "services/agent/test_dsl_service.py",
+  "core/workflow/test_node_runtime.py",
 ]
 
 [errors]
