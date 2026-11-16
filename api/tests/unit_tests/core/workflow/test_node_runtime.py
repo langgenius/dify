@@ -29,7 +29,10 @@ from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.model_runtime import PluginModelRuntime
 from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.__base.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.common_entities import I18nObject as CoreI18nObject
+from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
@@ -1155,8 +1158,7 @@ class TestToolNodeRuntimeCases:
                 workflow_execution_id="workflow-run-id",
             )
         )
-        workflow_runtime = MagicMock()
-        workflow_runtime.runtime.runtime_parameters = dict[str, object]()
+        workflow_runtime = _build_tool()
         node_data = ToolNodeData.model_validate(
             {
                 "type": "tool",
@@ -1197,8 +1199,7 @@ class TestToolNodeRuntimeCases:
                 workflow_execution_id="workflow-run-id",
             )
         )
-        workflow_runtime = MagicMock()
-        workflow_runtime.runtime.runtime_parameters = dict[str, object]()
+        workflow_runtime = _build_tool()
         runtime._run_context.trace_session_id = "session-1"
         node_data = ToolNodeData.model_validate(
             {
@@ -1236,8 +1237,7 @@ class TestToolNodeRuntimeCases:
                 workflow_execution_id="workflow-run-id",
             )
         )
-        builtin_runtime = MagicMock()
-        builtin_runtime.runtime.runtime_parameters = dict[str, object]()
+        builtin_runtime = _build_tool()
 
         with patch.object(ToolManager, "get_workflow_tool_runtime", return_value=builtin_runtime):
             runtime.get_runtime(
@@ -1527,6 +1527,39 @@ def _tool_binding(handle: ToolRuntimeHandle) -> _WorkflowToolRuntimeBinding:
     binding = handle.raw
     assert isinstance(binding, _WorkflowToolRuntimeBinding)
     return binding
+
+
+class _StubTool(Tool):
+    """A concrete tool so tests can pass the class production code actually builds."""
+
+    @override
+    def tool_provider_type(self) -> CoreToolProviderType:
+        return CoreToolProviderType.BUILT_IN
+
+    @override
+    def _invoke(
+        self,
+        session: Session,
+        user_id: str,
+        tool_parameters: dict[str, object],
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> ToolInvokeMessage:
+        raise NotImplementedError
+
+
+def _build_tool(*, runtime_parameters: dict[str, object] | None = None) -> _StubTool:
+    entity = ToolEntity(
+        identity=ToolIdentity(
+            author="author",
+            name="tool",
+            label=CoreI18nObject(en_US="Tool"),
+            provider="provider",
+        )
+    )
+    runtime = ToolRuntime(tenant_id="tenant-id", runtime_parameters=runtime_parameters or dict[str, object]())
+    return _StubTool(entity=entity, runtime=runtime)
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
