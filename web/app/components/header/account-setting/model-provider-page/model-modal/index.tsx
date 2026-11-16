@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, Ref } from 'react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -25,7 +25,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
@@ -48,7 +48,8 @@ type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
-  onSubmit: (perform: () => Promise<void>, savedValues?: Record<string, unknown>) => void
+  ref?: Ref<{ isPending: () => boolean }>
+  onSuccess: (savedValues?: Record<string, unknown>) => void
   model?: CustomModel
   credential?: Credential
   isModelCredential?: boolean
@@ -59,7 +60,8 @@ const ModelModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
-  onSubmit,
+  ref,
+  onSuccess,
   model,
   credential,
   isModelCredential,
@@ -81,6 +83,7 @@ const ModelModal: FC<ModelModalProps> = ({
     closeConfirmDelete,
     openConfirmDelete,
     doingAction,
+    doingActionRef,
     handleActiveCredential,
   } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
     isModelCredential,
@@ -106,7 +109,23 @@ const ModelModal: FC<ModelModalProps> = ({
     canManageCredential
 
   const formId = useId()
+  useImperativeHandle(ref, () => ({ isPending: () => doingActionRef.current }), [doingActionRef])
+
+  const finish = useCallback(
+    async (request: Promise<void>, values?: Record<string, unknown>) => {
+      try {
+        await request
+      } catch {
+        // The console client reports failures. Leave this form open for retry.
+        return
+      }
+      onSuccess(values)
+    },
+    [onSuccess],
+  )
+
   const handleSave = useCallback(() => {
+    if (doingActionRef.current) return
     if (
       mode === ModelModalModeEnum.addCustomModelToModelList &&
       selectedCredential &&
@@ -114,7 +133,7 @@ const ModelModal: FC<ModelModalProps> = ({
     ) {
       if (!canUseCredential) return
 
-      onSubmit(() => handleActiveCredential(selectedCredential, model))
+      void finish(handleActiveCredential(selectedCredential, model))
       return
     }
 
@@ -167,14 +186,13 @@ const ModelModal: FC<ModelModalProps> = ({
         selectedCredential?.addNewCredential)
     if (shouldSaveModelCredential && (!__model_name || !__model_type)) return
 
-    onSubmit(
-      () =>
-        handleSaveCredential({
-          credential_id: credential?.credential_id,
-          credentials: rest,
-          name: __authorization_name__,
-          ...(shouldSaveModelCredential ? { model: __model_name, model_type: __model_type } : {}),
-        }),
+    void finish(
+      handleSaveCredential({
+        credential_id: credential?.credential_id,
+        credentials: rest,
+        name: __authorization_name__,
+        ...(shouldSaveModelCredential ? { model: __model_name, model_type: __model_type } : {}),
+      }),
       values,
     )
   }, [
@@ -185,7 +203,8 @@ const ModelModal: FC<ModelModalProps> = ({
     canUseCredential,
     canCreateCredential,
     canManageCredential,
-    onSubmit,
+    finish,
+    doingActionRef,
     handleActiveCredential,
     handleSaveCredential,
     credential,
@@ -434,7 +453,9 @@ const ModelModal: FC<ModelModalProps> = ({
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               disabled={doingAction}
-              onClick={() => onSubmit(handleConfirmDelete)}
+              onClick={() => {
+                if (!doingActionRef.current) void finish(handleConfirmDelete())
+              }}
             >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>

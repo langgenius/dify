@@ -1,13 +1,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import { Button } from '@langgenius/dify-ui/button'
-import {
-  DialogBody,
-  DialogClose,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@langgenius/dify-ui/dialog'
+import { DialogBody, DialogClose, DialogFooter } from '@langgenius/dify-ui/dialog'
 import {
   Select,
   SelectContent,
@@ -133,17 +127,8 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     onSave(formattedData)
   }
 
-  const action = data.type
-    ? t(($) => $['operation.edit'], { ns: 'common' })
-    : t(($) => $['operation.add'], { ns: 'common' })
-
   return (
     <>
-      <DialogHeader>
-        <DialogTitle>
-          {`${action} ${t(($) => $['variableConfig.apiBasedVar'], { ns: 'appDebug' })}`}
-        </DialogTitle>
-      </DialogHeader>
       <DialogBody>
         <div className="py-2">
           <div className="text-sm/9 font-medium text-text-primary">

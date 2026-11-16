@@ -6,6 +6,7 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { fetchReleases } from '../../install-plugin/hooks'
+import InstallPluginMenu from '../../plugin-page/install-plugin-menu'
 import { PluginCategoryEnum } from '../../types'
 import Action from '../action'
 
@@ -20,6 +21,24 @@ vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: vi.fn() }),
 }))
 
+function PluginUpdateAction({ name }: { name: string }) {
+  return (
+    <Action
+      author="owner"
+      installationId={name}
+      pluginUniqueIdentifier={`owner/${name}@1.0.0`}
+      pluginName={name}
+      category={PluginCategoryEnum.tool}
+      usedInApps={0}
+      isShowFetchNewVersion
+      isShowDelete={false}
+      isShowInfo={false}
+      onDelete={() => {}}
+      meta={{ repo: `owner/${name}`, version: '1.0.0', package: 'plugin.difypkg' }}
+    />
+  )
+}
+
 it('shows only the last card selected when GitHub update checks finish out of order', async () => {
   onTestFinished(guardUnexpectedFetch())
   const first = createDeferred<GitHubRepoReleaseResponse[]>()
@@ -31,19 +50,7 @@ it('shows only the last card selected when GitHub update checks finish out of or
     <>
       {['first', 'second'].map((name) => (
         <section key={name} aria-label={name}>
-          <Action
-            author="owner"
-            installationId={name}
-            pluginUniqueIdentifier={`owner/${name}@1.0.0`}
-            pluginName={name}
-            category={PluginCategoryEnum.tool}
-            usedInApps={0}
-            isShowFetchNewVersion
-            isShowDelete={false}
-            isShowInfo={false}
-            onDelete={() => {}}
-            meta={{ repo: `owner/${name}`, version: '1.0.0', package: 'plugin.difypkg' }}
-          />
+          <PluginUpdateAction name={name} />
         </section>
       ))}
     </>,
@@ -64,4 +71,25 @@ it('shows only the last card selected when GitHub update checks finish out of or
   await page.getByRole('option', { name: '3.0.0' }).click()
   await dialog.getByRole('button', { name: 'common.operation.close' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
+})
+
+it('discards a pending update check when the user chooses a local install', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  const release = createDeferred<GitHubRepoReleaseResponse[]>()
+  vi.mocked(fetchReleases).mockReturnValueOnce(release.promise)
+  const { wrapper } = createConsoleQueryWrapper()
+  await render(
+    <>
+      <PluginUpdateAction name="first" />
+      <InstallPluginMenu onSwitchToMarketplaceTab={() => {}} />
+    </>,
+    { wrapper },
+  )
+  await page.getByRole('button', { name: 'plugin.action.checkForUpdates' }).click()
+  await page.getByRole('button', { name: 'plugin.installPlugin' }).click()
+  await page.getByRole('menuitem', { name: 'plugin.source.local' }).click()
+  await act(async () => {
+    release.resolve([{ tag_name: '2.0.0', assets: [] }])
+  })
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
 })

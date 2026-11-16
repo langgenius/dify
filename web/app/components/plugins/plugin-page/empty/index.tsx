@@ -160,10 +160,10 @@ const Empty = ({
                       title={text}
                       className="h-8 w-full justify-start py-2 system-sm-medium"
                       onClick={() => {
+                        beginGitHubPluginIntent(queryClient)
                         if (action === 'local') fileInputRef.current?.click()
                         else if (action === 'marketplace')
                           onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
-                        else beginGitHubPluginIntent(queryClient)
                       }}
                     >
                       <span

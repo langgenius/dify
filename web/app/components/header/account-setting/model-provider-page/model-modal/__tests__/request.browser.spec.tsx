@@ -115,6 +115,24 @@ it('keeps the replacement credential draft when an earlier request succeeds', as
   await expect.element(screen.getByRole('dialog')).toBeVisible()
 })
 
+it('leaves the new dialog host open when a save from the previous host completes', async () => {
+  const pending = createDeferred<{ result: string }>()
+  api.save.mockReturnValueOnce(pending.promise)
+  const onSave = vi.fn()
+  const previous = await setup({ onSave })
+  await previous.getByLabelText(/API key/).fill('first-key')
+  await previous.getByRole('button', { name: 'common.operation.save' }).click()
+  await expect.element(previous.getByLabelText(/API key/)).toBeDisabled()
+  await previous.unmount()
+
+  const current = await setup()
+  const key = current.getByLabelText(/API key/)
+  await key.fill('second-key')
+  pending.resolve({ result: 'success' })
+  await expect.poll(() => onSave.mock.calls.length).toBe(1)
+  await expect.element(key).toHaveValue('second-key')
+})
+
 it('keeps an existing credential selected when activation fails and closes after a successful retry', async () => {
   api.activate.mockRejectedValueOnce(new Error('Activation failed')).mockResolvedValueOnce({})
   const screen = await setup({

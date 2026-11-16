@@ -27,6 +27,7 @@ vi.mock('../../model-auth/hooks', () => ({
     closeConfirmDelete: mockCloseConfirmDelete,
     openConfirmDelete: vi.fn(),
     doingAction: false,
+    doingActionRef: { current: false },
     handleActiveCredential: vi.fn(),
   }),
   useModelFormSchemas: () => ({
@@ -94,7 +95,7 @@ describe('ModelModal dialog branches', () => {
           <ModelModal
             provider={createProvider({ help: undefined })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onSubmit={vi.fn()}
+            onSuccess={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -117,7 +118,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onSubmit={vi.fn()}
+            onSuccess={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -143,7 +144,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onSubmit={vi.fn()}
+            onSuccess={vi.fn()}
           />
         </DialogContent>
       </Dialog>,
@@ -164,7 +165,7 @@ describe('ModelModal dialog branches', () => {
               } as ModelProvider['help'],
             })}
             configurateMethod={ConfigurationMethodEnum.predefinedModel}
-            onSubmit={vi.fn()}
+            onSuccess={vi.fn()}
           />
         </DialogContent>
       </Dialog>,

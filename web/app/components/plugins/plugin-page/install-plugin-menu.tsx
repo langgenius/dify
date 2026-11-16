@@ -128,6 +128,7 @@ const InstallPluginMenu = ({
   const handleInstallMethodSelect = (action: string) => {
     if (disabled) return
 
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     if (action === 'local') {
       fileInputRef.current?.click()
       return
@@ -138,7 +139,6 @@ const InstallPluginMenu = ({
       return
     }
 
-    const isCurrent = beginGitHubPluginIntent(queryClient)
     queueMicrotask(() => {
       if (isCurrent()) githubDialog.open(null)
     })

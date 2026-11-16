@@ -11,5 +11,5 @@ export type CredentialSaved = (
 ) => void
 
 export const modelCredentialDialog = createDialogHandle<
-  Omit<ComponentProps<typeof ModelModal>, 'onSubmit'> & { onSave?: CredentialSaved }
+  Omit<ComponentProps<typeof ModelModal>, 'onSuccess' | 'ref'> & { onSave?: CredentialSaved }
 >()

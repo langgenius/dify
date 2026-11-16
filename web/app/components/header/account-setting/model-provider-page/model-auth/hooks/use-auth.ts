@@ -231,6 +231,7 @@ export const useAuth = (
     openConfirmDelete,
     closeConfirmDelete,
     doingAction,
+    doingActionRef,
     handleActiveCredential,
     handleConfirmDelete,
     deleteCredentialId,

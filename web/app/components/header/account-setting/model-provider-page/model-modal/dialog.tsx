@@ -1,6 +1,6 @@
 'use client'
 
-import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { ComponentRef } from 'react'
 import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { lazy, Suspense, useRef, useState } from 'react'
 import { modelCredentialDialog } from './handle'
@@ -8,20 +8,19 @@ import { modelCredentialDialog } from './handle'
 const CredentialForm = lazy(() => import('./index'))
 
 export function ModelCredentialDialog() {
-  const actionsRef = useRef<DialogActions>(null)
-  const pendingRequestRef = useRef<Promise<void> | null>(null)
+  const form = useRef<ComponentRef<typeof CredentialForm>>(null)
+  const latestSession = useRef(0)
   const [session, setSession] = useState(0)
   return (
     <Dialog
       handle={modelCredentialDialog}
-      actionsRef={actionsRef}
       onOpenChange={(open, details) => {
-        if (!open && pendingRequestRef.current && details.reason !== 'imperative-action') {
+        if (!open && form.current?.isPending() && details.reason !== 'imperative-action') {
           details.cancel()
           return
         }
-        pendingRequestRef.current = null
-        if (open) setSession((current) => current + 1)
+        latestSession.current += 1
+        if (open) setSession(latestSession.current)
       }}
     >
       {({ payload }) => (
@@ -30,22 +29,11 @@ export function ModelCredentialDialog() {
             {payload && (
               <CredentialForm
                 key={session}
+                ref={form}
                 {...payload}
-                onSubmit={async (perform, values) => {
-                  if (pendingRequestRef.current) return
-                  const request = perform()
-                  pendingRequestRef.current = request
-                  try {
-                    await request
-                  } catch {
-                    // The console client reports request errors. Keep the draft available for retry.
-                    if (pendingRequestRef.current === request) pendingRequestRef.current = null
-                    return
-                  }
-                  if (pendingRequestRef.current === request) {
-                    pendingRequestRef.current = null
-                    actionsRef.current?.close()
-                  }
+                onSuccess={(values) => {
+                  if (form.current && session === latestSession.current)
+                    modelCredentialDialog.close()
                   if (values) payload.onSave?.(payload.credential, values)
                 }}
               />
