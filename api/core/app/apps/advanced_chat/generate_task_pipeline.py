@@ -426,21 +426,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         yield self._base_task_pipeline.ping_stream_response()
 
     def _handle_error_event(self, event: QueueErrorEvent, **kwargs) -> Generator[StreamResponse]:
-        """Replace a rejection delivered to the app boundary; never infer outcomes from earlier node failures."""
-        replacement = self._base_task_pipeline.moderation_replacement(event.error)
-        if replacement is not None:
-            had_answer = bool(self._task_state.answer)
-            self._task_state.answer = replacement[0]
-            with self._database_session() as session:
-                self._save_message(session=session, graph_runtime_state=self._graph_runtime_state)
-            if had_answer:
-                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement[0])
-            else:
-                yield self._message_cycle_manager.message_to_stream_response(
-                    answer=replacement[0], message_id=self._message_id
-                )
-            yield self._message_end_to_stream_response()
-            return
+        """Surface runner failures without inferring moderation outcomes from workflow nodes."""
         with self._database_session() as session:
             err = self._base_task_pipeline.handle_error(event=event, session=session, message_id=self._message_id)
         yield self._base_task_pipeline.error_to_stream_response(err)

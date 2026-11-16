@@ -138,10 +138,10 @@ Local App Model Moderation never issues hosted or tenant
 checks and cannot infer a typed remote verdict from text. Other configured app
 rules remain independent. A client-provided approval flag must never skip platform checks.
 
-An enabled app OpenAI rule uses its nonblank phase-specific preset when the
-platform rejection reaches the App error boundary directly. Chatbot, Chatflow, and legacy Agent Chat use the
-English default `This message can’t be processed.` when no matching
-preset is configured, including when app moderation or its phase is disabled.
+For direct Chatbot and legacy Agent Chat generation, an enabled app OpenAI rule
+uses its nonblank phase-specific preset when the platform rejects the invocation.
+These chat modes use the English default `This message can’t be processed.` when
+no matching preset is configured, including when app moderation or its phase is disabled.
 The default is resolved at runtime, not written into the app configuration.
 Other app moderation backends retain their own verdict and replacement rules;
 their presets are not reused for a separate platform rejection.
@@ -150,10 +150,10 @@ Chat replies use the existing `message` or `message_replace` event followed by
 `message_end`, without exposing the rejected segment. A replacement covers the
 entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
-usage again. This applies to failures actually delivered to the App error boundary,
-not arbitrary errors from internal workflow nodes. For Chatflow, a model-node
-rejection follows its configured node error strategy and does not force the
-App preset over the workflow's own result.
+usage again. Chatflow has no platform-exception-to-preset branch: model-node
+rejections follow their configured node error strategy. Its own keyword/API
+input and output verdicts still use normal App replacement handling, without
+forcing an internal node failure over the workflow's own result.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
 Direct App check failures and unhandled typed model failures produce a safe

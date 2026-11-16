@@ -79,7 +79,6 @@ def test_direct_output_replaces_the_whole_answer_and_stops_checks(config_overrid
     handler.append_new_token("safe ")
     assert handler.append_new_token("blocked") == ("", "Refused")
     assert handler.should_direct_output()
-    assert handler.get_final_output() == "Refused"
     assert handler.append_new_token("never checked") == ("", None)
     assert handler.moderation_completion("safe blocked") == ("Refused", True)
     assert evaluator.calls == ["safe ", "blocked"]

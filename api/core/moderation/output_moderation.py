@@ -47,10 +47,6 @@ class OutputModeration(BaseModel):
         """Return whether a checked segment replaced the entire answer and stopped further evaluation."""
         return self.final_output is not None
 
-    def get_final_output(self) -> str:
-        """Return the direct reply, or an empty string before any direct replacement."""
-        return self.final_output or ""
-
     def append_new_token(self, token: str, *, prefix: str = "") -> tuple[str, str | None]:
         """Buffer unchecked text and return approved text or a full-answer replacement after a segment check.
 
@@ -97,8 +93,8 @@ class OutputModeration(BaseModel):
         """
         if self._error is not None:
             raise self._error
-        if self.should_direct_output():
-            return self.get_final_output(), True
+        if self.final_output is not None:
+            return self.final_output, True
         if self._finished:
             return self._answer, self._answer != completion
         if self._streamed and completion not in {self.buffer, self._answer}:
