@@ -1,15 +1,18 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { ComponentProps } from 'react'
 import type { consoleClient } from '@/service/console'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import AddExternalAPIModal from '../index'
+import { ExternalApiDialogContent } from '../dialog-content'
+import { useSaveExternalApi } from '../use-save-external-api'
 import { data, response } from './fixtures'
 
 const api = vi.hoisted(() => ({
+  edit: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch>(),
   create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
 }))
 vi.mock('@/service/console', async (importOriginal) => {
@@ -18,6 +21,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch': api.edit,
       'datasets.externalKnowledgeApi.post': api.create,
     }),
   }
@@ -25,24 +29,35 @@ vi.mock('@/service/console', async (importOriginal) => {
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
+  api.edit.mockReset().mockResolvedValue(response)
   api.create.mockReset().mockResolvedValue(response)
 })
 
-async function setup(overrides: Partial<ComponentProps<typeof AddExternalAPIModal>> = {}) {
+async function setup(existing?: ExternalKnowledgeApiResponse) {
   const { wrapper: Providers } = createConsoleQueryWrapper()
   function Caller() {
+    const save = useSaveExternalApi()
     const [open, setOpen] = useState(true)
     const [saved, setSaved] = useState<ExternalKnowledgeApiResponse>()
     return (
       <>
-        {open && (
-          <AddExternalAPIModal
-            isEditMode={false}
-            onSave={setSaved}
-            onCancel={() => setOpen(false)}
-            {...overrides}
+        <Dialog open={open} onOpenChange={setOpen}>
+          <ExternalApiDialogContent
+            api={existing}
+            pending={save.isPending}
+            onSubmit={(body) =>
+              save.mutate(
+                { id: existing?.id, body },
+                {
+                  onSuccess: (saved) => {
+                    setSaved(saved)
+                    setOpen(false)
+                  },
+                },
+              )
+            }
           />
-        )}
+        </Dialog>
         {saved && <p>Saved {saved.name}</p>}
         <AppToaster />
       </>
@@ -100,19 +115,16 @@ it('preserves entered settings after a failed creation and lets the user retry',
 it.each([false, true])(
   'saves an edited API with dataset confirmation only when bound (%s)',
   async (bound) => {
-    const onEdit = vi.fn().mockResolvedValue(undefined)
     const screen = await setup({
-      isEditMode: true,
-      data,
-      onEdit,
-      datasetBindings: bound ? [{ id: 'ds-1', name: 'Guide' }] : [],
+      ...response,
+      dataset_bindings: bound ? [{ id: 'ds-1', name: 'Guide' }] : [],
     })
     await screen.getByLabelText(/Name/).fill('Product API updated')
     await save(screen).click()
     if (bound) {
       const confirm = screen.getByRole('alertdialog')
       await expect.element(confirm).toBeVisible()
-      expect(onEdit).not.toHaveBeenCalled()
+      expect(api.edit).not.toHaveBeenCalled()
       await confirm.getByRole('button', { name: 'common.operation.cancel' }).click()
       await expect.element(confirm).not.toBeInTheDocument()
       await expect.element(save(screen)).toHaveFocus()
@@ -120,7 +132,13 @@ it.each([false, true])(
       await confirm.getByRole('button', { name: 'common.operation.confirm' }).click()
     }
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-    expect(onEdit).toHaveBeenCalledExactlyOnceWith({ ...data, name: 'Product API updated' })
+    expect(api.edit).toHaveBeenCalledExactlyOnceWith(
+      {
+        params: { external_knowledge_api_id: response.id },
+        body: { ...data, name: 'Product API updated' },
+      },
+      { context: { silent: true } },
+    )
     expect(api.create).not.toHaveBeenCalled()
   },
 )
@@ -135,3 +153,23 @@ it.each(['dataset.externalAPIForm.cancel', 'common.operation.close'])(
     expect(api.create).not.toHaveBeenCalled()
   },
 )
+
+it('validates a bound API before confirmation and locks the draft while saving', async () => {
+  const request = createDeferred<ExternalKnowledgeApiResponse>()
+  api.edit.mockReturnValueOnce(request.promise)
+  const screen = await setup({ ...response, dataset_bindings: [{ id: 'ds', name: 'Guide' }] })
+  const endpoint = screen.getByLabelText(/API Endpoint/)
+  await endpoint.fill('invalid')
+  await save(screen).click()
+  await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
+  expect(api.edit).not.toHaveBeenCalled()
+  await endpoint.fill(data.settings.endpoint)
+  await save(screen).click()
+  const confirm = screen.getByRole('alertdialog')
+  await confirm.getByRole('button', { name: 'common.operation.confirm' }).click()
+  await expect.element(confirm).not.toBeInTheDocument()
+  await expect.element(endpoint).toBeDisabled()
+  request.resolve(response)
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  expect(api.edit).toHaveBeenCalledTimes(1)
+})

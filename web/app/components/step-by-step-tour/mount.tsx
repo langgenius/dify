@@ -23,7 +23,7 @@ import {
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useQueryState } from 'nuqs'
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Translation } from 'react-i18next'
 import {
   pricingQueryParamName,
@@ -36,7 +36,6 @@ import {
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { useEducationExpireNotice } from '@/app/education/expire-notice/use-expire-notice'
 import { useDocLink } from '@/context/i18n'
-import { useModalContextSelector } from '@/context/modal-context'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -72,6 +71,7 @@ import {
 } from './target-registry'
 import { STEP_BY_STEP_TOUR_TASKS } from './tasks'
 import { useStepByStepTourTarget } from './use-tour-target'
+import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 type StepByStepTourTask = (typeof STEP_BY_STEP_TOUR_TASKS)[number]
 
@@ -154,7 +154,6 @@ export default function StepByStepTourMount({
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
   const isCurrentWorkspaceManager = useAtomValue(isCurrentWorkspaceManagerAtom)
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
-  const hasBlockingModalOpen = useModalContextSelector((state) => state.hasBlockingModalOpen)
   const [educationExpireNotice] = useEducationExpireNotice()
   const [settingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -251,9 +250,9 @@ export default function StepByStepTourMount({
     stepByStepTourFeatureEnabled &&
     enabledForCurrentWorkspace &&
     (hasActiveGuide || !shouldHideOnPathname(pathname))
+  const [tourHost, setTourHost] = useState<HTMLDivElement | null>(null)
   const overlayVisible =
     visible &&
-    !hasBlockingModalOpen &&
     pricing !== 'open' &&
     !settingsDestination &&
     !(pathname === '/apps' && educationExpireNotice)
@@ -428,6 +427,9 @@ export default function StepByStepTourMount({
   }, [skipped])
 
   const recoveryVisible = Boolean(recoveryAnchorRef) && skipRecoveryVisible
+
+  const checklistOpen = useTourPopupOpen(tourHost, overlayVisible && expanded)
+  const recoveryOpen = useTourPopupOpen(tourHost, recoveryVisible)
 
   if (!visible && !recoveryVisible) return null
   return (
@@ -728,7 +730,7 @@ export default function StepByStepTourMount({
           )
 
           return (
-            <div className={cn('relative', className)}>
+            <div ref={setTourHost} className={cn('relative', className)}>
               {overlayVisible && !allTasksCompleted && activeTask && activeGuide && (
                 <StepByStepTourCoachmark
                   guide={{
@@ -759,7 +761,7 @@ export default function StepByStepTourMount({
               )}
               {visible && (!allTasksCompleted || completionPromptVisible) && (
                 <Popover
-                  open={overlayVisible && expanded}
+                  open={checklistOpen}
                   onOpenChange={(open, { event, reason }) => {
                     if (open) {
                       setChecklistMinimized(false)
@@ -782,7 +784,7 @@ export default function StepByStepTourMount({
                       setChecklistMinimized(true)
                   }}
                 >
-                  {(!expanded || overlayVisible) && (
+                  {(!expanded || checklistOpen) && (
                     <PopoverTrigger
                       ref={restoreTriggerRef}
                       render={(props) => (
@@ -796,7 +798,7 @@ export default function StepByStepTourMount({
                     />
                   )}
                   {overlayVisible && (
-                    <PopoverPortal>
+                    <PopoverPortal className="aria-hidden:invisible">
                       <PopoverPositioner
                         side="top"
                         align="start"
@@ -827,7 +829,7 @@ export default function StepByStepTourMount({
               )}
               {recoveryAnchorRef && (
                 <SkipRecoveryPrompt
-                  open={recoveryVisible}
+                  open={recoveryOpen}
                   anchorRef={recoveryAnchorRef}
                   label={t(($) => $['stepByStepTour.skipRecovery.label'], { ns: 'onboarding' })}
                   message={t(($) => $['stepByStepTour.skipRecovery.message'], { ns: 'onboarding' })}
@@ -843,6 +845,19 @@ export default function StepByStepTourMount({
       </Translation>
     </Suspense>
   )
+}
+
+function useTourPopupOpen(host: HTMLElement | null, requested: boolean) {
+  const [readyHost, setReadyHost] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => {
+    if (!host || !requested) return
+    const stopWaiting = waitForAccessibleElement(host, () => setReadyHost(host))
+    return () => {
+      stopWaiting()
+      setReadyHost(null)
+    }
+  }, [host, requested])
+  return requested && !!host && readyHost === host
 }
 
 function SkipRecoveryPrompt({
@@ -873,7 +888,7 @@ function SkipRecoveryPrompt({
         onOpenChange(nextOpen)
       }}
     >
-      <PopoverPortal>
+      <PopoverPortal className="aria-hidden:invisible">
         <PopoverPositioner
           side="top"
           align="end"

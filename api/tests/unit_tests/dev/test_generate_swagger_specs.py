@@ -727,6 +727,39 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(ge
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
 
 
+def test_generate_specs_include_evaluation_console_contract(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+    paths = payload["paths"]
+
+    xlsx_media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    binary_schema = {"format": "binary", "type": "string"}
+    for path in (
+        "/datasets/{dataset_id}/evaluation/template/download",
+        "/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download",
+    ):
+        response_content = paths[path]["post"]["responses"]["200"]["content"]
+        assert response_content == {xlsx_media_type: {"schema": binary_schema}}
+
+    template_download_request = paths["/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download"]["post"][
+        "requestBody"
+    ]
+    assert template_download_request["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/EvaluationConfigPayload"
+    )
+
+    for path in (
+        "/datasets/{dataset_id}/evaluation/runs/{run_id}/retry",
+        "/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry",
+    ):
+        assert _response_schema(paths[path]["post"])["$ref"] == "#/components/schemas/EvaluationRunResponse"
+
+    assert "target_workflow_version_id" in schemas["EvaluationRunResponse"]["properties"]
+    assert "workflow_run_id" in schemas["EvaluationRunItemResponse"]["properties"]
+    assert "node_info" in schemas["EvaluationMetric"]["properties"]
+
+
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():
     api_dir = Path(__file__).resolve().parents[3]
     repo_root = api_dir.parent
