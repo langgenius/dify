@@ -582,6 +582,7 @@ def test_parse_openapi_to_tool_bundle_resolves_request_body_reference(app: Flask
         bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
 
     assert len(bundles) == 1
+    assert bundles[0].parameters is not None
     parameters = {parameter.name: parameter for parameter in bundles[0].parameters}
     assert parameters.keys() == {"name", "age"}
     assert parameters["name"].required is True
