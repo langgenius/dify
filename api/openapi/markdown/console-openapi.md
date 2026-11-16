@@ -1265,6 +1265,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
+**Return the admitted Agent's available log sources**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1280,6 +1282,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs
+**Return the admitted Agent's conversation logs**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1306,6 +1310,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
+**Return the admitted Agent's messages for a conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1480,6 +1486,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
+**Return Agent monitoring data using the admitted account's timezone**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
