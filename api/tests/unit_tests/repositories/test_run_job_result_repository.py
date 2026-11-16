@@ -223,3 +223,18 @@ def test_pending_form_is_none_for_an_absent_run_or_a_mode_without_a_snapshot(
 
 def test_the_built_services_carry_a_run_job_service(account_application_services) -> None:
     assert isinstance(account_application_services.run_jobs, RunJobService)
+
+
+def test_pending_form_is_none_once_the_run_has_resumed(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = _patch_stream(monkeypatch, _RecordedFrames([_FORM_FRAME, _PAUSED_FRAME]))
+    tenant_id = str(uuid4())
+    row = _add_run(sqlite_session, tenant_id=tenant_id, status=WorkflowExecutionStatus.RUNNING)
+
+    form = SQLAlchemyRunResultReader(session_factory=sqlite_session_factory).pending_form(
+        tenant_id=tenant_id, app_id=row.app_id, run_id=row.id, mode=AppMode.WORKFLOW
+    )
+
+    assert form is None
+    assert calls == []

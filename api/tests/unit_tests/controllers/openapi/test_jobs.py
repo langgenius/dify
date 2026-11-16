@@ -327,3 +327,12 @@ def test_wait_seconds_defaults_and_is_bounded() -> None:
     for bad in (-1, WAIT_MAX_SECONDS + 1):
         with pytest.raises(ValidationError):
             JobWaitQuery(wait_seconds=bad)
+
+
+@pytest.mark.parametrize("suffix", ["", ":alive"])
+def test_a_malformed_job_id_answers_404_on_wait_and_stop(world: World, suffix: str) -> None:
+    bad_id = world.open_job() + suffix if suffix else "no-such-job"
+
+    for response in (world.wait(bad_id), world.stop(bad_id)):
+        assert response.status_code == 404
+        assert response.get_json()["code"] == OpenApiErrorCode.JOB_NOT_FOUND

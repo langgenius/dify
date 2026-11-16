@@ -52,11 +52,14 @@ class Generator:
     error: Exception | None = None
     hold: threading.Event | None = None
     calls: list[dict[str, object]] = field(default_factory=list)
+    stream: Iterable[str] | None = None
 
     def generate(self, **kwargs: object):
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
+        if self.stream is not None:
+            return self.stream
         return self._stream()
 
     def _stream(self) -> Iterator[str]:
@@ -318,3 +321,29 @@ def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi
         assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
         assert specs[op].requirements == _RUN_GUARDS
+
+
+class ClosableStream:
+    def __init__(self) -> None:
+        self.closed = False
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(())
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_a_failed_launch_closes_the_stream(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
+    stream = ClosableStream()
+    world.generator.stream = stream
+
+    def fail(**_kwargs: object) -> None:
+        raise RuntimeError("audit down")
+
+    monkeypatch.setattr(app_start, "emit_app_run", fail)
+
+    response = world.start(wait_seconds=0)
+
+    assert response.status_code == 500
+    assert stream.closed
