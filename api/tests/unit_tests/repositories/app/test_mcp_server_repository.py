@@ -106,12 +106,12 @@ def test_service_mutations_read_server_at_most_once(
 
     def capture_reads(state: ORMExecuteState) -> None:
         nonlocal server_read_count
-        if state.is_select and isinstance(state.statement, Select):
-            # Count full server reads, excluding code uniqueness checks and generated timestamp reloads.
-            if not state.is_column_load and any(
-                column["expr"] is AppMCPServer for column in state.statement.column_descriptions
-            ):
-                server_read_count += 1
+        # Count full server reads, excluding code uniqueness checks and generated timestamp reloads.
+        if (state.is_select and isinstance(state.statement, Select)) and (
+            not state.is_column_load
+            and any(column["expr"] is AppMCPServer for column in state.statement.column_descriptions)
+        ):
+            server_read_count += 1
 
     event.listen(sqlite_session_factory, "do_orm_execute", capture_reads)
     try:

@@ -114,14 +114,13 @@ def clean_document_task(
             )
 
     with session_factory.create_session() as session, session.begin():
-        if file_id:
-            if file_id in reserve_upgrade_file_cleanup(session, [file_id]):
-                logger.info(
-                    "Keep source file while KnowledgeFS upgrade lease is active, file_id=%s, document_id=%s",
-                    file_id,
-                    document_id,
-                )
-                file_id = None
+        if file_id and file_id in reserve_upgrade_file_cleanup(session, [file_id]):
+            logger.info(
+                "Keep source file while KnowledgeFS upgrade lease is active, file_id=%s, document_id=%s",
+                file_id,
+                document_id,
+            )
+            file_id = None
         if file_id:
             file = session.scalar(select(UploadFile).where(UploadFile.id == file_id).limit(1))
             if file:

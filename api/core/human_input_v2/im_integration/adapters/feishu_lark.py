@@ -1511,9 +1511,8 @@ class _FeishuLarkWebhookHandler(IMWebhookHandler):
         # The official SDK authenticates URL verification with the body token and requires signatures only for events.
         if decoded.get("type") == "url_verification":
             return decoded, encrypted is not None, native_payload
-        if self._encrypt_key is not None:
-            if _valid_webhook_signature(request, self._encrypt_key) is None:
-                return None
+        if self._encrypt_key is not None and _valid_webhook_signature(request, self._encrypt_key) is None:
+            return None
         return decoded, encrypted is not None, native_payload
 
     def _verification_token_matches(self, token: str | None) -> bool:

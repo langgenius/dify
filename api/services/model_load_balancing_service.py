@@ -641,10 +641,11 @@ class ModelLoadBalancingService:
 
             # encrypt credentials
             for key, value in credentials.items():
-                if key in provider_credential_secret_variables:
-                    # if send [__HIDDEN__] in secret input, it will be same as original value
-                    if value == HIDDEN_VALUE and key in original_credentials:
-                        credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
+                # if send [__HIDDEN__] in secret input, it will be same as original value
+                if (key in provider_credential_secret_variables) and (
+                    value == HIDDEN_VALUE and key in original_credentials
+                ):
+                    credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:
             if model_provider_factory is None:

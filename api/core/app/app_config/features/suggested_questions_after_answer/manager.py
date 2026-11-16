@@ -30,9 +30,8 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         """
         suggested_questions_after_answer = False
         suggested_questions_after_answer_dict = config.get("suggested_questions_after_answer")
-        if suggested_questions_after_answer_dict:
-            if suggested_questions_after_answer_dict.get("enabled"):
-                suggested_questions_after_answer = True
+        if suggested_questions_after_answer_dict and suggested_questions_after_answer_dict.get("enabled"):
+            suggested_questions_after_answer = True
 
         return suggested_questions_after_answer
 

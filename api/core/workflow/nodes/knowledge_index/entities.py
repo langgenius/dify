@@ -108,7 +108,6 @@ class KnowledgeIndexNodeData(BaseNodeData):
         """Treat dicts with enable=None (or missing enable) as None (#36233)."""
         if v is None:
             return None
-        if isinstance(v, dict):
-            if v.get("enable") is None:
-                return None
+        if isinstance(v, dict) and v.get("enable") is None:
+            return None
         return v

@@ -6,9 +6,8 @@ class RetrievalResourceConfigManager:
     def convert(cls, config: dict[str, Any]) -> bool:
         show_retrieve_source = False
         retriever_resource_dict = config.get("retriever_resource")
-        if retriever_resource_dict:
-            if retriever_resource_dict.get("enabled"):
-                show_retrieve_source = True
+        if retriever_resource_dict and retriever_resource_dict.get("enabled"):
+            show_retrieve_source = True
 
         return show_retrieve_source
 
