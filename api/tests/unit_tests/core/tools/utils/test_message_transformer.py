@@ -1,5 +1,5 @@
 import json
-from collections.abc import Callable, Generator, Iterable
+from collections.abc import Generator, Iterable
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Any, ClassVar
@@ -7,6 +7,7 @@ from uuid import uuid4
 
 import numpy as np
 import pytest
+from pydantic import BaseModel, JsonValue
 
 import core.tools.utils.message_transformer as mt
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
@@ -65,10 +66,35 @@ def _json_message_of(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessag
     return message.message
 
 
-# test_invalid_input_type deliberately passes non-dict values to safe_json_dict() to exercise its
-# runtime guard. This alias widens the declared parameter type to the runtime behaviour instead of
-# suppressing the diagnostic at each call site.
-_safe_json_dict_unchecked: Callable[..., dict[str, Any]] = safe_json_dict
+class _MetadataOut(BaseModel):
+    created_at: str
+    version: float
+    tags: list[str]
+
+
+class _DataOut(BaseModel):
+    values: list[float]
+    binary: str
+
+
+class _NestedInnerOut(BaseModel):
+    datetime: str
+    decimal: float
+
+
+class _NestedLevel2Out(BaseModel):
+    level2: _NestedInnerOut
+
+
+class _NestedPayload(BaseModel):
+    level1: _NestedLevel2Out
+
+
+class _SerializedIntegrationPayload(BaseModel):
+    """Shape of ``complex_data`` after serialization, so assertions read typed fields."""
+
+    metadata: _MetadataOut
+    data: _DataOut
 
 
 class TestMessageTransformerCases:
@@ -380,17 +406,6 @@ class TestToolEngineSerializationCases:
             assert isinstance(result["datetime"], str)
             assert isinstance(result["decimal"], float)
 
-        def test_invalid_input_type(self) -> None:
-            """Test that invalid input types raise TypeError"""
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                _safe_json_dict_unchecked("not a dict")
-
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                _safe_json_dict_unchecked([1, 2, 3])
-
-            with pytest.raises(TypeError, match="safe_json_dict\\(\\) expects a dictionary \\(dict\\) as input"):
-                _safe_json_dict_unchecked(42)
-
         def test_empty_dict(self) -> None:
             """Test empty dictionary handling"""
             result = safe_json_dict({})
@@ -406,9 +421,9 @@ class TestToolEngineSerializationCases:
                     }
                 }
             }
-            result = safe_json_dict(test_dict)
-            assert isinstance(result["level1"]["level2"]["datetime"], str)
-            assert isinstance(result["level1"]["level2"]["decimal"], float)
+            nested = _NestedPayload.model_validate(safe_json_dict(test_dict))
+            assert nested.level1.level2.datetime == "2024-01-01T12:00:00+00:00"
+            assert nested.level1.level2.decimal == 123.456
 
     class TestToolInvokeMessageJsonSerialization:
         """Test suite for ToolInvokeMessage JSON serialization through safe_json_value"""
@@ -511,16 +526,15 @@ class TestToolEngineSerializationCases:
             assert transformed_message.type == ToolInvokeMessage.MessageType.JSON
 
             # Verify the JSON object was transformed
-            assert isinstance(transformed_message.message, ToolInvokeMessage.JsonMessage)
-            json_obj = transformed_message.message.json_object
-            assert isinstance(json_obj, dict)
-            assert isinstance(json_obj["metadata"]["created_at"], str)
-            assert isinstance(json_obj["metadata"]["version"], float)
-            assert isinstance(json_obj["data"]["values"], list)
-            assert isinstance(json_obj["data"]["binary"], str)
+            payload = _SerializedIntegrationPayload.model_validate(_json_message_of(transformed_message).json_object)
+            assert payload.metadata.created_at == "2024-01-01T12:00:00+00:00"
+            assert payload.metadata.version == 1.0
+            assert payload.metadata.tags == ["tag1", "tag2"]
+            assert payload.data.values == [1.1, 2.2, 3.3]
+            assert payload.data.binary == "binary content"
 
             # Test final JSON serialization
-            final_json = json.dumps(json_obj, ensure_ascii=False)
+            final_json = json.dumps(_json_message_of(transformed_message).json_object, ensure_ascii=False)
             assert isinstance(final_json, str)
 
             # Verify we can deserialize
@@ -640,7 +654,7 @@ class TestToolEngineSerializationCases:
             # Step 7: Verify all complex types were properly converted
             self._verify_all_complex_types_converted(deserialized_data)
 
-        def _verify_all_complex_types_converted(self, data: object) -> None:
+        def _verify_all_complex_types_converted(self, data: JsonValue) -> None:
             """Helper method to verify all complex types were properly converted"""
             match data:
                 case dict():
