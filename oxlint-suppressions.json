@@ -52,11 +52,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/layout-main.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/chart-view.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
@@ -135,11 +130,6 @@
   "web/app/components/app-sidebar/dataset-info/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/app-sidebar/nav-link/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 10
     }
   },
   "web/app/components/app/access-config/index.tsx": {
@@ -752,11 +742,6 @@
       "count": 2
     }
   },
-  "web/app/components/apps/app-card/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 8
-    }
-  },
   "web/app/components/apps/app-list-header.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -925,14 +910,6 @@
   "web/app/components/base/chat/chat-with-history/sidebar/item.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
-    }
-  },
-  "web/app/components/base/chat/chat/__tests__/hooks.spec.tsx": {
-    "no-restricted-imports": {
-      "count": 1
-    },
-    "typescript/no-deprecated": {
-      "count": 91
     }
   },
   "web/app/components/base/chat/chat/answer/more.tsx": {
@@ -1737,16 +1714,6 @@
   "web/app/components/billing/plan/assets/index.tsx": {
     "no-barrel-files/no-barrel-files": {
       "count": 3
-    }
-  },
-  "web/app/components/billing/pricing/content.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/components/billing/pricing/header.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/billing/priority-label/index.tsx": {
@@ -3516,11 +3483,6 @@
       "count": 1
     }
   },
-  "web/app/components/snippets/components/snippet-collapsed-preview.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/snippets/components/snippet-header/run-mode.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 4
@@ -4187,11 +4149,6 @@
       "count": 1
     },
     "jsx-a11y/no-static-element-interactions": {
-      "count": 1
-    }
-  },
-  "web/app/components/workflow/nodes/_base/components/title-description-input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
       "count": 1
     }
   },

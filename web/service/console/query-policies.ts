@@ -1784,9 +1784,141 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      byEvaluateTargetType: {
+        byEvaluateTargetId: {
+          evaluation: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  return context.client.invalidateQueries({
+                    queryKey:
+                      consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.get.key({
+                        type: 'query',
+                        input: { params: variables.params },
+                      }),
+                  })
+                },
+              },
+            },
+            run: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    return context.client.invalidateQueries({
+                      queryKey:
+                        consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                          {
+                            type: 'query',
+                            input: { params: variables.params },
+                          },
+                        ),
+                    })
+                  },
+                },
+              },
+            },
+            runs: {
+              byRunId: {
+                cancel: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = {
+                          evaluate_target_id: params.evaluate_target_id,
+                          evaluate_target_type: params.evaluate_target_type,
+                        }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params: targetParams },
+                                },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params },
+                                },
+                              ),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+                retry: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = {
+                          evaluate_target_id: params.evaluate_target_id,
+                          evaluate_target_type: params.evaluate_target_type,
+                        }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params: targetParams },
+                                },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params },
+                                },
+                              ),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            fileScanPolicy: {
+              put: {
+                mutationOptions: {
+                  onSuccess: (policy, variables, _result, context) => {
+                    context.client.setQueryData(
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                      policy,
+                    )
+                    // Each scanner reports how many knowledge bases select it.
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
+              },
+            },
             delete: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -1842,6 +1974,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          fileScanPolicy: {
+            put: {
+              mutationOptions: {
+                onSuccess: (policy, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    policy,
+                  )
+                  // Each scanner reports how many knowledge bases select it.
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _result, context) => {
@@ -1889,6 +2039,96 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           // The upgrade dialog reports start failures, including model issues, inline.
           knowledgeFsUpgrades: {
             post: { mutationOptions: { context: { silent: true } } },
+          },
+          evaluation: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.evaluation.get.key({
+                      type: 'query',
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+            run: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
+              },
+            },
+            runs: {
+              byRunId: {
+                cancel: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = { dataset_id: params.dataset_id }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                              type: 'query',
+                              input: { params: targetParams },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                                type: 'query',
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+                retry: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = { dataset_id: params.dataset_id }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                              type: 'query',
+                              input: { params: targetParams },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                                type: 'query',
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
           get: {
             queryOptions: {
@@ -2666,6 +2906,55 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                   (oldExtensions: ApiBasedExtensionResponse[] | undefined) =>
                     oldExtensions?.filter((extension) => extension.id !== variables.params.id),
                 )
+              },
+            },
+          },
+        },
+      },
+      fileScan: {
+        providers: {
+          post: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.fileScan.providers.get.key(),
+                })
+              },
+            },
+          },
+          byProviderId: {
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            test: {
+              post: {
+                // A finished check always stores a new status, including a failing one.
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
               },
             },
           },

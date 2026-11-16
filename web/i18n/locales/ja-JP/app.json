@@ -336,5 +336,6 @@
   "types.all": "全て",
   "types.chatbot": "チャットボット",
   "types.completion": "テキスト生成",
+  "types.evaluationWorkflow": "評価ワークフロー",
   "types.workflow": "ワークフロー"
 }
