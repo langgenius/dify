@@ -18,8 +18,6 @@ import TimeRangePicker from './time-range-picker'
 
 dayjs.extend(quarterOfYear)
 
-const today = dayjs()
-
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
 const TIME_PERIOD_MAPPING: { value: number; name: TimePeriodName }[] = [
@@ -62,8 +60,11 @@ function ChartViewContent({
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
-  const [period, setPeriod] = useState<PeriodParams>(() =>
-    isCloudEdition
+  // Read the date when the default period is built, so a page mounted after the module
+  // stayed loaded past midnight does not query charts with a previous day's range.
+  const [period, setPeriod] = useState<PeriodParams>(() => {
+    const today = dayjs()
+    return isCloudEdition
       ? {
           name: t(($) => $['filter.period.today'], { ns: 'appLog' }),
           query: {
@@ -77,8 +78,8 @@ function ChartViewContent({
             start: today.subtract(7, 'day').startOf('day').format(queryDateFormat),
             end: today.endOf('day').format(queryDateFormat),
           },
-        },
-  )
+        }
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -104,7 +105,7 @@ function ChartViewContent({
             </a>
           </div>
         </div>
-        <div className="mt-1 flex h-10 items-center justify-between pr-10 pl-6">
+        <div className="mt-1 flex h-10 items-center justify-between ps-6 pe-10">
           {isCloudEdition && (
             <TimeRangePicker
               ranges={TIME_PERIOD_MAPPING}
