@@ -1,6 +1,7 @@
 import { onlineManager } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -62,6 +63,7 @@ async function setup(options: Partial<Payload> = {}) {
         Open credentials
       </button>
       <ModelCredentialDialog />
+      <AppToaster />
     </Wrapper>,
   )
   await screen.getByRole('button', { name: 'Open credentials' }).click()
@@ -84,14 +86,17 @@ it('keeps a pending save open on Escape and retains the entered draft for retry'
     .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
     .toBeDisabled()
   await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
-  failed.reject(new Error('Save failed'))
+  await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
+  failed.reject(new TypeError('Failed to fetch'))
+  await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
   await expect.element(key).toBeEnabled()
   await expect.element(key).toHaveValue('draft-key')
   expect(onSave).not.toHaveBeenCalled()
   onlineManager.setOnline(true)
   await save.click()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
   expect(onSave).toHaveBeenCalledTimes(1)
 })
 
@@ -113,7 +118,9 @@ it('submits the custom model and key together with Enter and focuses the first m
   await name.fill('custom-model')
   await expect.element(name).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
   expect(api.save).toHaveBeenCalledExactlyOnceWith({
     params: { provider: 'openai' },
     body: expect.objectContaining({
@@ -134,7 +141,9 @@ it('keeps the replacement credential draft when an earlier request succeeds', as
   await screen.getByRole('button', { name: 'common.operation.save' }).click()
   await expect.element(key).toBeDisabled()
   modelCredentialDialog.close()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'Open credentials' }).click()
   await key.fill('second-key')
   pending.resolve({ result: 'success' })
@@ -142,7 +151,7 @@ it('keeps the replacement credential draft when an earlier request succeeds', as
     .poll(() => onSave.mock.calls)
     .toEqual([[undefined, expect.objectContaining({ api_key: 'first-key' })]])
   await expect.element(key).toHaveValue('second-key')
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
 })
 
 it('leaves the new dialog host open when a save from the previous host completes', async () => {
@@ -177,7 +186,9 @@ it('keeps an existing credential selected when activation fails and closes after
   await expect.poll(() => api.activate.mock.calls.length).toBe(1)
   await expect.element(screen.getByRole('button', { name: 'Key 1' })).toBeVisible()
   await add.click()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
   expect(api.activate).toHaveBeenCalledTimes(2)
 })
 
@@ -195,6 +206,8 @@ it('keeps deletion confirmation pending, then allows retry after a failure', asy
   await expect.element(confirm).toBeEnabled()
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect
+    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+    .not.toBeInTheDocument()
   expect(api.remove).toHaveBeenCalledTimes(2)
 })

@@ -6,17 +6,12 @@ import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { AppToaster } from '@/app/notifications/app-toaster'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ExternalAPIPanel from '../index'
-
-const { notifyError } = vi.hoisted(() => ({ notifyError: vi.fn() }))
-vi.mock('@/app/notifications', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@/app/notifications')>()
-  return { ...actual, toast: { ...actual.toast, error: notifyError } }
-})
 
 const api = vi.hoisted(() => ({
   get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
@@ -84,6 +79,7 @@ async function setup(canManage = true) {
               <div className="isolate">
                 <PanelOwner />
               </div>
+              <AppToaster />
             </>
           </FeaturesContext>
         </EventEmitterContextProvider>
@@ -179,7 +175,7 @@ it('retains the external API draft and allows cancel after an offline save fails
   api.create.mockRejectedValueOnce(new TypeError('Failed to fetch'))
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
-  const dialog = screen.getByRole('dialog')
+  const dialog = screen.getByRole('dialog', { name: /dataset\./ })
   const name = dialog.getByLabelText(/Name/)
   await name.fill('Draft')
   await dialog.getByLabelText(/API Endpoint/).fill('https://knowledge.example.com')
@@ -202,9 +198,9 @@ it('attempts an offline edit immediately without opening an editor on reconnect'
   onTestFinished(() => onlineManager.setOnline(true))
   await edit.click()
   await expect.poll(() => api.get.mock.calls.length).toBe(1)
-  await expect.poll(() => notifyError.mock.lastCall).toEqual(['common.api.actionFailed'])
+  await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
   onlineManager.setOnline(true)
-  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).not.toBeInTheDocument()
   await edit.click()
-  await expect.element(screen.getByRole('dialog')).toBeVisible()
+  await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).toBeVisible()
 })

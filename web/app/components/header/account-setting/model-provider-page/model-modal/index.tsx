@@ -36,9 +36,12 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { getHttpErrorStatus } from '@/service/http-error'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { isAbortError } from '@/utils/is-abort-error'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import { CredentialSelector } from '../model-auth'
@@ -119,13 +122,14 @@ const ModelModal: FC<ModelModalProps> = ({
     async (request: Promise<void>, values?: Record<string, unknown>) => {
       try {
         await request
-      } catch {
-        // The console client reports failures. Leave this form open for retry.
+      } catch (error) {
+        if (getHttpErrorStatus(error) === undefined && !isAbortError(error))
+          toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
         return
       }
       onSuccess(values)
     },
-    [onSuccess],
+    [onSuccess, t],
   )
 
   const handleSave = useCallback(() => {
