@@ -35,8 +35,6 @@ from core.plugin.impl.exc import PluginDaemonInternalServerError, PluginPermissi
 from libs.external_api import ExternalApi
 from tests.helpers.unit.controllers.rbac_introspection import rbac_checks
 
-_INVALID_LIST_QUERY: dict[str, object] = {"page": 0, "page_size": 10}
-
 
 def _endpoint_entity() -> EndpointEntityWithInstance:
     now = datetime(2026, 1, 1, tzinfo=UTC)
@@ -153,17 +151,17 @@ class TestEndpointCollectionApi:
         api = EndpointCollectionApi()
         method = inspect.unwrap(api.post)
 
-        payload = {
+        raw_payload = {
             "plugin_unique_identifier": "p1",
             "name": "",
-            "settings": dict[str, object](),
+            "settings": {"a": 1},
         }
 
         with (
-            app.test_request_context("/", json=payload),
+            app.test_request_context("/", json=raw_payload),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointCreatePayload\\\nname"):
-                method(api, EndpointCreatePayload(**payload), "t1", "u1")
+                method(api, EndpointCreatePayload.model_validate(raw_payload), "t1", "u1")
 
 
 class TestDeprecatedEndpointCreateApi:
@@ -230,11 +228,13 @@ class TestEndpointListApi:
         api = EndpointListApi()
         method = inspect.unwrap(api.get)
 
+        raw_query = {"page": 0, "page_size": 10}
+
         with (
             app.test_request_context("/?page=0&page_size=10"),
         ):
             with pytest.raises(ValueError, match="1 validation error for EndpointListQuery\\\npage"):
-                method(api, EndpointListQuery.model_validate(_INVALID_LIST_QUERY), "t1", "u1")
+                method(api, EndpointListQuery.model_validate(raw_query), "t1", "u1")
 
 
 class TestEndpointListForSinglePluginApi:

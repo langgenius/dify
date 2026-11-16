@@ -1,4 +1,4 @@
-﻿preset = "strict"
+preset = "strict"
 project-includes = [".", "../helpers/unit", "../helpers/workflow", "../e2e_tests/contracts"]
 search-path = ["../.."]
 python-platform = "linux"
