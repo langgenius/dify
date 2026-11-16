@@ -18,7 +18,7 @@ Act as Dify's **RADAR (Risk-Aware Diff Auto Review)** gatekeeper. Classify chang
    - SQLAlchemy sessions, transactions, locks, or queries: [`docs/BACKEND_SQLALCHEMY.md`](../../docs/BACKEND_SQLALCHEMY.md)
    - Repositories or port implementations: [`docs/BACKEND_REPOSITORIES.md`](../../docs/BACKEND_REPOSITORIES.md)
    - Controllers, application services, domain objects, or wiring: [`docs/BACKEND_ARCHITECTURE.md`](../../docs/BACKEND_ARCHITECTURE.md), [`api/AGENTS.md`](../../api/AGENTS.md), and [`api/controllers/API_SCHEMA_GUIDE.md`](../../api/controllers/API_SCHEMA_GUIDE.md)
-   - Frontend (`web/`, `packages/dify-ui/`): [`web/AGENTS.md`](../../web/AGENTS.md), [`packages/dify-ui/AGENTS.md`](../../packages/dify-ui/AGENTS.md), and [`.agents/skills/frontend-code-review/SKILL.md`](../../.agents/skills/frontend-code-review/SKILL.md)
+   - Frontend (`web/`, `packages/dify-ui/`): [`web/AGENTS.md`](../../web/AGENTS.md) and [`packages/dify-ui/AGENTS.md`](../../packages/dify-ui/AGENTS.md)
    - Other packages (`cli/`, `dify-agent/`, `e2e/`, `docker/`): [`AGENTS.md`](../../AGENTS.md) and the nearest package `AGENTS.md`
 
 ## 2. Multi-Dimensional Risk Predicates (Yes / No)

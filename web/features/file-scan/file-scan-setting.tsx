@@ -1,6 +1,11 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import type {
+  FallbackAction,
+  FileScanPolicyController,
+  FileScanProduct,
+} from './use-file-scan-policy'
 import { Button, buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Field, FieldItem, FieldLabel } from '@langgenius/dify-ui/field'
@@ -16,44 +21,21 @@ import {
   SelectTrigger,
 } from '@langgenius/dify-ui/select'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useId, useState } from 'react'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { buildIntegrationPath } from '@/app/components/integrations/routes'
 import { isCurrentWorkspaceManagerAtom } from '@/context/workspace-state'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
-import { useFileScanEnabled, useFileScanProviderTypeLabel } from './provider-types'
-
-type FileScanProduct = 'dataset' | 'knowledge-fs'
-type FallbackAction = 'allow' | 'block'
-type FileScanPolicy = {
-  enabled: boolean
-  on_unavailable: FallbackAction
-  on_unscannable: FallbackAction
-  provider_id: string | null
-}
+import { useFileScanProviderTypeLabel } from './provider-types'
 
 type FileScanSettingProps = {
   className?: string
-  /** Which knowledge base product `resourceId` belongs to. */
-  product: FileScanProduct
-  readonly: boolean
-  /** The dataset id, or the control space id of an Agent Knowledge Base. */
-  resourceId: string
+  controller: FileScanPolicyController
 }
-
-const DEFAULT_POLICY: FileScanPolicy = {
-  enabled: false,
-  on_unavailable: 'block',
-  on_unscannable: 'block',
-  provider_id: null,
-}
-
-const fallbackAction = (value: string | undefined): FallbackAction =>
-  value === 'allow' ? 'allow' : 'block'
 
 // Both settings pages put the label beside the control once their own container is wide enough.
 const layoutClassNames: Record<FileScanProduct, { label: string; row: string }> = {
@@ -65,51 +47,6 @@ const layoutClassNames: Record<FileScanProduct, { label: string; row: string }> 
     label: 'sm:w-45',
     row: 'sm:flex-row sm:gap-1',
   },
-}
-
-function useFileScanPolicy(product: FileScanProduct, resourceId: string) {
-  const datasetPolicy = consoleQuery.datasets.byDatasetId.fileScanPolicy
-  const spacePolicy = consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy
-  const datasetQuery = useQuery(
-    datasetPolicy.get.queryOptions({
-      input: { params: { dataset_id: resourceId } },
-      enabled: product === 'dataset',
-    }),
-  )
-  const spaceQuery = useQuery(
-    spacePolicy.get.queryOptions({
-      input: { params: { control_space_id: resourceId } },
-      enabled: product === 'knowledge-fs',
-    }),
-  )
-  const datasetMutation = useMutation(
-    datasetPolicy.put.mutationOptions({ context: { silent: true } }),
-  )
-  const spaceMutation = useMutation(spacePolicy.put.mutationOptions({ context: { silent: true } }))
-  const query = product === 'dataset' ? datasetQuery : spaceQuery
-  const mutation = product === 'dataset' ? datasetMutation : spaceMutation
-
-  return {
-    isError: query.isError,
-    isPending: query.isPending,
-    isSaving: mutation.isPending,
-    policy: query.data
-      ? {
-          enabled: query.data.enabled,
-          on_unavailable: fallbackAction(query.data.on_unavailable),
-          on_unscannable: fallbackAction(query.data.on_unscannable),
-          provider_id: query.data.provider_id ?? null,
-        }
-      : undefined,
-    refetch: () => void query.refetch(),
-    resetSaveError: () => mutation.reset(),
-    save: (body: FileScanPolicy, onSuccess: () => void) => {
-      if (product === 'dataset')
-        datasetMutation.mutate({ body, params: { dataset_id: resourceId } }, { onSuccess })
-      else spaceMutation.mutate({ body, params: { control_space_id: resourceId } }, { onSuccess })
-    },
-    saveError: mutation.error,
-  }
 }
 
 function FallbackField({
@@ -170,27 +107,17 @@ function FallbackField({
   )
 }
 
-function FileScanPolicyEditor({ className, product, readonly, resourceId }: FileScanSettingProps) {
+function FileScanPolicyEditor({ className, controller }: FileScanSettingProps) {
   const { t } = useTranslation(['fileScan'])
   const { t: tCommon } = useTranslation(['common'])
   const typeLabel = useFileScanProviderTypeLabel()
   const titleId = useId()
   const enableDescriptionId = useId()
   const canManageScanners = useAtomValue(isCurrentWorkspaceManagerAtom)
-  const { isError, isPending, isSaving, policy, refetch, resetSaveError, save, saveError } =
-    useFileScanPolicy(product, resourceId)
+  const { current, disabled, isError, product, refetch, saveError, scannerMissing, update } =
+    controller
   const providersQuery = useQuery(consoleQuery.fileScan.providers.get.queryOptions())
   const providers = providersQuery.data?.data ?? []
-  const [draft, setDraft] = useState<FileScanPolicy>()
-  const [scannerMissing, setScannerMissing] = useState(false)
-  const saved = policy ?? DEFAULT_POLICY
-  const current = draft ?? saved
-  const dirty =
-    current.enabled !== saved.enabled ||
-    current.provider_id !== saved.provider_id ||
-    current.on_unavailable !== saved.on_unavailable ||
-    current.on_unscannable !== saved.on_unscannable
-  const disabled = readonly || isPending || isError || isSaving
   const selectedProvider = providers.find((provider) => provider.id === current.provider_id)
   const layout = layoutClassNames[product]
   const rowClassName = cn('flex min-w-0 flex-col items-stretch gap-2', layout.row)
@@ -198,21 +125,6 @@ function FileScanPolicyEditor({ className, product, readonly, resourceId }: File
     'mb-0 flex min-h-7 shrink-0 items-center py-0 pt-1 system-sm-semibold text-text-secondary',
     layout.label,
   )
-
-  const update = (patch: Partial<FileScanPolicy>) => {
-    setDraft({ ...current, ...patch })
-    setScannerMissing(false)
-    resetSaveError()
-  }
-
-  const handleSave = () => {
-    if (disabled || !dirty) return
-    if (current.enabled && !current.provider_id) {
-      setScannerMissing(true)
-      return
-    }
-    save(current, () => setDraft(undefined))
-  }
 
   const row = (label: ReactNode, children: ReactNode) => (
     <div className={rowClassName}>
@@ -357,39 +269,25 @@ function FileScanPolicyEditor({ className, product, readonly, resourceId }: File
         </>
       )}
 
-      {!readonly &&
-        (dirty || saveError) &&
+      {saveError &&
         row(
           null,
-          <div className="flex flex-col items-start gap-2">
-            {saveError && (
-              <p
-                role="alert"
-                className="rounded-lg bg-state-destructive-hover px-3 py-2 system-xs-regular text-text-destructive"
-              >
-                {getErrorMessage(saveError) ?? t(($) => $['policy.saveFailed'])}
-              </p>
-            )}
-            {/* The surrounding settings form owns its own submit, so this section saves by itself. */}
-            <Button
-              type="button"
-              variant="primary"
-              size="small"
-              disabled={!dirty}
-              loading={isSaving}
-              onClick={handleSave}
-            >
-              {tCommon(($) => $['operation.save'])}
-            </Button>
-          </div>,
+          <p
+            role="alert"
+            className="rounded-lg bg-state-destructive-hover px-3 py-2 system-xs-regular text-text-destructive"
+          >
+            {getErrorMessage(saveError) ?? t(($) => $['policy.saveFailed'])}
+          </p>,
         )}
     </section>
   )
 }
 
-/** Malware-scan policy of one knowledge base. Renders nothing while the feature is disabled. */
+/**
+ * Malware-scan policy of one knowledge base, saved by the hosting settings page.
+ * Renders nothing while the feature is disabled.
+ */
 export function FileScanSetting(props: FileScanSettingProps) {
-  const enabled = useFileScanEnabled()
-  if (!enabled) return null
+  if (!props.controller.active) return null
   return <FileScanPolicyEditor {...props} />
 }
