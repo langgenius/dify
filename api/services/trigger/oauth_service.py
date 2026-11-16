@@ -4,9 +4,9 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
-from core.trigger.entities.api_entities import SubscriptionBuilderApiEntity
 from models.provider_ids import TriggerProviderID
 from services.plugin.dispatch_identity import PluginOAuthClientConfig
+from services.trigger.api_entities import SubscriptionBuilderApiEntity
 from services.trigger.oauth_client_service import TriggerOAuthClientService
 
 

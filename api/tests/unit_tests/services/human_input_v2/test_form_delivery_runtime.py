@@ -1526,6 +1526,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         WorkflowPauseStreamResponse,
     )
     from core.db.session_factory import session_factory
+    from core.workflow.human_input_policy import HumanInputSurface
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities import WorkflowStartReason
@@ -1582,6 +1583,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         pause_entity=pause,
         resumption_context=None,
         session_maker=context.sessions,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
     required = next(event["data"] for event in events if event["event"] == "human_input_required")
     paused = next(event["data"] for event in events if event["event"] == "workflow_paused")

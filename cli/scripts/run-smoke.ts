@@ -26,7 +26,7 @@ const checks: Check[] = [
     name: 'version prints .client.version',
     run: () => {
       const body = JSON.parse(cli(['version']))
-      if (typeof body.client?.version !== 'string') throw new Error('no .client.version')
+      if (typeof body.client?.version !== 'string') throw new TypeError('no .client.version')
     },
   },
   {

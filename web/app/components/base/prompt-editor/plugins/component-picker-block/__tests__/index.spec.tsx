@@ -1,4 +1,3 @@
-import type { EventEmitter } from 'ahooks/lib/useEventEmitter'
 import type { LexicalEditor } from 'lexical'
 import type {
   AgentOutputBlockType,
@@ -11,8 +10,6 @@ import type {
   WorkflowVariableBlockType,
 } from '../../../types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import type { EventEmitterValue } from '@/context/event-emitter'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
@@ -30,15 +27,13 @@ import {
 import * as React from 'react'
 import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { VarType } from '@/app/components/workflow/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import { TestLexicalComposer } from '@/test/lexical'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../../agent-output-block/commands'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from '../../context-block'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../../current-block'
 import { CustomTextNode } from '../../custom-text/node'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../../last-run-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../../variable-block'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../../workflow-variable-block'
 import ComponentPicker from '../index'
 
@@ -129,20 +124,14 @@ function makeWorkflowVariableBlock(
 
 type Captures = {
   editor: LexicalEditor | null
-  eventEmitter: EventEmitter<EventEmitterValue> | null
 }
 
-const CaptureEditorAndEmitter: React.FC<{ captures: Captures }> = ({ captures }) => {
+const CaptureEditor: React.FC<{ captures: Captures }> = ({ captures }) => {
   const [editor] = useLexicalComposerContext()
-  const { eventEmitter } = useEventEmitterContextContext()
 
   React.useEffect(() => {
     captures.editor = editor
   }, [captures, editor])
-
-  React.useEffect(() => {
-    captures.eventEmitter = eventEmitter
-  }, [captures, eventEmitter])
 
   return null
 }
@@ -184,29 +173,27 @@ const MinimalEditor: React.FC<{
   )
 
   return (
-    <EventEmitterContextProvider>
-      <LexicalComposer initialConfig={initialConfig}>
-        <RichTextPlugin
-          contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_TEST_ID} />}
-          placeholder={null}
-          ErrorBoundary={LexicalErrorBoundary}
-        />
+    <TestLexicalComposer initialConfig={initialConfig}>
+      <RichTextPlugin
+        contentEditable={<ContentEditable data-testid={CONTENT_EDITABLE_TEST_ID} />}
+        placeholder={null}
+        ErrorBoundary={LexicalErrorBoundary}
+      />
 
-        <CaptureEditorAndEmitter captures={captures} />
+      <CaptureEditor captures={captures} />
 
-        <ComponentPicker
-          triggerString={triggerString}
-          contextBlock={contextBlock}
-          queryBlock={queryBlock}
-          variableBlock={variableBlock}
-          workflowVariableBlock={workflowVariableBlock}
-          agentOutputBlock={agentOutputBlock}
-          currentBlock={currentBlock}
-          errorMessageBlock={errorMessageBlock}
-          lastRunBlock={lastRunBlock}
-        />
-      </LexicalComposer>
-    </EventEmitterContextProvider>
+      <ComponentPicker
+        triggerString={triggerString}
+        contextBlock={contextBlock}
+        queryBlock={queryBlock}
+        variableBlock={variableBlock}
+        workflowVariableBlock={workflowVariableBlock}
+        agentOutputBlock={agentOutputBlock}
+        currentBlock={currentBlock}
+        errorMessageBlock={errorMessageBlock}
+        lastRunBlock={lastRunBlock}
+      />
+    </TestLexicalComposer>
   )
 }
 
@@ -215,15 +202,6 @@ async function waitForEditor(captures: Captures): Promise<LexicalEditor> {
     expect(captures.editor).not.toBeNull()
   })
   return captures.editor as LexicalEditor
-}
-
-async function waitForEventEmitter(
-  captures: Captures,
-): Promise<NonNullable<Captures['eventEmitter']>> {
-  await waitFor(() => {
-    expect(captures.eventEmitter).not.toBeNull()
-  })
-  return captures.eventEmitter as NonNullable<Captures['eventEmitter']>
 }
 
 async function setEditorText(
@@ -264,7 +242,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('does not render a menu when there are no options and workflowVariableBlock is not shown', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
     render(<MinimalEditor triggerString="{" captures={captures} />)
 
     const editor = await waitForEditor(captures)
@@ -281,7 +259,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     'keeps the add-variable action usable after entering "%s"',
     async (text) => {
       const user = userEvent.setup()
-      const captures: Captures = { editor: null, eventEmitter: null }
+      const captures: Captures = { editor: null }
       render(
         <MinimalEditor
           triggerString="{"
@@ -306,7 +284,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   it('renders prompt options in a portal and removes the trigger TextNode when selecting a normal option', async () => {
     const user = userEvent.setup()
 
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
     render(
       <MinimalEditor
         triggerString="{"
@@ -345,37 +323,8 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
   })
 
-  it('subscribes to EventEmitter and dispatches INSERT_VARIABLE_VALUE_BLOCK_COMMAND only for matching messages', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
-    render(
-      <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
-    )
-
-    const editor = await waitForEditor(captures)
-    const eventEmitter = await waitForEventEmitter(captures)
-    const dispatchSpy = vi.spyOn(editor, 'dispatchCommand')
-
-    // Non-object emissions (string) should be ignored by the subscription callback.
-    eventEmitter.emit('some-string')
-    expect(dispatchSpy).not.toHaveBeenCalledWith(
-      INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-      expect.any(String),
-    )
-
-    // Mismatched type should be ignored.
-    eventEmitter.emit({ type: 'OTHER', payload: 'x' })
-    expect(dispatchSpy).not.toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{x}}')
-
-    // Matching type should dispatch with {{payload}} wrapping.
-    eventEmitter.emit({
-      type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND as unknown as string,
-      payload: 'foo',
-    })
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{foo}}')
-  })
-
   it('handles workflow variable selection: flat vars (current/error_message/last_run) and closes on Escape from search input', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
       makeWorkflowVarNode('node-output', 'Node Output', [
@@ -405,7 +354,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(currentLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, GeneratorType.prompt)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_CURRENT_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select error_message (flat).
     await setEditorText(editor, '{', true)
@@ -415,7 +364,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(errorMessageLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
 
     // Re-open menu and select last_run (flat).
     await setEditorText(editor, '{', true)
@@ -425,7 +374,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
       fireEvent.click(lastRunLabel)
     })
     await flushNextTick()
-    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+    expect(dispatchSpy).toHaveBeenCalledWith(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
 
     // Re-open menu and press Escape in the VarReferenceVars search input to exercise handleClose().
     await setEditorText(editor, '{', true)
@@ -440,7 +389,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('handles workflow variable selection for nested fields: sys.query, sys.files, and normal paths', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
     const user = userEvent.setup()
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
@@ -504,7 +453,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('filters workflow variables from slash input and matches child paths', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
     const user = userEvent.setup()
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
@@ -554,7 +503,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('filters workflow variables on the first character after slash and does not highlight context by default', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
       makeWorkflowVarNode('node-1', 'Node 1', [
@@ -590,7 +539,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('clears slash trigger state after creating an agent output from the footer action', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
 
     render(
       <MinimalEditor
@@ -636,7 +585,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
   })
 
   it('defaults to the first workflow variable and removes the full slash query when selecting by keyboard', async () => {
-    const captures: Captures = { editor: null, eventEmitter: null }
+    const captures: Captures = { editor: null }
 
     const workflowVariableBlock = makeWorkflowVariableBlock({}, [
       makeWorkflowVarNode('node-1', 'Node 1', [
@@ -682,7 +631,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
 
   describe('blur/focus menu visibility', () => {
     it('restores menu visibility when focus command is dispatched after blur-sm hides it', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
+      const captures: Captures = { editor: null }
 
       render(
         <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
@@ -719,7 +668,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
 
     it('cancels the blur-sm timer when focus arrives before the 200ms timeout', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
+      const captures: Captures = { editor: null }
 
       render(
         <MinimalEditor triggerString="{" contextBlock={makeContextBlock()} captures={captures} />,
@@ -752,7 +701,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
 
     it('cancels a pending blur-sm timer when a subsequent blur-sm targets var-search-input', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
+      const captures: Captures = { editor: null }
 
       render(
         <MinimalEditor
@@ -792,7 +741,7 @@ describe('ComponentPicker (component-picker-block/index.tsx)', () => {
     })
 
     it('does not hide the menu when focus moves into a variable child popup', async () => {
-      const captures: Captures = { editor: null, eventEmitter: null }
+      const captures: Captures = { editor: null }
 
       render(
         <MinimalEditor

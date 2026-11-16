@@ -7,11 +7,11 @@ from uuid import uuid4
 import pytest
 from sqlalchemy import select
 
-from core.trigger.utils.endpoint import generate_webhook_trigger_endpoint
 from extensions.ext_redis import RedisClientWrapper
 from models.enums import AppTriggerStatus
 from models.model import EndUser
 from models.trigger import AppTrigger, WorkflowTriggerLog
+from models.utils.trigger_endpoint import generate_webhook_trigger_endpoint
 from repositories.trigger.debug_repository import RedisTriggerDebugRepository
 from services.trigger.debug_events import WebhookDebugEvent, build_webhook_pool_key
 from tests.e2e_tests.containers.services import test_trigger_subscription_builder

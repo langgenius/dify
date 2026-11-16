@@ -2,11 +2,11 @@ import type { LexicalEditor } from 'lexical'
 import type { GetVarType } from '../../../types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { NodeOutPutVar, Var } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { render, waitFor } from '@testing-library/react'
 import { $nodesOfType } from 'lexical'
 import { Type } from '@/app/components/workflow/nodes/llm/types'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import {
   getNodesByType,
   readEditorStateValue,
@@ -231,7 +231,7 @@ describe('HITLInputReplacementBlock', () => {
     it('should throw when hitl input node is not registered on editor', () => {
       expect(() => {
         render(
-          <LexicalComposer
+          <TestLexicalComposer
             initialConfig={{
               namespace: 'hitl-input-replacement-plugin-missing-node-test',
               onError: (error: Error) => {
@@ -248,7 +248,7 @@ describe('HITLInputReplacementBlock', () => {
               onFormInputItemRemove={vi.fn()}
               workflowNodesMap={createWorkflowNodesMap()}
             />
-          </LexicalComposer>,
+          </TestLexicalComposer>,
         )
       }).toThrow('HITLInputNodePlugin: HITLInputNode not registered on editor')
     })

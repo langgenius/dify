@@ -255,6 +255,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         datasourcePluginsQuery.isPending
           ? forever()
           : track(async () => {
+              // oxlint-disable-next-line unicorn/prefer-type-error -- isError represents a failed query, not a JavaScript type check.
               if (datasourcePluginsQuery.isError) throw new Error('plugins unavailable')
               return datasourcePluginsQuery.data ?? []
             }),
