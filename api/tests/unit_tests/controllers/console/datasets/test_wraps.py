@@ -8,7 +8,12 @@ from sqlalchemy.orm import Session, object_session, sessionmaker
 from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import DataSourceContentPreviewApi
 from controllers.console.datasets.rag_pipeline.rag_pipeline import PublishCustomizedPipelineTemplateApi
-from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline, require_tenant_id
+from controllers.console.datasets.wraps import (
+    get_rag_pipeline,
+    get_rag_pipeline_with,
+    load_rag_pipeline,
+    require_tenant_id,
+)
 from machinery.errors import ActiveWorkspaceRequiredError
 from models.account import Account
 from models.dataset import Pipeline
@@ -44,7 +49,7 @@ def _committed_name(factory: sessionmaker[Session], pipeline_id: str) -> str:
 
 def test_missing_pipeline_id() -> None:
     @get_rag_pipeline
-    def dummy_view(**_kwargs: object) -> str:
+    def dummy_view() -> str:
         return "ok"
 
     with pytest.raises(ValueError, match="missing pipeline_id"):
@@ -94,12 +99,11 @@ def test_pipeline_id_removed_from_kwargs(
 ) -> None:
     pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()))
 
-    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: pipeline.tenant_id)
-    def dummy_view(**kwargs: object) -> str:
-        assert "pipeline_id" not in kwargs
-        found = kwargs["pipeline"]
-        assert isinstance(found, Pipeline)
-        return found.name
+    @get_rag_pipeline_with(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str = "") -> str:
+        assert pipeline is not None
+        assert pipeline_id == ""
+        return pipeline.name
 
     assert dummy_view(pipeline_id=pipeline.id) == pipeline.name
     assert _committed_name(sqlite_session_factory, pipeline.id) == pipeline.name
@@ -111,11 +115,11 @@ def test_pipeline_id_is_loaded_as_a_string(
     tenant_id = str(uuid4())
     pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id, pipeline_id="123")
 
-    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: tenant_id)
-    def dummy_view(**kwargs: object) -> Pipeline:
-        found = kwargs["pipeline"]
-        assert isinstance(found, Pipeline)
-        return found
+    @get_rag_pipeline_with(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: tenant_id)
+    def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str | int = "") -> Pipeline:
+        assert pipeline is not None
+        assert pipeline_id == ""
+        return pipeline
 
     loaded = dummy_view(pipeline_id=123)
 
@@ -133,11 +137,16 @@ def test_loads_through_the_session_injected_above_it(
     def unused_session_factory() -> Session:
         raise AssertionError("injected session path must not open the legacy session")
 
-    @get_rag_pipeline(session_factory=unused_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
-    def dummy_view(_self: _Resource, session: Session, **kwargs: object) -> tuple[Session, Pipeline]:
-        found = kwargs["pipeline"]
-        assert isinstance(found, Pipeline)
-        return session, found
+    @get_rag_pipeline_with(session_factory=unused_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(
+        _self: _Resource,
+        session: Session,
+        pipeline: Pipeline | None = None,
+        pipeline_id: str = "",
+    ) -> tuple[Session, Pipeline]:
+        assert pipeline is not None
+        assert pipeline_id == ""
+        return session, pipeline
 
     handler_session, loaded = dummy_view(_Resource(), sqlite_session, pipeline_id=pipeline.id)
 
@@ -156,12 +165,17 @@ def test_unmigrated_handler_uses_the_session_factory(
     account = Account(name="Test User", email="test@example.com")
     account.id = "account-1"
 
-    @get_rag_pipeline(session_factory=sqlite_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
-    def dummy_view(_self: _Resource, current_user: Account, **kwargs: object) -> Pipeline:
+    @get_rag_pipeline_with(session_factory=sqlite_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
+    def dummy_view(
+        _self: _Resource,
+        current_user: Account,
+        pipeline: Pipeline | None = None,
+        pipeline_id: str = "",
+    ) -> Pipeline:
         assert current_user is account
-        found = kwargs["pipeline"]
-        assert isinstance(found, Pipeline)
-        return found
+        assert pipeline is not None
+        assert pipeline_id == ""
+        return pipeline
 
     loaded = dummy_view(_Resource(), account, pipeline_id=pipeline.id)
     loaded_session = object_session(loaded)
@@ -174,7 +188,7 @@ def test_unmigrated_handler_uses_the_session_factory(
     assert _committed_name(sqlite_session_factory, pipeline.id) == "Legacy pipeline"
 
 
-def _decorator_layers(view: Callable[..., object]) -> list[str]:
+def _decorator_layers[**P, R](view: Callable[P, R]) -> list[str]:
     """Name each layer of a decorated view, outermost first.
 
     ``functools.wraps`` copies ``__qualname__`` onto every wrapper but leaves its
@@ -182,7 +196,7 @@ def _decorator_layers(view: Callable[..., object]) -> list[str]:
     """
     layers: list[str] = []
 
-    def record(layer: Callable[..., object]) -> bool:
+    def record(layer: Callable[P, R]) -> bool:
         layers.append(layer.__code__.co_qualname.split(".", 1)[0])
         return False
 
@@ -195,9 +209,9 @@ def _decorator_layers(view: Callable[..., object]) -> list[str]:
     [PublishCustomizedPipelineTemplateApi.post, DataSourceContentPreviewApi.post],
     ids=["publish_customized_pipeline_template", "datasource_content_preview"],
 )
-def test_migrated_handlers_inject_their_session_into_get_rag_pipeline(view: Callable[..., object]) -> None:
+def test_migrated_handlers_inject_their_session_into_get_rag_pipeline[**P, R](view: Callable[P, R]) -> None:
     """``with_session`` sits directly above ``get_rag_pipeline``, so the pipeline loads through the
-    handler's session instead of ``db.session``."""
+    handler's session."""
     layers = _decorator_layers(view)
 
     assert layers[layers.index("get_rag_pipeline") - 1] == "with_session"

@@ -702,12 +702,30 @@ class TestRagPipelineWorkflowCases:
         api = api_type()
         handler = unwrap_all(api.post)
         pipeline = _pipeline()
+        recorded: list[tuple[Session, PipelineGenerator, str]] = []
+
+        def record_generate(
+            *,
+            pipeline: Pipeline,
+            session: Session,
+            generator: PipelineGenerator,
+            user: Account,
+            args: dict[str, str],
+            invoke_from: str,
+            streaming: bool,
+        ) -> dict[str, str]:
+            assert user.id
+            assert args["datasource_type"] == "x"
+            assert invoke_from != ""
+            assert isinstance(streaming, bool)
+            recorded.append((session, generator, pipeline.id))
+            return {"event": "done"}
 
         with (
             Session(sqlite_engine) as session,
             app.test_request_context("/", json=payload),
-            patch.object(module, "load_rag_pipeline", return_value=pipeline) as load_pipeline,
-            patch.object(module.PipelineGenerateService, "generate", return_value={"event": "done"}) as generate,
+            patch.object(module, "load_rag_pipeline", return_value=pipeline),
+            patch.object(module.PipelineGenerateService, "generate", side_effect=record_generate),
             patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
         ):
             req_data = (
@@ -718,11 +736,7 @@ class TestRagPipelineWorkflowCases:
             response = handler(api, req_data, session, _account(), pipeline.id)
 
         assert response == {"ok": True}
-        load_pipeline.assert_called_once_with(
-            session, pipeline.id, tenant_id=_RAG_PIPELINE_WORKFLOW_DEFAULT_WORKFLOW_TENANT_ID
-        )
-        assert generate.call_args.kwargs["session"] is session
-        assert generate.call_args.kwargs["generator"] is pipeline_application
+        assert recorded == [(session, pipeline_application, pipeline.id)]
         assert session.get_bind() is sqlite_engine
 
     @staticmethod
