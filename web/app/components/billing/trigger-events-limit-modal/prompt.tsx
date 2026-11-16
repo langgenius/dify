@@ -1,21 +1,19 @@
+'use client'
 import type { BillingQuota } from '@/app/components/billing/quota'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import dayjs from 'dayjs'
+import { useLocalStorage } from 'foxact/use-local-storage'
 import { useAtomValue } from 'jotai'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { getTriggerEventsQuota } from '@/app/components/billing/quota'
 import { currentWorkspaceIdAtom } from '@/context/workspace-state'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { consoleQuery } from '@/service/console'
-
-type UseTriggerEventsLimitModalResult = {
-  triggerEventsLimitModal: BillingQuota | null
-  dismissTriggerEventsLimitModal: () => void
-}
+import TriggerEventsLimitModal from './index'
 
 const TRIGGER_EVENTS_LOCALSTORAGE_PREFIX = 'trigger-events-limit-dismissed'
 
-export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult => {
+export function TriggerEventsLimitPrompt() {
   const currentWorkspaceId = useAtomValue(currentWorkspaceIdAtom)
   const { data: deploymentEdition } = useSuspenseQuery({
     ...systemFeaturesQueryOptions(),
@@ -30,7 +28,7 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
       }),
     }),
   )
-  const [dismissedCycles, setDismissedCycles] = useState<Record<string, boolean>>({})
+  const [dismissedCycles, setDismissedCycles] = useState<ReadonlySet<string>>(() => new Set())
   const resetInDays = triggerEvents?.quota.resetInDays
   const cycleTag =
     resetInDays !== undefined
@@ -47,34 +45,39 @@ export const useTriggerEventsLimitModal = (): UseTriggerEventsLimitModalResult =
     triggerEvents.quota.usage >= triggerEvents.quota.limit
       ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${triggerEvents.plan}-${triggerEvents.quota.limit}-${cycleTag}`
       : null
-  const dismissed = storageKey ? dismissedCycles[storageKey] : undefined
+  return storageKey && triggerEvents ? (
+    <CycleQuotaPrompt
+      key={storageKey}
+      storageKey={storageKey}
+      quota={triggerEvents.quota}
+      dismissed={dismissedCycles.has(storageKey)}
+      onDismiss={() => setDismissedCycles((cycles) => new Set(cycles).add(storageKey))}
+    />
+  ) : null
+}
 
-  useEffect(() => {
-    if (!storageKey || dismissed !== undefined) return
+function CycleQuotaPrompt({
+  storageKey,
+  quota,
+  dismissed,
+  onDismiss,
+}: {
+  storageKey: string
+  quota: BillingQuota
+  dismissed: boolean
+  onDismiss: () => void
+}) {
+  const [persisted, persist] = useLocalStorage<string>(storageKey, '0', { raw: true })
 
-    let storedDismissal = false
-    try {
-      storedDismissal = localStorage.getItem(storageKey) === '1'
-    } catch {
-      // Storage can be unavailable; dismissal still lasts for this mounted session.
-    }
-    setDismissedCycles((current) => ({ ...current, [storageKey]: storedDismissal }))
-  }, [storageKey, dismissed])
-
-  const dismissTriggerEventsLimitModal = () => {
-    if (!storageKey) return
-
-    setDismissedCycles((current) => ({ ...current, [storageKey]: true }))
-    try {
-      localStorage.setItem(storageKey, '1')
-    } catch {
-      // The in-memory dismissal above also covers failed storage writes.
-    }
-  }
-
-  return {
-    triggerEventsLimitModal:
-      storageKey && dismissed === false && triggerEvents ? triggerEvents.quota : null,
-    dismissTriggerEventsLimitModal,
-  }
+  return (
+    <TriggerEventsLimitModal
+      show={!dismissed && persisted !== '1'}
+      quota={quota}
+      onClose={() => {
+        // Dismiss for this session even if the browser blocks storage writes.
+        onDismiss()
+        persist('1')
+      }}
+    />
+  )
 }
