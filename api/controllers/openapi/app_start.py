@@ -25,6 +25,8 @@ from models.model import AppMode
 from services.run_job_contracts import JobOwner, OpenedJob
 from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening, JobView, RunJobService
 
+WORKFLOW_START_OP: Final = "start.console_app.workflow"
+ADVANCED_CHAT_START_OP: Final = "start.console_app.advanced_chat"
 _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
 _JOB_STATE: Final = (200, JobState, "Job state")
 
@@ -101,7 +103,7 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
 @openapi_ns.route("/apps/<string:app_id>/workflow:start")
 class WorkflowStartApi(Resource):
     @endpoint(
-        op="start.console_app.workflow",
+        op=WORKFLOW_START_OP,
         pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         effect=Effect.WRITE,
@@ -112,13 +114,13 @@ class WorkflowStartApi(Resource):
         returns=_JOB_STATE,
     )
     def post(self, ctx: Context, app_id: str, *, body: WorkflowStartPayload):
-        return start_job(ctx, body, op="start.console_app.workflow", modes=(AppMode.WORKFLOW,))
+        return start_job(ctx, body, op=WORKFLOW_START_OP, modes=(AppMode.WORKFLOW,))
 
 
 @openapi_ns.route("/apps/<string:app_id>/advanced-chat:start")
 class AdvancedChatStartApi(Resource):
     @endpoint(
-        op="start.console_app.advanced_chat",
+        op=ADVANCED_CHAT_START_OP,
         pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         effect=Effect.WRITE,
@@ -129,4 +131,4 @@ class AdvancedChatStartApi(Resource):
         returns=_JOB_STATE,
     )
     def post(self, ctx: Context, app_id: str, *, body: AdvancedChatStartPayload):
-        return start_job(ctx, body, op="start.console_app.advanced_chat", modes=(AppMode.ADVANCED_CHAT,))
+        return start_job(ctx, body, op=ADVANCED_CHAT_START_OP, modes=(AppMode.ADVANCED_CHAT,))
