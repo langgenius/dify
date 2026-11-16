@@ -355,17 +355,17 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                     icon_background: variable.icon_background,
                     enabled: variable.enabled,
                   }
-                : {}
+                : undefined
             }
             isVariableUsed={(name) =>
               name !== variable?.key && promptVariables.some((item) => item.key === name)
             }
             onSave={(tool) => {
               const updated = {
-                key: tool.variable!,
-                name: tool.label!,
+                key: tool.variable,
+                name: tool.label,
                 enabled: tool.enabled,
-                type: tool.type!,
+                type: tool.type,
                 config: tool.config,
                 icon: tool.icon,
                 icon_background: tool.icon_background,

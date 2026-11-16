@@ -8,6 +8,7 @@ export function useSaveExternalApi() {
   const queryClient = useQueryClient()
   const { t } = useTranslation(['common'])
   return useMutation({
+    networkMode: 'always',
     mutationFn: ({ id, body }: { id?: string; body: CreateExternalAPIReq }) =>
       id
         ? consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch(

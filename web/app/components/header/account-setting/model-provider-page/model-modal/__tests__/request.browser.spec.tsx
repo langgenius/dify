@@ -1,3 +1,4 @@
+import { onlineManager } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
@@ -73,6 +74,8 @@ it('keeps a pending save open on Escape and retains the entered draft for retry'
   const screen = await setup({ onSave })
   const key = screen.getByLabelText(/API key/)
   const save = screen.getByRole('button', { name: 'common.operation.save' })
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
   await key.fill('draft-key')
   await save.click()
   await expect.element(save).toBeDisabled()
@@ -85,6 +88,7 @@ it('keeps a pending save open on Escape and retains the entered draft for retry'
   await expect.element(key).toBeEnabled()
   await expect.element(key).toHaveValue('draft-key')
   expect(onSave).not.toHaveBeenCalled()
+  onlineManager.setOnline(true)
   await save.click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   expect(onSave).toHaveBeenCalledTimes(1)

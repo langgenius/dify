@@ -21,7 +21,6 @@ import GetAutomaticResModal from '@/app/components/app/configuration/config/auto
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import ConfigContext from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { getNewVar, getVars } from '@/utils/var'
@@ -73,7 +72,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     showSelectDataSet,
     externalDataToolsConfig,
   } = useContext(ConfigContext)
-  const [toolDialog] = useState(() => createDialogHandle())
+  const [toolDialog] = useState(() => createDialogHandle<(name: string) => void>())
 
   const [newPromptVariables, setNewPromptVariables] =
     React.useState<PromptVariable[]>(promptVariables)
@@ -245,7 +244,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                     icon: item.icon,
                     icon_background: item.icon_background,
                   })),
-                onAddExternalTool: () => toolDialog.open(null),
+                onAddExternalTool: (insertVariable) => toolDialog.openWithPayload(insertVariable),
               }}
               historyBlock={{
                 show: false,
@@ -293,18 +292,16 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
       </div>
       <Dialog handle={toolDialog} disablePointerDismissal>
-        <ExternalDataToolDialogContent
-          data={{}}
-          isVariableUsed={(name) => promptVariables.some((variable) => variable.key === name)}
-          onSave={(tool) => {
-            eventEmitter?.emit({ type: ADD_EXTERNAL_DATA_TOOL, payload: tool } as any)
-            eventEmitter?.emit({
-              type: INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
-              payload: tool.variable,
-            } as any)
-            toolDialog.close()
-          }}
-        />
+        {({ payload: insertVariable }) => (
+          <ExternalDataToolDialogContent
+            isVariableUsed={(name) => promptVariables.some((variable) => variable.key === name)}
+            onSave={(tool) => {
+              eventEmitter?.emit({ type: ADD_EXTERNAL_DATA_TOOL, payload: tool })
+              insertVariable?.(tool.variable)
+              toolDialog.close()
+            }}
+          />
+        )}
       </Dialog>
     </>
   )

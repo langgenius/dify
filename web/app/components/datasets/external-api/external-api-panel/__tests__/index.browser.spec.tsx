@@ -1,5 +1,6 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { consoleClient } from '@/service/console'
+import { onlineManager } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
@@ -163,4 +164,22 @@ it('opens the card editor as the only top-level dialog', async () => {
   await expect.element(editor).not.toHaveAttribute('data-nested')
   await editor.getByRole('button', { name: 'dataset.externalAPIForm.cancel' }).click()
   await expect.element(edit).toHaveFocus()
+})
+
+it('retains the external API draft and allows cancel after an offline save fails', async () => {
+  api.create.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  const screen = await setup()
+  await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
+  const dialog = screen.getByRole('dialog')
+  const name = dialog.getByLabelText(/Name/)
+  await name.fill('Draft')
+  await dialog.getByLabelText(/API Endpoint/).fill('https://knowledge.example.com')
+  await dialog.getByLabelText(/API Key/).fill('secret-key')
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
+  await expect.poll(() => api.create.mock.calls.length).toBe(1)
+  await expect.element(name).toHaveValue('Draft')
+  await dialog.getByRole('button', { name: /cancel/i }).click()
+  await expect.element(dialog).not.toBeInTheDocument()
 })

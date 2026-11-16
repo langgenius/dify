@@ -1,18 +1,12 @@
 import type { ModelType } from '@dify/contracts/api/console/workspaces/types.gen'
 import type {
-  ConfigurationMethodEnum,
-  Credential,
   CustomConfigurationModelFixedFields,
-  CustomModel,
   DefaultModel,
-  ModelModalModeEnum,
   ModelProvider,
 } from './declarations'
-import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useLocale } from '#i18n'
-import { modelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
@@ -339,28 +333,4 @@ export const useRefreshModel = () => {
   return {
     handleRefreshModel,
   }
-}
-
-export const openModelCredentials = (
-  provider: ModelProvider,
-  configurationMethod: ConfigurationMethodEnum,
-  CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
-  extra: {
-    isModelCredential?: boolean
-    credential?: Credential
-    model?: CustomModel
-    onUpdate?: CredentialSaved
-    mode?: ModelModalModeEnum
-  } = {},
-) => {
-  modelCredentialDialog.openWithPayload({
-    provider,
-    configurateMethod: configurationMethod,
-    currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
-    isModelCredential: extra.isModelCredential,
-    credential: extra.credential,
-    model: extra.model,
-    mode: extra.mode,
-    onSave: extra.onUpdate,
-  })
 }

@@ -83,6 +83,22 @@ describe('ExternalDataToolModal', () => {
     mockLocale = 'en-US'
   })
 
+  it('keeps an unavailable provider configuration intact when editing', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExternalDataToolModal
+        data={{ type: 'unavailable', label: 'Search', variable: 'search', config: { limit: 7 } }}
+        onSave={mockOnSave}
+      />,
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.feature.tools.modal.name.title' }),
+      ' 2',
+    )
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(mockOnSave).not.toHaveBeenCalled()
+  })
+
   it('should require an API extension before saving api-based tools', async () => {
     const user = userEvent.setup()
     render(<ExternalDataToolModal data={{}} onSave={mockOnSave} />)

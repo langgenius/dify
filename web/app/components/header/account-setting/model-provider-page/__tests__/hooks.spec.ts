@@ -23,7 +23,6 @@ import {
 } from '../declarations'
 import {
   getCurrentProviderAndModel,
-  openModelCredentials,
   useDefaultModel,
   useInvalidateDefaultModel,
   useLanguage,
@@ -34,6 +33,7 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
+import { modelCredentialDialog } from '../model-modal/handle'
 import { createCredentialProvider, renderCredentialComponent } from './credential-test-env'
 
 vi.mock('#i18n', async (importOriginal) => ({
@@ -797,16 +797,20 @@ describe('hooks', () => {
     )
   })
 
-  describe('openModelCredentials', () => {
+  describe('model credential dialog', () => {
     beforeAll(async () => {
       // Load the real lazy dialog before measuring its user interactions.
       await import('../model-modal')
     })
 
-    function ModalLauncher({ args }: { args: Parameters<typeof openModelCredentials> }) {
+    function ModalLauncher({
+      args,
+    }: {
+      args: Parameters<typeof modelCredentialDialog.openWithPayload>[0]
+    }) {
       return createElement(
         'button',
-        { onClick: () => openModelCredentials(...args) },
+        { onClick: () => modelCredentialDialog.openWithPayload(args) },
         'Configure model',
       )
     }
@@ -825,7 +829,10 @@ describe('hooks', () => {
       const user = userEvent.setup()
       renderCredentialComponent(
         createElement(ModalLauncher, {
-          args: [createCredentialProvider(), ConfigurationMethodEnum.predefinedModel],
+          args: {
+            provider: createCredentialProvider(),
+            configurateMethod: ConfigurationMethodEnum.predefinedModel,
+          },
         }),
       )
       await user.click(screen.getByRole('button', { name: 'Configure model' }))
@@ -841,15 +848,19 @@ describe('hooks', () => {
       const user = userEvent.setup()
       renderCredentialComponent(
         createElement(ModalLauncher, {
-          args: [
-            createCredentialProvider({
+          args: {
+            provider: createCredentialProvider({
               configurate_methods: [ConfigurationMethodEnum.customizableModel],
               provider_credential_schema: { credential_form_schemas: [] },
             }),
-            ConfigurationMethodEnum.customizableModel,
-            { __model_name: 'gpt-4', __model_type: ModelTypeEnum.textGeneration },
-            { isModelCredential: true, mode: ModelModalModeEnum.configModelCredential },
-          ],
+            configurateMethod: ConfigurationMethodEnum.customizableModel,
+            currentCustomConfigurationModelFixedFields: {
+              __model_name: 'gpt-4',
+              __model_type: ModelTypeEnum.textGeneration,
+            },
+            isModelCredential: true,
+            mode: ModelModalModeEnum.configModelCredential,
+          },
         }),
       )
       await user.click(screen.getByRole('button', { name: 'Configure model' }))
@@ -874,18 +885,15 @@ describe('hooks', () => {
       const onUpdate = vi.fn()
       renderCredentialComponent(
         createElement(ModalLauncher, {
-          args: [
+          args: {
             provider,
-            ConfigurationMethodEnum.predefinedModel,
-            undefined,
-            {
-              isModelCredential: true,
-              credential,
-              model,
-              onUpdate,
-              mode: ModelModalModeEnum.configModelCredential,
-            },
-          ],
+            configurateMethod: ConfigurationMethodEnum.predefinedModel,
+            isModelCredential: true,
+            credential,
+            model,
+            onSave: onUpdate,
+            mode: ModelModalModeEnum.configModelCredential,
+          },
         }),
       )
       await user.click(screen.getByRole('button', { name: 'Configure model' }))

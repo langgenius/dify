@@ -292,11 +292,6 @@
       "count": 1
     }
   },
-  "web/app/components/app/configuration/config-prompt/advanced-prompt-input.tsx": {
-    "typescript/no-explicit-any": {
-      "count": 2
-    }
-  },
   "web/app/components/app/configuration/config-prompt/conversation-history/edit-modal.tsx": {
     "typescript/no-explicit-any": {
       "count": 1
@@ -325,7 +320,7 @@
   },
   "web/app/components/app/configuration/config-prompt/simple-prompt-input.tsx": {
     "typescript/no-explicit-any": {
-      "count": 3
+      "count": 1
     }
   },
   "web/app/components/app/configuration/config-var/config-modal/field.tsx": {
@@ -1432,9 +1427,6 @@
     }
   },
   "web/app/components/base/prompt-editor/plugins/component-picker-block/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    },
     "no-restricted-imports": {
       "count": 1
     }
@@ -2669,7 +2661,7 @@
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-auth.ts": {
     "typescript/no-explicit-any": {
-      "count": 4
+      "count": 3
     }
   },
   "web/app/components/header/account-setting/model-provider-page/model-auth/hooks/use-model-form-schemas.ts": {

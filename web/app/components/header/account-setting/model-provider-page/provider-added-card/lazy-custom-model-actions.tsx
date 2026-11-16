@@ -8,7 +8,8 @@ import {
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '../declarations'
-import { openModelCredentials, useLazyModelProviderDetail } from '../hooks'
+import { useLazyModelProviderDetail } from '../hooks'
+import { modelCredentialDialog } from '../model-modal/handle'
 
 type ProviderSummary = ModelProviderSummaryResponse | ModelProvider
 
@@ -32,7 +33,9 @@ export default function LazyCustomModelActions({ provider }: { provider: Provide
       return
     }
 
-    openModelCredentials(detail, ConfigurationMethodEnum.customizableModel, undefined, {
+    modelCredentialDialog.openWithPayload({
+      provider: detail,
+      configurateMethod: ConfigurationMethodEnum.customizableModel,
       isModelCredential: true,
       mode: ModelModalModeEnum.configCustomModel,
     })

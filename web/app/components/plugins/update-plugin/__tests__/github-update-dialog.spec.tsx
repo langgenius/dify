@@ -3,6 +3,7 @@ import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { createDeferred } from '@/test/deferred'
 import { GitHubInstallDialog } from '../../install-plugin/install-from-github/dialog'
 import { PluginCategoryEnum } from '../../types'
 
@@ -74,7 +75,8 @@ describe('GitHub plugin updates', () => {
   })
 
   it('closes a non-model plugin update immediately after saving', async () => {
-    const onSave = vi.fn()
+    const refresh = createDeferred()
+    const onSave = vi.fn(() => refresh.promise)
     const user = userEvent.setup()
 
     render(<Update onSave={onSave} category={PluginCategoryEnum.tool} />)
@@ -84,5 +86,6 @@ describe('GitHub plugin updates', () => {
 
     expect(onSave).toHaveBeenCalledTimes(1)
     expect(screen.queryByTestId('save-plugin-update')).not.toBeInTheDocument()
+    refresh.resolve()
   })
 })
