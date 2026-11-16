@@ -1,14 +1,15 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DocumentToRename } from './rename-document-dialog'
+import type { DocumentToRename } from './rename-document-form'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
@@ -20,7 +21,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import { RenameDocumentDialog } from './rename-document-dialog'
+import { RenameDocumentForm } from './rename-document-form'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
@@ -123,7 +124,8 @@ const DocumentList = ({
       onUpdate,
     })
 
-  const [rename, setRename] = useState<{ document: DocumentToRename; open: boolean }>()
+  const [renameDialog] = useState(() => createDialogHandle<DocumentToRename>())
+  const renameFieldsetRef = useRef<HTMLFieldSetElement>(null)
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
@@ -214,7 +216,7 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                onRename={() => setRename({ document: { id: doc.id, name: doc.name }, open: true })}
+                renameDialog={renameDialog}
                 onUpdate={onUpdate}
                 onDelete={(row) => onDelete(doc.id, row)}
               />
@@ -286,16 +288,31 @@ const DocumentList = ({
         />
       )}
 
-      {rename && (
-        <RenameDocumentDialog
-          key={rename.document.id}
-          document={rename.document}
-          open={rename.open}
-          onClose={() => setRename({ ...rename, open: false })}
-          datasetId={datasetId}
-          onSaved={onUpdate}
-        />
-      )}
+      <Dialog
+        handle={renameDialog}
+        onOpenChange={(open, details) => {
+          if (
+            !open &&
+            details.reason !== 'imperative-action' &&
+            renameFieldsetRef.current?.disabled
+          )
+            details.cancel()
+        }}
+      >
+        {({ payload }) => (
+          <DialogContent>
+            {payload && (
+              <RenameDocumentForm
+                key={payload.id}
+                datasetId={datasetId}
+                document={payload}
+                ref={renameFieldsetRef}
+                onRenamed={() => renameDialog.close()}
+              />
+            )}
+          </DialogContent>
+        )}
+      </Dialog>
 
       {isShowEditModal && (
         <EditMetadataBatchModal

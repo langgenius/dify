@@ -453,6 +453,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       [`${space}.sources.bySourceId.patch`]: updateSourceMutation,
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      [`${space}.documents.byDocumentId.patch`]: renameDocumentMutation,
       'features.get': () =>
         track(() => ({ billing: { subscription: { plan: uploadPlanMock.plan } } })),
       [`${space}.backgroundTasks.get`]: paged('tasks', tasksQuery, taskApiResponse),
@@ -1985,7 +1986,6 @@ describe('DocumentsPage', () => {
       expect.objectContaining({
         params: { control_space_id: 'space-1', document_id: 'document-1' },
       }),
-      { context: { silent: true } },
     )
   })
 
@@ -2022,6 +2022,7 @@ describe('DocumentsPage', () => {
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    seedGoldenQuestions()
     const menuButton = screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ })
     await user.click(menuButton)
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
@@ -2038,22 +2039,21 @@ describe('DocumentsPage', () => {
     expect(input).toHaveValue('Renamed handbook.pdf')
     await user.click(save)
 
-    expect(renameDocumentMutation).toHaveBeenCalledWith(
-      {
-        body: {
-          expectedRowVersion: 1,
-          patch: { displayName: 'Renamed handbook.pdf' },
-        },
-        params: { control_space_id: 'space-1', document_id: 'document-1' },
+    expect(renameDocumentMutation).toHaveBeenCalledWith({
+      body: {
+        expectedRowVersion: 1,
+        patch: { displayName: 'Renamed handbook.pdf' },
       },
-      { context: { silent: true } },
-    )
+      params: { control_space_id: 'space-1', document_id: 'document-1' },
+    })
     await waitFor(() =>
       expect(
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
       ).not.toBeInTheDocument(),
     )
     await waitFor(() => expect(menuButton).toHaveFocus())
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-1'))?.isInvalidated).toBe(true)
+    expect(queryClient.getQueryState(goldenQuestionsKey('space-2'))?.isInvalidated).toBe(false)
   })
 
   it('disables the document from the row action', async () => {

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -28,7 +29,7 @@ import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -44,7 +45,7 @@ import { consoleQuery } from '@/service/console'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
-import { RenameDocumentDialog } from '../components/rename-document-dialog'
+import { RenameDocumentForm } from '../components/rename-document-form'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
 import Completed from './completed'
@@ -213,6 +214,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
+  const renameFieldsetRef = useRef<HTMLFieldSetElement>(null)
   const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
@@ -378,14 +380,23 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 canEdit={canEditDocument}
               />
             )}
-            <RenameDocumentDialog
-              key={documentId}
-              document={operationsDetail}
+            <Dialog
               open={renameOpen}
-              onClose={() => setRenameOpen(false)}
-              datasetId={datasetId}
-              onSaved={handleOperate}
-            />
+              onOpenChange={(open, details) => {
+                if (!open && renameFieldsetRef.current?.disabled) details.cancel()
+                else setRenameOpen(open)
+              }}
+            >
+              <DialogContent>
+                <RenameDocumentForm
+                  key={documentId}
+                  document={operationsDetail}
+                  datasetId={datasetId}
+                  ref={renameFieldsetRef}
+                  onRenamed={() => setRenameOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
             <Operations
               onRename={() => setRenameOpen(true)}
               scene="detail"

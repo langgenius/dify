@@ -1,11 +1,10 @@
 'use client'
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { RefObject } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
   DialogBody,
   DialogClose,
-  DialogContent,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -20,53 +19,46 @@ import { consoleQuery } from '@/service/console'
 
 export type DocumentToRename = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
-export function RenameDocumentDialog({
+export function RenameDocumentForm({
   document,
-  open,
-  onClose,
+  onRenamed,
   datasetId,
-  onSaved,
+  ref,
 }: {
   document: DocumentToRename
-  open: boolean
-  onClose: () => void
+  onRenamed: () => void
   datasetId: string
-  onSaved: () => void
+  ref: RefObject<HTMLFieldSetElement | null>
 }) {
   const { t } = useTranslation(['common', 'datasetDocuments'])
   const rename = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationOptions({
       context: { silent: true },
-      onSuccess: () => onSaved(),
-      onError: (error) => toast.error(error instanceof Error ? error.message : String(error)),
     }),
   )
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen, details) => {
-        if (nextOpen) return
-        if (rename.isPending) details.cancel()
-        else onClose()
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}</DialogTitle>
-        </DialogHeader>
-        <Form<{ documentName: string }>
-          className="contents"
-          onFormSubmit={({ documentName }) => {
-            if (rename.isPending) return
-            rename.mutate(
-              {
-                params: { dataset_id: datasetId, document_id: document.id },
-                body: { name: documentName },
-              },
-              { onSuccess: onClose },
-            )
-          }}
-        >
+    <>
+      <DialogHeader>
+        <DialogTitle>{t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}</DialogTitle>
+      </DialogHeader>
+      <Form<{ documentName: string }>
+        className="contents"
+        onFormSubmit={({ documentName }) => {
+          if (rename.isPending) return
+          rename.mutate(
+            {
+              params: { dataset_id: datasetId, document_id: document.id },
+              body: { name: documentName },
+            },
+            {
+              onSuccess: onRenamed,
+              onError: (error) =>
+                toast.error(error instanceof Error ? error.message : String(error)),
+            },
+          )
+        }}
+      >
+        <fieldset className="contents" ref={ref} disabled={rename.isPending}>
           <DialogBody>
             <Field name="documentName">
               <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
@@ -75,21 +67,20 @@ export function RenameDocumentDialog({
               <Input
                 className="h-10"
                 defaultValue={document.name}
-                disabled={rename.isPending}
                 placeholder={t(($) => $['placeholder.input'], { ns: 'common' })}
               />
             </Field>
           </DialogBody>
           <DialogFooter>
-            <DialogClose render={<Button className="shrink-0" disabled={rename.isPending} />}>
+            <DialogClose render={<Button className="shrink-0" />}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </DialogClose>
             <Button type="submit" variant="primary" className="shrink-0" loading={rename.isPending}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </DialogFooter>
-        </Form>
-      </DialogContent>
-    </Dialog>
+        </fieldset>
+      </Form>
+    </>
   )
 }

@@ -306,8 +306,17 @@ it('requests the next page and resets the page when changing the page size or so
   })
 })
 
-it('renames the selected document through its real form and refreshes the row after success', async () => {
-  const { user } = await setup()
+it('renames the selected document through its real form and refreshes its cached list and detail', async () => {
+  const { user, queryClient } = await setup()
+  const detailKey = (id: string) =>
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryKey({
+      input: {
+        params: { dataset_id: 'dataset-1', document_id: id },
+        query: { metadata: 'without' },
+      },
+    })
+  queryClient.setQueryData(detailKey('doc-0'), documentList().data[0])
+  queryClient.setQueryData(detailKey('doc-1'), documentList().data[1])
   const row = screen.getByRole('row', { name: /Reference/ })
   await user.click(within(row).getByRole('button', { name: 'datasetDocuments.list.table.rename' }))
   const dialog = await screen.findByRole('dialog', { name: 'datasetDocuments.list.table.rename' })
@@ -329,6 +338,8 @@ it('renames the selected document through its real form and refreshes the row af
     body: { name: 'API Reference' },
   })
   expect(await screen.findByText('API Reference')).toBeInTheDocument()
+  expect(queryClient.getQueryState(detailKey('doc-1'))?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(detailKey('doc-0'))?.isInvalidated).toBe(false)
 })
 
 it('polls processing documents until all documents reach a terminal state', async () => {

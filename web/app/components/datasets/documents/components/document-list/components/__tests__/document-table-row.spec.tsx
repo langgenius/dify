@@ -1,6 +1,8 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
+import type { DocumentToRename } from '../../../rename-document-form'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -92,7 +94,7 @@ describe('DocumentTableRow', () => {
     isGeneralMode: true,
     isQAMode: false,
     embeddingAvailable: true,
-    onRename: vi.fn(),
+    renameDialog: createDialogHandle<DocumentToRename>(),
     onUpdate: vi.fn(),
     onDelete: vi.fn(),
   }
@@ -133,23 +135,6 @@ describe('DocumentTableRow', () => {
       expect(mockPush).toHaveBeenCalledWith(
         '/datasets/dataset-1/documents/doc-1?page=2&status=error',
       )
-    })
-  })
-
-  describe('Rename Action', () => {
-    it('exposes a named rename action that can be activated with the keyboard', async () => {
-      const user = userEvent.setup()
-      render(<DocumentTableRow {...defaultProps} />, { wrapper: createWrapper() })
-
-      await user.tab()
-      await user.tab()
-      await user.tab()
-      expect(
-        screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
-      ).toHaveFocus()
-      await user.keyboard('{Enter}')
-      expect(defaultProps.onRename).toHaveBeenCalledOnce()
-      expect(mockPush).not.toHaveBeenCalled()
     })
   })
 

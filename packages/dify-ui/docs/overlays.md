@@ -59,6 +59,20 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.
 
+## Opening dialogs
+
+- Use a [Dialog Trigger] for a button dedicated to opening the dialog. Place it inside the Root
+  when practical. A shared Root can connect detached row buttons through one feature-owned
+  handle. Each button supplies its record as the trigger payload.
+- A menu item opens its dialog in `onClick`. Keep the Root outside the menu popup. For a single
+  menu and an already-known record, local controlled state follows the [menu example]. When the
+  menu shares a dialog with other entries, call the existing handle's `openWithPayload(record)`.
+  The mounted Root retains its payload through the exit transition.
+- An async save closes the dialog through its existing owner. Update a controlled Root's state
+  directly. For an uncontrolled Root, use its existing handle or a local `actionsRef` when a
+  successful operation must close it. Key the form that owns the mutation by record identity
+  when an open dialog can switch records.
+
 ## Primitive semantics
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
@@ -96,6 +110,7 @@ Use a real `<button type="button">` for button-like triggers. If a Base UI trigg
 renders a non-button element, set `nativeButton={false}`.
 
 [Base UI Portal]: https://base-ui.com/react/overview/quick-start#portals
+[Dialog Trigger]: https://base-ui.com/react/components/dialog#detached-triggers
 [Infotip contract]: ../src/infotip/README.md
 [MDN `isolation`]: https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/Properties/isolation
 [Selection]: selection.md
@@ -104,3 +119,4 @@ renders a non-button element, set `nativeButton={false}`.
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card
 [`Tooltip`]: https://base-ui.com/react/components/tooltip
+[menu example]: https://base-ui.com/react/components/dialog#open-from-a-menu

@@ -1901,6 +1901,30 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            documents: {
+              byDocumentId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params, body }, _result, { client }) => {
+                      const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      void client.invalidateQueries({
+                        queryKey: space.logicalDocuments.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      })
+                      void client.invalidateQueries({
+                        queryKey: space.logicalDocuments.get.key({ input }),
+                      })
+                      if ('displayName' in body.patch)
+                        void client.invalidateQueries({
+                          queryKey: space.goldenQuestions.get.key({ input }),
+                        })
+                    },
+                  },
+                },
+              },
+            },
             fileScanPolicy: {
               put: {
                 mutationOptions: {
@@ -2169,6 +2193,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
             byDocumentId: {
+              rename: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const documents = consoleQuery.datasets.byDatasetId.documents
+                      void client.invalidateQueries({
+                        queryKey: documents.get.key({
+                          input: { params: { dataset_id: params.dataset_id } },
+                        }),
+                      })
+                      void client.invalidateQueries({
+                        queryKey: documents.byDocumentId.get.key({ input: { params } }),
+                      })
+                    },
+                  },
+                },
+              },
               pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
             },
             // Document metadata shows in the dataset fields, the document list and each
