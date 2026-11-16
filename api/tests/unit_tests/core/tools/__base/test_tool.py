@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Generator
 from dataclasses import dataclass
-from typing import Any, cast, override
+from typing import Any, cast
 
 import pytest
 from sqlalchemy.orm import Session
@@ -68,13 +68,12 @@ class DummyTool(Tool):
         }
         return self.result
 
-    @override
     def get_runtime_parameters(
         self,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
-    ) -> list[ToolParameter]:
+    ):
         if self.runtime_parameter_overrides is not None:
             return self.runtime_parameter_overrides
         return super().get_runtime_parameters(
@@ -82,31 +81,6 @@ class DummyTool(Tool):
             app_id=app_id,
             message_id=message_id,
         )
-
-
-def _text_body(message: ToolInvokeMessage) -> ToolInvokeMessage.TextMessage:
-    assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-    return message.message
-
-
-def _file_body(message: ToolInvokeMessage) -> ToolInvokeMessage.FileMessage:
-    assert isinstance(message.message, ToolInvokeMessage.FileMessage)
-    return message.message
-
-
-def _blob_body(message: ToolInvokeMessage) -> ToolInvokeMessage.BlobMessage:
-    assert isinstance(message.message, ToolInvokeMessage.BlobMessage)
-    return message.message
-
-
-def _json_body(message: ToolInvokeMessage) -> ToolInvokeMessage.JsonMessage:
-    assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
-    return message.message
-
-
-def _variable_body(message: ToolInvokeMessage) -> ToolInvokeMessage.VariableMessage:
-    assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
-    return message.message
 
 
 def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
@@ -120,7 +94,7 @@ def _build_tool(runtime: ToolRuntime | None = None) -> DummyTool:
     return DummyTool(entity=entity, runtime=runtime)
 
 
-def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Session) -> None:
+def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Session):
     runtime = ToolRuntime(
         tenant_id="tenant-1",
         invoke_from=InvokeFrom.DEBUGGER,
@@ -148,7 +122,7 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
     )
 
     assert len(messages) == 1
-    assert _text_body(messages[0]).text == "ok"
+    assert messages[0].message.text == "ok"
     assert tool.last_invocation == {
         "user_id": "user-1",
         "tool_parameters": {"age": "cast:18", "raw": "keep", "from_runtime": "runtime-value"},
@@ -158,7 +132,7 @@ def test_invoke_supports_single_message_and_parameter_casting(sqlite_session: Se
     }
 
 
-def test_invoke_preserves_multiple_select_values(sqlite_session: Session) -> None:
+def test_invoke_preserves_multiple_select_values(sqlite_session: Session):
     tool = _build_tool()
     parameter = ToolParameter.get_simple_instance(
         name="choice",
@@ -182,11 +156,11 @@ def test_invoke_preserves_multiple_select_values(sqlite_session: Session) -> Non
         tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={"choice": 1})
 
 
-def test_invoke_supports_list_and_generator_results(sqlite_session: Session) -> None:
+def test_invoke_supports_list_and_generator_results(sqlite_session: Session):
     tool = _build_tool()
     tool.result = [tool.create_text_message("a"), tool.create_text_message("b")]
     list_messages = list(tool.invoke(session=sqlite_session, user_id="user-1", tool_parameters={}))
-    assert [_text_body(msg).text for msg in list_messages] == ["a", "b"]
+    assert [msg.message.text for msg in list_messages] == ["a", "b"]
 
     def _message_generator() -> Generator[ToolInvokeMessage]:
         yield tool.create_text_message("g1")
@@ -194,10 +168,10 @@ def test_invoke_supports_list_and_generator_results(sqlite_session: Session) -> 
 
     tool.result = _message_generator()
     generated_messages = list(tool.invoke(session=sqlite_session, user_id="user-2", tool_parameters={}))
-    assert [_text_body(msg).text for msg in generated_messages] == ["g1", "g2"]
+    assert [msg.message.text for msg in generated_messages] == ["g1", "g2"]
 
 
-def test_fork_tool_runtime_returns_new_tool_with_copied_entity() -> None:
+def test_fork_tool_runtime_returns_new_tool_with_copied_entity():
     tool = _build_tool()
     new_runtime = ToolRuntime(tenant_id="tenant-2", invoke_from=InvokeFrom.EXPLORE, runtime_parameters={})
 
@@ -210,7 +184,7 @@ def test_fork_tool_runtime_returns_new_tool_with_copied_entity() -> None:
     assert forked.entity is not tool.entity
 
 
-def test_get_runtime_parameters_and_merge_runtime_parameters() -> None:
+def test_get_runtime_parameters_and_merge_runtime_parameters():
     tool = _build_tool()
     original = DummyParameter(
         name="temperature",
@@ -252,7 +226,7 @@ def test_get_runtime_parameters_and_merge_runtime_parameters() -> None:
     assert original.input_schema == {"type": "string"}
 
 
-def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters() -> None:
+def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters():
     tool = _build_tool()
     query_parameter = ToolParameter.get_simple_instance(
         name="query",
@@ -364,44 +338,44 @@ def test_get_llm_parameters_json_schema_uses_effective_runtime_parameters() -> N
     }
 
 
-def test_message_factory_helpers() -> None:
+def test_message_factory_helpers():
     tool = _build_tool()
 
     image_message = tool.create_image_message("https://example.com/image.png")
     assert image_message.type == ToolInvokeMessage.MessageType.IMAGE
-    assert _text_body(image_message).text == "https://example.com/image.png"
+    assert image_message.message.text == "https://example.com/image.png"
 
     file_obj = object()
     file_message = tool.create_file_message(file_obj)  # type: ignore[arg-type]
     assert file_message.type == ToolInvokeMessage.MessageType.FILE
-    assert _file_body(file_message).file_marker == "file_marker"
+    assert file_message.message.file_marker == "file_marker"
     assert file_message.meta == {"file": file_obj}
 
     link_message = tool.create_link_message("https://example.com")
     assert link_message.type == ToolInvokeMessage.MessageType.LINK
-    assert _text_body(link_message).text == "https://example.com"
+    assert link_message.message.text == "https://example.com"
 
     text_message = tool.create_text_message("hello")
     assert text_message.type == ToolInvokeMessage.MessageType.TEXT
-    assert _text_body(text_message).text == "hello"
+    assert text_message.message.text == "hello"
 
     blob_message = tool.create_blob_message(b"blob", meta={"source": "unit-test"})
     assert blob_message.type == ToolInvokeMessage.MessageType.BLOB
-    assert _blob_body(blob_message).blob == b"blob"
+    assert blob_message.message.blob == b"blob"
     assert blob_message.meta == {"source": "unit-test"}
 
     json_message = tool.create_json_message({"k": "v"}, suppress_output=True)
     assert json_message.type == ToolInvokeMessage.MessageType.JSON
-    assert _json_body(json_message).json_object == {"k": "v"}
-    assert _json_body(json_message).suppress_output is True
+    assert json_message.message.json_object == {"k": "v"}
+    assert json_message.message.suppress_output is True
 
     variable_message = tool.create_variable_message("answer", 42, stream=False)
     assert variable_message.type == ToolInvokeMessage.MessageType.VARIABLE
-    assert _variable_body(variable_message).variable_name == "answer"
-    assert _variable_body(variable_message).variable_value == 42
-    assert _variable_body(variable_message).stream is False
+    assert variable_message.message.variable_name == "answer"
+    assert variable_message.message.variable_value == 42
+    assert variable_message.message.stream is False
 
 
-def test_base_abstract_invoke_placeholder_returns_none(sqlite_session: Session) -> None:
+def test_base_abstract_invoke_placeholder_returns_none(sqlite_session: Session):
     tool = _build_tool()
     assert Tool._invoke(tool, session=sqlite_session, user_id="u", tool_parameters={}) is None

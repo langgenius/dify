@@ -8,7 +8,6 @@ from unittest.mock import Mock, create_autospec
 import pytest
 from flask import Flask
 from flask.views import MethodView
-from werkzeug.routing import Rule
 
 from controllers.console import flask_admission, wraps
 from controllers.openapi import bp as openapi_bp
@@ -60,10 +59,10 @@ from services.oauth_device_contracts import (
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.__dict__["MethodView"] = MethodView
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
-def _rule(app: Flask, path: str) -> Rule:
+def _rule(app: Flask, path: str):
     return next(r for r in app.url_map.iter_rules() if r.rule == path)
 
 
@@ -77,35 +76,29 @@ class TestDeviceApproveDenyCases:
         return app
 
     @staticmethod
-    def test_approve_route_registered(openapi_app: Flask) -> None:
+    def test_approve_route_registered(openapi_app: Flask):
         rules = {r.rule for r in openapi_app.url_map.iter_rules()}
         assert "/openapi/v1/oauth/device/approve" in rules
 
     @staticmethod
-    def test_deny_route_registered(openapi_app: Flask) -> None:
+    def test_deny_route_registered(openapi_app: Flask):
         rules = {r.rule for r in openapi_app.url_map.iter_rules()}
         assert "/openapi/v1/oauth/device/deny" in rules
 
     @staticmethod
-    def test_approve_dispatches_to_class(openapi_app: Flask) -> None:
+    def test_approve_dispatches_to_class(openapi_app: Flask):
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
-        view = openapi_app.view_functions[rule.endpoint]
-        assert hasattr(view, "view_class")
-        assert view.view_class is DeviceApproveApi
+        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceApproveApi
 
     @staticmethod
-    def test_deny_dispatches_to_class(openapi_app: Flask) -> None:
+    def test_deny_dispatches_to_class(openapi_app: Flask):
         rule = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        view = openapi_app.view_functions[rule.endpoint]
-        assert hasattr(view, "view_class")
-        assert view.view_class is DeviceDenyApi
+        assert openapi_app.view_functions[rule.endpoint].view_class is DeviceDenyApi
 
     @staticmethod
-    def test_approve_and_deny_methods(openapi_app: Flask) -> None:
+    def test_approve_and_deny_methods(openapi_app: Flask):
         approve = _rule(openapi_app, "/openapi/v1/oauth/device/approve")
         deny = _rule(openapi_app, "/openapi/v1/oauth/device/deny")
-        assert approve.methods is not None
-        assert deny.methods is not None
         assert "POST" in approve.methods
         assert "POST" in deny.methods
 
@@ -126,7 +119,7 @@ require Redis, which the unit-test runtime does not initialise.
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.__dict__["MethodView"] = MethodView
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
 class TestDeviceCodeCases:
@@ -167,7 +160,7 @@ class TestDeviceCodeCases:
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.__dict__["MethodView"] = MethodView
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
 class TestDeviceLookupCases:
@@ -202,7 +195,7 @@ class TestDeviceLookupCases:
 
 
 if not hasattr(builtins, "MethodView"):
-    builtins.__dict__["MethodView"] = MethodView
+    builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
 class TestDeviceTokenCases:

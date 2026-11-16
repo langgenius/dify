@@ -1,6 +1,5 @@
 import json
-from collections.abc import Generator, Iterator, Sequence
-from contextlib import AbstractContextManager, contextmanager
+from contextlib import contextmanager
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -17,7 +16,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent
 from core.moderation.base import ModerationError
 from factories import variable_factory
-from graphon.variables import SegmentType, VariableBase
+from graphon.variables import SegmentType
 from models import App as _app_runner_conversation_variables_App
 from models import Conversation as _app_runner_conversation_variables_Conversation
 from models import ConversationVariable
@@ -38,7 +37,7 @@ VAR_1_ID = "33333333-3333-3333-3333-333333333333"
 VAR_2_ID = "33333333-3333-3333-3333-333333333334"
 
 
-def _variable(variable_id: str, name: str, value: str) -> VariableBase:
+def _variable(variable_id: str, name: str, value: str):
     return variable_factory.build_conversation_variable_from_mapping(
         {
             "id": variable_id,
@@ -49,7 +48,7 @@ def _variable(variable_id: str, name: str, value: str) -> VariableBase:
     )
 
 
-def _runner(workflow_variables: Sequence[VariableBase]) -> AdvancedChatAppRunner:
+def _runner(workflow_variables: list[object]) -> AdvancedChatAppRunner:
     workflow = Workflow(
         id="55555555-5555-5555-5555-555555555555",
         tenant_id="66666666-6666-6666-6666-666666666666",
@@ -84,7 +83,7 @@ def _bind_runner_sessions(monkeypatch: pytest.MonkeyPatch, sqlite_session: Sessi
     )
 
 
-def _persist_variable(session: Session, *, variable: VariableBase, conversation_id: str = CONVERSATION_ID) -> None:
+def _persist_variable(session: Session, *, variable: object, conversation_id: str = CONVERSATION_ID) -> None:
     session.add(
         ConversationVariable.from_variable(
             app_id=APP_ID,
@@ -169,7 +168,7 @@ class TestAppRunnerConversationVariablesCases:
         assert persisted[0].to_variable().id == author_id
 
 
-MINIMAL_GRAPH: dict[str, object] = {
+MINIMAL_GRAPH = {
     "nodes": [
         {
             "id": "start",
@@ -183,7 +182,7 @@ MINIMAL_GRAPH: dict[str, object] = {
 }
 
 
-def _patch_common_run_deps(runner: AdvancedChatAppRunner) -> AbstractContextManager[None]:
+def _patch_common_run_deps(runner: AdvancedChatAppRunner):
     """Context manager that patches common heavy deps used by run()."""
     return patch.multiple(
         "core.app.apps.advanced_chat.app_runner",
@@ -197,7 +196,7 @@ def _patch_common_run_deps(runner: AdvancedChatAppRunner) -> AbstractContextMana
 class TestAppRunnerInputModerationCases:
     @staticmethod
     @pytest.fixture
-    def build_runner(sqlite_session: Session) -> AdvancedChatAppRunner:
+    def build_runner(sqlite_session: Session):
         """Construct a minimal AdvancedChatAppRunner with heavy dependencies mocked."""
         app_id = str(uuid4())
         workflow_id = str(uuid4())
@@ -264,7 +263,7 @@ class TestAppRunnerInputModerationCases:
         return runner
 
     @staticmethod
-    def test_handle_input_moderation_stops_on_moderation_error(build_runner: AdvancedChatAppRunner) -> None:
+    def test_handle_input_moderation_stops_on_moderation_error(build_runner):
         runner = build_runner
 
         # moderation_for_inputs raises ModerationError -> should stop and emit stop event
@@ -290,7 +289,7 @@ class TestAppRunnerInputModerationCases:
             assert kwargs.get("stopped_by") == QueueStopEvent.StopBy.INPUT_MODERATION
 
     @staticmethod
-    def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner: AdvancedChatAppRunner) -> None:
+    def test_run_applies_overridden_inputs_and_query_from_moderation(build_runner):
         runner = build_runner
         runner.application_generate_entity.call_depth = 5
 
@@ -325,9 +324,7 @@ class TestAppRunnerInputModerationCases:
             assert mock_init_graph.call_args.kwargs["call_depth"] == 5
 
     @staticmethod
-    def test_run_returns_early_when_direct_output_via_handle_input_moderation(
-        build_runner: AdvancedChatAppRunner,
-    ) -> None:
+    def test_run_returns_early_when_direct_output_via_handle_input_moderation(build_runner):
         runner = build_runner
 
         with (
@@ -353,7 +350,7 @@ class TestAppRunnerInputModerationCases:
             mock_init_graph.assert_not_called()
 
     @staticmethod
-    def test_run_publishes_annotation_after_commit(build_runner: AdvancedChatAppRunner, sqlite_engine: Engine) -> None:
+    def test_run_publishes_annotation_after_commit(build_runner, sqlite_engine: Engine):
         runner = build_runner
         events: list[str] = []
 
@@ -369,7 +366,7 @@ class TestAppRunnerInputModerationCases:
             account_id=str(uuid4()),
         )
 
-        def publish(event: object) -> None:
+        def publish(event):
             if isinstance(event, QueueAnnotationReplyEvent):
                 events.append("publish")
 
@@ -394,21 +391,19 @@ class TestAppRunnerInputModerationCases:
         assert events == ["commit", "publish"]
 
     @staticmethod
-    def test_run_closes_scoped_session_before_workflow_run(
-        build_runner: AdvancedChatAppRunner, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
+    def test_run_closes_scoped_session_before_workflow_run(build_runner, sqlite_session_factory: sessionmaker[Session]):
         runner = build_runner
-        events: list[str] = []
+        events = []
 
         @contextmanager
-        def observed_session() -> Generator[Session]:
+        def observed_session():
             with sqlite_session_factory() as session:
                 yield session
             events.append("close")
 
         workflow_entry = MagicMock()
 
-        def run_workflow(**kwargs: object) -> Iterator[object]:
+        def run_workflow(**kwargs):
             events.append("run")
             return iter([])
 

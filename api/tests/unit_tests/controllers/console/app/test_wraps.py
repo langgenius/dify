@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Callable
 from inspect import getsource
 from uuid import uuid4
 
@@ -36,11 +35,10 @@ def test_get_app_model_injects_model(monkeypatch: pytest.MonkeyPatch, sqlite_ses
     monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model
-    def handler(app_model: App) -> str:
+    def handler(app_model):
         return app_model.id
 
-    decorated: Callable[..., str] = handler
-    assert decorated(app_id=app_model.id) == app_model.id
+    assert handler(app_id=app_model.id) == app_model.id
 
 
 def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session) -> None:
@@ -49,22 +47,20 @@ def test_get_app_model_rejects_wrong_mode(monkeypatch: pytest.MonkeyPatch, sqlit
     monkeypatch.setattr(wraps_module.db, "session", sqlite_session)
 
     @wraps_module.get_app_model(mode=[AppMode.COMPLETION])
-    def handler(app_model: App) -> str:
+    def handler(app_model):
         return app_model.id
 
-    decorated: Callable[..., str] = handler
     with pytest.raises(AppNotFoundError):
-        decorated(app_id=app_model.id)
+        handler(app_id=app_model.id)
 
 
 def test_get_app_model_requires_app_id() -> None:
     @wraps_module.get_app_model
-    def handler(app_model: App) -> str:
+    def handler(app_model):
         return app_model.id
 
-    decorated: Callable[..., str] = handler
     with pytest.raises(ValueError, match="missing app_id in path parameters"):
-        decorated()
+        handler()
 
 
 def test_wraps_with_session_reexports_common_session_decorator() -> None:
@@ -80,15 +76,14 @@ def test_get_app_model_prefers_injected_session(
 
     class Handler:
         @wraps_module.get_app_model
-        def get(self, _injected_session, app_model: App) -> str:
+        def get(self, _injected_session, app_model):
             return app_model.id
 
     # An unbound real Session fails on query, so success proves the injected
     # request Session was preferred over the legacy scoped-session fallback.
     with Session() as scoped_session:
         monkeypatch.setattr(wraps_module.db, "session", scoped_session)
-        decorated: Callable[..., str] = Handler().get
-        assert decorated(sqlite_session, app_id=app_model.id) == app_model.id
+        assert Handler().get(sqlite_session, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize("scope", [AgentScope.ROSTER, AgentScope.WORKFLOW_ONLY])
@@ -124,12 +119,11 @@ def test_get_app_model_hides_only_workflow_backing_apps(
             return app_model.id
 
     args = (sqlite_session,) if inject_session else ()
-    decorated: Callable[..., str] = Handler().get
     if workflow_only:
         with pytest.raises(AppNotFoundError):
-            decorated(*args, app_id=app_model.id)
+            Handler().get(*args, app_id=app_model.id)
     else:
-        assert decorated(*args, app_id=app_model.id) == app_model.id
+        assert Handler().get(*args, app_id=app_model.id) == app_model.id
 
 
 @pytest.mark.parametrize(

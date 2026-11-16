@@ -754,7 +754,7 @@ class TestAccountsCases:
             yield account_application_services.accounts
 
     class TestAccountInitApi:
-        def test_init_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_init_success(self, app: Flask, account_services: AccountServices):
             api = AccountInitApi()
             method = inspect.unwrap(api.post)
             request_context = RequestContext(
@@ -789,7 +789,7 @@ class TestAccountsCases:
             assert resp["result"] == "success"
             assert initialize_calls == [(request_context, "en-US", "UTC", "code123")]
 
-        def test_init_already_initialized(self, app: Flask, account_services: AccountServices) -> None:
+        def test_init_already_initialized(self, app: Flask, account_services: AccountServices):
             api = AccountInitApi()
             method = inspect.unwrap(api.post)
 
@@ -812,7 +812,7 @@ class TestAccountsCases:
                 with pytest.raises(AccountAlreadyInitedError):
                     method(api, AccountInitPayload.model_validate(payload), request_context)
 
-        def test_init_missing_invitation_code_is_mapped(self, app: Flask, account_services: AccountServices) -> None:
+        def test_init_missing_invitation_code_is_mapped(self, app: Flask, account_services: AccountServices):
             api = AccountInitApi()
             method = inspect.unwrap(api.post)
             request_context = RequestContext(
@@ -841,7 +841,7 @@ class TestAccountsCases:
             }
 
     class TestAccountProfileApi:
-        def test_get_profile_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_get_profile_success(self, app: Flask, account_services: AccountServices):
             api = AccountProfileApi()
             method = inspect.unwrap(api.get)
             user = make_account()
@@ -863,7 +863,7 @@ class TestAccountsCases:
             get_profile.assert_called_once_with(request_context)
 
     class TestAccountProfilePatchApi:
-        def test_json_schema_matches_runtime_patch_rules(self) -> None:
+        def test_json_schema_matches_runtime_patch_rules(self):
             schema = AccountProfilePatchPayload.model_json_schema()
             validator = Draft202012Validator(schema)
 
@@ -880,15 +880,14 @@ class TestAccountsCases:
             validator.validate({})
             validator.validate({"name": "Jane"})
             validator.validate({"name": "Jane", "interface_language": "en-US", "timezone": "UTC"})
-            payloads: tuple[dict[str, object], ...] = (
+            for payload in (
                 {"name": None},
                 {"unexpected": "value"},
                 {"name": "Jane", "unexpected": "value"},
-            )
-            for payload in payloads:
+            ):
                 assert list(validator.iter_errors(payload))
 
-        def test_updates_multiple_profile_fields(self, app: Flask, account_services: AccountServices) -> None:
+        def test_updates_multiple_profile_fields(self, app: Flask, account_services: AccountServices):
             api = AccountProfileApi()
             method = inspect.unwrap(api.patch)
             user = make_account()
@@ -914,7 +913,7 @@ class TestAccountsCases:
                 AccountProfileChanges(name="Jane", interface_language="en-US", timezone="UTC"),
             )
 
-        def test_empty_patch_is_a_noop(self, app: Flask, account_services: AccountServices) -> None:
+        def test_empty_patch_is_a_noop(self, app: Flask, account_services: AccountServices):
             api = AccountProfileApi()
             method = inspect.unwrap(api.patch)
             user = make_account()
@@ -937,7 +936,7 @@ class TestAccountsCases:
             update_profile.assert_called_once_with(request_context, AccountProfileChanges())
 
         @pytest.mark.parametrize("payload", [{"name": None}, {"unexpected": "value"}])
-        def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]) -> None:
+        def test_rejects_null_or_unknown_changes(self, payload: dict[str, object]):
             with pytest.raises(
                 ValueError,
                 match=(
@@ -948,7 +947,7 @@ class TestAccountsCases:
                 AccountProfilePatchPayload.model_validate(payload)
 
     class TestAccountAvatarApiGet:
-        def test_get_avatar_delegates_to_service(self, app: Flask, account_services: AccountServices) -> None:
+        def test_get_avatar_delegates_to_service(self, app: Flask, account_services: AccountServices):
             api = AccountAvatarApi()
             method = inspect.unwrap(api.get)
             file_id = "550e8400-e29b-41d4-a716-446655440000"
@@ -969,7 +968,7 @@ class TestAccountsCases:
             assert result == {"avatar_url": "https://signed/example"}
             resolve_avatar.assert_called_once_with(request_context, file_id)
 
-        def test_get_avatar_maps_not_found(self, app: Flask, account_services: AccountServices) -> None:
+        def test_get_avatar_maps_not_found(self, app: Flask, account_services: AccountServices):
             api = AccountAvatarApi()
             method = inspect.unwrap(api.get)
             file_id = "550e8400-e29b-41d4-a716-446655440001"
@@ -988,7 +987,7 @@ class TestAccountsCases:
                 with pytest.raises(NotFound):
                     method(api, AccountAvatarQuery(avatar=file_id), request_context)
 
-        def test_get_avatar_missing_query_returns_unprocessable_entity(self, app: Flask) -> None:
+        def test_get_avatar_missing_query_returns_unprocessable_entity(self, app: Flask):
             account = make_account()
 
             with (
@@ -1010,7 +1009,7 @@ class TestAccountsCases:
             assert exc_info.value.code == 422
 
     class TestConvertedPatchDecorator:
-        def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask) -> None:
+        def test_rejects_an_invalid_body_through_the_decorator(self, app: Flask):
             """The decorator validates the JSON body before the PATCH handler runs."""
             account = make_account()
 
@@ -1033,7 +1032,7 @@ class TestAccountsCases:
             assert exc_info.value.code == 422
 
     class TestAccountPasswordApi:
-        def test_password_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_password_success(self, app: Flask, account_services: AccountServices):
             api = AccountPasswordApi()
             method = inspect.unwrap(api.post)
 
@@ -1065,7 +1064,7 @@ class TestAccountsCases:
                 new_password="new123",
             )
 
-        def test_password_wrong_current(self, app: Flask, account_services: AccountServices) -> None:
+        def test_password_wrong_current(self, app: Flask, account_services: AccountServices):
             api = AccountPasswordApi()
             method = inspect.unwrap(api.post)
 
@@ -1090,7 +1089,7 @@ class TestAccountsCases:
                 with pytest.raises(CurrentPasswordIncorrectError):
                     method(api, AccountPasswordPayload.model_validate(payload), request_context)
 
-        def test_password_policy_error_is_mapped(self, app: Flask, account_services: AccountServices) -> None:
+        def test_password_policy_error_is_mapped(self, app: Flask, account_services: AccountServices):
             api = AccountPasswordApi()
             method = inspect.unwrap(api.post)
             payload = {
@@ -1124,7 +1123,7 @@ class TestAccountsCases:
             }
 
     class TestAccountIntegrateApi:
-        def test_get_integrates(self, app: Flask, account_services: AccountServices) -> None:
+        def test_get_integrates(self, app: Flask, account_services: AccountServices):
             api = AccountIntegrateApi()
             method = inspect.unwrap(api.get)
             request_context = RequestContext(
@@ -1155,7 +1154,7 @@ class TestAccountsCases:
             assert result["data"][1]["link"].endswith("/console/api/oauth/login/google")
 
     class TestAccountDeleteApi:
-        def test_delete_verify_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_delete_verify_success(self, app: Flask, account_services: AccountServices):
             api = AccountDeleteVerifyApi()
             method = inspect.unwrap(api.get)
             request_context = RequestContext(
@@ -1176,7 +1175,7 @@ class TestAccountsCases:
             assert result["data"] == "token"
             issue_verification.assert_called_once_with(request_context)
 
-        def test_delete_invalid_code(self, app: Flask, account_services: AccountServices) -> None:
+        def test_delete_invalid_code(self, app: Flask, account_services: AccountServices):
             api = AccountDeleteApi()
             method = inspect.unwrap(api.post)
 
@@ -1196,7 +1195,7 @@ class TestAccountsCases:
                 with pytest.raises(InvalidAccountDeletionCodeError):
                     method(api, AccountDeletePayload.model_validate(payload), request_context)
 
-        def test_delete_verify_maps_rate_limit(self, app: Flask, account_services: AccountServices) -> None:
+        def test_delete_verify_maps_rate_limit(self, app: Flask, account_services: AccountServices):
             api = AccountDeleteVerifyApi()
             method = inspect.unwrap(api.get)
             request_context = RequestContext(
@@ -1214,7 +1213,7 @@ class TestAccountsCases:
             ):
                 method(api, request_context)
 
-        def test_delete_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_delete_success(self, app: Flask, account_services: AccountServices):
             api = AccountDeleteApi()
             method = inspect.unwrap(api.post)
             request_context = RequestContext(
@@ -1236,7 +1235,7 @@ class TestAccountsCases:
             request_deletion.assert_called_once_with(request_context, token="token", code="123456")
 
     class TestChangeEmailApis:
-        def test_check_email_code_invalid(self, app: Flask, account_services: AccountServices) -> None:
+        def test_check_email_code_invalid(self, app: Flask, account_services: AccountServices):
             api = ChangeEmailCheckApi()
             method = inspect.unwrap(api.post)
 
@@ -1263,7 +1262,7 @@ class TestAccountsCases:
                 with pytest.raises(EmailCodeError):
                     method(api, ChangeEmailValidityPayload.model_validate(payload), request_context)
 
-        def test_reset_email_already_used(self, app: Flask, account_services: AccountServices) -> None:
+        def test_reset_email_already_used(self, app: Flask, account_services: AccountServices):
             api = ChangeEmailResetApi()
             method = inspect.unwrap(api.post)
 
@@ -1291,7 +1290,7 @@ class TestAccountsCases:
                     method(api, ChangeEmailResetPayload.model_validate(payload), request_context)
 
     class TestCheckEmailUniqueApi:
-        def test_email_unique_success(self, app: Flask, account_services: AccountServices) -> None:
+        def test_email_unique_success(self, app: Flask, account_services: AccountServices):
             api = CheckEmailUnique()
             method = inspect.unwrap(api.post)
 
@@ -1312,7 +1311,7 @@ class TestAccountsCases:
 
             assert result["result"] == "success"
 
-        def test_email_in_freeze(self, app: Flask, account_services: AccountServices) -> None:
+        def test_email_in_freeze(self, app: Flask, account_services: AccountServices):
             api = CheckEmailUnique()
             method = inspect.unwrap(api.post)
 
@@ -1332,7 +1331,7 @@ class TestAccountsCases:
                 with pytest.raises(AccountInFreezeError):
                     method(api, CheckEmailUniquePayload.model_validate(payload), _change_email_context())
 
-        def test_email_domain_is_suspended(self, app: Flask, account_services: AccountServices) -> None:
+        def test_email_domain_is_suspended(self, app: Flask, account_services: AccountServices):
             api = CheckEmailUnique()
             method = inspect.unwrap(api.post)
 

@@ -258,7 +258,7 @@ class TestAgentAudioReadonlyCases:
         assert persistence_events == []
 
 
-def _file_data() -> FileStorage:
+def _file_data():
     return FileStorage(stream=io.BytesIO(b"audio"), filename="audio.wav", content_type="audio/wav")
 
 
@@ -298,19 +298,19 @@ class TestAudioCases:
         agent_soul = AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
         calls: dict[str, object] = {}
 
-        def resolve_agent_runtime_app_model(**kwargs: object) -> _audio_App:
+        def resolve_agent_runtime_app_model(**kwargs):
             calls["resolver"] = kwargs
             return app_model
 
-        def load_agent_soul_for_debug(**kwargs: object) -> AgentSoulConfig:
+        def load_agent_soul_for_debug(**kwargs):
             calls["draft"] = kwargs
             return agent_soul
 
-        def transcript_agent_asr(**kwargs: object) -> dict[str, object]:
+        def transcript_agent_asr(**kwargs):
             calls["asr"] = kwargs
             return {"text": "agent transcript"}
 
-        def enforce_rbac_checks(**kwargs: object) -> None:
+        def enforce_rbac_checks(**kwargs):
             calls["rbac"] = kwargs
 
         monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", resolve_agent_runtime_app_model)
@@ -338,7 +338,6 @@ class TestAudioCases:
         assert response == {"text": "agent transcript"}
         assert calls["resolver"] == {"session": session, "tenant_id": "tenant-1", "agent_id": agent_id}
         rbac_call = calls["rbac"]
-        assert isinstance(rbac_call, dict)
         assert rbac_call["tenant_id"] == "tenant-1"
         assert rbac_call["account_id"] == "account-1"
         assert rbac_call["path_args"] == {"app_id": "backing-app-1"}
@@ -352,12 +351,10 @@ class TestAudioCases:
             "draft_type": AgentConfigDraftType.DEBUG_BUILD,
             "session": session,
         }
-        asr_call = calls["asr"]
-        assert isinstance(asr_call, dict)
-        assert asr_call == {
+        assert calls["asr"] == {
             "app_model": app_model,
             "agent_soul": agent_soul,
-            "file": asr_call["file"],
+            "file": calls["asr"]["file"],
             "session": session,
             "end_user": None,
         }
@@ -374,7 +371,7 @@ class TestAudioCases:
             lambda **_kwargs: _app(app_id="backing-app-1"),
         )
 
-        def load_agent_soul_for_debug(**kwargs: object) -> AgentSoulConfig:
+        def load_agent_soul_for_debug(**kwargs):
             captured.update(kwargs)
             return AgentSoulConfig.model_validate({"app_features": {"speech_to_text": {"enabled": True}}})
 
@@ -409,11 +406,11 @@ class TestAudioCases:
 
         monkeypatch.setattr(audio_module, "resolve_agent_runtime_app_model", lambda **_kwargs: app_model)
 
-        def deny_access(**kwargs: object) -> None:
+        def deny_access(**kwargs):
             assert kwargs["path_args"] == {"app_id": "backing-app-1"}
             raise Forbidden()
 
-        def load_agent_soul_for_debug(**_kwargs: object) -> AgentSoulConfig:
+        def load_agent_soul_for_debug(**_kwargs):
             nonlocal soul_loaded
             soul_loaded = True
             return AgentSoulConfig()
@@ -437,7 +434,7 @@ class TestAudioCases:
                     agent_id=agent_id,
                 )
 
-        assert not soul_loaded
+        assert soul_loaded is False
 
     @staticmethod
     def test_agent_console_audio_api_preserves_missing_build_draft_404(
@@ -487,9 +484,7 @@ class TestAudioCases:
             (InvokeError("invoke"), CompletionRequestError),
         ],
     )
-    def test_console_audio_api_error_mapping(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, exc: Exception, expected: type[Exception]
-    ) -> None:
+    def test_console_audio_api_error_mapping(app: Flask, monkeypatch: pytest.MonkeyPatch, exc, expected) -> None:
         monkeypatch.setattr(AudioService, "transcript_asr", lambda **_kwargs: (_ for _ in ()).throw(exc))
         api = ChatMessageAudioApi()
         handler = unwrap(api.post)
@@ -538,9 +533,9 @@ class TestAudioCases:
         api = ChatMessageTextApi()
         handler = unwrap(api.post)
         app_model = _app(app_id="app-1")
-        calls: dict[str, object] = {}
+        calls = {}
 
-        def fake_transcript_tts(**kwargs: object) -> dict[str, str]:
+        def fake_transcript_tts(**kwargs):
             calls.update(kwargs)
             return {"audio": "ok"}
 

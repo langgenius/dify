@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import TypedDict, Unpack
 from unittest.mock import Mock
 
 import pytest
@@ -42,15 +41,13 @@ from services.tag_application_service import TagApplicationService
 from tests.helpers.unit.model_factories import make_account
 
 
-def _create_workflow(
-    *, workflow_id: str, version: str, graph: dict[str, object], features: dict[str, object]
-) -> Workflow:
+def _create_workflow(*, workflow_id: str, version: str, graph: dict, features: dict) -> Workflow:
     return Workflow(
         id=workflow_id,
         tenant_id="tenant-1",
         app_id="snippet-1",
-        type=WorkflowType.WORKFLOW,
-        kind=WorkflowKind.SNIPPET,
+        type=WorkflowType.WORKFLOW.value,
+        kind=WorkflowKind.SNIPPET.value,
         version=version,
         graph=json.dumps(graph),
         _features=json.dumps(features),
@@ -61,18 +58,8 @@ def _create_workflow(
     )
 
 
-class SnippetFactoryOverrides(TypedDict, total=False):
-    id: str
-    tenant_id: str
-    name: str
-    description: str | None
-    type: str
-    workflow_id: str | None
-    created_by: str | None
-
-
-def _snippet(**overrides: Unpack[SnippetFactoryOverrides]) -> CustomizedSnippet:
-    values: SnippetFactoryOverrides = {
+def _snippet(**overrides) -> CustomizedSnippet:
+    values = {
         "id": "snippet-1",
         "tenant_id": "tenant-1",
         "name": "Snippet",
@@ -81,17 +68,7 @@ def _snippet(**overrides: Unpack[SnippetFactoryOverrides]) -> CustomizedSnippet:
         "created_by": "account-1",
     }
     values.update(overrides)
-    snippet = CustomizedSnippet(
-        id=values["id"],
-        tenant_id=values["tenant_id"],
-        name=values["name"],
-        description=values["description"],
-        type=values["type"],
-        created_by=values["created_by"],
-    )
-    for field, value in overrides.items():
-        setattr(snippet, field, value)
-    return snippet
+    return CustomizedSnippet(**values)
 
 
 def _account(account_id: str = "account-1") -> Account:
@@ -146,7 +123,7 @@ def test_validate_snippet_graph_forbidden_nodes_raises_with_node_details() -> No
 
 
 def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
-    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     get_target_ids = Mock(return_value=[])
     monkeypatch.setattr(application_tags, "find_target_ids", get_target_ids)
@@ -161,7 +138,7 @@ def test_get_snippets_returns_empty_when_tag_filter_has_no_targets(
 
 
 def test_get_snippets_applies_filters_and_paginates(
-    application_tags: TagApplicationService, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+    application_tags, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
     snippets = []
     for index in range(3):
@@ -269,9 +246,7 @@ def test_update_snippet_allows_duplicate_names(sqlite_session: Session) -> None:
     assert result is snippet
     assert snippet.name == "shared name"
     sqlite_session.flush()
-    stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
-    assert stored_snippet is not None
-    assert stored_snippet.name == "shared name"
+    assert sqlite_session.get(CustomizedSnippet, snippet.id).name == "shared name"
 
 
 def test_update_snippet_updates_optional_fields(sqlite_session: Session) -> None:
@@ -326,9 +301,7 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 
     assert workflow.app_id == snippet.id
     assert workflow.kind == WorkflowKind.SNIPPET
-    stored_input_fields = snippet.input_fields
-    assert stored_input_fields is not None
-    assert json.loads(stored_input_fields) == [{"variable": "query"}]
+    assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     stored_workflow = sqlite_session.scalar(select(Workflow).where(Workflow.id == workflow.id))
     stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
@@ -343,14 +316,13 @@ def test_sync_draft_workflow_creates_draft_and_updates_input_fields(
 
 
 def test_sync_draft_workflow_raises_when_hash_mismatches(
-    monkeypatch: pytest.MonkeyPatch,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     service = SnippetService(session_maker=sqlite_session_factory)
     draft_workflow = _create_workflow(
         workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
     )
-    monkeypatch.setattr(service, "get_draft_workflow", Mock(return_value=draft_workflow))
+    service.get_draft_workflow = Mock(return_value=draft_workflow)
 
     with pytest.raises(WorkflowHashNotEqualError):
         service.sync_draft_workflow(
@@ -393,9 +365,7 @@ def test_sync_draft_workflow_updates_existing_draft_and_clears_variables(
     assert workflow.updated_by == account.id
     assert workflow.environment_variables == []
     assert workflow.conversation_variables == []
-    stored_input_fields = snippet.input_fields
-    assert stored_input_fields is not None
-    assert json.loads(stored_input_fields) == [{"variable": "query"}]
+    assert json.loads(snippet.input_fields) == [{"variable": "query"}]
     sqlite_session.expire_all()
     assert sqlite_session.get(Workflow, workflow.id) is not None
     assert sqlite_session.get(CustomizedSnippet, snippet.id) is not None
@@ -553,8 +523,8 @@ def test_restore_published_snippet_workflow_to_draft_copies_source_snapshot(
 ) -> None:
     snippet = _snippet()
     account = _account("account-2")
-    source_graph: dict[str, object] = {"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": list[object]()}
-    source_features: dict[str, object] = {"opening_statement": "hello"}
+    source_graph = {"nodes": [{"id": "llm-1", "data": {"type": "llm"}}], "edges": []}
+    source_features = {"opening_statement": "hello"}
     source_workflow = _create_workflow(
         workflow_id="published-workflow",
         version="2026-04-28 00:00:00",
@@ -738,9 +708,7 @@ def test_publish_workflow_creates_snapshot_and_updates_snippet(
     assert snippet.updated_by == "account-1"
     sqlite_session.flush()
     assert sqlite_session.get(Workflow, result.id) is result
-    stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
-    assert stored_snippet is not None
-    assert stored_snippet.workflow_id == result.id
+    assert sqlite_session.get(CustomizedSnippet, snippet.id).workflow_id == result.id
 
 
 def test_get_all_published_workflows_returns_empty_without_current_workflow(unbound_session: Session) -> None:
@@ -1061,19 +1029,18 @@ def test_workflow_run_queries_delegate_to_repositories(
     monkeypatch.setattr("services.snippet_service.assemble_workflow_node_execution_traces", mock_assemble)
 
     assert service.get_snippet_workflow_runs(snippet=snippet, args={"limit": "5", "last_id": "run-0"}).data == []
-    workflow_run = service.get_snippet_workflow_run(snippet=snippet, run_id="run-1")
-    assert workflow_run is not None
-    assert workflow_run.id == "run-1"
+    assert service.get_snippet_workflow_run(snippet=snippet, run_id="run-1").id == "run-1"
     assert service.get_snippet_workflow_run_node_executions(snippet=snippet, run_id="run-1") == expected_traces
-    last_run = service.get_snippet_node_last_run(
-        snippet=snippet,
-        workflow=_create_workflow(
-            workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
-        ),
-        node_id="llm-1",
+    assert (
+        service.get_snippet_node_last_run(
+            snippet=snippet,
+            workflow=_create_workflow(
+                workflow_id="workflow-1", version=Workflow.VERSION_DRAFT, graph={"nodes": []}, features={}
+            ),
+            node_id="llm-1",
+        ).id
+        == "last-run-1"
     )
-    assert last_run is not None
-    assert last_run.id == "last-run-1"
     workflow_run_repo.get_paginated_workflow_runs.assert_called_once()
     workflow_run_repo.get_workflow_run_by_id.assert_called_with(
         tenant_id="tenant-1",
@@ -1096,10 +1063,10 @@ def test_workflow_run_queries_delegate_to_repositories(
     )
 
 
-def test_workflow_run_node_executions_returns_empty_when_run_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_workflow_run_node_executions_returns_empty_when_run_missing() -> None:
     service = SnippetService.__new__(SnippetService)
     service._node_execution_service_repo = SimpleNamespace(get_executions_by_workflow_run=Mock())
-    monkeypatch.setattr(service, "get_snippet_workflow_run", Mock(return_value=None))
+    service.get_snippet_workflow_run = Mock(return_value=None)
 
     result = service.get_snippet_workflow_run_node_executions(
         snippet=_snippet(),
@@ -1120,6 +1087,4 @@ def test_increment_use_count_adds_updated_snippet(sqlite_session: Session) -> No
 
     assert snippet.use_count == 3
     sqlite_session.flush()
-    stored_snippet = sqlite_session.get(CustomizedSnippet, snippet.id)
-    assert stored_snippet is not None
-    assert stored_snippet.use_count == 3
+    assert sqlite_session.get(CustomizedSnippet, snippet.id).use_count == 3

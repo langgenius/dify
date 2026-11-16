@@ -150,7 +150,7 @@ def test_get_form_includes_site(
     _, app_model, _ = _persist_app_site(database_session)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None) -> dict[str, object]:
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered {{#$output.name#}}",
@@ -161,13 +161,13 @@ def test_get_form_includes_site(
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id: str | None = None
+            self.workflow_run_id = None
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
             self.recipient_type = recipient_type
 
-        def get_definition(self) -> _FakeDefinition:
+        def get_definition(self):
             return _FakeDefinition()
 
     form = _FakeForm(expiration_time)
@@ -242,9 +242,7 @@ def test_get_form_includes_site(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_get_form_uses_runtime_select_options(
-    monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
-) -> None:
+def test_get_form_uses_runtime_select_options(monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session):
     """GET returns variable-backed select options resolved from runtime state."""
 
     expiration_time = datetime(2099, 1, 1, tzinfo=UTC)
@@ -272,7 +270,7 @@ def test_get_form_uses_runtime_select_options(
     ]
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None) -> dict[str, object]:
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -283,13 +281,13 @@ def test_get_form_uses_runtime_select_options(
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id: str | None = None
+            self.workflow_run_id = None
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.recipient_type = RecipientType.STANDALONE_WEB_APP
             self.expiration_time = expiration
 
-        def get_definition(self) -> _FakeDefinition:
+        def get_definition(self):
             return _FakeDefinition()
 
     limiter_mock = MagicMock()
@@ -303,7 +301,7 @@ def test_get_form_uses_runtime_select_options(
     service_mock.resolve_form_inputs.return_value = runtime_inputs
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
-    def mock_get_features(tenant_id: str, exclude_vector_space: bool = False) -> FeatureModel:
+    def mock_get_features(tenant_id: str, exclude_vector_space: bool = False):
         return FeatureModel(can_replace_logo=True)
 
     monkeypatch.setattr(human_input_module.FeatureService, "get_features", mock_get_features)
@@ -370,7 +368,7 @@ def test_get_form_rejects_console_tokens(
     _, app_model, _ = _persist_app_site(database_session)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None) -> dict[str, object]:
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -381,13 +379,13 @@ def test_get_form_rejects_console_tokens(
 
     class _FakeForm:
         def __init__(self, expiration: datetime):
-            self.workflow_run_id: str | None = None
+            self.workflow_run_id = None
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
             self.recipient_type = RecipientType.CONSOLE
 
-        def get_definition(self) -> _FakeDefinition:
+        def get_definition(self):
             return _FakeDefinition()
 
     form = _FakeForm(expiration_time)
@@ -397,7 +395,7 @@ def test_get_form_rejects_console_tokens(
     monkeypatch.setattr(human_input_module, "extract_remote_ip", lambda req: "203.0.113.10")
     service_mock = MagicMock()
     service_mock.get_form_by_token.return_value = form
-    service_mock.resolve_form_inputs.return_value = list[object]()
+    service_mock.resolve_form_inputs.return_value = []
     monkeypatch.setattr(human_input_module, "HumanInputService", lambda engine: service_mock)
 
     monkeypatch.setattr(
@@ -415,14 +413,14 @@ def test_get_form_rejects_console_tokens(
 
 def test_get_form_raises_forbidden_when_site_missing(
     monkeypatch: pytest.MonkeyPatch, app: Flask, database_session: Session
-) -> None:
+):
     """GET raises Forbidden if site cannot be resolved."""
 
     expiration_time = datetime(2099, 1, 3, tzinfo=UTC)
     _, app_model, _ = _persist_app_site(database_session, include_site=False)
 
     class _FakeDefinition:
-        def model_dump(self, mode: str | None = None) -> dict[str, object]:
+        def model_dump(self, mode: str | None = None):
             return {
                 "form_content": "Raw content",
                 "rendered_content": "Rendered",
@@ -435,12 +433,12 @@ def test_get_form_raises_forbidden_when_site_missing(
         recipient_type = RecipientType.STANDALONE_WEB_APP
 
         def __init__(self, expiration: datetime):
-            self.workflow_run_id: str | None = None
+            self.workflow_run_id = None
             self.app_id = app_model.id
             self.tenant_id = app_model.tenant_id
             self.expiration_time = expiration
 
-        def get_definition(self) -> _FakeDefinition:
+        def get_definition(self):
             return _FakeDefinition()
 
     form = _FakeForm(expiration_time)
@@ -549,7 +547,7 @@ def test_submit_form_accepts_public_tokens(
     limiter_mock.increment_rate_limit.assert_called_once_with("203.0.113.10")
 
 
-def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """POST rejects submissions when rate limit is exceeded."""
 
     limiter_mock = MagicMock()
@@ -574,7 +572,7 @@ def test_submit_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask) -
     service_mock.get_form_by_token.assert_not_called()
 
 
-def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask) -> None:
+def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask):
     """GET rejects requests when rate limit is exceeded."""
 
     limiter_mock = MagicMock()
@@ -595,7 +593,7 @@ def test_get_form_rate_limited(monkeypatch: pytest.MonkeyPatch, app: Flask) -> N
     service_mock.get_form_by_token.assert_not_called()
 
 
-def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine) -> None:
+def test_get_form_raises_expired(monkeypatch: pytest.MonkeyPatch, app: Flask, sqlite_engine: Engine):
     class _FakeForm:
         recipient_type = RecipientType.STANDALONE_WEB_APP
         pass

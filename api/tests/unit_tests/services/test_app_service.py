@@ -5,7 +5,7 @@ from collections.abc import Callable
 from copy import deepcopy
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Literal, NoReturn
+from typing import NoReturn
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -241,8 +241,6 @@ class TestCreateAppTransactionBoundary:
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
-        tenant_id = account.current_tenant_id
-        assert tenant_id is not None
         phase_events: list[str] = []
         event.listen(sqlite_session, "after_commit", lambda _session: phase_events.append("commit"))
 
@@ -261,7 +259,7 @@ class TestCreateAppTransactionBoundary:
             ),
         ):
             app = AppService().create_app(
-                tenant_id,
+                account.current_tenant_id,
                 CreateAppParams(name="Workflow", mode=AppMode.WORKFLOW.value),
                 account,
                 session=sqlite_session,
@@ -305,8 +303,6 @@ class TestCreateAppTransactionBoundary:
     ) -> None:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         account = _persist_account(sqlite_session)
-        tenant_id = account.current_tenant_id
-        assert tenant_id is not None
         model_type_instance = MagicMock()
         model_type_instance.get_model_schema.side_effect = ValueError("Base model unknown-model not found")
         model_instance = SimpleNamespace(
@@ -328,7 +324,7 @@ class TestCreateAppTransactionBoundary:
             ),
         ):
             app = AppService().create_app(
-                tenant_id,
+                account.current_tenant_id,
                 CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
                 account,
                 session=sqlite_session,
@@ -352,9 +348,7 @@ class TestCreateAppRBACAccessInitialization:
     """`create_app` bootstraps RBAC access per app mode: agents get the agent flavour."""
 
     @staticmethod
-    def _create(session: Session, account: Account, mode: Literal[AppMode.AGENT]) -> App:
-        tenant_id = account.current_tenant_id
-        assert tenant_id is not None
+    def _create(session: Session, account: Account, mode: AppMode) -> App:
         with (
             patch("services.app_service.app_was_created.send"),
             patch(
@@ -363,7 +357,7 @@ class TestCreateAppRBACAccessInitialization:
             ),
         ):
             return AppService().create_app(
-                tenant_id,
+                account.current_tenant_id,
                 CreateAppParams(name=f"RBAC {mode.value}", mode=mode.value),
                 account,
                 session=session,
@@ -450,7 +444,7 @@ def test_unpublished_agent_app_access_cannot_be_enabled(
 class TestAppLookup:
     """The auth pipeline's app lookup preserves status and API enablement signals."""
 
-    def test_get_app_by_id_is_plain_session_get(self, sqlite_session: Session) -> None:
+    def test_get_app_by_id_is_plain_session_get(self, sqlite_session: Session):
         """``get_app_by_id`` must NOT apply status / visibility filters
         — callers (e.g. the openapi auth pipeline) need to differentiate
         404 (missing) from 403 (``enable_api`` off) and would lose that
@@ -461,7 +455,7 @@ class TestAppLookup:
 
         assert AppService.get_app_by_id(sentinel_app.id, sqlite_session) is sentinel_app
 
-    def test_get_app_by_id_returns_none_when_missing(self, sqlite_session: Session) -> None:
+    def test_get_app_by_id_returns_none_when_missing(self, sqlite_session: Session):
         assert AppService.get_app_by_id(str(uuid4()), sqlite_session) is None
 
 
@@ -529,14 +523,7 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
     statements: list[str] = []
     bind = sqlite_session.get_bind()
 
-    def record_sql(
-        _conn: object,
-        _cursor: object,
-        statement: str,
-        _parameters: object,
-        _context: object,
-        _executemany: bool,
-    ) -> None:
+    def record_sql(_conn, _cursor, statement, _parameters, _context, _executemany) -> None:
         statements.append(statement)
 
     event.listen(bind, "before_cursor_execute", record_sql)
@@ -563,7 +550,7 @@ def test_get_recent_apps_uses_one_tenant_scoped_projection_query(sqlite_session:
 class TestAppResponseViewAgentConfig:
     def test_masking_persistent_agent_config_does_not_change_database(
         self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ) -> None:
+    ):
         tenant_id = str(uuid4())
         app = _persist_app(sqlite_session, tenant_id=tenant_id)
         app.mode = AppMode.AGENT_CHAT
@@ -599,7 +586,7 @@ class TestAppResponseViewAgentConfig:
 class TestAgentAppType:
     """S1: new ``AppMode.AGENT`` app type wiring."""
 
-    def test_agent_mode_enum_and_template_exist(self) -> None:
+    def test_agent_mode_enum_and_template_exist(self):
         from constants.model_template import default_app_templates
         from models.model import AppMode
 
@@ -611,13 +598,13 @@ class TestAgentAppType:
         assert default_app_templates[AppMode.AGENT]["app"]["enable_site"] is False
         assert default_app_templates[AppMode.AGENT]["app"]["enable_api"] is False
 
-    def test_create_app_params_accepts_agent_mode(self) -> None:
+    def test_create_app_params_accepts_agent_mode(self):
         from services.app_service import CreateAppParams
 
         params = CreateAppParams(name="Iris", mode="agent")
         assert params.mode == "agent"
 
-    def test_list_filter_and_counts_use_server_owned_publication_state(self, sqlite_session: Session) -> None:
+    def test_list_filter_and_counts_use_server_owned_publication_state(self, sqlite_session: Session):
         tenant_id = str(uuid4())
         creator_id = str(uuid4())
         published_app, _ = _persist_agent_app(
@@ -688,7 +675,7 @@ class TestAgentAppType:
         assert searched_counts.published == 0
         assert searched_counts.drafts == 1
 
-    def test_bound_agent_id_is_none_for_non_agent_app(self) -> None:
+    def test_bound_agent_id_is_none_for_non_agent_app(self):
         """Non-agent apps short-circuit before the session is used."""
         from models.model import App, AppMode
 
@@ -699,7 +686,7 @@ class TestAgentAppType:
         # for a non-agent app, so passing None still exercises that path.
         assert app.bound_agent_id_with_session(session=None) is None  # type: ignore[arg-type]
 
-    def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session) -> None:
+    def test_update_agent_app_syncs_backing_agent_identity(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         account_id = str(uuid4())
 
@@ -732,7 +719,7 @@ class TestAgentAppType:
         assert backing_agent.updated_by == account_id
         assert backing_agent.updated_at == updated_app.updated_at
 
-    def test_update_agent_app_preserves_role_when_args_omit_it(self, sqlite_session: Session) -> None:
+    def test_update_agent_app_preserves_role_when_args_omit_it(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
@@ -755,7 +742,7 @@ class TestAgentAppType:
 
         assert backing_agent.role == "research assistant"
 
-    def test_update_agent_app_clears_role_when_args_set_empty_string(self, sqlite_session: Session) -> None:
+    def test_update_agent_app_clears_role_when_args_set_empty_string(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
 
         with (
@@ -779,7 +766,7 @@ class TestAgentAppType:
 
         assert backing_agent.role == ""
 
-    def test_update_agent_app_duplicate_name_rolls_back_and_raises_conflict(self, sqlite_session: Session) -> None:
+    def test_update_agent_app_duplicate_name_rolls_back_and_raises_conflict(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         existing = Agent(
             tenant_id=app.tenant_id,
@@ -819,7 +806,7 @@ class TestAgentAppType:
         sqlite_session.expire_all()
         assert sqlite_session.get(Agent, backing_agent.id).name == "Old"  # type: ignore[union-attr]
 
-    def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session) -> None:
+    def test_delete_agent_app_archives_backing_agent(self, sqlite_session: Session):
         app, backing_agent = _persist_agent_app(sqlite_session)
         workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
         workflow_app.mode = AppMode.WORKFLOW
@@ -936,9 +923,7 @@ class TestAgentAppType:
             purge_agent_ids=[backing_agent.id],
         )
 
-    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(
-        self, sqlite_session: Session
-    ) -> None:
+    def test_delete_app_commit_failure_does_not_retire_workflow_agents_or_enqueue(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         app.mode = AppMode.WORKFLOW
         workflow_agent = Agent(
@@ -975,7 +960,7 @@ class TestAgentAppType:
         enqueue_collection.assert_not_called()
         enqueue_app_cleanup.assert_not_called()
 
-    def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session) -> None:
+    def test_delete_workflow_app_releases_all_bindings_before_retirement(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         app.mode = AppMode.WORKFLOW
         workflow = Workflow.new(
@@ -1016,7 +1001,7 @@ class TestAgentAppType:
         sqlite_session.commit()
         events: list[str] = []
 
-        def retire_unowned(**kwargs: object) -> None:
+        def retire_unowned(**kwargs):
             events.append("retire")
             assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
             assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
@@ -1045,7 +1030,7 @@ class TestAgentAppType:
         assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
         assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
 
-    def test_delete_app_cleanup_enqueue_failure_propagates_before_retirement(self, sqlite_session: Session) -> None:
+    def test_delete_app_cleanup_enqueue_failure_propagates_before_retirement(self, sqlite_session: Session):
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         error = RuntimeError("broker unavailable")
 
@@ -1114,8 +1099,6 @@ class TestSharedAppTemplateIsolation:
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         baseline = self._use_clean_template_model(monkeypatch, AppMode.CHAT)
         account = _persist_account(sqlite_session)
-        tenant_id = account.current_tenant_id
-        assert tenant_id is not None
         model_manager = self._tenant_default_model_manager()
 
         with (
@@ -1125,7 +1108,7 @@ class TestSharedAppTemplateIsolation:
             patch("services.app_service.SystemFeatureService.is_webapp_auth_enabled", return_value=False),
         ):
             app = AppService().create_app(
-                tenant_id,
+                account.current_tenant_id,
                 CreateAppParams(name="Chat", mode=AppMode.CHAT.value),
                 account,
                 session=sqlite_session,

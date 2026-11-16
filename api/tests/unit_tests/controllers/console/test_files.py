@@ -1,12 +1,11 @@
 import builtins
 import inspect
 import io
-from collections.abc import Callable, Iterator
-from typing import overload
+from collections.abc import Iterator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask, Response
+from flask import Flask
 from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
@@ -31,21 +30,6 @@ from models import Account
 from models.account import AccountStatus, TenantAccountRole
 from models.model import UploadFile
 from tests.helpers.unit.model_factories import make_upload_file
-
-
-@overload
-def unwrap[ReturnT: tuple[object, ...]](func: Callable[..., ReturnT | Response]) -> Callable[..., ReturnT]: ...
-
-
-@overload
-def unwrap[ReturnT](func: Callable[..., ReturnT]) -> Callable[..., ReturnT]: ...
-
-
-def unwrap(func: Callable[..., object]) -> Callable[..., object]:
-    """
-    Recursively unwrap decorated functions.
-    """
-    return inspect.unwrap(func)
 
 
 def _upload_file(*, file_id: str = "file-id-123", size: int = 1024) -> UploadFile:
@@ -111,7 +95,7 @@ class TestFilesCases:
     class TestFileApiGet:
         def test_get_upload_config(self, app: Flask) -> None:
             api = FileApi()
-            get_method = unwrap(api.get)
+            get_method = inspect.unwrap(api.get)
 
             with (
                 app.test_request_context(),
@@ -132,7 +116,7 @@ class TestFilesCases:
     class TestFileApiPost:
         def test_no_file_uploaded(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             with app.test_request_context(method="POST", data={}):
                 with pytest.raises(NoFileUploadedError):
@@ -140,7 +124,7 @@ class TestFilesCases:
 
         def test_too_many_files(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             with app.test_request_context(method="POST"):
                 from unittest.mock import MagicMock, patch
@@ -157,7 +141,7 @@ class TestFilesCases:
 
         def test_filename_missing(self, app: Flask, mock_account_context: Account) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             data = {
                 "file": (io.BytesIO(b"abc"), ""),
@@ -171,7 +155,7 @@ class TestFilesCases:
             mock_current_user.role = TenantAccountRole.NORMAL
 
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             data = {
                 "file": (io.BytesIO(b"abc"), "test.txt"),
@@ -186,7 +170,7 @@ class TestFilesCases:
             self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
         ) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             mock_file_service.upload_file.return_value = _upload_file()
 
@@ -260,7 +244,7 @@ class TestFilesCases:
         ) -> None:
             """Test that invalid source parameter gets normalized to None"""
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             mock_file_service.upload_file.return_value = _upload_file(file_id="file-id-456", size=512)
 
@@ -283,7 +267,7 @@ class TestFilesCases:
             self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
         ) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 
@@ -304,7 +288,7 @@ class TestFilesCases:
             self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
         ) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             from services.errors.file import UnsupportedFileTypeError as ServiceUnsupportedFileTypeError
 
@@ -325,7 +309,7 @@ class TestFilesCases:
             self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock
         ) -> None:
             api = FileApi()
-            post_method = unwrap(api.post)
+            post_method = inspect.unwrap(api.post)
 
             from services.errors.file import BlockedFileExtensionError as ServiceBlockedFileExtensionError
 
@@ -346,7 +330,7 @@ class TestFilesCases:
     class TestFilePreviewApi:
         def test_get_preview(self, app: Flask, mock_account_context: Account, mock_file_service: MagicMock) -> None:
             api = FilePreviewApi()
-            get_method = unwrap(api.get)
+            get_method = inspect.unwrap(api.get)
             mock_file_service.get_file_preview.return_value = "preview text"
 
             with app.test_request_context():
@@ -358,7 +342,7 @@ class TestFilesCases:
     class TestFileSupportTypeApi:
         def test_get_supported_types(self, app: Flask) -> None:
             api = FileSupportTypeApi()
-            get_method = unwrap(api.get)
+            get_method = inspect.unwrap(api.get)
 
             with app.test_request_context():
                 result = get_method(api, _request_context())
