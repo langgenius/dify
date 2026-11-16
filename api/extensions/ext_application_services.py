@@ -95,6 +95,8 @@ from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceToke
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
 from repositories.plugin_file_upload_repository import SQLAlchemyPluginFileUploadOwnerRepository
 from repositories.recommended_app_catalog_repository import DatabaseRecommendedAppCatalogRepository
+from repositories.run_job_result_repository import SQLAlchemyRunResultReader
+from repositories.run_job_store import RedisRunJobStore
 from repositories.saved_message_repository import SQLAlchemySavedMessageRepository
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.sqlalchemy_execution_extra_content_repository import SQLAlchemyExecutionExtraContentRepository
@@ -229,6 +231,7 @@ from services.retention.workflow_run.archive_download_adapters import (
 )
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveService
+from services.run_job_service import RunJobService
 from services.saved_message_service import SavedMessageService
 from services.schema_definition_service import SchemaDefinitionService
 from services.setup_adapters import RedisSetupLock
@@ -384,6 +387,7 @@ class ApplicationServices:
     remote_files: RemoteFileService
     saved_messages: SavedMessageService
     app_tasks: AppTaskControlService
+    run_jobs: RunJobService
     app_audio: AppAudio
     trial_apps: TrialAppServices
     workflow_run_archives: WorkflowRunArchiveService
@@ -487,6 +491,7 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
+    app_tasks = AppTaskControlService(redis_client=redis)
     installation_state = InstallationStateRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
@@ -893,7 +898,14 @@ def build_application_services(
         saved_messages=SavedMessageService(
             saved_messages=SQLAlchemySavedMessageRepository(session_factory=database_client),
         ),
-        app_tasks=AppTaskControlService(redis_client=redis),
+        app_tasks=app_tasks,
+        run_jobs=RunJobService(
+            store=RedisRunJobStore(redis_client=redis),
+            results=SQLAlchemyRunResultReader(session_factory=database_client),
+            tasks=app_tasks,
+            max_background_runs=dify_config.OPENAPI_JOB_MAX_BACKGROUND_RUNS,
+            max_waiters=dify_config.OPENAPI_JOB_MAX_WAITERS,
+        ),
         app_audio=AppAudioRuntime(session_factory=database_client),
         trial_apps=build_trial_app_services(database_client=database_client, trial_apps=trial_apps),
         workflow_run_archives=WorkflowRunArchiveService(
