@@ -15,7 +15,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   documentCanDownload,
@@ -25,7 +25,7 @@ import {
   taskCanRetry,
 } from './model'
 import {
-  useDocumentRowActionBusy,
+  useDocumentRowPendingAction,
   useDownloadDocumentAction,
   useReindexDocumentAction,
   useRenameDocumentAction,
@@ -54,7 +54,7 @@ function RenameDocumentMenuItem({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
-  const busy = useDocumentRowActionBusy(document.id)
+  const busy = Boolean(useDocumentRowPendingAction(document.id))
 
   return (
     <MenuItem
@@ -235,7 +235,7 @@ function RemoveDocumentMenuItem({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
-  const busy = useDocumentRowActionBusy(document.id)
+  const busy = Boolean(useDocumentRowPendingAction(document.id))
   const disabled = !canEdit || document.status === 'deleting'
 
   return (
@@ -262,7 +262,9 @@ export function DocumentActionsMenu({
   document: LogicalDocument
 }) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
-  const busy = useDocumentRowActionBusy(document.id)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const pendingAction = useDocumentRowPendingAction(document.id)
+  const busy = Boolean(pendingAction)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
@@ -270,13 +272,14 @@ export function DocumentActionsMenu({
     <>
       <Menu modal={false}>
         <MenuTrigger
+          ref={menuTriggerRef}
           aria-label={t(($) => $.documentActions, {
             ns: 'knowledgeDocuments',
             name: document.title,
           })}
           disabled={busy}
           className={cn(
-            'ml-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
+            'ms-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
             className,
           )}
         >
@@ -302,8 +305,14 @@ export function DocumentActionsMenu({
       <span id={unavailableReasonId} className="sr-only">
         {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
-        <DialogContent>
+      <Dialog
+        open={renameDialogOpen}
+        onOpenChange={(open, details) => {
+          if (!open && pendingAction === 'rename') details.cancel()
+          else setRenameDialogOpen(open)
+        }}
+      >
+        <DialogContent finalFocus={menuTriggerRef}>
           <RenameDocumentForm document={document} onClose={() => setRenameDialogOpen(false)} />
         </DialogContent>
       </Dialog>

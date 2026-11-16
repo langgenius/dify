@@ -88,19 +88,6 @@ export const fetchIndexingStatusBatch = ({ datasetId, batchId }: BatchReq) => {
   })
 }
 
-export const renameDocumentName = (
-  { datasetId, documentId, name }: CommonDocReq & { name: string },
-  context?: ConsoleClientContext,
-) => {
-  return consoleClient.datasets.byDatasetId.documents.byDocumentId.rename.post(
-    {
-      params: { dataset_id: datasetId, document_id: documentId },
-      body: { name },
-    },
-    { context },
-  )
-}
-
 export const pauseDocIndexing = (
   { datasetId, documentId }: CommonDocReq,
   context?: ConsoleClientContext,

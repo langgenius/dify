@@ -1,6 +1,7 @@
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { OperationName } from '../types'
+import type { RenameDocumentPayload } from './rename-document-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -9,7 +10,7 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { toast } from '@/app/notifications'
@@ -20,9 +21,9 @@ import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
-import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
+  renameDialog: DialogHandle<RenameDocumentPayload>
   embeddingAvailable: boolean
   detail: {
     id: string
@@ -45,6 +46,7 @@ type OperationsProps = {
   canViewSettings: boolean
 }
 const Operations = ({
+  renameDialog,
   embeddingAvailable,
   datasetId,
   detail,
@@ -180,10 +182,7 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const [renameOpen, setRenameOpen] = useState(false)
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
@@ -205,7 +204,8 @@ const Operations = ({
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
   const handleShowRename = () => {
-    if (canEdit) setRenameOpen(true)
+    if (canEdit)
+      renameDialog.openWithPayload({ id, name: name ?? '', menuTrigger: menuTriggerRef.current })
   }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
@@ -322,6 +322,7 @@ const Operations = ({
         <>
           <Menu>
             <MenuTrigger
+              ref={menuTriggerRef}
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(
                 isListScene
@@ -460,18 +461,6 @@ const Operations = ({
           </Menu>
         </>
       )}
-
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
-          <RenameDocumentForm
-            datasetId={datasetId}
-            documentId={id}
-            name={name ?? ''}
-            onSaved={handleRenamed}
-            onClose={() => setRenameOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

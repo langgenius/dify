@@ -2,6 +2,7 @@
 
 import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
+import type { RenameDocumentPayload } from '../components/rename-document-dialog'
 import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import {
@@ -15,6 +16,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -44,6 +46,7 @@ import { consoleQuery } from '@/service/console'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
+import { RenameDocumentDialog } from '../components/rename-document-dialog'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
 import Completed from './completed'
@@ -212,6 +215,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
+  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
   const handleOperate = useCallback(
     (operateName?: string) => {
       invalidDocumentList()
@@ -376,7 +380,13 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 canEdit={canEditDocument}
               />
             )}
+            <RenameDocumentDialog
+              handle={renameDialog}
+              datasetId={datasetId}
+              onSaved={handleOperate}
+            />
             <Operations
+              renameDialog={renameDialog}
               scene="detail"
               embeddingAvailable={embeddingAvailable}
               detail={operationsDetail}

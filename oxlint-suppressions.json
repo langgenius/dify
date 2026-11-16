@@ -5944,11 +5944,6 @@
       "count": 1
     }
   },
-  "web/features/new-rag/documents/actions-menu.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/features/new-rag/documents/bulk/toolbar.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 7

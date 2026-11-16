@@ -112,7 +112,7 @@ describe('MemberDetailsContent', () => {
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -130,7 +130,7 @@ describe('MemberDetailsContent', () => {
         <MemberDetailsContent
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -153,7 +153,7 @@ describe('MemberDetailsContent', () => {
         <MemberDetailsContent
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -176,7 +176,7 @@ describe('MemberDetailsContent', () => {
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -195,7 +195,7 @@ describe('MemberDetailsContent', () => {
         <MemberDetailsContent
           member={member}
           canAssignRoles={false}
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={vi.fn()}
         />,
       )
@@ -226,7 +226,7 @@ describe('MemberDetailsContent', () => {
         <MemberDetailsContent
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={handleAssignSubmit}
         />,
       )
@@ -252,7 +252,7 @@ describe('MemberDetailsContent', () => {
         <MemberDetailsContent
           member={member}
           canAssignRoles
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={handleAssignSubmit}
         />,
       )
@@ -280,7 +280,7 @@ describe('MemberDetailsContent', () => {
           member={member}
           canAssignRoles
           allowMultipleRoles={false}
-          onClose={vi.fn()}
+          saveStatus="idle"
           onAssignSubmit={handleAssignSubmit}
         />,
       )

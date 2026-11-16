@@ -1,12 +1,15 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
+import type { RenameDocumentPayload } from '../../../rename-document-dialog'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { DataSourceType } from '@/models/datasets'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { render } from '@/test/console/render'
+import { RenameDocumentDialog } from '../../../rename-document-dialog'
 import DocumentTableRow from '../document-table-row'
 
 const mockPush = vi.fn()
@@ -92,7 +95,7 @@ describe('DocumentTableRow', () => {
     isGeneralMode: true,
     isQAMode: false,
     embeddingAvailable: true,
-    onShowRenameModal: vi.fn(),
+    renameDialog: createDialogHandle<RenameDocumentPayload>(),
     onUpdate: vi.fn(),
     onDelete: vi.fn(),
   }
@@ -139,10 +142,19 @@ describe('DocumentTableRow', () => {
   describe('Rename Action', () => {
     it('exposes a named rename action that can be activated with the keyboard', async () => {
       const user = userEvent.setup()
-      const onShowRenameModal = vi.fn()
-      render(<DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />, {
-        wrapper: createWrapper(),
-      })
+      render(
+        <>
+          <DocumentTableRow {...defaultProps} />
+          <RenameDocumentDialog
+            handle={defaultProps.renameDialog}
+            datasetId={defaultProps.datasetId}
+            onSaved={vi.fn()}
+          />
+        </>,
+        {
+          wrapper: createWrapper(),
+        },
+      )
 
       await user.tab()
       await user.tab()
@@ -151,7 +163,9 @@ describe('DocumentTableRow', () => {
         screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
       ).toHaveFocus()
       await user.keyboard('{Enter}')
-      expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
+      expect(
+        await screen.findByRole('textbox', { name: 'datasetDocuments.list.table.name' }),
+      ).toHaveValue(defaultProps.doc.name)
       expect(mockPush).not.toHaveBeenCalled()
     })
   })

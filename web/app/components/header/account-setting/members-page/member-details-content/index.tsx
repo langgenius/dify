@@ -1,11 +1,13 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { MutationStatus } from '@tanstack/react-query'
 import type { Role } from '@/models/access-control'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -29,23 +31,22 @@ type MemberDetailsContentProps = {
   member: AccountWithRoleResponse
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
-  onClose: () => void
-  onAssignSubmit?: (roles: Role[]) => void | Promise<unknown>
+  saveStatus: MutationStatus
+  onAssignSubmit: (roles: Role[]) => void
 }
 
 const MemberDetailsContent = ({
   member,
   canAssignRoles = false,
   allowMultipleRoles = true,
-  onClose,
+  saveStatus,
   onAssignSubmit,
 }: MemberDetailsContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [assignOpen, setAssignOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveFailed, setSaveFailed] = useState(false)
+  const isSaving = saveStatus === 'pending'
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
@@ -105,20 +106,6 @@ const MemberDetailsContent = ({
     },
     [allowMultipleRoles, selectedRoles],
   )
-
-  const handleSave = useCallback(async () => {
-    if (isSaving || !onAssignSubmit) return
-    setIsSaving(true)
-    setSaveFailed(false)
-    try {
-      await onAssignSubmit(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
-      onClose()
-    } catch {
-      setSaveFailed(true)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [allowMultipleRoles, isSaving, onAssignSubmit, onClose, selectedRoles])
 
   return (
     <>
@@ -239,17 +226,20 @@ const MemberDetailsContent = ({
         )}
       </DialogBody>
 
-      {saveFailed && <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>}
+      {saveStatus === 'error' && (
+        <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+      )}
       {canAssignRoles && (
         <DialogFooter>
-          <Button variant="secondary" disabled={isSaving} onClick={onClose}>
+          <DialogClose render={<Button variant="secondary" disabled={isSaving} />}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
+          </DialogClose>
           <Button
             variant="primary"
-            onClick={handleSave}
+            onClick={() =>
+              onAssignSubmit(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
+            }
             loading={isSaving}
-            disabled={!onAssignSubmit}
           >
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>

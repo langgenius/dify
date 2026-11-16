@@ -42,12 +42,16 @@ import {
 import { removeDocumentFromSelectionAtom } from '../state/selection'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
-function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+export function useDocumentRowPendingAction(documentId: string) {
   const pendingActionAtom = useMemo(
     () => createDocumentRowPendingActionAtom(documentId),
     [documentId],
   )
-  const pendingAction = useAtomValue(pendingActionAtom)
+  return useAtomValue(pendingActionAtom)
+}
+
+function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+  const pendingAction = useDocumentRowPendingAction(documentId)
   const beginAction = useSetAtom(beginDocumentRowActionAtom)
   const finishAction = useSetAtom(finishDocumentRowActionAtom)
 
@@ -57,14 +61,6 @@ function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
     finish: () => finishAction({ action, documentId }),
     pending: pendingAction === action,
   }
-}
-
-export function useDocumentRowActionBusy(documentId: string) {
-  const pendingActionAtom = useMemo(
-    () => createDocumentRowPendingActionAtom(documentId),
-    [documentId],
-  )
-  return Boolean(useAtomValue(pendingActionAtom))
 }
 
 function useDocumentCanEdit(documentId: string) {

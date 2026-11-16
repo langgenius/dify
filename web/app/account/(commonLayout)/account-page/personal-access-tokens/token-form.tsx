@@ -228,7 +228,7 @@ export default function TokenForm({
         </div>
       ) : (
         <form onSubmit={submit}>
-          <div className="flex flex-col gap-5 px-6 py-3">
+          <fieldset disabled={pending} className="flex min-w-0 flex-col gap-5 px-6 py-3">
             {duplicate && (
               <p className="system-xs-regular text-text-tertiary">
                 {t(($) => $['personalAccessToken.duplicateDescription'])}
@@ -426,7 +426,7 @@ export default function TokenForm({
                 {t(($) => $['personalAccessToken.scopeRequired'])}
               </p>
             )}
-          </div>
+          </fieldset>
           {(create.isError ||
             (update.isError && !editExpired && getHttpErrorStatus(update.error) !== 409)) && (
             <p role="alert" className="px-6 system-xs-regular text-text-warning">

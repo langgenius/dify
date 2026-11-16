@@ -2015,17 +2015,28 @@ describe('DocumentsPage', () => {
     expect(renameDocumentMutation).not.toHaveBeenCalled()
   })
 
-  it('renames a document through its user-facing display metadata', async () => {
+  it('keeps a pending rename open and retains the draft for retry before returning to the row', async () => {
     const user = userEvent.setup()
+    const first = createDeferred()
+    renameDocumentMutation.mockReturnValueOnce(first.promise)
     documentsQuery.data = { pages: [{ items: [document()] }] }
 
     await render(<DocumentsPage knowledgeSpaceId="space-1" />)
-    await user.click(screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ }))
+    const menuButton = screen.getByRole('button', { name: /knowledgeDocuments\.documentActions/ })
+    await user.click(menuButton)
     await user.click(await screen.findByRole('menuitem', { name: 'common.operation.rename' }))
     const input = screen.getByRole('textbox', { name: 'knowledgeSpace.documentColumn' })
     await user.clear(input)
     await user.type(input, 'Renamed handbook.pdf')
-    await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    await user.click(save)
+    expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeDisabled()
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog', { name: 'common.operation.rename' })).toBeVisible()
+    first.reject(new Error('Rename failed'))
+    await waitFor(() => expect(input).toBeEnabled())
+    expect(input).toHaveValue('Renamed handbook.pdf')
+    await user.click(save)
 
     expect(renameDocumentMutation).toHaveBeenCalledWith(
       {
@@ -2042,6 +2053,7 @@ describe('DocumentsPage', () => {
         screen.queryByRole('dialog', { name: 'common.operation.rename' }),
       ).not.toBeInTheDocument(),
     )
+    await waitFor(() => expect(menuButton).toHaveFocus())
   })
 
   it('disables the document from the row action', async () => {

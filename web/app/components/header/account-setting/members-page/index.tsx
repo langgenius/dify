@@ -3,6 +3,7 @@ import type {
   AccountWithRoleResponse,
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
@@ -107,35 +108,33 @@ const MembersPageContent = () => {
     isNotUnlimitedMemberPlan &&
     features.members.limit > 0 &&
     accounts.length >= features.members.limit
-  const [detailsDialogHandle] = useState(() => createDialogHandle<AccountWithRoleResponse>())
+  const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
+  const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
       context: { silent: true },
     }),
   )
 
   const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
-      ? roles.map((role) => role.id)
-      : roles.slice(0, 1).map((role) => role.id)
-
-    return updateRolesOfMember({
-      params: { member_id: member.id },
-      body: { role_ids: roleIds },
-    })
+    if (roleUpdate.isPending) return
+    roleUpdate.mutate(
+      { params: { member_id: member.id }, body: { role_ids: roles.map((role) => role.id) } },
+      { onSuccess: () => detailsActionsRef.current?.close() },
+    )
   }
 
   return (
-    <Dialog
-      handle={detailsDialogHandle}
+    <Dialog<AccountWithRoleResponse>
+      actionsRef={detailsActionsRef}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember && details.reason !== 'imperative-action') details.cancel()
+        if (open) roleUpdate.reset()
+        else if (roleUpdate.isPending && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -435,7 +434,7 @@ const MembersPageContent = () => {
                   canManageMembers && member.role !== 'owner' && userProfileEmail !== member.email
                 }
                 allowMultipleRoles={systemFeatures.rbac_enabled}
-                onClose={() => detailsDialogHandle.close()}
+                saveStatus={roleUpdate.status}
                 onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
               />
             )}

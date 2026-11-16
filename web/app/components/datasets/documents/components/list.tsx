@@ -1,15 +1,15 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { RenameDocumentPayload } from './rename-document-form'
+import type { RenameDocumentPayload } from './rename-document-dialog'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
-import { useCallback, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditMetadataBatchModal from '@/app/components/datasets/metadata/edit-metadata-batch/modal'
 import useBatchEditDocumentMetadata from '@/app/components/datasets/metadata/hooks/use-batch-edit-document-metadata'
@@ -21,7 +21,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import { RenameDocumentForm } from './rename-document-form'
+import { RenameDocumentDialog } from './rename-document-dialog'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
 
@@ -125,13 +125,6 @@ const DocumentList = ({
     })
 
   const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
-  const handleShowRenameModal = (doc: LocalDoc) =>
-    renameDialog.openWithPayload({ id: doc.id, name: doc.name })
-
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
-
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
@@ -222,7 +215,7 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                onShowRenameModal={handleShowRenameModal}
+                renameDialog={renameDialog}
                 onUpdate={onUpdate}
                 onDelete={(row) => onDelete(doc.id, row)}
               />
@@ -294,21 +287,7 @@ const DocumentList = ({
         />
       )}
 
-      <Dialog handle={renameDialog}>
-        {({ payload }) => (
-          <DialogContent>
-            {payload && (
-              <RenameDocumentForm
-                datasetId={datasetId}
-                documentId={payload.id}
-                name={payload.name}
-                onSaved={handleRenamed}
-                onClose={() => renameDialog.close()}
-              />
-            )}
-          </DialogContent>
-        )}
-      </Dialog>
+      <RenameDocumentDialog handle={renameDialog} datasetId={datasetId} onSaved={onUpdate} />
 
       {isShowEditModal && (
         <EditMetadataBatchModal
