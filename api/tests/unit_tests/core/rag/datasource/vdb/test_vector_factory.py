@@ -19,21 +19,29 @@ from models.model import UploadFile
 from tests.helpers.unit.config_override import apply_config_overrides
 
 
-def _dataset(**overrides: object) -> Dataset:
-    index_struct_dict = overrides.pop("index_struct_dict", ...)
-    if index_struct_dict is not ...:
-        overrides["index_struct"] = json.dumps(index_struct_dict) if index_struct_dict is not None else None
+class _Unset:
+    """Marker for "caller did not pass index_struct_dict" so unset differs from None."""
+
+
+_UNSET = _Unset()
+
+
+def _dataset(
+    *,
+    index_struct_dict: dict[str, object] | None | _Unset = _UNSET,
+    tenant_id: str = "tenant-1",
+) -> Dataset:
     dataset = Dataset(
         id="dataset-1",
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         name="Dataset",
         description="",
         created_by="user-1",
         embedding_model_provider="openai",
         embedding_model="text-embedding-3-small",
     )
-    for key, value in overrides.items():
-        setattr(dataset, key, value)
+    if not isinstance(index_struct_dict, _Unset):
+        dataset.index_struct = json.dumps(index_struct_dict) if index_struct_dict is not None else None
     return dataset
 
 
