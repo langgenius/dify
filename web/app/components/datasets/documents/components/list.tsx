@@ -7,7 +7,7 @@ import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
 import { createDialogHandle, Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,6 +21,7 @@ import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
+import { documentRenameKey } from './document-rename-mutation'
 import { RenameDocumentForm } from './rename-document-form'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
@@ -125,7 +126,8 @@ const DocumentList = ({
     })
 
   const [renameDialog] = useState(() => createDialogHandle<DocumentToRename>())
-  const renameFieldsetRef = useRef<HTMLFieldSetElement>(null)
+  const queryClient = useQueryClient()
+  const activeDocumentIdRef = useRef<string>(null)
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
@@ -294,7 +296,10 @@ const DocumentList = ({
           if (
             !open &&
             details.reason !== 'imperative-action' &&
-            renameFieldsetRef.current?.disabled
+            activeDocumentIdRef.current &&
+            queryClient.isMutating({
+              mutationKey: documentRenameKey(datasetId, activeDocumentIdRef.current),
+            })
           )
             details.cancel()
         }}
@@ -304,9 +309,9 @@ const DocumentList = ({
             {payload && (
               <RenameDocumentForm
                 key={payload.id}
+                activeDocumentIdRef={activeDocumentIdRef}
                 datasetId={datasetId}
                 document={payload}
-                ref={renameFieldsetRef}
                 onRenamed={() => renameDialog.close()}
               />
             )}

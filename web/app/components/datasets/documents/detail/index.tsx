@@ -29,7 +29,7 @@ import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -44,6 +44,7 @@ import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
+import { documentRenameKey } from '../components/document-rename-mutation'
 import Operations from '../components/operations'
 import { RenameDocumentForm } from '../components/rename-document-form'
 import StatusItem from '../status-item'
@@ -214,7 +215,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
-  const renameFieldsetRef = useRef<HTMLFieldSetElement>(null)
   const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
@@ -383,7 +383,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             <Dialog
               open={renameOpen}
               onOpenChange={(open, details) => {
-                if (!open && renameFieldsetRef.current?.disabled) details.cancel()
+                if (
+                  !open &&
+                  queryClient.isMutating({ mutationKey: documentRenameKey(datasetId, documentId) })
+                )
+                  details.cancel()
                 else setRenameOpen(open)
               }}
             >
@@ -392,7 +396,6 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   key={documentId}
                   document={operationsDetail}
                   datasetId={datasetId}
-                  ref={renameFieldsetRef}
                   onRenamed={() => setRenameOpen(false)}
                 />
               </DialogContent>

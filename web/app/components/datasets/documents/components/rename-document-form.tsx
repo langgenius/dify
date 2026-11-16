@@ -1,6 +1,6 @@
 'use client'
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { RefObject } from 'react'
+import type { Ref } from 'react'
 import { Button } from '@langgenius/dify-ui/button'
 import {
   DialogBody,
@@ -12,27 +12,33 @@ import {
 import { Field, FieldLabel } from '@langgenius/dify-ui/field'
 import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
-import { useMutation } from '@tanstack/react-query'
+import { useIsMutating, useMutation } from '@tanstack/react-query'
+import { useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { documentRenameKey } from './document-rename-mutation'
 
 export type DocumentToRename = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
 export function RenameDocumentForm({
   document,
+  activeDocumentIdRef,
   onRenamed,
   datasetId,
-  ref,
 }: {
   document: DocumentToRename
+  activeDocumentIdRef?: Ref<string>
   onRenamed: () => void
   datasetId: string
-  ref: RefObject<HTMLFieldSetElement | null>
 }) {
   const { t } = useTranslation(['common', 'datasetDocuments'])
+  useImperativeHandle(activeDocumentIdRef, () => document.id, [document.id])
+  const mutationKey = documentRenameKey(datasetId, document.id)
+  const saving = useIsMutating({ mutationKey }) > 0
   const rename = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationOptions({
+      mutationKey,
       context: { silent: true },
     }),
   )
@@ -44,7 +50,7 @@ export function RenameDocumentForm({
       <Form<{ documentName: string }>
         className="contents"
         onFormSubmit={({ documentName }) => {
-          if (rename.isPending) return
+          if (saving) return
           rename.mutate(
             {
               params: { dataset_id: datasetId, document_id: document.id },
@@ -58,7 +64,7 @@ export function RenameDocumentForm({
           )
         }}
       >
-        <fieldset className="contents" ref={ref} disabled={rename.isPending}>
+        <fieldset className="contents" disabled={saving}>
           <DialogBody>
             <Field name="documentName">
               <FieldLabel className="text-sm leading-5.25 font-medium text-text-primary">
@@ -75,7 +81,7 @@ export function RenameDocumentForm({
             <DialogClose render={<Button className="shrink-0" />}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </DialogClose>
-            <Button type="submit" variant="primary" className="shrink-0" loading={rename.isPending}>
+            <Button type="submit" variant="primary" className="shrink-0" loading={saving}>
               {t(($) => $['operation.save'], { ns: 'common' })}
             </Button>
           </DialogFooter>

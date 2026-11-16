@@ -5,11 +5,13 @@ import {
   DialogContent,
   DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
+import { useQueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
+import { documentRenameKey } from '../document-rename-mutation'
 import { RenameDocumentForm } from '../rename-document-form'
 
 const { rename, toastError } = vi.hoisted(() => ({ rename: vi.fn(), toastError: vi.fn() }))
@@ -39,7 +41,8 @@ function RenameSession({
 }: {
   handle: ReturnType<typeof createDialogHandle<DocumentToRename>>
 }) {
-  const ref = useRef<HTMLFieldSetElement>(null)
+  const queryClient = useQueryClient()
+  const activeDocumentIdRef = useRef<string>(null)
   return (
     <>
       <DialogTrigger handle={handle} payload={firstDocument}>
@@ -48,7 +51,14 @@ function RenameSession({
       <Dialog
         handle={handle}
         onOpenChange={(open, details) => {
-          if (!open && details.reason !== 'imperative-action' && ref.current?.disabled)
+          if (
+            !open &&
+            details.reason !== 'imperative-action' &&
+            activeDocumentIdRef.current &&
+            queryClient.isMutating({
+              mutationKey: documentRenameKey(props.datasetId, activeDocumentIdRef.current),
+            })
+          )
             details.cancel()
         }}
       >
@@ -57,8 +67,8 @@ function RenameSession({
             {payload && (
               <RenameDocumentForm
                 key={payload.id}
+                activeDocumentIdRef={activeDocumentIdRef}
                 document={payload}
-                ref={ref}
                 datasetId={props.datasetId}
                 onRenamed={() => handle.close()}
               />
@@ -145,4 +155,26 @@ it('does not close a replacement draft when an earlier rename finishes', async (
   await act(async () => first.resolve(renamed))
   expect(input).toHaveValue('Second document draft')
   expect(screen.getByRole('dialog')).toBeVisible()
+})
+
+it('only locks the document whose rename is still pending, including after reopening it', async () => {
+  const user = userEvent.setup()
+  const request = createDeferred<typeof renamed>()
+  rename.mockReturnValueOnce(request.promise)
+  const handle = await openFirst(user)
+  await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+  await waitFor(() => expect(rename).toHaveBeenCalledOnce())
+
+  act(() => handle.openWithPayload(secondDocument))
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+
+  act(() => handle.openWithPayload(firstDocument))
+  expect(screen.getByRole('textbox')).toBeDisabled()
+  await user.keyboard('{Escape}')
+  expect(screen.getByRole('dialog')).toBeVisible()
+  await act(async () => request.resolve(renamed))
+  await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled())
+  await user.keyboard('{Escape}')
+  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
