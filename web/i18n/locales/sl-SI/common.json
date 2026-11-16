@@ -197,6 +197,7 @@
   "operation.openInNewTab": "Odpri v novem zavihku",
   "operation.params": "Parametri",
   "operation.pause": "Premor",
+  "operation.pdfLoadFailed": "Failed to load the PDF. Please try again.",
   "operation.play": "Predvajaj",
   "operation.refresh": "Osveži",
   "operation.regenerate": "Regeneracijo",

@@ -197,6 +197,7 @@
   "operation.openInNewTab": "เปิดในแท็บใหม่",
   "operation.params": "พารามิเตอร์",
   "operation.pause": "หยุดชั่วคราว",
+  "operation.pdfLoadFailed": "Failed to load the PDF. Please try again.",
   "operation.play": "เล่น",
   "operation.refresh": "เริ่มใหม่",
   "operation.regenerate": "สร้างใหม่",

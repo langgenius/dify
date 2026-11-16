@@ -197,6 +197,7 @@
   "operation.openInNewTab": "In neuem Tab öffnen",
   "operation.params": "Parameter",
   "operation.pause": "Pausieren",
+  "operation.pdfLoadFailed": "PDF konnte nicht geladen werden. Bitte versuche es erneut.",
   "operation.play": "Abspielen",
   "operation.refresh": "Neustart",
   "operation.regenerate": "Erneuern",
