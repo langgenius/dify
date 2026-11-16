@@ -24,6 +24,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     ...actual,
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.modelProviders.byProvider.credentials.post': api.save,
+      'workspaces.current.modelProviders.byProvider.models.credentials.post': api.save,
       'workspaces.current.modelProviders.byProvider.models.credentials.switch.post': api.activate,
       'workspaces.current.modelProviders.byProvider.credentials.delete': api.remove,
     }),
@@ -92,6 +93,35 @@ it('keeps a pending save open on Escape and retains the entered draft for retry'
   await save.click()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
   expect(onSave).toHaveBeenCalledTimes(1)
+})
+
+it('submits the custom model and key together with Enter and focuses the first missing field', async () => {
+  api.save.mockResolvedValue({ result: 'success' })
+  const screen = await setup({
+    mode: ModelModalModeEnum.configCustomModel,
+    isModelCredential: true,
+    configurateMethod: ConfigurationMethodEnum.customizableModel,
+  })
+  const name = screen.getByRole('textbox', { name: /Model/ })
+  await screen.getByLabelText(/API key/).fill('secret')
+  await userEvent.keyboard('{Enter}')
+  await expect.element(name).toHaveFocus()
+  expect(api.save).not.toHaveBeenCalled()
+  await screen.getByRole('combobox', { name: 'Model Type' }).click()
+  await screen.getByRole('option', { name: 'LLM' }).click()
+  await name.click()
+  await name.fill('custom-model')
+  await expect.element(name).toHaveFocus()
+  await userEvent.keyboard('{Enter}')
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  expect(api.save).toHaveBeenCalledExactlyOnceWith({
+    params: { provider: 'openai' },
+    body: expect.objectContaining({
+      model: 'custom-model',
+      model_type: 'llm',
+      credentials: expect.objectContaining({ api_key: 'secret' }),
+    }),
+  })
 })
 
 it('keeps the replacement credential draft when an earlier request succeeds', async () => {
