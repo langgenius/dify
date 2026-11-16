@@ -76,6 +76,11 @@ _AVAILABLE_PROVIDERS = (
 )
 _INITIAL_CONFIG_VERSION = 1
 _INVALID_CREDENTIALS_DESCRIPTION = "The submitted credentials are invalid."
+_MS_TEAMS_INVALID_TENANT_CODES = frozenset(("AADSTS90002", "AADSTS900021"))
+_MS_TEAMS_INVALID_TENANT_DESCRIPTION = (
+    "The Microsoft Teams Tenant ID is invalid. In Azure Bot Configuration, copy App Tenant ID into Tenant ID "
+    "and Microsoft App ID into Client ID."
+)
 _CONNECTION_FAILURE_DESCRIPTION = "The provider connection could not be established."
 _IM_CALLBACK_PATH = "/callbacks/human-input/v2/im"
 
@@ -334,17 +339,21 @@ class IMChannelService(ABC):
             adapter.close()
 
         if isinstance(tested, CredentialTestFailure):
-            self._raise_provider_failure(tested)
+            self._raise_provider_failure(credentials.provider, tested)
         if tested.provider is not credentials.provider:
             raise AssertionError("provider adapter returned a mismatched provider")
         return tested
 
     @staticmethod
-    def _raise_provider_failure(failure: CredentialTestFailure) -> Never:
+    def _raise_provider_failure(provider: IMProvider, failure: CredentialTestFailure) -> Never:
+        """Translate a typed provider failure into a safe error without persisting configuration."""
         if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED:
+            description = _INVALID_CREDENTIALS_DESCRIPTION
+            if provider is IMProvider.MS_TEAMS and failure.provider_error_code in _MS_TEAMS_INVALID_TENANT_CODES:
+                description = _MS_TEAMS_INVALID_TENANT_DESCRIPTION
             raise ChannelProviderError(
                 ProviderFailureKind.INVALID_CREDENTIALS,
-                _INVALID_CREDENTIALS_DESCRIPTION,
+                description,
                 provider_error_code=failure.provider_error_code,
                 missing_permissions=failure.missing_permissions,
                 http_status=failure.http_status,

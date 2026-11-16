@@ -8,6 +8,7 @@ import threading
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -23,6 +24,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from jwt.algorithms import RSAAlgorithm
 from msrest.exceptions import HttpOperationError
 from pytest_mock import MockerFixture
+from urllib3.response import HTTPResponse
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -328,6 +330,40 @@ def test_credential_test_confirms_graph_permission_bot_auth_and_tenant(mocker: M
     bot_credentials.get_access_token.assert_called_once_with()
 
 
+@pytest.mark.parametrize(
+    ("tenant_id", "client_id", "provider_code"),
+    [
+        ("00000000-0000-0000-0000-000000000000", _credentials().client_id, "AADSTS900021"),
+        (_credentials().client_id, _credentials().tenant_id, "AADSTS90002"),
+    ],
+    ids=["nonexistent-tenant", "swapped-ids"],
+)
+def test_credential_test_classifies_real_sdk_tenant_discovery_rejections(
+    mocker: MockerFixture,
+    tenant_id: str,
+    client_id: str,
+    provider_code: str,
+) -> None:
+    credentials = _credentials().model_copy(update={"tenant_id": tenant_id, "client_id": client_id})
+    response = requests.Response()
+    response.status_code = 400
+    response._content = json.dumps(
+        {"error": "invalid_tenant", "error_description": f"{provider_code}: {credentials.client_secret}"}
+    ).encode()
+    response.raw = HTTPResponse(body=BytesIO(response._content), status=response.status_code, preload_content=False)
+    mocker.patch.object(requests.Session, "send", autospec=True, return_value=response)
+    adapter = ms_teams.MSTeamsIMProviderAdapter(credentials)
+    try:
+        result = adapter.test_credentials()
+    finally:
+        adapter.close()
+
+    assert isinstance(result, CredentialTestFailure)
+    assert result.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+    assert result.provider_error_code == provider_code
+    assert credentials.client_secret not in repr(result)
+
+
 @pytest.mark.parametrize("rejected_scope", ["graph", "bot"])
 def test_credential_test_rejects_revoked_credentials_after_a_cached_success(
     monkeypatch: pytest.MonkeyPatch,
@@ -458,6 +494,11 @@ def test_credential_test_propagates_graph_and_bot_execution_failures(
     assert isinstance(graph_rejected, CredentialTestFailure)
     assert graph_rejected.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
     assert graph_rejected.provider_error_code == "AADSTS7000215"
+
+    graph_credential.get_token.side_effect = ClientAuthenticationError("Authentication failed: authority unavailable")
+    with pytest.raises(ClientAuthenticationError) as captured_authentication:
+        adapter.test_credentials()
+    assert captured_authentication.value is graph_credential.get_token.side_effect
 
     graph_credential.get_token.side_effect = RuntimeError("sensitive graph failure")
     with pytest.raises(RuntimeError) as captured:

@@ -230,12 +230,20 @@ def _permission_error_is_credential_rejection(error: PermissionError) -> bool:
 
 
 def _microsoft_error_code(error: ClientAuthenticationError | PermissionError) -> str | None:
+    """Read a safe provider code from an SDK failure without exposing its descriptions."""
     # Azure Identity and Bot Framework expose OAuth failures as text. Extract
     # only the provider's identifier; descriptions may echo submitted secrets.
+    # MSAL's authority wrapper omits the discovery response from its message,
+    # retaining the tenant rejection only in the chained exception.
+    current: BaseException | None = error
+    visited: set[int] = set()
+    while current is not None and id(current) not in visited:
+        visited.add(id(current))
+        aadsts_code = re.search(r"\bAADSTS[0-9]+\b", str(current))
+        if aadsts_code is not None:
+            return aadsts_code.group()
+        current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
     error_text = str(error)
-    aadsts_code = re.search(r"\bAADSTS[0-9]+\b", error_text)
-    if aadsts_code is not None:
-        return aadsts_code.group()
     if error_text.startswith(_BOT_TOKEN_REJECTION_PREFIX):
         oauth_code = error_text.removeprefix(_BOT_TOKEN_REJECTION_PREFIX).split(", error_description:", maxsplit=1)[0]
         return oauth_code if oauth_code != "Unknown error" else None
