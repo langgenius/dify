@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "Gelişmiş Ayarlar",
   "agentDetail.configure.answer.activity.ranCommands": "Komutlar çalıştırıldı",
   "agentDetail.configure.answer.activity.runningCommands": "Komutlar çalıştırılıyor",
+  "agentDetail.configure.answer.activity.startingCommands": "Komutlar başlatılıyor",
   "agentDetail.configure.answer.duration.minute": "{{count}} dk",
   "agentDetail.configure.answer.duration.second": "{{count}} sn",
   "agentDetail.configure.answer.responseEnded": "Yanıt sona erdi",

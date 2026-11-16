@@ -143,6 +143,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         apikey,
         extension,
         feature,
+        file_scan,
         human_input_form,
         init_validate,
         notification,
@@ -270,6 +271,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     return (
         apikey,
         extension,
+        file_scan,
         feature,
         human_input_form,
         human_input_channel,
@@ -375,6 +377,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 (
     apikey,
     extension,
+    file_scan,
     feature,
     human_input_form,
     human_input_channel,
@@ -519,6 +522,7 @@ __all__ = [
     "extension",
     "external",
     "feature",
+    "file_scan",
     "forgot_password",
     "generator",
     "hit_testing",
