@@ -1,0 +1,77 @@
+@reference "../../../styles/globals.css";
+
+@font-face {
+  font-family: PricingInter;
+  src: url('./assets/inter-variable.woff2') format('woff2');
+  font-weight: 400 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: PricingSohne;
+  src: url('./assets/soehne-buch.woff2') format('woff2');
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: PricingSohne;
+  src: url('./assets/soehne-kraftig.woff2') format('woff2');
+  font-weight: 500;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: PricingSohne;
+  src: url('./assets/soehne-halbfett.woff2') format('woff2');
+  font-weight: 600 700;
+  font-display: swap;
+}
+
+.content {
+  --pricing-ink: #010916;
+  --pricing-muted: #57657a;
+  --pricing-switch: #e1e2e5;
+  --pricing-switch-border: #d8dadd;
+  --pricing-subdued: #959eab;
+  --pricing-card-border: #cec2b6;
+  --pricing-button-bg: #f8f7f7;
+  --pricing-button-border: var(--pricing-muted);
+  --pricing-feature-border: #f2f3f8;
+  --pricing-info: #b9bece;
+  font-family: PricingSohne, Arial, sans-serif;
+}
+
+/* Light cards use the website palette. The dark surface uses product theme tokens. */
+:global(html[data-theme='dark']) .content {
+  --pricing-ink: var(--color-text-primary);
+  --pricing-muted: var(--color-text-secondary);
+  --pricing-switch: var(--color-background-section);
+  --pricing-switch-border: var(--color-divider-regular);
+  --pricing-subdued: var(--color-text-tertiary);
+  --pricing-card-border: var(--color-divider-regular);
+  --pricing-button-bg: var(--color-components-button-secondary-bg);
+  --pricing-button-border: var(--color-divider-regular);
+  --pricing-feature-border: var(--color-divider-subtle);
+  --pricing-info: var(--color-text-quaternary);
+}
+
+:global(html[data-theme='dark']) .content::before {
+  content: none;
+}
+
+.content::before {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: url('./assets/background.webp') -830px -806px / 3905.51px 2196.849px no-repeat;
+  content: '';
+  pointer-events: none;
+
+  @variant max-xl {
+    inset-block-end: auto;
+    height: 520px;
+    background: url('./assets/background-compact.webp') center top / cover no-repeat;
+    mask-image: linear-gradient(to bottom, black 72%, transparent);
+  }
+}

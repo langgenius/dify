@@ -15,9 +15,16 @@ class _TestNodeData(BaseNodeData):
     pass
 
 
+# Unparameterized `Node` used as a base class or as an annotation cannot express
+# "any NodeDataT", so alias it once with an explicit argument. The alias is the
+# same class object, so runtime behaviour (including the rejection paths exercised
+# below) is unchanged.
+_BareNode: type[Node[BaseNodeData]] = Node
+
+
 def _get_all_subclasses(root: type[Node[BaseNodeData]]) -> list[type[Node[BaseNodeData]]]:
     subclasses: list[type[Node[BaseNodeData]]] = []
-    queue = [root]
+    queue: list[type[Node[BaseNodeData]]] = [root]
     while queue:
         cls = queue.pop()
 
@@ -28,7 +35,7 @@ def _get_all_subclasses(root: type[Node[BaseNodeData]]) -> list[type[Node[BaseNo
 
 
 def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined() -> None:
-    classes = _get_all_subclasses(Node)  # type: ignore
+    classes = _get_all_subclasses(Node)
     type_version_set: set[tuple[NodeType, str]] = set()
 
     for cls in classes:
@@ -92,19 +99,25 @@ def test_extract_node_data_type_from_generic_raises_for_non_type() -> None:
             pass
 
 
+def test_init_subclass_raises_without_generic_or_explicit_type() -> None:
+    """A subclass must either use Node[T] or explicitly set _node_data_type."""
+    with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
+
+        class _InvalidNode(_BareNode):
+            pass
+
+
 def test_init_subclass_rejects_explicit_node_data_type_without_generic() -> None:
     """Setting _node_data_type explicitly cannot bypass the Node[T] requirement."""
     with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
-        # Built dynamically for the same reason as the test above.
-        type(
-            "_ExplicitNode",
-            (Node,),
-            {
-                "_node_data_type": _TestNodeData,
-                "node_type": BuiltinNodeTypes.CODE,
-                "version": staticmethod(lambda: "1"),
-            },
-        )
+
+        class _ExplicitNode(_BareNode):
+            _node_data_type = _TestNodeData
+            node_type = BuiltinNodeTypes.CODE
+
+            @staticmethod
+            def version() -> str:
+                return "1"
 
 
 def test_init_subclass_sets_node_data_type_from_generic() -> None:
