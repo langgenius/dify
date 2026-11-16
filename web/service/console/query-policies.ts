@@ -17,6 +17,11 @@ import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
 import { noop } from 'es-toolkit/function'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
   legacyWorkflowVersionHistoryKey,
@@ -835,6 +840,19 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               versions: {
                 byVersionId: {
+                  patch: {
+                    mutationOptions: {
+                      onSuccess: (_data, { params }, _result, { client }) => {
+                        void invalidateSkillVersionQueries(consoleQuery, client, params.skill_id)
+                        void client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.key(
+                              { input: { params } },
+                            ),
+                        })
+                      },
+                    },
+                  },
                   delete: {
                     mutationOptions: {
                       onSettled: (_data, error, variables, _result, context) => {
@@ -1430,7 +1448,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
+              onMutate: ({ params }) => markAppDeletionStarted(params.app_id),
+              onError: (_error, { params }) => markAppDeletionFailed(params.app_id),
+              onSuccess: (_data, { params }, _onMutateResult, context) => {
+                markAppDeletionSucceeded(params.app_id)
                 void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
                 return Promise.all([
                   context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),

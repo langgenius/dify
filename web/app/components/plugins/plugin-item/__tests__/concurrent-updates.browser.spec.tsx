@@ -1,6 +1,6 @@
 import type { GitHubRepoReleaseResponse } from '../../types'
 import { act } from 'react'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
@@ -92,4 +92,32 @@ it('discards a pending update check when the user chooses a local install', asyn
     release.resolve([{ tag_name: '2.0.0', assets: [] }])
   })
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+})
+
+it('keeps a fresh GitHub install active when an earlier update check resolves', async () => {
+  onTestFinished(guardUnexpectedFetch())
+  const release = createDeferred<GitHubRepoReleaseResponse[]>()
+  vi.mocked(fetchReleases).mockReturnValueOnce(release.promise)
+  const { wrapper } = createConsoleQueryWrapper()
+  await render(
+    <>
+      <PluginUpdateAction name="first" />
+      <InstallPluginMenu onSwitchToMarketplaceTab={() => {}} />
+    </>,
+    { wrapper },
+  )
+  await page.getByRole('button', { name: 'plugin.action.checkForUpdates' }).click()
+  const trigger = page.getByRole('button', { name: 'plugin.installPlugin' })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: 'plugin.source.github' }).click()
+  const dialog = page.getByRole('dialog')
+  await expect.element(dialog.getByRole('textbox')).toHaveFocus()
+  await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
+  await act(async () => {
+    release.resolve([{ tag_name: '2.0.0', assets: [] }])
+  })
+  await expect.element(dialog.getByRole('textbox')).toHaveValue('')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
 })

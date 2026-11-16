@@ -122,11 +122,6 @@
       "count": 1
     }
   },
-  "web/app/components/app-sidebar/app-info/export-app-dialog.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/components/app-sidebar/dataset-info/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -6129,11 +6124,6 @@
   "web/features/skills/detail/skill-metadata.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 9
-    }
-  },
-  "web/features/skills/detail/version-panel.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 13
     }
   },
   "web/features/tag-management/components/tag-filter.tsx": {
