@@ -2,54 +2,50 @@ from __future__ import annotations
 
 import os
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
-from types import SimpleNamespace
-from typing import IO
-from unittest.mock import Mock, patch
+from types import SimpleNamespace, TracebackType
 
 import pytest
-from pytest_mock import MockerFixture
 
 from core.rag.extractor import helpers
-from core.rag.extractor.helpers import detect_file_encodings
+from core.rag.extractor.helpers import FileEncoding, detect_file_encodings
+
+
+class _RecordingSampleReader:
+    """Fake :class:`core.rag.extractor.helpers.FileSampleReader` used by the tests.
+
+    It reads from the real file so the detection path stays real, and records
+    every requested sample size so the test can assert the read bounds.
+    """
+
+    def __init__(self) -> None:
+        self.requested_sizes: list[int] = []
+        self.byte_counts: list[int] = []
+
+    def __call__(self, file_path: str, sample_size: int) -> bytes:
+        self.requested_sizes.append(sample_size)
+        with open(file_path, "rb") as stream:
+            data = stream.read(sample_size)
+        self.byte_counts.append(len(data))
+        return data
 
 
 class TestHelpers:
     @pytest.mark.parametrize(("sample_size", "file_size"), [(None, 1_200_000), (4096, 140_000), (4096, 12)])
-    def test_detect_file_encodings_bounds_read(
-        self, tmp_path: Path, sample_size: int | None, file_size: int, mocker: MockerFixture
-    ) -> None:
+    def test_detect_file_encodings_bounds_read(self, tmp_path: Path, sample_size: int | None, file_size: int) -> None:
         file_path = tmp_path / "sample.txt"
         file_path.write_bytes(b"a" * file_size)
-        real_open = open
-        reads: list[Mock] = []
-        byte_counts: list[int] = []
+        reader = _RecordingSampleReader()
 
-        def tracked_open(filename: str, mode: str = "rb") -> IO[bytes]:
-            stream = real_open(filename, mode)
-            if filename == str(file_path):
-                real_read = stream.read
-
-                def tracked_read(*read_args: int) -> bytes:
-                    data = real_read(*read_args)
-                    byte_counts.append(len(data))
-                    return data
-
-                reader = Mock(side_effect=tracked_read)
-                mocker.patch.object(stream, "read", reader)
-                reads.append(reader)
-            return stream
-
-        with patch("builtins.open", side_effect=tracked_open):
-            if sample_size is None:
-                encodings = detect_file_encodings(str(file_path))
-            else:
-                encodings = detect_file_encodings(str(file_path), sample_size=sample_size)
+        if sample_size is None:
+            encodings = detect_file_encodings(str(file_path), read_sample=reader)
+        else:
+            encodings = detect_file_encodings(str(file_path), sample_size=sample_size, read_sample=reader)
 
         expected_limit = 1024 * 1024 if sample_size is None else sample_size
-        assert len(reads) == 1
-        reads[0].assert_called_once_with(expected_limit)
-        assert byte_counts == [min(file_size, expected_limit)]
+        assert reader.requested_sizes == [expected_limit]
+        assert reader.byte_counts == [min(file_size, expected_limit)]
         assert encodings[0].encoding == "ascii"
 
     def test_detect_file_encodings(self) -> None:
@@ -77,10 +73,17 @@ class TestHelpers:
             def __enter__(self) -> FakeExecutor:
                 return self
 
-            def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+            def __exit__(
+                self,
+                exc_type: type[BaseException] | None,
+                exc: BaseException | None,
+                tb: TracebackType | None,
+            ) -> bool:
                 return False
 
-            def submit(self, fn: object, file_path: object) -> FakeFuture:
+            def submit[**P](
+                self, fn: Callable[P, list[FileEncoding]], /, *args: P.args, **kwargs: P.kwargs
+            ) -> FakeFuture:
                 return FakeFuture()
 
         monkeypatch.setattr(helpers.concurrent.futures, "ThreadPoolExecutor", lambda: FakeExecutor())

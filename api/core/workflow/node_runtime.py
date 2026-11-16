@@ -78,6 +78,7 @@ from graphon.nodes.tool_runtime_entities import (
 from graphon.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from models.dataset import SegmentAttachmentBinding
 from models.model import UploadFile
+from models.tools import ToolFile
 from services.tools.builtin_tools_manage_service import BuiltinToolManageService
 
 from .human_input_adapter import (
@@ -481,6 +482,28 @@ class DifyRetrieverAttachmentLoader(RetrieverAttachmentLoaderProtocol):
         ]
 
 
+class ToolFileStore(Protocol):
+    """Tool-file storage capabilities required by :class:`DifyToolFileManager`.
+
+    Production passes the storage owner (:class:`core.tools.tool_file_manager.ToolFileManager`).
+    Tests pass an in-memory implementation of this protocol instead of patching
+    the production class, so the adapter is exercised through its real seam.
+    """
+
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> ToolFile: ...
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]: ...
+
+
 class DifyToolFileManager(ToolFileManagerProtocol):
     """Workflow adapter that resolves conversation scope outside `graphon`."""
 
@@ -491,9 +514,10 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         run_context: Mapping[str, Any] | DifyRunContext,
         *,
         conversation_id_getter: Callable[[], str | None] | None = None,
+        tool_file_store: ToolFileStore | None = None,
     ) -> None:
         self._run_context = resolve_dify_run_context(run_context)
-        self._manager = ToolFileManager()
+        self._store: ToolFileStore = tool_file_store if tool_file_store is not None else ToolFileManager()
         self._conversation_id_getter = conversation_id_getter
 
     @override
@@ -505,7 +529,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         filename: str | None = None,
     ) -> Any:
         conversation_id = self._conversation_id_getter() if self._conversation_id_getter is not None else None
-        return self._manager.create_file_by_raw(
+        return self._store.create_file_by_raw(
             user_id=self._run_context.user_id,
             tenant_id=self._run_context.tenant_id,
             conversation_id=conversation_id,
@@ -515,8 +539,8 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         )
 
     @override
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str):
-        return self._manager.get_file_generator_by_tool_file_id(tool_file_id)
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
+        return self._store.get_file_generator_by_tool_file_id(tool_file_id)
 
 
 @dataclass(frozen=True, slots=True)

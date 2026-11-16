@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from collections.abc import Generator, Iterator, Mapping
-from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pytest_mock import MockerFixture
 
-from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.node_runtime import DifyToolFileManager
 from core.workflow.system_variables import build_system_variables
 from graphon.file import File, FileTransferMethod, FileType
@@ -19,10 +17,16 @@ from graphon.nodes.tool.tool_node import ToolNode
 from graphon.nodes.tool_runtime_entities import ToolRuntimeHandle, ToolRuntimeMessage
 from graphon.runtime import RuntimeState
 from graphon.variables.segments import ArrayFileSegment
+from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
 
 class _StubToolRuntime:
+    """Tool runtime stub: only the capabilities `graphon`'s ToolNode calls."""
+
+    def __init__(self, *, file_reference: File | None = None) -> None:
+        self._file_reference = file_reference
+
     def get_runtime(
         self,
         *,
@@ -50,6 +54,8 @@ class _StubToolRuntime:
         return LLMUsage.empty_usage()
 
     def build_file_reference(self, *, mapping: Mapping[str, Any]) -> Any:
+        if self._file_reference is not None:
+            return self._file_reference
         return mapping
 
     def resolve_provider_icons(
@@ -61,8 +67,33 @@ class _StubToolRuntime:
         return default_icon, None
 
 
-@pytest.fixture
-def tool_node() -> ToolNode:
+class _StubToolFileStore:
+    """In-memory :class:`core.workflow.node_runtime.ToolFileStore` for the contract tests."""
+
+    def __init__(self, tool_files: Mapping[str, File] | None = None) -> None:
+        self.tool_files: dict[str, File] = dict(tool_files or {})
+        self.requested_ids: list[str] = []
+
+    def create_file_by_raw(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str | None,
+        file_binary: bytes,
+        mimetype: str,
+        filename: str | None = None,
+    ) -> ToolFile:
+        raise NotImplementedError
+
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
+        self.requested_ids.append(tool_file_id)
+        return None, self.tool_files.get(tool_file_id)
+
+
+def _build_tool_node(
+    *, tool_file_store: _StubToolFileStore | None = None, runtime: _StubToolRuntime | None = None
+) -> ToolNode:
     graph_config: dict[str, Any] = {
         "nodes": [
             {
@@ -100,18 +131,24 @@ def tool_node() -> ToolNode:
 
     config = graph_config["nodes"][0]
 
-    tool_file_manager = DifyToolFileManager(init_params.run_context)
-    runtime = _StubToolRuntime()
+    tool_file_manager = DifyToolFileManager(
+        init_params.run_context,
+        tool_file_store=tool_file_store if tool_file_store is not None else _StubToolFileStore(),
+    )
 
-    node = ToolNode(
+    return ToolNode(
         node_id="node-instance",
         data=ToolNodeData.model_validate(config["data"]),
         init_params=init_params,
         runtime_state=graph_runtime_state,
         tool_file_manager=tool_file_manager,
-        runtime=runtime,
+        runtime=runtime if runtime is not None else _StubToolRuntime(),
     )
-    return node
+
+
+@pytest.fixture
+def tool_node() -> ToolNode:
+    return _build_tool_node()
 
 
 def _collect_events(generator: Iterator[Any]) -> list[Any]:
@@ -196,7 +233,17 @@ def test_plain_link_messages_remain_links(tool_node: ToolNode) -> None:
     assert files_segment.value == []
 
 
-def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mocker: MockerFixture) -> None:
+def test_image_link_messages_use_tool_file_id_metadata() -> None:
+    tool_file = File(
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.TOOL_FILE,
+        related_id="file-id",
+        filename="demo.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=123,
+        storage_key="file-key",
+    )
     file_obj = File(
         file_type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -207,12 +254,8 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mock
         size=123,
         storage_key="file-key",
     )
-    download = mocker.patch.object(
-        ToolFileManager,
-        "get_file_generator_by_tool_file_id",
-        return_value=(None, SimpleNamespace(mime_type="application/pdf")),
-    )
-    mocker.patch.object(tool_node._runtime, "build_file_reference", MagicMock(return_value=file_obj))
+    store = _StubToolFileStore(tool_files={"file-id": tool_file})
+    tool_node = _build_tool_node(tool_file_store=store, runtime=_StubToolRuntime(file_reference=file_obj))
     message = ToolRuntimeMessage(
         type=ToolRuntimeMessage.MessageType.IMAGE_LINK,
         message=ToolRuntimeMessage.TextMessage(text="/files/tools/file-id.pdf"),
@@ -221,7 +264,7 @@ def test_image_link_messages_use_tool_file_id_metadata(tool_node: ToolNode, mock
 
     events, _ = _run_transform(tool_node, message)
 
-    download.assert_called_once_with("file-id")
+    assert store.requested_ids == ["file-id"]
     completed_events = [event for event in events if isinstance(event, StreamCompletedEvent)]
     assert len(completed_events) == 1
     files_segment = completed_events[0].node_run_result.outputs["files"]
