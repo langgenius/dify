@@ -61,6 +61,18 @@ class TestImagePreviewApi:
         assert response.mimetype == "image/png"
 
     @patch.object(module, "FileService")
+    def test_svg_preview_is_inline_but_sandboxed(self, mock_file_service):
+        module.request = fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig"})
+        mock_file_service.return_value.get_image_preview.return_value = (iter([b"<svg></svg>"]), "image/svg+xml")
+
+        response = unwrap(module.ImagePreviewApi().get)("file-id")
+
+        assert response.headers["Content-Type"] == "image/svg+xml"
+        assert response.headers["Content-Disposition"] == "inline"
+        assert "sandbox" in response.headers["Content-Security-Policy"]
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "FileService")
     def test_unsupported_file_type(self, mock_file_service):
         module.request = fake_request(
             {
@@ -82,7 +94,7 @@ class TestImagePreviewApi:
 
 
 class TestFilePreviewApi:
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_active_content_response")
     @patch.object(module, "FileService")
     def test_inline_preview_uses_upload_file_mimetype(self, mock_file_service, mock_enforce):
         module.request = fake_request(
@@ -193,7 +205,7 @@ class TestFilePreviewApi:
         assert response.headers["Content-Type"] == "application/octet-stream"
         assert response.headers["X-Content-Type-Options"] == "nosniff"
 
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_active_content_response")
     @patch.object(module, "FileService")
     def test_as_attachment(self, mock_file_service, mock_enforce):
         module.request = fake_request(

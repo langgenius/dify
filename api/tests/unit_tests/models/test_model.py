@@ -1,8 +1,14 @@
+import base64
+import hashlib
+import hmac
 import importlib
 import types
+from unittest.mock import patch
 
 import pytest
 
+from configs import dify_config
+from models import model as model_module
 from models.model import Message
 
 
@@ -15,6 +21,15 @@ def patch_file_helpers(monkeypatch: pytest.MonkeyPatch):
     dummy = types.SimpleNamespace(get_signed_file_url=lambda fid: f"https://signed.example/{fid}")
     # Inject/override file_helpers on models.model
     monkeypatch.setattr(model_module, "file_helpers", dummy, raising=False)
+
+
+def _signed_preview_url(file_id: str, *, kind: str = "file", timestamp: str = "111", nonce: str = "222") -> str:
+    """Build a preview URL whose signature is authentic under the current SECRET_KEY."""
+    payload = f"{kind}-preview|{file_id}|{timestamp}|{nonce}"
+    sign = base64.urlsafe_b64encode(
+        hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+    ).decode()
+    return f"/files/{file_id}/{kind}-preview?timestamp={timestamp}&nonce={nonce}&sign={sign}"
 
 
 def _wrap_md(url: str) -> str:
@@ -32,7 +47,7 @@ def test_file_preview_valid_replaced():
     - Replace the original URL with the signed URL
     """
     upload_id = "abc-123"
-    url = f"/files/{upload_id}/file-preview?timestamp=111&nonce=222&sign=333"
+    url = _signed_preview_url(upload_id, timestamp="111", nonce="222")
     msg = Message(answer=_wrap_md(url))
 
     out = msg.re_sign_file_url_answer
@@ -61,7 +76,7 @@ def test_image_preview_valid_replaced():
     Valid image-preview URL must be re-signed.
     """
     upload_id = "img-789"
-    url = f"/files/{upload_id}/image-preview?timestamp=123&nonce=456&sign=789"
+    url = _signed_preview_url(upload_id, kind="image", timestamp="123", nonce="456")
     msg = Message(answer=_wrap_md(url))
 
     out = msg.re_sign_file_url_answer
@@ -81,3 +96,25 @@ def test_image_preview_misspelled_not_replaced():
     out = msg.re_sign_file_url_answer
     # Expect NO replacement, should not rewrite misspelled image-previe URL
     assert out == original
+
+
+def test_forged_or_unsigned_file_urls_are_not_re_signed():
+    """Only URLs carrying an authentic HMAC may be renewed; forged links stay unchanged."""
+    forged_preview = "/files/victim-file/file-preview?timestamp=111&nonce=222&sign=forged"
+    forged_image = "/files/victim-image/image-preview?timestamp=111&nonce=222&sign=forged"
+    forged_tool = "/files/tools/victim-tool.png?timestamp=111&nonce=222&sign=forged"
+    answer = f"[a]({forged_preview}) [b]({forged_image}) [c]({forged_tool})"
+
+    with patch.object(model_module, "sign_tool_file") as sign_tool_file:
+        assert Message(answer=answer).re_sign_file_url_answer == answer
+    sign_tool_file.assert_not_called()
+
+
+def test_authentic_tool_file_url_is_re_signed():
+    tool_url = _signed_preview_url("tool-1").replace("/files/tool-1/file-preview", "/files/tools/tool-1.png")
+
+    with patch.object(model_module, "sign_tool_file", return_value="https://signed.example/tool-1.png") as sign:
+        out = Message(answer=_wrap_md(tool_url)).re_sign_file_url_answer
+
+    sign.assert_called_once_with(tool_file_id="tool-1", extension=".png")
+    assert "https://signed.example/tool-1.png" in out

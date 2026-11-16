@@ -1,4 +1,3 @@
-import os
 from urllib.parse import quote
 
 from flask import Response, request
@@ -8,7 +7,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import UnsupportedFileTypeError
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_active_content_response
 from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
@@ -35,16 +34,11 @@ files_ns.schema_model(
 )
 
 
-def _is_svg_content(mime_type: str | None, filename: str | None, extension: str | None) -> bool:
-    normalized_mime_type = mime_type.split(";", 1)[0].strip().lower() if mime_type else ""
-    if normalized_mime_type == "image/svg+xml":
-        return True
-
-    normalized_extension = extension.lstrip(".").lower() if extension else ""
-    if normalized_extension == "svg":
-        return True
-
-    return bool(filename and os.path.splitext(filename)[1].lstrip(".").lower() == "svg")
+def _build_image_response(generator, mimetype: str | None) -> Response:
+    """Serve verified image bytes; allow inline SVG only under a script-free sandbox."""
+    response = Response(generator, mimetype=mimetype)
+    harden_active_content_response(response, mime_type=mimetype, filename=None, inline_svg=True)
+    return response
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
@@ -86,7 +80,7 @@ class ImagePreviewApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        return _build_image_response(generator, mimetype)
 
 
 @files_ns.route("/<uuid:file_id>/file-preview")
@@ -147,15 +141,12 @@ class FilePreviewApi(Resource):
             response.headers["Accept-Ranges"] = "bytes"
         if upload_file.size > 0:
             response.headers["Content-Length"] = str(upload_file.size)
-        is_svg = _is_svg_content(upload_file.mime_type, upload_file.name, upload_file.extension)
-        if args.as_attachment or is_svg:
+        if args.as_attachment:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             response.headers["Content-Type"] = "application/octet-stream"
-        if is_svg:
-            response.headers["X-Content-Type-Options"] = "nosniff"
 
-        enforce_download_for_html(
+        harden_active_content_response(
             response,
             mime_type=upload_file.mime_type,
             filename=upload_file.name,
@@ -197,4 +188,4 @@ class WorkspaceWebappLogoApi(Resource):
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        return _build_image_response(generator, mimetype)
