@@ -5,23 +5,27 @@ import json
 import logging
 import threading
 import time
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from sqlalchemy.orm import Session
 
 from controllers.openapi import app_start
 from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode
-from controllers.openapi._models import AdvancedChatStartPayload, WorkflowStartPayload
+from controllers.openapi._models import IDEMPOTENCY_KEY_MAX_LENGTH, AdvancedChatStartPayload, WorkflowStartPayload
 from controllers.openapi.app_run import _RUN_GUARDS
+from controllers.openapi.app_start import ADVANCED_CHAT_START_OP, WORKFLOW_START_OP
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from extensions.ext_application_services import ApplicationServices
+from models import App
+from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobStatus
-from services.run_job_service import RunJobService, RunResult
+from services.run_job_service import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, RunJobService, RunResult
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -70,6 +74,13 @@ class World:
     redis: InMemoryRedis
     results: InMemoryRunResults
     service: RunJobService
+    threads: list[threading.Thread] = field(default_factory=list)
+
+    def join(self) -> None:
+        if self.generator.hold is not None:
+            self.generator.hold.set()
+        for thread in self.threads:
+            thread.join(timeout=5)
 
     def start(self, route: str = WORKFLOW_ROUTE, **body: object):
         return self.client.client.post(route.format(app_id=self.client.app_id), json=body, headers=self.client.headers)
@@ -79,6 +90,7 @@ def _world(
     admitted_bearer: AdmittedWorld,
     account_application_services: ApplicationServices,
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
     *,
     max_background_runs: int = 10,
 ) -> World:
@@ -102,7 +114,17 @@ def _world(
         generate = staticmethod(generator.generate)
 
     monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService", GenerateService)
-    return World(admitted_bearer, generator, store, redis, results, service)
+    world = World(admitted_bearer, generator, store, redis, results, service)
+    attach = service.attach
+
+    def attach_and_track(job_id: str, frames: Iterable[str]) -> threading.Thread:
+        thread = attach(job_id, frames)
+        world.threads.append(thread)
+        return thread
+
+    monkeypatch.setattr(service, "attach", attach_and_track)
+    request.addfinalizer(world.join)
+    return world
 
 
 @pytest.fixture
@@ -110,8 +132,9 @@ def world(
     admitted_bearer: AdmittedWorld,
     account_application_services: ApplicationServices,
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> World:
-    return _world(admitted_bearer, account_application_services, monkeypatch)
+    return _world(admitted_bearer, account_application_services, monkeypatch, request)
 
 
 def _job_ids(world: World) -> list[str]:
@@ -120,6 +143,44 @@ def _job_ids(world: World) -> list[str]:
 
 def test_start_returns_a_finished_job_when_the_run_ends_inside_the_wait(world: World) -> None:
     response = world.start(wait_seconds=5)
+
+    assert response.status_code == 200
+    body = response.get_json()
+    assert body["status"] == "succeeded"
+    assert body["run_id"] == RUN_ID
+    assert body["outputs"] == {"x": 1}
+
+
+def test_start_orders_audit_attach_end_of_read_transaction_then_wait(
+    world: World, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    order: list[str] = []
+    attach = world.service.attach
+    wait = world.service.wait
+
+    def recording_attach(job_id: str, frames: Iterable[str]) -> threading.Thread:
+        order.append("attach")
+        return attach(job_id, frames)
+
+    def recording_wait(*args: object, **kwargs: object):
+        order.append("wait")
+        return wait(*args, **kwargs)
+
+    monkeypatch.setattr(app_start, "emit_app_run", lambda **_kwargs: order.append("emit"))
+    monkeypatch.setattr(app_start, "end_read_transaction", lambda _session: order.append("end"))
+    monkeypatch.setattr(world.service, "attach", recording_attach)
+    monkeypatch.setattr(world.service, "wait", recording_wait)
+
+    world.start(wait_seconds=0)
+
+    assert order == ["emit", "attach", "end", "wait"]
+
+
+def test_advanced_chat_start_returns_a_finished_job(world: World, sqlite_session: Session) -> None:
+    sqlite_session.get(App, world.client.app_id).mode = AppMode.ADVANCED_CHAT
+    sqlite_session.commit()
+
+    response = world.start(CHATFLOW_ROUTE, query="hi", wait_seconds=5)
 
     assert response.status_code == 200
     body = response.get_json()
@@ -181,8 +242,9 @@ def test_start_at_the_background_cap_answers_429(
     admitted_bearer: AdmittedWorld,
     account_application_services: ApplicationServices,
     monkeypatch: pytest.MonkeyPatch,
+    request: pytest.FixtureRequest,
 ) -> None:
-    world = _world(admitted_bearer, account_application_services, monkeypatch, max_background_runs=1)
+    world = _world(admitted_bearer, account_application_services, monkeypatch, request, max_background_runs=1)
     release = threading.Event()
     world.generator.hold = release
     try:
@@ -216,7 +278,7 @@ def test_a_failing_audit_discards_the_job(world: World, monkeypatch: pytest.Monk
 
     assert response.status_code == 500
     assert _job_ids(world) == []
-    assert world.start(wait_seconds=0, idempotency_key="k2").status_code == 500
+    assert not [name for name in world.redis.values if "k2" in name]
 
 
 def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> None:
@@ -231,8 +293,13 @@ def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> Non
 @pytest.mark.parametrize("model", [WorkflowStartPayload, AdvancedChatStartPayload])
 def test_start_payloads_bound_the_start_fields_and_forbid_extras(model: type) -> None:
     extra = {"query": "hi"} if model is AdvancedChatStartPayload else {}
-    assert model(**extra).wait_seconds == 25
-    for bad in ({"wait_seconds": 46}, {"wait_seconds": -1}, {"idempotency_key": ""}, {"idempotency_key": "k" * 129}):
+    assert model(**extra).wait_seconds == WAIT_DEFAULT_SECONDS
+    for bad in (
+        {"wait_seconds": WAIT_MAX_SECONDS + 1},
+        {"wait_seconds": -1},
+        {"idempotency_key": ""},
+        {"idempotency_key": "k" * (IDEMPOTENCY_KEY_MAX_LENGTH + 1)},
+    ):
         with pytest.raises(ValidationError):
             model(**extra, **bad)
     with pytest.raises(ValidationError):
@@ -246,7 +313,7 @@ def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi
 
     ops = build_catalog(openapi_app)["ops"]
     specs = {spec.catalog.op: spec for _, _, fn in iter_handlers(openapi_app) if (spec := spec_of(fn)) is not None}
-    for op in ("start.console_app.workflow", "start.console_app.advanced_chat"):
+    for op in (WORKFLOW_START_OP, ADVANCED_CHAT_START_OP):
         assert ops[op]["kind"] == Kind.OBJECT.value
         assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
