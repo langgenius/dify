@@ -2,7 +2,7 @@
 
 import json
 import logging
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Generator, Iterable, Mapping, Sequence
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -26,10 +26,9 @@ from services.file_reference_parser import referenced_candidate_ids, trusted_upl
 
 logger = logging.getLogger(__name__)
 
-# Fixed per-check budgets bound the SQL owner scan and the payload bytes this
-# repository accumulates. The row queries may read one extra overflow-probe
-# row, and a storage adapter may buffer data internally before yielding chunks.
-_OPAQUE_PAYLOAD_ROW_LIMIT = 100
+# Bound each SQL page and each payload buffer, rather than the tenant's total
+# state. A storage adapter may buffer internally before yielding its chunks.
+_OPAQUE_PAYLOAD_PAGE_SIZE = 100
 _OPAQUE_PAYLOAD_BYTE_LIMIT = 16 * 1024 * 1024
 
 
@@ -130,17 +129,20 @@ def _opaque_payload_keys(
     session: Session,
     *,
     tenant_id: str,
-) -> tuple[tuple[str, ...], bool]:
-    """Lock a bounded, complete list of live opaque payload keys for a tenant.
+) -> Generator[str]:
+    """Yield tenant-owned opaque keys in bounded pages under owner-row locks.
 
-    All three owner sources share one row budget. The extra row requested from
-    each source proves whether the list is complete before any object is read.
-    If the budget is exceeded, callers must conservatively retain candidates;
-    large tenants may therefore defer otherwise-safe file reclamation.
+    Preconditions: the caller holds candidate file locks in this transaction.
+    Postconditions: exhausting the iterator visits every live owner source,
+    regardless of tenant size. Keyset pagination bounds each result buffer;
+    owner locks remain held until the caller commits or rolls back. Storage
+    keys may repeat across owners. Query errors propagate without authorizing
+    deletion. New references are fenced by the candidate file locks.
     """
 
     execution_query = (
-        select(UploadFile.key)
+        select(WorkflowNodeExecutionOffload.id, UploadFile.key)
+        .select_from(UploadFile)
         .join(WorkflowNodeExecutionOffload, WorkflowNodeExecutionOffload.file_id == UploadFile.id)
         .join(
             WorkflowNodeExecutionModel,
@@ -154,7 +156,8 @@ def _opaque_payload_keys(
         .with_for_update(read=True, nowait=True)
     )
     draft_query = (
-        select(UploadFile.key)
+        select(WorkflowDraftVariable.id, UploadFile.key)
+        .select_from(UploadFile)
         .join(WorkflowDraftVariableFile, WorkflowDraftVariableFile.upload_file_id == UploadFile.id)
         .join(WorkflowDraftVariable, WorkflowDraftVariable.file_id == WorkflowDraftVariableFile.id)
         .join(App, App.id == WorkflowDraftVariable.app_id)
@@ -166,32 +169,28 @@ def _opaque_payload_keys(
         .with_for_update(read=True, nowait=True)
     )
     pause_query = (
-        select(WorkflowPause.state_object_key)
+        select(WorkflowPause.id, WorkflowPause.state_object_key)
         .join(WorkflowRun, WorkflowRun.id == WorkflowPause.workflow_run_id)
         .where(WorkflowRun.tenant_id == tenant_id, WorkflowPause.resumed_at.is_(None))
         .with_for_update(read=True, nowait=True)
     )
-    queries = (execution_query, draft_query, pause_query)
-    keys: list[str] = []
-    query_index = 0
-    complete = True
-    while complete and query_index < len(queries):
-        remaining = _OPAQUE_PAYLOAD_ROW_LIMIT - len(keys)
-        source_keys = tuple(session.scalars(queries[query_index].limit(remaining + 1)))
-        complete = len(source_keys) <= remaining
-        if complete:
-            keys.extend(source_keys)
-        query_index += 1
-
-    if not complete:
-        logger.warning(
-            "Opaque workflow payload scan exceeded the row limit; retaining upload-file candidates, "
-            "tenant_id=%s, row_limit=%s",
-            tenant_id,
-            _OPAQUE_PAYLOAD_ROW_LIMIT,
-        )
-        return (), False
-    return tuple(dict.fromkeys(keys)), True
+    queries = (
+        (execution_query, WorkflowNodeExecutionOffload.id),
+        (draft_query, WorkflowDraftVariable.id),
+        (pause_query, WorkflowPause.id),
+    )
+    for query, owner_id in queries:
+        last_id: str | None = None
+        has_more = True
+        while has_more:
+            page_query = query.order_by(owner_id).limit(_OPAQUE_PAYLOAD_PAGE_SIZE)
+            if last_id is not None:
+                page_query = page_query.where(owner_id > last_id)
+            rows = session.execute(page_query).all()
+            for row_id, key in rows:
+                yield key
+                last_id = row_id
+            has_more = len(rows) == _OPAQUE_PAYLOAD_PAGE_SIZE
 
 
 def _candidate_ids_maybe_referenced_by_opaque_payloads(
@@ -200,41 +199,36 @@ def _candidate_ids_maybe_referenced_by_opaque_payloads(
     tenant_id: str,
     candidates: Sequence[UploadFileReferenceCandidate],
 ) -> set[str]:
-    """Resolve opaque references within row and repository-buffer budgets.
+    """Resolve opaque references with bounded SQL pages and payload buffers.
 
-    Exceeding either budget treats every unresolved candidate as referenced.
-    This fail-closed choice bounds the SQL owner scan and bytes accumulated by
-    this repository at the cost of deferring deletion for tenants with too much
-    live opaque workflow state. It does not guarantee that every storage
-    adapter streams its transport without internal buffering.
+    Preconditions: candidate file locks are held in the supplied transaction.
+    Postconditions: tenant size alone never prevents a complete scan. One
+    oversized payload conservatively retains unresolved candidates; storage or
+    query errors propagate. Each decoded payload is released before loading
+    the next, so the byte budget limits a buffer, not total scanning progress.
+    Storage adapters may still buffer their transport internally.
     """
 
     referenced: set[str] = set()
     remaining = tuple(candidates)
-    keys, key_list_complete = _opaque_payload_keys(session, tenant_id=tenant_id)
-    if not key_list_complete:
-        return {candidate.id for candidate in remaining}
+    keys = _opaque_payload_keys(session, tenant_id=tenant_id)
 
     # Keep the candidate and owner-row locks while reading immutable payloads;
     # releasing either side before parsing would reopen the attach/delete race.
-    key_index = 0
-    bytes_read = 0
     scan_complete = True
-    while scan_complete and remaining and key_index < len(keys):
-        byte_budget = _OPAQUE_PAYLOAD_BYTE_LIMIT - bytes_read
-        if byte_budget <= 0:
-            scan_complete = False
-        else:
-            payload, payload_bytes_read, payload_complete = _load_opaque_payload(
-                keys[key_index],
-                byte_budget=byte_budget,
-            )
-            bytes_read += payload_bytes_read
-            scan_complete = payload_complete
-            if payload is not None:
-                referenced.update(referenced_candidate_ids((payload,), remaining))
-                remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
-        key_index += 1
+    exhausted = False
+    try:
+        while scan_complete and remaining and not exhausted:
+            key = next(keys, None)
+            exhausted = key is None
+            if key is not None:
+                payload, _, scan_complete = _load_opaque_payload(key, byte_budget=_OPAQUE_PAYLOAD_BYTE_LIMIT)
+                if payload is not None:
+                    referenced.update(referenced_candidate_ids((payload,), remaining))
+                    remaining = tuple(candidate for candidate in remaining if candidate.id not in referenced)
+                del payload
+    finally:
+        keys.close()
 
     if not scan_complete:
         logger.warning(
