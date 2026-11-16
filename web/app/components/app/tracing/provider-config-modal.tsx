@@ -35,7 +35,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { consoleQuery } from '@/service/console'
-import { tracingProviders } from './providers'
+import { normalizeDestination, tracingProviders } from './providers'
 
 type ProviderConfigModalProps = {
   resource: TracingResource
@@ -50,11 +50,6 @@ type ProviderConfigModalProps = {
 }
 
 const I18N_PREFIX = 'tracing.configProvider'
-
-/** Full ingest paths preserve their trailing slash; base URLs keep legacy equivalence. */
-function comparableDestination(value: string | null, exact: boolean) {
-  return value === null ? null : exact ? value.trim() : value.trim().replace(/\/+$/, '')
-}
 
 export function ProviderConfigModal({
   resource,
@@ -104,11 +99,10 @@ export function ProviderConfigModal({
   const destinationChanged = fields.some(
     (field) =>
       field.destination &&
-      comparableDestination(
+      normalizeDestination(
+        type,
         submittedValue(field.name, destinationDrafts[field.name] ?? ''),
-        field.exactDestination ?? false,
-      ) !==
-        comparableDestination(savedValues?.[field.name] ?? null, field.exactDestination ?? false),
+      ) !== normalizeDestination(type, savedValues?.[field.name] ?? null),
   )
   const isEdit = !!config
   const saveError = createConfig.error ?? updateConfig.error

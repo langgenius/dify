@@ -107,7 +107,11 @@ def test_invalid_endpoint_is_rejected_without_leaking_values(endpoint: str) -> N
     [
         (" http://collector:4318 ", ENDPOINT.replace("collector.internal", "collector")),
         ("https://collector/", "https://collector/v1/traces"),
+        ("HTTPS://COLLECTOR:443", "https://collector/v1/traces"),
+        ("http://[::1]:80/", "http://[::1]/v1/traces"),
         ("https://collector/proxy/custom-traces", "https://collector/proxy/custom-traces"),
+        ("https://collector/custom/", "https://collector/custom/"),
+        ("https://collector/a/../v1/traces", "https://collector/v1/traces"),
     ],
 )
 def test_endpoint_preserves_custom_routes_and_expands_bare_origins(endpoint: str, expected: str) -> None:

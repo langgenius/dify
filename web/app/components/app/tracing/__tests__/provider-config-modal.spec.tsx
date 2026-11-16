@@ -402,21 +402,25 @@ describe('ProviderConfigModal', () => {
       })
     })
 
-    it('treats a trailing slash change on a full OTLP path as a new destination', async () => {
+    it.each([
+      ['https://collector.example/custom/', 'https://collector.example/custom', false],
+      ['https://collector.example/v1/traces', 'https://collector.example', true],
+      ['https://collector.example/v1/traces', 'https://COLLECTOR.example:443/', true],
+    ])('compares normalized OTLP destinations: %s → %s', async (saved, edited, keepsHeaders) => {
       const user = userEvent.setup()
       renderProviderConfigModal({
         type: 'otel',
         config: savedConfig('otel', {
           ...validConfigs.otel,
-          endpoint: 'https://collector.example/custom/',
+          endpoint: saved,
         }),
       })
       const headers = screen.getByRole('textbox', { name: 'app.tracing.otel.headers' })
       expect(headers).toHaveAttribute('placeholder', configuredSecretPlaceholder)
       const endpoint = screen.getByRole('textbox', { name: 'Endpoint' })
       await user.clear(endpoint)
-      await user.type(endpoint, 'https://collector.example/custom')
-      expect(headers).not.toHaveAttribute('placeholder', configuredSecretPlaceholder)
+      await user.type(endpoint, edited)
+      expect(headers.getAttribute('placeholder') === configuredSecretPlaceholder).toBe(keepsHeaders)
     })
 
     it('creates an anonymous Phoenix destination without a key', async () => {

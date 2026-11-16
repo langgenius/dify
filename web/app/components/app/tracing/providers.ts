@@ -31,8 +31,6 @@ export type TracingProviderField = {
    * are sent, so changing it means the secrets must be entered again.
    */
   destination: boolean
-  /** Complete ingest paths are distinct even when they differ only by a trailing slash. */
-  exactDestination?: boolean
   /** An example value; without one, the placeholder asks for the label. */
   placeholder?: string
   /** The initial value for a new configuration, when the API has no saved value. */
@@ -390,7 +388,6 @@ export const tracingProviders = {
         required: true,
         secret: false,
         destination: true,
-        exactDestination: true,
         type: 'url',
         pattern: httpUrlPattern,
         placeholder: 'https://collector.example.com:4318/v1/traces',
@@ -437,6 +434,19 @@ export const tracingProviders = {
 >
 
 export type ConfigurableTracingProvider = keyof typeof tracingProviders
+
+/** Normalize destinations for credential hints; the API decides whether saved secrets can be reused. */
+export function normalizeDestination(provider: ConfigurableTracingProvider, value: string | null) {
+  if (value === null) return null
+  if (provider !== 'otel') return value.trim().replace(/\/+$/, '')
+  try {
+    const url = new URL(value.trim())
+    if (url.pathname === '/') url.pathname = '/v1/traces'
+    return url.href
+  } catch {
+    return value.trim()
+  }
+}
 
 export function hasProviderForm(
   provider: TraceConfigPayload['tracing_provider'] | null | undefined,

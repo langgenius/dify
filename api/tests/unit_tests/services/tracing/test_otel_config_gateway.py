@@ -67,7 +67,10 @@ def test_encrypted_headers_are_write_only_but_reported_as_configured() -> None:
     assert EntryPointTraceProviderCatalog().resolve("otel") is OTelProvider
 
 
-@pytest.mark.parametrize("submitted", [{}, {"headers": ""}])
+@pytest.mark.parametrize(
+    "submitted",
+    [{}, {"headers": ""}, {"endpoint": "http://collector:4318"}, {"endpoint": " HTTP://COLLECTOR:4318/ "}],
+)
 def test_edit_preserves_header_credentials_for_unchanged_destination(submitted: dict[str, object]) -> None:
     cipher = _Cipher()
     egress = RecordingEgress([response(200, b""), response(200, b"")], grpc_target=None)
@@ -80,6 +83,7 @@ def test_edit_preserves_header_credentials_for_unchanged_destination(submitted: 
         tracing_config={"endpoint": ENDPOINT, "service_name": "updated", **submitted},
     )
     assert updated["headers"] == original["headers"]
+    assert updated["endpoint"] == egress.requests[-1].url == ENDPOINT
     assert egress.requests[-1].headers["Authorization"] == "Bearer a*b"
 
 

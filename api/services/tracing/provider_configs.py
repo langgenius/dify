@@ -52,12 +52,6 @@ def resolve_provider(providers: TraceProviderCatalog, provider_id: str) -> type[
         raise AppTracingConfigProviderUnavailableError from None
 
 
-def _comparable(value: object, *, exact: bool) -> object:
-    if isinstance(value, str):
-        return value.strip() if exact else value.strip().rstrip("/")
-    return value
-
-
 class ProviderConfigGateway(TracingConfigProviderGateway):
     def __init__(self, *, providers: TraceProviderCatalog, codec: ProviderConfigCodec, egress: Egress) -> None:
         self._providers = providers
@@ -136,33 +130,38 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
 
     def _submitted(
         self, provider: type[TraceProvider[Any]], submitted: Mapping[str, Any], current: ProviderConfig | None
-    ) -> dict[str, Any]:
+    ) -> ProviderConfig:
         """Merge a form submission over the current configuration.
 
         A secret left empty, omitted, or echoed in its masked form keeps its
         current value; ``None`` clears an optional secret. Derived fields are
-        never accepted from the client. Stored secrets are kept only while the
-        destination stays the same, so they never follow an edited host.
+        never accepted from the client. Normalize both configurations before
+        retaining credentials; defaults and equivalent URLs must compare equally.
+        Changed destinations lose inherited secrets before any external I/O.
+        Invalid configurations raise AppTracingConfigInvalidConfigurationError.
         """
         model = provider.config_model
         current_values = current.model_dump() if current is not None else {}
-        exact_destinations = model.exact_destination_fields()
-        moved = any(
-            name in submitted
-            and _comparable(submitted[name], exact=name in exact_destinations)
-            != _comparable(current_values.get(name), exact=name in exact_destinations)
-            for name in model.destination_fields()
-        )
         values: dict[str, Any] = {}
         for field in model.form_fields():
             current_value = current_values.get(field.name)
             if field.secret and self._left_unchanged(submitted, field.name, current_value):
-                if not moved and current_value is not None:
+                if current_value is not None:
                     values[field.name] = current_value
-                continue
-            if field.name in submitted:
+            elif field.name in submitted:
                 values[field.name] = submitted[field.name]
-        return values
+        try:
+            config = model.model_validate(values)
+            if current is not None and any(
+                getattr(config, name) != getattr(current, name) for name in model.destination_fields()
+            ):
+                for name in model.secret_fields():
+                    if self._left_unchanged(submitted, name, current_values.get(name)):
+                        values.pop(name, None)
+                config = model.model_validate(values)
+        except ValidationError:
+            raise AppTracingConfigInvalidConfigurationError from None
+        return config
 
     def _left_unchanged(self, submitted: Mapping[str, Any], name: str, current_value: object) -> bool:
         """Whether the form leaves a secret as it is: omitted, blank, or echoed in its masked form."""
@@ -174,12 +173,9 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
         )
 
     def _verified(
-        self, workspace_id: str, provider: type[TraceProvider[Any]], values: dict[str, Any]
+        self, workspace_id: str, provider: type[TraceProvider[Any]], config: ProviderConfig
     ) -> dict[str, Any]:
-        try:
-            config = provider.config_model.model_validate(values)
-        except ValidationError:
-            raise AppTracingConfigInvalidConfigurationError from None
+        """Verify an admitted configuration, then encrypt it; failed verification stores nothing."""
         try:
             verified = provider(self._egress).verify(config)
         except VerificationError as error:

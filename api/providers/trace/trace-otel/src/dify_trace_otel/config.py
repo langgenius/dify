@@ -11,6 +11,7 @@ from typing import Any
 from urllib.parse import urlsplit, urlunsplit
 
 from dify_trace_sdk.config import ProviderConfig, destination, name_or_default, secret
+from httpx import URL, InvalidURL
 from pydantic import field_validator
 
 _HEADER_NAME = re.compile(r"[!#$%&'*+\-.^_`|~0-9A-Za-z]+")
@@ -65,7 +66,7 @@ def _attribute_value(value: object) -> bool:
 class OTelConfig(ProviderConfig):
     """Four console fields, normalized before verification and workspace encryption."""
 
-    endpoint: str = destination(exact=True)
+    endpoint: str = destination()
     headers: str = secret(default="")
     service_name: str = "dify"
     resource_attributes: str = "{}"
@@ -73,7 +74,7 @@ class OTelConfig(ProviderConfig):
     @field_validator("endpoint")
     @classmethod
     def _endpoint(cls, value: str) -> str:
-        """Keep full collector paths; bare origins use /v1/traces, never credentials or queries."""
+        """Normalize the HTTP destination, preserving custom paths; invalid URLs raise ValueError."""
         try:
             url = value.strip()
             parsed = urlsplit(url)
@@ -89,9 +90,9 @@ class OTelConfig(ProviderConfig):
                 or any(char.isspace() for char in url)
             ):
                 raise ValueError
-        except ValueError:
+            return str(URL(urlunsplit(parsed._replace(path="/v1/traces" if parsed.path in {"", "/"} else parsed.path))))
+        except (InvalidURL, ValueError):
             raise ValueError("Endpoint must be an HTTP(S) URL without credentials, query or fragment") from None
-        return urlunsplit(parsed._replace(path="/v1/traces" if parsed.path in {"", "/"} else parsed.path))
 
     @field_validator("service_name", mode="before")
     @classmethod
