@@ -61,8 +61,7 @@ type CommentThreadProps = {
     content: string,
     mentionedUserIds?: string[],
   ) => Promise<void> | void
-  onReplyDelete?: (replyId: string) => void
-  onReplyDeleteDirect?: (replyId: string) => Promise<void> | void
+  onReplyDelete?: (replyId: string) => Promise<void> | void
 }
 
 type ThreadMessageProps = {
@@ -192,7 +191,6 @@ function CommentThreadComponent({
   onReply,
   onReplyEdit,
   onReplyDelete,
-  onReplyDeleteDirect,
 }: CommentThreadProps) {
   const appId = useAtomValue(editorAppIdAtom)
   const { flowToScreenPosition } = useReactFlow()
@@ -216,8 +214,6 @@ function CommentThreadComponent({
 
   // Focus management refs
   const replyInputRef = useRef<HTMLTextAreaElement>(null)
-  const replyMenuTriggersRef = useRef(new Map<string, HTMLButtonElement>())
-  const deleteReplyTriggerRef = useRef<HTMLButtonElement | null>(null)
 
   // Get mentionable users from store
   const mentionUsersFromStore = useStore((state) =>
@@ -392,6 +388,8 @@ function CommentThreadComponent({
   )
 
   const replies = comment.replies || []
+  const replyWasDeleted =
+    deletingReplyId !== null && !loading && !replies.some((reply) => reply.id === deletingReplyId)
   const isOwnComment = comment.created_by_account?.id === currentUserId
   const messageListRef = useRef<HTMLDivElement>(null)
   const previousReplyCountRef = useRef<number | undefined>(undefined)
@@ -573,7 +571,7 @@ function CommentThreadComponent({
                 onOpenChange={(open) => setActiveReplyMenuId(open ? comment.id : null)}
               >
                 <MenuTrigger
-                  className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                  className="absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                   aria-label={t(($) => $['comments.aria.commentActions'], {
                     ns: 'workflowComments',
                   })}
@@ -657,11 +655,7 @@ function CommentThreadComponent({
                         }}
                       >
                         <MenuTrigger
-                          ref={(element: HTMLButtonElement | null) => {
-                            if (element) replyMenuTriggersRef.current.set(reply.id, element)
-                            else replyMenuTriggersRef.current.delete(reply.id)
-                          }}
-                          className="absolute top-1 right-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
+                          className="absolute inset-e-1 top-1 flex size-6 items-center justify-center rounded-md text-text-tertiary opacity-0 group-hover:opacity-100 hover:bg-state-base-hover hover:text-text-secondary focus:opacity-100 data-popup-open:opacity-100 [@media(hover:none)]:opacity-100"
                           data-reply-menu
                           aria-label={t(($) => $['comments.aria.replyActions'], {
                             ns: 'workflowComments',
@@ -686,14 +680,10 @@ function CommentThreadComponent({
                           </MenuItem>
                           <MenuItem
                             variant="destructive"
+                            disabled={!onReplyDelete}
                             onClick={(event) => {
                               event.stopPropagation()
-                              setActiveReplyMenuId(null)
-                              if (onReplyDeleteDirect) {
-                                deleteReplyTriggerRef.current =
-                                  replyMenuTriggersRef.current.get(reply.id) ?? null
-                                queueMicrotask(() => setDeletingReplyId(reply.id))
-                              } else onReplyDelete?.(reply.id)
+                              setDeletingReplyId(reply.id)
                             }}
                           >
                             {t(($) => $['comments.actions.deleteReply'], {
@@ -793,7 +783,10 @@ function CommentThreadComponent({
         )}
       </div>
       <AlertDialog
-        open={deletingReplyId !== null}
+        open={deletingReplyId !== null && !replyWasDeleted}
+        onOpenChangeComplete={(open) => {
+          if (!open) setDeletingReplyId(null)
+        }}
         onOpenChange={(open, eventDetails) => {
           if (!open && loading) {
             eventDetails.cancel()
@@ -802,19 +795,13 @@ function CommentThreadComponent({
           if (!open) setDeletingReplyId(null)
         }}
       >
-        <AlertDialogContent
-          finalFocus={() =>
-            deleteReplyTriggerRef.current?.isConnected
-              ? deleteReplyTriggerRef.current
-              : (replyInputRef.current ?? true)
-          }
-        >
+        <AlertDialogContent finalFocus={replyWasDeleted ? replyInputRef : undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
+              {t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(($) => $['operation.confirmAction'], { ns: 'common' })}
+              {t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -823,9 +810,8 @@ function CommentThreadComponent({
             </AlertDialogCancelButton>
             <AlertDialogConfirmButton
               loading={loading}
-              onClick={async () => {
-                if (deletingReplyId) await onReplyDeleteDirect?.(deletingReplyId)
-                setDeletingReplyId(null)
+              onClick={() => {
+                if (deletingReplyId) return onReplyDelete?.(deletingReplyId)
               }}
             >
               {t(($) => $['operation.delete'], { ns: 'common' })}

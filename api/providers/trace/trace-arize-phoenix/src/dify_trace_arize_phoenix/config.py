@@ -36,7 +36,10 @@ class PhoenixConfig(ProviderConfig):
     @field_validator("endpoint")
     @classmethod
     def _endpoint(cls, value: str) -> str:
-        return http_url(value, allowed_schemes=_SCHEMES) if value.strip() else PHOENIX_DEFAULT_ENDPOINT
+        if not value.strip():
+            return PHOENIX_DEFAULT_ENDPOINT
+        url = http_url(value, allowed_schemes=_SCHEMES)
+        return url if url.endswith("//") else url.removesuffix("/")
 
 
 class ArizeConfig(ProviderConfig):

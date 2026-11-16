@@ -112,6 +112,50 @@ def test_refresh_preserves_external_unsigned_and_tampered_urls(change: str) -> N
     assert re_sign_file_urls(url, preserve_url=True) == url
 
 
+@pytest.mark.parametrize("preserve_url", [False, True])
+@pytest.mark.parametrize("kind", ["upload", "image", "tool"])
+@pytest.mark.parametrize(
+    "change", ["other_file", "bad_signature", "unicode_signature", "unsigned", "duplicate", "timestamp", "nonce"]
+)
+def test_refresh_never_grants_access_from_forged_urls(kind: str, change: str, preserve_url: bool) -> None:
+    file_id = "b4c3d2e1-0000-4000-8000-123456789abc"
+    match kind:
+        case "upload":
+            url = create_dify_workflow_file_runtime().resolve_upload_file_url(upload_file_id=file_id)
+        case "image":
+            url = sign_upload_file_preview_url(file_id, ".png")
+        case _:
+            url = sign_tool_file(file_id, ".svg")
+    match change:
+        case "other_file":
+            url = url.replace(file_id, "00000000-0000-4000-8000-000000000000")
+        case "bad_signature":
+            url = url.partition("sign=")[0] + "sign=bogus"
+        case "unicode_signature":
+            url = url.partition("sign=")[0] + "sign=伪造"
+        case "unsigned":
+            url = url.partition("?")[0]
+        case "duplicate":
+            url += "&sign=bogus"
+        case "timestamp":
+            url = url.replace("timestamp=", "timestamp=1")
+        case "nonce":
+            url = url.replace("nonce=", "nonce=forged")
+    content = f"[File]({url}) `{url}` {url}"
+
+    assert re_sign_file_urls(content, preserve_url=preserve_url) == content
+
+
+@pytest.mark.parametrize("preserve_url", [False, True])
+def test_refresh_does_not_renew_links_signed_with_a_previous_key(
+    preserve_url: bool, config_overrides: Callable[..., None]
+) -> None:
+    url = sign_tool_file("b4c3d2e1-0000-4000-8000-123456789abc", ".svg")
+    config_overrides(SECRET_KEY="rotated-secret")
+
+    assert re_sign_file_urls(url, preserve_url=preserve_url) == url
+
+
 @pytest.mark.parametrize(
     ("kind", "extension", "expected_path"),
     [

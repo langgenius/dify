@@ -134,11 +134,11 @@ A process can fail between committing state and sending a notification. When del
 
 ## Example: workflow comments
 
-The existing [`WorkflowCommentService`](../api/services/app/workflow_comment_service.py) calls a store and then a notifier. Its [repository](../api/repositories/app/workflow_comment_repository.py) handles persistence, and its [Celery notification adapter](../api/services/app/workflow_comment_mention_gateway.py) handles delivery.
+[`WorkflowCommentAgg`](../api/domain/workflow_comments/workflow_comment_agg.py) is the root of a comment thread, including its replies and mentions. It enforces creator-only edits and deletion, and one-way resolution. Its content and mention value objects validate input; the mention value object filters recipients using supplied workspace membership facts. These types and the mention event share the aggregate's module; [domain errors](../api/domain/workflow_comments/errors.py) live beside it.
 
-If comment behavior is extracted into a domain model, content rules, creator-only edits, and resolution transitions can belong to a `WorkflowCommentAgg` in `api/domain/workflow_comments/workflow_comment_agg.py`. A separate recipient policy is useful only if it has business behavior that needs its own owner. These domain modules are illustrative, not existing files or required scaffolding.
+[`WorkflowCommentService`](../api/services/app/workflow_comment_service.py) loads membership facts, supplies identifiers and time, and translates domain failures into [application errors](../api/services/app/workflow_comment_errors.py). For edits, reply changes, and resolution, it calls domain behavior inside the repository's `change_comment` block. The [repository](../api/repositories/app/workflow_comment_repository.py) scopes the read by workspace and app, locks the comment row, and saves changes in the same transaction.
 
-The application service would still obtain membership facts and coordinate saving and notification. The repository would still enforce ownership and concurrency. Extracting the domain behavior does not move the store or notifier into the aggregate.
+After the write commits, the service handles the aggregate's mention events through the [Celery notification adapter](../api/services/app/workflow_comment_mention_gateway.py). The aggregate has no store or notifier dependency.
 
 ## Migrating legacy code
 

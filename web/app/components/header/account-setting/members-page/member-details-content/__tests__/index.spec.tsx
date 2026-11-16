@@ -51,6 +51,7 @@ const member: AccountWithRoleResponse = {
   created_at: 1731000000,
   status: 'active',
 }
+const submitRoles = vi.fn()
 const render = (ui: ReactElement) => {
   const { queryClient } = createConsoleQueryWrapper()
   const response = mockRolesOfMemberHook().data
@@ -63,7 +64,16 @@ const render = (ui: ReactElement) => {
     )
   return renderWithConsoleQuery(
     <Dialog open>
-      <DialogContent>{ui}</DialogContent>
+      <DialogContent>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            submitRoles(new FormData(event.currentTarget).getAll('roleId'))
+          }}
+        >
+          {ui}
+        </form>
+      </DialogContent>
     </Dialog>,
     { queryClient },
   )
@@ -107,15 +117,7 @@ describe('MemberDetailsContent', () => {
 
   describe('Rendering', () => {
     it('should render edit role action when multiple roles are disabled', () => {
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          allowMultipleRoles={false}
-          onClose={vi.fn()}
-          onAssignSubmit={vi.fn()}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles allowMultipleRoles={false} />)
 
       const editButton = screen.getByRole('button', { name: /common\.operation\.edit/i })
 
@@ -126,14 +128,7 @@ describe('MemberDetailsContent', () => {
     })
 
     it('should render singular assigned role label when there is one role', () => {
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          onClose={vi.fn()}
-          onAssignSubmit={vi.fn()}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles />)
 
       expect(
         screen.getByText(/workspaceMembers\.members\.memberDetails\.assignedRole:/i),
@@ -149,15 +144,9 @@ describe('MemberDetailsContent', () => {
         isLoading: true,
       })
 
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          onClose={vi.fn()}
-          onAssignSubmit={vi.fn()}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles />)
 
+      expect(screen.getByRole('button', { name: /common\.operation\.save/i })).toBeDisabled()
       expect(screen.getByRole('progressbar', { name: 'common.loading' })).toBeInTheDocument()
       expect(
         screen.getByRole('button', { name: /members\.memberDetails\.assign/i }),
@@ -171,15 +160,7 @@ describe('MemberDetailsContent', () => {
     it('should keep role chips readonly when multiple roles are disabled', async () => {
       const user = userEvent.setup()
 
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          allowMultipleRoles={false}
-          onClose={vi.fn()}
-          onAssignSubmit={vi.fn()}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles allowMultipleRoles={false} />)
 
       expect(screen.getByRole('button', { name: /^Custom role$/i })).toBeInTheDocument()
 
@@ -191,14 +172,7 @@ describe('MemberDetailsContent', () => {
     })
 
     it('should not show role removal controls when role assignment is not allowed', () => {
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles={false}
-          onClose={vi.fn()}
-          onAssignSubmit={vi.fn()}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles={false} />)
 
       expect(
         screen.queryByRole('button', { name: /members\.memberDetails\.assign/i }),
@@ -210,7 +184,6 @@ describe('MemberDetailsContent', () => {
 
     it('should submit pending role changes only after save is clicked', async () => {
       const user = userEvent.setup()
-      const handleAssignSubmit = vi.fn()
 
       vi.mocked(mockRolesOfMemberHook).mockReturnValue({
         data: {
@@ -222,77 +195,46 @@ describe('MemberDetailsContent', () => {
         },
       })
 
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          onClose={vi.fn()}
-          onAssignSubmit={handleAssignSubmit}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles />)
 
       await user.click(
         screen.getByRole('button', { name: /common\.operation\.remove.*Custom role/i }),
       )
 
-      expect(handleAssignSubmit).not.toHaveBeenCalled()
+      expect(submitRoles).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      expect(handleAssignSubmit).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
-      ])
+      expect(submitRoles).toHaveBeenCalledWith(['role-2'])
     })
 
     it('should keep assigned role selections pending until save is clicked', async () => {
       const user = userEvent.setup()
-      const handleAssignSubmit = vi.fn()
 
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          onClose={vi.fn()}
-          onAssignSubmit={handleAssignSubmit}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles />)
 
       await user.click(screen.getByRole('button', { name: /members\.memberDetails\.assign/i }))
       await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
 
-      expect(handleAssignSubmit).not.toHaveBeenCalled()
+      expect(submitRoles).not.toHaveBeenCalled()
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      expect(handleAssignSubmit).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 'role-1', name: 'Custom role' }),
-        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
-      ])
+      expect(submitRoles).toHaveBeenCalledWith(['role-1', 'role-2'])
     })
 
     it('should replace the selected role when multiple roles are not allowed', async () => {
       const user = userEvent.setup()
-      const handleAssignSubmit = vi.fn()
 
-      render(
-        <MemberDetailsContent
-          member={member}
-          canAssignRoles
-          allowMultipleRoles={false}
-          onClose={vi.fn()}
-          onAssignSubmit={handleAssignSubmit}
-        />,
-      )
+      render(<MemberDetailsContent member={member} canAssignRoles allowMultipleRoles={false} />)
 
       await user.click(screen.getByRole('button', { name: /common\.operation\.edit/i }))
       await user.click(await screen.findByRole('option', { name: /Second role/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.confirm/i }))
       await user.click(screen.getByRole('button', { name: /common\.operation\.save/i }))
 
-      expect(handleAssignSubmit).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 'role-2', name: 'Second role' }),
-      ])
+      expect(submitRoles).toHaveBeenCalledWith(['role-2'])
     })
   })
 })
