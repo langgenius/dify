@@ -25,18 +25,20 @@ from services.tools.tools_transform_service import ToolTransformService
 class PluginDatasourceProviderPayload(TypedDict):
     """A datasource provider as the plugin daemon sends it in its JSON payload."""
 
-    declaration: "PluginDatasourceDeclarationPayload"
+    declaration: NotRequired["PluginDatasourceDeclarationPayload"]
 
 
 class PluginDatasourceDeclarationPayload(TypedDict):
     """The declaration block of a datasource provider payload."""
 
     identity: NotRequired["PluginProviderIdentityPayload"]
-    datasources: list["PluginDatasourceEntryPayload"]
+    datasources: NotRequired[list["PluginDatasourceEntryPayload"]]
 
 
 class PluginProviderIdentityPayload(TypedDict):
-    name: str
+    # A provider the daemon declared without a name keeps ``None``, which the
+    # manager copies onto every datasource of that provider.
+    name: NotRequired[str]
 
 
 class PluginDatasourceEntryPayload(TypedDict):
@@ -53,15 +55,15 @@ class PluginDatasourceIdentityPayload(TypedDict):
 
 
 class PluginDatasourceListPayload(TypedDict):
-    """The payload returned when the daemon lists datasource providers."""
+    """The ``data`` section of a daemon list response, as the manager rewrites it."""
 
-    data: list[PluginDatasourceProviderPayload]
+    data: NotRequired[list[PluginDatasourceProviderPayload]]
 
 
 class PluginDatasourceSinglePayload(TypedDict):
-    """The payload returned when the daemon resolves one datasource provider."""
+    """The ``data`` section of a daemon single-provider response."""
 
-    data: PluginDatasourceProviderPayload
+    data: NotRequired[PluginDatasourceProviderPayload]
 
 
 class PluginDatasourceManager(BasePluginClient):
@@ -70,20 +72,19 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
             payload = PluginDatasourceListPayload(**json_response)
-            if payload.get("data"):
-                for provider in payload.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
+            for provider in payload.get("data", []):
+                declaration = provider.get("declaration")
+                if declaration is not None:
+                    identity = declaration.get("identity")
+                    provider_name = identity.get("name") if identity is not None else None
                     for datasource in declaration.get("datasources", []):
                         datasource["identity"]["provider"] = provider_name
                         # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-
-            result: dict[str, Any] = dict(payload)
-            return result
+                        if output_schema := datasource.get("output_schema"):
+                            datasource["output_schema"] = resolve_dify_schema_refs(output_schema)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -114,20 +115,19 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
             payload = PluginDatasourceListPayload(**json_response)
-            if payload.get("data"):
-                for provider in payload.get("data", []):
-                    declaration = provider.get("declaration", {}) or {}
-                    provider_name = declaration.get("identity", {}).get("name")
+            for provider in payload.get("data", []):
+                declaration = provider.get("declaration")
+                if declaration is not None:
+                    identity = declaration.get("identity")
+                    provider_name = identity.get("name") if identity is not None else None
                     for datasource in declaration.get("datasources", []):
                         datasource["identity"]["provider"] = provider_name
                         # resolve refs
-                        if datasource.get("output_schema"):
-                            datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-
-            installed_result: dict[str, Any] = dict(payload)
-            return installed_result
+                        if output_schema := datasource.get("output_schema"):
+                            datasource["output_schema"] = resolve_dify_schema_refs(output_schema)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -158,16 +158,17 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceSinglePayload:
             payload = PluginDatasourceSinglePayload(**json_response)
             data = payload.get("data")
-            if data:
-                for datasource in data.get("declaration", {}).get("datasources", []):
+            declaration = data.get("declaration") if data is not None else None
+            if declaration is not None:
+                for datasource in declaration.get("datasources", []):
                     datasource["identity"]["provider"] = tool_provider_id.provider_name
-                    if datasource.get("output_schema"):
-                        datasource["output_schema"] = resolve_dify_schema_refs(datasource["output_schema"])
-            single_result: dict[str, Any] = dict(payload)
-            return single_result
+                    # resolve refs
+                    if output_schema := datasource.get("output_schema"):
+                        datasource["output_schema"] = resolve_dify_schema_refs(output_schema)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",

@@ -308,7 +308,7 @@ class BasePluginClient:
         data: bytes | dict[str, Any] | None = None,
         params: dict[str, Any] | None = None,
         files: dict[str, Any] | None = None,
-        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
+        transformer: Callable[[dict[str, Any]], Mapping[str, Any]] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
