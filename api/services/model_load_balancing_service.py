@@ -1,6 +1,6 @@
 import contextlib
 import logging
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Protocol, TypedDict
 
 from pydantic import ConfigDict, RootModel, ValidationError
@@ -15,7 +15,11 @@ from core.helper.model_provider_cache import (
     ProviderCredentialsCacheType,
 )
 from core.model_manager import LBModelManager
-from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import (
+    PluginModelAssembly,
+    create_plugin_model_assembly,
+    create_plugin_provider_manager,
+)
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.entities.provider_entities import (
@@ -79,14 +83,30 @@ class LoadBalancingTokenCipher(Protocol):
 
 
 class _EncrypterTokenCipher:
+    def __init__(
+        self,
+        encrypt_token: Callable[[str, str], str] = encrypter.encrypt_token,
+        decrypt_token: Callable[[str, str], str] = encrypter.decrypt_token,
+    ) -> None:
+        self._encrypt_token = encrypt_token
+        self._decrypt_token = decrypt_token
+
     def encrypt_token(self, tenant_id: str, token: str) -> str:
-        return encrypter.encrypt_token(tenant_id, token)
+        return self._encrypt_token(tenant_id, token)
 
     def decrypt_token(self, tenant_id: str, token: str) -> str:
-        return encrypter.decrypt_token(tenant_id, token)
+        return self._decrypt_token(tenant_id, token)
 
 
-_DEFAULT_TOKEN_CIPHER = _EncrypterTokenCipher()
+def encrypter_token_cipher(
+    encrypt_token: Callable[[str, str], str] = encrypter.encrypt_token,
+    decrypt_token: Callable[[str, str], str] = encrypter.decrypt_token,
+) -> LoadBalancingTokenCipher:
+    """Build the production cipher, optionally with different encrypt and decrypt functions."""
+    return _EncrypterTokenCipher(encrypt_token=encrypt_token, decrypt_token=decrypt_token)
+
+
+_DEFAULT_TOKEN_CIPHER = encrypter_token_cipher()
 
 
 def _parse_submitted_credentials(raw: LoadBalancingCredentialInput) -> LoadBalancingCredentials:
@@ -622,6 +642,7 @@ class ModelLoadBalancingService:
         session: Session,
         config_id: str | None = None,
         token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
+        model_assembly: PluginModelAssembly | None = None,
     ):
         """
         Validate load balancing credentials.
@@ -633,7 +654,7 @@ class ModelLoadBalancingService:
         :param config_id: load balancing config id
         :return:
         """
-        assembly = create_plugin_model_assembly(tenant_id=tenant_id)
+        assembly = model_assembly if model_assembly is not None else create_plugin_model_assembly(tenant_id=tenant_id)
         provider_configurations = assembly.provider_manager.get_configurations(tenant_id)
 
         # Get provider configuration
@@ -722,8 +743,7 @@ class ModelLoadBalancingService:
                 credentials.set(key, token_cipher.decrypt_token(tenant_id, original))
 
         if validate:
-            if model_provider_factory is None:
-                model_provider_factory = provider_configuration.get_model_provider_factory()
+            assert model_provider_factory is not None
             if isinstance(credential_schemas, ModelCredentialSchema):
                 validated = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,

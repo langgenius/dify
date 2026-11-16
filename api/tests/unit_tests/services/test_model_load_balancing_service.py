@@ -44,6 +44,7 @@ from services.model_load_balancing_service import (
     LoadBalancingCredentials,
     LoadBalancingTokenCipher,
     ModelLoadBalancingService,
+    encrypter_token_cipher,
 )
 
 _DEFAULT_STORED_CREDENTIALS = LoadBalancingCredentials({"api_key": "encrypted"}).model_dump_json()
@@ -542,7 +543,6 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
 
 
 def test_validate_credentials_uses_real_config_lookup(
-    monkeypatch: pytest.MonkeyPatch,
     service: ServiceFixture,
     sqlite_session: Session,
 ) -> None:
@@ -551,12 +551,6 @@ def test_validate_credentials_uses_real_config_lookup(
     assembly = PluginModelAssembly(tenant_id="tenant-1")
     assembly._provider_manager = manager
     assembly._model_provider_factory = _credential_factory(configuration.provider)
-
-    def _assembly(*, tenant_id: str, user_id: str | None = None) -> PluginModelAssembly:
-        del tenant_id, user_id
-        return assembly
-
-    monkeypatch.setattr("services.model_load_balancing_service.create_plugin_model_assembly", _assembly)
     cipher: LoadBalancingTokenCipher = PrefixTokenCipher()
     svc.validate_load_balancing_credentials(
         "tenant-1",
@@ -566,6 +560,7 @@ def test_validate_credentials_uses_real_config_lookup(
         {"api_key": "raw"},
         sqlite_session,
         token_cipher=cipher,
+        model_assembly=assembly,
     )
     svc.validate_load_balancing_credentials(
         "tenant-1",
@@ -576,6 +571,7 @@ def test_validate_credentials_uses_real_config_lookup(
         sqlite_session,
         config.id,
         token_cipher=cipher,
+        model_assembly=assembly,
     )
     with pytest.raises(ValueError, match="does not exist"):
         svc.validate_load_balancing_credentials(
@@ -587,6 +583,7 @@ def test_validate_credentials_uses_real_config_lookup(
             sqlite_session,
             "missing",
             token_cipher=cipher,
+            model_assembly=assembly,
         )
     manager.get_configurations.return_value = dict[str, ProviderConfiguration]()
     with pytest.raises(ValueError, match="does not exist"):
@@ -598,6 +595,7 @@ def test_validate_credentials_uses_real_config_lookup(
             LoadBalancingCredentials({"api_key": "raw"}),
             sqlite_session,
             token_cipher=cipher,
+            model_assembly=assembly,
         )
 
 
@@ -677,8 +675,7 @@ def test_custom_credentials_validate_skips_hidden_secret_without_stored_string(
     assert result == LoadBalancingCredentials({"api_key": f"enc-{HIDDEN_VALUE}"})
 
 
-def test_default_token_cipher_delegates_to_encrypter(
-    monkeypatch: pytest.MonkeyPatch,
+def test_default_token_cipher_delegates_to_injected_encrypter(
     service: ServiceFixture,
     sqlite_session: Session,
 ) -> None:
@@ -694,8 +691,7 @@ def test_default_token_cipher_delegates_to_encrypter(
     def decrypt_token(tenant_id: str, token: str) -> str:
         return f"plain-{tenant_id}-{token}"
 
-    monkeypatch.setattr("services.model_load_balancing_service.encrypter.encrypt_token", encrypt_token)
-    monkeypatch.setattr("services.model_load_balancing_service.encrypter.decrypt_token", decrypt_token)
+    cipher = encrypter_token_cipher(encrypt_token=encrypt_token, decrypt_token=decrypt_token)
     result = svc._custom_credentials_validate(
         "tenant-1",
         configuration,
@@ -704,6 +700,7 @@ def test_default_token_cipher_delegates_to_encrypter(
         LoadBalancingCredentials({"api_key": HIDDEN_VALUE}),
         config,
         validate=False,
+        token_cipher=cipher,
     )
     assert result == LoadBalancingCredentials({"api_key": "enc-tenant-1-plain-tenant-1-stored"})
 
@@ -759,18 +756,6 @@ def test_custom_credentials_validate_filters_provider_and_model_schemas(service:
         token_cipher=cipher,
     )
     assert model_result == LoadBalancingCredentials({"api_key": "enc-secret"})
-
-    # ModelRuntime also requires invocation methods this credential check never calls.
-    configuration.bind_model_runtime(_SchemaRuntime(configuration.provider))  # pyrefly: ignore[bad-argument-type]
-    resolved_result = svc._custom_credentials_validate(
-        "tenant-1",
-        configuration,
-        ModelType.LLM,
-        "gpt-4o-mini",
-        LoadBalancingCredentials({"api_key": "secret"}),
-        token_cipher=cipher,
-    )
-    assert resolved_result == LoadBalancingCredentials({"api_key": "enc-secret"})
 
 
 @pytest.mark.parametrize("credentials", [None, {}, LoadBalancingCredentials({})])
