@@ -150,6 +150,19 @@ LOG_DATEFORMAT=${LOG_DATEFORMAT-%Y-%m-%d %H:%M:%S}
 # UPLOAD_FILE_BATCH_LIMIT=5
 # UPLOAD_FILE_EXTENSION_BLACKLIST=
 # SINGLE_CHUNK_ATTACHMENT_LIMIT=10
+
+# ------------------------------
+# File malware scanning
+# ------------------------------
+# Expose file malware scanning. Each knowledge base still turns it on in its own settings.
+# FILE_SCAN_ENABLED=false
+# Host of a clamd instance offered to every workspace as the ClamAV scanner. Empty hides ClamAV.
+# FILE_SCAN_CLAMAV_HOST=
+# FILE_SCAN_CLAMAV_PORT=3310
+# Seconds one request to a scanner may take, for every scanner type
+# FILE_SCAN_REQUEST_TIMEOUT_SECONDS=300
+# FILE_SCAN_MAX_ATTEMPTS=3
+# FILE_SCAN_CLEAN_VERDICT_TTL_HOURS=24
 # IMAGE_FILE_BATCH_LIMIT=10
 # ATTACHMENT_IMAGE_FILE_SIZE_LIMIT=2
 # ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT=60

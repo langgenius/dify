@@ -4,6 +4,8 @@ import { Button } from '@langgenius/dify-ui/button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { FileScanSetting } from '@/features/file-scan/file-scan-setting'
+import { useFileScanEnabled } from '@/features/file-scan/provider-types'
 import BasicInfoSection from './components/basic-info-section'
 import ExternalKnowledgeSection from './components/external-knowledge-section'
 import IndexingSection from './components/indexing-section'
@@ -67,6 +69,8 @@ const DatasetSettingsForm = ({
   } = useFormState(currentDataset)
 
   const isExternalProvider = currentDataset?.provider === 'external'
+  // An external knowledge base stores no uploaded files, so there is nothing to scan.
+  const showFileScan = useFileScanEnabled() && !isExternalProvider
   const readonly = !canEditSettings
 
   return (
@@ -116,6 +120,13 @@ const DatasetSettingsForm = ({
       )}
 
       <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
+
+      {showFileScan && (
+        <>
+          <FileScanSetting product="dataset" resourceId={currentDataset.id} readonly={readonly} />
+          <Separator decorative orientation="horizontal" className="my-1 bg-divider-subtle" />
+        </>
+      )}
 
       {/* Save Button */}
       <div className="flex gap-x-1">

@@ -40,7 +40,7 @@ describe('Marketplace catalog filters', () => {
     vi.clearAllMocks()
   })
 
-  it('keeps selected languages visible and restores focus after clearing', async () => {
+  it('keeps language selections while searching and restores focus after clearing', async () => {
     const { onUrlUpdate, screen } = await renderFilters()
     const trigger = screen.getByRole('button', { name: 'Filter by Languages' })
 
@@ -56,8 +56,22 @@ describe('Marketplace catalog filters', () => {
       .toBe('zh-Hans')
     await expect.element(screen.getByRole('checkbox', { name: '中文' })).toBeChecked()
 
+    await search.fill('English')
+    await screen.getByRole('checkbox', { name: 'English' }).click()
+    await expect
+      .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('languages'))
+      .toBe('zh-Hans,en')
+    await search.fill('')
+    await expect.element(screen.getByRole('checkbox', { name: '中文' })).toBeChecked()
+    await expect.element(screen.getByRole('checkbox', { name: 'English' })).toBeChecked()
     await userEvent.keyboard('{Escape}')
-    const clear = screen.getByRole('button', { name: 'Clear 中文' })
+    const selected = screen.getByRole('button', { name: 'English, 中文' })
+    await expect.element(selected).toHaveFocus()
+    await selected.click()
+    await expect.element(screen.getByRole('checkbox', { name: '中文' })).toBeChecked()
+    await expect.element(screen.getByRole('checkbox', { name: 'English' })).toBeChecked()
+    await userEvent.keyboard('{Escape}')
+    const clear = screen.getByRole('button', { name: 'Clear English, 中文' })
     await clear.click()
     await expect.element(screen.getByRole('button', { name: 'Filter by Languages' })).toHaveFocus()
     await expect
@@ -66,7 +80,7 @@ describe('Marketplace catalog filters', () => {
   })
 
   it('filters real tag options, preserves multiple selections, and restores focus after clearing', async () => {
-    const { onUrlUpdate, screen } = await renderFilters()
+    const { onUrlUpdate, screen } = await renderFilters('?q=search&languages=ja')
     const trigger = screen.getByRole('button', { name: 'All Tags' })
 
     await trigger.click()
@@ -81,9 +95,25 @@ describe('Marketplace catalog filters', () => {
       .toBe('agent')
     await expect.element(screen.getByRole('checkbox', { name: 'Agent' })).toBeChecked()
 
+    await search.fill('search')
+    await screen.getByRole('checkbox', { name: 'Search' }).click()
+    await expect
+      .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('tags'))
+      .toBe('agent,search')
+    await search.fill('')
+    await expect.element(screen.getByRole('checkbox', { name: 'Agent' })).toBeChecked()
+    await expect.element(screen.getByRole('checkbox', { name: 'Search' })).toBeChecked()
     await userEvent.keyboard('{Escape}')
-    await screen.getByRole('button', { name: 'Clear selected tags: Agent' }).click()
+    const selected = screen.getByRole('button', { name: 'Agent, Search' })
+    await expect.element(selected).toHaveFocus()
+    await selected.click()
+    await expect.element(screen.getByRole('checkbox', { name: 'Agent' })).toBeChecked()
+    await expect.element(screen.getByRole('checkbox', { name: 'Search' })).toBeChecked()
+    await userEvent.keyboard('{Escape}')
+    await screen.getByRole('button', { name: 'Clear selected tags: Agent, Search' }).click()
     await expect.element(screen.getByRole('button', { name: 'All Tags' })).toHaveFocus()
-    await expect.poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.has('tags')).toBe(false)
+    await expect
+      .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.toString())
+      .toBe('q=search&languages=ja')
   })
 })
