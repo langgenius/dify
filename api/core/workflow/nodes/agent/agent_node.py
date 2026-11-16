@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, Any, override
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext
+from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent, node_run_agent_log_event
 from core.workflow.system_variables import SystemVariableKey, get_system_text
 from graphon.engine_events import NodeEvent
 from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
@@ -13,7 +15,6 @@ from graphon.nodes.base.node import Node
 from graphon.nodes.base.variable_template_parser import VariableTemplateParser
 
 from .entities import AgentNodeData
-from .events import AgentLogEvent, NodeRunAgentLogEvent
 from .exceptions import (
     AgentInvocationError,
     AgentMessageTransformError,
@@ -24,6 +25,8 @@ from .strategy_protocols import AgentStrategyPresentationProvider, AgentStrategy
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
+
+logger = logging.getLogger(__name__)
 
 
 class AgentNode(Node[AgentNodeData]):
@@ -82,22 +85,20 @@ class AgentNode(Node[AgentNodeData]):
 
     @_dispatch.register
     def _dispatch_agent_log(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
-        return NodeRunAgentLogEvent(
-            id=self.execution_id,
+        return node_run_agent_log_event(
+            event,
+            execution_id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            message_id=event.message_id,
-            label=event.label,
-            node_execution_id=event.node_execution_id,
-            parent_id=event.parent_id,
-            error=event.error,
-            status=event.status,
-            data=event.data,
-            metadata=event.metadata,
         )
 
     @override
     def _run(self) -> Generator[NodeEventPayload]:
+        """Run the Agent node, adding best-effort tool metadata only for evaluation.
+
+        Normal executions retain their existing tool metadata; a snapshot failure
+        during evaluation does not interrupt the Agent invocation.
+        """
         from core.plugin.impl.exc import PluginDaemonClientSideError
 
         dify_ctx = DifyRunContext.model_validate(self.require_run_context_value(DIFY_RUN_CONTEXT_KEY))
@@ -141,6 +142,18 @@ class AgentNode(Node[AgentNodeData]):
             invoke_from=dify_ctx.invoke_from,
             for_log=True,
         )
+        available_tools: list[dict[str, Any]] | None = None
+        if dify_ctx.capture_agent_evaluation_trace:
+            try:
+                available_tools = self._runtime_support.build_model_visible_tool_snapshots(
+                    agent_parameters=agent_parameters,
+                    resolved_parameters=parameters,
+                )
+            except Exception:
+                logger.warning(
+                    "Failed to capture model-visible tools for Agent evaluation; continuing without the snapshot",
+                    exc_info=True,
+                )
         credentials = self._runtime_support.build_credentials(parameters=parameters)
 
         conversation_id = get_system_text(self.runtime_state.variable_pool, SystemVariableKey.CONVERSATION_ID)
@@ -173,6 +186,7 @@ class AgentNode(Node[AgentNodeData]):
                         agent_strategy_provider_name=self.node_data.agent_strategy_provider_name,
                     ),
                     "agent_strategy": self.node_data.agent_strategy_name,
+                    **({"available_tools": available_tools} if dify_ctx.capture_agent_evaluation_trace else {}),
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=dify_ctx.user_id,

@@ -5,7 +5,7 @@ from uuid import uuid4
 
 import pytest
 from flask import Flask
-from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace import ReadableSpan, TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from opentelemetry.trace import StatusCode, get_current_span
@@ -294,6 +294,7 @@ def test_retriever_thread_exception_emits_skip_event_when_requested(
     parent_span = next(
         span for span in memory_span_exporter.get_finished_spans() if span.name == "dataset-retrieval-parent"
     )
+    assert isinstance(parent_span, ReadableSpan)
     skip_event = next(event for event in parent_span.events if event.name == "dataset_retrieval.skipped")
     assert skip_event.attributes is not None
     assert skip_event.attributes["dataset_id"] == retrieval_dataset.id

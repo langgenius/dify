@@ -385,7 +385,13 @@ def test_education_gateway_maps_verification_status(
         (lambda gateway: gateway.verify(account_id="account-1"), {"token": ""}),
         (
             lambda gateway: gateway.status("account-1"),
-            {"result": False, "is_student": False, "expire_at": "", "allow_refresh": False},
+            {
+                "result": False,
+                "is_student": False,
+                "expire_at": "",
+                "allow_refresh": False,
+                "can_redeem_discount": False,
+            },
         ),
     ],
 )
@@ -412,7 +418,11 @@ def test_education_gateway_reads_billing_status_timestamp() -> None:
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
         return_value=billing.GetEducationIdentityStatusReply(
-            result=True, is_student=True, expire_at="2027-01-01T00:00:00Z", allow_refresh=False
+            result=True,
+            is_student=True,
+            expire_at="2027-01-01T00:00:00Z",
+            allow_refresh=False,
+            can_redeem_discount=False,
         ),
     ):
         result = gateway.status("account-1")
@@ -422,6 +432,7 @@ def test_education_gateway_reads_billing_status_timestamp() -> None:
         is_student=True,
         expire_at=datetime(2027, 1, 1, tzinfo=UTC),
         allow_refresh=False,
+        can_redeem_discount=False,
     )
 
 
@@ -470,7 +481,11 @@ def test_education_gateway_reads_no_identity_expiry() -> None:
     with patch(
         "services.account.adapters.BillingService.EducationIdentity.status",
         return_value=billing.GetEducationIdentityStatusReply(
-            result=False, is_student=False, expire_at="1997-01-01T00:00:00Z", allow_refresh=False
+            result=False,
+            is_student=False,
+            expire_at="1997-01-01T00:00:00Z",
+            allow_refresh=False,
+            can_redeem_discount=False,
         ),
     ):
         assert gateway.status("account-1").expire_at == datetime(1997, 1, 1, tzinfo=UTC)

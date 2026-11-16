@@ -27,8 +27,7 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 class _OwnedLease:
     token = "test-owner"
 
-    @staticmethod
-    def assert_owned() -> None:
+    def assert_owned(self) -> None:
         return None
 
     @staticmethod

@@ -17,6 +17,7 @@ from services.api_token_service import ApiTokenCache
 from services.file_service import FileService
 from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin.plugin_parameter_service import PluginParameterService, PluginParameterSubscriptions
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 from services.workspace.gateways import (
     DeploymentWorkspaceCreationPolicy,
@@ -95,6 +96,7 @@ def build_workspace_services(
     credentials: CredentialQueryRepository,
     trigger_subscriptions: PluginParameterSubscriptions,
     trigger_builders: TriggerSubscriptionBuilderQuery,
+    trigger_providers: PluginTriggerProviderLoader,
 ) -> WorkspaceServices:
     return WorkspaceServices(
         queries=WorkspaceQueryService(workspaces=workspaces, plans=DeploymentWorkspacePlanGateway()),
@@ -135,6 +137,6 @@ def build_workspace_services(
             credentials=credentials,
             subscriptions=trigger_subscriptions,
             builders=trigger_builders,
-            plugins=DaemonPluginParameterGateway(),
+            plugins=DaemonPluginParameterGateway(providers=trigger_providers),
         ),
     )

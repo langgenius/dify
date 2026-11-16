@@ -94,8 +94,7 @@ class _IndexingServiceStub:
 class _OwnedLease:
     token = "test-owner"
 
-    @staticmethod
-    def assert_owned() -> None:
+    def assert_owned(self) -> None:
         return None
 
     @staticmethod

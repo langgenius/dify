@@ -1,9 +1,11 @@
 """Pure document-creation policy projections."""
 
 from dataclasses import dataclass, field
+from typing import cast
 
 import pytest
 
+from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from services.knowledge.documents.contracts import (
     DocumentCreationDataset,
@@ -379,7 +381,7 @@ def test_preparation_resolves_default_embedding_without_mutating_request() -> No
 
 def test_preparation_rejects_invalid_initial_indexing_technique() -> None:
     dataset = DocumentCreationDataset("tenant", None, None, None)
-    request = KnowledgeConfig.model_construct(indexing_technique="invalid", process_rule=None)
+    request = KnowledgeConfig.model_construct(indexing_technique=cast(IndexTechniqueType, "invalid"), process_rule=None)
 
     with pytest.raises(ValueError, match="Indexing technique is invalid"):
         prepare_document_creation(dataset, request, _environment(), _CreationGateway())

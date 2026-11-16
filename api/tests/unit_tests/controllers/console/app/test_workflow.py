@@ -18,6 +18,7 @@ from werkzeug.exceptions import HTTPException, NotFound
 from controllers.common.errors import InvalidArgumentError
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
+from controllers.console.app.workflow import EvaluationPublishedWorkflowApi, WorkflowKindConvertApi
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.variables import SecretVariable, StringVariable
@@ -1342,3 +1343,17 @@ def test_workflow_online_users_rejects_excessive_workflow_ids(app: Flask, monkey
     assert exc.value.description is not None
     assert "Maximum" in exc.value.description
     get_tenant_app_maintainers.assert_not_called()
+
+
+@pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
+def test_evaluation_workflow_mutations_reject_community(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+) -> None:
+    monkeypatch.setattr("controllers.console.wraps.SystemFeatureService.is_evaluation_enabled", lambda: False)
+
+    with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+        resource_class().post()
+
+    assert exc_info.value.code == 404

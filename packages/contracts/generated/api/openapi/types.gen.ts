@@ -1130,6 +1130,11 @@ export type OpenApiFormSubmitPayload = {
   }
 }
 
+export type PaidPlanRequiredError = ErrorBody & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type PermittedExternalAppsListQuery = {
   limit?: number
   mode?: SupportedAppType | null
@@ -1313,6 +1318,11 @@ export type ServerVersionResponse = {
 export type ServiceApi = {
   base_url: string
   enabled: boolean
+}
+
+export type ServiceApiDisabledError = ErrorBody & {
+  code: 'service_api_disabled'
+  status: 403
 }
 
 export type ServiceApiPatch = {
@@ -3430,6 +3440,7 @@ export type PostAppsByAppIdPublishData = {
 }
 
 export type PostAppsByAppIdPublishErrors = {
+  403: PaidPlanRequiredError | ServiceApiDisabledError | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }

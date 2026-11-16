@@ -1,6 +1,7 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from inspect import unwrap
-from unittest.mock import Mock, create_autospec
+from unittest.mock import MagicMock, Mock, create_autospec
 from uuid import UUID
 
 import pytest
@@ -71,7 +72,7 @@ class _ApplicationServices:
 
 
 @pytest.fixture
-def external(monkeypatch):
+def external(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = create_autospec(ExternalKnowledgeApplicationService, instance=True, spec_set=True)
     monkeypatch.setattr(controller, "application_services", lambda: _ApplicationServices(_KnowledgeServices(service)))
     return service
@@ -140,10 +141,16 @@ def test_templates_preserve_pagination(external):
         ),
     ],
 )
-def test_template_missing_is_mapped_and_context_forwarded(external, resource, verb, operation, payload):
+def test_template_missing_is_mapped_and_context_forwarded(
+    external: MagicMock,
+    resource: type[object],
+    verb: Callable[..., object],
+    operation: Callable[[MagicMock], MagicMock],
+    payload: bool,
+) -> None:
     method = operation(external)
     method.side_effect = ExternalTemplateNotFoundError("API template not found.")
-    args = (
+    args: list[object] = (
         [
             controller.ExternalKnowledgeApiPayload(
                 name="API", settings={"endpoint": "https://example", "api_key": "secret"}
@@ -344,7 +351,7 @@ def test_template_mutations_enforce_external_connect_rbac(
     assert template_routes.external.mock_calls == []
 
 
-def test_delete_and_usage_response_contracts(external):
+def test_delete_and_usage_response_contracts(external: MagicMock) -> None:
     assert unwrap(controller.ExternalApiTemplateApi.delete)(controller.ExternalApiTemplateApi(), CONTEXT, ID) == (
         "",
         204,
@@ -356,7 +363,7 @@ def test_delete_and_usage_response_contracts(external):
     )
 
 
-def test_external_dataset_duplicate_name_maps_to_409(external):
+def test_external_dataset_duplicate_name_maps_to_409(external: MagicMock) -> None:
     payload = controller.ExternalDatasetCreatePayload(
         name="Dataset", external_knowledge_api_id="api", external_knowledge_id="knowledge"
     )
@@ -374,7 +381,7 @@ def test_external_dataset_duplicate_name_maps_to_409(external):
         (ExternalHitTestingError("failed"), InternalServerError),
     ],
 )
-def test_retrieval_maps_application_errors(external, error, http_error):
+def test_retrieval_maps_application_errors(external: MagicMock, error: Exception, http_error: type[Exception]) -> None:
     external.hit_testing.side_effect = error
     with pytest.raises(http_error):
         unwrap(controller.ExternalKnowledgeHitTestingApi.post)(
@@ -388,7 +395,7 @@ def test_retrieval_maps_application_errors(external, error, http_error):
     )
 
 
-def test_retrieval_response_is_serialized(external):
+def test_retrieval_response_is_serialized(external: MagicMock) -> None:
     external.hit_testing.return_value = {
         "query": {"content": "query"},
         "records": [{"content": "answer", "title": "title", "score": 0.8, "metadata": {"source": "doc"}}],

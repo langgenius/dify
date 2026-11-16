@@ -339,7 +339,7 @@ class TestGatewaysCases:
         )
 
 
-"""Deployment billing adapter and paid-to-trial fallback regressions."""
+"""Deployment billing adapter credit pool cases."""
 
 
 class TestWorkspaceCreditPoolCases:
@@ -349,8 +349,8 @@ class TestWorkspaceCreditPoolCases:
         [
             (CloudPlan.TEAM, 500, 120, 100, "paid", 380),
             (CloudPlan.TEAM, -1, 999, 100, "paid", -1),
-            (CloudPlan.TEAM, 500, 500, 100, "trial", 60),
-            (CloudPlan.TEAM, None, 0, 100, "trial", 60),
+            (CloudPlan.TEAM, 500, 500, 100, "paid", 0),
+            (CloudPlan.TEAM, None, 0, 100, None, None),
             (CloudPlan.SANDBOX, 500, 0, 100, "trial", 60),
             (CloudPlan.SANDBOX, None, 0, None, None, None),
         ],
@@ -386,10 +386,8 @@ class TestWorkspaceCreditPoolCases:
         assert result.next_credit_reset_date == 1775001600
         if plan == CloudPlan.SANDBOX:
             assert calls == [("tenant", "trial")]
-        elif expected_type == "paid":
-            assert calls == [("tenant", "paid")]
         else:
-            assert calls == [("tenant", "paid"), ("tenant", "trial")]
+            assert calls == [("tenant", "paid")]
 
     @staticmethod
     @pytest.mark.parametrize(

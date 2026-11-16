@@ -148,7 +148,9 @@ def test_inner_entry_releases_validation_connections_before_external_http(
     dataset = make_dataset(provider="external", indexing_technique="high_quality", enable_api=False)
     dataset.retrieval_model = {"top_k": 4, "score_threshold_enabled": False}
     document = make_document(doc_metadata={"category": "pricing"})
-    document.indexing_status = "completed"
+    from models.enums import IndexingStatus
+
+    document.indexing_status = IndexingStatus.COMPLETED
     template = ExternalKnowledgeApis(
         tenant_id="tenant-1",
         name="Provider",

@@ -1,4 +1,5 @@
 import datetime
+from collections.abc import Callable
 from dataclasses import dataclass
 from inspect import unwrap
 from types import SimpleNamespace
@@ -6,6 +7,7 @@ from unittest.mock import MagicMock, create_autospec, patch
 from uuid import UUID
 
 import pytest
+from flask import Flask
 from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound
 
 import services
@@ -94,7 +96,7 @@ def test_dataset_delete_requires_dataset_delete_permission() -> None:
 
 
 @pytest.fixture
-def datasets(monkeypatch):
+def datasets(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = create_autospec(DatasetApplicationService, instance=True, spec_set=True)
     monkeypatch.setattr(
         controller, "application_services", lambda: SimpleNamespace(knowledge=SimpleNamespace(datasets=service))
@@ -119,7 +121,23 @@ def datasets(monkeypatch):
 @pytest.mark.parametrize(
     ("error", "http_error"), [(DatasetNotFoundError(), NotFound), (DatasetAccessDeniedError(), Forbidden)]
 )
-def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource, operation, error, http_error):
+def test_scoped_reads_pass_context_and_map_access_errors(
+    app: Flask,
+    datasets: MagicMock,
+    resource: type[
+        DatasetApi
+        | DatasetUseCheckApi
+        | DatasetQueryApi
+        | DatasetRelatedAppListApi
+        | DatasetIndexingStatusApi
+        | DatasetErrorDocs
+        | DatasetPermissionUserListApi
+        | DatasetAutoDisableLogApi
+    ],
+    operation: Callable[[MagicMock], MagicMock],
+    error: Exception,
+    http_error: type[Exception],
+) -> None:
     method = operation(datasets)
     method.side_effect = error
     with app.test_request_context("/"), pytest.raises(http_error):
@@ -128,8 +146,14 @@ def test_scoped_reads_pass_context_and_map_access_errors(app, datasets, resource
     assert method.call_args.kwargs["dataset_id"] == str(DATASET_ID)
 
 
-def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
-    datasets.list_accessible_datasets.return_value = {"data": [], "page": 2, "limit": 3, "total": 4, "has_more": False}
+def test_list_parses_repeated_filters_and_serializes_page(app: Flask, datasets: MagicMock) -> None:
+    datasets.list_accessible_datasets.return_value = {
+        "data": list[object](),
+        "page": 2,
+        "limit": 3,
+        "total": 4,
+        "has_more": False,
+    }
     with app.test_request_context(
         "/?page=2&limit=3&ids=a&ids=b&tag_ids=x&tag_ids=y&creator_ids=c&include_all=true&keyword=term"
     ):
@@ -150,7 +174,7 @@ def test_list_parses_repeated_filters_and_serializes_page(app, datasets):
     assert result == datasets.list_accessible_datasets.return_value
 
 
-def test_patch_does_not_turn_omitted_fields_into_updates(datasets):
+def test_patch_does_not_turn_omitted_fields_into_updates(datasets: MagicMock) -> None:
     datasets.update_dataset.side_effect = DatasetNotFoundError()
     with pytest.raises(NotFound):
         unwrap(DatasetApi.patch)(DatasetApi(), DatasetUpdatePayload(name="Changed"), CONTEXT, DATASET_ID)
@@ -171,19 +195,19 @@ def test_patch_maps_concurrent_change_to_conflict(datasets: DatasetApplicationSe
     assert error.value.error_code == "dataset_concurrent_update"
 
 
-def test_duplicate_name_is_mapped_at_transport_on_create(datasets):
+def test_duplicate_name_is_mapped_at_transport_on_create(datasets: MagicMock) -> None:
     datasets.create_dataset.side_effect = services.errors.dataset.DatasetNameDuplicateError()
     with pytest.raises(DatasetNameDuplicateError):
         unwrap(DatasetListApi.post)(DatasetListApi(), DatasetCreatePayload(name="Duplicate"), CONTEXT)
     datasets.create_dataset.assert_called_once()
 
 
-def test_delete_success_returns_empty_204(datasets):
+def test_delete_success_returns_empty_204(datasets: MagicMock) -> None:
     assert unwrap(DatasetApi.delete)(DatasetApi(), CONTEXT, DATASET_ID) == ("", 204)
     datasets.delete_dataset.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID))
 
 
-def test_request_base_url_and_explicit_status_are_forwarded(app, datasets):
+def test_request_base_url_and_explicit_status_are_forwarded(app: Flask, datasets: MagicMock) -> None:
     datasets.api_base_url.return_value = "https://api.example/v1"
     with app.test_request_context("/", base_url="https://console.example/"):
         assert unwrap(DatasetApiBaseUrlApi.get)(DatasetApiBaseUrlApi(), CONTEXT) == {
@@ -197,7 +221,7 @@ def test_request_base_url_and_explicit_status_are_forwarded(app, datasets):
     datasets.set_api_enabled.assert_called_once_with(CONTEXT, dataset_id=str(DATASET_ID), status="disable")
 
 
-def test_retrieval_settings_forward_mock_flag(datasets):
+def test_retrieval_settings_forward_mock_flag(datasets: MagicMock) -> None:
     datasets.retrieval_settings.return_value = {"retrieval_method": ["semantic_search"]}
     assert (
         unwrap(DatasetRetrievalSettingApi.get)(DatasetRetrievalSettingApi(), CONTEXT)
@@ -373,7 +397,11 @@ def test_new_source_estimate_maps_application_errors(
         (None, RBACPermission.DATASET_CREATE_AND_MANAGEMENT, Workspace),
     ],
 )
-def test_new_source_estimate_authorizes_before_execution(dataset_id, scene, locator_type):
+def test_new_source_estimate_authorizes_before_execution(
+    dataset_id: str | None,
+    scene: RBACPermission,
+    locator_type: type[object],
+) -> None:
     estimates = MagicMock()
     registry = SimpleNamespace(knowledge=SimpleNamespace(indexing_estimates=estimates))
     payload = IndexingEstimatePayload(
@@ -431,7 +459,7 @@ class _UpgradeApplicationServices:
 
 
 @pytest.fixture
-def upgrades(monkeypatch):
+def upgrades(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     service = create_autospec(KnowledgeUpgradeApplicationService, instance=True, spec_set=True)
     services = _UpgradeApplicationServices(knowledge=_UpgradeKnowledgeServices(upgrades=service))
     monkeypatch.setattr(controller, "application_services", lambda: services)
@@ -448,7 +476,7 @@ def test_upgrade_writes_require_dataset_edit_permission() -> None:
     assert isinstance(check.locator, Workspace)
 
 
-def test_upgrade_jobs_serializes_recoverable_jobs(app, upgrades):
+def test_upgrade_jobs_serializes_recoverable_jobs(app: Flask, upgrades: MagicMock) -> None:
     upgrades.list_recoverable_jobs.return_value = [_upgrade_job(job_id="job-1")]
     with app.test_request_context("/datasets/knowledge-fs-upgrade-jobs"):
         response = unwrap(DatasetKnowledgeFSUpgradeJobsApi.get)(DatasetKnowledgeFSUpgradeJobsApi(), CONTEXT)
@@ -456,7 +484,7 @@ def test_upgrade_jobs_serializes_recoverable_jobs(app, upgrades):
     assert [job["id"] for job in response["data"]] == ["job-1"]
 
 
-def test_upgrade_start_forwards_idempotency_key(app, upgrades):
+def test_upgrade_start_forwards_idempotency_key(app: Flask, upgrades: MagicMock) -> None:
     upgrades.start.return_value = _upgrade_job()
     with app.test_request_context(
         f"/datasets/{DATASET_ID}/knowledge-fs-upgrades", headers={"Idempotency-Key": "upgrade-request-1"}
@@ -471,7 +499,7 @@ def test_upgrade_start_forwards_idempotency_key(app, upgrades):
     )
 
 
-def test_upgrade_start_forwards_all_model_choices(app, upgrades):
+def test_upgrade_start_forwards_all_model_choices(app: Flask, upgrades: MagicMock) -> None:
     upgrades.start.return_value = _upgrade_job()
     choices = {
         "embedding": {"provider": "langgenius/openai/openai", "model": "embedding"},
@@ -497,7 +525,7 @@ def test_upgrade_start_forwards_all_model_choices(app, upgrades):
     )
 
 
-def test_upgrade_start_rejects_incomplete_model_selection(app, upgrades):
+def test_upgrade_start_rejects_incomplete_model_selection(app: Flask, upgrades: MagicMock) -> None:
     with (
         app.test_request_context(
             f"/datasets/{DATASET_ID}/knowledge-fs-upgrades",
@@ -512,7 +540,7 @@ def test_upgrade_start_rejects_incomplete_model_selection(app, upgrades):
     upgrades.start.assert_not_called()
 
 
-def test_upgrade_start_returns_field_specific_model_errors(app, upgrades):
+def test_upgrade_start_returns_field_specific_model_errors(app: Flask, upgrades: MagicMock) -> None:
     upgrades.start.side_effect = KnowledgeFSUpgradeModelsUnavailableError(
         [
             KnowledgeFSUpgradeModelIssueResponse(
@@ -535,7 +563,7 @@ def test_upgrade_start_returns_field_specific_model_errors(app, upgrades):
     ]
 
 
-def test_upgrade_start_requires_idempotency_key(app, upgrades):
+def test_upgrade_start_requires_idempotency_key(app: Flask, upgrades: MagicMock) -> None:
     with (
         app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades"),
         pytest.raises(BadRequest, match="Idempotency-Key"),
@@ -553,7 +581,12 @@ def test_upgrade_start_requires_idempotency_key(app, upgrades):
         (KnowledgeFSUpgradeConflictError("already running"), Conflict),
     ],
 )
-def test_upgrade_start_maps_domain_errors(app, upgrades, error, http_error):
+def test_upgrade_start_maps_domain_errors(
+    app: Flask,
+    upgrades: MagicMock,
+    error: Exception,
+    http_error: type[Exception],
+) -> None:
     upgrades.start.side_effect = error
     with (
         app.test_request_context(
@@ -564,7 +597,7 @@ def test_upgrade_start_maps_domain_errors(app, upgrades, error, http_error):
         unwrap(DatasetKnowledgeFSUpgradeApi.post)(DatasetKnowledgeFSUpgradeApi(), CONTEXT, DATASET_ID)
 
 
-def test_upgrade_discovery_serializes_service_result(app, upgrades):
+def test_upgrade_discovery_serializes_service_result(app: Flask, upgrades: MagicMock) -> None:
     upgrades.discovery.return_value = KnowledgeFSUpgradePreparationResponse.model_validate(
         {
             "job": None,
@@ -598,7 +631,7 @@ def test_upgrade_discovery_serializes_service_result(app, upgrades):
     assert response["models"]["reasoning"]["unavailable_reason"] == "credential-removed"
 
 
-def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):
+def test_upgrade_job_status_maps_missing_job_to_not_found(app: Flask, upgrades: MagicMock) -> None:
     upgrades.get_job.side_effect = KnowledgeFSUpgradeNotFoundError("Upgrade job was not found")
     with (
         app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
@@ -607,7 +640,7 @@ def test_upgrade_job_status_maps_missing_job_to_not_found(app, upgrades):
         unwrap(DatasetKnowledgeFSUpgradeJobApi.get)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
 
 
-def test_upgrade_retry_returns_queued(app, upgrades):
+def test_upgrade_retry_returns_queued(app: Flask, upgrades: MagicMock) -> None:
     upgrades.retry.return_value = _upgrade_job(job_id="job-1")
     with app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"):
         response, status = unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(
@@ -617,7 +650,7 @@ def test_upgrade_retry_returns_queued(app, upgrades):
     assert response == {"id": "job-1", "status": "queued"}
 
 
-def test_upgrade_retry_maps_disabled_feature_to_not_found(app, upgrades):
+def test_upgrade_retry_maps_disabled_feature_to_not_found(app: Flask, upgrades: MagicMock) -> None:
     upgrades.retry.side_effect = KnowledgeFSUpgradeUnavailableError()
     with (
         app.test_request_context(f"/datasets/{DATASET_ID}/knowledge-fs-upgrades/job-1"),
@@ -626,7 +659,7 @@ def test_upgrade_retry_maps_disabled_feature_to_not_found(app, upgrades):
         unwrap(DatasetKnowledgeFSUpgradeJobApi.post)(DatasetKnowledgeFSUpgradeJobApi(), CONTEXT, DATASET_ID, "job-1")
 
 
-def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app):
+def test_api_key_create_rejects_non_string_dataset_ids_with_the_standard_error(app: Flask) -> None:
     # A raised BadRequest gets the standard error body; ``Namespace.abort(message=...)`` replaced it.
     with app.test_request_context("/", method="POST", json={"dataset_ids": [123]}), pytest.raises(BadRequest) as error:
         unwrap(DatasetApiKeyApi.post)(DatasetApiKeyApi(), CONTEXT)

@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfoNotFoundError
 
 import pytest
 
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData, VisualConfig
 from core.workflow.nodes.trigger_schedule.exc import ScheduleConfigError
 from graphon.entities.graph_config import NodeConfigDict

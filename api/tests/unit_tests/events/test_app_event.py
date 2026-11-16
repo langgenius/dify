@@ -219,7 +219,7 @@ class TestAppModelConfigWasUpdatedSignal:
                     id="dataset-1",
                     tenant_id=app_model.tenant_id,
                     name="Dataset",
-                    created_by=app_model.created_by,
+                    created_by=app_model.created_by or "account-1",
                 ),
                 AppDatasetJoin(app_id="other-app", dataset_id="dataset-1"),
             ]

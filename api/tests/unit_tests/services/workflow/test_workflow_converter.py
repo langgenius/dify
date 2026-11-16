@@ -107,7 +107,7 @@ def test__convert_to_start_node(default_variables: list[VariableEntity]) -> None
 
 
 def test__convert_to_http_request_node_for_chatbot(
-    default_variables: list[VariableEntity], unbound_session: Session
+    default_variables: list[VariableEntity], unbound_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app_model = _app_model(id="app_id", tenant_id="tenant_id", mode=AppMode.CHAT)
 
@@ -120,8 +120,8 @@ def test__convert_to_http_request_node_for_chatbot(
     extension.id = "api_based_extension_id"
 
     workflow_converter = WorkflowConverter()
-    workflow_converter._get_api_based_extension = MagicMock(return_value=extension)
-    encrypter.decrypt_token = MagicMock(return_value="api_key")
+    monkeypatch.setattr(WorkflowConverter, "_get_api_based_extension", MagicMock(return_value=extension))
+    monkeypatch.setattr(encrypter, "decrypt_token", MagicMock(return_value="api_key"))
 
     external_data_variables = [
         ExternalDataVariableEntity(
@@ -149,7 +149,7 @@ def test__convert_to_http_request_node_for_chatbot(
 
 
 def test__convert_to_http_request_node_for_workflow_app(
-    default_variables: list[VariableEntity], unbound_session: Session
+    default_variables: list[VariableEntity], unbound_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     app_model = _app_model(id="app_id", tenant_id="tenant_id", mode=AppMode.WORKFLOW)
 
@@ -162,8 +162,8 @@ def test__convert_to_http_request_node_for_workflow_app(
     extension.id = "api_based_extension_id"
 
     workflow_converter = WorkflowConverter()
-    workflow_converter._get_api_based_extension = MagicMock(return_value=extension)
-    encrypter.decrypt_token = MagicMock(return_value="api_key")
+    monkeypatch.setattr(WorkflowConverter, "_get_api_based_extension", MagicMock(return_value=extension))
+    monkeypatch.setattr(encrypter, "decrypt_token", MagicMock(return_value="api_key"))
 
     external_data_variables = [
         ExternalDataVariableEntity(
@@ -899,11 +899,12 @@ def test_replace_template_variables_should_replace_start_and_external_references
 
 
 def test_graph_helpers_should_create_edges_append_nodes_and_choose_mode(converter: WorkflowConverter) -> None:
-    graph: WorkflowGraph = {
-        "nodes": [{"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START}}],
-        "edges": [],
-    }
-    node = {"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}
+    nodes: list[converter_module._NodeType] = [
+        {"id": "start", "position": None, "data": {"type": BuiltinNodeTypes.START}}
+    ]
+    edges: list[converter_module._EdgeType] = []
+    graph: WorkflowGraph = {"nodes": nodes, "edges": edges}
+    node: converter_module._NodeType = {"id": "llm", "position": None, "data": {"type": BuiltinNodeTypes.LLM}}
 
     edge = converter._create_edge("start", "llm")
     updated_graph = converter._append_node(graph, node)

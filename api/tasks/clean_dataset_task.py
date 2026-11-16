@@ -33,6 +33,7 @@ from models.dataset import (
     SegmentAttachmentBinding,
 )
 from models.enums import TagType
+from models.file_scan import FileScanPolicy
 from models.model import Tag, TagBinding
 from models.workflow import Workflow
 from repositories.file.upload_file_repository import UploadFileRepository
@@ -284,6 +285,13 @@ def _delete_dataset_scoped_rows(*, tenant_id: str, dataset_id: str, pipeline_id:
             delete(DatasetMetadataBinding).where(
                 DatasetMetadataBinding.tenant_id == tenant_id,
                 DatasetMetadataBinding.dataset_id == dataset_id,
+            )
+        )
+        session.execute(
+            delete(FileScanPolicy).where(
+                FileScanPolicy.tenant_id == tenant_id,
+                FileScanPolicy.scope_type == "dataset",
+                FileScanPolicy.scope_id == dataset_id,
             )
         )
         if pipeline_id:

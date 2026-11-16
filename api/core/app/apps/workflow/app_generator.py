@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator, noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -38,7 +39,6 @@ from core.helper.trace_id_helper import (
     extract_parent_trace_context_from_args,
     extract_trace_session_id_from_args,
 )
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
@@ -122,6 +122,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -143,6 +144,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -164,6 +166,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -184,6 +187,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -215,6 +219,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_external_trace_id_from_args(args),
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
+                "capture_agent_evaluation_trace": capture_agent_evaluation_trace,
             }
             trace_scope = create_trace_scope(
                 tenant_id=app_model.tenant_id,

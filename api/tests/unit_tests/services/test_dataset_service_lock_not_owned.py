@@ -113,7 +113,7 @@ class _SourceAuthorization:
         return DocumentWriteConfig(
             original_document_id=config.original_document_id,
             duplicate=config.duplicate,
-            indexing_technique=config.indexing_technique,
+            indexing_technique="high_quality" if config.indexing_technique == "high_quality" else "economy",
             data_source=None,
             process_rule=None,
             retrieval_model=None,

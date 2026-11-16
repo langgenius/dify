@@ -768,6 +768,15 @@ class SQLAlchemyDatasetRepository:
             if dataset is None:
                 return None
 
+            from models.evaluation import EvaluationTargetType
+            from services.evaluation_service import EvaluationService
+
+            EvaluationService.stage_target_evaluation_cleanup(
+                session=session,
+                tenant_id=dataset_ref.tenant_id,
+                target_type=EvaluationTargetType.KNOWLEDGE_BASE.value,
+                target_id=dataset_ref.dataset_id,
+            )
             cleanup = _cleanup_record(session, dataset)
             revoked_keys = dataset_api_key_bindings.delete_keys_scoped_only_to(
                 session, cleanup.id, tenant_id=dataset_ref.tenant_id

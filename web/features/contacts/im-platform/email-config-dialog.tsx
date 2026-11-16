@@ -147,7 +147,7 @@ export function ContactEmailConfigContent({
           />{' '}
           <a
             className="text-text-accent hover:underline focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            href={docLink('/use-dify/nodes/human-input')}
+            href={docLink('/use-dify/workspace/channels/email')}
             rel="noreferrer"
             target="_blank"
           >
@@ -245,14 +245,16 @@ export function ContactEmailConfigContent({
 
             <Field name="senderName">
               <div>
-                <FieldLabel className="block">
-                  {t(($) => $['imPlatform.email.senderName'])}
-                </FieldLabel>
-                {!canRetainField(ContactImProviderField.SenderName) && (
-                  <span aria-hidden className="text-text-destructive-secondary">
-                    *
-                  </span>
-                )}
+                <div className="flex items-center gap-1">
+                  <FieldLabel className="block">
+                    {t(($) => $['imPlatform.email.senderName'])}
+                  </FieldLabel>
+                  {!canRetainField(ContactImProviderField.SenderName) && (
+                    <span aria-hidden className="system-xs-regular text-text-destructive-secondary">
+                      *
+                    </span>
+                  )}
+                </div>
                 <FieldDescription className="pt-0">
                   {t(($) => $['imPlatform.email.senderNameDescription'])}
                 </FieldDescription>

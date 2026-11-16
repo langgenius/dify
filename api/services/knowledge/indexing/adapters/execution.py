@@ -47,6 +47,8 @@ from services.extraction.contracts import ExtractionResult
 from services.extraction.images import ExtractionImageWriter
 from services.extraction.processor import ExtractProcessor
 from services.file_adapters import build_file_service
+from services.file_scan import FileScanBlockedError, FileScanService, ScanScope
+from services.file_scan.entities import SCOPE_DATASET
 from services.file_service import FileService
 from services.knowledge.entities.resource_scope import DocumentRef
 from services.knowledge.indexing.adapters.cleanup import delete_index_entries
@@ -127,6 +129,7 @@ class IndexingExecutionAdapter:
     def extract(self, document: IndexingDocument) -> ExtractionResult[Document]:
         if not document.processing_rule:
             raise ValueError("no process rule found")
+        self._scan_uploaded_file(document)
         setting = self._sources.resolve(document.source)
         created_artifacts: dict[str, CreatedUploadArtifact] = {}
         commit_started = False
@@ -200,6 +203,26 @@ class IndexingExecutionAdapter:
                     artifact.id,
                     artifact.key,
                 )
+
+    def _scan_uploaded_file(self, document: IndexingDocument) -> None:
+        """Stop this document before its uploaded file is read when the malware scan rejects it.
+
+        The scan covers one document, so a rejected file fails only its own indexing run.
+        """
+        source = document.source
+        if source.source_type != DataSourceType.UPLOAD_FILE or not source.source_info:
+            return
+        upload_file_id = source.source_info.get("upload_file_id")
+        if not isinstance(upload_file_id, str) or not upload_file_id:
+            return
+        dataset = document.ref.dataset
+        outcome = FileScanService(self._session_factory).scan_upload_file(
+            tenant_id=dataset.tenant_id,
+            upload_file_id=upload_file_id,
+            scope=ScanScope(SCOPE_DATASET, dataset.dataset_id),
+        )
+        if not outcome.allowed:
+            raise FileScanBlockedError(outcome)
 
     def transform(self, document: IndexingDocument, texts: list[Document]) -> IndexingTransformResult:
         dataset, _ = self._documents.get_indexing_models(document.ref)

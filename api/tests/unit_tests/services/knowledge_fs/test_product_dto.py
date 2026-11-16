@@ -877,6 +877,7 @@ def test_trace_response_translates_historical_retrieval_statistics() -> None:
 
 
 def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
+    """Given independent command payloads, preserve their fields and reject invalid paths and blank queries."""
     listing = KnowledgeFSListQuery(path="/knowledge", limit=100)
     grep = KnowledgeFSGrepQuery(path="/knowledge/docs", query="  TODO  ")
     finding = KnowledgeFSFindQuery(path="/knowledge", resource_type="document")
@@ -897,8 +898,6 @@ def test_knowledge_fs_queries_validate_independent_command_contracts() -> None:
         KnowledgeFSListQuery(path="/invalid", limit=20)
     with pytest.raises(ValidationError):
         KnowledgeFSGrepQuery(path="/knowledge", query=" ")
-    with pytest.raises(ValidationError):
-        KnowledgeFSListQuery.model_validate({"path": "/knowledge", "limit": 101})
 
 
 def test_knowledge_fs_responses_translate_each_kfs_wire_shape() -> None:

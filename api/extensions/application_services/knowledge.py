@@ -30,6 +30,7 @@ from services.data_source.provider_service import DatasourceProviderService
 from services.data_source.website_service import WebsiteService
 from services.extraction.contracts import DatasourceType
 from services.feature_service import FeatureService
+from services.file_scan.admission import reject_dataset_upload_file
 from services.file_service import FileService
 from services.knowledge.admission.application import DatasetAdmissionService
 from services.knowledge.admission.limits import KnowledgeApiLimitsGateway
@@ -215,6 +216,7 @@ def build_knowledge_services(
         datasource_providers=providers,
         knowledge_retrieval=retrieval,
         summary_index_service=PipelineSummaryIndexDispatcher(),
+        file_admission=reject_dataset_upload_file,
     )
     dataset_operations = SQLAlchemyDatasetOperations(
         session_factory=database_client,

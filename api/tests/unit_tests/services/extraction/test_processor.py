@@ -22,6 +22,7 @@ from services.extraction.contracts import (
     ImageReference,
     ImageWriter,
     NotionInfo,
+    UploadFileExtractionInput,
     WebsiteInfo,
 )
 from services.extraction.processor import ExtractProcessor
@@ -239,7 +240,9 @@ class TestExtractProcessorFileRouting:
 
         setting = ExtractSetting(
             datasource_type=DatasourceType.FILE,
-            upload_file=_upload_file(key=f"uploaded{extension}"),
+            upload_file=UploadFileExtractionInput.model_validate(
+                _upload_file(key=f"uploaded{extension}"), from_attributes=True
+            ),
         )
 
         result = ExtractProcessor.extract(
@@ -341,7 +344,9 @@ class TestExtractProcessorFileRouting:
         )
         setting = ExtractSetting(
             datasource_type=DatasourceType.FILE,
-            upload_file=_upload_file(key="uploaded.pdf"),
+            upload_file=UploadFileExtractionInput.model_validate(
+                _upload_file(key="uploaded.pdf"), from_attributes=True
+            ),
         )
         image_writer = _ImageWriter()
 

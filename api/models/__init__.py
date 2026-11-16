@@ -64,7 +64,23 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
+from .file_scan import (
+    FileScanFallbackAction,
+    FileScanPolicy,
+    FileScanProvider,
+    FileScanProviderStatus,
+    FileScanRecord,
+    FileScanRecordStatus,
+)
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -303,10 +319,22 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunItemStatus",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "FileScanFallbackAction",
+    "FileScanPolicy",
+    "FileScanProvider",
+    "FileScanProviderStatus",
+    "FileScanRecord",
+    "FileScanRecordStatus",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",

@@ -336,5 +336,6 @@
   "types.all": "الكل",
   "types.chatbot": "روبوت دردشة",
   "types.completion": "إكمال",
+  "types.evaluationWorkflow": "سير عمل التقييم",
   "types.workflow": "سير العمل (Workflow)"
 }

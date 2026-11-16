@@ -66,6 +66,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.app.mcp_server import MCPServerCreatePayload, MCPServerUpdatePayload
 from controllers.console.app.ops_trace import TraceConfigPayload, TraceProviderQuery
+from controllers.console.app.response import app_detail_response
 from controllers.console.app.site import AppSiteUpdatePayload
 from controllers.console.app.workflow import AdvancedChatWorkflowRunPayload, SyncDraftWorkflowPayload
 from controllers.console.app.workflow_app_log import WorkflowAppLogQuery
@@ -1015,7 +1016,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 replace(
                     app_record(app_obj, session=sqlite_session, projection="detail-with-site"),
                     permission_keys=app_obj.permission_keys,
@@ -1136,7 +1137,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1158,7 +1159,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1209,7 +1210,7 @@ class TestAppResponseModelsCases:
         )
 
         with app.test_request_context("/"):
-            response = controller._app_detail_response(
+            response = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 
@@ -1256,7 +1257,7 @@ class TestAppResponseModelsCases:
             "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
         )
         with app.test_request_context("/"):
-            detail = controller._app_detail_response(
+            detail = app_detail_response(
                 app_record(app_obj, session=sqlite_session, projection="detail-with-site")
             ).model_dump(mode="json")
 

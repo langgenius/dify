@@ -59,6 +59,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -66,6 +67,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -73,6 +75,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
@@ -195,6 +198,60 @@ class SnippetGenerateService:
         )
 
         return WorkflowAppGenerator.convert_to_event_stream(self._filter_virtual_start_events(response))
+
+    def run_published(
+        self,
+        snippet: CustomizedSnippet,
+        user: Account | EndUser,
+        args: Mapping[str, Any],
+        invoke_from: InvokeFrom,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
+    ) -> Mapping[str, Any]:
+        """
+        Run a snippet's published workflow in non-streaming (blocking) mode.
+
+        Similar to :meth:`generate` but targets the published workflow instead
+        of the draft, and returns the raw blocking response without SSE
+        wrapping. Designed for programmatic callers that need direct workflow outputs.
+
+        :param snippet: CustomizedSnippet instance (must be published)
+        :param user: Account or EndUser initiating the run
+        :param args: Workflow inputs (must include "inputs" key)
+        :param invoke_from: Source of invocation
+        :return: Blocking response mapping with workflow outputs
+        :raises ValueError: If the snippet has no published workflow
+        """
+        snippet_service = self._snippets
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
+        if not workflow:
+            raise ValueError("No published workflow found for snippet")
+
+        # Inject a virtual Start node when the graph doesn't have one.
+        workflow = self._ensure_start_node(workflow, snippet)
+
+        app_proxy = cast(App, _SnippetAsApp(snippet))
+
+        response = WorkflowAppGenerator(
+            execution_driver=WorkflowRunAgg.run, knowledge_retrieval=self._knowledge_retrieval
+        ).generate(
+            app_model=app_proxy,
+            workflow=workflow,
+            user=user,
+            execution_identity=build_workflow_execution_identity(user),
+            args=args,
+            invoke_from=invoke_from,
+            streaming=False,
+            call_depth=0,
+            task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
+        )
+        return response
 
     @classmethod
     def ensure_start_node_for_worker(cls, workflow: Workflow, snippet: CustomizedSnippet) -> Workflow:

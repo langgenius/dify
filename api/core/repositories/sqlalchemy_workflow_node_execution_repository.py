@@ -530,9 +530,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 ),
             )
 
-            if existing:
+            if existing is not None:
                 merged_process_data = keep_agent_and_tool_ids(
-                    existing.process_data_dict,
+                    json.loads(existing.process_data) if existing.process_data else None,
                     db_model.process_data_dict,
                 )
                 db_model.process_data = (
@@ -564,6 +564,9 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                         triggered_from_workflow_id=db_model.triggered_from_workflow_id,
                         triggered_from_node_execution_id=db_model.triggered_from_node_execution_id,
                     )
+                    # Nothing mapped is loaded in this session and it is committed right below, so the
+                    # ORM has no objects to bring in line with the UPDATE.
+                    .execution_options(synchronize_session=False)
                 )
             else:
                 # Add new record

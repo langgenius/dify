@@ -4,11 +4,17 @@ from unittest.mock import MagicMock
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import DatasetRetrieved, TraceCorrelation, TraceEvent
 
-from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity, EasyUIBasedAppConfig
+from core.app.app_config.entities import (
+    DatasetEntity,
+    DatasetRetrieveConfigEntity,
+    EasyUIBasedAppConfig,
+    EasyUIBasedAppModelConfigFrom,
+    ModelConfigEntity,
+    PromptTemplateEntity,
+)
 from core.app.entities.app_invoke_entities import (
     EasyUIBasedAppGenerateEntity,
     InvokeFrom,
-    ModelConfigWithCredentialsEntity,
 )
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from libs.datetime_utils import Timing
@@ -19,6 +25,7 @@ from services.knowledge.entities.retrieval import (
     RetrievedTraceDocument,
 )
 from services.knowledge.retrieval.app_retrieval import retrieve_app_context
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
 class _TraceRecorder:
@@ -58,8 +65,16 @@ def test_retrieve_app_context_emits_dataset_retrieval_event() -> None:
         stream=False,
         user_id="user-1",
         invoke_from=InvokeFrom.SERVICE_API,
-        model_conf=ModelConfigWithCredentialsEntity.model_construct(provider="openai", mode="chat", model="model"),
-        app_config=EasyUIBasedAppConfig.model_construct(tenant_id="tenant-1", app_id="app-1", app_mode=AppMode.CHAT),
+        model_conf=make_model_config(provider="openai", mode="chat", model="model"),
+        app_config=EasyUIBasedAppConfig(
+            tenant_id="tenant-1",
+            app_id="app-1",
+            app_mode=AppMode.CHAT,
+            app_model_config_from=EasyUIBasedAppModelConfigFrom.APP_LATEST_CONFIG,
+            app_model_config_dict={},
+            model=ModelConfigEntity(provider="openai", model="model"),
+            prompt_template=PromptTemplateEntity(prompt_type=PromptTemplateEntity.PromptType.SIMPLE),
+        ),
         trace_scope=TraceScope(
             emitter=recorder,
             tenant_id="tenant-1",
