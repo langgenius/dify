@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import json
 import time
-from collections.abc import Callable, Generator, Iterable, Mapping
-from typing import Any
+from collections.abc import Callable, Generator, Iterable
 
-from core.app.entities.task_entities import StreamEvent
+from core.app.entities.task_entities import StreamEvent, StreamTopicEvent
 from libs.broadcast_channel.channel import Subscription
 from libs.broadcast_channel.exc import SubscriptionClosedError
 
@@ -20,10 +19,13 @@ def stream_topic_events(
     ping_interval: float | None = None,
     on_subscribe: Callable[[], None] | None = None,
     terminal_events: Iterable[str | StreamEvent] | None = None,
-) -> Generator[Mapping[str, Any] | str]:
+) -> Generator[StreamTopicEvent | str]:
     """Yield JSON topic events until a terminal event, transport completion, closure, or idle timeout.
 
     The subscription must deliver JSON payloads or ``STREAM_COMPLETE_SIGNAL`` in publish order.
+    Object payloads are decoded into ``StreamTopicEvent`` once here, so callers read the event
+    keywords without re-checking the decoded shape; a payload that is not an object is yielded
+    unchanged, because publishers forward plain stream strings as JSON strings too.
     The completion signal closes the subscription without becoming a public event, regardless
     of the selected terminal events. Invalid JSON and subscription errors other than closure
     propagate to the caller; an entered subscription is closed on exit.
@@ -61,14 +63,14 @@ def stream_topic_events(
 
             last_msg_time = time.time()
             last_ping_time = last_msg_time
-            event = json.loads(msg)
-            yield event
-            if not isinstance(event, dict):
-                continue
-
-            event_type = event.get("event")
-            if event_type in terminal_values:
-                return
+            decoded = json.loads(msg)
+            if isinstance(decoded, dict):
+                event: StreamTopicEvent = StreamTopicEvent(**decoded)
+                yield event
+                if event.get("event") in terminal_values:
+                    return
+            else:
+                yield decoded
 
 
 def _normalize_terminal_events(terminal_events: Iterable[str | StreamEvent] | None) -> set[str]:

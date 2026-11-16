@@ -40,6 +40,9 @@ class _UnsupportedSelectorValue:
 
 type _ArrayObjectValue = list[int] | dict[str, int] | dict[str, str] | str
 
+#: A tools selector with nothing selected, still a list of selector entries.
+_EMPTY_TOOLS: list[str] = []
+
 
 class TestEndpointEntity:
     def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]) -> None:
@@ -141,14 +144,14 @@ class TestPluginParameterEntities:
             (PluginParameterType.NUMBER, PluginParameterType.NUMBER.value),
         ],
     )
-    def test_as_normal_type(self, parameter_type: StrEnum, expected: object) -> None:
+    def test_as_normal_type(self, parameter_type: PluginParameterType, expected: str) -> None:
         assert as_normal_type(parameter_type) == expected
 
     @pytest.mark.parametrize(
         ("value", "expected"),
         [(None, ""), (1, "1"), ("abc", "abc")],
     )
-    def test_cast_parameter_value_string_like(self, value: object, expected: str) -> None:
+    def test_cast_parameter_value_string_like(self, value: str | int | None, expected: str) -> None:
         assert cast_parameter_value(PluginParameterType.STRING, value) == expected
 
     @pytest.mark.parametrize(
@@ -165,7 +168,7 @@ class TestPluginParameterEntities:
             (0, False),
         ],
     )
-    def test_cast_parameter_value_boolean(self, value: object, expected: bool) -> None:
+    def test_cast_parameter_value_boolean(self, value: str | int | None, expected: bool) -> None:
         assert cast_parameter_value(PluginParameterType.BOOLEAN, value) is expected
 
     @pytest.mark.parametrize(
@@ -193,12 +196,15 @@ class TestPluginParameterEntities:
         [
             (PluginParameterType.MODEL_SELECTOR, {"m": "gpt"}, {"m": "gpt"}),
             (PluginParameterType.APP_SELECTOR, {"app": "a"}, {"app": "a"}),
-            (PluginParameterType.TOOLS_SELECTOR, [], []),
+            (PluginParameterType.TOOLS_SELECTOR, _EMPTY_TOOLS, _EMPTY_TOOLS),
             (PluginParameterType.ANY, {"k": "v"}, {"k": "v"}),
         ],
     )
     def test_cast_parameter_value_selectors_valid(
-        self, parameter_type: StrEnum, value: object, expected: object
+        self,
+        parameter_type: PluginParameterType,
+        value: dict[str, str] | list[str],
+        expected: dict[str, str] | list[str],
     ) -> None:
         assert cast_parameter_value(parameter_type, value) == expected
 
@@ -239,7 +245,7 @@ class TestPluginParameterEntities:
         ],
     )
     def test_cast_parameter_value_array_and_object_invalid_json_fallback(
-        self, parameter_type: StrEnum, value: object, expected: object
+        self, parameter_type: PluginParameterType, value: str, expected: list[str] | dict[str, str]
     ) -> None:
         assert cast_parameter_value(parameter_type, value) == expected
 

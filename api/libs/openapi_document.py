@@ -1,39 +1,146 @@
 """Typed access to the OpenAPI documents the API blueprints render.
 
-The renderers hand back plain JSON objects. Walking them as ``object`` and
-re-checking the same keys and value types at every use site spreads one
-document shape across every caller, so this module parses a rendered document
-once at the boundary and exposes the parts callers actually read.
+The renderers hand back plain JSON objects. Walking them as untyped mappings and
+re-checking the same keys and value types at every use site spreads one document
+shape across every caller, so this module models that shape once and parses a
+rendered document once at the boundary: every accessor below takes a shape
+defined here and reads it without re-checking it.
 
-The document stays open by design: OpenAPI is an extensible format, and the
-exporters deliberately keep vendor extensions, so only the structure this
-module models is narrowed.
+The shapes stay open by design: OpenAPI is an extensible format, and the
+exporters deliberately keep vendor extensions, so each shape models the keywords
+this module reads and admits any other keyword as a JSON value.
 """
 
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Final, TypedDict
+from typing import Final
 
-from pydantic import TypeAdapter
+from pydantic import TypeAdapter, ValidationError
+from typing_extensions import TypedDict
 
-#: Any value an OpenAPI document can hold.
+#: One JSON value: a rendered document holds nothing else.
 #:
-#: A rendered document is JSON, so the union is closed on the JSON types.
-#: Callers narrow with the accessors below instead of indexing blind.
-type OpenAPIJSON = str | int | float | bool | None | list[OpenAPIJSON] | dict[str, OpenAPIJSON]
+#: The container members are the read-only protocols so the modeled shapes below,
+#: which are mappings too, are themselves JSON values and can be handed to the
+#: walkers without a conversion.
+type OpenAPIJSON = str | int | float | bool | None | Sequence[OpenAPIJSON] | Mapping[str, OpenAPIJSON]
 
-#: One JSON Schema fragment: schema keywords mapped to JSON values.
-type OpenAPISchema = dict[str, OpenAPIJSON]
+#: The ``$ref`` keyword. Declared functionally because the key is not an
+#: identifier; shapes inherit it to keep the OpenAPI spelling.
+_RefKeyword = TypedDict("_RefKeyword", {"$ref": str}, total=False)
 
-#: One operation object, keyed by ``requestBody``, ``responses``, ...
-type OpenAPIOperation = dict[str, OpenAPIJSON]
+#: The ``in`` keyword, declared functionally for the same reason.
+_InKeyword = TypedDict("_InKeyword", {"in": str}, total=False)
 
-#: One ``paths`` entry, keyed by lower-case HTTP method.
-type OpenAPIPathItem = dict[str, OpenAPIOperation]
 
-#: The top level of a rendered document.
-type OpenAPIRawDocument = dict[str, OpenAPIJSON]
+class OpenAPIDiscriminator(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """A schema's ``discriminator`` object."""
 
-#: One entry of an operation's ``parameters`` array.
+    propertyName: str
+    mapping: dict[str, str]
+
+
+class OpenAPISchema(_RefKeyword, total=False, extra_items=OpenAPIJSON):
+    """One JSON Schema fragment, as the OpenAPI format spells its keywords."""
+
+    type: str
+    title: str
+    description: str
+    format: str
+    properties: dict[str, OpenAPISchema]
+    required: list[str]
+    items: OpenAPISchema
+    additionalProperties: OpenAPISchema
+    anyOf: list[OpenAPISchema]
+    oneOf: list[OpenAPISchema]
+    allOf: list[OpenAPISchema]
+    discriminator: OpenAPIDiscriminator
+
+
+class OpenAPIMediaType(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """One entry of a ``content`` object, keyed by media type."""
+
+    schema: OpenAPISchema
+
+
+class OpenAPIRequestBody(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """An operation's ``requestBody`` object."""
+
+    description: str
+    required: bool
+    content: dict[str, OpenAPIMediaType]
+
+
+class OpenAPIResponse(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """One entry of an operation's ``responses`` object, keyed by status code."""
+
+    description: str
+    content: dict[str, OpenAPIMediaType]
+
+
+class OpenAPIRawParameter(_InKeyword, total=False, extra_items=OpenAPIJSON):
+    """One entry of a ``parameters`` array as rendered.
+
+    Every keyword is optional here: the renderer emits unresolved references as
+    entries without a ``name``, which ``parameters_by_name`` skips.
+    """
+
+    name: str
+    description: str
+    required: bool
+    schema: OpenAPISchema
+
+
+class OpenAPIOperation(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """One operation object, keyed by ``requestBody``, ``responses``, ..."""
+
+    summary: str
+    description: str
+    operationId: str
+    tags: list[str]
+    deprecated: bool
+    parameters: list[OpenAPIRawParameter]
+    requestBody: OpenAPIRequestBody
+    responses: dict[str, OpenAPIResponse]
+
+
+class OpenAPIRawPathItem(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """One ``paths`` entry as rendered.
+
+    Only the operation members are modeled; a path item may also carry shared
+    members such as ``parameters``, which stay readable as JSON values.
+    """
+
+    summary: str
+    description: str
+    get: OpenAPIOperation
+    put: OpenAPIOperation
+    post: OpenAPIOperation
+    delete: OpenAPIOperation
+    options: OpenAPIOperation
+    head: OpenAPIOperation
+    patch: OpenAPIOperation
+    trace: OpenAPIOperation
+
+
+class OpenAPIComponents(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """A document's ``components`` object."""
+
+    schemas: dict[str, OpenAPISchema]
+
+
+class OpenAPIRawDocument(TypedDict, total=False, extra_items=OpenAPIJSON):
+    """The top level of a rendered document."""
+
+    openapi: str
+    info: Mapping[str, OpenAPIJSON]
+    paths: dict[str, OpenAPIRawPathItem]
+    components: OpenAPIComponents
+
+
+#: One entry of an operation's ``parameters`` array, with every keyword resolved.
 #:
 #: Declared functionally because ``in`` is a Python keyword; entries are built
 #: from mapping literals so the key keeps its OpenAPI spelling.
@@ -48,7 +155,37 @@ OpenAPIParameter = TypedDict(
     },
 )
 
+#: One ``paths`` entry after parsing, keyed by lower-case HTTP method.
+type OpenAPIPathItem = dict[str, OpenAPIOperation]
+
 _RAW_DOCUMENT_ADAPTER: Final[TypeAdapter[OpenAPIRawDocument]] = TypeAdapter(OpenAPIRawDocument)
+
+#: The operation members of a path item, read by literal key so each read keeps
+#: the operation type instead of the open-ended JSON value type.
+_OPERATION_MEMBERS: Final[dict[str, Callable[[OpenAPIRawPathItem], OpenAPIOperation | None]]] = {
+    "get": lambda item: item.get("get"),
+    "put": lambda item: item.get("put"),
+    "post": lambda item: item.get("post"),
+    "delete": lambda item: item.get("delete"),
+    "options": lambda item: item.get("options"),
+    "head": lambda item: item.get("head"),
+    "patch": lambda item: item.get("patch"),
+    "trace": lambda item: item.get("trace"),
+}
+
+#: What each pydantic error type says a value should have been.
+_EXPECTED_KINDS: Final[dict[str, str]] = {
+    "dict_type": "an object",
+    "list_type": "an array",
+    "string_type": "a string",
+    "bool_type": "a boolean",
+    "int_type": "an integer",
+    "float_type": "a number",
+}
+
+#: Keywords whose value is a map keyed by names the format leaves open, so the
+#: next location step is a name in brackets rather than a nested keyword.
+_OPEN_MAPS: Final[frozenset[str]] = frozenset({"paths", "schemas", "securitySchemes", "responses", "content"})
 
 
 class OpenAPIStructureError(ValueError):
@@ -68,67 +205,77 @@ class OpenAPIDocument:
     schemas: dict[str, OpenAPISchema]
 
 
-def _require_mapping(value: OpenAPIJSON, what: str) -> OpenAPIRawDocument:
-    if not isinstance(value, dict):
-        raise OpenAPIStructureError(f"expected {what} to be an object, got {type(value).__name__}")
-    return value
+def _location(steps: Sequence[str | int]) -> str:
+    """Spell a validation location the way the document is read.
 
-
-def _require_array(value: OpenAPIJSON, what: str) -> list[OpenAPIJSON]:
-    if not isinstance(value, list):
-        raise OpenAPIStructureError(f"expected {what} to be an array, got {type(value).__name__}")
-    return value
-
-
-def _require_string(value: OpenAPIJSON, what: str) -> str:
-    if not isinstance(value, str):
-        raise OpenAPIStructureError(f"expected {what} to be a string, got {type(value).__name__}")
-    return value
-
-
-def _parse_path_item(path: str, raw: OpenAPIJSON) -> OpenAPIPathItem:
-    """Return the path item's operations.
-
-    A path item may also carry non-operation members such as a shared
-    ``parameters`` array; those are not operations and are dropped here.
+    Keywords join with dots; a name inside an open-ended map such as ``paths``
+    or ``components.schemas`` is bracketed, and a list index keeps its brackets.
     """
-    item: OpenAPIPathItem = {}
-    for method, raw_operation in _require_mapping(raw, f"paths[{path}]").items():
-        if isinstance(raw_operation, dict):
-            item[method] = _require_mapping(raw_operation, f"paths[{path}][{method}]")
-    return item
+    parts: list[str] = []
+    previous = ""
+    for step in steps:
+        if isinstance(step, int):
+            parts[-1] = f"{parts[-1]}[{step}]"
+        elif previous in _OPEN_MAPS:
+            parts.append(f"[{step}]")
+        else:
+            parts.append(str(step))
+        previous = str(step)
+    return "".join(
+        part if index == 0 or part.startswith("[") else f".{part}" for index, part in enumerate(parts)
+    )
 
 
-def parse_openapi_document(raw: object) -> OpenAPIDocument:
+def _structure_error(error: ValidationError) -> OpenAPIStructureError:
+    """Name the first shape violation the boundary found, in document terms.
+
+    Args:
+        error: The validation failure of one rendered document.
+
+    Returns:
+        The failure as an ``OpenAPIStructureError`` naming the offending location.
+    """
+    first = error.errors()[0]
+    location = _location(first["loc"]) or "document"
+    kind = _EXPECTED_KINDS.get(first["type"], "a JSON value")
+    return OpenAPIStructureError(f"expected {location} to be {kind}, got {type(first['input']).__name__}")
+
+
+def _path_item_operations(item: OpenAPIRawPathItem) -> OpenAPIPathItem:
+    """Return the operations a path item declares.
+
+    Non-operation members such as a shared ``parameters`` array are not
+    operations and are left out of the returned view.
+    """
+    operations: OpenAPIPathItem = {}
+    for method, read in _OPERATION_MEMBERS.items():
+        operation = read(item)
+        if operation is not None:
+            operations[method] = operation
+    return operations
+
+
+def parse_openapi_document(raw: OpenAPIJSON) -> OpenAPIDocument:
     """Parse a document decoded from the exported or served OpenAPI JSON.
 
     Args:
         raw: The result of ``json.loads`` on a rendered document.
 
     Returns:
-        The parsed document.
+        The parsed document, whose shapes every accessor below reads directly.
 
     Raises:
-        pydantic.ValidationError: ``raw`` holds a value JSON cannot represent.
-        OpenAPIStructureError: ``paths`` or ``components`` is not an object.
+        OpenAPIStructureError: ``raw`` is not a document, or a modeled keyword
+            holds a value of the wrong JSON type.
     """
-    document = _RAW_DOCUMENT_ADAPTER.validate_python(raw)
+    try:
+        document = _RAW_DOCUMENT_ADAPTER.validate_python(raw)
+    except ValidationError as error:
+        raise _structure_error(error) from error
 
-    paths: dict[str, OpenAPIPathItem] = {}
-    for path, path_item in _require_mapping(document.get("paths", {}), "paths").items():
-        paths[path] = _parse_path_item(path, path_item)
-
-    components = _require_mapping(document.get("components", {}), "components")
-    schemas: dict[str, OpenAPISchema] = {}
-    for name, schema in _require_mapping(components.get("schemas", {}), "components.schemas").items():
-        schemas[name] = _require_mapping(schema, f"components.schemas[{name}]")
-
+    paths = {path: _path_item_operations(item) for path, item in document.get("paths", {}).items()}
+    schemas = document.get("components", OpenAPIComponents()).get("schemas", {})
     return OpenAPIDocument(raw=document, paths=paths, schemas=schemas)
-
-
-def _operation_object(operation: OpenAPIJSON) -> OpenAPIRawDocument:
-    """Return ``operation`` as an object, naming it as the boundary it is."""
-    return _require_mapping(operation, "operation")
 
 
 def operation_at(document: OpenAPIDocument, path: str, method: str) -> OpenAPIOperation:
@@ -143,8 +290,8 @@ def operation_at(document: OpenAPIDocument, path: str, method: str) -> OpenAPIOp
 def lookup(value: OpenAPIJSON, *path: str | int, default: OpenAPIJSON = None) -> OpenAPIJSON:
     """Follow ``path`` through a document value and return what it names.
 
-    Use this for the one-off assertions on fields this module does not model;
-    the accessors below name the shapes tests read repeatedly.
+    Use this for the one-off assertions on keywords the shapes do not model;
+    the accessors below name the shapes callers read repeatedly.
 
     Args:
         value: A value taken from a parsed document.
@@ -161,11 +308,11 @@ def lookup(value: OpenAPIJSON, *path: str | int, default: OpenAPIJSON = None) ->
     current = value
     for step in path:
         if isinstance(step, int):
-            if not isinstance(current, list):
+            if not isinstance(current, Sequence) or isinstance(current, str):
                 raise OpenAPIStructureError(f"expected a list before index {step}, got {type(current).__name__}")
             current = current[step]
         else:
-            if not isinstance(current, dict):
+            if not isinstance(current, Mapping):
                 raise OpenAPIStructureError(f"expected an object before key {step!r}, got {type(current).__name__}")
             if step not in current:
                 return default
@@ -173,26 +320,26 @@ def lookup(value: OpenAPIJSON, *path: str | int, default: OpenAPIJSON = None) ->
     return current
 
 
-def object_at(value: OpenAPIJSON, *path: str) -> OpenAPIRawDocument:
+def object_at(value: OpenAPIJSON, *path: str) -> Mapping[str, OpenAPIJSON]:
     """Return the object ``path`` names, so callers need no runtime assert.
 
     Raises:
         OpenAPIStructureError: A step is missing or names a non-object.
     """
     named = lookup(value, *path)
-    if not isinstance(named, dict):
+    if not isinstance(named, Mapping):
         raise OpenAPIStructureError(f"expected {'.'.join(path)} to be an object, got {type(named).__name__}")
     return named
 
 
-def array_at(value: OpenAPIJSON, *path: str) -> list[OpenAPIJSON]:
+def array_at(value: OpenAPIJSON, *path: str) -> Sequence[OpenAPIJSON]:
     """Return the array ``path`` names.
 
     Raises:
         OpenAPIStructureError: A step is missing or names a non-array.
     """
     named = lookup(value, *path)
-    if not isinstance(named, list):
+    if not isinstance(named, Sequence) or isinstance(named, str):
         raise OpenAPIStructureError(f"expected {'.'.join(path)} to be an array, got {type(named).__name__}")
     return named
 
@@ -209,36 +356,30 @@ def text_at(value: OpenAPIJSON, *path: str) -> str:
     return named
 
 
-def _document_object(document: OpenAPIDocument | OpenAPIJSON) -> OpenAPIRawDocument:
-    """Return the raw document object behind ``document``.
+def _paths_of(document: OpenAPIDocument | OpenAPIRawDocument) -> dict[str, OpenAPIPathItem]:
+    """Return the document's operations, keyed by path and method.
 
-    Callers may hold either the parsed document or the raw mapping a helper
-    received, so both are accepted here and only this boundary narrows.
+    Accepts the parsed document or a raw document mapping, which is parsed here
+    so callers holding either one read the same typed view.
     """
     if isinstance(document, OpenAPIDocument):
-        return document.raw
-    return _require_mapping(document, "document")
+        return document.paths
+    return parse_openapi_document(document).paths
 
 
-def _paths_of(document: OpenAPIDocument | OpenAPIJSON) -> dict[str, OpenAPIPathItem]:
-    """Return the document's ``paths`` object."""
-    paths_object = _require_mapping(_document_object(document).get("paths"), "paths")
-    return {path: _parse_path_item(path, item) for path, item in paths_object.items()}
-
-
-def all_operations(document: OpenAPIDocument | OpenAPIJSON) -> list[tuple[str, str, OpenAPIOperation]]:
+def all_operations(document: OpenAPIDocument | OpenAPIRawDocument) -> list[tuple[str, str, OpenAPIOperation]]:
     """Return every declared operation as a ``(path, method, operation)`` triple."""
     return [
         (path, method, operation) for path, item in _paths_of(document).items() for method, operation in item.items()
     ]
 
 
-def operations_of(document: OpenAPIDocument | OpenAPIJSON) -> list[tuple[str, OpenAPIOperation]]:
+def operations_of(document: OpenAPIDocument | OpenAPIRawDocument) -> list[tuple[str, OpenAPIOperation]]:
     """Return every ``GET`` operation as a ``(path, operation)`` pair."""
     return [(path, item["get"]) for path, item in _paths_of(document).items() if "get" in item]
 
 
-def request_body_schema(operation: OpenAPIJSON, media_type: str) -> OpenAPISchema:
+def request_body_schema(operation: OpenAPIOperation, media_type: str) -> OpenAPISchema:
     """Return the schema a request body declares for ``media_type``.
 
     Args:
@@ -246,98 +387,85 @@ def request_body_schema(operation: OpenAPIJSON, media_type: str) -> OpenAPISchem
         media_type: The exact media type, e.g. ``application/json``.
 
     Raises:
-        OpenAPIStructureError: The operation has no such request body schema.
+        KeyError: The operation declares no request body, or none for that media
+            type, or that media type declares no schema.
     """
-    request_body = _require_mapping(_operation_object(operation).get("requestBody"), "requestBody")
-    content = _require_mapping(request_body.get("content"), "requestBody.content")
-    media = _require_mapping(content.get(media_type), f"requestBody.content[{media_type}]")
-    return _require_mapping(media.get("schema"), f"requestBody.content[{media_type}].schema")
+    return operation["requestBody"]["content"][media_type]["schema"]
 
 
-def _response_body(operation: OpenAPIJSON, status_code: str) -> OpenAPIRawDocument:
-    responses = _require_mapping(_operation_object(operation).get("responses"), "responses")
-    response = _require_mapping(responses.get(status_code), f"responses[{status_code}]")
-    return _require_mapping(response.get("content"), f"responses[{status_code}].content")
-
-
-def response_content_types(operation: OpenAPIJSON, status_code: str = "200") -> set[str]:
+def response_content_types(operation: OpenAPIOperation, status_code: str = "200") -> set[str]:
     """Return the media types a response declares.
 
     Raises:
-        OpenAPIStructureError: The operation has no such response.
+        KeyError: The operation declares no such response or no content for it.
     """
-    return set(_response_body(operation, status_code))
+    return set(operation["responses"][status_code]["content"])
 
 
 def response_schema(
-    operation: OpenAPIJSON, status_code: str = "200", media_type: str = "application/json"
+    operation: OpenAPIOperation, status_code: str = "200", media_type: str = "application/json"
 ) -> OpenAPISchema:
     """Return the schema a response declares for ``media_type``.
 
     Raises:
-        OpenAPIStructureError: The operation has no such response schema.
+        KeyError: The operation declares no such response schema.
     """
-    content = _response_body(operation, status_code)
-    media = _require_mapping(content.get(media_type), f"responses[{status_code}].content[{media_type}]")
-    return _require_mapping(media.get("schema"), f"responses[{status_code}].content[{media_type}].schema")
+    return operation["responses"][status_code]["content"][media_type]["schema"]
 
 
-def parameters_by_name(operation: OpenAPIJSON) -> dict[str, OpenAPIParameter]:
+def parameters_by_name(operation: OpenAPIOperation) -> dict[str, OpenAPIParameter]:
     """Index an operation's parameters by name.
 
-    Parameters without a string ``name`` are skipped, which is how the renderer
-    emits unresolved references.
+    Parameters without a ``name`` are skipped, which is how the renderer emits
+    unresolved references.
     """
     indexed: dict[str, OpenAPIParameter] = {}
-    for parameter in _require_array(_operation_object(operation).get("parameters", []), "parameters"):
-        raw_parameter = _require_mapping(parameter, "parameters[]")
-        name = raw_parameter.get("name")
-        if isinstance(name, str):
+    for parameter in operation.get("parameters", []):
+        name = parameter.get("name")
+        if name is not None:
             indexed[name] = OpenAPIParameter(
-                {
-                    "name": name,
-                    "in": _require_string(raw_parameter.get("in"), f"parameters[{name}].in"),
-                    "description": _require_string(
-                        raw_parameter.get("description", ""), f"parameters[{name}].description"
-                    ),
-                    "required": raw_parameter.get("required") is True,
-                    "schema": _require_mapping(raw_parameter.get("schema", {}), f"parameters[{name}].schema"),
-                }
+                name=name,
+                description=parameter.get("description", ""),
+                required=parameter.get("required", False),
+                schema=parameter.get("schema", OpenAPISchema()),
+                **{"in": parameter.get("in", "")},
             )
     return indexed
 
 
-def properties_of(schema: OpenAPIJSON) -> dict[str, OpenAPISchema]:
-    """Return a schema's ``properties`` map.
-
-    Raises:
-        OpenAPIStructureError: ``properties`` is not an object.
-    """
-    properties: dict[str, OpenAPISchema] = {}
-    for name, property_schema in _require_mapping(
-        _require_mapping(schema, "schema").get("properties", {}), "properties"
-    ).items():
-        properties[name] = _require_mapping(property_schema, f"properties[{name}]")
-    return properties
+def properties_of(schema: OpenAPISchema) -> dict[str, OpenAPISchema]:
+    """Return a schema's ``properties`` map, empty when it declares none."""
+    return schema.get("properties", {})
 
 
-def required_of(schema: OpenAPIJSON) -> list[str]:
+def required_of(schema: OpenAPISchema) -> list[str]:
     """Return a schema's ``required`` names, empty when it declares none."""
-    return [
-        _require_string(name, "required[]")
-        for name in _require_array(_require_mapping(schema, "schema").get("required", []), "required")
-    ]
+    return schema.get("required", [])
 
 
-def variants_of(schema: OpenAPIJSON, field: str = "anyOf") -> list[OpenAPISchema]:
-    """Return the alternative schemas a schema lists under ``field``."""
-    return [
-        _require_mapping(variant, f"{field}[]")
-        for variant in _require_array(_require_mapping(schema, "schema").get(field, []), field)
-    ]
+def variants_of(schema: OpenAPISchema, field: str = "anyOf") -> list[OpenAPISchema]:
+    """Return the alternative schemas a schema lists under ``field``.
+
+    Args:
+        schema: A parsed schema.
+        field: One of ``anyOf``, ``oneOf`` or ``allOf``; any other name lists no
+            alternatives.
+    """
+    if field == "oneOf":
+        return schema.get("oneOf", [])
+    if field == "allOf":
+        return schema.get("allOf", [])
+    return schema.get("anyOf", [])
 
 
-def resolve_schema(document: OpenAPIDocument | OpenAPIJSON, schema: OpenAPIJSON) -> OpenAPISchema:
+def _schemas_of(document: OpenAPIDocument | OpenAPIRawDocument) -> dict[str, OpenAPISchema]:
+    """Return the component schemas, parsing a raw document when given one."""
+    if isinstance(document, OpenAPIDocument):
+        return document.schemas
+    return parse_openapi_document(document).schemas
+
+
+def resolve_schema(document: OpenAPIDocument | OpenAPIRawDocument, schema: OpenAPISchema) -> OpenAPISchema:
     """Resolve a schema that may be a ``$ref`` into its component schema.
 
     Returns:
@@ -346,25 +474,22 @@ def resolve_schema(document: OpenAPIDocument | OpenAPIJSON, schema: OpenAPIJSON)
     Raises:
         KeyError: The reference names a component the document does not define.
     """
-    schema_object = _require_mapping(schema, "schema")
-    ref = schema_object.get("$ref")
-    if not isinstance(ref, str):
-        return schema_object
-    components = _require_mapping(_document_object(document).get("components"), "components")
-    schemas = _require_mapping(components.get("schemas"), "components.schemas")
-    return _require_mapping(schemas.get(ref.removeprefix("#/components/schemas/")), "components.schemas[]")
+    ref = schema.get("$ref")
+    if ref is None:
+        return schema
+    return _schemas_of(document)[ref.removeprefix("#/components/schemas/")]
 
 
 def schema_refs(value: OpenAPIJSON) -> set[str]:
     """Collect every component schema name a document fragment references."""
     refs: set[str] = set()
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         ref = value.get("$ref")
         if isinstance(ref, str) and ref.startswith("#/components/schemas/"):
             refs.add(ref.removeprefix("#/components/schemas/"))
         for item in value.values():
             refs.update(schema_refs(item))
-    elif isinstance(value, list):
+    elif isinstance(value, Sequence) and not isinstance(value, str):
         for item in value:
             refs.update(schema_refs(item))
     return refs

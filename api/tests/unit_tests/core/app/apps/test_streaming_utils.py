@@ -29,6 +29,7 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     MessageStreamResponse,
     StreamEvent,
+    StreamTopicEvent,
 )
 from graphon.entities import WorkflowStartReason
 from libs.broadcast_channel.channel import Subscriber, SupportsPreparedSubscription
@@ -175,9 +176,7 @@ def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(mo
     assert topic.subscribe_calls == 1
     assert topic.subscribed is False
     assert next(generator) == StreamEvent.PING.value
-    event = next(generator)
-    assert isinstance(event, dict)
-    assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
     with pytest.raises(StopIteration):
         next(generator)
 
@@ -205,9 +204,7 @@ def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monke
 
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
     assert next(generator) == StreamEvent.PING.value
-    finished_event = next(generator)
-    assert isinstance(finished_event, dict)
-    assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
 
 
 def test_retrieve_events_propagates_preparation_error_before_generator_iteration(
@@ -275,12 +272,8 @@ def test_stream_topic_events_can_continue_past_pause() -> None:
     )
 
     assert next(generator) == StreamEvent.PING.value
-    paused_event = next(generator)
-    assert isinstance(paused_event, dict)
-    assert paused_event["event"] == StreamEvent.WORKFLOW_PAUSED.value
-    finished_event = next(generator)
-    assert isinstance(finished_event, dict)
-    assert finished_event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_PAUSED.value)
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
     with pytest.raises(StopIteration):
         next(generator)
 

@@ -152,10 +152,11 @@ class TestNavigation:
 
 class TestPathAccessors:
     def test_lookup_walks_mixed_keys_and_falls_back(self) -> None:
-        value = lookup(_document().raw, "paths", "/apps", "get")
+        raw = _document().raw
+        value = lookup(raw, "paths", "/apps", "get")
 
-        assert isinstance(value, dict)
-        assert lookup(_document().raw, "paths", "/nope", default="fallback") == "fallback"
+        assert value == operation_at(_document(), "/apps", "get")
+        assert lookup(raw, "paths", "/nope", default="fallback") == "fallback"
 
     def test_object_at_returns_a_mapping(self) -> None:
         assert "get" in object_at(_document().raw, "paths", "/apps")
@@ -191,9 +192,9 @@ class TestComponentAccessors:
     def test_parameters_by_name_skips_nameless_entries(self) -> None:
         assert parameters_by_name({"parameters": [{"in": "query"}]}) == {}
 
-    def test_parameters_by_name_rejects_a_non_array(self) -> None:
+    def test_parse_rejects_a_non_array_parameter_list(self) -> None:
         with pytest.raises(OpenAPIStructureError, match=r"to be an array"):
-            parameters_by_name({"parameters": {"in": "query"}})
+            parse_openapi_document({"paths": {"/raw": {"get": {"parameters": {"in": "query"}}}}})
 
     def test_request_body_schema_reads_the_named_media_type(self) -> None:
         operation = operation_at(_document(), "/apps/{app_id}/completion", "post")
@@ -203,7 +204,7 @@ class TestComponentAccessors:
     def test_request_body_schema_rejects_an_absent_media_type(self) -> None:
         operation = operation_at(_document(), "/apps/{app_id}/completion", "post")
 
-        with pytest.raises(OpenAPIStructureError, match=r"text/plain"):
+        with pytest.raises(KeyError, match=r"text/plain"):
             request_body_schema(operation, "text/plain")
 
     def test_response_content_types_lists_the_served_types(self) -> None:
@@ -212,7 +213,7 @@ class TestComponentAccessors:
         assert response_content_types(operation, "201") == {"text/event-stream"}
 
     def test_response_content_types_rejects_an_absent_status(self) -> None:
-        with pytest.raises(OpenAPIStructureError, match=r"404"):
+        with pytest.raises(KeyError, match=r"404"):
             response_content_types(operation_at(_document(), "/apps", "get"), "404")
 
     def test_response_schema_walks_to_the_schema(self) -> None:
@@ -259,7 +260,7 @@ class TestReferenceResolution:
         assert resolve_schema(_document(), {"type": "string"}) == {"type": "string"}
 
     def test_resolve_schema_rejects_an_unknown_reference(self) -> None:
-        with pytest.raises(OpenAPIStructureError, match=r"components\.schemas\[\] to be an object"):
+        with pytest.raises(KeyError, match=r"Missing"):
             resolve_schema(_document(), {"$ref": "#/components/schemas/Missing"})
 
     def test_schema_refs_collects_every_reference(self) -> None:
