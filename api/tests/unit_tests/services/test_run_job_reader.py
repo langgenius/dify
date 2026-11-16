@@ -9,7 +9,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobOwner, JobPatch, JobRecord, JobStatus
-from services.run_job_reader import read_to_end
+from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
 JOB_ID = "job-1"
@@ -189,6 +189,37 @@ def test_an_error_event_fails_the_job_with_its_message(store: RedisRunJobStore, 
     assert record.error == "bad input"
 
 
+def test_an_error_event_without_a_message_fails_the_job_with_no_error_text(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    _open(store, AppMode.WORKFLOW)
+
+    record = _read(store, stopper, [_frame(StreamEvent.ERROR, code="invalid_param", status=400)])
+
+    assert record.status is JobStatus.FAILED
+    assert record.error is None
+
+
+def test_the_first_final_status_wins(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:
+    _open(store, AppMode.WORKFLOW)
+    frames = [
+        _finished(WorkflowExecutionStatus.SUCCEEDED),
+        _frame(StreamEvent.ERROR, message="late"),
+        _frame(StreamEvent.WORKFLOW_PAUSED, task_id="task-1", data={}),
+    ]
+
+    record = _read(store, stopper, frames)
+
+    assert record.status is JobStatus.SUCCEEDED
+    assert record.error is None
+    assert record.task_id == "task-1"
+
+
+def test_the_status_table_is_read_only() -> None:
+    with pytest.raises(TypeError):
+        RUN_STATUS_TO_JOB_STATUS[WorkflowExecutionStatus.RUNNING] = JobStatus.RUNNING  # type: ignore[index]
+
+
 def test_a_stream_that_ends_without_a_result_fails_a_message_job(
     store: RedisRunJobStore, stopper: RecordingJobStopper
 ) -> None:
@@ -244,7 +275,30 @@ def test_a_pending_stop_is_applied_once_the_task_id_arrives(
 
     _read(store, stopper, frames)
 
-    assert [record.task_id for record in stopper.stopped] == ["task-1"]
+    assert [(record.task_id, record.run_id) for record in stopper.stopped] == [("task-1", "run-1")]
+
+
+def test_a_stop_requested_after_the_ids_are_stored_is_not_sent_by_the_reader(
+    store: RedisRunJobStore, stopper: RecordingJobStopper
+) -> None:
+    _open(store, AppMode.WORKFLOW)
+    frames = (
+        frame
+        for frame in [
+            _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}),
+            _frame(StreamEvent.NODE_STARTED, **IDS, data={}),
+        ]
+    )
+
+    def late_stop() -> Iterator[str]:
+        for index, frame in enumerate(frames):
+            if index == 1:
+                store.patch(JOB_ID, JobPatch(stop_requested=True))
+            yield frame
+
+    _read(store, stopper, late_stop())
+
+    assert stopper.stopped == []
 
 
 def test_no_stop_is_applied_without_a_request(store: RedisRunJobStore, stopper: RecordingJobStopper) -> None:

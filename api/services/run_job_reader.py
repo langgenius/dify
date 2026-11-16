@@ -6,6 +6,7 @@ import json
 import logging
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
+from types import MappingProxyType
 from typing import Any, Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
@@ -16,15 +17,16 @@ logger = logging.getLogger(__name__)
 
 DATA_PREFIX: Final = "data:"
 NO_RESULT_ERROR: Final = "run ended without a result"
-ERROR_EVENT_FALLBACK: Final = "run reported an error"
 ID_FIELDS: Final = ("task_id", "workflow_run_id", "message_id", "conversation_id")
 
-RUN_STATUS_TO_JOB_STATUS: Final[Mapping[WorkflowExecutionStatus, JobStatus]] = {
-    WorkflowExecutionStatus.SUCCEEDED: JobStatus.SUCCEEDED,
-    WorkflowExecutionStatus.PARTIAL_SUCCEEDED: JobStatus.SUCCEEDED,
-    WorkflowExecutionStatus.FAILED: JobStatus.FAILED,
-    WorkflowExecutionStatus.STOPPED: JobStatus.STOPPED,
-}
+RUN_STATUS_TO_JOB_STATUS: Final[Mapping[WorkflowExecutionStatus, JobStatus]] = MappingProxyType(
+    {
+        WorkflowExecutionStatus.SUCCEEDED: JobStatus.SUCCEEDED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED: JobStatus.SUCCEEDED,
+        WorkflowExecutionStatus.FAILED: JobStatus.FAILED,
+        WorkflowExecutionStatus.STOPPED: JobStatus.STOPPED,
+    }
+)
 
 
 class JobStopper(Protocol):
@@ -62,7 +64,9 @@ def _run_finished(context: _FrameContext) -> JobPatch | None:
     if status is None:
         return None
     error = data.get("error")
-    if status is not JobStatus.FAILED or not isinstance(error, str):
+    if status is not JobStatus.FAILED:
+        return JobPatch(status=status)
+    if not isinstance(error, str):
         return JobPatch(status=status)
     return JobPatch(status=status, error=error)
 
@@ -105,10 +109,12 @@ def _run_errored(context: _FrameContext) -> JobPatch | None:
     """Fail the job with the error frame's message.
 
     Precondition: none.
-    Postcondition: a patch setting FAILED with the frame's message, or a fixed text when it has none.
+    Postcondition: a patch setting FAILED with the frame's message; the error stays unset when the frame has none.
     """
     message = context.payload.get("message")
-    return JobPatch(status=JobStatus.FAILED, error=message if isinstance(message, str) else ERROR_EVENT_FALLBACK)
+    if not isinstance(message, str):
+        return JobPatch(status=JobStatus.FAILED)
+    return JobPatch(status=JobStatus.FAILED, error=message)
 
 
 EVENT_HANDLERS: Final[Mapping[str, _Handler]] = {
@@ -174,8 +180,11 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     record = store.get(job_id)
     if record is None:
         return
-    if not task_id_known and record.task_id is not None and record.stop_requested:
-        stopper.stop(record)
+    if not task_id_known and record.task_id is not None:
+        if record.stop_requested:
+            stopper.stop(record)
+    if record.status.is_final:
+        return
     handler = EVENT_HANDLERS.get(str(payload.get("event")))
     if handler is None:
         return
