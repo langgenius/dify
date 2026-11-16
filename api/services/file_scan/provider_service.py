@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -79,7 +79,11 @@ class FileScanProviderService:
                 provider_id: count
                 for provider_id, count in session.execute(
                     select(FileScanPolicy.provider_id, func.count())
-                    .where(FileScanPolicy.tenant_id == tenant_id, FileScanPolicy.provider_id.is_not(None))
+                    .where(
+                        FileScanPolicy.tenant_id == tenant_id,
+                        FileScanPolicy.provider_id.is_not(None),
+                        FileScanPolicy.enabled.is_(True),
+                    )
                     .group_by(FileScanPolicy.provider_id)
                 )
                 if provider_id is not None
@@ -167,8 +171,15 @@ class FileScanProviderService:
             row = _row(session, tenant_id, provider_id)
             if _policy_count(session, tenant_id, row.id):
                 raise FileScanProviderInUseError(
-                    "This scanner is selected by at least one knowledge base. Choose another scanner there first."
+                    "This scanner is in use by at least one knowledge base with file scanning turned on. "
+                    "Turn scanning off or choose another scanner there first."
                 )
+            # A knowledge base with scanning turned off may still remember this scanner; forget it there.
+            session.execute(
+                update(FileScanPolicy)
+                .where(FileScanPolicy.tenant_id == tenant_id, FileScanPolicy.provider_id == row.id)
+                .values(provider_id=None)
+            )
             session.delete(row)
             session.commit()
 
@@ -278,11 +289,16 @@ def _row(session: Session, tenant_id: str, provider_id: str) -> FileScanProvider
 
 
 def _policy_count(session: Session, tenant_id: str, provider_id: str) -> int:
+    """How many knowledge bases scan with this scanner. A policy that is turned off does not count."""
     return (
         session.scalar(
             select(func.count())
             .select_from(FileScanPolicy)
-            .where(FileScanPolicy.tenant_id == tenant_id, FileScanPolicy.provider_id == provider_id)
+            .where(
+                FileScanPolicy.tenant_id == tenant_id,
+                FileScanPolicy.provider_id == provider_id,
+                FileScanPolicy.enabled.is_(True),
+            )
         )
         or 0
     )

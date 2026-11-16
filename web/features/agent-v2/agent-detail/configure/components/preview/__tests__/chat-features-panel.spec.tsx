@@ -4,15 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { createStore, Provider } from 'jotai'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { agentComposerAppFeaturesAtom } from '@/features/agent-v2/agent-composer/store-modules/app-features'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { AgentChatFeaturesPanel } from '../chat-features-panel'
-
-vi.mock('@/context/hooks/use-trigger-events-limit-modal', () => ({
-  useTriggerEventsLimitModal: () => ({ triggerEventsLimitModal: null }),
-}))
 
 function PanelHarness({
   snapshot,
@@ -41,9 +36,7 @@ function renderPanel(snapshot: AgentSoulAppFeaturesConfig, draft = snapshot, dis
   const ui = (currentSnapshot: AgentSoulAppFeaturesConfig) => (
     <Provider store={store}>
       <NuqsTestingAdapter>
-        <ModalContextProvider>
-          <PanelHarness snapshot={currentSnapshot} disabled={disabled} />
-        </ModalContextProvider>
+        <PanelHarness snapshot={currentSnapshot} disabled={disabled} />
       </NuqsTestingAdapter>
     </Provider>
   )

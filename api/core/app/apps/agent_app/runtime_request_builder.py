@@ -55,6 +55,10 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from core.workflow.nodes.agent_v2.tool_snapshot import (
+    AgentRuntimeToolDefinition,
+    build_runtime_tool_definitions,
+)
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
@@ -89,9 +93,13 @@ class AgentAppRuntimeBuildContext:
     backend_binding_ref: str
     files: tuple[File, ...] = ()
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None
+    capture_available_tools: bool = False
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: SessionSnapshot | None = None
     inputs: Mapping[str, Any] = field(default_factory=dict)
+
+
+AgentAppRuntimeToolDefinition = AgentRuntimeToolDefinition
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +108,7 @@ class AgentAppRuntimeRequest:
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
     binding_id: str
+    available_tools: tuple[AgentAppRuntimeToolDefinition, ...] = ()
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -183,6 +192,7 @@ class AgentAppRuntimeRequestBuilder:
         system_prompt = expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
         if agent_soul.app_features.generative_ui.enabled:
             system_prompt = f"{system_prompt}\n\n{load_generative_ui_prompt()}".strip()
+        shell_config = build_shell_layer_config(agent_soul)
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -220,7 +230,7 @@ class AgentAppRuntimeRequestBuilder:
                 knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
-                shell_config=build_shell_layer_config(agent_soul),
+                shell_config=shell_config,
                 session_snapshot=context.session_snapshot,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
@@ -232,6 +242,14 @@ class AgentAppRuntimeRequestBuilder:
             redacted_request=redacted,
             metadata=metadata,
             binding_id=context.binding_id,
+            available_tools=(
+                build_runtime_tool_definitions(
+                    tool_layers=tool_layers,
+                    include_shell=dify_config.AGENT_SHELL_ENABLED,
+                )
+                if context.capture_available_tools
+                else ()
+            ),
         )
 
     @staticmethod
@@ -376,4 +394,5 @@ __all__ = [
     "AgentAppRuntimeRequest",
     "AgentAppRuntimeRequestBuildError",
     "AgentAppRuntimeRequestBuilder",
+    "AgentAppRuntimeToolDefinition",
 ]
