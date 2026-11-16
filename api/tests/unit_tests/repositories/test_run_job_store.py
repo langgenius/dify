@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
 import pytest
@@ -50,6 +50,14 @@ class InMemoryRedis:
             self.ttls[name] = time
         return exists
 
+    def register_script(self, _script: str) -> Callable[..., int]:
+        def delete_if_equal(*, keys: list[str], args: list[str]) -> int:
+            if self.values.get(keys[0]) != args[0]:
+                return 0
+            return self.delete(keys[0])
+
+        return delete_if_equal
+
     def exists(self, *names: str) -> int:
         return sum(name in self.hashes or name in self.values for name in names)
 
@@ -60,6 +68,9 @@ class InMemoryRedis:
             removed += self.values.pop(name, None) is not None
             self.ttls.pop(name, None)
         return removed
+
+
+IDEM_NAME = "openapi:job:idem:t1:account:acct-1:k"
 
 
 @pytest.fixture
@@ -196,3 +207,60 @@ def test_only_three_statuses_are_final() -> None:
     final = {status for status in JobStatus if status.is_final}
 
     assert final == {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED}
+
+
+def test_stale_idempotency_key_is_replaced_once(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    redis.set("openapi:job:idem:t1:account:acct-1:k", "vanished", ex=JOB_TTL_SECONDS)
+
+    opened = store.open(_record("job-2"), idempotency_key="k")
+
+    assert opened.created is True
+    assert redis.values["openapi:job:idem:t1:account:acct-1:k"] == "job-2"
+
+
+class RetakingRedis(InMemoryRedis):
+    """Another opener binds the key to a live job right before the compare-and-delete runs."""
+
+    def register_script(self, _script: str) -> Callable[..., int]:
+        self.values[IDEM_NAME] = "job-5"
+        return super().register_script(_script)
+
+
+def test_stale_key_retaken_by_another_opener_is_not_overwritten() -> None:
+    redis = RetakingRedis()
+    store = RedisRunJobStore(redis_client=redis)
+    store.open(_record("job-5"), idempotency_key=None)
+    redis.set(IDEM_NAME, "vanished", ex=JOB_TTL_SECONDS)
+
+    loser = store.open(_record("job-4"), idempotency_key="k")
+
+    assert loser.created is False
+    assert loser.record.id == "job-5"
+    assert redis.values[IDEM_NAME] == "job-5"
+    assert store.get("job-4") is None
+
+
+def test_partial_hash_reads_as_missing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    redis.hset("openapi:job:late", mapping={"run_id": '"r1"'})
+
+    assert store.get("late") is None
+
+
+def test_discard_leaves_a_key_bound_to_another_job(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    store.open(_record("job-1"), idempotency_key="k")
+    store.open(_record("job-2"), idempotency_key=None)
+
+    store.discard("job-2", idempotency_key="k")
+
+    assert redis.values["openapi:job:idem:t1:account:acct-1:k"] == "job-1"
+
+
+def test_empty_patch_is_a_no_op(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+    redis.ttls.clear()
+
+    store.patch(job.id, JobPatch())
+
+    assert store.get(job.id) == job
+    assert redis.ttls == {}
