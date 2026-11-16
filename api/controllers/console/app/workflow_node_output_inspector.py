@@ -43,6 +43,7 @@ from controllers.console.wraps import (
     rbac_permission_required,
     setup_required,
 )
+from core.db.session_factory import sessionmaker_for
 from libs.exception import BaseHTTPException, RelayedHTTPError
 from libs.external_api import error_responses
 from libs.login import login_required
@@ -435,11 +436,11 @@ def _session_factory_for(session: Session) -> sessionmaker[Session]:
 
     The route receives one session from ``with_session``. The streamed body runs after that
     session and the app context are gone, so later reads need their own sessions on the same
-    bind. The maker is taken from that session, not from the global session factory.
+    bind. Construction stays outside the controller; this only forwards the injected session.
 
     Precondition: ``session`` is bound. Postcondition: no session is opened.
     """
-    return sessionmaker(bind=session.get_bind(), expire_on_commit=session.expire_on_commit)
+    return sessionmaker_for(session)
 
 
 def _serve_event_stream(session: Session, app_model: App, run_id: UUID) -> Response:
