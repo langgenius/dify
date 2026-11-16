@@ -216,11 +216,17 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.workflow_run_archive_deletion_tasks",  # permanent monthly archive deletion
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
+        "tasks.evaluation_task",  # evaluation run execution
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
     # if you add a new task, please add the switch to CeleryScheduleTasksConfig
     beat_schedule: dict[str, CeleryBeatScheduleEntry] = {}
+    if dify_config.ENABLE_EVALUATION_RUN_RECONCILER:
+        beat_schedule["evaluation-run-reconciler"] = {
+            "task": "tasks.evaluation_task.reconcile_stale_evaluation_runs",
+            "schedule": timedelta(minutes=1),
+        }
     if dify_config.KNOWLEDGE_FS_BACKGROUND_WORKER_ENABLED is True:
         from services.knowledge_fs.background_contract import OPERATION_QUEUES, OPERATION_TASK
 

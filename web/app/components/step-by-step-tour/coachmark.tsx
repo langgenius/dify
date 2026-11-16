@@ -20,6 +20,7 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { getStepByStepTourGuideKind, getStepByStepTourTargetSelector } from './target-registry'
 import { useStepByStepTourTargetRect } from './use-target-rect'
+import { waitForAccessibleElement } from './wait-for-accessible-element'
 
 const HIGHLIGHT_PADDING = 4
 // The vertical arrow's dot sits this far from the target's left edge, as in the Figma frame.
@@ -149,8 +150,11 @@ export function StepByStepTourCoachmark({
 
   const [awaitingTarget, setAwaitingTarget] = useState(true)
   if (!targetElement && !awaitingTarget) setAwaitingTarget(true)
-  if (currentOverlay && awaitingTarget && isRectInViewport(currentOverlay.highlightRect))
-    setAwaitingTarget(false)
+  const canOpen = !!currentOverlay && isRectInViewport(currentOverlay.highlightRect)
+  useLayoutEffect(() => {
+    if (awaitingTarget && canOpen && targetElement)
+      return waitForAccessibleElement(targetElement, () => setAwaitingTarget(false))
+  }, [awaitingTarget, canOpen, targetElement])
 
   useLayoutEffect(() => {
     if (currentOverlay) lastOverlayRef.current = currentOverlay
@@ -183,6 +187,8 @@ export function StepByStepTourCoachmark({
       open &&
       portal &&
       targetElement &&
+      (!portal.closest('[aria-hidden="true"], [inert]') ||
+        !targetElement.closest('[aria-hidden="true"], [inert]')) &&
       portal.compareDocumentPosition(targetElement) & Node.DOCUMENT_POSITION_FOLLOWING
     )
       setPortalKey((key) => key + 1)
@@ -239,7 +245,7 @@ export function StepByStepTourCoachmark({
       modal={overlay?.interactionPolicy === 'blocked' ? 'trap-focus' : false}
     >
       {overlay && anchoring && (
-        <PopoverPortal key={portalKey} ref={portalRef}>
+        <PopoverPortal key={portalKey} ref={portalRef} className="aria-hidden:invisible">
           {open && (
             <div
               aria-hidden="true"

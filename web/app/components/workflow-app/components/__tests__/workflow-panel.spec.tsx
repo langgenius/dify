@@ -120,7 +120,11 @@ function setup(
   })
   seedAppDetail(
     queryClient,
-    createAppDetailFixture({ id: 'app-123', mode, workflow: { id: 'release-1' } }),
+    createAppDetailFixture({
+      id: 'app-123',
+      mode,
+      workflow: { id: 'release-1', type: 'workflow' },
+    }),
   )
   const rendered = renderWorkflowEditor(
     <NuqsTestingAdapter>
