@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 _tool_parameters_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
 
 
-def _legacy_parameter_text(raw: str) -> Any:
+def _legacy_parameter_text(raw: str) -> str:
     """Reproduce the pre-adapter message text, which interpolated the parsed value.
 
     The old handler parsed the string in place before raising, so the message showed
@@ -53,7 +53,7 @@ def _legacy_parameter_text(raw: str) -> Any:
     the message only; the value that reaches the tool is decided by the adapter above.
     """
     with contextlib.suppress(Exception):
-        return json.loads(raw)
+        return str(json.loads(raw))
     return raw
 
 
@@ -92,12 +92,12 @@ class ToolEngine:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
                 raw_parameters = tool_parameters
-                with contextlib.suppress(ValidationError):
+                try:
                     tool_parameters = _tool_parameters_adapter.validate_json(tool_parameters)
-                if not isinstance(tool_parameters, dict):
+                except ValidationError:
                     raise ValueError(
                         f"tool_parameters should be a dict, but got a string: {_legacy_parameter_text(raw_parameters)}"
-                    )
+                    ) from None
 
         try:
             # hit the callback handler
