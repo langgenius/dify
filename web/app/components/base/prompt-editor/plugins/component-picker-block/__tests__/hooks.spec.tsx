@@ -171,7 +171,7 @@ describe('prompt picker options', () => {
   ])(
     'filters external tools literally for "$query" and opens the add flow',
     ({ query, expected }) => {
-      const onAddExternalTool = vi.fn()
+      const onAddExternalTool = vi.fn<(insert: (name: string) => void) => void>()
       const { result } = renderOptions(() =>
         useExternalToolOptions({ show: true, externalTools: tools, onAddExternalTool }, query),
       )
@@ -180,7 +180,13 @@ describe('prompt picker options', () => {
         'common.promptEditor.variable.modal.addTool',
       ])
       act(() => result.current.options.at(-1)!.onSelectMenuOption())
-      expect(onAddExternalTool).toHaveBeenCalledExactlyOnceWith()
+      expect(onAddExternalTool).toHaveBeenCalledTimes(1)
+      const dispatch = vi.spyOn(result.current.editor, 'dispatchCommand')
+      act(() => onAddExternalTool.mock.calls[0]![0]('search'))
+      expect(dispatch).toHaveBeenCalledExactlyOnceWith(
+        INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+        '{{search}}',
+      )
     },
   )
 

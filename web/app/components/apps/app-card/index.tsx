@@ -97,11 +97,13 @@ export const AppCard = memo(
         case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
         case 'workflow':
-          return t(($) => $['types.workflow'], { ns: 'app' })
+          return app.workflow_kind === 'evaluation'
+            ? t(($) => $['types.evaluationWorkflow'], { ns: 'app' })
+            : t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode
       }
-    }, [app.mode, t])
+    }, [app.mode, app.workflow_kind, t])
 
     const onlinePresenceUsers = useMemo(() => {
       return onlineUsers
@@ -129,7 +131,7 @@ export const AppCard = memo(
     }, [t])
     const appCardContent = (
       <>
-        <div className="flex shrink-0 items-center gap-3 pt-4 pr-4 pb-2 pl-4">
+        <div className="flex shrink-0 items-center gap-3 ps-4 pe-4 pt-4 pb-2">
           <div className="relative shrink-0">
             <AppIcon size="large" icon={app} />
             <AppTypeIcon
@@ -149,7 +151,7 @@ export const AppCard = memo(
             </div>
           </div>
           {onlinePresenceUsers.length > 0 && (
-            <div className="ml-3 flex shrink-0 items-start">
+            <div className="ms-3 flex shrink-0 items-start">
               <UserAvatarList
                 users={onlinePresenceUsers}
                 size="xxs"
@@ -164,7 +166,7 @@ export const AppCard = memo(
             {app.description}
           </div>
         </div>
-        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden pt-2 pr-4 pb-3 pl-4 system-xs-regular text-text-tertiary">
+        <div className="mt-6.5 flex min-w-0 shrink-0 items-center overflow-hidden ps-4 pe-4 pt-2 pb-3 system-xs-regular text-text-tertiary">
           <div className="flex min-w-0 flex-1 items-center gap-1 whitespace-nowrap">
             {app.author_name && (
               <>
@@ -194,7 +196,7 @@ export const AppCard = memo(
             aria-describedby={app.description ? appDescriptionId : undefined}
             data-step-by-step-tour-target={stepByStepTourCardTarget}
             data-step-by-step-tour-highlight-part={stepByStepTourCardHighlightPart}
-            className={cn(appCardClassName, 'text-left')}
+            className={cn(appCardClassName, 'text-start')}
             onClick={showPreviewOnlyAccessWarning}
           >
             {appCardContent}
@@ -218,7 +220,7 @@ export const AppCard = memo(
             </StudioListLink>
           </AppCardInteractions>
         )}
-        <div className="absolute top-26 right-3 left-3 flex h-6.5 min-w-0 items-start">
+        <div className="absolute inset-s-3 inset-e-3 top-26 flex h-6.5 min-w-0 items-start">
           <AppCardTags
             appId={app.id}
             appName={app.name}

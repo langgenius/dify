@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError, zServiceApiDisabledError } from './zod.gen.ts'
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -1481,6 +1482,10 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdPublishBody, params: zPostAppsByAppIdPublishPath }))
   .output(zPostAppsByAppIdPublishResponse)
+  .errors({
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    service_api_disabled: { status: 403, data: zServiceApiDisabledError },
+  })
 
 export const publish = {
   post: post16,
