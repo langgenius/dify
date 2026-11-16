@@ -11,7 +11,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { consoleQuery } from '@/service/console'
 
@@ -22,19 +22,21 @@ export default function DeleteToken({
   handle: AlertDialogHandle<PersonalAccessTokenResponse>
   fallbackFocus: RefObject<HTMLButtonElement | null>
 }) {
-  const deletedRef = useRef(false)
   const { t } = useTranslation(['accountSettings', 'common'])
   const mutation = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.delete.mutationOptions({
       context: { silent: true },
     }),
   )
+  useEffect(() => {
+    if (mutation.isSuccess) handle.close()
+  }, [handle, mutation.isSuccess])
+
   return (
     <AlertDialog
       handle={handle}
       onOpenChange={(open, details) => {
         if (open) {
-          deletedRef.current = false
           mutation.reset()
         } else if (mutation.isPending && details.reason !== 'imperative-action') {
           details.cancel()
@@ -45,7 +47,7 @@ export default function DeleteToken({
         token && (
           <AlertDialogContent
             className="w-110"
-            finalFocus={() => (deletedRef.current ? fallbackFocus.current : true)}
+            finalFocus={() => (mutation.isSuccess ? fallbackFocus.current : true)}
           >
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -80,15 +82,7 @@ export default function DeleteToken({
                   loading={mutation.isPending}
                   onClick={() => {
                     if (mutation.isPending) return
-                    mutation.mutate(
-                      { params: { token_id: token.id } },
-                      {
-                        onSuccess: () => {
-                          deletedRef.current = true
-                          handle.close()
-                        },
-                      },
-                    )
+                    mutation.mutate({ params: { token_id: token.id } })
                   }}
                 >
                   {t(($) => $['operation.delete'], { ns: 'common' })}
