@@ -34,7 +34,6 @@ vi.mock('../../model-auth/hooks', () => ({
     formSchemas: [],
     formValues: {},
     modelNameAndTypeFormSchemas: [],
-    modelNameAndTypeFormValues: {},
   }),
 }))
 

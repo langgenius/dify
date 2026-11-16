@@ -12,6 +12,12 @@ import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import ExternalAPIPanel from '../index'
 
+const { notifyError } = vi.hoisted(() => ({ notifyError: vi.fn() }))
+vi.mock('@/app/notifications', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/app/notifications')>()
+  return { ...actual, toast: { ...actual.toast, error: notifyError } }
+})
+
 const api = vi.hoisted(() => ({
   get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
   list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
@@ -196,6 +202,9 @@ it('attempts an offline edit immediately without opening an editor on reconnect'
   onTestFinished(() => onlineManager.setOnline(true))
   await edit.click()
   await expect.poll(() => api.get.mock.calls.length).toBe(1)
+  await expect.poll(() => notifyError.mock.lastCall).toEqual(['common.api.actionFailed'])
   onlineManager.setOnline(true)
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
+  await edit.click()
+  await expect.element(screen.getByRole('dialog')).toBeVisible()
 })

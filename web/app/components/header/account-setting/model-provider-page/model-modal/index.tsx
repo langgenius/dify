@@ -94,9 +94,13 @@ const ModelModal: FC<ModelModalProps> = ({
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
-  const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
-    useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
-  const modelFormRef = useRef<FormRefObject>(null)
+  const { formSchemas, formValues, modelNameAndTypeFormSchemas } = useModelFormSchemas(
+    provider,
+    providerFormSchemaPredefined,
+    formSchemasValue,
+    credential,
+    model,
+  )
   const [selectedCredential, setSelectedCredential] = useState<
     (Credential & { addNewCredential?: boolean }) | undefined
   >()
@@ -140,17 +144,13 @@ const ModelModal: FC<ModelModalProps> = ({
     const canSubmitCredentialForm = credential ? canManageCredential : canCreateCredential
     if (!canSubmitCredentialForm) return
 
-    let modelNameAndTypeIsCheckValidated = true
-    let modelNameAndTypeValues: Record<string, unknown> = {}
+    const { isCheckValidated, values } = credentialFormRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated) return
 
-    if (mode === ModelModalModeEnum.configCustomModel) {
-      const formResult = modelFormRef.current?.getFormValues({
-        needCheckValidatedValues: true,
-      }) || { isCheckValidated: false, values: {} }
-      modelNameAndTypeIsCheckValidated = formResult.isCheckValidated
-      modelNameAndTypeValues = formResult.values
-    }
-
+    let modelNameAndTypeValues = values
     if (
       mode === ModelModalModeEnum.configModelCredential ||
       (mode === ModelModalModeEnum.addCustomModelToModelList &&
@@ -171,12 +171,6 @@ const ModelModal: FC<ModelModalProps> = ({
         __model_type: modelContext.model_type,
       }
     }
-    const { isCheckValidated, values } = credentialFormRef.current?.getFormValues({
-      needCheckValidatedValues: true,
-      needTransformWhenSecretFieldIsPristine: true,
-    }) || { isCheckValidated: false, values: {} }
-    if (!isCheckValidated || !modelNameAndTypeIsCheckValidated) return
-
     const { __model_name, __model_type } = modelNameAndTypeValues
     const { __authorization_name__, ...rest } = values
     const shouldSaveModelCredential =
@@ -267,11 +261,6 @@ const ModelModal: FC<ModelModalProps> = ({
     return null
   }, [model, provider, mode, renderI18nObject])
 
-  const showCredentialLabel = useMemo(() => {
-    if (mode === ModelModalModeEnum.configCustomModel) return true
-    if (mode === ModelModalModeEnum.addCustomModelToModelList)
-      return selectedCredential?.addNewCredential
-  }, [mode, selectedCredential])
   const showCredentialForm = useMemo(() => {
     if (mode !== ModelModalModeEnum.addCustomModelToModelList) return true
     return selectedCredential?.addNewCredential
@@ -293,9 +282,10 @@ const ModelModal: FC<ModelModalProps> = ({
         ? canManageCredential
         : canCreateCredential
 
-  const handleModelNameAndTypeChange = useCallback((field: string, value: unknown) => {
-    credentialFormRef.current?.getForm().setFieldValue(field, value)
-  }, [])
+  const fields =
+    mode === ModelModalModeEnum.configCustomModel
+      ? [...modelNameAndTypeFormSchemas, ...formSchemas]
+      : formSchemas
   const notAllowCustomCredential = provider.allow_custom_token === false
   const isOfficialOpenAIProvider =
     provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
@@ -312,77 +302,53 @@ const ModelModal: FC<ModelModalProps> = ({
         />
       </DialogHeader>
       <DialogBody>
-        <form
-          id={formId}
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!isLoading && !doingAction && canSaveCredentialChange) handleSave()
-          }}
-        >
-          {mode === ModelModalModeEnum.configCustomModel && (
-            <AuthForm
-              disabled={doingAction}
-              as="fieldset"
-              formSchemas={
-                modelNameAndTypeFormSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={modelNameAndTypeFormValues}
-              inputClassName="justify-start"
-              ref={modelFormRef}
-              onChange={handleModelNameAndTypeChange}
-            />
-          )}
-          {mode === ModelModalModeEnum.addCustomModelToModelList && (
-            <CredentialSelector
-              credentials={available_credentials || []}
-              onSelect={setSelectedCredential}
-              selectedCredential={selectedCredential}
-              disabled={isLoading || doingAction}
-              notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
-            />
-          )}
-          {showCredentialLabel && (
-            <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
-              <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
-            </div>
-          )}
-          {isLoading && (
-            <div className="mt-3 flex items-center justify-center">
-              <LoadingPlaceholder />
-            </div>
-          )}
-          {!isLoading && showCredentialForm && (
-            <AuthForm
-              disabled={doingAction}
-              as="fieldset"
-              formSchemas={
-                formSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                    showRadioUI: formSchema.type === FormTypeEnum.radio,
-                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
-                      ? {
-                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
-                            ns: 'modelProvider',
-                          }),
-                        }
-                      : {}),
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={formValues}
-              inputClassName="justify-start"
-              ref={credentialFormRef}
-            />
-          )}
-        </form>
+        {mode === ModelModalModeEnum.addCustomModelToModelList && (
+          <CredentialSelector
+            credentials={available_credentials || []}
+            onSelect={setSelectedCredential}
+            selectedCredential={selectedCredential}
+            disabled={isLoading || doingAction}
+            notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
+          />
+        )}
+        {mode === ModelModalModeEnum.addCustomModelToModelList && showCredentialForm && (
+          <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
+            <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
+          </div>
+        )}
+        {isLoading && (
+          <div className="mt-3 flex items-center justify-center">
+            <LoadingPlaceholder />
+          </div>
+        )}
+        {!isLoading && showCredentialForm && (
+          <AuthForm
+            disabled={doingAction}
+            id={formId}
+            preventDefaultSubmit
+            onSubmit={handleSave}
+            formSchemas={
+              fields.map((formSchema) => {
+                return {
+                  ...formSchema,
+                  name: formSchema.variable,
+                  showRadioUI: formSchema.type === FormTypeEnum.radio,
+                  ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                    ? {
+                        description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                          ns: 'modelProvider',
+                        }),
+                      }
+                    : {}),
+                }
+              }) as FormSchema[]
+            }
+            defaultValues={formValues}
+            inputClassName="justify-start"
+            ref={credentialFormRef}
+          />
+        )}
       </DialogBody>
       <DialogFooter>
         {provider.help && (provider.help.title || provider.help.url) && (
@@ -418,8 +384,9 @@ const ModelModal: FC<ModelModalProps> = ({
         </DialogClose>
         <Button
           variant="primary"
-          type="submit"
-          form={formId}
+          type={showCredentialForm ? 'submit' : 'button'}
+          form={showCredentialForm ? formId : undefined}
+          onClick={showCredentialForm ? undefined : handleSave}
           disabled={isLoading || doingAction || !canSaveCredentialChange}
         >
           {saveButtonText}

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { ExternalApiDialogContent } from '@/app/components/datasets/external-api/external-api-modal/dialog-content'
 import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
+import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { fetchExternalAPI } from '@/service/datasets'
@@ -105,6 +106,9 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
                   api={api}
                   onEdit={() =>
                     details.mutate(api.id, {
+                      onError: (error) => {
+                        if (error instanceof TypeError) toast.error(t(($) => $['api.actionFailed']))
+                      },
                       onSuccess: (detail) => dialog.openWithPayload(detail),
                     })
                   }
