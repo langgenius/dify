@@ -545,3 +545,42 @@ def test_parse_openapi_to_tool_bundle_keeps_server_url_without_trailing_slash(ap
 
     assert len(bundles) == 1
     assert bundles[0].server_url == "https://api.example.com/v1/items"
+
+
+def test_parse_openapi_to_tool_bundle_fills_server_variables_with_defaults(app: Flask) -> None:
+    openapi = _minimal_openapi(
+        [
+            {
+                "url": "https://{region}.api.example.com/{version}",
+                "variables": {
+                    "region": {"default": "eu"},
+                    "version": {"default": "v2", "enum": ["v1", "v2"]},
+                },
+            }
+        ]
+    )
+
+    with app.test_request_context():
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    assert bundles[0].server_url == "https://eu.api.example.com/v2/"
+
+
+def test_parse_openapi_to_tool_bundle_fills_variables_of_the_request_env_server(app: Flask) -> None:
+    openapi = _minimal_openapi(
+        [
+            {"url": "http://localhost:3000", "env": "dev"},
+            {
+                "url": "https://{tenant}.example.com",
+                "env": "prod",
+                "variables": {"tenant": {"default": "acme"}},
+            },
+        ]
+    )
+
+    with app.test_request_context(headers={"X-Request-Env": "prod"}):
+        bundles = ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi)
+
+    assert len(bundles) == 1
+    assert bundles[0].server_url == "https://acme.example.com/"
