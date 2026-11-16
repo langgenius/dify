@@ -86,6 +86,7 @@ const createEnvironmentDeployment = ({
   environmentId: string
   targetVersion?: WorkflowVersion
 }): EnvironmentDeployment => ({
+  deployment_id: `deployment-${environmentId}`,
   access: {
     enable_api: false,
     enable_site: false,

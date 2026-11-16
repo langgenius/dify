@@ -34,14 +34,14 @@ def _trace_scope(recorder: _Recorder) -> TraceScope:
 
 class TestInputModeration:
     @pytest.fixture
-    def app_config(self):
+    def app_config(self) -> AppConfig:
         return AppConfig(tenant_id="test_tenant_id", app_id="test_app_id", app_mode=AppMode.CHAT)
 
     @pytest.fixture
-    def input_moderation(self):
+    def input_moderation(self) -> InputModeration:
         return InputModeration()
 
-    def test_check_no_sensitive_word_avoidance(self, app_config, input_moderation):
+    def test_check_no_sensitive_word_avoidance(self, app_config: AppConfig, input_moderation: InputModeration) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -63,7 +63,9 @@ class TestInputModeration:
         assert final_query == query
 
     @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_not_flagged(self, mock_factory_cls, app_config, input_moderation):
+    def test_check_not_flagged(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -179,7 +181,9 @@ class TestInputModeration:
         assert payload.preset_response == "Blocked content"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_direct_output(self, mock_factory_cls, app_config, input_moderation):
+    def test_check_flagged_direct_output(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -211,7 +215,9 @@ class TestInputModeration:
         assert str(excinfo.value) == "Blocked content"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_overridden(self, mock_factory_cls, app_config, input_moderation):
+    def test_check_flagged_overridden(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}
@@ -247,7 +253,9 @@ class TestInputModeration:
         assert final_query == "overridden query"
 
     @patch("core.moderation.input_moderation.ModerationFactory")
-    def test_check_flagged_other_action(self, mock_factory_cls, app_config, input_moderation):
+    def test_check_flagged_other_action(
+        self, mock_factory_cls: MagicMock, app_config: AppConfig, input_moderation: InputModeration
+    ) -> None:
         app_id = "test_app_id"
         tenant_id = "test_tenant_id"
         inputs = {"input_key": "input_value"}

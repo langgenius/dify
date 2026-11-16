@@ -44,6 +44,26 @@ vi.mock('@/service/console', async (importOriginal) => {
   }
 })
 
+const collaboration = vi.hoisted(() => ({
+  ready: true,
+  subscribers: [] as ((ready: boolean) => void)[],
+}))
+
+vi.mock('../../collaboration/core/collaboration-manager', () => ({
+  collaborationManager: {
+    canApplyLocalGraphMutation: () => collaboration.ready,
+    onGraphReadyChange: (subscriber: (ready: boolean) => void) => {
+      collaboration.subscribers.push(subscriber)
+      subscriber(collaboration.ready)
+      return () => {
+        collaboration.subscribers = collaboration.subscribers.filter(
+          (value) => value !== subscriber,
+        )
+      }
+    },
+  },
+}))
+
 const createBlock = (type: BlockEnum, title: string): NodeDefault => ({
   metaData: {
     classification: BlockClassification.Default,
@@ -68,6 +88,30 @@ const renderBlockSelector = (ui: ReactElement, options?: RenderBlockSelectorOpti
 }
 
 describe('BlockSelector', () => {
+  beforeEach(() => {
+    collaboration.ready = true
+    collaboration.subscribers = []
+  })
+
+  it('disables node selection until collaboration is ready', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    collaboration.ready = false
+    const rendered = renderBlockSelector(<BlockSelector onSelect={onSelect} />)
+    rendered.rerender(<BlockSelector onSelect={onSelect} />)
+    await expect(
+      screen.findByRole('button', { name: 'workflow.common.addBlock' }),
+    ).resolves.toBeDisabled()
+    collaboration.ready = true
+    act(() => collaboration.subscribers.forEach((subscriber) => subscriber(true)))
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'workflow.common.addBlock' })).toBeEnabled(),
+    )
+    await user.click(screen.getByRole('button', { name: 'workflow.common.addBlock' }))
+    expect(
+      await screen.findByRole('dialog', { name: 'workflow.common.addBlock' }),
+    ).toBeInTheDocument()
+  })
   it('resolves available blocks from the mounted workflow content owner', async () => {
     renderBlockSelector(
       <BlockSelector open onSelect={vi.fn()} availableBlocksTypes={[BlockEnum.Code]} />,

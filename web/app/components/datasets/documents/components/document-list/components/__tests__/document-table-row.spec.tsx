@@ -1,6 +1,8 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ReactNode } from 'react'
+import type { DocumentToRename } from '../../../rename-document-form'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -92,7 +94,7 @@ describe('DocumentTableRow', () => {
     isGeneralMode: true,
     isQAMode: false,
     embeddingAvailable: true,
-    onShowRenameModal: vi.fn(),
+    renameDialog: createDialogHandle<DocumentToRename>(),
     onUpdate: vi.fn(),
     onDelete: vi.fn(),
   }
@@ -136,24 +138,23 @@ describe('DocumentTableRow', () => {
     })
   })
 
-  describe('Rename Action', () => {
-    it('exposes a named rename action that can be activated with the keyboard', async () => {
-      const user = userEvent.setup()
-      const onShowRenameModal = vi.fn()
-      render(<DocumentTableRow {...defaultProps} onShowRenameModal={onShowRenameModal} />, {
-        wrapper: createWrapper(),
-      })
+  it('explains why a document failed from the list, without opening the document', async () => {
+    const user = userEvent.setup()
+    const reason =
+      '"test-document.txt" was blocked by the malware scan: Evil.A detected. The original file was deleted.'
+    render(
+      <DocumentTableRow
+        {...defaultProps}
+        doc={createMockDoc({ indexing_status: 'error', display_status: 'error', error: reason })}
+      />,
+      { wrapper: createWrapper() },
+    )
 
-      await user.tab()
-      await user.tab()
-      await user.tab()
-      expect(
-        screen.getByRole('button', { name: 'datasetDocuments.list.table.rename' }),
-      ).toHaveFocus()
-      await user.keyboard('{Enter}')
-      expect(onShowRenameModal).toHaveBeenCalledWith(defaultProps.doc)
-      expect(mockPush).not.toHaveBeenCalled()
-    })
+    expect(screen.queryByText(reason)).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /error/i }))
+
+    expect(await screen.findByText(reason)).toBeInTheDocument()
+    expect(mockPush).not.toHaveBeenCalled()
   })
 
   it('selects a row without triggering detail navigation', async () => {

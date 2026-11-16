@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
+from functools import cache
 from typing import Final, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from pydantic import (
     AliasChoices,
@@ -13,6 +15,7 @@ from pydantic import (
     PositiveInt,
     computed_field,
     field_validator,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -25,13 +28,24 @@ MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
 
+@cache
+def _timezone_names_by_casefold() -> dict[str, str]:
+    """Return a cached case-insensitive index of available IANA timezone names.
+
+    The index is built only after a direct ``ZoneInfo`` lookup fails. Every
+    returned value remains a key accepted by the current runtime's timezone
+    database.
+    """
+    return {timezone_name.casefold(): timezone_name for timezone_name in available_timezones()}
+
+
 class SecurityConfig(BaseSettings):
     """
     Security-related configurations for the application
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing. "
+        description="Secret key for session cookie signing and account-bound personal access token verification. "
         "Leave empty to let Dify generate a persistent key in the storage directory, "
         "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
@@ -885,6 +899,29 @@ class LoggingConfig(BaseSettings):
         default="UTC",
     )
 
+    @field_validator("LOG_TZ")
+    @classmethod
+    def validate_log_timezone(cls, timezone_name: str | None) -> str | None:
+        """Validate and normalize the logging timezone at the configuration boundary.
+
+        ``None`` and the legacy empty string remain unchanged. A name accepted
+        directly by ``ZoneInfo`` is returned verbatim, including valid aliases.
+        A case-only mismatch is normalized to an available IANA key. Any other
+        non-empty value raises a validation error and is never replaced by UTC.
+        """
+        if not timezone_name:
+            return timezone_name
+
+        try:
+            ZoneInfo(timezone_name)
+        except (OSError, ValueError, ZoneInfoNotFoundError):
+            canonical_name = _timezone_names_by_casefold().get(timezone_name.casefold())
+            if canonical_name is None:
+                raise ValueError(f"LOG_TZ must be a valid IANA timezone name, got {timezone_name!r}") from None
+            return canonical_name
+
+        return timezone_name
+
 
 class ModelLoadBalanceConfig(BaseSettings):
     """
@@ -1489,6 +1526,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
         default=True,
     )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
+        default=True,
+    )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
         description="Enable periodic recovery of soft-deleted conversation cleanup",
         default=True,
@@ -1767,6 +1808,45 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EvaluationConfig(BaseSettings):
+    """Configuration for the evaluation runtime."""
+
+    EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
+        description="Maximum active evaluation runs per tenant.",
+        default=3,
+    )
+    EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
+        description="Maximum number of rows in an evaluation dataset.",
+        default=500,
+    )
+    EVALUATION_RUN_HEARTBEAT_INTERVAL: PositiveInt = Field(
+        description="Interval in seconds between evaluation run heartbeat renewals.",
+        default=30,
+    )
+    EVALUATION_RUN_LEASE_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds without an evaluation run heartbeat before recovery.",
+        default=180,
+    )
+    EVALUATION_RUN_MAX_RETRIES: NonNegativeInt = Field(
+        description="Maximum retries after an evaluation task fails with a retryable error.",
+        default=3,
+    )
+    EVALUATION_RUN_RETRY_DELAY: PositiveInt = Field(
+        description="Base delay in seconds for exponential evaluation task retries.",
+        default=30,
+    )
+    EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
+        description="Maximum target executions performed in parallel by one evaluation task.",
+        default=5,
+    )
+
+    @model_validator(mode="after")
+    def validate_heartbeat_lease(self) -> "EvaluationConfig":
+        if self.EVALUATION_RUN_HEARTBEAT_INTERVAL >= self.EVALUATION_RUN_LEASE_TIMEOUT:
+            raise ValueError("Evaluation heartbeat interval must be shorter than the lease timeout")
+        return self
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1779,6 +1859,7 @@ class FeatureConfig(
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
+    EvaluationConfig,
     FileAccessConfig,
     FileUploadConfig,
     HomepageConfig,

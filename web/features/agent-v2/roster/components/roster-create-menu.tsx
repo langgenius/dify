@@ -35,6 +35,8 @@ export function RosterCreateMenu() {
           show
           templateMode="agent"
           onClose={() => setTemplateDialogOpen(false)}
+          // An Agent without a bound agent redirects to this roster, which stays mounted.
+          onCreated={() => setTemplateDialogOpen(false)}
         />
       )}
       {canCreate && (

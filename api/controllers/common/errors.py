@@ -11,6 +11,12 @@ from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 
 
+class PaidPlanRequiredError(BaseHTTPException):
+    error_code = "paid_plan_required"
+    description = "This feature requires a paid plan."
+    code = 403
+
+
 class FilenameNotExistsError(BaseHTTPException):
     error_code = "filename_not_exists_error"
     code = 400

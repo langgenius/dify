@@ -66,6 +66,13 @@ class KnowledgeFSInitialSourcePreviewService:
         payload: KnowledgeFSInitialSourcePreviewPayload | KnowledgeFSInitialWebsiteSourcePreviewPayload,
         is_canceled: Callable[[], bool] | None = None,
     ) -> KnowledgeFSInitialSourcePreviewResponse:
+        """Preview a visible credential without creating a Space.
+
+        The caller supplies valid plugin parameters and an account in the tenant. Each
+        online-document invocation returns only the pages emitted for that request;
+        optional tree ancestry and cursor metadata remain intact. Previewing does not
+        persist a source or alter credentials, and plugin failures propagate to the caller.
+        """
         _raise_if_canceled(is_canceled)
         self.require_visible_credential(tenant_id=tenant_id, account=account, payload=payload)
         from extensions.application_services.data_sources import build_data_source_credentials
@@ -117,19 +124,24 @@ class KnowledgeFSInitialSourcePreviewService:
         if payload.kind == "online_document":
             document_runtime = cast(OnlineDocumentDatasourcePlugin, runtime)
             documents: list[KnowledgeFSInitialSourcePreviewDocumentResponse] = []
+            next_cursor: str | None = None
             for document_message in document_runtime.get_online_document_pages(
                 user_id=account.id,
                 datasource_parameters=parameters,
                 provider_type=document_runtime.datasource_provider_type(),
             ):
+                next_cursor = document_message.next_cursor or next_cursor
                 for workspace in document_message.result:
+                    next_cursor = workspace.next_cursor or next_cursor
                     workspace_id = workspace.workspace_id or payload.provider
                     for document_page in workspace.pages:
                         documents.append(
                             KnowledgeFSInitialSourcePreviewDocumentResponse(
+                                has_children=document_page.has_children,
                                 last_edited_time=document_page.last_edited_time,
                                 name=document_page.page_name,
                                 page_id=document_page.page_id,
+                                parent_id=document_page.parent_id,
                                 provider_item_id=json.dumps(
                                     [workspace_id, document_page.page_id], separators=(",", ":")
                                 ),
@@ -142,8 +154,11 @@ class KnowledgeFSInitialSourcePreviewService:
                             return KnowledgeFSInitialSourcePreviewResponse(
                                 documents=documents,
                                 kind=payload.kind,
+                                next_cursor=next_cursor,
                             )
-            return KnowledgeFSInitialSourcePreviewResponse(documents=documents, kind=payload.kind)
+            return KnowledgeFSInitialSourcePreviewResponse(
+                documents=documents, kind=payload.kind, next_cursor=next_cursor
+            )
 
         drive_runtime = cast(OnlineDriveDatasourcePlugin, runtime)
         files: list[KnowledgeFSInitialSourcePreviewFileResponse] = []

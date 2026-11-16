@@ -1,5 +1,6 @@
 """Subscription reads exercise real admission, SQL visibility and daemon transport."""
 
+from collections.abc import Mapping
 from contextvars import Context
 from http import HTTPStatus
 from uuid import uuid4
@@ -33,7 +34,7 @@ def _add_subscription(
     provider_id: str = _PROVIDER,
     visibility: PermissionEnum = PermissionEnum.ALL_TEAM,
     credential_type: CredentialType = CredentialType.API_KEY,
-    credentials: dict[str, str] | None = None,
+    credentials: Mapping[str, object] | None = None,
     properties: dict[str, object] | None = None,
 ) -> TriggerSubscription:
     subscription = TriggerSubscription(
@@ -44,7 +45,7 @@ def _add_subscription(
         endpoint_id=str(uuid4()),
         parameters={"event": "push"},
         properties=properties or {},
-        credentials=credentials or {},
+        credentials=dict(credentials) if credentials is not None else {},
         credential_type=credential_type,
         visibility=visibility,
     )

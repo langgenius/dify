@@ -651,7 +651,10 @@ class Client:
         The initial cursor is ``after`` or ``"0-0"``. After every yielded event
         with an id, reconnects resume from that id using the ``after`` query
         parameter. HTTP 5xx stream responses are retried, but HTTP 4xx responses,
-        DTO validation failures, and malformed SSE frames are not retried. By
+        DTO validation failures, and malformed SSE frames are not retried.
+        ``max_reconnects`` limits consecutive reconnects that deliver no event; the
+        count resets whenever an event arrives, so a run that keeps progressing is
+        not failed by periodic disconnects (for example proxy connection limits). By
         default, ``until_terminal=True`` returns immediately after yielding a
         succeeded, failed, or cancelled terminal event. With
         ``until_terminal=False``, iteration may consume the remainder of the current
@@ -674,6 +677,9 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    # The budget bounds consecutive failed connections; a delivered event proves the
+                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
+                    reconnect_attempts = 0
                     if event.type in _TERMINAL_EVENT_TYPES:
                         terminal_event_seen = True
                     yield event
@@ -733,6 +739,9 @@ class Client:
                 ):
                     if event.id is not None:
                         cursor = event.id
+                    # The budget bounds consecutive failed connections; a delivered event proves the
+                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
+                    reconnect_attempts = 0
                     if event.type in _TERMINAL_EVENT_TYPES:
                         terminal_event_seen = True
                     yield event

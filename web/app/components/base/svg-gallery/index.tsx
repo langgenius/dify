@@ -28,7 +28,7 @@ const SVGRenderer = ({ content }: { content: string }) => {
       const svgDoc = parser.parseFromString(content, 'image/svg+xml')
       const svgElement = svgDoc.documentElement
 
-      if (!(svgElement instanceof SVGElement)) throw new Error('Invalid SVG content')
+      if (!(svgElement instanceof SVGElement)) throw new TypeError('Invalid SVG content')
 
       const originalWidth = Number.parseInt(svgElement.getAttribute('width') || '400', 10)
       const originalHeight = Number.parseInt(svgElement.getAttribute('height') || '600', 10)
