@@ -188,22 +188,23 @@ def test_output_layer_keeps_local_defs_ref_working_in_direct_object_schema() -> 
 
 
 @pytest.mark.parametrize(
-    ("definition_name", "reference_token"),
+    ("definition_name", "reference"),
     [
-        ("Widget/Info", "Widget~1Info"),
-        ("Widget Info", "Widget%20Info"),
-        ("Widget/Info", "Widget%7E1Info"),
-        ("Widget~Info", "Widget~0Info"),
-        ("Widget~1Info", "Widget~01Info"),
+        ("Widget/Info", "#/$defs/Widget~1Info"),
+        ("Widget Info", "#/$defs/Widget%20Info"),
+        ("Widget/Info", "#/$defs/Widget%7E1Info"),
+        ("Widget~Info", "#/$defs/Widget~0Info"),
+        ("Widget~1Info", "#/$defs/Widget~01Info"),
+        ("Widget", "#/%24defs/Widget"),
     ],
 )
 def test_output_layer_resolves_json_pointer_escaped_defs_names(
     definition_name: str,
-    reference_token: str,
+    reference: str,
 ) -> None:
     schema: dict[str, JsonValue] = {
         "type": "object",
-        "properties": {"widget": {"$ref": f"#/$defs/{reference_token}"}},
+        "properties": {"widget": {"$ref": reference}},
         "required": ["widget"],
         "$defs": {
             definition_name: {
@@ -222,6 +223,48 @@ def test_output_layer_resolves_json_pointer_escaped_defs_names(
         "required": ["id"],
     }
     assert output_adapter.validate_python({"widget": {"id": "widget-1"}}) == {"widget": {"id": "widget-1"}}
+    with pytest.raises(ValidationError, match="'id' is a required property"):
+        _ = output_adapter.validate_python({"widget": {}})
+
+
+@pytest.mark.parametrize(
+    ("reference", "message"),
+    [
+        ("#%2F$defs/Widget", r"Only local refs under '#/\$defs/' are supported"),
+        ("#/$defs/Widget/Nested", r"Nested local \$ref paths are not supported"),
+        ("#/$defs/Widget%2FNested", r"Nested local \$ref paths are not supported"),
+        ("#/$defs/Widget~2Info", "Invalid JSON Pointer escape"),
+        ("#/$defs/Widget~", "Invalid JSON Pointer escape"),
+        ("#/$defs/Widget%FFInfo", "Invalid percent-encoded JSON Pointer"),
+    ],
+)
+def test_output_layer_rejects_invalid_local_defs_refs_during_contract_build(reference: str, message: str) -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "properties": {"widget": {"$ref": reference}},
+        "$defs": {
+            "Widget": {"Nested": {"type": "string"}},
+            "Widget/Nested": {"type": "string"},
+        },
+    }
+    config = DifyOutputLayerConfig(json_schema=schema)
+    with pytest.raises(ValueError, match=message):
+        _ = _output(config)
+
+
+@pytest.mark.parametrize("definitions", [None, {}], ids=["omitted", "empty"])
+def test_output_layer_rejects_unresolved_local_defs_ref_during_contract_build(
+    definitions: dict[str, JsonValue] | None,
+) -> None:
+    schema: dict[str, JsonValue] = {
+        "type": "object",
+        "properties": {"widget": {"$ref": "#/$defs/Widget"}},
+    }
+    if definitions is not None:
+        schema["$defs"] = definitions
+    config = DifyOutputLayerConfig(json_schema=schema)
+    with pytest.raises(ValueError, match=r"Local \$ref '#/\$defs/Widget' could not be resolved from \$defs\."):
+        _ = _output(config)
 
 
 @pytest.mark.parametrize("property_name", ["const", "default", "enum", "example", "examples"])

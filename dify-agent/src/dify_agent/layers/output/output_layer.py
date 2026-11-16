@@ -6,6 +6,7 @@ exposes the schema and validates the result in Pydantic AI's retry pipeline.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
@@ -35,6 +36,7 @@ _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default
 _SCHEMA_MAP_KEYWORDS: Final[frozenset[str]] = frozenset(
     {"$defs", "definitions", "dependencies", "dependentSchemas", "patternProperties", "properties"}
 )
+_INVALID_JSON_POINTER_ESCAPE_RE: Final[re.Pattern[str]] = re.compile(r"~(?![01])")
 
 
 @dataclass(frozen=True, slots=True)
@@ -189,53 +191,53 @@ def _build_exposed_json_schema(
 
 
 def _reject_non_local_refs(schema: JsonValue) -> None:
-    """Reject references that would require external fetching or non-local state.
+    """Raise ``ValueError`` for refs outside direct root ``#/$defs/<name>`` entries.
 
     JSON Schema allows ordinary instance values under keywords such as ``const``
     and ``examples``. Those values may themselves contain ``{"$ref": ...}`` as
     plain data, so the traversal only inspects positions that still represent
     schema documents rather than blindly recursing into every JSON object. This
-    first version only supports local refs under ``#/$defs/`` so every schema
-    accepted here can be materialized into the dynamic output type's exposed JSON
-    schema without needing general-purpose root rewriting.
+    first version supports a single JSON Pointer name token under root ``$defs``
+    so every schema accepted here can be materialized into the dynamic output
+    type's exposed JSON schema without needing general-purpose root rewriting.
     """
     for ref in _iter_schema_refs(schema):
-        if not ref.startswith("#"):
-            raise ValueError(
-                "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
-            )
         _local_defs_ref_name(ref)
 
 
 def _local_defs_ref_name(ref: str) -> str:
-    """Resolve the single JSON Pointer token naming a supported root ``$defs`` entry."""
-    try:
-        fragment = unquote(ref[1:], errors="strict")
-    except UnicodeDecodeError as exc:
-        raise ValueError(f"Invalid percent-encoded JSON Pointer in local $ref {ref!r}.") from exc
-    prefix = "/$defs/"
-    if not fragment.startswith(prefix):
+    """Return the decoded name of a direct root ``#/$defs/<name>`` reference.
+
+    Raise ``ValueError`` for remote, unsupported, or malformed refs. To match
+    RFC 6901 section 6 and ``referencing``, check the raw fragment's literal
+    leading ``/``, percent-decode, split on ``/``, then unescape ``~1`` before
+    ``~0``. This keeps percent-encoded slashes as separators and ``~1`` within
+    the single name token. Percent-decoding requires valid UTF-8.
+    """
+    if not ref.startswith("#"):
+        raise ValueError(
+            "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
+        )
+    raw_fragment = ref[1:]
+    if not raw_fragment.startswith("/"):
         raise ValueError(
             f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
         )
-
-    token = fragment.removeprefix(prefix)
-    if "/" in token:
+    try:
+        segments = unquote(raw_fragment[1:], errors="strict").split("/")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"Invalid percent-encoded JSON Pointer in local $ref {ref!r}.") from exc
+    if len(segments) < 2 or segments[0] != "$defs":
+        raise ValueError(
+            f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
+        )
+    if len(segments) > 2:
         raise ValueError(f"Nested local $ref paths are not supported for structured output: {ref!r}.")
 
-    decoded: list[str] = []
-    index = 0
-    while index < len(token):
-        char = token[index]
-        if char != "~":
-            decoded.append(char)
-            index += 1
-            continue
-        if index + 1 == len(token) or token[index + 1] not in "01":
-            raise ValueError(f"Invalid JSON Pointer escape in local $ref {ref!r}.")
-        decoded.append("/" if token[index + 1] == "1" else "~")
-        index += 2
-    return "".join(decoded)
+    token = segments[1]
+    if _INVALID_JSON_POINTER_ESCAPE_RE.search(token):
+        raise ValueError(f"Invalid JSON Pointer escape in local $ref {ref!r}.")
+    return token.replace("~1", "/").replace("~0", "~")
 
 
 def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -246,11 +248,11 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
     integration. Inlining keeps the model-facing schema equivalent while still
     letting runtime validation use the original schema document. Schema
     containers are rebuilt and literal keyword values are deep-copied, so the
-    exposed schema stays independent of the validation schema.
+    exposed schema stays independent of the validation schema. Unresolvable or
+    recursive references raise ``ValueError`` during contract construction.
     """
-    root_defs = schema.get("$defs")
-    if not isinstance(root_defs, dict):
-        return deepcopy(schema)
+    raw_defs = schema.get("$defs")
+    root_defs = raw_defs if isinstance(raw_defs, dict) else {}
 
     def resolve(node: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
         if isinstance(node, dict):
