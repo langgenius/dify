@@ -1,7 +1,7 @@
 import datetime
 import json
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Self, override
@@ -46,6 +46,9 @@ from models.workflow import (
     WorkflowRun,
     WorkflowType,
 )
+from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.factory import DifyAPIRepositoryFactory
 from services import clear_free_plan_tenant_expired_logs as service_module
 from services.billing_client import billing
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs, MessageRelatedRecord
@@ -478,25 +481,12 @@ def test_process_tenant_processes_and_persists_all_batches(
     monkeypatch.setattr(ClearFreePlanTenantExpiredLogs, "_clear_message_related_tables", clear_related)
 
     node_execution = _create_workflow_node_execution("node-execution-1")
-    node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [[node_execution], list[object]()]
-    node_repo.delete_executions_by_ids.return_value = 1
-    run_repo = MagicMock()
-    run_repo.get_expired_runs_batch.side_effect = [
-        [_create_workflow_run("workflow-run-1")],
-        list[object](),
-    ]
-    run_repo.delete_runs_by_ids.return_value = 1
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_node_execution_repository",
-        lambda _session_maker: node_repo,
-    )
-    monkeypatch.setattr(
-        service_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        lambda _session_maker: run_repo,
-    )
+    node_execution.created_at = old
+    workflow_run = _create_workflow_run("workflow-run-1")
+    workflow_run.created_at = old
+    sqlite_session.add_all([node_execution, workflow_run])
+    sqlite_session.commit()
+    _bound_repository_factory(monkeypatch)
 
     ClearFreePlanTenantExpiredLogs.process_tenant(
         flask_app,
@@ -513,6 +503,8 @@ def test_process_tenant_processes_and_persists_all_batches(
     assert message_ids == ["message-old"]
     assert storage.save.call_count == 5
     with Session(sqlite_engine) as verification_session:
+        assert verification_session.get(WorkflowNodeExecutionModel, "node-execution-1") is None
+        assert verification_session.get(WorkflowRun, "workflow-run-1") is None
         assert verification_session.get(Message, "message-old") is None
         assert verification_session.get(Conversation, "conversation-old") is None
         assert verification_session.get(WorkflowAppLog, "log-old") is None
@@ -707,12 +699,89 @@ def test_process_without_tenant_ids_all_intervals_too_many_uses_min_interval(
     assert len(interval_counts) == 5
 
 
+class _BoundedNodeExecutionRepository:
+    """Forward to the real repository, failing loudly if the batch loop stops terminating."""
+
+    def __init__(self, repository: DifyAPIWorkflowNodeExecutionRepository) -> None:
+        self._repository = repository
+        self.batch_calls = 0
+
+    def get_expired_executions_batch(
+        self,
+        tenant_id: str,
+        before_date: datetime.datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        self.batch_calls += 1
+        if self.batch_calls > 2:
+            raise AssertionError("the batch loop did not stop after the second empty batch")
+        return self._repository.get_expired_executions_batch(
+            tenant_id=tenant_id,
+            before_date=before_date,
+            batch_size=batch_size,
+        )
+
+    def delete_executions_by_ids(self, execution_ids: Sequence[str]) -> int:
+        return self._repository.delete_executions_by_ids(execution_ids)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._repository, name)
+
+
+class _BoundedWorkflowRunRepository:
+    """Forward to the real repository, failing loudly if the batch loop stops terminating."""
+
+    def __init__(self, repository: APIWorkflowRunRepository) -> None:
+        self._repository = repository
+        self.batch_calls = 0
+
+    def get_expired_runs_batch(
+        self,
+        tenant_id: str,
+        before_date: datetime.datetime,
+        batch_size: int = 1000,
+    ) -> Sequence[WorkflowRun]:
+        self.batch_calls += 1
+        if self.batch_calls > 2:
+            raise AssertionError("the batch loop did not stop after the second empty batch")
+        return self._repository.get_expired_runs_batch(
+            tenant_id=tenant_id,
+            before_date=before_date,
+            batch_size=batch_size,
+        )
+
+    def delete_runs_by_ids(self, run_ids: Sequence[str]) -> int:
+        return self._repository.delete_runs_by_ids(run_ids)
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._repository, name)
+
+
+def _bound_repository_factory(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Bound both repositories so a broken delete loop fails instead of hanging the test."""
+
+    real_node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository
+    real_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository
+
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_node_execution_repository",
+        lambda session_maker: _BoundedNodeExecutionRepository(real_node_repository(session_maker)),
+    )
+    monkeypatch.setattr(
+        service_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        lambda session_maker: _BoundedWorkflowRunRepository(real_run_repository(session_maker)),
+    )
+
+
 def test_process_tenant_repo_loops_break_on_empty_second_batch(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     sqlite_engine: Engine,
 ) -> None:
     flask_app = service_module.Flask("test-app")
+    expired = REAL_DATETIME.now() - datetime.timedelta(days=30)
     sqlite_session.add(_create_app("app-1", "tenant-1"))
     sqlite_session.commit()
     monkeypatch.setattr(service_module, "db", SimpleNamespace(engine=sqlite_engine))
@@ -725,28 +794,25 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         _create_workflow_node_execution("node-1"),
         _create_workflow_node_execution("node-2", node_id="node-2"),
     ]
-    node_repo = MagicMock()
-    node_repo.get_expired_executions_batch.side_effect = [node_executions, list[object]()]
-    node_repo.delete_executions_by_ids.return_value = 2
-    run_repo = MagicMock()
-    run_repo.get_expired_runs_batch.side_effect = [
-        [
-            _create_workflow_run("run-1"),
-            _create_workflow_run("run-2"),
-        ],
-        list[object](),
-    ]
-    run_repo.delete_runs_by_ids.return_value = 2
+    workflow_runs = [_create_workflow_run("run-1"), _create_workflow_run("run-2")]
+    stored = [*node_executions, *workflow_runs]
+    for record in stored:
+        record.created_at = expired
+    sqlite_session.add_all(stored)
+    sqlite_session.commit()
     node_session_makers: list[sessionmaker[Session]] = []
     run_session_makers: list[sessionmaker[Session]] = []
 
-    def create_node_repo(session_maker: sessionmaker[Session]) -> MagicMock:
-        node_session_makers.append(session_maker)
-        return node_repo
+    real_node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository
+    real_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository
 
-    def create_run_repo(session_maker: sessionmaker[Session]) -> MagicMock:
+    def create_node_repo(session_maker: sessionmaker[Session]) -> object:
+        node_session_makers.append(session_maker)
+        return _BoundedNodeExecutionRepository(real_node_repository(session_maker))
+
+    def create_run_repo(session_maker: sessionmaker[Session]) -> object:
         run_session_makers.append(session_maker)
-        return run_repo
+        return _BoundedWorkflowRunRepository(real_run_repository(session_maker))
 
     monkeypatch.setattr(
         service_module.DifyAPIRepositoryFactory,
@@ -767,7 +833,8 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
         session=sqlite_session,
     )
 
-    assert node_repo.get_expired_executions_batch.call_count == 2
-    assert run_repo.get_expired_runs_batch.call_count == 2
     assert node_session_makers[0].kw["bind"] is sqlite_engine
     assert run_session_makers[0].kw["bind"] is sqlite_engine
+    with Session(sqlite_engine) as verification_session:
+        for record in stored:
+            assert verification_session.get(type(record), record.id) is None
