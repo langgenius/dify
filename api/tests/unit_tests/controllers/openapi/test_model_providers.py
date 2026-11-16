@@ -8,7 +8,9 @@ from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from constants.oauth_bearer import TokenType
+from controllers.common.fields import SimpleResultResponse
 from controllers.openapi import model_providers
+from controllers.openapi._errors import CredentialNotFound
 from controllers.openapi._models import (
     CredentialWriteResponse,
     ModelCredentialCreatePayload,
@@ -22,6 +24,7 @@ from controllers.openapi.auth.subjects import AccountSubject
 from controllers.openapi.model_providers import (
     ModelCredentialsApi,
     ModelProviderApi,
+    ModelProviderCredentialApi,
     _model_write_response,
     _provider_write_response,
     model_rows,
@@ -310,3 +313,66 @@ def test_describe_asks_for_credentials_only_while_the_provider_is_not_configured
 
     assert (_ASK_SUMMARY in [hint.summary for hint in response.hints]) is asks
     assert response.configured is (status == CustomConfigurationStatus.ACTIVE)
+
+
+def _handler(view: Callable[..., object]) -> Callable[..., object]:
+    """Return the bare view ``@endpoint`` attaches as ``__handler__``."""
+    handler = vars(view).get("__handler__")
+    assert callable(handler)
+    return handler
+
+
+def _visible(*_args: object, **_kwargs: object) -> list[CredentialConfiguration]:
+    return [CredentialConfiguration(credential_id="cred-1", credential_name="main")]
+
+
+def test_delete_removes_a_visible_credential(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    removed: list[tuple[str, str, str]] = []
+
+    def remove(_self: ModelProviderService, *, tenant_id: str, provider: str, credential_id: str) -> None:
+        removed.append((tenant_id, provider, credential_id))
+
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", _visible)
+    monkeypatch.setattr(ModelProviderService, "remove_provider_credential", remove)
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+
+    api = ModelProviderCredentialApi()
+    with app.test_request_context(
+        f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/cred-1", method="DELETE"
+    ):
+        result = _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "cred-1")
+
+    assert result == SimpleResultResponse(result="success")
+    assert removed == [("ws", _OPENAI, "cred-1")]
+
+
+def test_delete_answers_404_for_a_credential_the_list_does_not_show(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    account_application_services: ApplicationServices,
+) -> None:
+    removed: list[object] = []
+
+    def remove(*_args: object, **_kwargs: object) -> None:
+        removed.append(None)
+
+    monkeypatch.setattr(ModelProviderService, "get_provider_available_credentials", lambda *_a, **_k: [])
+    monkeypatch.setattr(ModelProviderService, "remove_provider_credential", remove)
+    monkeypatch.setattr(model_providers, "application_services", lambda: account_application_services)
+
+    api = ModelProviderCredentialApi()
+    with (
+        app.test_request_context(
+            f"/openapi/v1/workspaces/ws/model-providers/{_OPENAI}/credentials/missing", method="DELETE"
+        ),
+        pytest.raises(CredentialNotFound),
+    ):
+        _handler(api.delete)(api, _context(sqlite_session), "ws", _OPENAI, "missing")
+
+    assert removed == []

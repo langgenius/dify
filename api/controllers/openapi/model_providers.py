@@ -11,10 +11,11 @@ from flask_restx import Resource
 from werkzeug.exceptions import BadRequest
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
+from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
-from controllers.openapi._contract import Example, Kind, endpoint, op_of
-from controllers.openapi._errors import CredentialInvalid, ProviderNotFound
+from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
+from controllers.openapi._errors import CredentialInvalid, CredentialNotFound, ProviderNotFound
 from controllers.openapi._i18n import localized
 from controllers.openapi._models import (
     CredentialFormField,
@@ -326,6 +327,36 @@ class ModelProviderCredentialApi(Resource):
                 credential_name=body.name,
             )
         return _provider_write_response(ctx.workspace.id, _provider(ctx.workspace.id, provider), credential_id)
+
+    @endpoint(
+        op="delete.model_provider.credential",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS,
+        kind=Kind.OBJECT,
+        effect=Effect.DESTRUCTIVE,
+        summary="Delete a saved model provider credential",
+        examples=(
+            Example(
+                title="Remove a key",
+                input={"provider": _PROVIDER_EXAMPLE, "credential_id": "<credential_id>"},
+            ),
+        ),
+        requirements=_MANAGE,
+        returns=(HTTPStatus.OK, SimpleResultResponse, "Credential deleted"),
+    )
+    def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
+        """Delete the credential; an id the workspace's credential list does not
+        show answers 404, matching what `describe.model_provider` advertises.
+        """
+        visible = ModelProviderService().get_provider_available_credentials(
+            ctx.workspace.id, provider, ctx.account, credential_query=application_services().credential_queries
+        )
+        if all(credential.credential_id != credential_id for credential in visible):
+            raise CredentialNotFound()
+        with _model_provider_errors():
+            ModelProviderService().remove_provider_credential(
+                tenant_id=ctx.workspace.id, provider=provider, credential_id=credential_id
+            )
+        return SimpleResultResponse(result="success")
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/models")

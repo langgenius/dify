@@ -1419,3 +1419,23 @@ class SkillImportResponse(Hinted):
     name: str
     draft_hash: str = Field(description="Opaque; names the draft this wrote")
     file_count: int
+
+
+class AppApiKeyRow(BaseModel):
+    """One app API key; `token` is the full secret, as the console returns it."""
+
+    id: str
+    token: str
+    created_at: int | None = None
+    last_used_at: int | None = None
+
+    @field_validator("created_at", "last_used_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
+
+
+class AppApiKeyListResponse(BaseModel):
+    """Every API key of one app; unpaginated, as the console lists them."""
+
+    data: list[AppApiKeyRow]

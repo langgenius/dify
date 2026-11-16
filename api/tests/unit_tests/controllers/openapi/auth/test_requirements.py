@@ -578,6 +578,30 @@ ROUTES: tuple[Route, ...] = (
         "/apps/{app_id}",
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
+    Route(
+        "apps.delete",
+        "DELETE",
+        "/apps/{app_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.list",
+        "GET",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.create",
+        "POST",
+        "/apps/{app_id}/api-keys",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
+    Route(
+        "app_api_keys.delete",
+        "DELETE",
+        "/apps/{app_id}/api-keys/{api_key_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
+    ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -639,6 +663,12 @@ ROUTES: tuple[Route, ...] = (
         "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
+    Route(
+        "model_providers.credential.delete",
+        "DELETE",
+        "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
     Route("tools.list", "GET", "/workspaces/{workspace_id}/tools", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route(
         "tool_providers.describe",
@@ -655,6 +685,12 @@ ROUTES: tuple[Route, ...] = (
     Route(
         "tool_providers.credential.set",
         "PATCH",
+        "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
+        frozenset({Trait.ACCOUNT_PRIMARY}),
+    ),
+    Route(
+        "tool_providers.credential.delete",
+        "DELETE",
         "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}",
         frozenset({Trait.ACCOUNT_PRIMARY}),
     ),
@@ -1365,6 +1401,10 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "webapp.reset": dict(_ACCOUNT_EDITOR_SETTINGS),
     "webapp_access.describe": dict(_WEBAPP_ACCESS_EDITOR),
     "apps.describe": dict(_ACCOUNT_READER_APP),
+    "apps.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.list": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.create": dict(_ACCOUNT_EDITOR_SETTINGS),
+    "app_api_keys.delete": dict(_ACCOUNT_EDITOR_SETTINGS),
     "app_dsl.export": dict(_ACCOUNT_EDITOR_APP),
     "app_run.draft.workflow": dict(_ACCOUNT_EDITOR_APP),
     "app_workflow.run.list": dict(_ACCOUNT_READER_APP),
@@ -1640,6 +1680,46 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "get.account.session": _REQ_ACCOUNT_FULL,
     "account.sessions.revoke_one": _REQ_ACCOUNT_FULL,
     "apps.describe": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_APP_DESCRIBE[1:]),
+    "apps.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_DELETE, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_DELETE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.list": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.APPS_READ),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.create": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_EDITOR_UP),
+    ),
+    "app_api_keys.delete": (
+        CheckSubject(allowed=_ACCOUNT),
+        CheckWorkspaceMember(),
+        CheckScope(Scope.WORKSPACE_WRITE),
+        CheckRBACPermission(
+            RBACCheck(RBACPermission.APP_RELEASE_AND_VERSION, PlainApp()),
+            RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentBehindApp()),
+        ),
+        CheckWorkspaceRole(_OWNER_ADMIN),
+    ),
     "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
@@ -1659,10 +1739,12 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
     "model_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "model_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "model_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "model_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "tools.list": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.describe": _REQ_ACCOUNT_WORKSPACE_READ_MEMBER,
     "tool_providers.credential.create": _req_admin_write(RBACPermission.CREDENTIAL_CREATE),
     "tool_providers.credential.set": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
+    "tool_providers.credential.delete": _req_admin_write(RBACPermission.CREDENTIAL_MANAGE),
     "skills.list": _REQ_SKILL_READ,
     "skills.describe": _REQ_SKILL_READ,
     "skills.versions": _REQ_SKILL_READ,
@@ -2009,6 +2091,7 @@ def _url(route: Route, world: World, scenario: Scenario, bearer: Bearer | None) 
         "plugin_id": "langgenius/openai",
         "provider": "langgenius/openai/openai",
         "credential_id": str(uuid.uuid4()),
+        "api_key_id": str(uuid.uuid4()),
         "model_type": "llm",
     }
     query = route.query.format(**ids)
@@ -2204,10 +2287,16 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("patch", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
     ),
+    ("delete", "/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
+    ),
     ("get", "/workspaces/{workspace_id}/model-providers/{provider}"): frozenset({"200", "default"}),
     ("post", "/workspaces/{workspace_id}/model-providers/{provider}/credentials"): frozenset({"201", "422", "default"}),
     ("patch", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
         {"200", "422", "default"}
+    ),
+    ("delete", "/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}"): frozenset(
+        {"200", "default"}
     ),
     ("get", "/workspaces/{workspace_id}/knowledge-bases"): frozenset({"200", "422", "default"}),
     ("get", "/workspaces/{workspace_id}/skills"): frozenset({"200", "422", "default"}),
@@ -2231,6 +2320,10 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("delete", "/account/sessions/{session_id}"): frozenset({"200", "default"}),
     ("get", "/apps"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}"): frozenset({"200", "422", "default"}),
+    ("delete", "/apps/{app_id}"): frozenset({"200", "default"}),
+    ("get", "/apps/{app_id}/api-keys"): frozenset({"200", "default"}),
+    ("post", "/apps/{app_id}/api-keys"): frozenset({"201", "default"}),
+    ("delete", "/apps/{app_id}/api-keys/{api_key_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "default"}),
     ("patch", "/apps/{app_id}/app-info/workflow"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/service-api"): frozenset({"200", "default"}),
@@ -2533,6 +2626,7 @@ class TestAuthMatrixCases:
             "model_providers.describe",
             "model_providers.credential.create",
             "model_providers.credential.set",
+            "model_providers.credential.delete",
             "models.list",
             "models.credential.create",
             "models.credential.set",
@@ -2540,6 +2634,14 @@ class TestAuthMatrixCases:
             "tool_providers.describe",
             "tool_providers.credential.create",
             "tool_providers.credential.set",
+            "tool_providers.credential.delete",
+            "app_dsl.import",
+            "app_dsl.import_confirm",
+            "app_dsl.export",
+            "apps.delete",
+            "app_api_keys.list",
+            "app_api_keys.create",
+            "app_api_keys.delete",
         }
 
     @staticmethod

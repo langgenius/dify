@@ -115,6 +115,7 @@ class OpenApiErrorCode(StrEnum):
     SKILL_NAME_MISMATCH = "skill_name_mismatch"
     SKILL_PACKAGE_INVALID = "skill_package_invalid"
     SKILL_REQUEST_REJECTED = "skill_request_rejected"
+    MAX_KEYS_EXCEEDED = "max_keys_exceeded"
 
 
 class ErrorDetail(BaseModel):
@@ -605,6 +606,18 @@ class SkillRequestRejected(OpenApiError):  # noqa: N818
     ) -> None:
         super().__init__(message, details=details)
         self.code = status_code
+
+
+class ApiKeyLimitExceeded(OpenApiError):  # noqa: N818
+    code = 400
+    error_code = OpenApiErrorCode.MAX_KEYS_EXCEEDED
+    description = "The API key limit has been reached."
+
+
+class AppApiKeyNotReady(OpenApiError):  # noqa: N818
+    code = 409
+    error_code = OpenApiErrorCode.AGENT_NOT_PUBLISHED
+    description = "Publish the Agent before enabling Web App or API access."
 
 
 def require_uuid(value: str, *, not_found: type[OpenApiError]) -> str:

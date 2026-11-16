@@ -23,6 +23,8 @@ from controllers.openapi._models import (
     AgentAppInfoPatch,
     AgentServiceApi,
     AgentWebApp,
+    AppApiKeyListResponse,
+    AppApiKeyRow,
     AppDescribeInfo,
     AppDescribeQuery,
     AppDescribeResponse,
@@ -275,6 +277,8 @@ register_response_schema_models(
     UsageInfo,
     MessageMetadata,
     Hint,
+    AppApiKeyListResponse,
+    AppApiKeyRow,
     AppListRow,
     AppListResponse,
     AppInfo,
@@ -381,6 +385,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     from . import (
         account,
+        app_api_keys,
         app_create,
         app_dsl,
         app_info,
@@ -408,6 +413,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         account,
+        app_api_keys,
         app_create,
         app_dsl,
         app_info,
@@ -436,6 +442,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     account,
+    app_api_keys,
     app_create,
     app_dsl,
     app_info,
@@ -465,6 +472,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 __all__ = [
     "account",
+    "app_api_keys",
     "app_create",
     "app_dsl",
     "app_info",

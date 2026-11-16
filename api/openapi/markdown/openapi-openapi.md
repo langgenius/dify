@@ -110,6 +110,24 @@ workspace filter. This handler is read-only and does not change membership.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /apps/{app_id}
+**Delete the app; admission already proved `app_id` names a live app in**
+
+this workspace, so the canonical form is safe to hand to the service.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | App deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}
 #### Parameters
 
@@ -145,6 +163,61 @@ workspace filter. This handler is read-only and does not change membership.
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /apps/{app_id}/api-keys
+**Precondition: admission resolved `app_id`'s app and its workspace**
+
+Postcondition: every key of the app is returned with its full token,
+as the console's list does; a missing app or key scope answers 404.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API keys | **application/json**: [AppApiKeyListResponse](#appapikeylistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/api-keys
+**Precondition: admission resolved `app_id`'s app and its workspace**
+
+Postcondition: the new key's full token is returned once; the per-app
+key limit answers 400 and an unpublished agent app answers 409.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | API key created | **application/json**: [AppApiKeyRow](#appapikeyrow)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [DELETE] /apps/{app_id}/api-keys/{api_key_id}
+**Delete the key; a malformed or unknown id answers 404, not a 500**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| api_key_id | path |  | Yes | string |
+| app_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | API key deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/app-info/advanced-chat
@@ -1835,6 +1908,26 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
+**Delete the credential; an id the workspace's credential list does not**
+
+show answers 404, matching what `describe.model_provider` advertises.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [PATCH] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
 #### Parameters
 
@@ -2146,6 +2239,26 @@ so an edit made in the same second as the export is not detected.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
+**Delete the credential; an id the workspace's credential list does not**
+
+show answers 404 before the service is asked to remove it.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| credential_id | path |  | Yes | string |
+| provider | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Credential deleted | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [PATCH] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
 #### Parameters
 
@@ -2349,6 +2462,25 @@ A chat run against an advanced-chat (chatflow) app, which can also pin a workflo
 | title | string |  | No |
 | url | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
+
+#### AppApiKeyListResponse
+
+Every API key of one app; unpaginated, as the console lists them.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [AppApiKeyRow](#appapikeyrow) ] |  | Yes |
+
+#### AppApiKeyRow
+
+One app API key; `token` is the full secret, as the console returns it.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| id | string |  | Yes |
+| last_used_at | integer |  | No |
+| token | string |  | Yes |
 
 #### AppDescribeInfo
 
