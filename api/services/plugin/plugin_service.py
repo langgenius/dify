@@ -274,6 +274,26 @@ class PluginService:
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
+    def _retain_plugin_version_for_enterprise(tenant_id: str, plugin_unique_identifier: str) -> None:
+        """Tell the enterprise plugin manager before a tenant drops a plugin version.
+
+        Uninstalling and upgrading both remove a version from the tenant. When no tenant uses
+        the version any more, the plugin daemon deletes its records, but nothing deletes the
+        version's runtime (on Kubernetes: its DifyPlugin, Deployment and pods). The enterprise
+        plugin manager therefore keeps the version referenced, so it stays listed in the
+        enterprise console and its runtime is removed when an admin uninstalls it there.
+        The call is synchronous and never raises: a failure is logged and the caller goes on.
+        """
+        if not dify_config.ENTERPRISE_ENABLED:
+            return
+        PluginManagerService.try_pre_uninstall_plugin(
+            PreUninstallPluginRequest(
+                tenant_id=tenant_id,
+                plugin_unique_identifier=plugin_unique_identifier,
+            )
+        )
+
+    @staticmethod
     def upgrade_plugin_with_marketplace(
         tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
     ):
@@ -310,6 +330,7 @@ class PluginService:
             PluginService._check_plugin_installation_scope(decode_response.verification)
             marketplace.record_install_plugin_event(new_plugin_unique_identifier)
 
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, original_plugin_unique_identifier)
         return manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -334,6 +355,7 @@ class PluginService:
         """
         PluginService._check_marketplace_only_permission()
         manager = PluginInstaller()
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, original_plugin_unique_identifier)
         return manager.upgrade_plugin(
             tenant_id,
             original_plugin_unique_identifier,
@@ -526,13 +548,7 @@ class PluginService:
         if not plugin:
             return manager.uninstall(tenant_id, plugin_installation_id)
 
-        if dify_config.ENTERPRISE_ENABLED:
-            PluginManagerService.try_pre_uninstall_plugin(
-                PreUninstallPluginRequest(
-                    tenant_id=tenant_id,
-                    plugin_unique_identifier=plugin.plugin_unique_identifier,
-                )
-            )
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, plugin.plugin_unique_identifier)
         with Session(db.engine) as session, session.begin():
             plugin_id = plugin.plugin_id
             logger.info("Deleting credentials for plugin: %s", plugin_id)

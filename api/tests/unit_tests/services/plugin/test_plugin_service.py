@@ -13,6 +13,7 @@ import pytest
 
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginVerification
+from services.enterprise.plugin_manager_service import PreUninstallPluginRequest
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import PluginInstallationScope
 from services.plugin.plugin_service import PluginService
@@ -209,6 +210,7 @@ class TestUpgradePluginWithMarketplace:
     @patch("services.plugin.plugin_service.dify_config")
     def test_skips_download_when_already_installed(self, mock_config, mock_installer_cls, mock_fs, mock_marketplace):
         mock_config.MARKETPLACE_ENABLED = True
+        mock_config.ENTERPRISE_ENABLED = False
         mock_fs.get_system_features.return_value = make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()  # no exception = already installed
@@ -225,6 +227,7 @@ class TestUpgradePluginWithMarketplace:
     @patch("services.plugin.plugin_service.dify_config")
     def test_downloads_when_not_installed(self, mock_config, mock_installer_cls, mock_fs, mock_download):
         mock_config.MARKETPLACE_ENABLED = True
+        mock_config.ENTERPRISE_ENABLED = False
         mock_fs.get_system_features.return_value = make_features()
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.side_effect = RuntimeError("not found")
@@ -280,6 +283,7 @@ class TestUpgradePluginWithMarketplace:
         self, mock_config, mock_installer_cls, mock_fs, mock_marketplace
     ):
         mock_config.MARKETPLACE_ENABLED = True
+        mock_config.ENTERPRISE_ENABLED = False
         mock_fs.get_system_features.return_value = make_features(scope=PluginInstallationScope.OFFICIAL_ONLY)
         installer = mock_installer_cls.return_value
         installer.fetch_plugin_manifest.return_value = MagicMock()
@@ -306,6 +310,30 @@ class TestUpgradePluginWithGithub:
         installer.upgrade_plugin.assert_called_once()
         call_args = installer.upgrade_plugin.call_args
         assert call_args[0][3] == PluginInstallationSource.Github
+
+
+@pytest.mark.parametrize("source", ["marketplace", "github"])
+@pytest.mark.parametrize("enterprise_enabled", [True, False])
+def test_replaced_plugin_retention_precedes_upgrade(source, enterprise_enabled, mock_installer, mock_features):
+    calls = MagicMock()
+    calls.attach_mock(mock_installer.upgrade_plugin, "upgrade")
+    with (
+        patch("services.plugin.plugin_service.dify_config") as config,
+        patch("services.plugin.plugin_service.marketplace"),
+        patch("services.plugin.plugin_service.PluginManagerService.try_pre_uninstall_plugin") as retain,
+    ):
+        calls.attach_mock(retain, "retain")
+        config.MARKETPLACE_ENABLED = True
+        config.ENTERPRISE_ENABLED = enterprise_enabled
+        if source == "marketplace":
+            result = PluginService.upgrade_plugin_with_marketplace("t1", "old-uid", "new-uid")
+        else:
+            result = PluginService.upgrade_plugin_with_github("t1", "old-uid", "new-uid", "org/repo", "v1", "pkg")
+
+    assert result is mock_installer.upgrade_plugin.return_value
+    assert [entry[0] for entry in calls.mock_calls] == (["retain", "upgrade"] if enterprise_enabled else ["upgrade"])
+    if enterprise_enabled:
+        retain.assert_called_once_with(PreUninstallPluginRequest(tenant_id="t1", plugin_unique_identifier="old-uid"))
 
 
 class TestUploadPkg:
