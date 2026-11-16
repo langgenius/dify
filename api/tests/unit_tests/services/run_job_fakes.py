@@ -35,6 +35,8 @@ class InMemoryRedis:
         return len(mapping)
 
     def hgetall(self, name: str) -> dict[bytes, bytes]:
+        if name in self.values:
+            raise TypeError("WRONGTYPE Operation against a key holding the wrong kind of value")
         return {key.encode(): value.encode() for key, value in self.hashes.get(name, {}).items()}
 
     def expire(self, name: str, time: int) -> bool:

@@ -210,3 +210,11 @@ def test_empty_patch_is_a_no_op(store: RedisRunJobStore, redis: InMemoryRedis) -
 
     assert store.get(job.id) == job
     assert redis.ttls == {}
+
+
+def test_a_hash_with_fields_from_a_newer_version_still_decodes(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
+    job = _record()
+    store.open(job, idempotency_key=None)
+    redis.hset("openapi:job:" + job.id, mapping={"added_later": '{"x": 1}'})
+
+    assert store.get(job.id) == job

@@ -18,6 +18,7 @@ from services.run_job_service import (
     JobOpening,
     RunJobService,
     RunResult,
+    TaskControlStopper,
 )
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -350,11 +351,25 @@ def test_wait_returns_when_the_job_pauses():
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
+    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
 
     view = harness.service.wait(OWNER, opened.record.id, wait_seconds=10)
 
     assert view.status is JobStatus.PAUSED
+    assert view.form == {"form_id": "f"}
     assert harness.clock.slept == []
+
+
+def test_wait_keeps_polling_a_paused_job_without_a_waiting_form():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
+
+    view = harness.service.wait(OWNER, opened.record.id, wait_seconds=3)
+
+    assert view.status is JobStatus.PAUSED
+    assert harness.clock.slept == [POLL_INTERVAL_SECONDS] * 3
 
 
 def test_wait_answers_at_once_when_the_waiter_cap_is_full():
@@ -431,3 +446,56 @@ def test_stop_hides_a_job_from_another_owner():
 
     with pytest.raises(JobNotFoundError):
         harness.service.stop(OTHER, opened.record.id)
+
+
+class StopFlipsRunTaskControl(RecordingTaskControl):
+    def __init__(self, results: InMemoryRunResults) -> None:
+        super().__init__()
+        self._results = results
+
+    def stop_workflow_run(self, **kwargs):
+        self._results.runs[(kwargs["tenant_id"], kwargs["run_id"])] = RunResult(status=JobStatus.STOPPED)
+        return super().stop_workflow_run(**kwargs)
+
+
+def test_stop_returns_the_view_after_the_stop():
+    harness = _harness()
+    harness.service._stopper = TaskControlStopper(StopFlipsRunTaskControl(harness.results))
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
+    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
+
+    view = harness.service.stop(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.STOPPED
+    assert view.form is None
+    assert view.record.stop_requested is True
+
+
+class IdsArriveWhileStoppingStore(RedisRunJobStore):
+    """Stores the run ids right after the stop flag, as the reader thread would."""
+
+    def patch(self, job_id: str, patch: JobPatch) -> None:
+        super().patch(job_id, patch)
+        if patch.stop_requested:
+            super().patch(job_id, JobPatch(run_id="run-1", task_id="task-1"))
+
+
+def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_request():
+    harness = _harness()
+    racing = IdsArriveWhileStoppingStore(redis_client=InMemoryRedis())
+    service = RunJobService(
+        store=racing,
+        results=harness.results,
+        tasks=harness.tasks,
+        max_background_runs=1,
+        max_waiters=1,
+        sleep=harness.clock.sleep,
+        monotonic=harness.clock.monotonic,
+    )
+    opened = service.open(_opening())
+
+    service.stop(OWNER, opened.record.id)
+
+    assert [stop.run_id for stop in harness.tasks.workflow_stops] == ["run-1"]

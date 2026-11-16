@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Final
+from typing import Final, Protocol, runtime_checkable
 
 from flask_restx import Resource
 
@@ -26,6 +26,13 @@ WORKFLOW_START_OP: Final = "start.console_app.workflow"
 ADVANCED_CHAT_START_OP: Final = "start.console_app.advanced_chat"
 _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
 _JOB_STATE: Final = (200, JobState, "Job state")
+APPS_SURFACE: Final = "apps"
+
+
+@runtime_checkable
+class _Closable(Protocol):
+    def close(self) -> None: ...
+
 
 type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload
 
@@ -35,20 +42,28 @@ def _launch(ctx: Context, body: StartPayload, *, run_jobs: RunJobService, opened
 
     Precondition: opened.created is true and attach was not called for it.
     Postcondition: the run's reader is attached; when the run cannot be generated, audited or attached, the job
-    is discarded and the error propagates.
+    is discarded, the stream (if any) is closed, and the error propagates.
     """
     try:
         stream = _stream(ctx, _generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
+    except BaseException:
+        run_jobs.discard(opened, idempotency_key=key)
+        raise
+    try:
         emit_app_run(
             app_id=ctx.app.id,
             tenant_id=ctx.app.tenant_id,
             caller_kind=ctx.subject.caller_role,
             mode=str(ctx.app.mode),
-            surface="apps",
+            surface=APPS_SURFACE,
         )
         run_jobs.attach(opened.record.id, stream)
     except BaseException:
-        run_jobs.discard(opened, idempotency_key=key)
+        try:
+            if isinstance(stream, _Closable):
+                stream.close()
+        finally:
+            run_jobs.discard(opened, idempotency_key=key)
         raise
 
 

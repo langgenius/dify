@@ -189,6 +189,12 @@ class TaskControlStopper:
 
 
 class RunJobService:
+    """Opens jobs, attaches their readers, and answers view, wait and stop for the owner of a job.
+
+    Precondition: built once per process with a store, result reader and task control.
+    Postcondition: background runs and waiters of this process stay within their caps.
+    """
+
     def __init__(
         self,
         *,
@@ -313,8 +319,18 @@ class RunJobService:
         try:
             self._store.discard(opened.record.id, idempotency_key=idempotency_key)
         finally:
-            if opened.created and self._unreserve(opened.record.id):
-                self._slots.release()
+            self._release_reserved_slot(opened)
+
+    def _release_reserved_slot(self, opened: OpenedJob) -> None:
+        """Give back the slot that open reserved for a job.
+
+        Precondition: none.
+        Postcondition: the slot is released only when opened was created by this process's open and still reserved.
+        """
+        if not opened.created:
+            return
+        if self._unreserve(opened.record.id):
+            self._slots.release()
 
     def view(self, owner: JobOwner, job_id: str) -> JobView:
         """Describe a job's current state.
@@ -360,9 +376,9 @@ class RunJobService:
         """Wait for a job to finish or pause.
 
         Precondition: wait_seconds is not negative.
-        Postcondition: returns once the job is final or paused, the clamped wait time is used up, or at once for
-        wait_seconds of 0 or when max_waiters calls already wait in this process. Raises JobNotFoundError as view
-        does.
+        Postcondition: returns once the job is final or paused with a waiting form, the clamped wait time is used
+        up, or at once for wait_seconds of 0 or when max_waiters calls already wait in this process. Raises
+        JobNotFoundError as view does.
         """
         view = self.view(owner, job_id)
         seconds = min(wait_seconds, WAIT_MAX_SECONDS)
@@ -399,15 +415,19 @@ class RunJobService:
         if view.status.is_final:
             return view
         self._store.patch(job_id, JobPatch(stop_requested=True))
-        stopping = replace(record, stop_requested=True)
+        # Re-read so ids stored by the reader since the first read are not missed.
+        stopping = replace(self._store.get(job_id) or record, stop_requested=True)
         self._stopper.stop(stopping)
-        return replace(view, record=stopping)
+        return self._view_of(stopping)
 
 
 def _settled(view: JobView) -> bool:
     """Report whether waiting for the job is pointless.
 
     Precondition: none.
-    Postcondition: true when the view's status is final or paused.
+    Postcondition: true when the view's status is final, or paused with a form waiting for input. A paused job
+    without a form is being resumed, so it is not settled.
     """
-    return view.status.is_final or view.status is JobStatus.PAUSED
+    if view.status.is_final:
+        return True
+    return view.status is JobStatus.PAUSED and view.form is not None

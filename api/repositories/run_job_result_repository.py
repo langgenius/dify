@@ -109,13 +109,15 @@ class SQLAlchemyRunResultReader:
 
         Precondition: the run is paused.
         Postcondition: the data of the last human_input_required event of the run's snapshot, or None when the run
-        is absent, the mode has no snapshot, or no form is pending. The snapshot stream is closed.
+        is absent or no longer paused, the mode has no snapshot, or no form is pending. The snapshot stream is closed.
         """
         generator = SNAPSHOT_GENERATORS.get(mode)
         if generator is None:
             return None
         row = self._runs.get_workflow_run_by_id_and_tenant_id(tenant_id=tenant_id, run_id=run_id)
         if row is None:
+            return None
+        if row.status is not WorkflowExecutionStatus.PAUSED:
             return None
         source = build_workflow_event_stream(
             app_mode=mode,

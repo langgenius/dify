@@ -333,3 +333,29 @@ def test_an_unknown_event_name_changes_nothing(store: RedisRunJobStore, stopper:
 
     assert record.status is JobStatus.RUNNING
     assert record.task_id == "task-1"
+
+
+class TouchFailsOnceStore(RedisRunJobStore):
+    def __init__(self, redis: InMemoryRedis) -> None:
+        super().__init__(redis_client=redis)
+        self.failures_left = 0
+
+    def touch(self, job_id: str) -> None:
+        if self.failures_left > 0:
+            self.failures_left -= 1
+            raise ConnectionError("redis blip")
+        super().touch(job_id)
+
+
+def test_a_store_error_on_one_frame_does_not_stop_the_read(
+    redis: InMemoryRedis, stopper: RecordingJobStopper, caplog: pytest.LogCaptureFixture
+) -> None:
+    store = TouchFailsOnceStore(redis)
+    _open(store, AppMode.CHAT)
+    store.failures_left = 1
+    frames = [PING, _frame(StreamEvent.MESSAGE_END, task_id="task-1", id="msg-1", metadata={})]
+
+    record = _read(store, stopper, frames)
+
+    assert record.status is JobStatus.SUCCEEDED
+    assert any(r.exc_info for r in caplog.records)
