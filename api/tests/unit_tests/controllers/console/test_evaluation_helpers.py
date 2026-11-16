@@ -2,10 +2,10 @@
 
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from datetime import datetime
 from functools import partial
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import MagicMock, create_autospec
 from uuid import UUID, uuid4
 
@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 from controllers.console import evaluation as controller
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import DefaultMetric, NodeInfo
+from extensions.ext_application_services import ApplicationServices
 from models.evaluation import (
     EvaluationConfiguration,
     EvaluationRun,
@@ -44,17 +45,17 @@ from tests.helpers.unit.model_factories import make_account, make_app, make_data
 
 
 @pytest.fixture(autouse=True)
-def knowledge_datasets(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+def knowledge_datasets(monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices) -> MagicMock:
     """Keep evaluation routing behind the configured knowledge application port."""
     datasets = create_autospec(DatasetApplicationService, instance=True, spec_set=True)
     datasets.require_accessible.side_effect = lambda context, dataset_id: DatasetRef(
         context.active_workspace_id, dataset_id
     )
-    monkeypatch.setattr(
-        controller,
-        "application_services",
-        lambda: SimpleNamespace(knowledge=SimpleNamespace(datasets=datasets)),
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, datasets=datasets),
     )
+    monkeypatch.setattr(controller, "application_services", lambda: services)
     return datasets
 
 

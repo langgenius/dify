@@ -3,9 +3,9 @@
 import io
 import json
 from collections.abc import Callable
+from dataclasses import replace
 from functools import partial
-from types import SimpleNamespace
-from unittest.mock import create_autospec
+from unittest.mock import MagicMock, create_autospec
 
 import pytest
 from openpyxl import load_workbook
@@ -31,6 +31,7 @@ from core.evaluation.evaluation_manager import EvaluationManager
 from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
 from core.rbac import RBACPermission, RBACResourceScope
+from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
@@ -72,7 +73,6 @@ from tests.helpers.unit.model_factories import (
     make_upload_file,
     make_workflow,
 )
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 @pytest.fixture(autouse=True)
@@ -92,13 +92,16 @@ def _agent() -> Agent:
 
 
 @pytest.fixture
-def evaluation_knowledge(monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
+def evaluation_hit_testing(
+    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> MagicMock:
     hit_testing = create_autospec(HitTestingApplicationService, instance=True, spec_set=True)
-    knowledge = SimpleNamespace(retrieval=make_knowledge_retriever(), hit_testing=hit_testing)
-    monkeypatch.setattr(
-        "extensions.ext_application_services.application_services", lambda: SimpleNamespace(knowledge=knowledge)
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, hit_testing=hit_testing),
     )
-    return knowledge
+    monkeypatch.setattr("extensions.ext_application_services.application_services", lambda: services)
+    return hit_testing
 
 
 def _workflow_with_nodes(nodes: list[tuple[str, dict[str, object]]]) -> Workflow:
@@ -2349,7 +2352,7 @@ def test_start_agent_run_persists_and_dispatches_agent_snapshot(
     assert _dispatched_inputs(dispatched_payload)[0]["inputs"] == {"query": "hello"}
 
 
-@pytest.mark.usefixtures("evaluation_knowledge")
+@pytest.mark.usefixtures("evaluation_hit_testing")
 def test_run_single_app_target_loads_pinned_workflow_version(
     monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
@@ -2514,7 +2517,7 @@ def test_execute_targets_propagates_missing_pinned_workflow_and_stops_tasks(monk
 
 
 def test_execute_retrieval_targets_preserves_worker_account_and_tenant_scope(
-    evaluation_knowledge: SimpleNamespace,
+    evaluation_hit_testing: MagicMock,
     sqlite_session: Session,
 ) -> None:
     account = make_account()
@@ -2527,7 +2530,7 @@ def test_execute_retrieval_targets_preserves_worker_account_and_tenant_scope(
     dataset = make_dataset()
     sqlite_session.add_all([account, tenant, membership, dataset])
     sqlite_session.commit()
-    evaluation_knowledge.hit_testing.retrieve.return_value = {
+    evaluation_hit_testing.retrieve.return_value = {
         "query": {"content": "hello"},
         "records": [{"segment": {"content": "matched content"}, "score": 0.9}],
     }
@@ -2543,10 +2546,10 @@ def test_execute_retrieval_targets_preserves_worker_account_and_tenant_scope(
     assert errors == [None]
     assert results[0] is not None
     assert results[0].outputs == {"result": [{"content": "matched content", "score": 0.9}]}
-    evaluation_knowledge.hit_testing.retrieve.assert_called_once()
-    context = evaluation_knowledge.hit_testing.retrieve.call_args.args[0]
+    evaluation_hit_testing.retrieve.assert_called_once()
+    context = evaluation_hit_testing.retrieve.call_args.args[0]
     assert context.account_id == account.id
     assert context.active_workspace_id == tenant.id
-    kwargs = evaluation_knowledge.hit_testing.retrieve.call_args.kwargs
+    kwargs = evaluation_hit_testing.retrieve.call_args.kwargs
     assert kwargs["dataset_id"] == dataset.id
     assert kwargs["request"].query == "hello"

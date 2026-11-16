@@ -7,7 +7,6 @@ from contextlib import contextmanager
 from datetime import timedelta
 from functools import partial
 from threading import Event
-from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -37,6 +36,7 @@ from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
 from core.evaluation.runners.agent_evaluation_runner import AgentEvaluationRunner
 from core.evaluation.runners.llm_evaluation_runner import LLMEvaluationRunner
 from core.evaluation.runners.retrieval_evaluation_runner import RetrievalEvaluationRunner
+from extensions.ext_application_services import ApplicationServices
 from graphon.node_events import NodeRunResult
 from libs.datetime_utils import naive_utc_now
 from models.account import TenantAccountJoin, TenantAccountRole
@@ -93,7 +93,6 @@ from tasks.evaluation_task import (
 )
 from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
-from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() -> None:
@@ -157,7 +156,7 @@ def test_delete_stored_result_file_ignores_storage_failure(monkeypatch: pytest.M
 
 
 def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
-    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+    account_application_services: ApplicationServices, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     from core.app.apps.workflow.app_generator import WorkflowAppGenerator
     from models.model import AppMode
@@ -191,7 +190,7 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     )
     monkeypatch.setattr(
         "tasks.evaluation_task.application_services",
-        lambda: SimpleNamespace(knowledge=SimpleNamespace(retrieval=make_knowledge_retriever())),
+        lambda: account_application_services,
     )
     generated: list[dict[str, object]] = []
 

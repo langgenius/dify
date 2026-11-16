@@ -1,9 +1,9 @@
 """Retrieval transports share attachment validation and production error mapping."""
 
 from collections.abc import Callable
+from dataclasses import replace
 from functools import wraps
 from inspect import unwrap
-from types import SimpleNamespace
 from unittest.mock import create_autospec
 from uuid import UUID
 
@@ -17,6 +17,7 @@ from controllers.common.hit_testing import validate_hit_testing_payload
 from controllers.console import api as console_api
 from controllers.console.datasets import hit_testing as console_controller
 from controllers.service_api.dataset import hit_testing as service_controller
+from extensions.ext_application_services import ApplicationServices
 from libs.external_api import ExternalApi
 from machinery.context import RequestContext
 from models.dataset import DatasetQuery
@@ -64,9 +65,14 @@ def http_app() -> Flask:
 
 
 @pytest.fixture
-def retrieval_calls(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, object]]:
+def retrieval_calls(
+    monkeypatch: pytest.MonkeyPatch, account_application_services: ApplicationServices
+) -> list[dict[str, object]]:
     service = create_autospec(HitTestingApplicationService, instance=True, spec_set=True)
-    services = SimpleNamespace(knowledge=SimpleNamespace(hit_testing=service))
+    services = replace(
+        account_application_services,
+        knowledge=replace(account_application_services.knowledge, hit_testing=service),
+    )
     monkeypatch.setattr(console_controller, "application_services", lambda: services)
     monkeypatch.setattr(service_controller, "application_services", lambda: services)
     calls: list[dict[str, object]] = []
