@@ -109,7 +109,13 @@ it('loads API details and bindings into the real edit dialog', async () => {
   expect(await within(dialog).findByLabelText(/Name/)).toHaveValue(api.name)
   expect(within(dialog).getByLabelText(/API Endpoint/)).toHaveValue(api.settings.endpoint)
   expect(within(dialog).getByLabelText(/API Key/)).toHaveValue(api.settings.api_key)
-  expect(dialog).toHaveTextContent('1 dataset.editExternalAPIFormWarning.end')
+  await user.click(
+    within(dialog).getByRole('button', { name: 'dataset.editExternalAPITooltipTitle' }),
+  )
+  const bindings = await screen.findByRole('dialog', {
+    name: '1 dataset.editExternalAPITooltipTitle',
+  })
+  expect(within(bindings).getByRole('listitem')).toHaveTextContent('Dataset 1')
 })
 
 it('saves edits through the modal and refreshes the displayed card', async () => {

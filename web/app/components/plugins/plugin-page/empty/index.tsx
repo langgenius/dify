@@ -1,9 +1,9 @@
 'use client'
 import type { PluginPageContentInset } from '../content-inset'
-import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
@@ -45,7 +45,6 @@ const Empty = ({
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const queryClient = useQueryClient()
-  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const enable_marketplace = useMarketplace() !== null
   const { data: plugin_installation_permission } = useSuspenseQuery({
@@ -153,37 +152,45 @@ const Empty = ({
                 accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
               />
               <div className="flex w-full flex-col gap-y-1">
-                {installMethods.map(({ iconClassName, text, action }) => (
-                  <Button
-                    key={action}
-                    variant="secondary"
-                    title={text}
-                    className="h-8 w-full justify-start py-2 system-sm-medium"
-                    onClick={() => {
-                      if (action === 'local') fileInputRef.current?.click()
-                      else if (action === 'marketplace')
-                        onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
-                      else {
-                        beginGitHubPluginIntent(queryClient)
-                        githubDialog.open(null)
-                      }
-                    }}
-                  >
-                    <span
-                      aria-hidden
-                      className={cn(iconClassName, 'size-4 text-components-button-secondary-text')}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-start">{text}</span>
-                  </Button>
-                ))}
+                {installMethods.map(({ iconClassName, text, action }) => {
+                  const button = (
+                    <Button
+                      key={action}
+                      variant="secondary"
+                      title={text}
+                      className="h-8 w-full justify-start py-2 system-sm-medium"
+                      onClick={() => {
+                        if (action === 'local') fileInputRef.current?.click()
+                        else if (action === 'marketplace')
+                          onSwitchToMarketplace ? onSwitchToMarketplace() : setActiveTab('discover')
+                        else beginGitHubPluginIntent(queryClient)
+                      }}
+                    >
+                      <span
+                        aria-hidden
+                        className={cn(
+                          iconClassName,
+                          'size-4 text-components-button-secondary-text',
+                        )}
+                      />
+                      <span className="min-w-0 flex-1 truncate text-start">{text}</span>
+                    </Button>
+                  )
+                  return action === 'github' ? (
+                    <GitHubInstallDialog
+                      key={action}
+                      installContextCategory={installContextCategory}
+                    >
+                      <DialogTrigger render={button} />
+                    </GitHubInstallDialog>
+                  ) : (
+                    button
+                  )
+                })}
               </div>
             </div>
           </div>
         </div>
-        <GitHubInstallDialog
-          handle={githubDialog}
-          installContextCategory={installContextCategory}
-        />
         {selectedFile && (
           <InstallFromLocalPackage
             file={selectedFile}

@@ -1,12 +1,13 @@
 'use client'
 
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
-import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { RiAddLine } from '@remixicon/react'
 import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ExternalApiDialogContent } from '@/app/components/datasets/external-api/external-api-modal/dialog-content'
 import { useSaveExternalApi } from '@/app/components/datasets/external-api/external-api-modal/use-save-external-api'
@@ -34,7 +35,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
   const externalKnowledgeApiLabelId = useId()
   const externalKnowledgeIdInputId = useId()
   const selectedApiId = external_knowledge_api_id || externalKnowledgeApiList[0]?.id || ''
-  const [dialog] = useState(() => createDialogHandle())
+  const actionsRef = useRef<DialogActions>(null)
   const save = useSaveExternalApi()
 
   const apiItems = externalKnowledgeApiList.map((api) => ({
@@ -50,7 +51,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
 
   return (
     <Dialog
-      handle={dialog}
+      actionsRef={actionsRef}
       disablePointerDismissal
       onOpenChange={(open, details) => {
         if (!open && save.isPending && details.reason !== 'imperative-action') details.cancel()
@@ -110,7 +111,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({
             { body },
             {
               onSuccess: () => {
-                dialog.close()
+                actionsRef.current?.close()
                 router.refresh()
               },
             },
