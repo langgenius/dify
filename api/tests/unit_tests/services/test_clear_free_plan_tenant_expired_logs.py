@@ -800,11 +800,11 @@ def test_process_tenant_repo_loops_break_on_empty_second_batch(
     real_node_repository = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository
     real_run_repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository
 
-    def create_node_repo(session_maker: sessionmaker[Session]) -> object:
+    def create_node_repo(session_maker: sessionmaker[Session]) -> _BoundedNodeExecutionRepository:
         node_session_makers.append(session_maker)
         return _BoundedNodeExecutionRepository(real_node_repository(session_maker))
 
-    def create_run_repo(session_maker: sessionmaker[Session]) -> object:
+    def create_run_repo(session_maker: sessionmaker[Session]) -> _BoundedWorkflowRunRepository:
         run_session_makers.append(session_maker)
         return _BoundedWorkflowRunRepository(real_run_repository(session_maker))
 
