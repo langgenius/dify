@@ -435,10 +435,10 @@ const VarReferenceVars: FC<Props> = ({
 
   const handleKeyboardEvent = useCallback(
     (event: Pick<KeyboardEvent, 'key' | 'preventDefault' | 'stopPropagation'>) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && onClose) {
         event.preventDefault()
         event.stopPropagation()
-        onClose?.()
+        onClose()
         return
       }
 
