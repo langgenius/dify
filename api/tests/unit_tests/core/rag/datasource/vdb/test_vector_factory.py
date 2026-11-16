@@ -6,6 +6,7 @@ import types
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import override
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
@@ -28,6 +29,73 @@ class _Unset:
 
 
 _UNSET = _Unset()
+
+
+class _StubVector(BaseVector):
+    """Minimal real backend, so the factory contract is exercised without a mock."""
+
+    def __init__(self) -> None:
+        super().__init__("collection_1")
+
+    @override
+    def get_type(self) -> str:
+        return "stub"
+
+    @override
+    def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str] | None:
+        return None
+
+    @override
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs: object) -> list[str] | None:
+        return None
+
+    @override
+    def text_exists(self, id: str) -> bool:
+        return False
+
+    @override
+    def delete_by_ids(self, ids: list[str]) -> None:
+        return None
+
+    @override
+    def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
+        return []
+
+    @override
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
+        return None
+
+    @override
+    def search_by_vector(self, query_vector: list[float], **kwargs: object) -> list[Document]:
+        return []
+
+    @override
+    def search_by_full_text(self, query: str, **kwargs: object) -> list[Document]:
+        return []
+
+    @override
+    def delete(self) -> None:
+        return None
+
+
+class _StubEmbeddings(Embeddings):
+    """Embedding backend that returns nothing; these tests only pass it through."""
+
+    @override
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return []
+
+    @override
+    def embed_multimodal_documents(self, multimodel_documents: list[dict[str, object]]) -> list[list[float]]:
+        return []
+
+    @override
+    def embed_query(self, text: str) -> list[float]:
+        return []
+
+    @override
+    def embed_multimodal_query(self, multimodel_document: dict[str, object]) -> list[float]:
+        return []
 
 
 def _dataset(
@@ -316,7 +384,7 @@ def test_init_vector_prefers_dataset_index_struct(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
     call = _InitVectorCall()
-    stub_vector = MagicMock(spec=BaseVector)
+    stub_vector = _StubVector()
 
     class _Factory(AbstractVectorFactory):
         def init_vector(
@@ -336,7 +404,7 @@ def test_init_vector_prefers_dataset_index_struct(
 
     monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_resolve_factory))
 
-    embeddings = MagicMock(spec=Embeddings)
+    embeddings = _StubEmbeddings()
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(
         index_struct_dict={
@@ -369,7 +437,7 @@ def test_init_vector_uses_whitelist_override(
             session: Session | None,
         ) -> BaseVector:
             call.args = (dataset, attributes, embeddings, session)
-            return MagicMock(spec=BaseVector)
+            return _StubVector()
 
     tenant_id = str(uuid4())
     sqlite_session.add(Whitelist(tenant_id=tenant_id, category="vector_db"))
@@ -389,7 +457,7 @@ def test_init_vector_uses_whitelist_override(
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
     vector._attributes = ["doc_id"]
-    vector._embeddings = MagicMock(spec=Embeddings)
+    vector._embeddings = _StubEmbeddings()
 
     result = vector._init_vector(session=sqlite_session)
 
