@@ -365,6 +365,7 @@ class ApiTool(Tool):
         Number properties accept decimal and exponent representations while integer
         representations keep their exact value. Conversions raising ValueError return
         the original input; anyOf properties retain their existing option-order behavior.
+        A property without a type or anyOf returns the input unchanged.
         """
         try:
             if "type" in property:
@@ -400,6 +401,8 @@ class ApiTool(Tool):
                 return self._convert_body_property_any_of(property, value, property["anyOf"])
         except ValueError:
             return value
+        # No type to convert to (e.g. only enum, oneOf or allOf): send the value as given.
+        return value
 
     @override
     def _invoke(
