@@ -167,7 +167,7 @@ def test_get_vector_factory_entry_point_overrides_builtin(
     )
 
     class _FakeGroups:
-        def select(self, *, group: str) -> object:
+        def select(self, *, group: str) -> tuple[EntryPoint, ...]:
             if group == "dify.vector_backends":
                 return (ep,)
             return ()
@@ -301,10 +301,10 @@ def test_init_vector_prefers_dataset_index_struct(
             self,
             dataset: Dataset,
             attributes: list[str],
-            embeddings: object,
+            embeddings: str,
             *,
             session: Session,
-        ) -> object:
+        ) -> str:
             calls["init_args"] = (dataset, attributes, embeddings, session)
             return "vector-processor"
 
@@ -336,10 +336,10 @@ def test_init_vector_uses_whitelist_override(
             self,
             dataset: Dataset,
             attributes: list[str],
-            embeddings: object,
+            embeddings: str,
             *,
             session: Session,
-        ) -> object:
+        ) -> str:
             return "vector-processor"
 
     tenant_id = str(uuid4())
