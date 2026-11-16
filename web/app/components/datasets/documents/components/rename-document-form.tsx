@@ -17,7 +17,7 @@ import { useImperativeHandle } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
-import { documentRenameKey } from './document-rename-mutation'
+import { documentRenameFilter } from '@/service/datasets'
 
 export type DocumentToRename = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
@@ -34,11 +34,9 @@ export function RenameDocumentForm({
 }) {
   const { t } = useTranslation(['common', 'datasetDocuments'])
   useImperativeHandle(activeDocumentIdRef, () => document.id, [document.id])
-  const mutationKey = documentRenameKey(datasetId, document.id)
-  const saving = useIsMutating({ mutationKey }) > 0
+  const saving = useIsMutating(documentRenameFilter(datasetId, document.id)) > 0
   const rename = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationOptions({
-      mutationKey,
       context: { silent: true },
     }),
   )

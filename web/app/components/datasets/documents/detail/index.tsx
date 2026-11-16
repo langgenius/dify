@@ -42,9 +42,9 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { documentRenameFilter } from '@/service/datasets'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
-import { documentRenameKey } from '../components/document-rename-mutation'
 import Operations from '../components/operations'
 import { RenameDocumentForm } from '../components/rename-document-form'
 import StatusItem from '../status-item'
@@ -383,10 +383,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             <Dialog
               open={renameOpen}
               onOpenChange={(open, details) => {
-                if (
-                  !open &&
-                  queryClient.isMutating({ mutationKey: documentRenameKey(datasetId, documentId) })
-                )
+                if (!open && queryClient.isMutating(documentRenameFilter(datasetId, documentId)))
                   details.cancel()
                 else setRenameOpen(open)
               }}

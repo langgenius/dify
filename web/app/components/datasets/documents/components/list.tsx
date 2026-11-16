@@ -17,11 +17,11 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { ChunkingMode, DocumentActionType } from '@/models/datasets'
+import { documentRenameFilter } from '@/service/datasets'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import BatchAction from '../detail/completed/common/batch-action'
 import { DocumentTableRow, SortHeader } from './document-list/components'
 import { useDocumentActions, useDocumentSelection, useDocumentSort } from './document-list/hooks'
-import { documentRenameKey } from './document-rename-mutation'
 import { RenameDocumentForm } from './rename-document-form'
 
 type LocalDoc = DocumentWithSegmentsResponse & { percent?: number }
@@ -297,9 +297,7 @@ const DocumentList = ({
             !open &&
             details.reason !== 'imperative-action' &&
             activeDocumentIdRef.current &&
-            queryClient.isMutating({
-              mutationKey: documentRenameKey(datasetId, activeDocumentIdRef.current),
-            })
+            queryClient.isMutating(documentRenameFilter(datasetId, activeDocumentIdRef.current))
           )
             details.cancel()
         }}

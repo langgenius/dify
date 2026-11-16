@@ -9,9 +9,9 @@ import { useQueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
+import { documentRenameFilter } from '@/service/datasets'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { documentRenameKey } from '../document-rename-mutation'
 import { RenameDocumentForm } from '../rename-document-form'
 
 const { rename, toastError } = vi.hoisted(() => ({ rename: vi.fn(), toastError: vi.fn() }))
@@ -55,9 +55,9 @@ function RenameSession({
             !open &&
             details.reason !== 'imperative-action' &&
             activeDocumentIdRef.current &&
-            queryClient.isMutating({
-              mutationKey: documentRenameKey(props.datasetId, activeDocumentIdRef.current),
-            })
+            queryClient.isMutating(
+              documentRenameFilter(props.datasetId, activeDocumentIdRef.current),
+            )
           )
             details.cancel()
         }}

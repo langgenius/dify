@@ -1,11 +1,23 @@
 import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
+import type { MutationFilters } from '@tanstack/react-query'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import type { FetchDatasetsParams } from '@/models/datasets'
 import type { ConsoleClientContext } from '@/service/console'
+import { isPlainObject } from 'es-toolkit/predicate'
 import { DataSourceProvider } from '@/models/common'
 // oxlint-disable-next-line no-restricted-imports -- the zip download needs the raw Blob response
 import { post } from './base'
-import { consoleClient } from './console'
+import { consoleClient, consoleQuery } from './console'
+
+export function documentRenameFilter(datasetId: string, documentId: string): MutationFilters {
+  return {
+    mutationKey: consoleQuery.datasets.byDatasetId.documents.byDocumentId.rename.post.mutationKey(),
+    predicate: ({ state: { variables } }) =>
+      isPlainObject(variables) &&
+      variables.params?.dataset_id === datasetId &&
+      variables.params?.document_id === documentId,
+  }
+}
 
 // apis for documents in a dataset
 
