@@ -177,6 +177,24 @@ def test_pending_form_stops_at_the_pause_and_closes_the_stream(
     assert frames.closed
 
 
+class _RaisingFrames(_RecordedFrames):
+    def __iter__(self) -> Iterator[Mapping[str, object]]:
+        yield self._frames[0]
+        raise RuntimeError("stream broke")
+
+
+def test_pending_form_closes_the_stream_when_reading_raises(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    frames = _RaisingFrames([_FORM_FRAME])
+    _patch_stream(monkeypatch, frames)
+
+    with pytest.raises(RuntimeError, match="stream broke"):
+        _read_form(sqlite_session, sqlite_session_factory)
+
+    assert frames.closed
+
+
 def test_pending_form_is_none_when_the_run_is_not_waiting_on_a_form(
     sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch
 ) -> None:
