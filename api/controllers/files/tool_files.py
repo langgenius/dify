@@ -6,7 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.files import files_ns
 from extensions.ext_application_services import application_services
@@ -70,11 +70,12 @@ class ToolFileApi(Resource):
             encoded_filename = quote(download.filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
-        enforce_download_for_html(
+        harden_active_content_response(
             response,
             mime_type=download.mime_type,
             filename=download.filename,
             extension=extension,
+            inline_svg=not args.as_attachment,
         )
 
         return response

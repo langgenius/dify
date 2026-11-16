@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 import re
 import uuid
@@ -9,6 +12,7 @@ from decimal import Decimal
 from enum import StrEnum, auto
 from functools import lru_cache
 from typing import TYPE_CHECKING, Any, Literal, NotRequired, TypedDict, cast, override
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import sqlalchemy as sa
@@ -93,6 +97,18 @@ def _build_app_tenant_resolver(
         return resolved_tenant_id
 
     return resolve_owner_tenant_id
+
+
+def _has_authentic_file_signature(url: str, *, file_id: str, preview_kind: str = "file") -> bool:
+    """Check the original HMAC (ignoring expiry) before renewing a file URL found in an answer."""
+    query = parse_qs(urlsplit(url).query, keep_blank_values=True)
+    if any(len(query.get(key, [])) != 1 for key in ("timestamp", "nonce", "sign")):
+        return False
+    payload = f"{preview_kind}-preview|{file_id}|{query['timestamp'][0]}|{query['nonce'][0]}"
+    expected = base64.urlsafe_b64encode(
+        hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+    )
+    return hmac.compare_digest(query["sign"][0].encode(), expected)
 
 
 class EnabledConfig(TypedDict):
@@ -1627,7 +1643,7 @@ class Message(Base):
                 else:
                     extension = ".bin"
 
-                if not tool_file_id:
+                if not tool_file_id or not _has_authentic_file_signature(url, file_id=tool_file_id):
                     continue
 
                 sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=extension)
@@ -1639,7 +1655,7 @@ class Message(Base):
                     continue
 
                 upload_file_id = result.group(1)
-                if not upload_file_id:
+                if not upload_file_id or not _has_authentic_file_signature(url, file_id=upload_file_id):
                     continue
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             elif "image-preview" in url:
@@ -1650,7 +1666,9 @@ class Message(Base):
                     continue
 
                 upload_file_id = result.group(1)
-                if not upload_file_id:
+                if not upload_file_id or not _has_authentic_file_signature(
+                    url, file_id=upload_file_id, preview_kind="image"
+                ):
                     continue
                 sign_url = file_helpers.get_signed_file_url(upload_file_id)
             else:
