@@ -79,7 +79,6 @@ project-excludes = [
   "core/plugin/impl/test_endpoint.py",
   "core/plugin/entities/test_plugin_daemon.py",
   "core/plugin/impl/test_plugin.py",
-  "core/prompt/test_advanced_prompt_transform.py",
   "core/rag/data_post_processor/test_data_post_processor.py",
   "core/rag/datasource/test_retrieval_service.py",
   "core/rag/datasource/vdb/test_vector_factory.py",
