@@ -52,7 +52,7 @@ class OpenAPISchema(_RefKeyword, total=False, extra_items=OpenAPIJSON):
     properties: dict[str, OpenAPISchema]
     required: list[str]
     items: OpenAPISchema
-    additionalProperties: OpenAPISchema
+    additionalProperties: OpenAPISchema | bool
     anyOf: list[OpenAPISchema]
     oneOf: list[OpenAPISchema]
     allOf: list[OpenAPISchema]
