@@ -115,11 +115,13 @@ it('shows read-only API cards without management controls', async () => {
 })
 
 it('opens a blank creation form and refreshes the list from the saved API', async () => {
+  const refresh = createDeferred<ExternalKnowledgeApiListResponse>()
   let saved: ExternalKnowledgeApiListResponse['data'] = []
   api.list.mockImplementation(async () => ({ ...response, data: saved, total: saved.length }))
   api.create.mockImplementation(async ({ body }) => {
     const created = { ...response.data[0]!, ...body }
     saved = [created]
+    api.list.mockReturnValue(refresh.promise)
     return created
   })
   const screen = await setup()
@@ -136,6 +138,7 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   await key.fill('secret-key')
   await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
+  refresh.resolve({ ...response, data: saved, total: saved.length })
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
   expect(api.create).toHaveBeenCalledExactlyOnceWith(
@@ -182,4 +185,17 @@ it('retains the external API draft and allows cancel after an offline save fails
   await expect.element(name).toHaveValue('Draft')
   await dialog.getByRole('button', { name: /cancel/i }).click()
   await expect.element(dialog).not.toBeInTheDocument()
+})
+
+it('attempts an offline edit immediately without opening an editor on reconnect', async () => {
+  api.get.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+  const screen = await setup()
+  const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
+  await expect.element(edit).toBeVisible()
+  onlineManager.setOnline(false)
+  onTestFinished(() => onlineManager.setOnline(true))
+  await edit.click()
+  await expect.poll(() => api.get.mock.calls.length).toBe(1)
+  onlineManager.setOnline(true)
+  await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
 })

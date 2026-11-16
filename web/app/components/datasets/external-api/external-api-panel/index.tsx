@@ -29,6 +29,7 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
   const docLink = useDocLink()
   const [dialog] = useState(() => createDialogHandle<ExternalKnowledgeApiResponse>())
   const details = useMutation({
+    networkMode: 'always',
     mutationFn: (apiTemplateId: string) => fetchExternalAPI({ apiTemplateId }),
   })
   const save = useSaveExternalApi()

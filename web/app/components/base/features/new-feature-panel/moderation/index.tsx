@@ -91,8 +91,8 @@ const Moderation = ({ disabled, onChange }: Props) => {
             </div>
           )}
           {!!moderation?.enabled && (
-            <div className="relative">
-              <div className="flex items-center gap-4 pt-0.5 group-focus-within/feature-card:invisible group-hover/feature-card:invisible">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
                   <div className="mb-0.5 system-2xs-medium-uppercase text-text-tertiary">
                     {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
@@ -112,7 +112,7 @@ const Moderation = ({ disabled, onChange }: Props) => {
                 payload={moderation}
                 render={
                   <Button
-                    className="absolute inset-0 w-full opacity-0 group-focus-within/feature-card:opacity-100 group-hover/feature-card:opacity-100"
+                    className="shrink-0 group-hover/feature-card:opacity-100 focus-visible:opacity-100 pointer-fine:opacity-0"
                     disabled={disabled}
                   />
                 }

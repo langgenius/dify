@@ -77,7 +77,7 @@ it('keeps a pending save open on Escape and retains the entered draft for retry'
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await key.fill('draft-key')
-  await save.click()
+  await userEvent.keyboard('{Enter}')
   await expect.element(save).toBeDisabled()
   await expect
     .element(screen.getByRole('button', { name: 'common.operation.cancel' }))

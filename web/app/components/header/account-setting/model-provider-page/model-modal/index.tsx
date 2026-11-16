@@ -25,7 +25,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useId, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
@@ -105,6 +105,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }).length &&
     canManageCredential
 
+  const formId = useId()
   const handleSave = useCallback(() => {
     if (
       mode === ModelModalModeEnum.addCustomModelToModelList &&
@@ -292,71 +293,77 @@ const ModelModal: FC<ModelModalProps> = ({
         />
       </DialogHeader>
       <DialogBody>
-        {mode === ModelModalModeEnum.configCustomModel && (
-          <AuthForm
-            disabled={doingAction}
-            preventDefaultSubmit
-            onSubmit={handleSave}
-            formSchemas={
-              modelNameAndTypeFormSchemas.map((formSchema) => {
-                return {
-                  ...formSchema,
-                  name: formSchema.variable,
-                }
-              }) as FormSchema[]
-            }
-            defaultValues={modelNameAndTypeFormValues}
-            inputClassName="justify-start"
-            ref={modelFormRef}
-            onChange={handleModelNameAndTypeChange}
-          />
-        )}
-        {mode === ModelModalModeEnum.addCustomModelToModelList && (
-          <CredentialSelector
-            credentials={available_credentials || []}
-            onSelect={setSelectedCredential}
-            selectedCredential={selectedCredential}
-            disabled={isLoading || doingAction}
-            notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
-          />
-        )}
-        {showCredentialLabel && (
-          <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-            {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
-            <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
-          </div>
-        )}
-        {isLoading && (
-          <div className="mt-3 flex items-center justify-center">
-            <LoadingPlaceholder />
-          </div>
-        )}
-        {!isLoading && showCredentialForm && (
-          <AuthForm
-            disabled={doingAction}
-            preventDefaultSubmit
-            onSubmit={handleSave}
-            formSchemas={
-              formSchemas.map((formSchema) => {
-                return {
-                  ...formSchema,
-                  name: formSchema.variable,
-                  showRadioUI: formSchema.type === FormTypeEnum.radio,
-                  ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
-                    ? {
-                        description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
-                          ns: 'modelProvider',
-                        }),
-                      }
-                    : {}),
-                }
-              }) as FormSchema[]
-            }
-            defaultValues={formValues}
-            inputClassName="justify-start"
-            ref={credentialFormRef}
-          />
-        )}
+        <form
+          id={formId}
+          onSubmit={(event) => {
+            event.preventDefault()
+            if (!isLoading && !doingAction && canSaveCredentialChange) handleSave()
+          }}
+        >
+          {mode === ModelModalModeEnum.configCustomModel && (
+            <AuthForm
+              disabled={doingAction}
+              as="fieldset"
+              formSchemas={
+                modelNameAndTypeFormSchemas.map((formSchema) => {
+                  return {
+                    ...formSchema,
+                    name: formSchema.variable,
+                  }
+                }) as FormSchema[]
+              }
+              defaultValues={modelNameAndTypeFormValues}
+              inputClassName="justify-start"
+              ref={modelFormRef}
+              onChange={handleModelNameAndTypeChange}
+            />
+          )}
+          {mode === ModelModalModeEnum.addCustomModelToModelList && (
+            <CredentialSelector
+              credentials={available_credentials || []}
+              onSelect={setSelectedCredential}
+              selectedCredential={selectedCredential}
+              disabled={isLoading || doingAction}
+              notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
+            />
+          )}
+          {showCredentialLabel && (
+            <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
+              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
+              <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
+            </div>
+          )}
+          {isLoading && (
+            <div className="mt-3 flex items-center justify-center">
+              <LoadingPlaceholder />
+            </div>
+          )}
+          {!isLoading && showCredentialForm && (
+            <AuthForm
+              disabled={doingAction}
+              as="fieldset"
+              formSchemas={
+                formSchemas.map((formSchema) => {
+                  return {
+                    ...formSchema,
+                    name: formSchema.variable,
+                    showRadioUI: formSchema.type === FormTypeEnum.radio,
+                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                      ? {
+                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                            ns: 'modelProvider',
+                          }),
+                        }
+                      : {}),
+                  }
+                }) as FormSchema[]
+              }
+              defaultValues={formValues}
+              inputClassName="justify-start"
+              ref={credentialFormRef}
+            />
+          )}
+        </form>
       </DialogBody>
       <DialogFooter>
         {provider.help && (provider.help.title || provider.help.url) && (
@@ -392,7 +399,8 @@ const ModelModal: FC<ModelModalProps> = ({
         </DialogClose>
         <Button
           variant="primary"
-          onClick={handleSave}
+          type="submit"
+          form={formId}
           disabled={isLoading || doingAction || !canSaveCredentialChange}
         >
           {saveButtonText}

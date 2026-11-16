@@ -14,6 +14,7 @@ import { FormItemValidateStatusEnum } from '@/app/components/base/form/types'
 import { BaseField } from '.'
 
 export type BaseFormProps = {
+  as?: 'form' | 'fieldset'
   formSchemas?: FormSchema[]
   defaultValues?: Record<string, any>
   formClassName?: string
@@ -29,6 +30,7 @@ export type BaseFormProps = {
 >
 
 const BaseForm = ({
+  as = 'form',
   formSchemas = [],
   defaultValues,
   formClassName,
@@ -58,7 +60,7 @@ const BaseForm = ({
     defaultValues: initialDefaultValues,
   })
   const form: any = formFromProps || formFromHook
-  const formElementRef = useRef<HTMLFormElement>(null)
+  const formElementRef = useRef<HTMLFormElement | HTMLFieldSetElement>(null)
   const focusInvalidField = useCallback(
     (name: string) => {
       form.setFieldMeta(name, (meta: AnyFieldApi['state']['meta']) => ({
@@ -200,9 +202,20 @@ const BaseForm = ({
     onSubmit?.(e)
   }
 
+  const setContainer = (node: HTMLFormElement | HTMLFieldSetElement | null) => {
+    formElementRef.current = node
+  }
+  const fields = formSchemas.map(renderFieldWrapper)
+  if (as === 'fieldset') {
+    return (
+      <fieldset ref={setContainer} className={formClassName} disabled={disabled}>
+        {fields}
+      </fieldset>
+    )
+  }
   return (
-    <form ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
-      {formSchemas.map(renderFieldWrapper)}
+    <form ref={setContainer} className={cn(formClassName)} onSubmit={handleSubmit}>
+      {fields}
     </form>
   )
 }

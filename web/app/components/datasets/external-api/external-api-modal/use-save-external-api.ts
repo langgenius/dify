@@ -16,10 +16,11 @@ export function useSaveExternalApi() {
             { context: { silent: true } },
           )
         : consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } }),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
         queryKey: consoleQuery.datasets.externalKnowledgeApi.get.key(),
-      }),
+      })
+    },
     onError: () => toast.error(t(($) => $['api.actionFailed'])),
   })
 }
