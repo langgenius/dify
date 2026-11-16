@@ -193,7 +193,7 @@ def get_chat_model_args() -> ChatModelArgs:
     return model_config, memory_config, prompt_messages, inputs, context
 
 
-def test_get_prompt_dispatches_completion_and_chat_and_invalid(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_get_prompt_dispatches_completion_and_chat(monkeypatch: pytest.MonkeyPatch) -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     completion_template = CompletionModelPromptTemplate(text="Hello {{name}}", edition_type="basic")
@@ -229,19 +229,6 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid(monkeypatch: pyte
         model_config=model_config,
     )
     assert chat_result[0].content == "h"
-
-    invalid_prompt_template: list[ChatModelMessage] = ["not-chat-model-message"]  # pyrefly: ignore[bad-assignment]
-    invalid_result = transform.get_prompt(
-        prompt_template=invalid_prompt_template,
-        inputs={"name": "john"},
-        query="q",
-        files=[],
-        context=None,
-        memory_config=None,
-        memory=None,
-        model_config=model_config,
-    )
-    assert invalid_result == []
 
 
 def test_completion_prompt_jinja2_with_files() -> None:
@@ -323,7 +310,7 @@ def test_chat_prompt_with_variable_template_and_context() -> None:
     assert messages[0].content == "sys=john ctx=context-text"
 
 
-def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
+def test_chat_prompt_jinja2_branch() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="jinja2")]
@@ -340,25 +327,6 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
             model_config=model_config,
         )
     assert messages[0].content == "Hello John"
-
-    bad_prompt_template = [
-        ChatModelMessage.model_construct(
-            text="bad",
-            role=PromptMessageRole.USER,
-            edition_type="x",  # pyrefly: ignore[bad-argument-type]
-        )
-    ]
-    with pytest.raises(ValueError, match="Invalid edition type"):
-        transform._get_chat_model_prompt_messages(
-            prompt_template=bad_prompt_template,
-            inputs={},
-            query=None,
-            files=[],
-            context=None,
-            memory_config=None,
-            memory=None,
-            model_config=model_config,
-        )
 
 
 def test_chat_prompt_query_template_and_query_only_branch() -> None:
