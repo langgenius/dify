@@ -504,7 +504,7 @@ def test_agent_invoke_tool_invoke_error(sqlite_session: Session):
 
 
 @pytest.mark.parametrize("sqlite_session", [()], indirect=True)
-def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session):
+def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session) -> None:
     # No single LLM parameter, so the JSON-parse branch runs instead of the
     # pass-through that wraps the raw string.
     tool = _build_tool()
@@ -551,7 +551,7 @@ def test_agent_invoke_parses_json_string_parameters(sqlite_session: Session):
 )
 def test_agent_invoke_rejects_non_dict_parameter_string(
     sqlite_session: Session, bad_parameters: str, interpolated_value: str
-):
+) -> None:
     tool = _build_tool()
     callback = DifyAgentCallbackHandler()
     message = _message()
