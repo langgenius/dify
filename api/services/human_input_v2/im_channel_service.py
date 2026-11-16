@@ -6,6 +6,7 @@ import secrets
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from http import HTTPStatus
 from typing import Never, override
 from urllib.parse import quote
 
@@ -77,6 +78,12 @@ _AVAILABLE_PROVIDERS = (
 _INITIAL_CONFIG_VERSION = 1
 _INVALID_CREDENTIALS_DESCRIPTION = "The submitted credentials are invalid."
 _CONNECTION_FAILURE_DESCRIPTION = "The provider connection could not be established."
+_DINGTALK_TOKEN_UNKNOWN_ERROR_CODE = "unknownError"
+_DINGTALK_CONFIGURATION_FAILURE_DESCRIPTION = (
+    "DingTalk could not verify the application configuration. "
+    "Copy the Corp ID from the DingTalk Developer Console home page, "
+    "and verify the Client ID and Client Secret."
+)
 _IM_CALLBACK_PATH = "/callbacks/human-input/v2/im"
 
 
@@ -334,13 +341,18 @@ class IMChannelService(ABC):
             adapter.close()
 
         if isinstance(tested, CredentialTestFailure):
-            self._raise_provider_failure(tested)
+            self._raise_provider_failure(credentials.provider, tested)
         if tested.provider is not credentials.provider:
             raise AssertionError("provider adapter returned a mismatched provider")
         return tested
 
     @staticmethod
-    def _raise_provider_failure(failure: CredentialTestFailure) -> Never:
+    def _raise_provider_failure(provider: IMProvider, failure: CredentialTestFailure) -> Never:
+        """Map a provider rejection to a credential-free management failure.
+
+        Known ambiguous DingTalk token errors include configuration guidance
+        without asserting which credential is wrong. Raw reasons stay private.
+        """
         if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED:
             raise ChannelProviderError(
                 ProviderFailureKind.INVALID_CREDENTIALS,
@@ -349,9 +361,17 @@ class IMChannelService(ABC):
                 missing_permissions=failure.missing_permissions,
                 http_status=failure.http_status,
             )
+        status_description = _CONNECTION_FAILURE_DESCRIPTION
+        if (
+            provider is IMProvider.DING_TALK
+            and failure.kind is CredentialTestFailureKind.UNKNOWN
+            and failure.http_status == HTTPStatus.INTERNAL_SERVER_ERROR
+            and failure.provider_error_code == _DINGTALK_TOKEN_UNKNOWN_ERROR_CODE
+        ):
+            status_description = _DINGTALK_CONFIGURATION_FAILURE_DESCRIPTION
         raise ChannelProviderError(
             ProviderFailureKind.CONNECTION_FAILURE,
-            _CONNECTION_FAILURE_DESCRIPTION,
+            status_description,
             provider_error_code=failure.provider_error_code,
             missing_permissions=failure.missing_permissions,
             http_status=failure.http_status,

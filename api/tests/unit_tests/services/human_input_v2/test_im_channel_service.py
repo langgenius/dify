@@ -451,6 +451,61 @@ def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(
     assert state.current is None
 
 
+@pytest.mark.parametrize("operation", ["test", "create"])
+@pytest.mark.parametrize(
+    ("credential_case", "http_status", "provider_error_code", "expected_guidance"),
+    [
+        (_CASES[3], 500, "unknownError", True),
+        (_CASES[3], 503, "unknownError", False),
+        (_CASES[3], 500, "server.error", False),
+        (_CASES[2], 500, "unknownError", False),
+    ],
+)
+def test_dingtalk_ambiguous_token_rejection_explains_configuration_checks(
+    monkeypatch: pytest.MonkeyPatch,
+    operation: str,
+    credential_case: _CredentialCase,
+    http_status: int,
+    provider_error_code: str,
+    expected_guidance: bool,
+) -> None:
+    state = _State()
+    service = _TestService(state)
+    _install_adapter(
+        monkeypatch,
+        state,
+        provider=credential_case.credentials.provider,
+        result=CredentialTestFailure(
+            CredentialTestFailureKind.UNKNOWN,
+            "raw provider-secret-diagnostic",
+            provider_error_code,
+            http_status=http_status,
+        ),
+    )
+
+    command = service.test if operation == "test" else service.create
+    with pytest.raises(ChannelProviderError) as captured:
+        command(credential_case.credentials)
+
+    description = captured.value.status_description
+    assert captured.value.kind is ProviderFailureKind.CONNECTION_FAILURE
+    assert captured.value.http_status == http_status
+    assert captured.value.provider_error_code == provider_error_code
+    if expected_guidance:
+        assert "Corp ID" in description
+        assert "DingTalk Developer Console home page" in description
+        assert "Client ID" in description
+        assert "Client Secret" in description
+    else:
+        assert description.startswith("The provider connection could not be established.")
+        assert "Corp ID" not in description
+    assert f"HTTP status: {http_status}." in description
+    assert f"API error code: {provider_error_code}." in description
+    assert "provider-secret-diagnostic" not in description
+    assert state.current is None
+    assert service.cipher.plaintexts == []
+
+
 @pytest.mark.parametrize("failure_point", ["build", "test", "close", "cipher"])
 def test_unclassified_provider_adapter_and_cipher_failures_propagate_unchanged(
     monkeypatch: pytest.MonkeyPatch,
