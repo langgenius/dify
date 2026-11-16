@@ -152,8 +152,9 @@ class ProviderConfigGateway(TracingConfigProviderGateway):
                 values[field.name] = submitted[field.name]
         try:
             config = model.model_validate(values)
+            normalized_values = config.model_dump()
             if current is not None and any(
-                getattr(config, name) != getattr(current, name) for name in model.destination_fields()
+                normalized_values[name] != current_values[name] for name in model.destination_fields()
             ):
                 for name in model.secret_fields():
                     if self._left_unchanged(submitted, name, current_values.get(name)):
