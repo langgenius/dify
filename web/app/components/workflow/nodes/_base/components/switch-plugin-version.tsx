@@ -63,6 +63,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
 
   const [pluginId] = uniqueIdentifier.split(':')
   const [requestedOpen, setRequestedOpen] = useState(false)
+  const [acceptedTaskId, setAcceptedTaskId] = useState<string | null>(null)
   const [installDialog] = useState(() => createDialogHandle<PluginVersionSelection>())
   const { getIconUrl } = useGetIcon()
   const queryClient = useQueryClient()
@@ -84,22 +85,28 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const { t } = useTranslation(['workflowAgent', 'plugin', 'common', 'appLog'])
   const upgrade = useMutation({
     mutationFn: async ({ plugin, target }: PluginVersionSelection) => {
-      const response = await startMarketplacePluginUpgrade(queryClient, {
-        new_plugin_unique_identifier: target.unique_identifier,
-        original_plugin_unique_identifier: plugin.plugin_unique_identifier,
-      })
-      if (response.all_installed || response.task?.status === TaskStatus.success) return
-      if (response.task?.status === TaskStatus.failed) {
-        const failed = response.task.plugins.find(
-          (item) => item.plugin_unique_identifier === target.unique_identifier,
-        )
-        throw new Error(failed?.message || t(($) => $.error, { ns: 'common' }))
+      let taskId = acceptedTaskId
+      if (!taskId) {
+        const response = await startMarketplacePluginUpgrade(queryClient, {
+          new_plugin_unique_identifier: target.unique_identifier,
+          original_plugin_unique_identifier: plugin.plugin_unique_identifier,
+        })
+        if (response.all_installed || response.task?.status === TaskStatus.success) return
+        if (response.task?.status === TaskStatus.failed) {
+          const failed = response.task.plugins.find(
+            (item) => item.plugin_unique_identifier === target.unique_identifier,
+          )
+          throw new Error(failed?.message || t(($) => $.error, { ns: 'common' }))
+        }
+        if (!response.task_id) throw new Error(t(($) => $.error, { ns: 'common' }))
+        taskId = response.task_id
+        setAcceptedTaskId(taskId)
       }
-      if (!response.task_id) throw new Error(t(($) => $.error, { ns: 'common' }))
       const result = await checkTaskStatus().check({
-        taskId: response.task_id,
+        taskId,
         pluginUniqueIdentifier: target.unique_identifier,
       })
+      setAcceptedTaskId(null)
       if (result.status === TaskStatus.failed)
         throw new Error(result.error || t(($) => $.error, { ns: 'common' }))
     },
@@ -132,8 +139,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
       <Dialog
         handle={installDialog}
         onOpenChange={(open, details) => {
-          if (open) upgrade.reset()
-          else if (upgrade.isPending && details.reason !== 'imperative-action') details.cancel()
+          if (open) {
+            setAcceptedTaskId(null)
+            upgrade.reset()
+          } else if (upgrade.isPending && details.reason !== 'imperative-action') details.cancel()
         }}
       >
         {({ payload: selection }) =>
@@ -204,7 +213,9 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                     })
                   }}
                 >
-                  {t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflowAgent' })}
+                  {acceptedTaskId && upgrade.isError
+                    ? t(($) => $['operation.retry'], { ns: 'common' })
+                    : t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflowAgent' })}
                 </Button>
               </DialogFooter>
             </DialogContent>

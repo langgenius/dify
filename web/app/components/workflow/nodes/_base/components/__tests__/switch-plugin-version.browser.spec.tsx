@@ -176,6 +176,7 @@ it.each(['success', 'failed'] as const)(
         .toHaveTextContent('Package installation failed')
       expect(api.detail).toHaveBeenCalledTimes(detailRequests)
       await confirm.click()
+      expect(api.upgrade).toHaveBeenCalledTimes(2)
     }
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
@@ -224,3 +225,35 @@ it.each(['failed task', 'missing task ID'] as const)(
     expect(api.task).not.toHaveBeenCalled()
   },
 )
+
+it('retries the status of the accepted upgrade inside the same dialog', async () => {
+  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'accepted' })
+  api.task
+    .mockRejectedValueOnce(new Error('Connection lost'))
+    .mockRejectedValueOnce(new Error('Still offline'))
+  const { trigger } = await setup()
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog
+    .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+    .click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent('Connection lost')
+  await dialog.getByRole('button', { name: 'common.operation.retry' }).click()
+  await expect.element(dialog.getByRole('alert')).toHaveTextContent('Still offline')
+  expect(api.upgrade).toHaveBeenCalledOnce()
+  expect(api.task.mock.calls.map(([input]) => input.params.task_id)).toEqual([
+    'accepted',
+    'accepted',
+  ])
+
+  await userEvent.keyboard('{Escape}')
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^0\.5\.0/ }).click()
+  await dialog
+    .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+    .click()
+  await expect.element(dialog).not.toBeInTheDocument()
+  expect(api.upgrade).toHaveBeenCalledTimes(2)
+  expect(api.upgrade.mock.calls[1]?.[0].body.new_plugin_unique_identifier).toBe(identifier('0.5.0'))
+})
