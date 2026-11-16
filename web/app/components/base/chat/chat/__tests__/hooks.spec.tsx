@@ -1059,12 +1059,10 @@ describe('useChat', () => {
       ({ stream, isNewAgent }) => {
         let callbacks: HookCallbacks
         if (stream === 'send') {
-          // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing chat SSE transport boundary.
           vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
             callbacks = options as HookCallbacks
           })
         } else {
-          // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing resumed SSE transport boundary.
           vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
             callbacks = options as HookCallbacks
           })
@@ -1151,7 +1149,6 @@ describe('useChat', () => {
 
     it('moves an earlier answer attachment to its thought when ownership arrives', () => {
       let callbacks: HookCallbacks
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing chat SSE transport boundary.
       vi.mocked(ssePost).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
       })
@@ -1182,7 +1179,6 @@ describe('useChat', () => {
 
     it('updates existing response thought parts when resuming without the new agent option', () => {
       let callbacks: HookCallbacks
-      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the existing resumed SSE transport boundary.
       vi.mocked(sseGet).mockImplementation(async (_url, _params, options) => {
         callbacks = options as HookCallbacks
       })
