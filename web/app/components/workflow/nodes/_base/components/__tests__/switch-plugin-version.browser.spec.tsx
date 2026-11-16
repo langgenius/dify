@@ -384,6 +384,8 @@ it.each(['task on second page', 'list unavailable'] as const)(
       .toHaveTextContent(
         scenario === 'list unavailable' ? 'Network unavailable' : 'Status unavailable',
       )
+    if (scenario === 'task on second page')
+      expect(api.tasks.mock.calls.map(([input]) => input?.query?.page)).toEqual([1, 2])
     expect(api.task).toHaveBeenCalledOnce()
     await userEvent.keyboard('{Escape}')
     await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
