@@ -146,7 +146,7 @@ describe('Comment thread focus', () => {
         onClose={onClose}
         onReply={() => {}}
         onReplyEdit={() => {}}
-        onReplyDeleteDirect={onDelete}
+        onReplyDelete={onDelete}
       />,
     )
     await act(() => vi.advanceTimersByTimeAsync(100))
@@ -175,7 +175,9 @@ describe('Comment thread focus', () => {
     const reopened = await screen.findByRole('alertdialog')
     await user.click(within(reopened).getByRole('button', { name: 'common.operation.delete' }))
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(reopened).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -207,7 +209,7 @@ describe('Comment thread focus', () => {
           onClose={() => {}}
           onReply={() => {}}
           onReplyEdit={() => {}}
-          onReplyDeleteDirect={async (id) => {
+          onReplyDelete={async (id) => {
             setLoading(true)
             onDelete(id)
             await deletion

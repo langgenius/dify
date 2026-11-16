@@ -3668,11 +3668,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/comment/thread.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/workflow/context.tsx": {
     "react/only-export-components": {
       "count": 1

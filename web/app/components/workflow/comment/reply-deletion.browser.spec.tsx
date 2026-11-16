@@ -1,4 +1,5 @@
 import type { WorkflowCommentDetail } from '@dify/contracts/api/console/apps/types.gen'
+import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { renderWorkflowBrowserComponent as render } from '../__tests__/workflow-browser-test-env'
@@ -24,27 +25,42 @@ const comment: WorkflowCommentDetail = {
       created_by_account: author,
       created_at: 2,
     },
+    {
+      id: 'second-reply',
+      content: 'A second reply',
+      created_by: 'author',
+      created_by_account: author,
+      created_at: 3,
+    },
   ],
 }
 
 function Fixture({ onDelete }: { onDelete: (id: string) => void }) {
+  const [detail, setDetail] = useState(comment)
   return (
     <>
       <button type="button">Outside thread</button>
-      <div id="workflow-container" style={{ position: 'relative', width: 1000, height: 650 }}>
+      <div
+        id="workflow-container"
+        className="isolate"
+        style={{ position: 'relative', width: 1000, height: 650 }}
+      >
         <CommentThread
-          comment={comment}
+          comment={detail}
           onClose={() => {}}
           onReply={() => {}}
           onReplyEdit={() => {}}
-          onReplyDeleteDirect={onDelete}
+          onReplyDelete={(id) => {
+            onDelete(id)
+            setDetail({ ...detail, replies: detail.replies.filter((reply) => reply.id !== id) })
+          }}
         />
       </div>
     </>
   )
 }
 
-it('lets keyboard users request reply deletion and returns focus to reply actions when cancelled', async () => {
+it('returns to the selected reply on cancel and the composer after deleting that reply', async () => {
   // Native Tab and CSS visibility expose regressions hidden by DOM-only tests.
   await page.viewport(1200, 800)
   const onDelete = vi.fn()
@@ -58,9 +74,11 @@ it('lets keyboard users request reply deletion and returns focus to reply action
   const replyInput = screen.getByRole('textbox')
   await expect.element(replyInput).toHaveFocus()
   await userEvent.tab({ shift: true })
-  const trigger = screen.getByRole('button', {
-    name: 'workflowComments.comments.aria.replyActions',
-  })
+  const trigger = screen
+    .getByRole('button', {
+      name: 'workflowComments.comments.aria.replyActions',
+    })
+    .last()
   await expect.element(trigger).toHaveFocus()
   expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
   await userEvent.keyboard('{ArrowDown}')
@@ -82,4 +100,11 @@ it('lets keyboard users request reply deletion and returns focus to reply action
   await expect.element(confirmation).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
   expect(trigger.element().checkVisibility({ checkOpacity: true })).toBe(true)
+  await trigger.click()
+  await deleteItem.click()
+  await confirmation.getByRole('button', { name: 'common.operation.delete' }).click()
+  expect(onDelete).toHaveBeenCalledExactlyOnceWith('second-reply')
+  await expect.element(screen.getByText('A second reply')).not.toBeInTheDocument()
+  await expect.element(screen.getByText('A reply')).toBeVisible()
+  await expect.element(replyInput).toHaveFocus()
 })
