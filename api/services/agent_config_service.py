@@ -22,7 +22,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from operator import itemgetter
-from typing import Any, Literal
+from typing import Literal
 
 from dotenv import dotenv_values
 from pydantic import BaseModel, ConfigDict, Field
@@ -51,7 +51,11 @@ from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
-from services.skill_management_service import SkillManagementService, SkillManagementServiceError
+from services.skill_management_service import (
+    RuntimeAgentSkillPayload,
+    SkillManagementService,
+    SkillManagementServiceError,
+)
 
 
 class AgentConfigVersionKind(StrEnum):
@@ -241,24 +245,6 @@ class AgentConfigSkillInspectPayload(TypedDict, closed=True):
     files: list[AgentConfigSkillArchiveEntryPayload]
     skill_md: AgentConfigFilePreviewPayload
     warnings: list[str]
-
-
-def _optional_size(value: object) -> int | None:
-    """Return the reported archive size when the workspace layer supplied a usable int.
-
-    ``SkillManagementService.list_runtime_agent_skills`` reports whatever the workspace layer
-    stored, so an absent or unexpected value must degrade to ``None`` rather than fail the listing.
-    Non-negative ints are the only values that can be a real archive size; ``bool`` is rejected
-    because ``isinstance(True, int)`` holds but ``True`` is not a byte count.
-    """
-    if isinstance(value, bool) or not isinstance(value, int):
-        return None
-    return value if value >= 0 else None
-
-
-def _optional_text(value: object) -> str | None:
-    """Return the reported string verbatim, or ``None`` when it is absent or not a string."""
-    return value if isinstance(value, str) else None
 
 
 @dataclass(slots=True)
@@ -1573,23 +1559,22 @@ class AgentConfigService:
         return items
 
     @staticmethod
-    def _runtime_skill_item_payload(item: dict[str, Any]) -> AgentConfigSkillItemPayload:
+    def _runtime_skill_item_payload(item: RuntimeAgentSkillPayload) -> AgentConfigSkillItemPayload:
         """Render one workspace-published skill as a config skill item.
 
         ``SkillManagementService.list_runtime_agent_skills`` reports stored archives only, so the
-        returned binding always carries a file and is therefore never missing. Unrelated keys the
-        workspace layer may add later are dropped here instead of leaking into the response.
+        returned binding always carries a file and is therefore never missing. The mapping is
+        already parsed at the source boundary, so every field is copied verbatim.
         """
-        name = str(item["name"])
         return {
-            "id": str(item.get("id") or name),
-            "name": name,
-            "file_id": str(item.get("file_id") or ""),
+            "id": item["id"],
+            "name": item["name"],
+            "file_id": item["file_id"],
             "is_missing": False,
-            "description": str(item.get("description") or ""),
-            "size": _optional_size(item.get("size")),
-            "hash": _optional_text(item.get("hash")),
-            "mime_type": _optional_text(item.get("mime_type")),
+            "description": item["description"],
+            "size": item["size"],
+            "hash": item["hash"],
+            "mime_type": item["mime_type"],
         }
 
     @staticmethod

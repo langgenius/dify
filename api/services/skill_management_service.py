@@ -36,6 +36,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 from sqlalchemy import delete, func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session, object_session
+from typing_extensions import TypedDict
 from yaml.error import MarkedYAMLError
 
 from configs import dify_config
@@ -564,6 +565,22 @@ class RuntimeAgentSkillArchive:
     priority: int
     size: int
     hash: str
+
+
+class RuntimeAgentSkillPayload(TypedDict):
+    """Runtime-facing view of one workspace Skill bound to an Agent.
+
+    The service builds this mapping itself from ``RuntimeAgentSkillArchive``, so every field is
+    already parsed at the boundary: callers never have to re-check keys or types.
+    """
+
+    id: str
+    name: str
+    file_id: str
+    description: str
+    size: int
+    hash: str
+    mime_type: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -2416,7 +2433,7 @@ class SkillManagementService:
         agent_id: str,
         include_draft: bool = False,
         config_snapshot_id: str | None = None,
-    ) -> list[dict[str, Any]]:
+    ) -> list[RuntimeAgentSkillPayload]:
         """Return workspace Skills from the Agent draft or a published snapshot."""
         return [
             {
