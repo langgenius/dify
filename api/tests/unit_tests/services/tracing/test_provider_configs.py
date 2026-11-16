@@ -240,14 +240,35 @@ def test_an_edited_destination_accepts_re_entered_secrets() -> None:
     assert egress.requests[0].url == "https://eu.langfuse.example/api/public/projects"
 
 
-def test_an_unchanged_destination_with_a_trailing_slash_keeps_secrets() -> None:
+@pytest.mark.parametrize(
+    ("host", "submitted_host"),
+    [
+        ("https://langfuse.example.com", "https://langfuse.example.com/"),
+        ("https://langfuse.example.com/base", "https://langfuse.example.com/base/"),
+    ],
+)
+def test_equivalent_destinations_keep_secrets(host: str, submitted_host: str) -> None:
     egress = RecordingEgress([_projects("project-1")], grpc_target=None)
 
     stored = _gateway(egress).prepare_updated_config(
         workspace_id=WORKSPACE,
         tracing_provider="langfuse",
-        tracing_config={"public_key": PUBLIC_KEY, "host": "https://langfuse.example.com/"},
-        current_tracing_config=_stored(),
+        tracing_config={"public_key": PUBLIC_KEY, "host": submitted_host},
+        current_tracing_config=_stored(host=host),
     )
 
     assert stored["secret_key"] == _encrypt(WORKSPACE, SECRET_KEY)
+    assert stored["host"] == host
+
+
+@pytest.mark.parametrize("submitted", [{}, {"host": ""}, {"host": "https://collector:invalid"}])
+def test_destination_defaults_and_invalid_urls_never_receive_saved_credentials(submitted: dict[str, object]) -> None:
+    egress = RecordingEgress([], grpc_target=None)
+    with pytest.raises(config_service.AppTracingConfigInvalidConfigurationError):
+        _gateway(egress).prepare_updated_config(
+            workspace_id=WORKSPACE,
+            tracing_provider="langfuse",
+            tracing_config=submitted,
+            current_tracing_config=_stored(),
+        )
+    assert egress.requests == []

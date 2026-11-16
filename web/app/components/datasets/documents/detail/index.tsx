@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -41,9 +42,11 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { documentRenameFilter } from '@/service/datasets'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
+import { RenameDocumentForm } from '../components/rename-document-form'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
 import Completed from './completed'
@@ -212,6 +215,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
+  const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
       invalidDocumentList()
@@ -376,7 +380,25 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 canEdit={canEditDocument}
               />
             )}
+            <Dialog
+              open={renameOpen}
+              onOpenChange={(open, details) => {
+                if (!open && queryClient.isMutating(documentRenameFilter(datasetId, documentId)))
+                  details.cancel()
+                else setRenameOpen(open)
+              }}
+            >
+              <DialogContent>
+                <RenameDocumentForm
+                  key={documentId}
+                  document={operationsDetail}
+                  datasetId={datasetId}
+                  onRenamed={() => setRenameOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
             <Operations
+              onRename={() => setRenameOpen(true)}
               scene="detail"
               embeddingAvailable={embeddingAvailable}
               detail={operationsDetail}
