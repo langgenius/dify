@@ -1,14 +1,16 @@
 import time
 import uuid
+from dataclasses import dataclass
 
 import pytest
-from pytest_mock import MockerFixture
+from pytest_mock import MockerFixture, MockType
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.index_processor import IndexProcessor
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
@@ -19,13 +21,13 @@ from core.workflow.nodes.knowledge_index.protocols import (
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.runtime import RuntimeState, VariablePool
+from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables.segments import StringSegment
 from tests.workflow_test_utils import build_test_graph_init_params
 
 
 @pytest.fixture
-def mock_graph_init_params():
+def mock_graph_init_params() -> InitParams:
     """Create mock InitParams."""
     return build_test_graph_init_params(
         workflow_id=str(uuid.uuid4()),
@@ -40,7 +42,7 @@ def mock_graph_init_params():
 
 
 @pytest.fixture
-def mock_graph_runtime_state():
+def mock_graph_runtime_state() -> RuntimeState:
     """Create mock RuntimeState."""
     variable_pool = VariablePool.from_bootstrap(
         system_variables=build_system_variables(user_id=str(uuid.uuid4()), files=[]),
@@ -51,33 +53,60 @@ def mock_graph_runtime_state():
     return RuntimeState(workflow_id="test-workflow", variable_pool=variable_pool, start_at=time.perf_counter())
 
 
+@dataclass(frozen=True)
+class IndexProcessorPatches:
+    """Patched I/O boundaries of the real ``IndexProcessor`` the node resolves.
+
+    Each field is the mock that replaced the bound method of the same name, so
+    tests program results and assert calls through typed attributes.
+    """
+
+    get_preview_output: MockType
+    index_and_clean: MockType
+
+
+@dataclass(frozen=True)
+class SummaryIndexPatches:
+    """Patched generation boundary of the real ``SummaryIndex`` the node resolves."""
+
+    generate_and_vectorize_summary: MockType
+
+
 @pytest.fixture
-def mock_index_processor(mocker: MockerFixture):
-    """Use the real processor with indexing and preview I/O boundaries patched."""
-    mock_processor = IndexProcessor()
-    mocker.patch.object(mock_processor, "get_preview_output")
-    mocker.patch.object(mock_processor, "index_and_clean")
+def mock_index_processor(mocker: MockerFixture) -> IndexProcessorPatches:
+    """Use the real processor with indexing and preview I/O boundaries patched.
+
+    For the test's duration the node module's ``IndexProcessor()`` returns this
+    one instance, so the returned mocks observe every call the node makes.
+    """
+    processor = IndexProcessor()
+    get_preview_output = mocker.patch.object(processor, "get_preview_output")
+    index_and_clean = mocker.patch.object(processor, "index_and_clean")
     mocker.patch(
         "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
-        return_value=mock_processor,
+        return_value=processor,
     )
-    return mock_processor
+    return IndexProcessorPatches(get_preview_output=get_preview_output, index_and_clean=index_and_clean)
 
 
 @pytest.fixture
-def mock_summary_index_service(mocker: MockerFixture):
-    """Use the real summary service with generation patched."""
-    mock_service = SummaryIndex()
-    mocker.patch.object(mock_service, "generate_and_vectorize_summary")
+def mock_summary_index_service(mocker: MockerFixture) -> SummaryIndexPatches:
+    """Use the real summary service with generation patched.
+
+    For the test's duration the node module's ``SummaryIndex()`` returns this
+    one instance, so the returned mock observes every generation request.
+    """
+    service = SummaryIndex()
+    generate_and_vectorize_summary = mocker.patch.object(service, "generate_and_vectorize_summary")
     mocker.patch(
         "core.workflow.nodes.knowledge_index.knowledge_index_node.SummaryIndex",
-        return_value=mock_service,
+        return_value=service,
     )
-    return mock_service
+    return SummaryIndexPatches(generate_and_vectorize_summary=generate_and_vectorize_summary)
 
 
 @pytest.fixture
-def sample_node_data():
+def sample_node_data() -> KnowledgeIndexNodeData:
     """Create sample KnowledgeIndexNodeData."""
     return KnowledgeIndexNodeData(
         title="Knowledge Index",
@@ -90,7 +119,7 @@ def sample_node_data():
 
 
 @pytest.fixture
-def sample_chunks():
+def sample_chunks() -> dict[str, object]:
     """Create sample chunks data."""
     return {
         "general_chunks": ["Chunk 1 content", "Chunk 2 content"],
@@ -102,8 +131,8 @@ def _build_node(
     *,
     node_id: str,
     node_data: KnowledgeIndexNodeData | dict[str, object],
-    init_params,
-    runtime_state,
+    init_params: InitParams,
+    runtime_state: RuntimeState,
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
@@ -124,12 +153,12 @@ class TestKnowledgeIndexNode:
 
     def test_run_without_dataset_id(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+    ) -> None:
         """Test _run raises KnowledgeIndexNodeError when dataset_id is not provided."""
         # Arrange
         node_id = str(uuid.uuid4())
@@ -151,12 +180,12 @@ class TestKnowledgeIndexNode:
 
     def test_run_without_index_chunk_variable(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+    ) -> None:
         """Test _run raises KnowledgeIndexNodeError when index chunk variable is not provided."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -184,12 +213,12 @@ class TestKnowledgeIndexNode:
 
     def test_run_with_empty_chunks(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+    ) -> None:
         """Test _run fails when chunks is empty."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -223,13 +252,13 @@ class TestKnowledgeIndexNode:
 
     def test_run_preview_mode_success(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-        sample_chunks,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+        sample_chunks: dict[str, object],
+    ) -> None:
         """Test _run succeeds in preview mode."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -280,13 +309,13 @@ class TestKnowledgeIndexNode:
 
     def test_run_production_mode_success(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-        sample_chunks,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+        sample_chunks: dict[str, object],
+    ) -> None:
         """Test _run succeeds in production mode."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -344,13 +373,13 @@ class TestKnowledgeIndexNode:
 
     def test_run_production_mode_without_batch(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-        sample_chunks,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+        sample_chunks: dict[str, object],
+    ) -> None:
         """Test _run fails when batch is not provided in production mode."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -393,13 +422,13 @@ class TestKnowledgeIndexNode:
 
     def test_run_with_knowledge_index_node_error(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-        sample_chunks,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+        sample_chunks: dict[str, object],
+    ) -> None:
         """Test _run handles KnowledgeIndexNodeError properly."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -451,13 +480,13 @@ class TestKnowledgeIndexNode:
 
     def test_run_with_generic_exception(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-        sample_chunks,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+        sample_chunks: dict[str, object],
+    ) -> None:
         """Test _run handles generic exceptions properly."""
         # Arrange
         dataset_id = str(uuid.uuid4())
@@ -509,13 +538,13 @@ class TestKnowledgeIndexNode:
 
     def test_invoke_knowledge_index(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
         sqlite_session: Session,
-    ):
+    ) -> None:
         # Arrange
         dataset_id = str(uuid.uuid4())
         document_id = str(uuid.uuid4())
@@ -561,12 +590,12 @@ class TestKnowledgeIndexNode:
 
     def test_get_streaming_template(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
-    ):
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
+    ) -> None:
         """Test get_streaming_template method."""
         # Arrange
         node_id = str(uuid.uuid4())
@@ -593,20 +622,20 @@ class TestKnowledgeIndexNode:
 class TestInvokeKnowledgeIndex:
     def test_invoke_with_summary_index_setting(
         self,
-        mock_graph_init_params,
-        mock_graph_runtime_state,
-        mock_index_processor,
-        mock_summary_index_service,
-        sample_node_data,
+        mock_graph_init_params: InitParams,
+        mock_graph_runtime_state: RuntimeState,
+        mock_index_processor: IndexProcessorPatches,
+        mock_summary_index_service: SummaryIndexPatches,
+        sample_node_data: KnowledgeIndexNodeData,
         sqlite_session: Session,
-    ):
+    ) -> None:
         # Arrange
         dataset_id = str(uuid.uuid4())
         document_id = str(uuid.uuid4())
         original_document_id = str(uuid.uuid4())
         batch = "batch_123"
         chunks = {"general_chunks": ["content"]}
-        summary_setting = {"enabled": True}
+        summary_setting: SummaryIndexSettingDict = {"enable": True}
 
         mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
 
