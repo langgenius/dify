@@ -4,7 +4,6 @@ import type {
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
-import type { Role } from '@/models/access-control'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -121,13 +120,8 @@ const MembersPageContent = () => {
     }),
   )
 
-  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    if (roleUpdate.isPending) return
-    roleUpdate.mutate(
-      { params: { member_id: member.id }, body: { role_ids: roles.map((role) => role.id) } },
-      { onSuccess: () => detailsActionsRef.current?.close() },
-    )
-  }
+  const canAssignRoles = (member: AccountWithRoleResponse) =>
+    canManageMembers && member.role !== 'owner' && member.email !== userProfileEmail
 
   return (
     <Dialog<AccountWithRoleResponse>
@@ -427,16 +421,31 @@ const MembersPageContent = () => {
           </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
-              <MemberDetailsContent
+              <form
+                className="contents"
                 key={member.id}
-                member={member}
-                canAssignRoles={
-                  canManageMembers && member.role !== 'owner' && userProfileEmail !== member.email
-                }
-                allowMultipleRoles={systemFeatures.rbac_enabled}
-                saveStatus={roleUpdate.status}
-                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
-              />
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!canAssignRoles(member) || roleUpdate.isPending) return
+                  const roleIds = new FormData(event.currentTarget).getAll('roleId').map(String)
+                  roleUpdate.mutate(
+                    { params: { member_id: member.id }, body: { role_ids: roleIds } },
+                    { onSuccess: () => detailsActionsRef.current?.close() },
+                  )
+                }}
+              >
+                <fieldset className="contents" disabled={roleUpdate.isPending}>
+                  <MemberDetailsContent
+                    member={member}
+                    canAssignRoles={canAssignRoles(member)}
+                    saving={roleUpdate.isPending}
+                    allowMultipleRoles={systemFeatures.rbac_enabled}
+                  />
+                </fieldset>
+                {roleUpdate.isError && (
+                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                )}
+              </form>
             )}
           </DialogContent>
         </>

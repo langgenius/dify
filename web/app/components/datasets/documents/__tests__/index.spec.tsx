@@ -26,8 +26,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -39,8 +38,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
       'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
       'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'datasets.byDatasetId.documents.byDocumentId.rename.post': api.rename,
     }),
   }
@@ -326,14 +323,11 @@ it('renames the selected document through its real form and refreshes the row af
     }),
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-  expect(api.rename).toHaveBeenCalledWith(
-    {
-      params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
-      body: { name: 'API Reference' },
-    },
-    { context: { silent: true } },
-  )
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.rename).toHaveBeenCalledExactlyOnceWith({
+    params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+    body: { name: 'API Reference' },
+  })
   expect(await screen.findByText('API Reference')).toBeInTheDocument()
 })
 

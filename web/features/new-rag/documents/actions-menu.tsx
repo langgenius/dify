@@ -1,21 +1,24 @@
 'use client'
 
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { LogicalDocument } from './models'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@langgenius/dify-ui/dialog'
 import { Input } from '@langgenius/dify-ui/input'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   documentCanDownload,
@@ -45,13 +48,7 @@ function useDocumentCanEdit(documentId: string) {
   return useAtomValueRawSync(canEditAtom)
 }
 
-function RenameDocumentMenuItem({
-  document,
-  onOpen,
-}: {
-  document: LogicalDocument
-  onOpen: () => void
-}) {
+function RenameDocumentMenuItem({ document }: { document: LogicalDocument }) {
   const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
   const busy = Boolean(useDocumentRowPendingAction(document.id))
@@ -60,7 +57,8 @@ function RenameDocumentMenuItem({
     <MenuItem
       className="mb-px h-7 gap-2 px-2 system-sm-medium"
       disabled={!canEdit || busy}
-      onClick={onOpen}
+      nativeButton
+      render={<DialogTrigger />}
     >
       <span aria-hidden className="i-ri-edit-line size-4" />
       {tCommon(($) => $['operation.rename'])}
@@ -70,10 +68,10 @@ function RenameDocumentMenuItem({
 
 function RenameDocumentForm({
   document,
-  onClose,
+  onSaved,
 }: {
   document: LogicalDocument
-  onClose: () => void
+  onSaved: () => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
@@ -83,7 +81,7 @@ function RenameDocumentForm({
   const submit = async () => {
     const title = nextTitle.trim()
     if (!title || title === document.title || busy) return
-    if (await run(title)) onClose()
+    if (await run(title)) onSaved()
   }
 
   return (
@@ -112,9 +110,9 @@ function RenameDocumentForm({
         />
       </DialogBody>
       <DialogFooter>
-        <Button disabled={pending} onClick={onClose} type="button">
+        <DialogClose render={<Button disabled={pending} />}>
           {tCommon(($) => $['operation.cancel'])}
-        </Button>
+        </DialogClose>
         <Button
           disabled={!nextTitle.trim() || nextTitle.trim() === document.title}
           loading={pending}
@@ -264,11 +262,17 @@ export function DocumentActionsMenu({
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
   const pendingAction = useDocumentRowPendingAction(document.id)
   const busy = Boolean(pendingAction)
-  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const renameActionsRef = useRef<DialogActions>(null)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
   return (
-    <>
+    <Dialog
+      actionsRef={renameActionsRef}
+      onOpenChange={(open, details) => {
+        if (!open && pendingAction === 'rename' && details.reason !== 'imperative-action')
+          details.cancel()
+      }}
+    >
       <Menu modal={false}>
         <MenuTrigger
           aria-label={t(($) => $.documentActions, {
@@ -292,7 +296,7 @@ export function DocumentActionsMenu({
           />
         </MenuTrigger>
         <MenuContent align="end" className="w-50">
-          <RenameDocumentMenuItem document={document} onOpen={() => setRenameDialogOpen(true)} />
+          <RenameDocumentMenuItem document={document} />
           <ReprocessDocumentMenuItem document={document} />
           <DownloadDocumentMenuItem document={document} />
           <ToggleDocumentAvailabilityMenuItem document={document} />
@@ -303,17 +307,9 @@ export function DocumentActionsMenu({
       <span id={unavailableReasonId} className="sr-only">
         {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
-      <Dialog
-        open={renameDialogOpen}
-        onOpenChange={(open, details) => {
-          if (!open && pendingAction === 'rename') details.cancel()
-          else setRenameDialogOpen(open)
-        }}
-      >
-        <DialogContent>
-          <RenameDocumentForm document={document} onClose={() => setRenameDialogOpen(false)} />
-        </DialogContent>
-      </Dialog>
-    </>
+      <DialogContent>
+        <RenameDocumentForm document={document} onSaved={() => renameActionsRef.current?.close()} />
+      </DialogContent>
+    </Dialog>
   )
 }

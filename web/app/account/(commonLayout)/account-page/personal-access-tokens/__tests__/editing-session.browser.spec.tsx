@@ -62,6 +62,24 @@ it('retains the edited name after validation failure and saves the loaded versio
   await expect.element(screen.getByRole('button', { name: 'Edit', exact: true })).toHaveFocus()
 })
 
+it('returns to the edit trigger when cancelling during a background list refresh', async () => {
+  const { screen, queryClient } = await renderTokenPage()
+  const edit = screen.getByRole('button', { name: 'Edit', exact: true })
+  await edit.click()
+  const dialog = screen.getByRole('dialog')
+  await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toBeVisible()
+  const refresh = createDeferred<ReturnType<typeof tokenList>>()
+  api.list.mockReturnValueOnce(refresh.promise)
+  const refetch = queryClient.invalidateQueries({
+    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+  })
+  await vi.waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
+  await userEvent.keyboard('{Escape}')
+  await expect.element(edit).toHaveFocus()
+  refresh.resolve(tokenList([token]))
+  await refetch
+})
+
 it('preserves a draft through a background refresh and reloads the new version only after a conflict', async () => {
   const latest = { ...saved, token: { ...saved.token, name: 'changed elsewhere', version: 2 } }
   api.update.mockImplementation(async ({ body }) => {

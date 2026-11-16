@@ -296,7 +296,8 @@ export default function PersonalAccessTokens() {
             finalFocus={() => {
               const source = query.data?.data.find((token) => token.id === payload?.tokenId)
               if (
-                query.isFetching ||
+                query.isPlaceholderData ||
+                (payload?.duplicate && query.isFetching) ||
                 !source ||
                 (!payload?.duplicate && source.status === 'expired')
               )
