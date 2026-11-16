@@ -530,13 +530,18 @@ def test_multi_dataset_retriever_run_orders_segments_and_returns_resources(sqlit
     first_doc = RagDocument(page_content="first", metadata={"doc_id": "node-2", "score": 0.4})
     second_doc = RagDocument(page_content="second", metadata={"doc_id": "node-1", "score": 0.9})
 
-    def fake_retriever(**kwargs: object) -> None:
-        documents_sink = kwargs["all_documents"]
-        assert isinstance(documents_sink, list)
-        if kwargs["dataset_id"] == dataset_one.id:
-            documents_sink.append(first_doc)
+    def fake_retriever(
+        *,
+        flask_app: Flask,
+        dataset_id: str,
+        query: str,
+        all_documents: list[RagDocument],
+        hit_callbacks: list[DatasetIndexToolCallbackHandler],
+    ) -> None:
+        if dataset_id == dataset_one.id:
+            all_documents.append(first_doc)
         else:
-            documents_sink.append(second_doc)
+            all_documents.append(second_doc)
 
     segment_for_node_2 = DocumentSegment(
         tenant_id=dataset_one.tenant_id,

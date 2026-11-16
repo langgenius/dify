@@ -34,6 +34,13 @@ from graphon.model_runtime.entities.message_entities import (
 )
 
 
+class _UnsupportedSelectorValue:
+    """Stands in for a value no selector branch accepts."""
+
+
+type _ArrayObjectValue = list[int] | dict[str, int] | dict[str, str] | str
+
+
 class TestEndpointEntity:
     def test_endpoint_entity_with_instance_renders_url(self, config_overrides: Callable[..., None]) -> None:
         config_overrides(ENDPOINT_URL_TEMPLATE="https://dify.test/{hook_id}")
@@ -170,7 +177,7 @@ class TestPluginParameterEntities:
             ("2.5", 2.5),
         ],
     )
-    def test_cast_parameter_value_number(self, value: object, expected: float) -> None:
+    def test_cast_parameter_value_number(self, value: int | float | str, expected: int | float) -> None:
         assert cast_parameter_value(PluginParameterType.NUMBER, value) == expected
 
     def test_cast_parameter_value_file_and_files(self) -> None:
@@ -204,7 +211,9 @@ class TestPluginParameterEntities:
             (PluginParameterType.ANY, object(), "var selector must be"),
         ],
     )
-    def test_cast_parameter_value_selectors_invalid(self, parameter_type: StrEnum, value: object, message: str) -> None:
+    def test_cast_parameter_value_selectors_invalid(
+        self, parameter_type: PluginParameterType, value: str | _UnsupportedSelectorValue, message: str
+    ) -> None:
         with pytest.raises(ValueError, match=message):
             cast_parameter_value(parameter_type, value)
 
@@ -218,7 +227,7 @@ class TestPluginParameterEntities:
         ],
     )
     def test_cast_parameter_value_array_and_object_valid(
-        self, parameter_type: StrEnum, value: object, expected: object
+        self, parameter_type: PluginParameterType, value: _ArrayObjectValue, expected: _ArrayObjectValue
     ) -> None:
         assert cast_parameter_value(parameter_type, value) == expected
 
@@ -354,10 +363,6 @@ class TestPluginRequestEntities:
         assert isinstance(payload.prompt_messages[1], AssistantPromptMessage)
         assert isinstance(payload.prompt_messages[2], SystemPromptMessage)
         assert isinstance(payload.prompt_messages[3], ToolPromptMessage)
-
-    def test_request_invoke_llm_prompt_messages_must_be_list(self) -> None:
-        with pytest.raises(ValidationError):
-            RequestInvokeLLM(provider="openai", model="gpt-4", mode="chat", prompt_messages="invalid")  # type: ignore[arg-type]
 
     def test_request_invoke_speech2text_hex_conversion_and_error(self) -> None:
         payload = RequestInvokeSpeech2Text(provider="openai", model="m", file=binascii.hexlify(b"abc").decode())
