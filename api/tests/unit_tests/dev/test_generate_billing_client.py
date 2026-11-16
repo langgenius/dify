@@ -299,26 +299,24 @@ def test_committed_snapshots_satisfy_the_open_enum_allowlist() -> None:
 
     generator.check_open_enum_fields(snapshots)
 
-    reply = snapshots["saas"]["components"]["schemas"]["CheckAccountInFreezeReply"]
-    assert "enum" in reply["properties"]["freezeType"]
+    reply_schema = generator.parse_snapshot_schemas(snapshots["saas"])["CheckAccountInFreezeReply"]
+    assert reply_schema.properties["freezeType"].enum is not None
     assert 'freeze_type: str = Field(alias="freezeType")' in generator.render_module("saas", snapshots["saas"])
 
 
-def test_open_enum_entries_must_still_name_an_enum_field(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(generator, "OPEN_ENUM_FIELDS", frozenset({("Reply", "value")}))
+def test_open_enum_entries_must_still_name_an_enum_field() -> None:
     snapshots: dict[generator.Service, generator.JsonObject] = {
         "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string"}}}}}}
     }
 
     with pytest.raises(generator.GenerationError, match="which is no longer an enum"):
-        generator.check_open_enum_fields(snapshots)
+        generator.check_open_enum_fields(snapshots, open_enum_fields=frozenset({("Reply", "value")}))
 
 
-def test_open_enum_entries_must_exist_in_a_snapshot(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(generator, "OPEN_ENUM_FIELDS", frozenset({("Reply", "value"), ("Reply", "gone")}))
+def test_open_enum_entries_must_exist_in_a_snapshot() -> None:
     snapshots: dict[generator.Service, generator.JsonObject] = {
         "billing": {"components": {"schemas": {"Reply": {"properties": {"value": {"type": "string", "enum": ["a"]}}}}}}
     }
 
     with pytest.raises(generator.GenerationError, match="missing from the snapshots"):
-        generator.check_open_enum_fields(snapshots)
+        generator.check_open_enum_fields(snapshots, open_enum_fields=frozenset({("Reply", "value"), ("Reply", "gone")}))
