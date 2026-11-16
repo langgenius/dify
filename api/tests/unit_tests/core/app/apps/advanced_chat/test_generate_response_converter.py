@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 
 import pytest
 from pydantic import BaseModel
@@ -51,10 +51,10 @@ class TestAdvancedChatGenerateResponseConverter:
             total_steps=0,
         )
         original_model_dump = type(data).model_dump
+        dump: Callable[..., dict[str, object]] = original_model_dump
 
         def _model_dump_with_future_field[**P](self: BaseModel, *args: P.args, **kwargs: P.kwargs) -> dict[str, object]:
-            # ParamSpec forward to the concrete, keyword-only `model_dump` signature.
-            payload = original_model_dump(self, *args, **kwargs)  # pyrefly: ignore[bad-argument-type, bad-argument-count]
+            payload = dump(self, *args, **kwargs)
             payload["future_field"] = "future-value"
             return payload
 
