@@ -438,6 +438,15 @@ class AdvancedChatStartPayload(AdvancedChatRunPayload, _StartFields):
     model_config = ConfigDict(extra="forbid")
 
 
+class JobWaitQuery(BaseModel):
+    wait_seconds: int = Field(
+        default=WAIT_DEFAULT_SECONDS,
+        ge=0,
+        le=WAIT_MAX_SECONDS,
+        description="How long to wait for a final state; 0 answers at once",
+    )
+
+
 class JobState(Hinted):
     id: str
     status: JobStatus
