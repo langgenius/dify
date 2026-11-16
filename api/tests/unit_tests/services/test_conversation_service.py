@@ -8,7 +8,7 @@ in-memory SQLite sessions with persisted ORM rows.
 """
 
 from dataclasses import replace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, call
 
 import pytest
 from sqlalchemy.orm import Session
@@ -276,3 +276,85 @@ def test_cleanup_keeps_soft_deleted_marker_when_dispatch_fails(
     persisted = sqlite_session.get(Conversation, conversation.id)
     assert persisted is not None
     assert persisted.is_deleted is True
+
+
+def _spy_on_commit(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> MagicMock:
+    commit = MagicMock(side_effect=sqlite_session.commit)
+    monkeypatch.setattr(sqlite_session, "commit", commit)
+    return commit
+
+
+def test_retire_superseded_debug_conversations_commits_before_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    commit = _spy_on_commit(sqlite_session, monkeypatch)
+    call_order = MagicMock()
+    call_order.attach_mock(commit, "commit")
+    retire_helper = MagicMock(return_value=("workspace-1", "workspace-2"))
+    enqueue_collection = MagicMock()
+    call_order.attach_mock(enqueue_collection, "enqueue")
+    monkeypatch.setattr(conversation_service, "retire_superseded_debug_conversations", retire_helper)
+    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    ConversationService.retire_superseded_debug_conversations(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        account_id=ACCOUNT_ID,
+        current_conversation_id=CONVERSATION_ID,
+    )
+
+    retire_helper.assert_called_once_with(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        account_id=ACCOUNT_ID,
+        current_conversation_id=CONVERSATION_ID,
+    )
+    assert call_order.mock_calls == [
+        call.commit(),
+        call.enqueue(tenant_id=TENANT_ID, workspace_ids=("workspace-1", "workspace-2")),
+    ]
+
+
+def test_retire_superseded_debug_conversations_skips_enqueue_without_retirements(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    commit = _spy_on_commit(sqlite_session, monkeypatch)
+    retire_helper = MagicMock(return_value=())
+    enqueue_collection = MagicMock()
+    monkeypatch.setattr(conversation_service, "retire_superseded_debug_conversations", retire_helper)
+    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    ConversationService.retire_superseded_debug_conversations(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        account_id=ACCOUNT_ID,
+        current_conversation_id=CONVERSATION_ID,
+    )
+
+    commit.assert_called_once_with()
+    enqueue_collection.assert_not_called()
+
+
+def test_retire_superseded_debug_conversations_skips_commit_and_enqueue_on_failure(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    commit = _spy_on_commit(sqlite_session, monkeypatch)
+    retire_helper = MagicMock(side_effect=RuntimeError("retire failed"))
+    enqueue_collection = MagicMock()
+    monkeypatch.setattr(conversation_service, "retire_superseded_debug_conversations", retire_helper)
+    monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue_collection)
+
+    with pytest.raises(RuntimeError, match="retire failed"):
+        ConversationService.retire_superseded_debug_conversations(
+            session=sqlite_session,
+            tenant_id=TENANT_ID,
+            app_id=APP_ID,
+            account_id=ACCOUNT_ID,
+            current_conversation_id=CONVERSATION_ID,
+        )
+
+    commit.assert_not_called()
+    enqueue_collection.assert_not_called()
