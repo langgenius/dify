@@ -75,8 +75,11 @@ export const fetchPluginInfoFromMarketPlace = async ({ org, name }: Record<strin
   }>(`/plugins/${org}/${name}`)
 }
 
-export const checkTaskStatus = async (taskId: string) => {
-  return consoleClient.workspaces.current.plugin.tasks.byTaskId.get({ params: { task_id: taskId } })
+export const checkTaskStatus = async (taskId: string, signal?: AbortSignal) => {
+  return consoleClient.workspaces.current.plugin.tasks.byTaskId.get(
+    { params: { task_id: taskId } },
+    { signal },
+  )
 }
 
 export const uninstallPlugin = async (

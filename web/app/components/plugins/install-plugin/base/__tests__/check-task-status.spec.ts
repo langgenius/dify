@@ -47,14 +47,14 @@ describe('checkTaskStatus', () => {
     const result = checkTaskStatus().check(params).then(completed)
 
     await vi.advanceTimersByTimeAsync(0)
-    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1')
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1', undefined)
     expect(completed).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(10_000)
     expect(fetchTask).toHaveBeenCalledTimes(2)
     expect(completed).not.toHaveBeenCalled()
     await vi.advanceTimersByTimeAsync(10_000)
     await result
-    expect(fetchTask).toHaveBeenNthCalledWith(3, 'task-1')
+    expect(fetchTask).toHaveBeenNthCalledWith(3, 'task-1', undefined)
     expect(completed).toHaveBeenCalledExactlyOnceWith({ status: TaskStatus.success })
   })
 
@@ -69,7 +69,7 @@ describe('checkTaskStatus', () => {
     await expect(active.check({ ...params, taskId: 'task-2' })).resolves.toEqual({
       status: TaskStatus.success,
     })
-    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-2')
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-2', undefined)
   })
 
   it('does not fetch again when stopped during the polling interval', async () => {
@@ -81,6 +81,17 @@ describe('checkTaskStatus', () => {
     await vi.advanceTimersByTimeAsync(10_000)
 
     await expect(result).resolves.toEqual({ status: TaskStatus.success })
-    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1')
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1', undefined)
+  })
+  it('aborts the active delay without another request or reporting a successful installation', async () => {
+    const controller = new AbortController()
+    fetchTask.mockResolvedValue(task(TaskStatus.running))
+    const result = checkTaskStatus().check({ ...params, signal: controller.signal })
+    const aborted = expect(result).rejects.toThrow('The operation was aborted')
+    await vi.advanceTimersByTimeAsync(0)
+    controller.abort()
+    await aborted
+    await vi.advanceTimersByTimeAsync(20_000)
+    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1', controller.signal)
   })
 })

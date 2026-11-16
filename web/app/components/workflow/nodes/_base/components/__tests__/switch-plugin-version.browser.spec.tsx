@@ -1,9 +1,12 @@
 import type { PluginVersionsResponse } from '@dify/contracts/marketplace'
 import type { consoleClient } from '@/service/console'
+import { useQuery } from '@tanstack/react-query'
 import { act } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
 import { createDeferred } from '@/test/deferred'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { SwitchPluginVersion } from '../switch-plugin-version'
@@ -63,20 +66,23 @@ beforeEach(() => {
   })
 })
 async function setup({ enableMarketplace = true } = {}) {
-  const onChange = vi.fn()
-  const { wrapper } = createConsoleQueryWrapper({
+  const { wrapper, queryClient } = createConsoleQueryWrapper({
     systemFeatures: { enable_marketplace: enableMarketplace },
     workspacePermissionKeys: ['plugin.install'],
   })
-  await render(
+  const view = await render(
     <SwitchPluginVersion
       uniqueIdentifier={installed.plugin_unique_identifier}
       tooltip="Switch to a compatible version"
-      onChange={onChange}
     />,
     { wrapper },
   )
-  return { onChange, trigger: page.getByRole('button', { name: /switchVersion 1\.0\.0/ }) }
+  return {
+    view,
+    wrapper,
+    queryClient,
+    trigger: page.getByRole('button', { name: /switchVersion 1\.0\.0/ }),
+  }
 }
 
 it('keeps the version badge but cannot switch versions when Marketplace is disabled', async () => {
@@ -87,7 +93,7 @@ it('keeps the version badge but cannot switch versions when Marketplace is disab
 it('restores focus to the version menu after cancelling and after installing a version', async () => {
   const result = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
   api.upgrade.mockReturnValueOnce(result.promise)
-  const { trigger, onChange } = await setup()
+  const { trigger } = await setup()
   const dialog = page.getByRole('dialog')
   const openInstall = async () => {
     await trigger.click()
@@ -119,12 +125,10 @@ it('restores focus to the version menu after cancelling and after installing a v
       new_plugin_unique_identifier: identifier('2.0.0'),
     },
   })
-  expect(onChange).not.toHaveBeenCalled()
   const detailRequests = api.detail.mock.calls.length
   await act(async () => result.resolve({ all_installed: true, task_id: '' }))
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  expect(onChange).toHaveBeenCalledExactlyOnceWith('2.0.0')
   expect(api.detail).toHaveBeenCalledTimes(detailRequests + 1)
 })
 
@@ -134,7 +138,7 @@ it.each(['success', 'failed'] as const)(
     const task = createDeferred<Awaited<ReturnType<typeof api.task>>>()
     api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'upgrade-job' })
     api.task.mockReturnValueOnce(task.promise)
-    const { trigger, onChange } = await setup()
+    const { trigger } = await setup()
     await trigger.click()
     await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
     const dialog = page.getByRole('dialog')
@@ -143,12 +147,14 @@ it.each(['success', 'failed'] as const)(
     })
     await confirm.click()
     await vi.waitFor(() =>
-      expect(api.task).toHaveBeenCalledExactlyOnceWith({ params: { task_id: 'upgrade-job' } }),
+      expect(api.task).toHaveBeenCalledExactlyOnceWith(
+        { params: { task_id: 'upgrade-job' } },
+        { signal: expect.any(AbortSignal) },
+      ),
     )
     const detailRequests = api.detail.mock.calls.length
     await userEvent.keyboard('{Escape}')
     await expect.element(dialog).toBeVisible()
-    expect(onChange).not.toHaveBeenCalled()
     await act(async () =>
       task.resolve({
         task: {
@@ -175,13 +181,11 @@ it.each(['success', 'failed'] as const)(
       await expect
         .element(dialog.getByRole('alert'))
         .toHaveTextContent('Package installation failed')
-      expect(onChange).not.toHaveBeenCalled()
       expect(api.detail).toHaveBeenCalledTimes(detailRequests)
       await confirm.click()
     }
     await expect.element(dialog).not.toBeInTheDocument()
     await expect.element(trigger).toHaveFocus()
-    expect(onChange).toHaveBeenCalledExactlyOnceWith('2.0.0')
     expect(api.detail).toHaveBeenCalledTimes(detailRequests + 1)
   },
 )
@@ -214,7 +218,7 @@ it.each(['failed task', 'missing task ID'] as const)(
             }
           : null,
     })
-    const { trigger, onChange } = await setup()
+    const { trigger } = await setup()
     await trigger.click()
     await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
     const dialog = page.getByRole('dialog')
@@ -225,6 +229,232 @@ it.each(['failed task', 'missing task ID'] as const)(
       .element(dialog.getByRole('alert'))
       .toHaveTextContent(failure === 'failed task' ? 'Package rejected' : 'common.error')
     expect(api.task).not.toHaveBeenCalled()
-    expect(onChange).not.toHaveBeenCalled()
+  },
+)
+
+it('stops polling when the last panel unmounts and resumes the same job when another panel opens', async () => {
+  const { view, queryClient, wrapper, trigger } = await setup()
+  const toolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
+  queryClient.setQueryDefaults(toolsKey, { staleTime: Infinity })
+  queryClient.setQueryData(toolsKey, [createToolProviderFixture({ name: 'old tool' })])
+  const refreshedTools = vi.fn(async () => [createToolProviderFixture({ name: 'new tool' })])
+  function ToolList() {
+    const query = useQuery(
+      consoleQuery.workspaces.current.tools.builtin.get.queryOptions({ queryFn: refreshedTools }),
+    )
+    return <span>{query.data?.map((tool) => tool.name).join(', ')}</span>
+  }
+  const status = createDeferred<Awaited<ReturnType<typeof api.task>>>()
+  const resumed = createDeferred<Awaited<ReturnType<typeof api.task>>>()
+  api.task.mockReturnValueOnce(status.promise).mockReturnValueOnce(resumed.promise)
+  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'saved-task' })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  await page
+    .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+    .click()
+  await vi.waitFor(() => expect(api.task).toHaveBeenCalledOnce())
+  const signal = api.task.mock.calls[0]?.[1]?.signal
+  await view.unmount()
+  expect(signal?.aborted).toBe(true)
+  await act(async () => status.reject(signal?.reason))
+  await vi.waitFor(() => expect(queryClient.getQueryState(toolsKey)?.isInvalidated).toBe(true))
+  expect(refreshedTools).not.toHaveBeenCalled()
+  refreshedTools.mockResolvedValueOnce([createToolProviderFixture({ name: 'old tool' })])
+  await render(
+    <>
+      <SwitchPluginVersion uniqueIdentifier={installed.plugin_unique_identifier} />
+      <ToolList />
+    </>,
+    { wrapper },
+  )
+  await vi.waitFor(() => expect(api.task).toHaveBeenCalledTimes(2))
+  expect(api.task.mock.calls[1]?.[0]).toEqual({ params: { task_id: 'saved-task' } })
+  await expect.element(page.getByText('old tool')).toBeVisible()
+  await expect
+    .element(page.getByRole('button', { name: /switchVersion 1\.0\.0/ }))
+    .toHaveAttribute('aria-disabled', 'true')
+  expect(api.upgrade).toHaveBeenCalledOnce()
+  api.detail.mockResolvedValue({ plugins: [createPluginEntity({ version: '2.0.0' })] })
+  await act(async () =>
+    resumed.resolve({
+      task: {
+        id: 'saved-task',
+        created_at: '',
+        updated_at: '',
+        status: 'success',
+        total_plugins: 1,
+        completed_plugins: 1,
+        plugins: [
+          {
+            plugin_id: installed.plugin_id,
+            plugin_unique_identifier: identifier('2.0.0'),
+            status: 'success',
+            message: '',
+            icon: '',
+            labels: { en_US: 'Plugin' },
+          },
+        ],
+      },
+    }),
+  )
+  await expect.element(page.getByRole('button', { name: /switchVersion 2\.0\.0/ })).toBeVisible()
+  await expect.element(page.getByText('new tool')).toBeVisible()
+  expect(api.task).toHaveBeenCalledTimes(2)
+})
+
+it('keeps one status request while another panel observes the upgrade, and stops after the last leaves', async () => {
+  const { view, wrapper, trigger } = await setup()
+  const status = createDeferred<Awaited<ReturnType<typeof api.task>>>()
+  api.task.mockReturnValueOnce(status.promise)
+  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'shared-task' })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  await page
+    .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+    .click()
+  await vi.waitFor(() => expect(api.task).toHaveBeenCalledOnce())
+  const signal = api.task.mock.calls[0]?.[1]?.signal
+  const otherPanel = await render(
+    <SwitchPluginVersion uniqueIdentifier={installed.plugin_unique_identifier} />,
+    { wrapper },
+  )
+  await view.unmount()
+  await expect
+    .element(page.getByRole('button', { name: /switchVersion 1\.0\.0/ }))
+    .toHaveAttribute('aria-disabled', 'true')
+  expect(signal?.aborted).toBe(false)
+  expect(api.task).toHaveBeenCalledOnce()
+  expect(api.upgrade).toHaveBeenCalledOnce()
+  await otherPanel.unmount()
+  expect(signal?.aborted).toBe(true)
+  await act(async () => status.reject(signal?.reason))
+})
+
+it('records a task accepted after navigation without polling until a panel comes back', async () => {
+  const { view, wrapper, trigger } = await setup()
+  const start = createDeferred<Awaited<ReturnType<typeof api.upgrade>>>()
+  api.upgrade.mockReturnValueOnce(start.promise)
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  await page
+    .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+    .click()
+  await vi.waitFor(() => expect(api.upgrade).toHaveBeenCalledOnce())
+  await view.unmount()
+  await act(async () => start.resolve({ all_installed: false, task_id: 'late-task' }))
+  expect(api.task).not.toHaveBeenCalled()
+  api.task.mockResolvedValue({
+    task: {
+      id: 'late-task',
+      status: 'success',
+      created_at: '',
+      updated_at: '',
+      total_plugins: 1,
+      completed_plugins: 1,
+      plugins: [
+        {
+          plugin_id: installed.plugin_id,
+          plugin_unique_identifier: identifier('2.0.0'),
+          status: 'success',
+          message: '',
+          icon: '',
+          labels: { en_US: 'Plugin' },
+        },
+      ],
+    },
+  })
+  api.detail.mockResolvedValue({ plugins: [createPluginEntity({ version: '2.0.0' })] })
+  await render(<SwitchPluginVersion uniqueIdentifier={installed.plugin_unique_identifier} />, {
+    wrapper,
+  })
+  await expect.element(page.getByRole('button', { name: /switchVersion 2\.0\.0/ })).toBeVisible()
+  expect(api.task).toHaveBeenCalledExactlyOnceWith(
+    { params: { task_id: 'late-task' } },
+    { signal: expect.any(AbortSignal) },
+  )
+  expect(api.upgrade).toHaveBeenCalledOnce()
+})
+
+it('retries a failed status request for the original version without submitting another upgrade', async () => {
+  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'retry-status' })
+  api.task.mockRejectedValueOnce(new Error('Status unavailable')).mockResolvedValueOnce({
+    task: {
+      id: 'retry-status',
+      status: 'success',
+      created_at: '',
+      updated_at: '',
+      total_plugins: 1,
+      completed_plugins: 1,
+      plugins: [
+        {
+          plugin_id: installed.plugin_id,
+          plugin_unique_identifier: identifier('2.0.0'),
+          status: 'success',
+          message: '',
+          icon: '',
+          labels: { en_US: 'Plugin' },
+        },
+      ],
+    },
+  })
+  const { trigger } = await setup()
+  const open = async () => {
+    await trigger.click()
+    await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  }
+  const confirm = page.getByRole('button', {
+    name: 'workflowAgent.nodes.agent.installPlugin.install',
+  })
+  await open()
+  await confirm.click()
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Status unavailable')
+  expect(api.task).toHaveBeenCalledOnce()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  await trigger.click()
+  await expect
+    .element(page.getByRole('menuitem', { name: /^0\.5\.0/ }))
+    .toHaveAttribute('aria-disabled', 'true')
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  await confirm.click()
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  expect(api.upgrade).toHaveBeenCalledOnce()
+  expect(api.task.mock.calls.map(([input]) => input.params.task_id)).toEqual([
+    'retry-status',
+    'retry-status',
+  ])
+})
+
+it.each([true, false])(
+  'uses the installed package to resolve an unavailable task only when its identifier matches (%s)',
+  async (matches) => {
+    const { trigger } = await setup()
+    await trigger.click()
+    await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+    api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'unavailable-job' })
+    api.task.mockRejectedValueOnce(new Error('Task unavailable'))
+    api.detail.mockResolvedValue({
+      plugins: [
+        createPluginEntity({
+          version: '2.0.0',
+          plugin_unique_identifier: matches
+            ? identifier('2.0.0')
+            : 'langgenius/plugin-entity:2.0.0@different-digest',
+        }),
+      ],
+    })
+    await page
+      .getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.install' })
+      .click()
+    if (matches) {
+      await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+      await expect
+        .element(page.getByRole('button', { name: /switchVersion 2\.0\.0/ }))
+        .toHaveFocus()
+    } else {
+      await expect.element(page.getByRole('alert')).toHaveTextContent('Task unavailable')
+    }
+    expect(api.upgrade).toHaveBeenCalledOnce()
   },
 )

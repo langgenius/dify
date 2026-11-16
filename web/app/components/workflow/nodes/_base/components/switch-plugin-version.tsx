@@ -25,26 +25,21 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { skipToken, useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { Badge as VersionBadge } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
-import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import useWorkspacePluginInstallPermission from '@/app/components/plugins/install-plugin/hooks/use-workspace-plugin-install-permission'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
-import { TaskStatus } from '@/app/components/plugins/types'
 import { useMarketplace, useMarketplacePluginVersions } from '@/features/marketplace/client'
 import useTimestamp from '@/hooks/use-timestamp'
 import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
-import {
-  normalizeInstalledPluginDetail,
-  startMarketplacePluginUpgrade,
-  useInvalidateCheckInstalled,
-} from '@/service/use-plugins'
+import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
+import { usePluginVersionUpgrade } from './use-plugin-version-upgrade'
 
 type PluginVersionSelection = {
   plugin: PluginDetail
@@ -54,19 +49,16 @@ type PluginVersionSelection = {
 type SwitchPluginVersionProps = {
   uniqueIdentifier: string
   tooltip?: ReactNode
-  onChange?: (version: string) => void
   className?: string
 }
 
 export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
-  const { uniqueIdentifier, tooltip, onChange, className } = props
+  const { uniqueIdentifier, tooltip, className } = props
 
   const [pluginId] = uniqueIdentifier.split(':')
   const [requestedOpen, setRequestedOpen] = useState(false)
   const [installDialog] = useState(() => createDialogHandle<PluginVersionSelection>())
   const { getIconUrl } = useGetIcon()
-  const queryClient = useQueryClient()
-  const invalidateInstalled = useInvalidateCheckInstalled()
   const { canUpdatePlugin } = useWorkspacePluginInstallPermission()
   const marketplace = useMarketplace()
   const pluginDetails = useQuery(
@@ -81,29 +73,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
   const pluginDetail = pluginDetails.data
 
   const { t } = useTranslation(['workflowAgent', 'plugin', 'common', 'appLog'])
-  const upgrade = useMutation({
-    mutationFn: async ({ plugin, target }: PluginVersionSelection) => {
-      const response = await startMarketplacePluginUpgrade(queryClient, {
-        new_plugin_unique_identifier: target.unique_identifier,
-        original_plugin_unique_identifier: plugin.plugin_unique_identifier,
-      })
-      if (response.all_installed || response.task?.status === TaskStatus.success) return
-      if (response.task?.status === TaskStatus.failed) {
-        const failed = response.task.plugins.find(
-          (item) => item.plugin_unique_identifier === target.unique_identifier,
-        )
-        throw new Error(failed?.message || t(($) => $.error, { ns: 'common' }))
-      }
-      if (!response.task_id) throw new Error(t(($) => $.error, { ns: 'common' }))
-      const result = await checkTaskStatus().check({
-        taskId: response.task_id,
-        pluginUniqueIdentifier: target.unique_identifier,
-      })
-      if (result.status === TaskStatus.failed)
-        throw new Error(result.error || t(($) => $.error, { ns: 'common' }))
-    },
-    onSuccess: invalidateInstalled,
-  })
+  const { upgrade, tracking, pendingIdentifier, submit } = usePluginVersionUpgrade(pluginId ?? '')
   const versionMenuLabelId = useId()
   const { formatDate } = useTimestamp()
   const dateFormat = t(($) => $.dateTimeFormat, { ns: 'appLog' }).split(' ')[0]!
@@ -184,15 +154,17 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 <Button
                   variant="primary"
                   loading={upgrade.isPending}
-                  disabled={!canUpdatePlugin}
+                  disabled={
+                    !canUpdatePlugin ||
+                    Boolean(
+                      pendingIdentifier && pendingIdentifier !== selection.target.unique_identifier,
+                    )
+                  }
                   onClick={() => {
                     if (!canUpdatePlugin || upgrade.isPending) return
-                    upgrade.mutate(selection, {
-                      onSuccess: () => {
-                        onChange?.(selection.target.version)
-                        installDialog.close()
-                      },
-                    })
+                    submit(selection.plugin, selection.target.unique_identifier, () =>
+                      installDialog.close(),
+                    )
                   }}
                 >
                   {t(($) => $['nodes.agent.installPlugin.install'], { ns: 'workflowAgent' })}
@@ -215,7 +187,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                     <Button
                       variant="ghost"
                       size="small"
-                      disabled={!canSwitchVersion}
+                      disabled={!canSwitchVersion || tracking}
                       focusableWhenDisabled
                       loading={loadingVersions}
                       className="relative mx-1 h-5 overflow-visible rounded-[5px] border border-divider-deep px-1.25 system-2xs-medium-uppercase text-text-tertiary"
@@ -249,7 +221,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
               versionsQuery.data.data.versions.map((item) => (
                 <MenuItem
                   key={item.unique_identifier}
-                  disabled={pluginDetail.version === item.version}
+                  disabled={
+                    pluginDetail.version === item.version ||
+                    Boolean(pendingIdentifier && pendingIdentifier !== item.unique_identifier)
+                  }
                   onClick={() =>
                     installDialog.openWithPayload({ plugin: pluginDetail, target: item })
                   }
