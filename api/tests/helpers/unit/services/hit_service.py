@@ -14,28 +14,18 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.rag.embedding.retrieval import RetrievalSegments
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account, Tenant
 from models.dataset import Dataset, DatasetQuery
+from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalRetrievalRecord
 from services.hit_testing_service import HitTestingService
 
 pytestmark = [
     pytest.mark.usefixtures("sqlite_session"),
     pytest.mark.parametrize("sqlite_session", [(DatasetQuery,)], indirect=True),
 ]
-
-
-def _mapping(value: object) -> dict[str, object]:
-    """Narrow a response fragment to a mapping so the assertions can index it."""
-    assert isinstance(value, dict)
-    return value
-
-
-def _object_list(value: object) -> list[object]:
-    """Narrow a response fragment to a list so the assertions can size and index it."""
-    assert isinstance(value, list)
-    return value
 
 
 class HitTestingTestDataFactory:
@@ -52,7 +42,6 @@ class HitTestingTestDataFactory:
         tenant_id: str = "tenant-123",
         provider: str = "vendor",
         retrieval_model: dict[str, Any] | None = None,
-        **kwargs: Any,
     ) -> Dataset:
         """
         Create a dataset with specified attributes.
@@ -62,25 +51,21 @@ class HitTestingTestDataFactory:
             tenant_id: Tenant identifier
             provider: Dataset provider (vendor, external, etc.)
             retrieval_model: Optional retrieval model configuration
-            **kwargs: Additional mapped attributes for the dataset
 
         Returns:
             Configured Dataset instance
         """
-        dataset = Dataset(
+        return Dataset(
             id=dataset_id,
             tenant_id=tenant_id,
             provider=provider,
             retrieval_model=retrieval_model,
-            **kwargs,
         )
-        return dataset
 
     @staticmethod
     def create_user_mock(
         user_id: str = "user-789",
         tenant_id: str = "tenant-123",
-        **kwargs: Any,
     ) -> Account:
         """
         Create a mock user (Account) with specified attributes.
@@ -88,12 +73,11 @@ class HitTestingTestDataFactory:
         Args:
             user_id: Unique identifier for the user
             tenant_id: Tenant identifier
-            **kwargs: Additional attributes to set on the mock
 
         Returns:
             Mock object configured as an Account instance
         """
-        user = Account(name="Test User", email="test@example.com", **kwargs)
+        user = Account(name="Test User", email="test@example.com")
         user.id = user_id
         user._current_tenant = Tenant(name="Test Tenant")
         user._current_tenant.id = tenant_id
@@ -108,28 +92,19 @@ class HitTestingTestDataFactory:
         return Document(page_content=content, metadata=metadata if metadata is not None else {})
 
     @staticmethod
-    def create_retrieval_record_mock(
-        content: str = "Test content",
-        score: float = 0.95,
-        **kwargs: Any,
-    ) -> Mock:
+    def create_retrieval_record_mock(content: str = "Test content", score: float = 0.95) -> Mock:
         """
         Create a mock retrieval record.
 
         Args:
             content: Record content
             score: Retrieval score
-            **kwargs: Additional fields for the record
 
         Returns:
             Mock object with model_dump method returning record data
         """
         record = Mock()
-        record.model_dump.return_value = {
-            "content": content,
-            "score": score,
-            **kwargs,
-        }
+        record.model_dump.return_value = {"content": content, "score": score}
         return record
 
 
@@ -153,7 +128,7 @@ class TestHitTestingServiceRetrieve:
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
         retrieval_model = None
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [
             HitTestingTestDataFactory.create_document(content="Doc 1"),
@@ -211,7 +186,7 @@ class TestHitTestingServiceRetrieve:
             "score_threshold": 0.7,
             "weights": {"vector_setting": 0.5, "keyword_setting": 0.5},
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
@@ -261,7 +236,7 @@ class TestHitTestingServiceRetrieve:
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         mock_dataset_retrieval = MagicMock()
         mock_dataset_retrieval.get_metadata_filter_condition.return_value = (
@@ -316,10 +291,11 @@ class TestHitTestingServiceRetrieve:
             "reranking_enable": False,
             "score_threshold_enabled": False,
         }
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         mock_dataset_retrieval = MagicMock()
-        mock_dataset_retrieval.get_metadata_filter_condition.return_value = (dict[str, object](), True)
+        metadata_filter: dict[str, object] = {}
+        mock_dataset_retrieval.get_metadata_filter_condition.return_value = (metadata_filter, True)
 
         with (
             patch("services.hit_testing_service.DatasetRetrieval", autospec=True) as mock_dataset_retrieval_class,
@@ -328,7 +304,8 @@ class TestHitTestingServiceRetrieve:
             ) as mock_format,
         ):
             mock_dataset_retrieval_class.return_value = mock_dataset_retrieval
-            mock_format.return_value = list[object]()
+            formatted: list[RetrievalSegments] = []
+            mock_format.return_value = formatted
 
             # Act
             result = HitTestingService.retrieve(
@@ -357,7 +334,7 @@ class TestHitTestingServiceRetrieve:
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
         retrieval_model = None
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
 
         documents = [HitTestingTestDataFactory.create_document()]
         mock_records = [HitTestingTestDataFactory.create_retrieval_record_mock()]
@@ -407,9 +384,9 @@ class TestHitTestingServiceExternalRetrieve:
         external_retrieval_model = {"top_k": 5, "score_threshold": 0.8}
         metadata_filtering_conditions = {}
 
-        external_documents = [
+        external_documents: list[ExternalRetrievalRecord] = [
             {"content": "External doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
-            {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": dict[str, object]()},
+            {"content": "External doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
         ]
 
         with (
@@ -432,13 +409,12 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            response = _mapping(result)
-            assert _mapping(response["query"])["content"] == query
-            records = _object_list(response["records"])
+            assert result["query"]["content"] == query
+            records = result["records"]
             assert len(records) == 2
-            assert _mapping(records[0])["content"] == "External doc 1"
-            assert _mapping(records[0])["title"] == "Title 1"
-            assert _mapping(records[0])["score"] == 0.95
+            assert records[0]["content"] == "External doc 1"
+            assert records[0]["title"] == "Title 1"
+            assert records[0]["score"] == 0.95
             mock_external_retrieve.assert_called_once()
             # Verify query was escaped
             assert mock_external_retrieve.call_args[1]["query"] == 'test query with \\"quotes\\"'
@@ -459,7 +435,7 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
         metadata_filtering_conditions = {}
 
         # Act
@@ -468,9 +444,8 @@ class TestHitTestingServiceExternalRetrieve:
         )
 
         # Assert
-        response = _mapping(result)
-        assert _mapping(response["query"])["content"] == query
-        assert response["records"] == []
+        assert result["query"]["content"] == query
+        assert result["records"] == []
         assert sqlite_session.scalar(select(DatasetQuery)) is None
 
     def test_external_retrieve_with_metadata_filtering(self, sqlite_session: Session) -> None:
@@ -487,7 +462,9 @@ class TestHitTestingServiceExternalRetrieve:
         external_retrieval_model = {"top_k": 3}
         metadata_filtering_conditions = {"category": "test"}
 
-        external_documents = [{"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": dict[str, object]()}]
+        external_documents: list[ExternalRetrievalRecord] = [
+            {"content": "Doc 1", "title": "Title", "score": 0.9, "metadata": {}}
+        ]
 
         with (
             patch(
@@ -509,9 +486,8 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            response = _mapping(result)
-            assert _mapping(response["query"])["content"] == query
-            assert len(_object_list(response["records"])) == 1
+            assert result["query"]["content"] == query
+            assert len(result["records"]) == 1
             call_kwargs = mock_external_retrieve.call_args[1]
             assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
 
@@ -526,7 +502,7 @@ class TestHitTestingServiceExternalRetrieve:
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
         query = "test query"
-        external_retrieval_model = {}
+        external_retrieval_model: dict[str, object] = {}
         metadata_filtering_conditions = {}
 
         with (
@@ -536,7 +512,8 @@ class TestHitTestingServiceExternalRetrieve:
             patch("services.hit_testing_service.time.perf_counter", autospec=True) as mock_perf_counter,
         ):
             mock_perf_counter.side_effect = [0.0, 0.1]
-            mock_external_retrieve.return_value = list[object]()
+            external_records: list[ExternalRetrievalRecord] = []
+            mock_external_retrieve.return_value = external_records
 
             # Act
             result = HitTestingService.external_retrieve(
@@ -549,9 +526,8 @@ class TestHitTestingServiceExternalRetrieve:
             )
 
             # Assert
-            response = _mapping(result)
-            assert _mapping(response["query"])["content"] == query
-            assert response["records"] == []
+            assert result["query"]["content"] == query
+            assert result["records"] == []
 
 
 class TestHitTestingServiceCompactRetrieveResponse:
@@ -613,7 +589,8 @@ class TestHitTestingServiceCompactRetrieveResponse:
         with patch(
             "services.hit_testing_service.RetrievalService.format_retrieval_documents", autospec=True
         ) as mock_format:
-            mock_format.return_value = list[object]()
+            formatted: list[RetrievalSegments] = []
+            mock_format.return_value = formatted
 
             # Act
             result = HitTestingService.compact_retrieve_response(query, documents, session=sqlite_session)
@@ -645,9 +622,9 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
-        documents = [
+        documents: list[ExternalRetrievalRecord] = [
             {"content": "Doc 1", "title": "Title 1", "score": 0.95, "metadata": {"key": "value"}},
-            {"content": "Doc 2", "title": "Title 2", "score": 0.85, "metadata": dict[str, object]()},
+            {"content": "Doc 2", "title": "Title 2", "score": 0.85, "metadata": {}},
         ]
 
         # Act
@@ -671,7 +648,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         query = "test query"
-        documents = [{"content": "Doc 1"}]
+        documents: list[ExternalRetrievalRecord] = [{"content": "Doc 1"}]
 
         # Act
         result = HitTestingService.compact_external_retrieve_response(dataset, query, documents)
@@ -690,7 +667,7 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
-        documents = [
+        documents: list[ExternalRetrievalRecord] = [
             {"content": "Doc 1"},  # Missing title, score, metadata
             {"content": "Doc 2", "title": "Title 2"},  # Missing score, metadata
         ]

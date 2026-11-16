@@ -1,4 +1,4 @@
-from typing import Any, Literal
+from typing import Any, Literal, NotRequired, TypedDict
 
 from pydantic import BaseModel, Field
 
@@ -24,6 +24,21 @@ class ExternalKnowledgeApiSetting(BaseModel):
     request_method: str
     headers: dict[str, Any] | None = None
     params: dict[str, Any] | None = None
+
+
+class ExternalRetrievalRecord(TypedDict):
+    """One record of an external knowledge base retrieval response.
+
+    ``content`` is the only field the external contract requires. The remaining
+    fields come from the same JSON object and stay optional because providers
+    legitimately omit them; consumers must treat a missing value and an explicit
+    ``None`` identically, so they read these fields with ``.get``.
+    """
+
+    content: str
+    title: NotRequired[str | None]
+    score: NotRequired[float | None]
+    metadata: NotRequired[dict[str, Any] | None]
 
 
 class ExternalDatasetCreatePayload(BaseModel):

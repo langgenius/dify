@@ -1,9 +1,10 @@
 import json
 from copy import deepcopy
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -24,10 +25,13 @@ from services.entities.external_knowledge_entities.external_knowledge_entities i
     Authorization,
     ExternalDatasetCreatePayload,
     ExternalKnowledgeApiSetting,
+    ExternalRetrievalRecord,
 )
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.knowledge_retrieval import ExternalKnowledgeRetrievalError
 from services.rbac import contracts as rbac_contracts
+
+_EXTERNAL_RETRIEVAL_RECORDS: TypeAdapter[list[ExternalRetrievalRecord]] = TypeAdapter(list[ExternalRetrievalRecord])
 
 
 class ExternalDatasetService:
@@ -353,7 +357,7 @@ class ExternalDatasetService:
         metadata_condition: MetadataFilteringCondition | None = None,
         *,
         session: Session,
-    ):
+    ) -> list[ExternalRetrievalRecord]:
         """Fetch retrieval records from an external knowledge provider.
 
         Success requires a tenant-scoped binding plus API template and a ``200``
@@ -362,6 +366,11 @@ class ExternalDatasetService:
         normalized to ``ExternalKnowledgeRetrievalError`` so callers—especially
         the inner knowledge retrieval API—can consistently expose
         ``502 external_knowledge_failed``.
+
+        Postconditions: the returned records are validated against
+        ``ExternalRetrievalRecord``; ``content`` is always present, while
+        ``title``/``score``/``metadata`` may be absent because providers
+        legitimately omit them.
         """
         request = ExternalDatasetService.prepare_external_knowledge_retrieval(
             tenant_id, dataset_id, query, external_retrieval_parameters, metadata_condition, session=session
@@ -427,8 +436,19 @@ class ExternalDatasetService:
         )
 
     @staticmethod
-    def execute_external_knowledge_retrieval(request: ExternalKnowledgeApiSetting) -> list[Any]:
-        """Execute and validate a prepared request without holding a database session."""
+    def execute_external_knowledge_retrieval(request: ExternalKnowledgeApiSetting) -> list[ExternalRetrievalRecord]:
+        """Execute and validate a prepared request without holding a database session.
+
+        This is the JSON boundary of external knowledge retrieval: the raw
+        ``records`` payload is validated into ``ExternalRetrievalRecord`` here so
+        every downstream caller receives typed records instead of re-checking
+        keys and types at each use site.
+
+        Postconditions: on success the returned records satisfy
+        ``ExternalRetrievalRecord``. Any non-200 response, non-JSON body, or body
+        whose ``records`` field is not a list of valid records raises
+        ``ExternalKnowledgeRetrievalError``.
+        """
         try:
             response = ExternalDatasetService.process_external_api(
                 request,
@@ -452,6 +472,9 @@ class ExternalDatasetService:
             if not isinstance(records, list):
                 raise ExternalKnowledgeRetrievalError("invalid external knowledge response")
 
-            return cast(list[Any], records)
+            try:
+                return _EXTERNAL_RETRIEVAL_RECORDS.validate_python(records)
+            except ValidationError as exc:
+                raise ExternalKnowledgeRetrievalError("invalid external knowledge response") from exc
         else:
             raise ExternalKnowledgeRetrievalError(response.text)
