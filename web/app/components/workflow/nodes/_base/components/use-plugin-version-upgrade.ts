@@ -12,11 +12,12 @@ import {
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import {
   startMarketplacePluginUpgrade,
   useInvalidateInstalledPluginList,
 } from '@/service/use-plugins'
+import { getErrorMessage } from '@/utils/error-message'
 
 type UpgradeReceipt = { taskId: string; identifier: string; category: PluginCategoryEnum }
 const receipts = queryOptions<Record<string, UpgradeReceipt>>({
@@ -25,6 +26,19 @@ const receipts = queryOptions<Record<string, UpgradeReceipt>>({
   initialData: {},
   gcTime: Infinity,
 })
+
+async function hasInstallTask(taskId: string, signal: AbortSignal) {
+  const pageSize = 100
+  for (let page = 1; ; page++) {
+    const { tasks } = await consoleClient.workspaces.current.plugin.tasks.get(
+      { query: { page, page_size: pageSize } },
+      { signal, context: { silent: true } },
+    )
+    signal.throwIfAborted()
+    if (tasks.some((task) => task.id === taskId)) return true
+    if (tasks.length < pageSize) return false
+  }
+}
 
 export function usePluginVersionUpgrade(pluginId: string) {
   const queryClient = useQueryClient()
@@ -79,7 +93,8 @@ export function usePluginVersionUpgrade(pluginId: string) {
             )
           )
             return { status: TaskStatus.success }
-          throw error
+          if (await hasInstallTask(pending.taskId, signal)) throw error
+          return { status: TaskStatus.failed, error: getErrorMessage(error) }
         })
       queryClient.setQueryData(receipts.queryKey, (jobs) => {
         const next = { ...jobs }

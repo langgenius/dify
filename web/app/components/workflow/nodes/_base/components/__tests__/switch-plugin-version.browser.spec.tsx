@@ -13,6 +13,7 @@ import { SwitchPluginVersion } from '../switch-plugin-version'
 
 const api = vi.hoisted(() => ({
   detail: vi.fn<typeof consoleClient.workspaces.current.plugin.list.installations.ids.post>(),
+  tasks: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.get>(),
   task: vi.fn<typeof consoleClient.workspaces.current.plugin.tasks.byTaskId.get>(),
   upgrade: vi.fn<typeof consoleClient.workspaces.current.plugin.upgrade.marketplace.post>(),
   versions: vi.fn<() => Promise<PluginVersionsResponse>>(),
@@ -29,6 +30,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.plugin.upgrade.marketplace.post': api.upgrade,
+      'workspaces.current.plugin.tasks.get': api.tasks,
       'workspaces.current.plugin.tasks.byTaskId.get': api.task,
     }),
   }
@@ -49,6 +51,7 @@ const installed = createPluginEntity()
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
 beforeEach(() => {
   api.detail.mockReset().mockResolvedValue({ plugins: [installed] })
+  api.tasks.mockReset().mockResolvedValue({ tasks: [] })
   api.task.mockReset()
   api.upgrade.mockReset().mockResolvedValue({ all_installed: true, task_id: '' })
   api.versions.mockReset().mockResolvedValue({
@@ -376,55 +379,80 @@ it('records a task accepted after navigation without polling until a panel comes
   expect(api.upgrade).toHaveBeenCalledOnce()
 })
 
-it('retries a failed status request for the original version without submitting another upgrade', async () => {
-  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'retry-status' })
-  api.task.mockRejectedValueOnce(new Error('Status unavailable')).mockResolvedValueOnce({
-    task: {
-      id: 'retry-status',
-      status: 'success',
-      created_at: '',
-      updated_at: '',
-      total_plugins: 1,
-      completed_plugins: 1,
-      plugins: [
-        {
-          plugin_id: installed.plugin_id,
-          plugin_unique_identifier: identifier('2.0.0'),
-          status: 'success',
-          message: '',
-          icon: '',
-          labels: { en_US: 'Plugin' },
-        },
-      ],
-    },
-  })
-  const { trigger } = await setup()
-  const open = async () => {
+it.each(['task on second page', 'list unavailable'] as const)(
+  'retries the original task after a status error (%s)',
+  async (scenario) => {
+    if (scenario === 'list unavailable')
+      api.tasks.mockRejectedValue(new Error('Network unavailable'))
+    else {
+      const task = {
+        id: 'retry-status',
+        created_at: '',
+        updated_at: '',
+        status: 'running' as const,
+        total_plugins: 1,
+        completed_plugins: 0,
+        plugins: [],
+      }
+      api.tasks
+        .mockResolvedValueOnce({
+          tasks: Array.from({ length: 100 }, (_, id) => ({ ...task, id: String(id) })),
+        })
+        .mockResolvedValueOnce({ tasks: [task] })
+    }
+    api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'retry-status' })
+    api.task.mockRejectedValueOnce(new Error('Status unavailable')).mockResolvedValueOnce({
+      task: {
+        id: 'retry-status',
+        status: 'success',
+        created_at: '',
+        updated_at: '',
+        total_plugins: 1,
+        completed_plugins: 1,
+        plugins: [
+          {
+            plugin_id: installed.plugin_id,
+            plugin_unique_identifier: identifier('2.0.0'),
+            status: 'success',
+            message: '',
+            icon: '',
+            labels: { en_US: 'Plugin' },
+          },
+        ],
+      },
+    })
+    const { trigger } = await setup()
+    const open = async () => {
+      await trigger.click()
+      await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+    }
+    const confirm = page.getByRole('button', {
+      name: 'workflowAgent.nodes.agent.installPlugin.install',
+    })
+    await open()
+    await confirm.click()
+    await expect
+      .element(page.getByRole('alert'))
+      .toHaveTextContent(
+        scenario === 'list unavailable' ? 'Network unavailable' : 'Status unavailable',
+      )
+    expect(api.task).toHaveBeenCalledOnce()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
     await trigger.click()
+    await expect
+      .element(page.getByRole('menuitem', { name: /^0\.5\.0/ }))
+      .toHaveAttribute('aria-disabled', 'true')
     await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
-  }
-  const confirm = page.getByRole('button', {
-    name: 'workflowAgent.nodes.agent.installPlugin.install',
-  })
-  await open()
-  await confirm.click()
-  await expect.element(page.getByRole('alert')).toHaveTextContent('Status unavailable')
-  expect(api.task).toHaveBeenCalledOnce()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  await trigger.click()
-  await expect
-    .element(page.getByRole('menuitem', { name: /^0\.5\.0/ }))
-    .toHaveAttribute('aria-disabled', 'true')
-  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
-  await confirm.click()
-  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
-  expect(api.upgrade).toHaveBeenCalledOnce()
-  expect(api.task.mock.calls.map(([input]) => input.params.task_id)).toEqual([
-    'retry-status',
-    'retry-status',
-  ])
-})
+    await confirm.click()
+    await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+    expect(api.upgrade).toHaveBeenCalledOnce()
+    expect(api.task.mock.calls.map(([input]) => input.params.task_id)).toEqual([
+      'retry-status',
+      'retry-status',
+    ])
+  },
+)
 
 it.each([true, false])(
   'uses the installed package to resolve an unavailable task only when its identifier matches (%s)',
@@ -458,3 +486,24 @@ it.each([true, false])(
     expect(api.upgrade).toHaveBeenCalledOnce()
   },
 )
+
+it('allows a new upgrade when the accepted task was removed and the target is not installed', async () => {
+  const { trigger } = await setup()
+  api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'removed' })
+  api.task.mockRejectedValue(new Error('Task unavailable'))
+  const confirm = page.getByRole('button', {
+    name: 'workflowAgent.nodes.agent.installPlugin.install',
+  })
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()
+  await confirm.click()
+  await expect.element(page.getByRole('alert')).toHaveTextContent('Task unavailable')
+  await userEvent.keyboard('{Escape}')
+  await trigger.click()
+  await page.getByRole('menuitem', { name: /^0\.5\.0/ }).click()
+  await confirm.click()
+  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  expect(api.upgrade).toHaveBeenCalledTimes(2)
+  expect(api.upgrade.mock.calls[1]?.[0].body.new_plugin_unique_identifier).toBe(identifier('0.5.0'))
+  expect(api.task).toHaveBeenCalledOnce()
+})
