@@ -1,4 +1,3 @@
-import inspect
 from collections.abc import Callable
 from functools import wraps
 from uuid import UUID
@@ -156,17 +155,3 @@ def plugin_data[**P, R](
         return decorated_view
 
     return decorator
-
-
-def unwrap_plugin_handler[**P, R](handler: Callable[P, R]) -> Callable[P, R]:
-    """Return the undecorated implementation behind a plugin endpoint handler.
-
-    Every decorator in this module (``get_user_tenant``, ``plugin_data``) and in
-    ``controllers.inner_api.wraps`` / ``controllers.console.wraps`` wraps the
-    handler with ``functools.wraps``, so ``inspect.unwrap`` always reaches the
-    original ``post(self, user_model, tenant_model, payload)`` function. That
-    contract lives here, next to the decorators that must preserve it, so callers
-    (including handler-level tests) do not have to reach into closure cells to
-    recover the implementation.
-    """
-    return inspect.unwrap(handler)
