@@ -102,8 +102,9 @@ def _webhook_file_conversion_build_webhook_variable_pool(inputs: dict[str, Any])
     )
 
 
-def expected_factory_mapping(file_dict: dict[str, Any]) -> dict[str, Any]:
-    return {**file_dict, "upload_file_id": file_dict["related_id"]}
+def expected_factory_mapping(file_dict: WebhookFileDict) -> WebhookFileDict:
+    related_id = file_dict.get("related_id")
+    return {**file_dict, "upload_file_id": related_id}
 
 
 def test_webhook_node_file_conversion_to_file_variable() -> None:
@@ -925,10 +926,15 @@ def test_parse_webhook_file_keeps_only_scalar_string_keyed_fields() -> None:
     assert raw["nested"] == {"id": "inner"}
 
 
+def test_parse_webhook_file_keeps_only_values_matching_declared_field_types() -> None:
+    parsed = parse_webhook_file({"reference": 42, "related_id": "rel-1", "transfer_method": 7})
+    assert parsed == {"related_id": "rel-1"}
+    assert _webhook_file_record_id(parsed) == "rel-1"
+
+
 def test_webhook_file_record_id_prefers_reference_then_related_id() -> None:
     assert _webhook_file_record_id({"reference": "ref-1", "related_id": "rel-1"}) == "ref-1"
     assert _webhook_file_record_id({"reference": "", "related_id": "rel-1"}) == "rel-1"
-    assert _webhook_file_record_id({"reference": 42, "related_id": "rel-1"}) == "rel-1"
     assert _webhook_file_record_id({"related_id": ""}) is None
     assert _webhook_file_record_id({}) is None
 
@@ -945,7 +951,6 @@ def test_generate_file_var_without_transfer_method_returns_none() -> None:
 
     assert node.generate_file_var("upload", {"id": "file-123"}) is None
     assert node.generate_file_var("upload", {"transfer_method": ""}) is None
-    assert node.generate_file_var("upload", {"transfer_method": 42}) is None
 
 
 def test_generate_file_var_returns_none_when_file_build_fails() -> None:
@@ -958,8 +963,10 @@ def test_generate_file_var_returns_none_when_file_build_fails() -> None:
     variable_pool = _webhook_file_conversion_build_webhook_variable_pool({"webhook_data": {}})
     node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
 
-    with patch.object(node._file_reference_factory, "build_from_mapping", side_effect=ValueError("bad file")):
-        assert node.generate_file_var("upload", create_test_file_dict()) is None
+    # The real factory rejects a remote-url entry without any url before touching storage.
+    file = create_test_file_dict(transfer_method="remote_url")
+    del file["url"]
+    assert node.generate_file_var("upload", file) is None
 
 
 def test_webhook_node_binary_upload_without_parsable_file_keeps_raw() -> None:
