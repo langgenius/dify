@@ -4,6 +4,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import cast, override
 
 import httpx
@@ -243,6 +244,46 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
         await http_client.aclose()
 
     asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
+def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPatch, sync: bool) -> None:
+    now = 0.0
+    request_count = 0
+
+    def sleep(seconds: float) -> None:
+        nonlocal now
+        now += seconds
+
+    async def sleep_async(seconds: float) -> None:
+        sleep(seconds)
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        assert request.method == "GET"
+        assert request.url.path == "/runs/run-1"
+        request_count += 1
+        return httpx.Response(200, json=_run_status_json("running" if request_count == 1 else "succeeded"))
+
+    monkeypatch.setattr(client_module, "time", SimpleNamespace(monotonic=lambda: now))
+    monkeypatch.setattr(client_module, "_sleep_sync", sleep)
+    monkeypatch.setattr(client_module, "_sleep_async", sleep_async)
+    transport = httpx.MockTransport(handler)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            await client.wait_run("run-1", poll_interval_seconds=2, timeout_seconds=1)
+
+    with pytest.raises(DifyAgentTimeoutError, match="did not finish before timeout"):
+        if sync:
+            with httpx.Client(transport=transport) as http_client:
+                client = Client(base_url="http://testserver", sync_http_client=http_client)
+                client.wait_run_sync("run-1", poll_interval_seconds=2, timeout_seconds=1)
+        else:
+            asyncio.run(scenario())
+    assert request_count == 1
+    assert now == 1
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
