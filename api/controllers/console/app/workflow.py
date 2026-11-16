@@ -21,6 +21,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, InternalServerError, NotF
 
 import services
 from configs import dify_config
+from constants.trigger import TRIGGER_SCHEDULE_NODE_TYPE
 from controllers.common.controller_schemas import DefaultBlockConfigQuery, WorkflowListQuery, WorkflowUpdatePayload
 from controllers.common.errors import InvalidArgumentError
 from controllers.common.fields import GeneratedAppResponse, NewAppResponse, SimpleResultResponse
@@ -57,7 +58,6 @@ from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.helper.trace_id_helper import get_external_trace_id
 from core.plugin.impl.exc import PluginInvokeError
-from core.trigger.constants import TRIGGER_SCHEDULE_NODE_TYPE
 from core.workflow.llm_environment_variable import (
     LLM_ENVIRONMENT_VARIABLE_VALUE_TYPE,
     LLMEnvironmentVariable,

@@ -270,9 +270,20 @@ jobs:
             -o 'addopts=-p no:opik -p no:langsmith_plugin --cov=./api --cov-branch --import-mode=importlib' \
             --cov-report= \
             --timeout "${PYTEST_TIMEOUT:-180}" \
+            --durations=50 \
+            --junitxml=test-results/integration.xml \
             api/tests/e2e_tests/middleware/workflow \
             api/tests/e2e_tests/middleware/tools \
             api/tests/e2e_tests/containers
+
+      - name: Upload integration test reports
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: api-test-results-integration-${{ matrix.python-version }}
+          path: test-results/*.xml
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Generate coverage report
         run: uv run --project api coverage xml -o coverage.xml

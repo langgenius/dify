@@ -8,10 +8,10 @@ from core.plugin.entities.parameters import PluginParameterOption
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.encryption import create_tool_provider_encrypter
-from core.trigger.provider import PluginTriggerProviderController
-from core.trigger.utils.encryption import create_trigger_provider_encrypter
 from models.provider_ids import TriggerProviderID
 from services.credentials.query import ToolCredentialSnapshot
+from services.trigger.credential_encryption import create_trigger_provider_encrypter
+from services.trigger.plugin_provider import PluginTriggerProvider
 from services.trigger.subscription_service import TriggerSubscriptionSnapshot
 from services.trigger.trigger_subscription_builder_service import TriggerSubscriptionBuilderQuery
 
@@ -31,9 +31,7 @@ class PluginParameterSubscriptions(Protocol):
 class PluginParameterGateway(Protocol):
     def get_tool_provider(self, *, tenant_id: str, provider: str) -> PluginToolProviderController: ...
 
-    def get_trigger_provider(
-        self, *, tenant_id: str, provider_id: TriggerProviderID
-    ) -> PluginTriggerProviderController: ...
+    def get_trigger_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> PluginTriggerProvider: ...
 
     def fetch_options(
         self,

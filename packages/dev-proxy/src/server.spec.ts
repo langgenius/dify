@@ -119,7 +119,7 @@ describe('dev proxy server', () => {
 
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('__Host-access_token=abc; theme=dark')
     expect(requestHeaders.get('origin')).toBe('https://cloud.example.com')
@@ -156,7 +156,7 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
   })
@@ -238,7 +238,7 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe('access_token=abc; refresh_token=def')
   })
@@ -299,7 +299,7 @@ describe('dev proxy server', () => {
     // Assert
     const requestHeaders = fetchImpl.mock.calls[0]?.[1]?.headers
     if (!(requestHeaders instanceof Headers))
-      throw new Error('Expected proxy request headers to be Headers')
+      throw new TypeError('Expected proxy request headers to be Headers')
 
     expect(requestHeaders.get('cookie')).toBe(
       '__Host-access_token=current-access; __Host-csrf_token=current-csrf; theme=dark',

@@ -41,7 +41,6 @@ import Placeholder from './plugins/placeholder'
 import { QueryBlock, QueryBlockReplacementBlock } from './plugins/query-block'
 import { RequestURLBlock, RequestURLBlockReplacementBlock } from './plugins/request-url-block'
 import RosterReferenceBlock from './plugins/roster-reference-block'
-import { RosterReferenceBlockContext } from './plugins/roster-reference-block/context'
 import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
 import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
@@ -149,11 +148,12 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
   onEditorChange,
 }) => {
   return (
-    <RosterReferenceBlockContext value={rosterReferenceBlock}>
+    <>
       <RichTextPlugin
         contentEditable={
           <ContentEditable
             id={id}
+            role="textbox"
             aria-controls={ariaControls}
             aria-haspopup={ariaHasPopup}
             aria-label={ariaLabel}
@@ -295,7 +295,7 @@ const PromptEditorContent: FC<PromptEditorContentProps> = ({
       <UpdateBlock instanceId={instanceId} />
       <HistoryPlugin />
       {floatingAnchorElem && <DraggableBlockPlugin anchorElem={floatingAnchorElem} />}
-    </RosterReferenceBlockContext>
+    </>
   )
 }
 

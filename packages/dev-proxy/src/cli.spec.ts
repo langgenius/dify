@@ -216,59 +216,65 @@ describe('dev proxy CLI', () => {
   })
 
   // Scenario: editing the configured env file should reload route targets without restarting the CLI process.
-  it('should reload proxy config when the env file changes', async () => {
-    // Arrange
-    const tempDir = await createTempDir()
-    const port = await getFreePort()
-    const firstTarget = await startTextServer('first target')
-    const secondTarget = await startTextServer('second target')
+  it.each(['edit', 'replace', 'recreate', 'symlink'])(
+    'should reload proxy config after an env file %s',
+    async (operation) => {
+      // Arrange
+      const tempDir = await createTempDir()
+      const port = await getFreePort()
+      const firstTarget = await startTextServer('first target')
+      const secondTarget = await startTextServer('second target')
 
-    await fs.writeFile(
-      path.join(tempDir, '.env.proxy'),
-      `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`,
-    )
-    await fs.writeFile(
-      path.join(tempDir, 'dev-proxy.config.ts'),
-      `
+      const envPath = path.join(tempDir, operation === 'symlink' ? '.env.target' : '.env.proxy')
+      await fs.writeFile(envPath, `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${firstTarget.port}\n`)
+      if (operation === 'symlink') await fs.symlink(envPath, path.join(tempDir, '.env.proxy'))
+      await fs.writeFile(
+        path.join(tempDir, 'dev-proxy.config.ts'),
+        `
       export default {
         routes: [{ paths: '/api', target: process.env.DEV_PROXY_TEST_TARGET }],
       }
     `,
-    )
+      )
 
-    let output = ''
-    const child = spawnCli(
-      [
-        '--config',
-        './dev-proxy.config.ts',
-        '--env-file',
-        './.env.proxy',
-        '--host',
-        '127.0.0.1',
-        '--port',
-        String(port),
-      ],
-      tempDir,
-    )
-    child.stdout.on('data', (chunk) => (output += chunk.toString()))
-    child.stderr.on('data', (chunk) => (output += chunk.toString()))
-    const proxyUrl = `http://127.0.0.1:${port}/api/ping`
+      let output = ''
+      const child = spawnCli(
+        [
+          '--config',
+          './dev-proxy.config.ts',
+          '--env-file',
+          './.env.proxy',
+          '--host',
+          '127.0.0.1',
+          '--port',
+          String(port),
+        ],
+        tempDir,
+      )
+      child.stdout.on('data', (chunk) => (output += chunk.toString()))
+      child.stderr.on('data', (chunk) => (output += chunk.toString()))
+      const proxyUrl = `http://127.0.0.1:${port}/api/ping`
 
-    // Act
-    await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
-    const firstResponse = await fetchTextWithRetry(proxyUrl)
+      // Act
+      await waitForOutput(child, () => output, `[dev-proxy] listening on http://127.0.0.1:${port}`)
+      const firstResponse = await fetchTextWithRetry(proxyUrl)
 
-    await fs.writeFile(
-      path.join(tempDir, '.env.proxy'),
-      `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${secondTarget.port}\n`,
-    )
-    await waitForOutput(child, () => output, '[dev-proxy] reloaded env file changes')
-    const secondResponse = await fetchTextWithRetry(proxyUrl)
+      const nextEnv = `DEV_PROXY_TEST_TARGET=http://127.0.0.1:${secondTarget.port}\n`
+      if (operation === 'replace') {
+        await fs.writeFile(`${envPath}.tmp`, nextEnv)
+        await fs.rename(`${envPath}.tmp`, envPath)
+      } else {
+        if (operation === 'recreate') await fs.unlink(envPath)
+        await fs.writeFile(envPath, nextEnv)
+      }
+      await waitForOutput(child, () => output, '[dev-proxy] reloaded env file changes')
+      const secondResponse = await fetchTextWithRetry(proxyUrl)
 
-    // Assert
-    expect(firstResponse).toBe('first target')
-    expect(secondResponse).toBe('second target')
-    expect(child.exitCode).toBeNull()
-    expect(child.signalCode).toBeNull()
-  })
+      // Assert
+      expect(firstResponse).toBe('first target')
+      expect(secondResponse).toBe('second target')
+      expect(child.exitCode).toBeNull()
+      expect(child.signalCode).toBeNull()
+    },
+  )
 })

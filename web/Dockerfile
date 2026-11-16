@@ -1,5 +1,5 @@
 # base image
-ARG NODE_VERSION=24.22.1
+ARG NODE_VERSION=24.22.3
 FROM node:${NODE_VERSION}-alpine AS base
 LABEL maintainer="takatost@gmail.com"
 
@@ -23,6 +23,7 @@ FROM base AS packages
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml /app/
+COPY patches /app/patches
 COPY web/package.json /app/web/
 COPY e2e/package.json /app/e2e/
 COPY sdks/nodejs-client/package.json /app/sdks/nodejs-client/
