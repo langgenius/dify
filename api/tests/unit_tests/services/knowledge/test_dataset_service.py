@@ -3516,6 +3516,87 @@ class TestDatasetServiceDocumentCases:
             assert document.enabled is True
             assert guard_store.values == {}
 
+        @pytest.mark.parametrize("dispatch_fails", [False, True])
+        def test_batch_update_document_status_still_dispatches_when_guard_write_fails(
+            self, sqlite_session: Session, dispatch_fails: bool
+        ) -> None:
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task"
+                ) as add_task,
+            ):
+                mock_redis.get.return_value = None
+                mock_redis.setex.side_effect = RuntimeError("redis down")
+                if dispatch_fails:
+                    add_task.delay.side_effect = RuntimeError("task failed")
+                    with pytest.raises(RuntimeError, match="task failed"):
+                        _dataset_service_document_DocumentService.batch_update_document_status(
+                            dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                        )
+                else:
+                    _dataset_service_document_DocumentService.batch_update_document_status(
+                        dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                    )
+
+            add_task.delay.assert_called_once_with(document.id)
+            # the guard was never written, so there is nothing to clear
+            mock_redis.delete.assert_not_called()
+
+        def test_batch_update_document_status_raises_task_error_when_guard_cleanup_fails(
+            self, sqlite_session: Session
+        ) -> None:
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task"
+                ) as add_task,
+            ):
+                mock_redis.get.return_value = None
+                mock_redis.delete.side_effect = RuntimeError("redis down")
+                add_task.delay.side_effect = RuntimeError("task failed")
+
+                with pytest.raises(RuntimeError, match="task failed"):
+                    _dataset_service_document_DocumentService.batch_update_document_status(
+                        dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                    )
+
+            mock_redis.delete.assert_called_once_with(f"document_{document.id}_indexing")
+
+        def test_batch_update_document_status_archives_disabled_document_without_guard_or_task(
+            self, sqlite_session: Session
+        ) -> None:
+            dataset = _dataset_row()
+            document = _document_row(enabled=False, archived=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client") as mock_redis,
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.remove_document_from_index_task"
+                ) as remove_task,
+            ):
+                mock_redis.get.return_value = None
+                _dataset_service_document_DocumentService.batch_update_document_status(
+                    dataset, [document.id], "archive", _dataset_service_document_account(), sqlite_session
+                )
+
+            sqlite_session.refresh(document)
+            assert document.archived is True
+            mock_redis.setex.assert_not_called()
+            remove_task.delay.assert_not_called()
+
     class TestDocumentServiceTenantAndUpdateEdges:
         """Unit tests for tenant-count and update edge cases."""
 
