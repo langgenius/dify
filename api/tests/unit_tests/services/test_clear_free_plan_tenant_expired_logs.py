@@ -724,9 +724,6 @@ class _BoundedNodeExecutionRepository:
     def delete_executions_by_ids(self, execution_ids: Sequence[str]) -> int:
         return self._repository.delete_executions_by_ids(execution_ids)
 
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._repository, name)
-
 
 class _BoundedWorkflowRunRepository:
     """Forward to the real repository, failing loudly if the batch loop stops terminating."""
@@ -752,9 +749,6 @@ class _BoundedWorkflowRunRepository:
 
     def delete_runs_by_ids(self, run_ids: Sequence[str]) -> int:
         return self._repository.delete_runs_by_ids(run_ids)
-
-    def __getattr__(self, name: str) -> object:
-        return getattr(self._repository, name)
 
 
 def _bound_repository_factory(monkeypatch: pytest.MonkeyPatch) -> None:
