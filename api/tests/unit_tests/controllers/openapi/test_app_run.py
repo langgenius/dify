@@ -324,7 +324,7 @@ def test_per_mode_route_refuses_an_app_of_another_mode(app: Flask, monkeypatch: 
     body = ChatRunPayload(inputs={}, query="hi")
     with app.test_request_context(f"/openapi/v1/apps/{_TEST_APP_ID}/chat:run", method="POST"):
         with pytest.raises(AppModeMismatch):
-            api.post.__handler__(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
+            _post_handler(api)(api, _ctx(AppMode.WORKFLOW), app_id=_TEST_APP_ID, body=body)
     assert generation.calls == []
 
 

@@ -7,7 +7,7 @@ from unittest.mock import ANY, PropertyMock, patch
 
 import pytest
 from flask import Flask
-from sqlalchemy import Engine
+from sqlalchemy import Engine, Table
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -113,7 +113,9 @@ def database_app() -> Iterator[Flask]:
     db.init_app(app)
 
     with app.app_context():
-        PipelineCustomizedTemplate.__table__.create(db.engine)
+        template_table = PipelineCustomizedTemplate.__table__
+        assert isinstance(template_table, Table)
+        template_table.create(db.engine)
         yield app
 
 

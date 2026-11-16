@@ -185,7 +185,7 @@ def test_patch_does_not_turn_omitted_fields_into_updates(datasets: MagicMock) ->
     )
 
 
-def test_patch_maps_concurrent_change_to_conflict(datasets: DatasetApplicationService) -> None:
+def test_patch_maps_concurrent_change_to_conflict(datasets: MagicMock) -> None:
     datasets.update_dataset.side_effect = DatasetConcurrentUpdateFailure("changed")
 
     with pytest.raises(DatasetConcurrentUpdateError) as error:
