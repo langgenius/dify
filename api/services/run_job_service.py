@@ -7,7 +7,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
 from flask import copy_current_request_context
@@ -97,6 +97,11 @@ class _Counter:
     """A thread-safe bounded counter of held slots."""
 
     def __init__(self, limit: int) -> None:
+        """Create a counter.
+
+        Precondition: limit is positive.
+        Postcondition: no slot is held.
+        """
         self._limit = limit
         self._held = 0
         self._lock = threading.Lock()
@@ -116,11 +121,11 @@ class _Counter:
     def release(self) -> None:
         """Give back one slot.
 
-        Precondition: a slot was acquired and not yet released.
-        Postcondition: one fewer slot is held.
+        Precondition: none.
+        Postcondition: one fewer slot is held; the count never goes below zero.
         """
         with self._lock:
-            self._held -= 1
+            self._held = max(0, self._held - 1)
 
 
 def _stop_graph_job(tasks: RunTaskControl, record: JobRecord) -> None:
@@ -166,6 +171,11 @@ class TaskControlStopper:
     """Stops the run behind a job record through task control; serves the reader and RunJobService.stop."""
 
     def __init__(self, tasks: RunTaskControl) -> None:
+        """Bind the task control.
+
+        Precondition: none.
+        Postcondition: stop sends stops through tasks.
+        """
         self._tasks = tasks
 
     def stop(self, record: JobRecord) -> None:
@@ -190,6 +200,11 @@ class RunJobService:
         sleep: Callable[[float], None] = time.sleep,
         monotonic: Callable[[], float] = time.monotonic,
     ) -> None:
+        """Create the service.
+
+        Precondition: both caps are positive; sleep and monotonic are consistent with each other.
+        Postcondition: no slot, waiter or reservation is held.
+        """
         self._store = store
         self._results = results
         self._stopper: JobStopper = TaskControlStopper(tasks)
@@ -197,6 +212,8 @@ class RunJobService:
         self._waiters = _Counter(max_waiters)
         self._sleep = sleep
         self._monotonic = monotonic
+        self._reserved: set[str] = set()
+        self._reserved_lock = threading.Lock()
 
     def open(self, opening: JobOpening) -> OpenedJob:
         """Create a job, or return the earlier one for the same idempotency key.
@@ -213,25 +230,56 @@ class RunJobService:
             op=opening.op,
             status=JobStatus.RUNNING,
         )
+        # Store first so a repeated key at the cap still returns its earlier job.
         opened = self._store.open(record, idempotency_key=opening.idempotency_key)
         if not opened.created:
             return opened
         if self._slots.try_acquire():
+            self._reserve(opened.record.id)
             return opened
         self._store.discard(opened.record.id, idempotency_key=opening.idempotency_key)
         raise JobCapacityError("Too many background runs are active")
 
+    def _reserve(self, job_id: str) -> None:
+        """Remember that job_id holds a slot taken by open.
+
+        Precondition: the slot was just acquired.
+        Postcondition: job_id is reserved.
+        """
+        with self._reserved_lock:
+            self._reserved.add(job_id)
+
+    def _unreserve(self, job_id: str) -> bool:
+        """Forget a reservation.
+
+        Precondition: none.
+        Postcondition: true when job_id was reserved by this process's open (now forgotten); false otherwise.
+        """
+        with self._reserved_lock:
+            if job_id not in self._reserved:
+                return False
+            self._reserved.remove(job_id)
+            return True
+
     def attach(self, job_id: str, frames: Iterable[str]) -> threading.Thread:
         """Read the run's frames on a daemon thread.
 
-        Precondition: called inside a request context, after open created the job and reserved its slot.
+        Precondition: called inside a request context, after this process's open created the job (created=True)
+        and reserved its slot; attach is called at most once per job.
         Postcondition: the thread owns the slot and releases it when the stream ends; if the thread cannot start,
-        the slot is released and the error propagates.
+        the slot is released and the error propagates. Raises ValueError, taking no slot, for a job this
+        process's open did not create.
         """
+        if not self._unreserve(job_id):
+            raise ValueError(f"Job {job_id} holds no reserved background slot")
         context = contextvars.copy_context()
 
-        @copy_current_request_context
         def reader_with_context() -> None:
+            """Read the stream under the copied contexts.
+
+            Precondition: runs on the reader thread.
+            Postcondition: the stream was read to its end and the slot is released.
+            """
             try:
                 context.run(
                     read_to_end,
@@ -243,8 +291,12 @@ class RunJobService:
             finally:
                 self._slots.release()
 
-        thread = threading.Thread(target=reader_with_context, name=READER_THREAD_NAME, daemon=True)
         try:
+            thread = threading.Thread(
+                target=copy_current_request_context(reader_with_context),
+                name=READER_THREAD_NAME,
+                daemon=True,
+            )
             thread.start()
         except BaseException:
             self._slots.release()
@@ -255,22 +307,28 @@ class RunJobService:
         """Remove a job whose run never started.
 
         Precondition: opened came from open and attach was not called for it.
-        Postcondition: the job is gone and, when this call's open created it, its slot is released.
+        Postcondition: the slot reserved by this process's open is released even when the store raises (the error
+        propagates); otherwise the job is gone.
         """
-        self._store.discard(opened.record.id, idempotency_key=idempotency_key)
-        if opened.created:
-            self._slots.release()
+        try:
+            self._store.discard(opened.record.id, idempotency_key=idempotency_key)
+        finally:
+            if opened.created and self._unreserve(opened.record.id):
+                self._slots.release()
 
     def view(self, owner: JobOwner, job_id: str) -> JobView:
         """Describe a job's current state.
 
         Precondition: none.
         Postcondition: a view of the job; a GRAPH job with a stored run takes status, outputs and error from the
-        run, and its form from the pending form while paused. Raises JobNotFoundError when the job is missing or
-        owned by someone else.
+        run, and its form from the pending form while paused (None otherwise). Without a visible run row, and for
+        MESSAGE jobs, the record's own status, error and form are used. Raises JobNotFoundError when the job is
+        missing or owned by someone else.
         """
         record = self._store.get(job_id)
-        if record is None or record.owner != owner:
+        if record is None:
+            raise JobNotFoundError(job_id)
+        if record.owner != owner:
             raise JobNotFoundError(job_id)
         return self._view_of(record)
 
@@ -288,7 +346,7 @@ class RunJobService:
         run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
             return fallback
-        form = record.form
+        form = None
         if run.status is JobStatus.PAUSED:
             form = self._results.pending_form(
                 tenant_id=record.owner.tenant_id,
@@ -314,9 +372,11 @@ class RunJobService:
             return view
         try:
             deadline = self._monotonic() + seconds
-            while not _settled(view) and self._monotonic() < deadline:
-                self._sleep(min(POLL_INTERVAL_SECONDS, deadline - self._monotonic()))
+            remaining = float(seconds)
+            while not _settled(view) and remaining > 0:
+                self._sleep(min(POLL_INTERVAL_SECONDS, remaining))
                 view = self.view(owner, job_id)
+                remaining = deadline - self._monotonic()
         finally:
             self._waiters.release()
         return view
@@ -325,16 +385,23 @@ class RunJobService:
         """Ask a job to stop.
 
         Precondition: none.
-        Postcondition: stop_requested is stored; the run is stopped now when its id is known, otherwise the
-        reader sends the stop once the id arrives. Returns the fresh view. Raises JobNotFoundError as view does.
+        Postcondition: for a job that is not final, stop_requested is stored and the run is stopped now when its id
+        is known, otherwise the reader sends the stop once the id arrives; a final job is left untouched and
+        nothing is sent. Returns the fresh view. Raises JobNotFoundError when the job is missing or owned by
+        someone else.
         """
-        self.view(owner, job_id)
-        self._store.patch(job_id, JobPatch(stop_requested=True))
         record = self._store.get(job_id)
         if record is None:
             raise JobNotFoundError(job_id)
-        self._stopper.stop(record)
-        return self._view_of(record)
+        if record.owner != owner:
+            raise JobNotFoundError(job_id)
+        view = self._view_of(record)
+        if view.status.is_final:
+            return view
+        self._store.patch(job_id, JobPatch(stop_requested=True))
+        stopping = replace(record, stop_requested=True)
+        self._stopper.stop(stopping)
+        return replace(view, record=stopping)
 
 
 def _settled(view: JobView) -> bool:
