@@ -84,6 +84,22 @@ class ComposeEnvironmentTests(unittest.TestCase):
             }.items():
                 self.assertEqual(values[key], expected, f"{name}.{key}")
         self.assertEqual(services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin")
+        for name in (
+            "web",
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+        ):
+            for key in ("CONSOLE_API_URL", "CONSOLE_WEB_URL", "SERVICE_API_URL", "APP_API_URL", "APP_WEB_URL"):
+                # These must be explicitly empty to override localhost ENV values baked into images.
+                self.assertEqual(services[name]["environment"].get(key), "", f"{name}.{key}")
         self.assertEqual(services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001")
         self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
         self.assertEqual(
@@ -739,6 +755,17 @@ class ComposeEnvironmentTests(unittest.TestCase):
         vector_clients = (*api_services, "worker", "worker_knowledge_fs_upgrade", "worker_beat")
         cases = [
             (
+                "core-services/urls.defaults",
+                ("web", *api_services, *worker_services, "worker_beat"),
+                {
+                    "CONSOLE_API_URL": ("https://console-api.example.test", ""),
+                    "CONSOLE_WEB_URL": ("https://console.example.test", "https://root-console.example.test"),
+                    "SERVICE_API_URL": ("https://service.example.test", "https://root-service.example.test"),
+                    "APP_API_URL": ("https://app-api.example.test", "https://root-app-api.example.test"),
+                    "APP_WEB_URL": ("https://app.example.test", "https://root-app.example.test"),
+                },
+            ),
+            (
                 "core-services/api-worker.defaults",
                 (*api_services, *worker_services, "worker_beat"),
                 {
@@ -807,6 +834,43 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 finally:
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
+
+    def test_shared_urls_preserve_legacy_overrides_until_explicitly_changed(self):
+        for name in ("shared", "api-worker", "api", "worker", "worker-beat", "web"):
+            (self.project / f"envs/core-services/{name}.env").write_text(
+                f"CONSOLE_API_URL=https://{name}.example.test\n"
+            )
+        baseline = self.render()
+        source = "envs/core-services/urls.defaults"
+        target = "envs/core-services/urls.env"
+        self.copy_template(source, target)
+        self.assertEqual(self.render(), baseline, "An unchanged copy must preserve existing overrides")
+
+        expected = {
+            "web": "web",
+            "api": "api",
+            "api_websocket": "api",
+            "worker": "worker",
+            "worker_knowledge_fs_upgrade": "worker",
+            "worker_beat": "worker-beat",
+            "knowledge_fs_document_worker": "worker",
+            "knowledge_fs_source_worker": "worker",
+            "knowledge_fs_research_worker": "worker",
+            "knowledge_fs_maintenance_worker": "worker",
+            "knowledge_fs_dispatch_worker": "worker",
+        }
+        for name, origin in expected.items():
+            self.assertEqual(baseline[name]["environment"]["CONSOLE_API_URL"], f"https://{origin}.example.test")
+
+        for value in ("https://dify.example.test:8443", ""):
+            with self.subTest(value=value):
+                self.copy_template(source, target, {"CONSOLE_API_URL": value})
+                services = self.render()
+                for name in expected:
+                    self.assertEqual(services[name]["environment"]["CONSOLE_API_URL"], value, name)
+                self.assertEqual(services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001")
+                for name in baseline.keys() - expected.keys():
+                    self.assertEqual(services[name], baseline[name], name)
 
     def test_existing_shared_overrides_and_empty_value_cleanup(self):
         values = {

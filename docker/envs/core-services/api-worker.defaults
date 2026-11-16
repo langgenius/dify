@@ -17,10 +17,8 @@
 # ------------------------------
 # URLs, deployment and locale
 # ------------------------------
-# CONSOLE_WEB_URL=
-# SERVICE_API_URL=
+# Public console and app URLs are shared through urls.defaults; customize them in urls.env.
 TRIGGER_URL=${TRIGGER_URL-http://localhost}
-# APP_WEB_URL=
 # FILES_URL=
 # INTERNAL_FILES_URL=
 ENDPOINT_URL_TEMPLATE=${ENDPOINT_URL_TEMPLATE-http://localhost/e/{hook_id}}

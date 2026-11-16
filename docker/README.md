@@ -89,11 +89,42 @@ Find settings in:
   sandboxes. [api-worker.defaults](envs/core-services/api-worker.defaults) contains the
   common API, worker, and Beat settings, grouped by function. API process options
   live in `api.defaults`; worker autoscaling lives in `worker.defaults`.
+  [urls.defaults](envs/core-services/urls.defaults) contains public console and app
+  URLs shared by web, API, and workers, including Beat and KnowledgeFS workers.
 - [Databases](envs/databases/): PostgreSQL, MySQL, and Redis.
 - [Vector stores](envs/vectorstores/): bundled and external vector databases,
   including their API/worker client settings. Providers without a dedicated
   template are documented in `api-worker.defaults`.
 - [Infrastructure](envs/infrastructure/): nginx, Certbot, proxies, and supporting services.
+
+### Change public URLs
+
+Configure public console and app URLs once for web, API, and workers:
+
+```bash
+cp envs/core-services/urls.defaults envs/core-services/urls.env
+```
+
+If `urls.env` already exists, edit it in place. For example:
+
+```dotenv
+CONSOLE_API_URL=https://dify.example.com
+```
+
+`CONSOLE_API_URL` is the browser-facing console API base URL on both sides: web
+uses it for browser requests, and API uses it for generated links such as plugin
+icons. Do not include `/console/api`; consumers append it. Empty values use the
+current origin and explicitly override the localhost defaults in Docker images.
+`CONSOLE_WEB_URL`, `SERVICE_API_URL`, `APP_API_URL`, and `APP_WEB_URL` are configured
+in the same file, with separate values when those public endpoints differ.
+
+Explicit values in `urls.env` override URL settings in `web.env`, `api-worker.env`,
+and other service files. Root `.env` overrides both. Existing service URL overrides
+remain supported when `urls.env` is absent or copied without edits.
+
+Web's internal `SERVER_CONSOLE_API_URL` stays in `web.defaults` (override in
+`web.env`); its Docker default is `http://api:5001`. It serves server-side requests
+and can differ from the public URL. Run `docker compose up -d` after changes.
 
 ### Change a service setting
 

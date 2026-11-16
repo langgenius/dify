@@ -61,10 +61,13 @@ x-shared-api-config: &shared-api-config
       required: false
     - path: ./envs/core-services/api.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/api.defaults
   networks:
     - ssrf_proxy_network
@@ -133,10 +136,13 @@ x-shared-worker-config: &shared-worker-config
       required: false
     - path: ./envs/core-services/worker.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker.defaults
   networks:
     - ssrf_proxy_network
@@ -171,8 +177,11 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
       required: false
     - path: ./envs/core-services/worker.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker.defaults
   environment: &knowledge-fs-celery-environment
     MODE: worker
@@ -254,10 +263,13 @@ x-shared-worker-beat-config: &shared-worker-beat-config
       required: false
     - path: ./envs/core-services/worker-beat.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker-beat.defaults
   networks:
     - ssrf_proxy_network
@@ -474,7 +486,10 @@ services:
         required: false
       - path: ./envs/security.env
         required: false
+      - path: ./envs/core-services/urls.env
+        required: false
       - ./.env
+      - ./envs/core-services/urls.defaults
       - ./envs/core-services/web.defaults
 
   # The PostgreSQL database.
