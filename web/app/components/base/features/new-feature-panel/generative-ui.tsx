@@ -23,9 +23,16 @@ export default function GenerativeUI({ disabled, onChange }: Props) {
 
   return (
     <FeatureCard
-      icon={<span aria-hidden="true" className="i-ri-layout-grid-line size-5 text-text-accent" />}
+      icon={
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
+          <span
+            aria-hidden="true"
+            className="i-custom-vender-workflow-window-cursor size-4 text-text-primary-on-surface"
+          />
+        </div>
+      }
       title={t(($) => $['generativeUI.title'])}
-      tooltip={t(($) => $['generativeUI.description'])}
+      description={t(($) => $['generativeUI.description'])}
       value={enabled}
       disabled={disabled}
       onChange={handleChange}
