@@ -56,6 +56,21 @@ class TestImagePreviewApi:
         )
 
     @patch.object(module, "application_services")
+    def test_svg_preview_is_inline_but_sandboxed(self, mock_application_services):
+        module.request = _fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig"})
+        service = mock_application_services.return_value.upload_file_delivery
+        service.get_signed_image_preview.return_value = _delivery(
+            mime_type="image/svg+xml", name="logo.svg", extension="svg"
+        )
+
+        response = unwrap(module.ImagePreviewApi().get)("file-id")
+
+        assert response.headers["Content-Type"] == "image/svg+xml"
+        assert response.headers["Content-Disposition"] == "inline"
+        assert "sandbox" in response.headers["Content-Security-Policy"]
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+
+    @patch.object(module, "application_services")
     def test_not_found(self, mock_application_services):
         module.request = _fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig"})
         service = mock_application_services.return_value.upload_file_delivery
@@ -77,7 +92,7 @@ class TestImagePreviewApi:
 
 
 class TestFilePreviewApi:
-    @patch.object(module, "enforce_download_for_html")
+    @patch.object(module, "harden_active_content_response")
     @patch.object(module, "application_services")
     def test_inline_preview_uses_file_metadata(self, mock_application_services, mock_enforce):
         module.request = _fake_request({"timestamp": "123", "nonce": "abc", "sign": "sig", "as_attachment": False})
