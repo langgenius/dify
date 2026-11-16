@@ -11,7 +11,7 @@ Import OpenAPI documents as typed, tree-shakable API calls and TanStack Query he
 | Compiler              | TypeScript `7.1.0-beta`, with `--runExternalCode`                      |
 | Editor                | TypeScript 7 extension, workspace compiler and content mappers enabled |
 | Build/runtime tooling | Node.js 24+                                                            |
-| Vite                  | Official Vite 8.3.5; optional peer dependency                          |
+| Vite                  | Official Vite 8.3.6; optional peer dependency                          |
 | Next.js               | Next.js 16.4.2, Turbopack and Webpack with the loader below            |
 | Browser runtime       | Modern Fetch, Headers, FormData, Blob and ReadableStream APIs          |
 | Specification         | OpenAPI 3.0/3.1, local JSON Pointer references                         |
@@ -22,7 +22,7 @@ After the beta is published:
 
 ```sh
 npm install @dify/openapi-content-mapper@beta
-npm install --save-dev typescript@7.1.0-beta vite@8.3.5
+npm install --save-dev typescript@7.1.0-beta vite@8.3.6
 ```
 
 Before publication, install a locally packed release candidate with `npm install /path/to/dify-openapi-content-mapper-0.1.0-beta.0.tgz`. See [Development and release] for packaging and verification.
