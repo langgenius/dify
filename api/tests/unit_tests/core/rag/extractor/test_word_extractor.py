@@ -1,5 +1,7 @@
 """Primarily used for testing merged cell scenarios"""
 
+from __future__ import annotations
+
 import io
 import logging
 import os
@@ -638,25 +640,25 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
     }
 
     class FakeBlip:
-        def __init__(self, embed_id: object) -> None:
+        def __init__(self, embed_id: str | Part) -> None:
             self.embed_id = embed_id
 
-        def get(self, key: str) -> object:
+        def get(self, key: str) -> str | Part:
             return self.embed_id
 
     class FakeDrawing:
-        def __init__(self, embed_ids: list[object]) -> None:
+        def __init__(self, embed_ids: list[str | Part]) -> None:
             self.embed_ids = embed_ids
 
-        def findall(self, pattern: str) -> list[object]:
+        def findall(self, pattern: str) -> list[FakeBlip]:
             return [FakeBlip(embed_id) for embed_id in self.embed_ids]
 
     class FakeNode:
-        def __init__(self, text: object = None, attrs: dict[str, object] | None = None) -> None:
+        def __init__(self, text: str | None = None, attrs: dict[str, str] | None = None) -> None:
             self.text = text
             self._attrs = attrs or {}
 
-        def get(self, key: str) -> object:
+        def get(self, key: str) -> str | None:
             return self._attrs.get(key)
 
     class FakeShape:
@@ -674,51 +676,66 @@ def test_parse_docx_covers_drawing_shapes_hyperlink_error_and_table_branch(
                 return FakeNode(attrs={"id": self.img_id})
             return None
 
+    class FakeFldChar:
+        """Stand-in for a ``w:fldChar`` element: the extractor only reads its field type."""
+
+        def __init__(self, fld_char_type: str | None = None) -> None:
+            self._fld_char_type = fld_char_type
+
+        def get(self, key: str) -> str | None:
+            return self._fld_char_type
+
+    @dataclass
+    class FakeInstrText:
+        """Stand-in for a ``w:instrText`` element: the extractor only reads its text."""
+
+        text: str = ""
+
     class FakeChild:
         def __init__(
             self,
             tag: str,
             text: str = "",
-            fld_chars: list[object] | None = None,
-            instr_texts: list[object] | None = None,
-            drawings: list[object] | None = None,
-            shapes: list[object] | None = None,
-            attrs: dict[str, object] | None = None,
-            hyperlink_runs: list[object] | None = None,
+            fld_chars: list[FakeFldChar] | None = None,
+            instr_texts: list[FakeInstrText] | None = None,
+            drawings: list[FakeDrawing] | None = None,
+            shapes: list[FakeShape] | None = None,
+            attrs: dict[str, str] | None = None,
+            hyperlink_runs: list[FakeChild] | None = None,
         ) -> None:
             self.tag = tag
             self.text = text
-            self._fld_chars = fld_chars or list[object]()
-            self._instr_texts = instr_texts or list[object]()
-            self._drawings = drawings or list[object]()
-            self._shapes = shapes or list[object]()
+            self._fld_chars: list[FakeFldChar] = fld_chars or []
+            self._instr_texts: list[FakeInstrText] = instr_texts or []
+            self._drawings: list[FakeDrawing] = drawings or []
+            self._shapes: list[FakeShape] = shapes or []
             self._attrs = attrs or {}
-            self._hyperlink_runs = hyperlink_runs or list[object]()
+            self._hyperlink_runs: list[FakeChild] = hyperlink_runs or []
 
-        def findall(self, pattern: str) -> list[object]:
+        def findall(self, pattern: str) -> list[FakeChild | FakeDrawing | FakeShape | FakeFldChar | FakeInstrText]:
             if pattern == qn("w:fldChar"):
-                return self._fld_chars
+                return list(self._fld_chars)
             if pattern == qn("w:instrText"):
-                return self._instr_texts
+                return list(self._instr_texts)
             if pattern == qn("w:r"):
-                return self._hyperlink_runs
+                return list(self._hyperlink_runs)
             if pattern.endswith("}drawing"):
-                return self._drawings
+                return list(self._drawings)
             if pattern.endswith("}pict"):
-                return self._shapes
+                return list(self._shapes)
             return []
 
-        def get(self, key: str) -> object:
+        def get(self, key: str) -> str | None:
             return self._attrs.get(key)
 
     class FakeRun:
-        def __init__(self, element: object, paragraph: object) -> None:
+        def __init__(self, element: FakeChild, paragraph: FakeParagraph) -> None:
             self.element = element
-            self.text = getattr(element, "text", "")
+            self.text = element.text
 
     @dataclass
     class FakeParagraph:
-        _element: list[object]
+        _element: list[FakeChild]
 
     class FakeTable:
         rows: list[object] = []

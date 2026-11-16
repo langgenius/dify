@@ -3,6 +3,7 @@ import json
 import logging
 import sys
 import types
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -11,6 +12,9 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.rag.datasource.vdb.vector_base import BaseVector, VectorIndexStructDict
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, Whitelist
@@ -28,7 +32,7 @@ _UNSET = _Unset()
 
 def _dataset(
     *,
-    index_struct_dict: dict[str, object] | None | _Unset = _UNSET,
+    index_struct_dict: VectorIndexStructDict | None | _Unset = _UNSET,
     tenant_id: str = "tenant-1",
 ) -> Dataset:
     dataset = Dataset(
@@ -300,56 +304,72 @@ def test_lazy_embeddings_query_cache_hit_skips_model_resolution(
     assert proxy._real is None
 
 
+@dataclass
+class _InitVectorCall:
+    """What ``Vector._init_vector`` handed to the resolved backend factory."""
+
+    vector_type: str | None = None
+    args: tuple[Dataset, list[str], Embeddings, Session | None] | None = field(default=None)
+
+
 def test_init_vector_prefers_dataset_index_struct(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, unbound_session: Session
 ) -> None:
-    calls: dict[str, object] = {"vector_type": None, "init_args": None}
+    call = _InitVectorCall()
+    stub_vector = MagicMock(spec=BaseVector)
 
-    class _Factory:
+    class _Factory(AbstractVectorFactory):
         def init_vector(
             self,
             dataset: Dataset,
             attributes: list[str],
-            embeddings: object,
+            embeddings: Embeddings,
             *,
-            session: Session,
-        ) -> object:
-            calls["init_args"] = (dataset, attributes, embeddings, session)
-            return "vector-processor"
+            session: Session | None,
+        ) -> BaseVector:
+            call.args = (dataset, attributes, embeddings, session)
+            return stub_vector
 
-    monkeypatch.setattr(
-        vector_factory_module.Vector,
-        "get_vector_factory",
-        staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
-    )
+    def _resolve_factory(vector_type: str) -> type[AbstractVectorFactory]:
+        call.vector_type = vector_type
+        return _Factory
 
+    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_resolve_factory))
+
+    embeddings = MagicMock(spec=Embeddings)
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
-    vector._dataset = _dataset(index_struct_dict={"type": vector_factory_module.VectorType.UPSTASH})
+    vector._dataset = _dataset(
+        index_struct_dict={
+            "type": vector_factory_module.VectorType.UPSTASH,
+            "vector_store": {"class_prefix": "collection_1"},
+        }
+    )
     vector._attributes = ["doc_id"]
-    vector._embeddings = "embeddings"
+    vector._embeddings = embeddings
 
     result = vector._init_vector(session=unbound_session)
 
-    assert result == "vector-processor"
-    assert calls["vector_type"] == vector_factory_module.VectorType.UPSTASH
-    assert calls["init_args"] == (vector._dataset, ["doc_id"], "embeddings", unbound_session)
+    assert result is stub_vector
+    assert call.vector_type == vector_factory_module.VectorType.UPSTASH
+    assert call.args == (vector._dataset, ["doc_id"], embeddings, unbound_session)
 
 
 def test_init_vector_uses_whitelist_override(
     vector_factory_module: types.ModuleType, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
 ) -> None:
-    calls: dict[str, object] = {"vector_type": None}
+    call = _InitVectorCall()
 
-    class _Factory:
+    class _Factory(AbstractVectorFactory):
         def init_vector(
             self,
             dataset: Dataset,
             attributes: list[str],
-            embeddings: object,
+            embeddings: Embeddings,
             *,
-            session: Session,
-        ) -> object:
-            return "vector-processor"
+            session: Session | None,
+        ) -> BaseVector:
+            call.args = (dataset, attributes, embeddings, session)
+            return MagicMock(spec=BaseVector)
 
     tenant_id = str(uuid4())
     sqlite_session.add(Whitelist(tenant_id=tenant_id, category="vector_db"))
@@ -359,21 +379,22 @@ def test_init_vector_uses_whitelist_override(
         VECTOR_STORE=vector_factory_module.VectorType.CHROMA,
         VECTOR_STORE_WHITELIST_ENABLE=True,
     )
-    monkeypatch.setattr(
-        vector_factory_module.Vector,
-        "get_vector_factory",
-        staticmethod(lambda vector_type: calls.update(vector_type=vector_type) or _Factory),
-    )
+
+    def _resolve_factory(vector_type: str) -> type[AbstractVectorFactory]:
+        call.vector_type = vector_type
+        return _Factory
+
+    monkeypatch.setattr(vector_factory_module.Vector, "get_vector_factory", staticmethod(_resolve_factory))
 
     vector = vector_factory_module.Vector.__new__(vector_factory_module.Vector)
     vector._dataset = _dataset(tenant_id=tenant_id, index_struct_dict=None)
     vector._attributes = ["doc_id"]
-    vector._embeddings = "embeddings"
+    vector._embeddings = MagicMock(spec=Embeddings)
 
     result = vector._init_vector(session=sqlite_session)
 
-    assert result == "vector-processor"
-    assert calls["vector_type"] == vector_factory_module.VectorType.TIDB_ON_QDRANT
+    assert isinstance(result, BaseVector)
+    assert call.vector_type == vector_factory_module.VectorType.TIDB_ON_QDRANT
 
 
 def test_init_vector_raises_when_vector_store_missing(
