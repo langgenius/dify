@@ -141,6 +141,11 @@ class Jieba(BaseKeyword):
 
     @override
     def search(self, query: str, *, session: Session, **kwargs: Any) -> list[Document]:
+        """Return up to ``top_k`` segments ranked by matching query keywords.
+
+        ``document_ids_filter`` is applied before ``top_k`` is taken, so higher-ranked chunks
+        from excluded documents cannot crowd out matches in the allowed documents.
+        """
         keyword_table = None
         keyword_table_dict = load_dataset_keyword_table(self.dataset, session=session, storage=storage)
         if keyword_table_dict:
@@ -149,7 +154,10 @@ class Jieba(BaseKeyword):
 
         k = kwargs.get("top_k", 4)
         document_ids_filter = kwargs.get("document_ids_filter")
-        sorted_chunk_indices = self._retrieve_ids_by_query(keyword_table or {}, query, k)
+        # Rank every match when filtering; truncating first would drop allowed chunks.
+        sorted_chunk_indices = self._retrieve_ids_by_query(
+            keyword_table or {}, query, None if document_ids_filter else k
+        )
 
         documents = []
 
@@ -177,7 +185,7 @@ class Jieba(BaseKeyword):
                     )
                 )
 
-        return documents
+        return documents[:k]
 
     @override
     def delete(self, *, session: Session):
@@ -217,7 +225,10 @@ class Jieba(BaseKeyword):
 
         return keyword_table
 
-    def _retrieve_ids_by_query(self, keyword_table: Mapping[str, Iterable[str]], query: str, k: int = 4) -> list[str]:
+    def _retrieve_ids_by_query(
+        self, keyword_table: Mapping[str, Iterable[str]], query: str, k: int | None = 4
+    ) -> list[str]:
+        """Return chunk ids ordered by matched keyword count; ``k=None`` returns all of them."""
         keyword_table_handler = JiebaKeywordTableHandler()
         keywords = keyword_table_handler.extract_keywords(query)
 
