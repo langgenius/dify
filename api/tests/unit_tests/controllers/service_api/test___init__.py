@@ -87,27 +87,6 @@ DOCUMENT_UPDATE_DATA_SCHEMA = {
 }
 
 
-def _mapping(value: object) -> dict[str, object]:
-    assert isinstance(value, dict)
-    return value
-
-
-def _listing(value: object) -> list[object]:
-    assert isinstance(value, list)
-    return value
-
-
-def _path(value: object, *keys: str) -> object:
-    """Walk a nested JSON object, narrowing each level before indexing into it."""
-    for key in keys:
-        value = _mapping(value)[key]
-    return value
-
-
-def _branches(schema: dict[str, object], field: str = "anyOf") -> list[dict[str, object]]:
-    return [_mapping(branch) for branch in _listing(schema[field])]
-
-
 def _schema_refs(value: object) -> set[str]:
     refs: set[str] = set()
     if isinstance(value, dict):
@@ -171,7 +150,11 @@ def _json_body_schema(payload: dict[str, object], operation: dict[str, object]) 
     ref = schema.get("$ref")
     if isinstance(ref, str):
         schema_name = ref.removeprefix("#/components/schemas/")
-        resolved = _mapping(_mapping(payload["components"])["schemas"])[schema_name]
+        components = payload["components"]
+        assert isinstance(components, dict)
+        schemas = components["schemas"]
+        assert isinstance(schemas, dict)
+        resolved = schemas[schema_name]
         assert isinstance(resolved, dict)
         return resolved
 
@@ -372,7 +355,9 @@ def test_console_segment_mutation_contracts_survive_admission(openapi_json: Open
     assert {status for status in delete_operation["responses"] if status.startswith("2")} == {"204"}
     parameters = _parameters_by_name(delete_operation)
     assert parameters["segment_id"]["in"] == "query"
-    assert _path(parameters["segment_id"], "schema", "type") == "array"
+    segment_schema = parameters["segment_id"]["schema"]
+    assert isinstance(segment_schema, dict)
+    assert segment_schema["type"] == "array"
 
 
 def test_service_document_file_routes_document_multipart_form_data(openapi_json: OpenAPIJSONLoader) -> None:
@@ -456,8 +441,12 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     )
     for path, method in required_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
-        assert "user" in _listing(schema["required"])
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        assert properties["user"] == USER_PROPERTY_SCHEMA
+        required = schema["required"]
+        assert isinstance(required, list)
+        assert "user" in required
 
     for path in ("/chat-messages", "/workflows/run", "/workflows/{workflow_id}/run"):
         rate_limit_description = paths[path]["post"]["responses"]["429"]["description"]
@@ -472,10 +461,16 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     }
     for path, expected_behavior in task_stop_user_descriptions.items():
         schema = _json_body_schema(payload, paths[path]["post"])
-        user_description = _path(schema, "properties", "user", "description")
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        user_property = properties["user"]
+        assert isinstance(user_property, dict)
+        user_description = user_property["description"]
         assert isinstance(user_description, str)
         assert expected_behavior in user_description
-        assert "user" in _listing(schema["required"])
+        required = schema["required"]
+        assert isinstance(required, list)
+        assert "user" in required
         assert "404" not in paths[path]["post"]["responses"]
 
     optional_json_user_operations = (
@@ -486,8 +481,12 @@ def test_service_openapi_documents_decorator_user_contracts(openapi_json: OpenAP
     )
     for path, method in optional_json_user_operations:
         schema = _json_body_schema(payload, paths[path][method])
-        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
-        assert "user" not in _listing(schema.get("required", []))
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        assert properties["user"] == USER_PROPERTY_SCHEMA
+        required = schema.get("required", [])
+        assert isinstance(required, list)
+        assert "user" not in required
 
     messages_params = _parameters_by_name(paths["/messages"]["get"])
     assert messages_params["user"]["in"] == "query"
@@ -506,8 +505,10 @@ def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPI
 
     for path in ("/files/upload", "/audio-to-text"):
         schema = _multipart_form_schema(paths[path]["post"])
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
         if path == "/audio-to-text":
-            assert _path(schema, "properties", "file") == {
+            assert properties["file"] == {
                 "description": (
                     "Audio file to transcribe. Supported MIME types: `audio/mp3`, `audio/mpga`, `audio/m4a`, "
                     "`audio/x-m4a`, `audio/wav`, and `audio/amr`. File size limit is `30 MB`."
@@ -516,12 +517,14 @@ def test_service_openapi_documents_app_multipart_contracts(openapi_json: OpenAPI
                 "type": "string",
             }
         else:
-            assert _path(schema, "properties", "file") == GENERIC_FILE_SCHEMA
-        assert _path(schema, "properties", "user") == USER_PROPERTY_SCHEMA
+            assert properties["file"] == GENERIC_FILE_SCHEMA
+        assert properties["user"] == USER_PROPERTY_SCHEMA
         assert schema["required"] == ["file"]
 
     pipeline_schema = _multipart_form_schema(paths["/datasets/pipeline/file-upload"]["post"])
-    assert _path(pipeline_schema, "properties", "file") == GENERIC_FILE_SCHEMA
+    pipeline_properties = pipeline_schema["properties"]
+    assert isinstance(pipeline_properties, dict)
+    assert pipeline_properties["file"] == GENERIC_FILE_SCHEMA
     assert pipeline_schema["required"] == ["file"]
 
 
@@ -592,13 +595,19 @@ def test_service_openapi_documents_path_action_enums(openapi_json: OpenAPIJSONLo
     paths = payload["paths"]
 
     annotation_params = _parameters_by_name(paths["/apps/annotation-reply/{action}"]["post"])
-    assert _path(annotation_params["action"], "schema", "enum") == ["disable", "enable"]
+    annotation_schema = annotation_params["action"]["schema"]
+    assert isinstance(annotation_schema, dict)
+    assert annotation_schema["enum"] == ["disable", "enable"]
 
     document_status_params = _parameters_by_name(paths["/datasets/{dataset_id}/documents/status/{action}"]["patch"])
-    assert _path(document_status_params["action"], "schema", "enum") == ["archive", "disable", "enable", "un_archive"]
+    document_status_schema = document_status_params["action"]["schema"]
+    assert isinstance(document_status_schema, dict)
+    assert document_status_schema["enum"] == ["archive", "disable", "enable", "un_archive"]
 
     metadata_params = _parameters_by_name(paths["/datasets/{dataset_id}/metadata/built-in/{action}"]["post"])
-    assert _path(metadata_params["action"], "schema", "enum") == ["disable", "enable"]
+    metadata_schema = metadata_params["action"]["schema"]
+    assert isinstance(metadata_schema, dict)
+    assert metadata_schema["enum"] == ["disable", "enable"]
 
 
 def test_service_openapi_documents_conditional_payload_schemas(openapi_json: OpenAPIJSONLoader) -> None:
@@ -608,14 +617,34 @@ def test_service_openapi_documents_conditional_payload_schemas(openapi_json: Ope
     paths = payload["paths"]
 
     rename_schema = _json_body_schema(payload, paths["/conversations/{conversation_id}/name"]["post"])
-    auto_generate_branch, manual_name_branch = _branches(rename_schema)
-    assert _path(auto_generate_branch, "properties", "auto_generate", "enum") == [True]
+    rename_branches = rename_schema["anyOf"]
+    assert isinstance(rename_branches, list)
+    auto_generate_branch, manual_name_branch = rename_branches
+    assert isinstance(auto_generate_branch, dict)
+    assert isinstance(manual_name_branch, dict)
+
+    auto_generate_properties = auto_generate_branch["properties"]
+    assert isinstance(auto_generate_properties, dict)
+    auto_generate_schema = auto_generate_properties["auto_generate"]
+    assert isinstance(auto_generate_schema, dict)
+    assert auto_generate_schema["enum"] == [True]
     assert auto_generate_branch["required"] == ["auto_generate"]
-    assert _path(manual_name_branch, "properties", "auto_generate", "enum") == [False]
-    assert _path(manual_name_branch, "properties", "name", "pattern") == r".*\S.*"
+
+    manual_name_properties = manual_name_branch["properties"]
+    assert isinstance(manual_name_properties, dict)
+    manual_auto_generate_schema = manual_name_properties["auto_generate"]
+    assert isinstance(manual_auto_generate_schema, dict)
+    assert manual_auto_generate_schema["enum"] == [False]
+    manual_name_schema = manual_name_properties["name"]
+    assert isinstance(manual_name_schema, dict)
+    assert manual_name_schema["pattern"] == r".*\S.*"
     assert manual_name_branch["required"] == ["name"]
-    for branch in _branches(rename_schema):
-        assert _path(branch, "properties", "user") == USER_PROPERTY_SCHEMA
+
+    for branch in rename_branches:
+        assert isinstance(branch, dict)
+        branch_properties = branch["properties"]
+        assert isinstance(branch_properties, dict)
+        assert branch_properties["user"] == USER_PROPERTY_SCHEMA
 
     document_update_schema = payload["components"]["schemas"]["DocumentTextUpdate"]
     with_text_branch, without_text_branch = document_update_schema["anyOf"]
@@ -795,7 +824,11 @@ def test_console_account_profile_patch_without_legacy_update_routes(openapi_json
     assert profile_patch_schema["type"] == "object"
     assert profile_patch_schema["additionalProperties"] is False
     assert "required" not in profile_patch_schema
-    assert _path(profile_patch_schema, "properties", "name", "type") == "string"
+    profile_patch_properties = profile_patch_schema["properties"]
+    assert isinstance(profile_patch_properties, dict)
+    profile_name_schema = profile_patch_properties["name"]
+    assert isinstance(profile_name_schema, dict)
+    assert profile_name_schema["type"] == "string"
 
     for path in (
         "/account/name",
