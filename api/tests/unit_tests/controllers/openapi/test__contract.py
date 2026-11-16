@@ -29,6 +29,7 @@ from controllers.openapi._contract import (
 from controllers.openapi._errors import RequestOverRouteLimits
 from controllers.openapi._models import Hint, PaginationEnvelope
 from controllers.openapi._upload import UploadPart
+from controllers.openapi.auth.context import Context
 from tests.helpers.unit.controllers.openapi.auth._world import account_subject, make_ctx
 
 
@@ -81,33 +82,36 @@ class _Page(PaginationEnvelope[int]):
 
 
 def test_paginated_fills_the_next_page_hint_from_the_call_and_leaves_the_rest_alone() -> None:
+    ctx = make_ctx(Session())
+
     @paginated("thing.list")
-    def view(*, ctx: object, workspace_id: str, query: ContractQuery) -> _Page:
+    def view(*, ctx: Context, workspace_id: str, query: ContractQuery) -> _Page:
         return _Page.build(page=query.page, limit=query.limit, total=50, items=[])
 
-    result = view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
+    result = view(ctx=ctx, workspace_id="ws-1", query=ContractQuery(page=1, limit=20))
     assert result.hints == [
         Hint(summary="Next page", op="thing.list", input={"workspace_id": "ws-1", "page": 2, "limit": 20})
     ]
-    assert view(ctx=object(), workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
+    assert view(ctx=ctx, workspace_id="ws-1", query=ContractQuery(page=3, limit=20)).hints == []
 
     @paginated("thing.get")
-    def plain(*, ctx: object) -> ContractResp:
+    def plain(*, ctx: Context) -> ContractResp:
         return ContractResp(value=1)
 
-    assert plain(ctx=object()) == ContractResp(value=1)
+    assert plain(ctx=ctx) == ContractResp(value=1)
 
 
 def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
     setup = Hint(summary="Set up", op="thing.describe", input={})
+    ctx = make_ctx(Session())
 
     @paginated("thing.list")
-    def view(*, ctx: object, query: ContractQuery) -> _Page:
+    def view(*, ctx: Context, query: ContractQuery) -> _Page:
         page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
         page.hints = [setup]
         return page
 
-    assert [h.op for h in view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints] == [
+    assert [h.op for h in view(ctx=ctx, query=ContractQuery(page=1, limit=20)).hints] == [
         "thing.describe",
         "thing.list",
     ]
@@ -115,12 +119,12 @@ def test_paginated_keeps_the_view_hints_and_adds_the_next_page() -> None:
     own = Hint(summary="Next page", op="thing.list", input={"cursor": "c2"})
 
     @paginated("thing.list")
-    def cursor_view(*, ctx: object, query: ContractQuery) -> _Page:
+    def cursor_view(*, ctx: Context, query: ContractQuery) -> _Page:
         page = _Page.build(page=query.page, limit=query.limit, total=50, items=[])
         page.hints = [own]
         return page
 
-    assert cursor_view(ctx=object(), query=ContractQuery(page=1, limit=20)).hints == [own]
+    assert cursor_view(ctx=ctx, query=ContractQuery(page=1, limit=20)).hints == [own]
 
 
 def test_accepts_injects_validated_query_with_defaults_for_absent_fields(app: Flask) -> None:
