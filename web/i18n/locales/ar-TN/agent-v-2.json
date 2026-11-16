@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "الإعدادات المتقدمة",
   "agentDetail.configure.answer.activity.ranCommands": "تم تشغيل الأوامر",
   "agentDetail.configure.answer.activity.runningCommands": "جارٍ تشغيل الأوامر",
+  "agentDetail.configure.answer.activity.startingCommands": "جارٍ بدء تشغيل الأوامر",
   "agentDetail.configure.answer.duration.minute": "{{count}} د",
   "agentDetail.configure.answer.duration.second": "{{count}} ث",
   "agentDetail.configure.answer.responseEnded": "انتهت الاستجابة",
