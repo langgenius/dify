@@ -82,6 +82,94 @@ def _messages() -> Generator[ToolInvokeMessage]:
     )
 
 
+def _invoke_observation(session: Session, messages: list[ToolInvokeMessage]) -> str:
+    """Exercise the public service with the resolved tool's transformed messages."""
+    with (
+        patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=_FakeTool()),
+        patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=iter(messages)),
+        patch(
+            "services.agent_tool_inner_service.ToolFileMessageTransformer.transform_tool_invoke_messages",
+            side_effect=lambda messages, **_kwargs: messages,
+        ),
+    ):
+        return AgentToolInnerService().invoke(_request(), session=session).observation
+
+
+@pytest.mark.parametrize("message_type", ["image_link", "binary_link", "link"])
+def test_media_tool_observations_expose_persisted_canonical_handles(sqlite_session: Session, message_type: str) -> None:
+    import json
+
+    from core.workflow.file_reference import resolve_file_record_id
+    from models import ToolFile
+
+    _persist_app(sqlite_session)
+    record = ToolFile(
+        tenant_id="tenant-1",
+        user_id="user-1",
+        conversation_id=None,
+        file_key="tools/chart.png",
+        name="chart.png",
+        mimetype="image/png",
+        size=42,
+    )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType(message_type),
+        message=ToolInvokeMessage.TextMessage(text=f"/files/tools/{record.id}.png"),
+        meta={"tool_file_id": record.id},
+    )
+    observation = _invoke_observation(sqlite_session, [message])
+    summary = json.loads(observation.split("Tool generated media file: ")[1].split(" (call")[0])
+    assert summary["transfer_method"] == "tool_file"
+    assert resolve_file_record_id(summary["reference"]) == record.id
+    assert (summary["filename"], summary["mime_type"], summary["size"]) == ("chart.png", "image/png", 42)
+    assert "read_media" in observation
+    record.tenant_id = "other"
+    sqlite_session.commit()
+    inaccessible = _invoke_observation(sqlite_session, [message])
+    assert "no longer accessible" in inaccessible
+    assert "chart.png" not in inaccessible
+
+
+@pytest.mark.parametrize("include_metadata", [False, True])
+@pytest.mark.parametrize("method", ["remote_url", "local_file", "datasource_file"])
+def test_file_message_observations_preserve_copyable_locators(
+    sqlite_session: Session, method: str, include_metadata: bool
+) -> None:
+    import json
+
+    from core.workflow.file_reference import build_file_reference
+    from graphon.file import File, FileTransferMethod, FileType
+
+    _persist_app(sqlite_session)
+    file = File(
+        filename="report.pdf" if include_metadata else None,
+        mime_type="application/pdf" if include_metadata else None,
+        extension=".pdf",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod(method),
+        size=25,
+        remote_url="https://example.com/report.pdf?key=original" if method == "remote_url" else None,
+        reference=build_file_reference(record_id="record") if method != "remote_url" else None,
+    )
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.FILE,
+        message=ToolInvokeMessage.FileMessage(file_marker="file"),
+        meta={"file": file},
+    )
+    observation = _invoke_observation(sqlite_session, [message])
+    summary = json.loads(observation.split(": ", 1)[1].split(" (call")[0])
+    assert summary["transfer_method"] == method
+    assert ("filename" in summary) is include_metadata
+    assert ("mime_type" in summary) is include_metadata
+    assert all(value is not None for value in summary.values())
+    assert "read_media" in observation
+    locator = file.remote_url or file.reference
+    assert locator is not None
+    assert locator in observation
+
+
 @pytest.mark.parametrize(
     ("workflow_id", "expected_tool_invoke_from"),
     [

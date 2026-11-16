@@ -1,6 +1,6 @@
 """Composition tests for the API-owned Agent LLM gateway."""
 
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from decimal import Decimal
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -13,14 +13,26 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
-from core.entities.model_entities import ModelStatus
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
-from core.model_manager import ModelInstance, QuotaManagedModelInstance
+from core.model_manager import ModelInstance, ModelManager, QuotaManagedModelInstance
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    AudioPromptMessageContent,
+    DocumentPromptMessageContent,
+    ImagePromptMessageContent,
+    UserPromptMessage,
+    VideoPromptMessageContent,
+)
+from graphon.model_runtime.entities.model_entities import FetchFrom, ModelType
 from models.model import App, AppMode
 from models.provider import ProviderType
-from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError, PreparedAgentLLMInvocation
+from services.agent_llm_inner_service import (
+    AgentLLMInnerService,
+    AgentLLMInnerServiceError,
+    PreparedAgentLLMInvocation,
+)
 from services.billing_client import billing
 from services.entities.agent_llm_inner import AgentLLMInvokeCaller, AgentLLMInvokeRequest, AgentLLMInvokeTarget
 from tests.helpers.unit.core.model_fixtures import make_model_instance
@@ -47,6 +59,301 @@ def _request() -> AgentLLMInvokeRequest:
             prompt_messages=[UserPromptMessage(content="hello").model_dump(mode="json")],
         ),
     )
+
+
+@pytest.fixture
+def media_gateway(
+    sqlite_session_factory: sessionmaker[Session], mocker: MockerFixture
+) -> tuple[AgentLLMInnerService, MagicMock]:
+    """Keep real model/config objects and replace provider lookup and invocation I/O."""
+    instance = make_model_instance(provider="openai", model="gpt-test")
+    configuration = instance.provider_model_bundle.configuration
+    provider_model = ModelWithProviderEntity(
+        model="gpt-test",
+        label=configuration.provider.label,
+        model_type=ModelType.LLM,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(configuration.provider),
+    )
+    mocker.patch.object(ModelManager, "get_model_instance", return_value=instance)
+    mocker.patch.object(type(configuration), "get_provider_model", return_value=provider_model)
+    invoke = mocker.patch.object(instance, "invoke_llm", return_value=iter([]))
+    return AgentLLMInnerService(session_factory=sqlite_session_factory), invoke
+
+
+@pytest.mark.parametrize("filename", ["chart.png", "chart.pdf"])
+@pytest.mark.parametrize("transfer_method", ["tool_file", "local_file", "datasource_file"])
+@pytest.mark.parametrize("authoritative_mime", ["image/png", "application/octet-stream", "image/jpg"])
+def test_managed_media_resolution_uses_authorized_records_and_preserves_wire_request(
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    filename: str,
+    transfer_method: str,
+    authoritative_mime: str,
+) -> None:
+    from datetime import datetime
+
+    from core.workflow.file_reference import build_file_reference
+    from extensions.storage.storage_type import StorageType
+    from models import ToolFile, UploadFile
+    from models.enums import CreatorUserRole
+
+    config_overrides(MULTIMODAL_SEND_FORMAT="url", FILES_URL="https://files.example.com")
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    requested_mime = "image/jpeg" if authoritative_mime == "image/jpg" else "image/png"
+    requested_format = "jpeg" if requested_mime == "image/jpeg" else "png"
+    if transfer_method == "tool_file":
+        record = ToolFile(
+            tenant_id=request.caller.tenant_id,
+            user_id=request.caller.user_id,
+            conversation_id=None,
+            file_key=f"tools/{filename}",
+            name=filename,
+            mimetype=authoritative_mime,
+            size=25,
+        )
+    else:
+        record = UploadFile(
+            tenant_id=request.caller.tenant_id,
+            created_by=request.caller.user_id,
+            created_by_role=CreatorUserRole.ACCOUNT,
+            storage_type=StorageType.OPENDAL,
+            key=f"uploads/{filename}",
+            name=filename,
+            size=25,
+            extension=filename.rsplit(".", 1)[1],
+            mime_type=authoritative_mime,
+            created_at=datetime.now(),
+            used=False,
+        )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    reference = build_file_reference(record_id=record.id)
+    original_url = f"dify-file://{transfer_method}/{reference}"
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[
+                ImagePromptMessageContent(
+                    url=original_url,
+                    mime_type=requested_mime,
+                    format=requested_format,
+                    detail=ImagePromptMessageContent.DETAIL.HIGH,
+                )
+            ]
+        ).model_dump(mode="json")
+    ]
+    original_request = request.model_dump(mode="json")
+    service, invoke = media_gateway
+    prepared = service.prepare(request)
+    assert list(service.invoke(prepared)) == []
+    invoke.assert_called_once()
+    resolved = invoke.call_args.kwargs["prompt_messages"]
+    message = UserPromptMessage.model_validate(resolved[0])
+    assert isinstance(message.content, list)
+    content = message.content[0]
+    assert isinstance(content, ImagePromptMessageContent)
+    assert content.detail == ImagePromptMessageContent.DETAIL.HIGH
+    assert content.mime_type == requested_mime
+    assert content.format == requested_format
+    assert content.base64_data == ""
+    assert content.url.startswith("https://files.example.com/files/")
+    assert "dify-file://" not in content.url
+    assert request.model_dump(mode="json") == original_request
+
+
+@pytest.mark.parametrize(
+    ("content_type", "mime_type", "media_format"),
+    [
+        (AudioPromptMessageContent, "audio/wav", "wav"),
+        (VideoPromptMessageContent, "video/mp4", "mp4"),
+        (DocumentPromptMessageContent, "application/pdf", "pdf"),
+    ],
+)
+def test_managed_non_image_media_reaches_model_with_its_original_modality(
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    content_type: type[AudioPromptMessageContent | VideoPromptMessageContent | DocumentPromptMessageContent],
+    mime_type: str,
+    media_format: str,
+) -> None:
+    from core.workflow.file_reference import build_file_reference
+    from models import ToolFile
+
+    config_overrides(MULTIMODAL_SEND_FORMAT="url", FILES_URL="https://files.example.com")
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    filename = f"media.{media_format}"
+    record = ToolFile(
+        tenant_id=request.caller.tenant_id,
+        user_id=request.caller.user_id,
+        conversation_id=None,
+        file_key=f"tools/{filename}",
+        name=filename,
+        mimetype=mime_type,
+        size=25,
+    )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    reference = build_file_reference(record_id=record.id)
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[content_type(url=f"dify-file://tool_file/{reference}", mime_type=mime_type, format=media_format)]
+        ).model_dump(mode="json")
+    ]
+    original_request = request.model_dump(mode="json")
+    service, invoke = media_gateway
+    prepared = service.prepare(request)
+    assert list(service.invoke(prepared)) == []
+    invoke.assert_called_once()
+    message = UserPromptMessage.model_validate(invoke.call_args.kwargs["prompt_messages"][0])
+    assert isinstance(message.content, list)
+    content = message.content[0]
+    assert isinstance(content, content_type)
+    assert content.mime_type == mime_type
+    assert content.format == media_format
+    assert content.filename == filename
+    assert content.base64_data == ""
+    assert content.url.startswith(f"https://files.example.com/files/tools/{record.id}.{media_format}?")
+    assert "sign=" in content.url
+    assert "dify-file://" not in content.url
+    assert request.model_dump(mode="json") == original_request
+
+
+@pytest.mark.parametrize("failure", ["tenant", "owner", "deleted"])
+def test_managed_media_resolution_rechecks_scope(
+    sqlite_session: Session,
+    config_overrides: Callable[..., None],
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    failure: str,
+) -> None:
+    from core.app.file_access import get_current_file_access_scope
+    from core.workflow.file_reference import build_file_reference
+    from models import ToolFile
+
+    config_overrides(MULTIMODAL_SEND_FORMAT="url")
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    request.caller.user_from = "end-user"
+    record = ToolFile(
+        tenant_id=str(uuid4()) if failure == "tenant" else request.caller.tenant_id,
+        user_id=str(uuid4()) if failure == "owner" else request.caller.user_id,
+        conversation_id=None,
+        file_key="tools/chart.png",
+        name="chart.png",
+        mimetype="image/png",
+        size=25,
+    )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    record_id = str(uuid4()) if failure == "deleted" else record.id
+    reference = build_file_reference(record_id=record_id)
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[
+                ImagePromptMessageContent(
+                    url=f"dify-file://tool_file/{reference}",
+                    mime_type="image/png",
+                    format="png",
+                )
+            ]
+        ).model_dump(mode="json")
+    ]
+    original_scope = get_current_file_access_scope()
+    service, invoke = media_gateway
+    with pytest.raises(ValueError, match=f"^ToolFile {record_id} not found$"):
+        service.prepare(request)
+    invoke.assert_not_called()
+    assert get_current_file_access_scope() is original_scope
+
+
+@pytest.mark.parametrize(
+    ("url", "match"),
+    [
+        ("dify-file://tool_file/not-a-canonical-reference", "^Invalid managed media reference$"),
+        ("dify-file://remote_url/dify-file-ref:eyJyZWNvcmRfaWQiOiJmaWxlIn0=", "^Invalid managed media reference$"),
+    ],
+)
+def test_managed_media_rejects_malformed_locators_before_record_lookup(
+    sqlite_session: Session,
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    url: str,
+    match: str,
+) -> None:
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    request.target.prompt_messages = [
+        UserPromptMessage(content=[ImagePromptMessageContent(url=url, mime_type="image/png", format="png")]).model_dump(
+            mode="json"
+        )
+    ]
+    service, invoke = media_gateway
+    with pytest.raises(ValueError, match=match):
+        service.prepare(request)
+    invoke.assert_not_called()
+
+
+@pytest.mark.parametrize("authoritative_mime", ["application/pdf", "image/jpeg"])
+def test_managed_media_rejects_authoritative_mime_conflicts(
+    sqlite_session: Session,
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    authoritative_mime: str,
+) -> None:
+    from core.workflow.file_reference import build_file_reference
+    from models import ToolFile
+
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    record = ToolFile(
+        tenant_id=request.caller.tenant_id,
+        user_id=request.caller.user_id,
+        conversation_id=None,
+        file_key="tools/chart.png",
+        name="chart.png",
+        mimetype=authoritative_mime,
+        size=25,
+    )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    reference = build_file_reference(record_id=record.id)
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[
+                ImagePromptMessageContent(url=f"dify-file://tool_file/{reference}", mime_type="image/png", format="png")
+            ]
+        ).model_dump(mode="json")
+    ]
+    service, invoke = media_gateway
+    with pytest.raises(ValueError, match="^Managed media MIME does not match the requested content type$"):
+        service.prepare(request)
+    invoke.assert_not_called()
+
+
+def test_remote_media_url_is_not_resolved_or_rewritten(
+    sqlite_session: Session, media_gateway: tuple[AgentLLMInnerService, MagicMock]
+) -> None:
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[
+                ImagePromptMessageContent(
+                    url="https://example.com/original.png?key=1",
+                    mime_type="image/png",
+                    format="png",
+                )
+            ]
+        ).model_dump(mode="json")
+    ]
+    original_request = request.model_dump(mode="json")
+    service, invoke = media_gateway
+    assert list(service.invoke(service.prepare(request))) == []
+    assert invoke.call_args.kwargs["prompt_messages"] is request.target.prompt_messages
+    assert request.model_dump(mode="json") == original_request
 
 
 def _model_instance(
