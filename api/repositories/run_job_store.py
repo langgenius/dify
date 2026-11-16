@@ -73,10 +73,11 @@ def _encode_patch(patch: JobPatch) -> dict[str, str]:
 
 
 def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
-    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field is present."""
+    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field is present;
+    fields that are not record fields (written by a newer version) are ignored."""
     if not _RECORD_FIELDS.issubset(_text(name) for name in raw):
         return None
-    fields = {_text(name): json.loads(_text(value)) for name, value in raw.items()}
+    fields = {_text(name): json.loads(_text(value)) for name, value in raw.items() if _text(name) in _RECORD_FIELDS}
     fields["owner"] = JobOwner(
         tenant_id=fields["owner"]["tenant_id"],
         app_id=fields["owner"]["app_id"],
@@ -90,6 +91,11 @@ def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
 
 class RedisRunJobStore:
     def __init__(self, *, redis_client: RunJobRedis) -> None:
+        """Bind the Redis client.
+
+        Precondition: redis_client implements RunJobRedis.
+        Postcondition: the store reads and writes jobs through redis_client; nothing is written yet.
+        """
         self._redis = redis_client
 
     def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
@@ -103,12 +109,11 @@ class RedisRunJobStore:
         if idempotency_key is None:
             return OpenedJob(record=record, created=True)
         idem_name = self._idempotency_name(record.owner, idempotency_key)
-        reserved = self._reserve(idem_name, record.id)
-        existing = None if reserved else self._bound_job(idem_name)
-        if not reserved and existing is None:
-            self._release_stale(idem_name)
-            reserved = self._reserve(idem_name, record.id)
-            existing = None if reserved else self._bound_job(idem_name)
+        reserved, existing = self._bind(idem_name, record.id)
+        if not reserved:
+            if existing is None:
+                self._release_stale(idem_name)
+                reserved, existing = self._bind(idem_name, record.id)
         if reserved:
             return OpenedJob(record=record, created=True)
         self.discard(record.id, idempotency_key=None)
@@ -157,8 +162,11 @@ class RedisRunJobStore:
             return
         idem_name = self._idempotency_name(record.owner, idempotency_key)
         bound_id = self._redis.get(idem_name)
-        if bound_id is not None and _text(bound_id) == job_id:
-            self._redis.delete(idem_name)
+        if bound_id is None:
+            return
+        if _text(bound_id) != job_id:
+            return
+        self._redis.delete(idem_name)
 
     def touch(self, job_id: str) -> None:
         """Refresh the alive key.
@@ -179,6 +187,13 @@ class RedisRunJobStore:
     def _reserve(self, idem_name: str, job_id: str) -> bool:
         """Bind the idempotency key. Precondition: none. Postcondition: true only if this call bound it."""
         return bool(self._redis.set(idem_name, job_id, nx=True, ex=JOB_TTL_SECONDS))
+
+    def _bind(self, idem_name: str, job_id: str) -> tuple[bool, JobRecord | None]:
+        """Try to bind the key. Precondition: none. Postcondition: (True, None) when bound; else False and the job
+        the key names, or None when that job vanished."""
+        if self._reserve(idem_name, job_id):
+            return True, None
+        return False, self._bound_job(idem_name)
 
     def _bound_job(self, idem_name: str) -> JobRecord | None:
         """Load the job a key names. Precondition: none. Postcondition: None if unbound or the job vanished."""

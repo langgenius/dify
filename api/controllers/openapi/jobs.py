@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint, op_of
-from controllers.openapi._errors import JobNotFound
+from controllers.openapi._errors import JobNotFound, require_uuid
 from controllers.openapi._files import end_read_transaction
 from controllers.openapi._models import Hint, JobState, JobWaitQuery
 from controllers.openapi.app_run import _RUN_GUARDS
@@ -169,10 +169,11 @@ class JobWaitApi(Resource):
         Postcondition: the job's state with hints after waiting up to query.wait_seconds; 404 job_not_found when the
         job is missing, expired or not the caller's for this app.
         """
+        valid_id = require_uuid(job_id, not_found=JobNotFound)
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
         try:
-            view = application_services().run_jobs.wait(owner, job_id, wait_seconds=query.wait_seconds)
+            view = application_services().run_jobs.wait(owner, valid_id, wait_seconds=query.wait_seconds)
         except JobNotFoundError as ex:
             raise JobNotFound() from ex
         return job_state(view, app_id=ctx.app.id)
@@ -197,10 +198,11 @@ class JobStopApi(Resource):
         Postcondition: a job that is not final is asked to stop and its state is returned; 404 job_not_found when
         the job is missing, expired or not the caller's for this app.
         """
+        valid_id = require_uuid(job_id, not_found=JobNotFound)
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
         try:
-            view = application_services().run_jobs.stop(owner, job_id)
+            view = application_services().run_jobs.stop(owner, valid_id)
         except JobNotFoundError as ex:
             raise JobNotFound() from ex
         return job_state(view, app_id=ctx.app.id)

@@ -193,6 +193,18 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
         store.patch(job_id, patch)
 
 
+def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored_ids: set[str]) -> None:
+    """Apply one frame, keeping a store or stopper failure from ending the read.
+
+    Precondition: the job exists.
+    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed.
+    """
+    try:
+        _consume(frame, job_id=job_id, store=store, stopper=stopper, stored_ids=stored_ids)
+    except Exception:
+        logger.exception("Run job %s frame handling failed", job_id)
+
+
 def _settle(job_id: str, store: RunJobStore) -> None:
     """Apply the end-of-stream rule.
 
@@ -214,13 +226,13 @@ def read_to_end(*, job_id: str, frames: Iterable[str], store: RunJobStore, stopp
 
     Precondition: the job exists.
     Postcondition: every frame was consumed, ids and form details are stored, the alive key was refreshed on each
-    frame, a MESSAGE job has a final status, and frames is closed when it has a close method. A stream that
-    raises is logged and treated as ended.
+    frame, a MESSAGE job has a final status, and frames is closed when it has a close method. A frame whose
+    handling raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
     stored_ids: set[str] = set()
     try:
         for frame in frames:
-            _consume(frame, job_id=job_id, store=store, stopper=stopper, stored_ids=stored_ids)
+            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, stored_ids=stored_ids)
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:
