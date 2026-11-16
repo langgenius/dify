@@ -12,18 +12,15 @@ from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._errors import JobCapacityReached, JobNotFound
 from controllers.openapi._files import end_read_transaction
-from controllers.openapi._models import (
-    AdvancedChatStartPayload,
-    JobState,
-    WorkflowStartPayload,
-)
+from controllers.openapi._models import AdvancedChatStartPayload, JobState, WorkflowStartPayload
 from controllers.openapi.app_run import _RUN_GUARDS, _generate_args, _require_mode, _stream
 from controllers.openapi.auth.context import Context
+from controllers.openapi.jobs import job_owner, job_state
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from models.model import AppMode
-from services.run_job_contracts import JobOwner, OpenedJob
-from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening, JobView, RunJobService
+from services.run_job_contracts import OpenedJob
+from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening, RunJobService
 
 WORKFLOW_START_OP: Final = "start.console_app.workflow"
 ADVANCED_CHAT_START_OP: Final = "start.console_app.advanced_chat"
@@ -31,21 +28,6 @@ _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
 _JOB_STATE: Final = (200, JobState, "Job state")
 
 type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload
-
-
-def _job_state(view: JobView) -> JobState:
-    """Describe a job view; Task 5 replaces this with the hinted `job_state`."""
-    record = view.record
-    return JobState(
-        id=record.id,
-        status=view.status,
-        run_id=record.run_id,
-        message_id=record.message_id,
-        conversation_id=record.conversation_id,
-        answer=view.answer,
-        outputs=dict(view.outputs) if view.outputs is not None else None,
-        error=view.error,
-    )
 
 
 def _launch(ctx: Context, body: StartPayload, *, run_jobs: RunJobService, opened: OpenedJob, key: str | None) -> None:
@@ -78,12 +60,7 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
     job remains. A repeated idempotency key returns the first job and starts nothing.
     """
     _require_mode(ctx.app, *modes)
-    owner = JobOwner(
-        tenant_id=ctx.app.tenant_id,
-        app_id=ctx.app.id,
-        caller_role=ctx.subject.caller_role,
-        caller_id=ctx.caller.id,
-    )
+    owner = job_owner(ctx)
     key = body.idempotency_key
     run_jobs = application_services().run_jobs
     try:
@@ -97,7 +74,7 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
         view = run_jobs.wait(owner, opened.record.id, wait_seconds=body.wait_seconds)
     except JobNotFoundError as ex:
         raise JobNotFound() from ex
-    return _job_state(view)
+    return job_state(view, app_id=ctx.app.id)
 
 
 @openapi_ns.route("/apps/<string:app_id>/workflow:start")
