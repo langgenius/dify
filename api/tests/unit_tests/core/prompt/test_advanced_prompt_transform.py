@@ -42,6 +42,7 @@ def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(memory, "get_history_prompt_messages", MagicMock(return_value=history_prompt_messages))
 
     prompt_transform = AdvancedPromptTransform()
+    # Budget calculation needs initialized provider credentials; this test covers message assembly.
     monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     prompt_messages = prompt_transform._get_completion_model_prompt_messages(
         prompt_template=prompt_template_config,
@@ -81,6 +82,7 @@ def test__get_chat_model_prompt_messages(get_chat_model_args: ChatModelArgs, mon
     monkeypatch.setattr(memory, "get_history_prompt_messages", MagicMock(return_value=history_prompt_messages))
 
     prompt_transform = AdvancedPromptTransform()
+    # Budget calculation needs initialized provider credentials; this test covers message assembly.
     monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     prompt_messages = prompt_transform._get_chat_model_prompt_messages(
         prompt_template=messages,
@@ -101,15 +103,12 @@ def test__get_chat_model_prompt_messages(get_chat_model_args: ChatModelArgs, mon
     assert prompt_messages[5].content == query
 
 
-def test__get_chat_model_prompt_messages_no_memory(
-    get_chat_model_args: ChatModelArgs, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args: ChatModelArgs) -> None:
     model_config, _, messages, inputs, context = get_chat_model_args
 
     files = []
 
     prompt_transform = AdvancedPromptTransform()
-    monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     prompt_messages = prompt_transform._get_chat_model_prompt_messages(
         prompt_template=messages,
         inputs=inputs,
@@ -146,7 +145,6 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(
     ]
 
     prompt_transform = AdvancedPromptTransform()
-    monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     with patch("graphon.file.file_manager.to_prompt_message_content", autospec=True) as mock_get_encoded_string:
         mock_get_encoded_string.return_value = ImagePromptMessageContent(
             url=str(files[0].remote_url), format="jpg", mime_type="image/jpg"
