@@ -9,6 +9,7 @@ so future caching cannot validate stale credentials.
 from __future__ import annotations
 
 import json
+import logging
 from collections import deque
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -16,6 +17,7 @@ from typing import Literal, Protocol, override
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
+from uuid import UUID
 
 from alibabacloud_dingtalk.oauth2_1_0.client import Client as OAuthClient
 from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest
@@ -23,7 +25,7 @@ from alibabacloud_dingtalk.robot_1_0.client import Client as RobotClient
 from alibabacloud_dingtalk.robot_1_0.models import BatchSendOTOHeaders, BatchSendOTORequest
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
 from requests.exceptions import Timeout as RequestsTimeout
 from Tea.exceptions import TeaException
 
@@ -54,6 +56,8 @@ from core.human_input_v2.im_integration.adapters.protocols import (
     IMMessaging,
     IMWebhookHandler,
 )
+
+logger = logging.getLogger(__name__)
 
 _DEPARTMENT_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/department/listsub"
 _USER_LIST_URL = "https://oapi.dingtalk.com/topapi/v2/user/list"
@@ -165,6 +169,12 @@ class _OAuthErrorResponse(BaseModel):
 
     code: str | None = None
     data: _OAuthErrorData | None = None
+
+
+class _OAuthErrorRequestId(BaseModel):
+    model_config = ConfigDict(extra="ignore", hide_input_in_errors=True)
+
+    request_id: UUID = Field(validation_alias=AliasChoices("requestid", "RequestId"))
 
 
 class _ProviderResponse(BaseModel):
@@ -421,6 +431,11 @@ class DingTalkIMProviderAdapter:
             raise
 
     def _test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        """Test bound credentials without caching or changing provider configuration.
+
+        Token rejections retain their failure classification and log only safe
+        identifiers. Raw SDK exceptions and messages may contain credentials.
+        """
         try:
             access_token = _get_access_token(self._credential_test_client, self._credentials)
         except TeaException as error:
@@ -428,6 +443,13 @@ class DingTalkIMProviderAdapter:
             status_code = rejection.data.status_code if rejection.data is not None else None
             if rejection.code is None and status_code is None:
                 raise
+            logger.warning(
+                "DingTalk credential test token request failed: operation=get_token "
+                "http_status=%s provider_error_code=%r request_id=%s",
+                status_code,
+                rejection.code,
+                _oauth_error_request_id(error),
+            )
             kind = (
                 CredentialTestFailureKind.AUTHENTICATION_REJECTED
                 if status_code in {400, 401, 403}
@@ -483,6 +505,18 @@ class DingTalkIMProviderAdapter:
 
 def _new_oauth_client() -> OAuthClient:
     return OAuthClient(_sdk_config())
+
+
+def _oauth_error_request_id(error: TeaException) -> UUID | None:
+    """Project a UUID request ID from SDK error data without exposing its payload.
+
+    Missing or malformed identifiers return None and do not change the token
+    rejection's failure classification.
+    """
+    try:
+        return _OAuthErrorRequestId.model_validate(error.data).request_id
+    except ValidationError:
+        return None
 
 
 def _new_robot_client() -> RobotClient:
