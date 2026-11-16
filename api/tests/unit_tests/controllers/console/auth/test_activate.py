@@ -1,5 +1,6 @@
 """Transport-boundary tests for account invitation activation."""
 
+import re
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -22,12 +23,11 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_redis import RedisClientWrapper
 from libs.login import AccountWithTenant
-from models.account import Account
+from models.account import Account, AccountStatus, Tenant
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import (
-    ActivationCheckData,
     ActivationCheckResult,
     ActivationCommand,
     InvitationLookup,
@@ -58,35 +58,54 @@ def activation_service(
     return service
 
 
+@pytest.fixture
+def resolvable_activation_service(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> AccountActivationService:
+    """Wire the real activation service over a real invitation instead of a stubbed check.
+
+    The workspace and account live in SQLite and the invitation token lives in Redis, so
+    ``check`` resolves the invitation the way it does in production.
+    """
+
+    with sqlite_session_factory() as session:
+        tenant = Tenant(name="Test Workspace")
+        tenant.id = "workspace-123"
+        account = Account(name="Invitee", email="invitee@example.com", status=AccountStatus.PENDING)
+        account.id = "account-123"
+        session.add_all([tenant, account])
+        session.commit()
+
+    _, commands = redis_transport
+    commands.return_value = b"account-123"
+
+    return build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=DeploymentEdition.COMMUNITY,
+        initialization_password="",
+        redis=redis_transport[0],
+    ).accounts.activation
+
+
 def _services(service: AccountActivationService) -> SimpleNamespace:
     return SimpleNamespace(accounts=SimpleNamespace(activation=service))
 
 
 class TestActivateCheckApi:
-    def test_serializes_valid_invitation(
+    def test_serializes_a_resolvable_invitation(
         self,
         app: Flask,
-        activation_service: AccountActivationService,
+        resolvable_activation_service: AccountActivationService,
     ) -> None:
-        check = activation_service.check
-        assert isinstance(check, MagicMock)
-        check.return_value = ActivationCheckResult(
-            is_valid=True,
-            data=ActivationCheckData(
-                workspace_name="Test Workspace",
-                workspace_id="workspace-123",
-                email="invitee@example.com",
-                account_status="pending",
-                requires_setup=True,
-            ),
-        )
+        """Resolution runs for real, so the response fields come from the stored workspace and account."""
         with (
             app.test_request_context(
                 "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid-token"
             ),
             patch(
                 "controllers.console.auth.activate.application_services",
-                return_value=_services(activation_service),
+                return_value=_services(resolvable_activation_service),
             ),
         ):
             response = ActivateCheckApi().get()
@@ -101,15 +120,28 @@ class TestActivateCheckApi:
                 "requires_setup": True,
             },
         }
-        check = activation_service.check
-        assert isinstance(check, MagicMock)
-        check.assert_called_once_with(
-            InvitationLookup(
-                workspace_id="workspace-123",
-                email="invitee@example.com",
-                token="valid-token",
+
+    def test_looks_the_invitation_up_by_workspace_and_email(
+        self,
+        app: Flask,
+        resolvable_activation_service: AccountActivationService,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+    ) -> None:
+        """The workspace-scoped key is the one the invitation writer fills, so it must be preferred."""
+        _, commands = redis_transport
+        with (
+            app.test_request_context(
+                "/activate/check?workspace_id=workspace-123&email=invitee@example.com&token=valid-token"
             ),
-        )
+            patch(
+                "controllers.console.auth.activate.application_services",
+                return_value=_services(resolvable_activation_service),
+            ),
+        ):
+            ActivateCheckApi().get()
+
+        lookup_key = commands.call_args.args[1]
+        assert re.fullmatch(r"member_invite_token:workspace-123, [0-9a-f]{64}:valid-token", lookup_key)
 
     def test_omits_data_for_invalid_invitation(self, app: Flask, activation_service: AccountActivationService) -> None:
         check = activation_service.check
