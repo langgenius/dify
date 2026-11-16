@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Literal
 
 import pytest
 
@@ -15,12 +16,6 @@ from core.app.entities.task_entities import (
 )
 from core.workflow.nodes.human_input.pause_reason import DifyHITLEventType
 from graphon.enums import WorkflowExecutionStatus, WorkflowNodeExecutionStatus
-
-
-def _as_dict(chunk: dict[str, object] | str) -> dict[str, object]:
-    # Stream converters yield either dict chunks or the literal "ping" sentinel.
-    assert isinstance(chunk, dict)
-    return chunk
 
 
 class TestAdvancedChatGenerateResponseConverter:
@@ -58,10 +53,8 @@ class TestAdvancedChatGenerateResponseConverter:
         original_model_dump = type(data).model_dump
 
         def _model_dump_with_future_field(
-            self: AdvancedChatPausedBlockingResponse.Data, *, mode: str = "python"
+            self: AdvancedChatPausedBlockingResponse.Data, *, mode: Literal["json", "python"] = "python"
         ) -> dict[str, object]:
-            # The converter only ever calls ``model_dump(mode="json")``; mirror that
-            # narrow surface instead of the full forwarding signature.
             payload = original_model_dump(self, mode=mode)
             payload["future_field"] = "future-value"
             return payload
@@ -136,6 +129,9 @@ class TestAdvancedChatGenerateResponseConverter:
 
         converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
-        assert _as_dict(converted[1])["event"] == "node_started"
-        assert _as_dict(converted[2])["event"] == "node_finished"
-        assert _as_dict(converted[3])["event"] == "error"
+        assert isinstance(converted[1], dict)
+        assert isinstance(converted[2], dict)
+        assert isinstance(converted[3], dict)
+        assert converted[1]["event"] == "node_started"
+        assert converted[2]["event"] == "node_finished"
+        assert converted[3]["event"] == "error"
