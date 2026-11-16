@@ -1,8 +1,9 @@
-from collections.abc import Mapping, Sequence
-from typing import cast, override
+from collections.abc import Sequence
+from typing import override
 from unittest.mock import patch
 
 import pytest
+from pydantic import TypeAdapter, ValidationError
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -56,42 +57,6 @@ class _HistoryFreeTransform(AdvancedPromptTransform):
         return prompt_messages
 
 
-class _StubbedBranchesTransform(AdvancedPromptTransform):
-    """Transform whose completion and chat branches are stubbed, isolating dispatch in ``get_prompt``."""
-
-    @override
-    def _get_completion_model_prompt_messages(
-        self,
-        prompt_template: CompletionModelPromptTemplate,
-        inputs: Mapping[str, str],
-        query: str | None,
-        files: Sequence[File],
-        context: str | None,
-        memory_config: MemoryConfig | None,
-        memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-    ) -> list[PromptMessage]:
-        return [UserPromptMessage(content="c")]
-
-    @override
-    def _get_chat_model_prompt_messages(
-        self,
-        prompt_template: list[ChatModelMessage],
-        inputs: Mapping[str, str],
-        query: str | None,
-        files: Sequence[File],
-        context: str | None,
-        memory_config: MemoryConfig | None,
-        memory: TokenBufferMemory | None,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-        image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
-    ) -> list[PromptMessage]:
-        return [UserPromptMessage(content="h")]
-
-
 def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) -> None:
     model_config = make_model_config(provider="openai", model="gpt-3.5-turbo-instruct", mode="completion")
 
@@ -113,10 +78,10 @@ def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) 
         UserPromptMessage(content="Hi"),
         AssistantPromptMessage(content="Hello"),
     ]
-    history_limits: list[object] = []
+    history_limits: list[int] = []
 
-    def history(**kwargs: object) -> Sequence[PromptMessage]:
-        history_limits.append(kwargs["max_token_limit"])
+    def history(max_token_limit: int = 2000, message_limit: int | None = None) -> Sequence[PromptMessage]:
+        history_limits.append(max_token_limit)
         return history_prompt_messages
 
     monkeypatch.setattr(memory, "get_history_prompt_messages", history)
@@ -162,8 +127,8 @@ def test__get_chat_model_prompt_messages(get_chat_model_args: _ChatModelArgs, mo
         AssistantPromptMessage(content="Hello1!"),
     ]
 
-    def history(**kwargs: object) -> Sequence[PromptMessage]:
-        assert kwargs["max_token_limit"] == 2000
+    def history(max_token_limit: int = 2000, message_limit: int | None = None) -> Sequence[PromptMessage]:
+        assert max_token_limit == 2000
         return history_prompt_messages
 
     monkeypatch.setattr(memory, "get_history_prompt_messages", history)
@@ -277,7 +242,7 @@ def get_chat_model_args() -> _ChatModelArgs:
 
 
 def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
-    transform = _StubbedBranchesTransform()
+    transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     completion_template = CompletionModelPromptTemplate(text="Hello {{name}}", edition_type="basic")
     chat_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="basic")]
@@ -292,7 +257,9 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
         memory=None,
         model_config=model_config,
     )
-    assert completion_result[0].content == "c"
+    assert len(completion_result) == 1
+    assert isinstance(completion_result[0], UserPromptMessage)
+    assert completion_result[0].content == "Hello john"
 
     chat_result = transform.get_prompt(
         prompt_template=chat_template,
@@ -304,19 +271,17 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
         memory=None,
         model_config=model_config,
     )
-    assert chat_result[0].content == "h"
+    assert len(chat_result) == 2
+    assert isinstance(chat_result[0], UserPromptMessage)
+    assert chat_result[0].content == "Hello john"
+    assert isinstance(chat_result[1], UserPromptMessage)
+    assert chat_result[1].content == "q"
 
-    invalid_result = transform.get_prompt(
-        prompt_template=cast(list, ["not-chat-model-message"]),
-        inputs={"name": "john"},
-        query="q",
-        files=[],
-        context=None,
-        memory_config=None,
-        memory=None,
-        model_config=model_config,
-    )
-    assert invalid_result == []
+    # A malformed template payload is rejected at the validation boundary (parse-don't-validate),
+    # so it never reaches get_prompt's defensive isinstance guard. Assert the boundary contract
+    # directly instead of smuggling untyped data past the type checker with a cast.
+    with pytest.raises(ValidationError):
+        TypeAdapter(list[ChatModelMessage]).validate_python(["not-chat-model-message"])
 
 
 def test_completion_prompt_jinja2_with_files() -> None:

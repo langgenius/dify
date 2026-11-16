@@ -6,7 +6,7 @@ allowing tests to run without external dependencies.
 """
 
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, Optional, override
 from unittest.mock import MagicMock
 
@@ -23,6 +23,7 @@ from core.workflow.node_runtime import (
 )
 from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
+from graphon.entities.base_node_data import BaseNodeData
 from graphon.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import NodeEventPayload, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -65,7 +66,7 @@ class MockNodeMixin:
     def __init__(
         self,
         node_id: str,
-        data: Any,
+        data: BaseNodeData,
         *,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
@@ -110,14 +111,11 @@ class MockNodeMixin:
             kwargs.setdefault("runtime_support", MagicMock())
             kwargs.setdefault("message_transformer", MagicMock())
 
-        init_kwargs: dict[str, Any] = {
-            "node_id": node_id,
-            "data": data,
-            "init_params": init_params,
-            "runtime_state": runtime_state,
-            **kwargs,
-        }
-        super().__init__(**init_kwargs)
+        # The mixin precedes the concrete node in the MRO, so ``super()`` resolves to
+        # ``object`` for the type checker. Forward through a callable typed against the
+        # real ``Node.__init__`` contract instead of packing args into ``dict[str, Any]``.
+        node_init: Callable[..., None] = super().__init__
+        node_init(node_id=node_id, data=data, init_params=init_params, runtime_state=runtime_state, **kwargs)
         self.mock_config = mock_config
 
     def _get_mock_outputs(self, default_outputs: dict[str, Any]) -> dict[str, Any]:
@@ -372,7 +370,6 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
         return "1"
 
     @override
-    @override
     def _run(self) -> NodeRunResult:
         """Execute mock knowledge retrieval node."""
         # Simulate delay if configured
@@ -427,7 +424,6 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
         return "1"
 
     @override
-    @override
     def _run(self) -> NodeRunResult:
         """Execute mock HTTP request node."""
         # Simulate delay if configured
@@ -478,7 +474,6 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
         return "1"
 
     @override
-    @override
     def _run(self) -> NodeRunResult:
         """Execute mock question classifier node."""
         # Simulate delay if configured
@@ -524,9 +519,14 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
         return "1"
 
     @override
-    @override
     def _run(self) -> NodeRunResult:
-        """Execute mock parameter extractor node."""
+        """Execute mock parameter extractor node.
+
+        Mirrors the real ``ParameterExtractorNode`` output contract: extracted
+        parameter values are top-level keys of ``outputs`` (not nested under a
+        ``parameters`` key), and ``process_data`` carries model-run metadata
+        rather than a re-extracted copy of the outputs.
+        """
         # Simulate delay if configured
         self._simulate_delay()
 
@@ -541,23 +541,13 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
                 error_type="MockError",
             )
 
-        # Get mock response
-        outputs = self._get_mock_outputs(
-            {
-                "parameters": {
-                    "param1": "value1",
-                    "param2": "value2",
-                },
-            }
-        )
+        # Extracted parameter values, shaped like the real node's flat outputs.
+        outputs = self._get_mock_outputs({"param1": "value1", "param2": "value2"})
 
-        # Send completion event
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={"text": "mock text"},
-            process_data={
-                "extracted_parameters": outputs.get("parameters", {}),
-            },
+            process_data={},
             outputs=outputs,
         )
 
@@ -571,7 +561,6 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
         """Return the version of this mock node."""
         return "1"
 
-    @override
     @override
     def _run(self) -> NodeRunResult:
         """Execute mock document extractor node."""

@@ -1,10 +1,10 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 
 import pytest
 
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY
 from graphon.enums import WorkflowNodeExecutionStatus
-from graphon.nodes.list_operator.entities import ListOperatorNodeData
+from graphon.nodes.list_operator.entities import FilterBy, FilterCondition, FilterOperator, ListOperatorNodeData
 from graphon.nodes.list_operator.node import ListOperatorNode
 from graphon.runtime import InitParams, RuntimeState, VariablePool
 from graphon.variables import ArrayNumberSegment, ArrayStringSegment, Segment
@@ -16,23 +16,23 @@ class TestListOperatorNode:
     @staticmethod
     def _build_node(
         *,
-        data: ListOperatorNodeData | Mapping[str, object],
+        data: ListOperatorNodeData,
         init_params: InitParams,
         runtime_state: RuntimeState,
     ) -> ListOperatorNode:
         return ListOperatorNode(
             node_id="test",
-            data=data if isinstance(data, ListOperatorNodeData) else ListOperatorNodeData.model_validate(data),
+            data=data,
             init_params=init_params,
             runtime_state=runtime_state,
         )
 
     @staticmethod
-    def _filter_by(comparison_operator: str, value: str) -> dict[str, object]:
-        return {
-            "enabled": True,
-            "conditions": [{"comparison_operator": comparison_operator, "value": value}],
-        }
+    def _filter_by(comparison_operator: FilterOperator, value: str) -> FilterBy:
+        return FilterBy(
+            enabled=True,
+            conditions=[FilterCondition(comparison_operator=comparison_operator, value=value)],
+        )
 
     @pytest.fixture
     def graph_runtime_state(self) -> RuntimeState:
@@ -127,7 +127,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "items"],
-                "filter_by": self._filter_by("contains", "app"),
+                "filter_by": self._filter_by(FilterOperator.CONTAINS, "app"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -157,7 +157,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "items"],
-                "filter_by": self._filter_by("not contains", "app"),
+                "filter_by": self._filter_by(FilterOperator.NOT_CONTAINS, "app"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -187,7 +187,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "numbers"],
-                "filter_by": self._filter_by(">", "5"),
+                "filter_by": self._filter_by(FilterOperator.GREATER_THAN, "5"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -304,7 +304,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "numbers"],
-                "filter_by": self._filter_by(">", "3"),
+                "filter_by": self._filter_by(FilterOperator.GREATER_THAN, "3"),
                 "order_by": {
                     "enabled": True,
                     "value": "desc",
@@ -394,7 +394,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "items"],
-                "filter_by": self._filter_by("start with", "app"),
+                "filter_by": self._filter_by(FilterOperator.START_WITH, "app"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -420,7 +420,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "items"],
-                "filter_by": self._filter_by("end with", "le"),
+                "filter_by": self._filter_by(FilterOperator.END_WITH, "le"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -450,7 +450,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "numbers"],
-                "filter_by": self._filter_by("=", "5"),
+                "filter_by": self._filter_by(FilterOperator.EQUAL, "5"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }
@@ -480,7 +480,7 @@ class TestListOperatorNode:
             {
                 "title": "Test",
                 "variable": ["sys", "numbers"],
-                "filter_by": self._filter_by("≠", "5"),
+                "filter_by": self._filter_by(FilterOperator.NOT_EQUAL, "5"),
                 "order_by": {"enabled": False},
                 "limit": {"enabled": False},
             }

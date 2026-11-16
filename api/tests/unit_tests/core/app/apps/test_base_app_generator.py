@@ -673,21 +673,23 @@ def _file_input_variable(file: UploadFile, *, multiple: bool = False, required: 
 
 def _prepare_file_inputs(
     variable: VariableEntity, inputs: dict[str, object], invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
-) -> object:
-    return BaseAppGenerator()._prepare_user_inputs(
+) -> File | list[File] | None:
+    prepared = BaseAppGenerator()._prepare_user_inputs(
         user_inputs=inputs,
         variables=[variable],
         tenant_id=DEFAULT_FILE_TENANT_ID,
         strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
-    )["file"]
+    )
+    file_input: File | list[File] | None = prepared["file"]
+    return file_input
 
 
-def _as_file(value: object) -> File:
+def _as_file(value: File | list[File] | None) -> File:
     assert isinstance(value, File)
     return value
 
 
-def _as_file_list(value: object) -> list[File]:
+def _as_file_list(value: File | list[File] | None) -> list[File]:
     assert isinstance(value, list)
     return [_as_file(item) for item in value]
 
