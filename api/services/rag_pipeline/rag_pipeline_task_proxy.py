@@ -67,20 +67,28 @@ class RagPipelineTaskProxy:
             )
             logger.info("tenant %s init tasks: %s", self._dataset_tenant_id, upload_file_id)
 
-    def _send_to_default_tenant_queue(self, upload_file_id: str):
-        self._send_to_tenant_queue(
-            upload_file_id,
-            signature("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task", queue="pipeline"),
-        )
+    def _send_to_default_tenant_queue(self, upload_file_id: str) -> Signature:
+        """Send the file to the default tenant-isolated pipeline queue.
 
-    def _send_to_priority_tenant_queue(self, upload_file_id: str):
-        self._send_to_tenant_queue(
-            upload_file_id,
-            signature(
-                "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
-                queue="priority_pipeline",
-            ),
+        Postconditions:
+            Returns the celery signature dispatched for the file.
+        """
+        task_func = signature("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task", queue="pipeline")
+        self._send_to_tenant_queue(upload_file_id, task_func)
+        return task_func
+
+    def _send_to_priority_tenant_queue(self, upload_file_id: str) -> Signature:
+        """Send the file to the priority tenant-isolated pipeline queue.
+
+        Postconditions:
+            Returns the celery signature dispatched for the file.
+        """
+        task_func = signature(
+            "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
+            queue="priority_pipeline",
         )
+        self._send_to_tenant_queue(upload_file_id, task_func)
+        return task_func
 
     def _send_to_priority_direct_queue(self, upload_file_id: str):
         self._send_to_direct_queue(

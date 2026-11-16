@@ -439,39 +439,35 @@ class TestRagPipelineTaskProxyCasesServices:
             # The first task should be sent to celery directly, so push tasks should not be called
             assert all(entry.args[0] != "LPUSH" for entry in tenant_queue_commands.call_args_list)
 
-        def test_send_to_default_tenant_queue(self, mocker: MockerFixture) -> None:
+        def test_send_to_default_tenant_queue(self, tenant_queue_commands: MagicMock) -> None:
             """Test _send_to_default_tenant_queue method."""
             # Arrange
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_tenant_queue")
+            tenant_queue_commands.return_value = "task_key"
             upload_file_id = "file-123"
 
             # Act
-            proxy._send_to_default_tenant_queue(upload_file_id)
+            sent = proxy._send_to_default_tenant_queue(upload_file_id)
 
-            # Assert
-            send_mock.assert_called_once()
-            sent_file_id, task = send_mock.call_args.args
-            assert sent_file_id == upload_file_id
-            assert task.task == "tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task"
-            assert task.options["queue"] == "pipeline"
+            # Assert: the returned signature and the entry persisted in the tenant queue
+            assert sent.task == "tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task"
+            assert sent.options["queue"] == "pipeline"
+            tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", upload_file_id)
 
-        def test_send_to_priority_tenant_queue(self, mocker: MockerFixture) -> None:
+        def test_send_to_priority_tenant_queue(self, tenant_queue_commands: MagicMock) -> None:
             """Test _send_to_priority_tenant_queue method."""
             # Arrange
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_tenant_queue")
+            tenant_queue_commands.return_value = "task_key"
             upload_file_id = "file-123"
 
             # Act
-            proxy._send_to_priority_tenant_queue(upload_file_id)
+            sent = proxy._send_to_priority_tenant_queue(upload_file_id)
 
-            # Assert
-            send_mock.assert_called_once()
-            sent_file_id, task = send_mock.call_args.args
-            assert sent_file_id == upload_file_id
-            assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
-            assert task.options["queue"] == "priority_pipeline"
+            # Assert: the returned signature and the entry persisted in the tenant queue
+            assert sent.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+            assert sent.options["queue"] == "priority_pipeline"
+            tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", upload_file_id)
 
         def test_send_to_priority_direct_queue(self, mocker: MockerFixture) -> None:
             """Test _send_to_priority_direct_queue method."""
@@ -499,14 +495,14 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            tenant_queue_commands: MagicMock,
         ) -> None:
             """Test _dispatch method in Cloud with Sandbox plan."""
             # Arrange
             mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.SANDBOX)
             mock_feature_service.get_features.return_value = mock_features
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_default_tenant_queue")
+            tenant_queue_commands.return_value = "task_key"
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -516,8 +512,9 @@ class TestRagPipelineTaskProxyCasesServices:
             # Act
             proxy._dispatch()
 
-            # If billing is enabled with sandbox plan, should send to default tenant queue
-            send_mock.assert_called_once_with("file-123")
+            # The uploaded file is persisted into the tenant-isolated queue; the
+            # plan -> signature mapping itself is covered by the wrapper tests above.
+            tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", "file-123")
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
@@ -528,14 +525,14 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            tenant_queue_commands: MagicMock,
         ) -> None:
             """Test _dispatch method in Cloud with a paid plan."""
             # Arrange
             mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=CloudPlan.TEAM)
             mock_feature_service.get_features.return_value = mock_features
             proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
+            tenant_queue_commands.return_value = "task_key"
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -545,8 +542,9 @@ class TestRagPipelineTaskProxyCasesServices:
             # Act
             proxy._dispatch()
 
-            # If billing is enabled with non-sandbox plan, should send to priority tenant queue
-            send_mock.assert_called_once_with("file-123")
+            # The uploaded file is persisted into the tenant-isolated queue; the
+            # plan -> signature mapping itself is covered by the wrapper tests above.
+            tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", "file-123")
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")

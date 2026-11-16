@@ -1,8 +1,9 @@
 from collections.abc import Sequence
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session
 
 from core.agent.cot_chat_agent_runner import CotChatAgentRunner
 from core.agent.entities import AgentEntity, AgentPromptEntity, AgentScratchpadUnit
@@ -12,15 +13,20 @@ from core.app.app_config.entities import (
     PromptTemplateEntity,
 )
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
+from core.model_manager import ModelInstance
 from graphon.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageTool,
+    SystemPromptMessage,
     TextPromptMessageContent,
+    UserPromptMessage,
 )
-from models.model import AppMode
+from models.model import AppMode, Conversation, Message
+from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -68,52 +74,73 @@ def _tool(*, name: str) -> PromptMessageTool:
     return PromptMessageTool(name=name, description=name, parameters={})
 
 
-class DummyRunner(CotChatAgentRunner):
-    """Test double that avoids BaseAgentRunner's heavy DB/model constructor."""
-
-    def __init__(self) -> None:
-        # Use a plain __init__ (init fn) rather than bypassing via __new__,
-        # so the instance is fully initialised by the constructor.
-        self._instruction = "test_instruction"
-        self._prompt_messages_tools: Sequence[PromptMessageTool] = [_tool(name="tool1"), _tool(name="tool2")]
-        self._query = "user query"
-        self._agent_scratchpad: list[AgentScratchpadUnit] = []
-        self.files: Sequence[File] = []
-        self.application_generate_entity = _generate_entity()
-        self._organize_historic_prompt_messages = MagicMock(return_value=["historic"])
-
-
 @pytest.fixture
-def runner() -> DummyRunner:
-    return DummyRunner()
+def runner(
+    sqlite_session: Session,
+    agent_records: tuple[Conversation, Message],
+    agent_queue_manager: MessageBasedAppQueueManager,
+    mocker: MockerFixture,
+) -> CotChatAgentRunner:
+    """Build the real runner over persisted conversation rows.
+
+    ``run`` assigns the react state before organizing prompts; the test sets the
+    same attributes up front so ``_organize_*`` can be exercised in isolation.
+    """
+
+    conversation, message = agent_records
+    app_config = _app_config(
+        agent=_agent(prompt=AgentPromptEntity(first_prompt="{{instruction}}", next_iteration="next")),
+    )
+    model_config = make_model_config(provider="provider", model="model", mode="chat")
+    model_instance = ModelInstance(
+        provider_model_bundle=model_config.provider_model_bundle,
+        model=model_config.model,
+        credentials=model_config.credentials,
+    )
+    mocker.patch.object(model_instance.model_type_instance, "get_model_schema", return_value=None)
+
+    runner = CotChatAgentRunner(
+        execution_driver=WorkflowRunAgg.run,
+        session=sqlite_session,
+        tenant_id="tenant-id",
+        application_generate_entity=_generate_entity(),
+        conversation=conversation,
+        app_config=app_config,
+        model_config=model_config,
+        config=_agent(prompt=None),
+        queue_manager=agent_queue_manager,
+        message=message,
+        user_id="user-id",
+        model_instance=model_instance,
+    )
+    runner._instruction = "test_instruction"
+    runner._prompt_messages_tools = [_tool(name="tool1"), _tool(name="tool2")]
+    runner._init_react_state("user query")
+    return runner
 
 
 class TestOrganizeSystemPrompt:
-    def test_organize_system_prompt_success(self, runner: DummyRunner, mocker: MockerFixture) -> None:
+    def test_organize_system_prompt_success(self, runner: CotChatAgentRunner) -> None:
         first_prompt = "Instruction: {{instruction}}, Tools: {{tools}}, Names: {{tool_names}}"
         runner.app_config = _app_config(
             agent=_agent(prompt=AgentPromptEntity(first_prompt=first_prompt, next_iteration="next")),
         )
 
-        mocker.patch(
-            "core.agent.cot_chat_agent_runner.jsonable_encoder",
-            return_value=[{"name": "tool1"}, {"name": "tool2"}],
-        )
-
         result = runner._organize_system_prompt()
 
+        assert isinstance(result, SystemPromptMessage)
         assert isinstance(result.content, str)
         assert "test_instruction" in result.content
         assert "tool1" in result.content
         assert "tool2" in result.content
         assert "tool1, tool2" in result.content
 
-    def test_organize_system_prompt_missing_agent(self, runner: DummyRunner) -> None:
+    def test_organize_system_prompt_missing_agent(self, runner: CotChatAgentRunner) -> None:
         runner.app_config = _app_config(agent=None)
         with pytest.raises(AssertionError):
             runner._organize_system_prompt()
 
-    def test_organize_system_prompt_missing_prompt(self, runner: DummyRunner) -> None:
+    def test_organize_system_prompt_missing_prompt(self, runner: CotChatAgentRunner) -> None:
         runner.app_config = _app_config(agent=_agent(prompt=None))
         with pytest.raises(AssertionError):
             runner._organize_system_prompt()
@@ -121,7 +148,7 @@ class TestOrganizeSystemPrompt:
 
 class TestOrganizeUserQuery:
     @pytest.mark.parametrize("files", [None, pytest.param([], id="empty_list")])
-    def test_organize_user_query_no_files(self, runner: DummyRunner, files: list[File] | None) -> None:
+    def test_organize_user_query_no_files(self, runner: CotChatAgentRunner, files: list[File] | None) -> None:
         runner.files = files or []
         result = runner._organize_user_query("query", [])
         assert len(result) == 1
@@ -130,7 +157,7 @@ class TestOrganizeUserQuery:
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_default_config(
-        self, mock_to_prompt: MagicMock, mock_user_prompt: MagicMock, runner: DummyRunner
+        self, mock_to_prompt: MagicMock, mock_user_prompt: MagicMock, runner: CotChatAgentRunner
     ) -> None:
         mock_content = ImagePromptMessageContent(
             url="http://test",
@@ -156,7 +183,7 @@ class TestOrganizeUserQuery:
     @patch("core.agent.cot_chat_agent_runner.UserPromptMessage")
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
     def test_organize_user_query_with_image_file_high_detail(
-        self, mock_to_prompt: MagicMock, mock_user_prompt: MagicMock, runner: DummyRunner
+        self, mock_to_prompt: MagicMock, mock_user_prompt: MagicMock, runner: CotChatAgentRunner
     ) -> None:
         mock_content = ImagePromptMessageContent(
             url="http://test",
@@ -184,7 +211,9 @@ class TestOrganizeUserQuery:
         )
 
     @patch("core.agent.cot_chat_agent_runner.file_manager.to_prompt_message_content")
-    def test_organize_user_query_with_text_file_no_config(self, mock_to_prompt: MagicMock, runner: DummyRunner) -> None:
+    def test_organize_user_query_with_text_file_no_config(
+        self, mock_to_prompt: MagicMock, runner: CotChatAgentRunner
+    ) -> None:
         mock_to_prompt.return_value = TextPromptMessageContent(data="file_content")
         runner.files = [File(type=FileType.DOCUMENT, transfer_method=FileTransferMethod.LOCAL_FILE, reference="file1")]
         runner.application_generate_entity = _generate_entity(file_upload_config=None)
@@ -195,34 +224,39 @@ class TestOrganizeUserQuery:
 
 
 class TestOrganizePromptMessages:
-    def _prepare(self, runner: DummyRunner, mocker: MockerFixture) -> None:
+    def _prepare(self, runner: CotChatAgentRunner) -> None:
         runner.app_config = _app_config(
             agent=_agent(prompt=AgentPromptEntity(first_prompt="{{instruction}}", next_iteration="next")),
         )
-        mocker.patch.object(runner, "_organize_system_prompt", return_value="system")
-        mocker.patch.object(runner, "_organize_user_query", return_value=["query"])
+        runner._instruction = "test_instruction"
+        runner._init_react_state("user query")
 
-    def test_no_scratchpad(self, runner: DummyRunner, mocker: MockerFixture) -> None:
-        self._prepare(runner, mocker)
+    @staticmethod
+    def _text_contents(messages: Sequence[PromptMessage]) -> list[str]:
+        return [message.content for message in messages if isinstance(message.content, str)]
+
+    def test_no_scratchpad(self, runner: CotChatAgentRunner) -> None:
+        self._prepare(runner)
 
         result = runner._organize_prompt_messages()
-        assert "system" in result
-        assert "query" in result
-        historic_mock = runner._organize_historic_prompt_messages
-        assert isinstance(historic_mock, Mock)
-        historic_mock.assert_called_once()
 
-    def test_with_final_scratchpad(self, runner: DummyRunner, mocker: MockerFixture) -> None:
-        self._prepare(runner, mocker)
+        assert [type(message) for message in result] == [SystemPromptMessage, UserPromptMessage]
+        assert self._text_contents(result) == ["test_instruction", "user query"]
+        assert runner._historic_prompt_messages == []
+
+    def test_with_final_scratchpad(self, runner: CotChatAgentRunner) -> None:
+        self._prepare(runner)
 
         runner._agent_scratchpad = [AgentScratchpadUnit(agent_response="done")]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
+        combined = "".join(self._text_contents(result))
         assert "Final Answer: done" in combined
+        assert isinstance(result[-1], UserPromptMessage)
+        assert result[-1].content == "continue"
 
-    def test_with_thought_action_observation(self, runner: DummyRunner, mocker: MockerFixture) -> None:
-        self._prepare(runner, mocker)
+    def test_with_thought_action_observation(self, runner: CotChatAgentRunner) -> None:
+        self._prepare(runner)
 
         runner._agent_scratchpad = [
             AgentScratchpadUnit(
@@ -234,13 +268,13 @@ class TestOrganizePromptMessages:
         ]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
+        combined = "".join(self._text_contents(result))
         assert "Thought: thinking" in combined
         assert "Action: action" in combined
         assert "Observation: observe" in combined
 
-    def test_multiple_units_mixed(self, runner: DummyRunner, mocker: MockerFixture) -> None:
-        self._prepare(runner, mocker)
+    def test_multiple_units_mixed(self, runner: CotChatAgentRunner) -> None:
+        self._prepare(runner)
 
         runner._agent_scratchpad = [
             AgentScratchpadUnit(
@@ -251,6 +285,6 @@ class TestOrganizePromptMessages:
         ]
 
         result = runner._organize_prompt_messages()
-        combined = "".join([m.content for m in result if isinstance(m, PromptMessage) and isinstance(m.content, str)])
+        combined = "".join(self._text_contents(result))
         assert "Thought: t1" in combined
         assert "Final Answer: done" in combined

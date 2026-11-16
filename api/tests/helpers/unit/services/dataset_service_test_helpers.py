@@ -18,6 +18,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.rag.entities import PreProcessingRule, Rule, Segmentation
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from enums import CloudPlan
 from extensions.storage.storage_type import StorageType
@@ -193,13 +194,11 @@ class DatasetServiceUnitDataFactory:
         user_id: str = "user-123",
         tenant_id: str = "tenant-123",
         role: str = TenantAccountRole.OWNER,
-        **kwargs: Any,
     ) -> SimpleNamespace:
         return SimpleNamespace(
             id=user_id,
             current_tenant_id=tenant_id,
             current_role=role,
-            **kwargs,
         )
 
     @staticmethod
@@ -461,7 +460,7 @@ def _make_knowledge_configuration(
     embedding_model_provider: str = "provider",
     embedding_model: str = "embedding-model",
     keyword_number: int = 8,
-    summary_index_setting: dict[str, object] | None = None,
+    summary_index_setting: SummaryIndexSettingDict | None = None,
 ) -> KnowledgeConfiguration:
     return KnowledgeConfiguration(
         chunk_structure=chunk_structure,
