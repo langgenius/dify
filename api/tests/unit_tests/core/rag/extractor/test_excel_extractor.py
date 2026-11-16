@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 import pytest
+from openpyxl.worksheet.hyperlink import Hyperlink
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,7 +23,7 @@ def database_session_maker(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatc
 
 
 class _FakeCell:
-    def __init__(self, value: object, hyperlink: object = None) -> None:
+    def __init__(self, value: str | int | None, hyperlink: Hyperlink | None = None) -> None:
         self.value = value
         self.hyperlink = hyperlink
         self.row = 0
@@ -106,7 +107,7 @@ class TestExcelExtractor:
         sheet_with_data = _FakeSheet(
             header_rows=[("Name", "Link")],
             data_rows=[
-                (_FakeCell("Alice"), _FakeCell("Doc", hyperlink=SimpleNamespace(target="https://example.com/doc"))),
+                (_FakeCell("Alice"), _FakeCell("Doc", hyperlink=Hyperlink(ref="B2", target="https://example.com/doc"))),
                 (_FakeCell(None), _FakeCell(123)),
                 (_FakeCell(None), _FakeCell(None)),
             ],
