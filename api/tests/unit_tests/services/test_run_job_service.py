@@ -1,4 +1,5 @@
 import json
+import threading
 from dataclasses import dataclass, field
 
 import pytest
@@ -36,6 +37,20 @@ class FakeClock:
     def sleep(self, seconds: float) -> None:
         self.slept.append(seconds)
         self.now += seconds
+
+
+class DiscardFailsStore:
+    def __init__(self, inner: RedisRunJobStore) -> None:
+        self._inner = inner
+        self.fail = True
+
+    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
+        return self._inner.open(record, idempotency_key=idempotency_key)
+
+    def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
+        if self.fail:
+            raise ConnectionError("redis down")
+        self._inner.discard(job_id, idempotency_key=idempotency_key)
 
 
 class BrokenStore:
@@ -79,19 +94,98 @@ def request_context():
         yield
 
 
+@pytest.mark.usefixtures("request_context")
 def test_open_fails_before_any_run_when_the_store_is_unavailable():
-    service = RunJobService(
+    broken = RunJobService(
         store=BrokenStore(),
         results=InMemoryRunResults(),
         tasks=RecordingTaskControl(),
         max_background_runs=1,
         max_waiters=1,
     )
+    threads_before = threading.active_count()
 
     with pytest.raises(ConnectionError):
-        service.open(_opening())
+        broken.open(_opening())
+
+    assert threading.active_count() == threads_before
+    working = _harness(max_background_runs=1)
+    assert working.service.open(_opening()).created is True
+
+
+def test_discard_releases_the_slot_even_when_the_store_raises():
+    store = DiscardFailsStore(RedisRunJobStore(redis_client=InMemoryRedis()))
+    service = RunJobService(
+        store=store, results=InMemoryRunResults(), tasks=RecordingTaskControl(), max_background_runs=1, max_waiters=1
+    )
+    opened = service.open(_opening())
+
     with pytest.raises(ConnectionError):
-        service.open(_opening())
+        service.discard(opened, idempotency_key=None)
+    store.fail = False
+
+    assert service.open(_opening()).created is True
+
+
+@pytest.mark.usefixtures("request_context")
+def test_attach_refuses_a_job_it_holds_no_slot_for():
+    harness = _harness(max_background_runs=1)
+    first = harness.service.open(_opening(key="k"))
+    again = harness.service.open(_opening(key="k"))
+
+    with pytest.raises(ValueError, match="reserved"):
+        harness.service.attach(again.record.id + "-unknown", [])
+    harness.service.attach(first.record.id, []).join(THREAD_TIMEOUT)
+
+    assert harness.service.open(_opening()).created is True
+
+
+def test_view_of_a_finished_graph_run_drops_the_stale_record_form():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", form={"form_id": "old"}))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED)
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert view.form is None
+
+
+def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.PAUSED, form={"form_id": "f"}))
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.PAUSED
+    assert view.form == {"form_id": "f"}
+
+
+def test_stop_of_a_final_job_sends_nothing():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED)
+
+    view = harness.service.stop(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.SUCCEEDED
+    assert harness.tasks.workflow_stops == []
+    stored = harness.store.get(opened.record.id)
+    assert stored is not None
+    assert stored.stop_requested is False
+
+
+def test_stop_of_a_paused_job_still_stops_the_run():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
+
+    harness.service.stop(OWNER, opened.record.id)
+
+    assert [stop.run_id for stop in harness.tasks.workflow_stops] == ["run-1"]
 
 
 def test_open_refuses_a_new_job_at_the_background_cap():
@@ -264,21 +358,31 @@ def test_wait_returns_when_the_job_pauses():
 
 
 def test_wait_answers_at_once_when_the_waiter_cap_is_full():
-    harness = _harness(max_waiters=1)
-    opened = harness.service.open(_opening())
-    inner: list[float] = []
+    clock = FakeClock()
+    nested: dict[str, object] = {}
 
-    def nested_wait(seconds: float) -> None:
-        harness.clock.sleep(seconds)
-        if not inner:
-            inner.append(harness.clock.now)
-            harness.service.wait(OWNER, opened.record.id, wait_seconds=10)
-            inner.append(harness.clock.now)
+    def sleep_then_wait_again(seconds: float) -> None:
+        clock.sleep(seconds)
+        if nested:
+            return
+        nested["before"] = clock.now
+        nested["view"] = service.wait(OWNER, nested_id, wait_seconds=10)
+        nested["after"] = clock.now
 
-    harness.service._sleep = nested_wait
-    harness.service.wait(OWNER, opened.record.id, wait_seconds=2)
+    service = RunJobService(
+        store=RedisRunJobStore(redis_client=InMemoryRedis()),
+        results=InMemoryRunResults(),
+        tasks=RecordingTaskControl(),
+        max_background_runs=1,
+        max_waiters=1,
+        sleep=sleep_then_wait_again,
+        monotonic=clock.monotonic,
+    )
+    nested_id = service.open(_opening()).record.id
 
-    assert inner[0] == inner[1]
+    service.wait(OWNER, nested_id, wait_seconds=2)
+
+    assert nested["before"] == nested["after"]
 
 
 def test_wait_releases_its_waiter_slot():
