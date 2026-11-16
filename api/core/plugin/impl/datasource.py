@@ -1,5 +1,5 @@
 from collections.abc import Generator, Mapping
-from typing import Any, NotRequired, TypedDict, cast
+from typing import Any, NotRequired, TypedDict
 
 from core.datasource.entities.datasource_entities import (
     DatasourceMessage,
@@ -71,7 +71,7 @@ class PluginDatasourceManager(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            payload = cast(PluginDatasourceListPayload, json_response)
+            payload = PluginDatasourceListPayload(**json_response)
             if payload.get("data"):
                 for provider in payload.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -115,7 +115,7 @@ class PluginDatasourceManager(BasePluginClient):
         """
 
         def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            payload = cast(PluginDatasourceListPayload, json_response)
+            payload = PluginDatasourceListPayload(**json_response)
             if payload.get("data"):
                 for provider in payload.get("data", []):
                     declaration = provider.get("declaration", {}) or {}
@@ -159,7 +159,7 @@ class PluginDatasourceManager(BasePluginClient):
         tool_provider_id = DatasourceProviderID(provider_id)
 
         def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
-            payload = cast(PluginDatasourceSinglePayload, json_response)
+            payload = PluginDatasourceSinglePayload(**json_response)
             data = payload.get("data")
             if data:
                 for datasource in data.get("declaration", {}).get("datasources", []):
