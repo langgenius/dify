@@ -97,6 +97,18 @@ def _fail_creation(**_kwargs: object) -> NoReturn:
     raise RuntimeError("boom")
 
 
+class _RecordingCreation:
+    """Stand-in for _create_or_update_snippet that records the call it received."""
+
+    def __init__(self, snippet: CustomizedSnippet):
+        self.snippet = snippet
+        self.calls: list[dict[str, object]] = []
+
+    def __call__(self, **kwargs: object) -> CustomizedSnippet:
+        self.calls.append(kwargs)
+        return self.snippet
+
+
 def _account(*, account_id: str = "account-1", tenant_id: str = "tenant-1") -> Account:
     return make_account(
         account_id=account_id,
@@ -434,7 +446,7 @@ def test_import_snippet_passes_dependencies_to_create_or_update(
     service: SnippetDslService, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     snippet = _snippet()
-    create_or_update = Mock(return_value=snippet)
+    create_or_update = _RecordingCreation(snippet)
     monkeypatch.setattr(service, "_create_or_update_snippet", create_or_update)
     yaml_content = """
 version: 0.1.0
@@ -459,7 +471,8 @@ workflow:
 
     assert result.status == ImportStatus.COMPLETED_WITH_WARNINGS
     assert result.snippet_id == "snippet-1"
-    dependencies = create_or_update.call_args.kwargs["dependencies"]
+    dependencies = create_or_update.calls[0]["dependencies"]
+    assert isinstance(dependencies, list)
     assert dependencies[0].value.plugin_unique_identifier == "langgenius/openai:0.0.1"
 
 
