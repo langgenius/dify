@@ -6,6 +6,7 @@ import types
 from collections.abc import Callable, Iterator
 from datetime import datetime
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock as _dataset_service_segment_MagicMock
 from unittest.mock import create_autospec
 from unittest.mock import patch as _dataset_service_dataset_patch
@@ -1922,6 +1923,40 @@ class _RetryFlagStore:
         return _RetryFlagLock(self, key)
 
 
+class _IndexingGuardStore:
+    """In-memory stand-in for the Redis calls made around the document indexing guard."""
+
+    def __init__(self) -> None:
+        self.values: dict[str, int] = {}
+
+    def get(self, key: str) -> int | None:
+        return self.values.get(key)
+
+    def setex(self, key: str, time: int, value: int) -> None:
+        assert time == 600
+        self.values[key] = value
+
+    def delete(self, key: str) -> None:
+        self.values.pop(key, None)
+
+
+class _ImmediateIndexTask:
+    """Index task whose worker finishes inside ``delay`` and clears the guard, like a fast Celery worker."""
+
+    def __init__(self, store: _IndexingGuardStore) -> None:
+        self.store = store
+        self.calls: list[str] = []
+
+    def delay(self, document_id: str) -> None:
+        self.calls.append(document_id)
+        self.store.delete(f"document_{document_id}_indexing")
+
+
+class _FailingIndexTask:
+    def delay(self, document_id: str) -> None:
+        raise RuntimeError("task failed")
+
+
 class TestDocumentServiceDownloads:
     @pytest.mark.parametrize("sqlite_session", [(_dataset_service_document_Document, UploadFile)], indirect=True)
     @pytest.mark.parametrize(
@@ -3430,6 +3465,56 @@ class TestDatasetServiceDocumentCases:
             sqlite_session.refresh(document)
             assert document.enabled is True
             mock_redis.setex.assert_called_once_with(f"document_{document.id}_indexing", 600, 1)
+
+        @pytest.mark.parametrize(
+            ("action", "enabled", "task_path"),
+            [
+                ("enable", False, "services.knowledge.dataset_service.add_document_to_index_task"),
+                ("disable", True, "services.knowledge.dataset_service.remove_document_from_index_task"),
+            ],
+        )
+        def test_batch_update_document_status_does_not_leave_guard_after_fast_worker(
+            self, sqlite_session: Session, action: Literal["enable", "disable"], enabled: bool, task_path: str
+        ) -> None:
+            dataset = _dataset_row()
+            document = _document_row(enabled=enabled)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+            guard_store = _IndexingGuardStore()
+            index_task = _ImmediateIndexTask(guard_store)
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client", guard_store),
+                _dataset_service_document_patch(task_path, index_task),
+            ):
+                _dataset_service_document_DocumentService.batch_update_document_status(
+                    dataset, [document.id], action, _dataset_service_document_account(), sqlite_session
+                )
+
+            assert index_task.calls == [document.id]
+            assert guard_store.values == {}
+
+        def test_batch_update_document_status_clears_guard_when_dispatch_fails(self, sqlite_session: Session) -> None:
+            dataset = _dataset_row()
+            document = _document_row(enabled=False)
+            sqlite_session.add_all([dataset, document])
+            sqlite_session.commit()
+            guard_store = _IndexingGuardStore()
+
+            with (
+                _dataset_service_document_patch("services.knowledge.dataset_service.redis_client", guard_store),
+                _dataset_service_document_patch(
+                    "services.knowledge.dataset_service.add_document_to_index_task", _FailingIndexTask()
+                ),
+                pytest.raises(RuntimeError, match="task failed"),
+            ):
+                _dataset_service_document_DocumentService.batch_update_document_status(
+                    dataset, [document.id], "enable", _dataset_service_document_account(), sqlite_session
+                )
+
+            sqlite_session.refresh(document)
+            assert document.enabled is True
+            assert guard_store.values == {}
 
     class TestDocumentServiceTenantAndUpdateEdges:
         """Unit tests for tenant-count and update edge cases."""
