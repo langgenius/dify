@@ -163,6 +163,27 @@ export const zAgentWebApp = z.object({
 })
 
 /**
+ * AppApiKeyRow
+ *
+ * One app API key; `token` is the full secret, as the console returns it.
+ */
+export const zAppApiKeyRow = z.object({
+  created_at: z.int().nullish(),
+  id: z.string(),
+  last_used_at: z.int().nullish(),
+  token: z.string(),
+})
+
+/**
+ * AppApiKeyListResponse
+ *
+ * Every API key of one app; unpaginated, as the console lists them.
+ */
+export const zAppApiKeyListResponse = z.object({
+  data: z.array(zAppApiKeyRow),
+})
+
+/**
  * AppDescribeInfo
  */
 export const zAppDescribeInfo = z.object({
@@ -1451,6 +1472,7 @@ export const zOpenApiErrorCode = z.enum([
   'knowledge_fs_unavailable',
   'marketplace_disabled',
   'marketplace_unavailable',
+  'max_keys_exceeded',
   'member_license_exceeded',
   'member_limit_exceeded',
   'method_not_allowed',
@@ -2660,6 +2682,15 @@ export const zGetAppsQuery = z.object({
  */
 export const zGetAppsResponse = zAppListResponse
 
+export const zDeleteAppsByAppIdPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * App deleted
+ */
+export const zDeleteAppsByAppIdResponse = zSimpleResultResponse
+
 export const zGetAppsByAppIdPath = z.object({
   app_id: z.string(),
 })
@@ -2683,6 +2714,34 @@ export const zPostAppsByAppIdAdvancedChatRunPath = z.object({
  * Run result (SSE stream)
  */
 export const zPostAppsByAppIdAdvancedChatRunResponse = zEventStreamResponse
+
+export const zGetAppsByAppIdApiKeysPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * API keys
+ */
+export const zGetAppsByAppIdApiKeysResponse = zAppApiKeyListResponse
+
+export const zPostAppsByAppIdApiKeysPath = z.object({
+  app_id: z.string(),
+})
+
+/**
+ * API key created
+ */
+export const zPostAppsByAppIdApiKeysResponse = zAppApiKeyRow
+
+export const zDeleteAppsByAppIdApiKeysByApiKeyIdPath = z.object({
+  api_key_id: z.string(),
+  app_id: z.string(),
+})
+
+/**
+ * API key deleted
+ */
+export const zDeleteAppsByAppIdApiKeysByApiKeyIdResponse = zSimpleResultResponse
 
 export const zGetAppsByAppIdAppInfoAdvancedChatPath = z.object({
   app_id: z.string(),
@@ -3738,6 +3797,19 @@ export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsPath
 export const zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
   zCredentialWriteResponse
 
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdPath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+/**
+ * Credential deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
+  zSimpleResultResponse
+
 export const zPatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdBody =
   zProviderCredentialUpdatePayload
 
@@ -3951,6 +4023,19 @@ export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsPath 
  */
 export const zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
   zCredentialWriteResponse
+
+export const zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdPath =
+  z.object({
+    credential_id: z.string(),
+    provider: z.string(),
+    workspace_id: z.string(),
+  })
+
+/**
+ * Credential deleted
+ */
+export const zDeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
+  zSimpleResultResponse
 
 export const zPatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdBody =
   zToolCredentialUpdatePayload

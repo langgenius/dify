@@ -134,6 +134,17 @@ export type AgentWebApp = {
   use_icon_as_answer_icon?: boolean
 }
 
+export type AppApiKeyListResponse = {
+  data: Array<AppApiKeyRow>
+}
+
+export type AppApiKeyRow = {
+  created_at?: number | null
+  id: string
+  last_used_at?: number | null
+  token: string
+}
+
 export type AppDescribeInfo = {
   description?: string | null
   id: string
@@ -1076,6 +1087,7 @@ export type OpenApiErrorCode =
   | 'knowledge_fs_unavailable'
   | 'marketplace_disabled'
   | 'marketplace_unavailable'
+  | 'max_keys_exceeded'
   | 'member_license_exceeded'
   | 'member_limit_exceeded'
   | 'method_not_allowed'
@@ -1993,6 +2005,27 @@ export type GetAppsResponses = {
 
 export type GetAppsResponse = GetAppsResponses[keyof GetAppsResponses]
 
+export type DeleteAppsByAppIdData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}'
+}
+
+export type DeleteAppsByAppIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdError = DeleteAppsByAppIdErrors[keyof DeleteAppsByAppIdErrors]
+
+export type DeleteAppsByAppIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdResponse = DeleteAppsByAppIdResponses[keyof DeleteAppsByAppIdResponses]
+
 export type GetAppsByAppIdData = {
   body?: never
   path: {
@@ -2040,6 +2073,76 @@ export type PostAppsByAppIdAdvancedChatRunResponses = {
 
 export type PostAppsByAppIdAdvancedChatRunResponse =
   PostAppsByAppIdAdvancedChatRunResponses[keyof PostAppsByAppIdAdvancedChatRunResponses]
+
+export type GetAppsByAppIdApiKeysData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys'
+}
+
+export type GetAppsByAppIdApiKeysErrors = {
+  default: ErrorBody
+}
+
+export type GetAppsByAppIdApiKeysError =
+  GetAppsByAppIdApiKeysErrors[keyof GetAppsByAppIdApiKeysErrors]
+
+export type GetAppsByAppIdApiKeysResponses = {
+  200: AppApiKeyListResponse
+}
+
+export type GetAppsByAppIdApiKeysResponse =
+  GetAppsByAppIdApiKeysResponses[keyof GetAppsByAppIdApiKeysResponses]
+
+export type PostAppsByAppIdApiKeysData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys'
+}
+
+export type PostAppsByAppIdApiKeysErrors = {
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdApiKeysError =
+  PostAppsByAppIdApiKeysErrors[keyof PostAppsByAppIdApiKeysErrors]
+
+export type PostAppsByAppIdApiKeysResponses = {
+  201: AppApiKeyRow
+}
+
+export type PostAppsByAppIdApiKeysResponse =
+  PostAppsByAppIdApiKeysResponses[keyof PostAppsByAppIdApiKeysResponses]
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdData = {
+  body?: never
+  path: {
+    api_key_id: string
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/api-keys/{api_key_id}'
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdError =
+  DeleteAppsByAppIdApiKeysByApiKeyIdErrors[keyof DeleteAppsByAppIdApiKeysByApiKeyIdErrors]
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdResponses = {
+  200: SimpleResultResponse
+}
+
+export type DeleteAppsByAppIdApiKeysByApiKeyIdResponse =
+  DeleteAppsByAppIdApiKeysByApiKeyIdResponses[keyof DeleteAppsByAppIdApiKeysByApiKeyIdResponses]
 
 export type GetAppsByAppIdAppInfoAdvancedChatData = {
   body?: never
@@ -4324,6 +4427,32 @@ export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsRespon
 export type PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponses]
 
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
+  body?: never
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdResponses]
+
 export type PatchWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialIdData = {
   body: ProviderCredentialUpdatePayload
   path: {
@@ -4739,6 +4868,32 @@ export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsRespons
 
 export type PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse =
   PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses[keyof PostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponses]
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
+  body?: never
+  path: {
+    credential_id: string
+    provider: string
+    workspace_id: string
+  }
+  query?: never
+  url: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}'
+}
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors = {
+  default: ErrorBody
+}
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdError =
+  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdErrors]
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses =
+  {
+    200: SimpleResultResponse
+  }
+
+export type DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponse =
+  DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses[keyof DeleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdResponses]
 
 export type PatchWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialIdData = {
   body: ToolCredentialUpdatePayload
