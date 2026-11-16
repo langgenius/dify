@@ -4152,11 +4152,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/nodes/_base/components/title-description-input.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
-    }
-  },
   "web/app/components/workflow/nodes/_base/components/variable/manage-input-field.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
