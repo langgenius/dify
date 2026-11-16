@@ -4,10 +4,15 @@ from urllib.parse import quote
 
 import httpx
 import pytest
+from pydantic import BaseModel
 from pytest_mock import MockerFixture
 
 from core.plugin.endpoint.exc import EndpointSetupFailedError
-from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginListResponse
+from core.plugin.entities.plugin_daemon import (
+    PluginDaemonBasicResponse,
+    PluginDaemonInnerError,
+    PluginListResponse,
+)
 from core.plugin.impl.base import PLUGIN_DAEMON_MAX_PATH_LENGTH, BasePluginClient
 from core.plugin.impl.exc import PluginLLMPollingUnsupportedError, PluginRuntimeError
 from core.trigger.errors import (
@@ -18,8 +23,20 @@ from core.trigger.errors import (
 )
 
 
-def _response(payload: dict[str, object] | list[object]) -> httpx.Response:
-    """Build a real httpx.Response instead of a stub, so the client sees its own type."""
+def _response[T: BaseModel | dict[str, object] | list[object] | bool | str](
+    payload: PluginDaemonBasicResponse[T],
+) -> httpx.Response:
+    """Serve the real daemon envelope through the real response class the client consumes."""
+
+    return httpx.Response(
+        200,
+        json=payload.model_dump(),
+        request=httpx.Request("GET", "http://plugin-daemon/test"),
+    )
+
+
+def _legacy_array_response(payload: list[object]) -> httpx.Response:
+    """Serve a bare JSON array, the shape older daemons returned for plugin lists."""
 
     return httpx.Response(200, json=payload, request=httpx.Request("GET", "http://plugin-daemon/test"))
 
@@ -84,33 +101,37 @@ class TestBasePluginClientImpl:
         with pytest.raises(ValueError, match="too deeply encoded"):
             client._prepare_request(path, None, None, None, None)
 
-    def test_request_with_plugin_daemon_response_handles_request_exception(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_request", side_effect=RuntimeError("boom"))
+    def test_request_with_plugin_daemon_response_handles_request_exception(self) -> None:
+        def handler(_request: httpx.Request) -> httpx.Response:
+            raise RuntimeError("boom")
+
+        client = BasePluginClient(httpx_client=httpx.Client(transport=httpx.MockTransport(handler)))
 
         with pytest.raises(ValueError, match="Failed to request plugin daemon"):
             client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool)
 
-    def test_request_with_plugin_daemon_response_applies_transformer(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_response({"code": 0, "message": "", "data": True}))
+    def test_request_with_plugin_daemon_response_applies_transformer(self) -> None:
+        envelope = PluginDaemonBasicResponse[bool](code=0, message="", data=True)
+        transport = httpx.MockTransport(lambda _: _response(envelope))
+        client = BasePluginClient(httpx_client=httpx.Client(transport=transport))
+        transformed: list[PluginDaemonBasicResponse[bool]] = []
 
-        transformed: dict[str, object] = {}
-
-        def transformer(payload: dict[str, object]) -> dict[str, object]:
-            transformed.update(payload)
-            return payload
+        def transformer(json_response: dict[str, object]) -> dict[str, object]:
+            parsed = PluginDaemonBasicResponse[bool].model_validate(json_response)
+            transformed.append(parsed)
+            return json_response
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/path", bool, transformer=transformer)
 
         assert result is True
-        assert transformed == {"code": 0, "message": "", "data": True}
+        assert transformed == [envelope]
 
     def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(
         self, mocker: MockerFixture
     ) -> None:
         client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_response({"code": 0, "message": "", "data": []}))
+        envelope = PluginDaemonBasicResponse[list[object]](code=0, message="", data=[])
+        mocker.patch.object(client, "_request", return_value=_response(envelope))
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
@@ -121,7 +142,7 @@ class TestBasePluginClientImpl:
         self, mocker: MockerFixture
     ) -> None:
         client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_response([]))
+        mocker.patch.object(client, "_request", return_value=_legacy_array_response([]))
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
