@@ -287,7 +287,9 @@ class Tool(ABC):
             meta=meta,
         )
 
-    def create_json_message(self, object: dict[str, Any], suppress_output: bool = False) -> ToolInvokeMessage:
+    def create_json_message(
+        self, object: dict[str, Any] | list[Any], suppress_output: bool = False
+    ) -> ToolInvokeMessage:
         """
         create a json message
         """
