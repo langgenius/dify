@@ -798,10 +798,10 @@ function CommentThreadComponent({
         <AlertDialogContent finalFocus={replyWasDeleted ? replyInputRef : undefined}>
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t(($) => $['comments.actions.deleteReply'], { ns: 'workflowComments' })}
+              {t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' })}
             </AlertDialogTitle>
             <AlertDialogDescription>
-              {t(($) => $['operation.confirmAction'], { ns: 'common' })}
+              {t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' })}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -159,7 +159,7 @@ describe('Comment thread focus', () => {
     })
     await user.click(deleteItem)
     const confirm = await screen.findByRole('alertdialog', {
-      name: 'workflowComments.comments.actions.deleteReply',
+      name: 'workflowComments.comments.confirm.deleteReplyTitle',
     })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(onDelete).not.toHaveBeenCalled()

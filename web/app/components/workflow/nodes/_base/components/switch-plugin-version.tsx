@@ -29,7 +29,7 @@ import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/reac
 import { useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
-import VersionBadge from '@/app/components/base/badge/index'
+import { Badge as VersionBadge } from '@/app/components/base/badge/index'
 import Card from '@/app/components/plugins/card'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'

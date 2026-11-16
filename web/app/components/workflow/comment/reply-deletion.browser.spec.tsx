@@ -91,7 +91,7 @@ it('returns to the selected reply on cancel and the composer after deleting that
   await expect.element(deleteItem).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   const confirmation = screen.getByRole('alertdialog', {
-    name: 'workflowComments.comments.actions.deleteReply',
+    name: 'workflowComments.comments.confirm.deleteReplyTitle',
   })
   await expect.element(confirmation).toBeVisible()
   await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
