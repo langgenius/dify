@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Callable, Mapping
-from typing import Any, Final
+from collections.abc import Mapping
+from typing import Any, Final, Protocol
 
 from flask_restx import Resource
 from pydantic import ValidationError
@@ -47,6 +47,11 @@ def job_owner(ctx: Context) -> JobOwner:
 
 
 def _wait_hint(view: JobView, *, app_id: str, summary: str) -> Hint:
+    """Point at wait.job for the view's job.
+
+    Precondition: view belongs to the caller.
+    Postcondition: a hint whose input names the app and job and the default wait.
+    """
     return Hint(
         summary=summary,
         op=WAIT_JOB_OP,
@@ -55,10 +60,20 @@ def _wait_hint(view: JobView, *, app_id: str, summary: str) -> Hint:
 
 
 def _no_hints(view: JobView, *, app_id: str) -> list[Hint]:
+    """Offer no next step.
+
+    Precondition: the view's status is final.
+    Postcondition: an empty list.
+    """
     return []
 
 
 def _running_hints(view: JobView, *, app_id: str) -> list[Hint]:
+    """Offer waiting for the result.
+
+    Precondition: the view's status is running.
+    Postcondition: one wait hint.
+    """
     return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
 
 
@@ -87,14 +102,26 @@ def _form_response(view: JobView) -> HumanInputRequiredResponse | None:
 
 
 def _paused_hints(view: JobView, *, app_id: str) -> list[Hint]:
-    hints: list[Hint] = []
+    """Offer the pending form's actions, then waiting.
+
+    Precondition: the view's status is paused.
+    Postcondition: one hint per form action followed by a wait hint that says it follows a submit; when no form
+    hints can be built, only the plain wait hint.
+    """
     response = _form_response(view)
-    if response is not None:
-        hints = form_hints(op=op_of(OpenApiWorkflowHumanInputFormSubmitApi.post), app_id=app_id, response=response)
+    if response is None:
+        return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
+    hints = form_hints(op=op_of(OpenApiWorkflowHumanInputFormSubmitApi.post), app_id=app_id, response=response)
+    if not hints:
+        return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
     return [*hints, _wait_hint(view, app_id=app_id, summary=RESUMED_WAIT_HINT_SUMMARY)]
 
 
-HINTS_BY_STATUS: Final[Mapping[JobStatus, Callable[..., list[Hint]]]] = {
+class _HintBuilder(Protocol):
+    def __call__(self, view: JobView, *, app_id: str) -> list[Hint]: ...
+
+
+HINTS_BY_STATUS: Final[Mapping[JobStatus, _HintBuilder]] = {
     JobStatus.RUNNING: _running_hints,
     JobStatus.PAUSED: _paused_hints,
     JobStatus.SUCCEEDED: _no_hints,
@@ -136,6 +163,12 @@ class JobWaitApi(Resource):
         returns=_JOB_STATE,
     )
     def get(self, ctx: Context, app_id: str, job_id: str, *, query: JobWaitQuery):
+        """Wait for a job of the caller.
+
+        Precondition: the guards admitted the caller for the app.
+        Postcondition: the job's state with hints after waiting up to query.wait_seconds; 404 job_not_found when the
+        job is missing, expired or not the caller's for this app.
+        """
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
         try:
@@ -158,6 +191,12 @@ class JobStopApi(Resource):
         returns=_JOB_STATE,
     )
     def post(self, ctx: Context, app_id: str, job_id: str):
+        """Stop a job of the caller.
+
+        Precondition: the guards admitted the caller for the app.
+        Postcondition: a job that is not final is asked to stop and its state is returned; 404 job_not_found when
+        the job is missing, expired or not the caller's for this app.
+        """
         owner = job_owner(ctx)
         end_read_transaction(ctx.session)
         try:
