@@ -800,7 +800,6 @@ catalogs:
       version: 7.1.0-beta
 
 overrides:
-  '@babel/core@<=7.29.0': ^7.29.1
   '@code-inspector/core@2.0.9>node-pty:optional': '-'
   '@eslint/config-array>minimatch': 11.0.7
   '@joshwooding/vite-plugin-react-docgen-typescript@0.7.0>glob': 14.0.4
@@ -809,7 +808,6 @@ overrides:
   '@tsslint/config>minimatch': 11.0.7
   '@tsslint/core>minimatch': 11.0.7
   '@typescript-eslint/typescript-estree>minimatch': 11.0.7
-  esbuild@<0.28.1: ^0.28.2
   eslint-plugin-no-barrel-files>minimatch: 11.0.7
   eslint>minimatch: 11.0.7
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -819,16 +817,11 @@ overrides:
   js-yaml@<=4.3.1: ^4.3.2
   micromark-extension-math>katex: 0.18.10
   pdfjs-dist@4.4.168>canvas:optional: '-'
-  picomatch@>=4.0.0 <4.0.4: 4.0.7
-  postcss@<8.5.10: ^8.5.10
   rehype-katex@7.0.1>katex: 0.19.1
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
-  string-width@>=8.0.0 <8.3.0: ~8.3.0
   vite-plugin-storybook-nextjs@10.6.7>vite-tsconfig-paths: '-'
   vite@*: npm:@voidzero-dev/vite-plus-core@1.6.0
   vitest@*: 5.1.0
-  ws@>=8.0.0 <8.20.1: ^8.22.0
-  yaml@>=2.0.0 <2.8.3: 2.9.1
 
 patchedDependencies:
   vite-plugin-storybook-nextjs@10.6.7: 2832dd9f83ec165b629e9d8a37be49ffd0aa57a2a2220196c3d4ea3bf7ba76ca
@@ -2115,7 +2108,7 @@ packages:
     resolution: {integrity: sha512-UPUVSyXbOh627KiCIGQSgwWzGeBKLkaJ9PJEdrngIwMSzxLR4jS4+f1f1jb7VzBbg8nFLaYotvVPFCTqdrmTAg==}
     engines: {node: '>=6.9.0'}
     peerDependencies:
-      '@babel/core': ^7.29.1
+      '@babel/core': ^7.0.0
 
   '@babel/helper-string-parser@7.29.7':
     resolution: {integrity: sha512-Pb5ijPrZ89GDH8223L4UP8i6QApWxs04RbPQJTeWDV0/keR2E36MeKnyr6LYmUUvqRRI+Iv87SuF1W6ErINzYw==}
@@ -5476,7 +5469,7 @@ packages:
       '@vitejs/devtools': ^0.7.1 || ^0.8.0
       '@volar/typescript': ~2.4.0
       '@vue/language-core': ~3.2.0 || ~3.3.0
-      esbuild: ^0.28.2
+      esbuild: ^0.27.0 || ^0.28.0
       jiti: '>=1.21.0'
       less: ^4.0.0
       publint: ^0.3.8
@@ -5490,7 +5483,7 @@ packages:
       unplugin-unused: '>=0.5.0'
       unrun: '*'
       vue-tsc: ~3.2.0 || ~3.3.0
-      yaml: 2.9.1
+      yaml: ^2.4.2
     peerDependenciesMeta:
       '@arethetypeswrong/core':
         optional: true
@@ -6680,7 +6673,7 @@ packages:
     resolution: {integrity: sha512-tIbYtZbucOs0BRGqPJkshJUYdL+SDH7dVM8gjy+ERp3WAUjLEFJE+02kanyHtwjWOnwrKYBiwAmM0p4kLJAnXg==}
     engines: {node: '>=12.0.0'}
     peerDependencies:
-      picomatch: 4.0.7
+      picomatch: ^3 || ^4
     peerDependenciesMeta:
       picomatch:
         optional: true
