@@ -1,7 +1,9 @@
 import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
 import type { AppPublisherProps } from '../types'
+import type { WorkflowKind } from '@/types/workflow'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue, useSetAtom } from 'jotai'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toDeploymentVersion } from '@/app/components/app/deploy/utils/version'
 import { WorkflowToolDrawer } from '@/app/components/tools/workflow-tool'
@@ -10,6 +12,7 @@ import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useGetUserCanAccessApp } from '@/service/access-control'
 import { upgradeHighlightStyle } from '../built-in-publisher/constants'
+import { WorkflowKindChangeDialog } from '../built-in-publisher/workflow-kind-change-dialog'
 import { PublisherEnvironmentTabs } from '../environment-tabs'
 import { useRefreshAppEnvironmentsAfterPublisherDeploymentPolling } from '../hooks/use-refresh-app-environments-after-deployment-polling'
 import {
@@ -51,8 +54,10 @@ export function PublisherContent({
   inputs,
   missingStartNode = false,
   multipleModelConfigs = [],
+  onConvertWorkflowKind,
   onOpenStateChange,
   onPublish,
+  onPublishEvaluation,
   onRefreshData,
   onRestore,
   onToggle,
@@ -63,11 +68,13 @@ export function PublisherContent({
   startNodeLimitExceeded = false,
   supportsMultiEnvironment,
   toolPublished,
+  workflowKindChangePending = false,
   workflowToolAvailable = true,
 }: PublisherContentProps) {
   const { t } = useTranslation(['app', 'workflow', 'workflowHistory'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const [kindChangeTarget, setKindChangeTarget] = useState<WorkflowKind | null>(null)
   const environments = useAtomValue(appPublisherEnvironmentsAtom)
   const joinedEnvironmentIds = useAtomValue(joinedPublisherEnvironmentIdsAtom)
   const selectedEnvironmentId = useAtomValue(selectedPublisherEnvironmentIdAtom)
@@ -94,6 +101,7 @@ export function PublisherContent({
     appName: appDetail.name,
     onClose: closePublisher,
     onPublish,
+    onPublishEvaluation,
     onRestore,
     publishedAt,
     supportsMultiEnvironment,
@@ -210,6 +218,7 @@ export function PublisherContent({
             versionInfo: publish.publishedWorkflow,
           },
           actions: {
+            appDetail,
             appId: appDetail.id,
             appURL,
             canViewAccessPoint,
@@ -217,7 +226,17 @@ export function PublisherContent({
             disabledFunctionTooltip,
             handleOpenRunConfig: workflowLaunch.openDialog,
             hasTriggerNode,
+            onRequestKindChange: onConvertWorkflowKind
+              ? (targetKind) => {
+                  // Close the publish menu so the confirmation is the only open layer.
+                  onOpenStateChange(false)
+                  setKindChangeTarget(targetKind)
+                }
+              : undefined,
+            onPublishEvaluation: publish.handlePublishEvaluation,
             marketplaceActionDisabled: !publish.currentPublishedAt,
+            isPublishing: publish.isPublishing,
+            published: publish.published,
             publishedAt: publish.currentPublishedAt,
             publishingToMarketplace: marketplace.isPublishing,
             showDeployAction: supportsMultiEnvironment,
@@ -229,6 +248,7 @@ export function PublisherContent({
             workflowToolIsLoading: workflowTool.configuration.isLoading,
             workflowToolMessage: workflowTool.message,
             workflowToolOutdated: workflowTool.configuration.outdated,
+            workflowKindChangePending,
             onConfigureWorkflowTool: workflowTool.openDrawer,
             onPublishToMarketplace: marketplace.publish,
           },
@@ -265,6 +285,14 @@ export function PublisherContent({
           onOpenChange: workflowLaunch.onOpenChange,
         }}
         onOpenChange={handleOpenChange}
+      />
+      <WorkflowKindChangeDialog
+        targetKind={kindChangeTarget}
+        onCancel={() => setKindChangeTarget(null)}
+        onConfirm={(targetKind) => {
+          setKindChangeTarget(null)
+          void Promise.resolve(onConvertWorkflowKind?.(targetKind)).catch(() => undefined)
+        }}
       />
       {versionInfo.isOpen && (
         <VersionInfoModal

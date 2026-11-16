@@ -277,7 +277,7 @@ const OpeningSettingModal = ({
               value={tempValue}
               onChange={setTempValue}
               placeholder={openerPlaceholder}
-              placeholderClassName="!overflow-visible !whitespace-pre-wrap !text-clip break-words pr-8"
+              placeholderClassName="break-words whitespace-pre-wrap pr-8"
               variableBlock={{
                 show: true,
                 variables: [
