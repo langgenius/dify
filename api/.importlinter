@@ -56,23 +56,6 @@ forbidden_modules =
     tasks
     werkzeug
 
-[importlinter:contract:moderation-record-boundary]
-name = Execution moderation facts do not depend on persistence, transport, or framework state
-type = forbidden
-source_modules =
-    services.moderation_record
-forbidden_modules =
-    celery
-    configs
-    controllers
-    extensions
-    flask
-    models
-    repositories
-    sqlalchemy
-    tasks
-    werkzeug
-
 [importlinter:contract:model-moderation-runtime-boundary]
 name = Model assembly and invocation receive moderation through injection rather than application or persistence imports
 type = forbidden

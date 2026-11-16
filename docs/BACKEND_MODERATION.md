@@ -92,27 +92,22 @@ for a real platform rejection. Disabling an app phase does not disable mandatory
 platform checks. Different model invocations remain independent even when their
 text is identical.
 
-App checks and reply selection remain stateless functions of admitted app
-configuration. Startup injects a stateless policy port. Each generation entity
-owns a process-local moderation record, excluded from serialization. Workers bind
-that record through a context variable; the existing execution context layer
-propagates it into Graphon nodes and nested frames. The response consumer can
-read the record after the worker exits. Resumed executions allocate a fresh record.
+App checks and reply selection are stateless functions of admitted app
+configuration. Startup injects a stateless policy port. There is no execution
+record, context variable, failure queue, or model-to-response side channel.
+Every model invocation still performs its own checks.
 
-The record stores only content-free rejection phases and unavailability facts,
-never approved text, original exceptions, credentials, or traceback frames.
-Concurrent producers append through a queue; the single response consumer merges
-facts. Reads are repeatable and never suppress later checks. There is no business
-lock or cross-invocation sharing. Tenant ownership is checked before recording.
+App input verdicts are handled before generation: direct-output rejection returns
+the preset as a normal reply, while overrides continue with rewritten inputs.
+App output verdicts are handled by the response consumer, not as node failures.
+They replace the answer through normal message events and persist the replacement.
 
-Graphon remains responsible for retries, default values, error branches, and
-terminal status. The record neither aborts execution nor reconstructs the cause
-of a terminal failure. Any platform rejection during the execution selects the
-App preset or chat default, even if Graphon later succeeds or partially succeeds.
-The first observed rejected phase selects its preset; any rejection takes
-precedence over unavailability. Console node events, workflow outputs, terminal
-status, and original errors remain Graphon's results. There is no failed-node
-index, error-text correlation, parameter-extractor shim, or private terminal field.
+Internal model failures remain Graphon's responsibility. Retries, default values,
+error branches, node events, and terminal status are not changed. A handled model
+rejection or unavailable check never overrides a recovered answer. A later failure
+is not reclassified using an earlier moderation outcome. Failed workflows retain
+Graphon's native error contract; no exception type is reconstructed from text or
+historical node events. This does not require changing Graphon or its dependency.
 
 Keyword and API app rules still use `ModerationService.evaluate` and retain their
 direct-reply and text-override semantics. They are independent policies, not
@@ -122,8 +117,9 @@ Streaming checks inspect only new segments; completion checks only an unchecked
 tail, never the whole stream again. Direct replies replace the whole answer;
 API overrides replace the flagged segment while retaining preceding output and
 later deltas. Blocking output uses the non-stream segment size. Segments have no
-overlap or cross-boundary context. The existing app-level display-then-replace
-behavior remains distinct from the platform guard's check-before-delivery guarantee.
+overlap or cross-boundary context. Unchecked stream text is buffered rather than
+displayed or sent to speech synthesis. A final short segment is checked before
+delivery. Only already approved prefixes may be visible before a later replacement.
 
 Application entry points call the same stateless app adapters; no request wrapper
 is required to enable the correct behavior. Standalone kernel callers without an
@@ -134,8 +130,8 @@ and failure behavior. It is an explicit independent
 operation, not an execution path selected by the App Model Moderation toggle.
 
 The plugin `/invoke/app` entry uses the same app generator behavior. Invocation
-validates tenant ownership before model work. Each workflow runner owns its
-event state, so nested or subsequent requests cannot inherit another run's failures.
+validates tenant ownership before model work. Nested or subsequent requests have
+no accumulated moderation state to inherit.
 
 Remote Agent LLM gateway calls do not transport local workflow node error types.
 Local App Model Moderation never issues hosted or tenant
@@ -143,7 +139,7 @@ checks and cannot infer a typed remote verdict from text. Other configured app
 rules remain independent. A client-provided approval flag must never skip platform checks.
 
 An enabled app OpenAI rule uses its nonblank phase-specific preset when the
-platform rejects content. Chatbot, Chatflow, and legacy Agent Chat use the
+platform rejection reaches the App error boundary directly. Chatbot, Chatflow, and legacy Agent Chat use the
 English default `This message can’t be processed.` when no matching
 preset is configured, including when app moderation or its phase is disabled.
 The default is resolved at runtime, not written into the app configuration.
@@ -154,21 +150,16 @@ Chat replies use the existing `message` or `message_replace` event followed by
 `message_end`, without exposing the rejected segment. A replacement covers the
 entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
-usage again. A chatflow retains its actual workflow status while rendering
-any recorded platform rejection with its preset or default reply. Further text
-delivery is suppressed after a rejection, without stopping Graphon execution.
-The reply and `message_end` precede terminal `workflow_finished` or
-`workflow_paused` delivery, including user-stopped runs, because
-the Redis/SSE subscriber stops reading at that terminal event; sending the reply
-afterwards would persist it without ever delivering it to the WebApp client.
+usage again. This applies to failures actually delivered to the App error boundary,
+not arbitrary errors from internal workflow nodes. For Chatflow, a model-node
+rejection follows its configured node error strategy and does not force the
+App preset over the workflow's own result.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
-On a failed Chatflow or a direct error path, recorded unavailability produces the
-safe `moderation_unavailable` presentation error, not a claim about the workflow's
-terminal cause. If Graphon's strategy recovers to success or partial success,
-historical unavailability does not turn that result into a failure.
-The error event precedes `workflow_finished` so public subscribers receive its
-503 payload, while blocking requests raise the typed error for HTTP mapping.
+Direct App check failures and unhandled typed model failures produce a safe
+`moderation_unavailable` error. Internal workflow errors keep Graphon's native
+projection. Historical unavailability cannot change a successful response or
+reclassify an unrelated terminal failure.
 No unavailable check becomes a preset or default chat reply.
 Explicit non-platform model policy failures are also preserved. Completion,
 Workflow, RAG, and other non-chat paths retain the normal moderation error when
@@ -188,7 +179,9 @@ the usual SSE `error` event. Console clients use their existing error toast:
 
 Application errors carry stable moderation identifiers and safe messages, not
 HTTP status codes or response payloads. HTTP handlers and the SSE response
-converter own status mapping. Keyword/API input and output backend failures are
+converter convert them to dedicated HTTP exceptions only after reply replacement
+has been considered. Those HTTP exceptions own the status, public error code,
+and description, keeping HTTP and SSE mappings consistent. Keyword/API input and output backend failures are
 adapted to the same unavailable error; private diagnostics remain in the cause
 and server logs, never in the client-facing response.
 

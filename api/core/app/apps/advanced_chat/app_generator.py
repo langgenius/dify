@@ -15,7 +15,6 @@ from sqlalchemy.orm import Session, sessionmaker
 import contexts
 from configs import dify_config
 from constants import UUID_NIL
-from core.moderation.factory import use_moderation_record
 
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
@@ -682,10 +681,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
 
-        with (
-            preserve_flask_contexts(flask_app, context_vars=context),
-            use_moderation_record(application_generate_entity.moderation_record),
-        ):
+        with preserve_flask_contexts(flask_app, context_vars=context):
             # get conversation and message
             conversation = self._get_conversation(conversation_id)
             message = self._get_message(message_id)

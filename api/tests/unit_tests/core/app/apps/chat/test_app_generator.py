@@ -293,7 +293,7 @@ class TestChatAppGenerator:
     def test_generate_worker_handles_exceptions(self):
         generator = ChatAppGenerator()
         queue_manager = DummyQueueManager()
-        entity = DummyGenerateEntity(task_id="t1", user_id="u1", moderation_record=None)
+        entity = DummyGenerateEntity(task_id="t1", user_id="u1")
 
         with (
             patch.object(ChatAppGenerator, "_get_conversation", return_value=_conversation()),

@@ -11,7 +11,6 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_record import ModerationRecord
 from services.moderation_service import (
     ModerationPhase,
     ModerationRequest,
@@ -205,4 +204,3 @@ class AppModeration:
     evaluate_input = staticmethod(evaluate_app_input)
     output_evaluator = staticmethod(app_output_evaluator)
     replacement = staticmethod(app_rejection_replacement)
-    new_record = staticmethod(ModerationRecord)

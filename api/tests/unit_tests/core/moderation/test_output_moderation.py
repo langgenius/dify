@@ -39,11 +39,11 @@ def test_stream_checks_new_segments_and_only_the_unchecked_tail(config_overrides
     config_overrides(MODERATION_BUFFER_SIZE=5)
     evaluator = RecordingEvaluator()
     handler = make_handler(evaluator)
-    assert handler.append_new_token("abc") is None
+    assert handler.append_new_token("abc") == ("", None)
     assert evaluator.calls == []
-    assert handler.append_new_token("de") is None
-    assert handler.append_new_token("fghij") is None
-    assert handler.append_new_token("kl") is None
+    assert handler.append_new_token("de") == ("abcde", None)
+    assert handler.append_new_token("fghij") == ("fghij", None)
+    assert handler.append_new_token("kl") == ("", None)
     assert evaluator.calls == ["abcde", "fghij"]
     assert handler.moderation_completion("abcdefghijkl") == ("abcdefghijkl", False)
     assert evaluator.calls == ["abcde", "fghij", "kl"]
@@ -60,15 +60,27 @@ def test_exact_stream_boundary_has_no_final_check(config_overrides: Callable[...
     assert evaluator.calls == ["abcde"]
 
 
+@pytest.mark.parametrize("text", ["safe", "blocked"])
+def test_short_stream_tail_is_checked_before_delivery(config_overrides: Callable[..., None], text: str) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=10)
+    evaluator = RecordingEvaluator()
+    handler = make_handler(evaluator)
+    assert handler.append_new_token(text[:2]) == ("", None)
+    assert handler.append_new_token(text[2:]) == ("", None)
+    assert evaluator.calls == []
+    assert handler.moderation_completion("") == ("Refused" if text == "blocked" else text, True)
+    assert evaluator.calls == [text]
+
+
 def test_direct_output_replaces_the_whole_answer_and_stops_checks(config_overrides: Callable[..., None]) -> None:
     config_overrides(MODERATION_BUFFER_SIZE=5)
     evaluator = RecordingEvaluator()
     handler = make_handler(evaluator)
     handler.append_new_token("safe ")
-    assert handler.append_new_token("blocked") == "Refused"
+    assert handler.append_new_token("blocked") == ("", "Refused")
     assert handler.should_direct_output()
     assert handler.get_final_output() == "Refused"
-    assert handler.append_new_token("never checked") is None
+    assert handler.append_new_token("never checked") == ("", None)
     assert handler.moderation_completion("safe blocked") == ("Refused", True)
     assert evaluator.calls == ["safe ", "blocked"]
 
@@ -78,7 +90,7 @@ def test_override_preserves_previous_output_and_later_deltas(config_overrides: C
     evaluator = RecordingEvaluator(ModerationAction.OVERRIDDEN)
     handler = make_handler(evaluator)
     handler.append_new_token("safe ")
-    assert handler.append_new_token("blocked") == "safe masked"
+    assert handler.append_new_token("blocked") == ("", "safe masked")
     assert not handler.should_direct_output()
     handler.append_new_token(" tail")
     assert handler.moderation_completion("safe blocked tail") == ("safe masked tail", True)
@@ -132,7 +144,7 @@ def test_resumed_output_preserves_the_existing_prefix(config_overrides: Callable
     config_overrides(MODERATION_BUFFER_SIZE=5)
     evaluator = RecordingEvaluator()
     handler = make_handler(evaluator)
-    assert handler.append_new_token("blocked", prefix="existing ") == "Refused"
+    assert handler.append_new_token("blocked", prefix="existing ") == ("", "Refused")
     assert evaluator.calls == ["blocked"]
 
 

@@ -12,6 +12,7 @@ from core.app.app_config.entities import (
     EasyUIBasedAppModelConfigFrom,
     ModelConfigEntity,
     PromptTemplateEntity,
+    SensitiveWordAvoidanceEntity,
 )
 from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
 from core.app.apps.chat.generate_response_converter import ChatAppGenerateResponseConverter
@@ -88,6 +89,14 @@ class TestBasedGenerateTaskPipeline:
             queue_manager=Mock(),
             stream=True,
         )
+
+    def test_disabled_output_moderation_does_not_buffer_streams(
+        self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]
+    ) -> None:
+        pipeline._application_generate_entity.app_config.sensitive_word_avoidance = SensitiveWordAvoidanceEntity(
+            type="api", config={"inputs_config": {"enabled": True}, "outputs_config": {"enabled": False}}
+        )
+        assert pipeline._init_output_moderation() is None
 
     def test_error_to_desc_quota_exceeded(self, pipeline: BasedGenerateTaskPipeline[AppGenerateEntity]) -> None:
         message = pipeline._error_to_desc(QuotaExceededError())

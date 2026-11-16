@@ -23,7 +23,6 @@ from core.app.entities.app_invoke_entities import CompletionAppGenerateEntity, I
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
-from core.moderation.factory import use_moderation_record
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
 from factories import file_factory
@@ -259,7 +258,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
-        with flask_app.app_context(), use_moderation_record(application_generate_entity.moderation_record):
+        with flask_app.app_context():
             try:
                 # get message
                 message = self._get_message(message_id)

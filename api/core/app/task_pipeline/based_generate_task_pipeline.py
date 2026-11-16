@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 
 from clients.agent_backend.errors import AgentBackendError
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
 )
@@ -123,6 +122,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         if sensitive_word_avoidance is not None and sensitive_word_avoidance.type == "openai_moderation":
             return None
         if sensitive_word_avoidance:
+            outputs_config = sensitive_word_avoidance.config.get("outputs_config")
+            if isinstance(outputs_config, dict) and outputs_config.get("enabled") is False:
+                return None
             return OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
@@ -142,11 +144,6 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         if replacement is not None and self.output_moderation_handler is not None:
             self.output_moderation_handler = None
         return replacement
-
-    def recorded_moderation_error(self) -> AppGenerateError | None:
-        """Read this execution's presentation facts without changing workflow error handling or state."""
-        record = self._application_generate_entity.moderation_record
-        return record.read() if record is not None else None
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """

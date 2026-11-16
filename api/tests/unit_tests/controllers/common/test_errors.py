@@ -23,7 +23,12 @@ from controllers.console import api as console_api
 from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
 from controllers.web import api as web_api
-from core.app.apps.base_app_generate_response_converter import AppGenerateResponseConverter
+from core.app.apps.base_app_generate_response_converter import (
+    AppGenerateResponseConverter,
+    ModerationRejectedHTTPError,
+    ModerationUnavailableHTTPError,
+    moderation_http_exception,
+)
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.credentials.refresh import CredentialRefreshUnavailableError
@@ -34,6 +39,24 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
+
+
+@pytest.mark.parametrize(
+    ("error", "http_error_type"),
+    [
+        (ModerationRejectedInvocationError("output", "Rejected"), ModerationRejectedHTTPError),
+        (ModerationUnavailableInvocationError(), ModerationUnavailableHTTPError),
+    ],
+)
+def test_moderation_status_belongs_to_the_transport_exception(
+    error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
+    http_error_type: type[ModerationRejectedHTTPError | ModerationUnavailableHTTPError],
+) -> None:
+    http_error = moderation_http_exception(error)
+    assert isinstance(http_error, http_error_type)
+    assert http_error.data == {"code": error.error_code, "message": str(error), "status": http_error_type.code}
+    assert not isinstance(error, BaseHTTPException)
+    assert not hasattr(error, "code")
 
 
 @pytest.mark.parametrize("source_api", [console_api, service_api], ids=["console", "service_api"])

@@ -31,7 +31,6 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_record import record_moderation_failure
 from services.moderation_service import (
     ModerationPhase,
     ModerationRejectedError,
@@ -471,13 +470,10 @@ class LLMModerationGuard:
                 if self._platform
                 else ModerationRejectedInvocationError(error.phase, str(error))
             )
-            if self._platform:
-                record_moderation_failure(self._tenant_id, phase=error.phase, rejected=True)
             raise rejection from error
         except Exception as error:
             logger.exception("Moderation %s check failed", phase)
             unavailable = ModerationUnavailableInvocationError()
-            record_moderation_failure(self._tenant_id, phase=phase, rejected=False)
             raise unavailable from error
 
     def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:

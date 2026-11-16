@@ -4,6 +4,11 @@ from typing import cast
 
 from flask import current_app, got_request_exception
 
+from core.app.apps.base_app_generate_response_converter import (
+    ModerationRejectedHTTPError,
+    ModerationUnavailableHTTPError,
+    moderation_http_exception,
+)
 from core.logging.context import get_request_id
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
@@ -225,20 +230,18 @@ def register_moderation_error_handlers(api: ExternalApi) -> None:
         error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
     ) -> tuple[dict[str, str | int], int]:
         got_request_exception.send(current_app, exception=error)
-        status = (
-            HTTPStatus.SERVICE_UNAVAILABLE
-            if isinstance(error, ModerationUnavailableInvocationError)
-            else HTTPStatus.BAD_REQUEST
-        )
+        http_error = moderation_http_exception(error)
+        assert http_error.code is not None
+        assert http_error.description is not None
         return {
-            "code": error.error_code,
-            "message": str(error),
-            "status": status.value,
-        }, status.value
+            "code": http_error.error_code,
+            "message": http_error.description,
+            "status": http_error.code,
+        }, http_error.code
 
-    for error_type, status in (
-        (ModerationRejectedInvocationError, HTTPStatus.BAD_REQUEST),
-        (ModerationUnavailableInvocationError, HTTPStatus.SERVICE_UNAVAILABLE),
+    for error_type, http_error_type in (
+        (ModerationRejectedInvocationError, ModerationRejectedHTTPError),
+        (ModerationUnavailableInvocationError, ModerationUnavailableHTTPError),
     ):
         register_handler = api.errorhandler(error_type)
         assert callable(register_handler)
@@ -246,4 +249,5 @@ def register_moderation_error_handlers(api: ExternalApi) -> None:
         handlers: object = api.error_handlers
         assert isinstance(handlers, OrderedDict)
         handlers.move_to_end(error_type, last=False)
-        api.document_error_handler(error_type, status=status, code=error_type.error_code)
+        assert http_error_type.code is not None
+        api.document_error_handler(error_type, status=http_error_type.code, code=http_error_type.error_code)

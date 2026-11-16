@@ -70,7 +70,6 @@ from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
     PlatformModerationRejectedInvocationError,
 )
-from services.moderation_record import record_moderation_failure
 from services.moderation_service import (
     ModerationPhase,
     ModerationReplacement,
@@ -88,7 +87,6 @@ from tests.workflow_test_utils import build_test_variable_pool
 @pytest.fixture(autouse=True)
 def inject_app_moderation(monkeypatch: pytest.MonkeyPatch) -> None:
     moderation = AppModeration()
-    monkeypatch.setattr("core.moderation.factory.get_app_moderation", lambda: moderation)
     monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", lambda: moderation)
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", lambda: moderation)
 
@@ -746,7 +744,13 @@ def test_final_output_does_not_retry_a_failed_sequential_segment() -> None:
 @pytest.mark.parametrize("advanced", [False, True])
 @pytest.mark.parametrize("stream", [False, True])
 @pytest.mark.parametrize(
-    ("action", "preset"), [("direct_output", "Refused"), ("direct_output", ""), ("overridden", "Unused preset")]
+    ("action", "preset", "prefix"),
+    [
+        ("direct_output", "Refused", "safe "),
+        ("direct_output", "", "safe "),
+        ("overridden", "Unused preset", "safe "),
+        ("direct_output", "Refused", ""),
+    ],
 )
 def test_sequential_app_replacements_are_delivered_and_persisted_without_final_recheck(
     sqlite_session_factory: sessionmaker[Session],
@@ -755,6 +759,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
     stream: bool,
     action: Literal["direct_output", "overridden"],
     preset: str,
+    prefix: str,
 ) -> None:
     config_overrides(MODERATION_BUFFER_SIZE=5)
     gateway = SegmentGateway(action, preset)
@@ -831,7 +836,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
                 message=message,
                 stream=stream,
             )
-        for text in ["safe ", "blocked", " tail"]:
+        for text in [prefix[:2], prefix[2:], "blo", "cked", " en", "d"]:
             event = (
                 QueueTextChunkEvent(text=text)
                 if advanced
@@ -849,19 +854,20 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
             else QueueMessageEndEvent(
                 llm_result=LLMResult(
                     model="test-model",
-                    message=AssistantPromptMessage(content="safe blocked tail"),
+                    message=AssistantPromptMessage(content=prefix + "blocked end"),
                     usage=LLMUsage.empty_usage(),
                 )
             )
         )
         queue.publish(terminal, PublishFrom.APPLICATION_MANAGER)
-        expected = preset if action == "direct_output" else "safe masked tail"
+        expected = preset if action == "direct_output" else prefix + "masked end"
         responses = pipeline._process_stream_response(None)
         if stream:
             converter = AdvancedChatAppGenerateResponseConverter if advanced else ChatAppGenerateResponseConverter
             chunks = list(converter.convert_stream_full_response(pipeline._to_stream_response(responses)))
             public_chunks = [chunk for chunk in chunks if isinstance(chunk, dict)]
             assert public_chunks[-1]["event"] == "message_end"
+            assert public_chunks[0]["event"] == "message"
             visible = ""
             for chunk in public_chunks:
                 if chunk.get("event") == "message":
@@ -879,7 +885,7 @@ def test_sequential_app_replacements_are_delivered_and_persisted_without_final_r
         assert saved is not None
         assert saved.answer == expected
         assert saved.status == MessageStatus.NORMAL
-    assert gateway.calls == (["safe ", "blocked"] if action == "direct_output" else ["safe ", "blocked", " tail"])
+    assert gateway.calls == ([prefix] if prefix else []) + ["blocked"] + ([" end"] if action == "overridden" else [])
 
 
 @pytest.mark.parametrize("advanced", [False, True])
@@ -968,30 +974,9 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
                 pipeline._task_state.llm_result.usage = LLMUsage.empty_usage().model_copy(
                     update={"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
                 )
-        if isinstance(pipeline, EasyUIBasedGenerateTaskPipeline) and phase == "output":
-            record = pipeline._application_generate_entity.moderation_record
-            assert record is not None
-            with record.activate():
-                record_moderation_failure("tenant-1", phase=phase, rejected=True)
-            queue.publish(
-                QueueLLMChunkEvent(
-                    chunk=LLMResultChunk(
-                        model="test-model",
-                        prompt_messages=[],
-                        delta=LLMResultChunkDelta(
-                            index=0, message=AssistantPromptMessage(content="recovered model reply")
-                        ),
-                    )
-                ),
-                PublishFrom.APPLICATION_MANAGER,
-            )
-            final_result = pipeline._task_state.llm_result.model_copy(deep=True)
-            final_result.message.content = "recovered model reply"
-            queue.publish(QueueMessageEndEvent(llm_result=final_result), PublishFrom.APPLICATION_MANAGER)
-        else:
-            queue.publish_error(
-                PlatformModerationRejectedInvocationError(phase, "Platform rejected content"), PublishFrom.TASK_PIPELINE
-            )
+        queue.publish_error(
+            PlatformModerationRejectedInvocationError(phase, "Platform rejected content"), PublishFrom.TASK_PIPELINE
+        )
         responses = pipeline._process_stream_response(None)
         if stream:
             converter = AdvancedChatAppGenerateResponseConverter if advanced else ChatAppGenerateResponseConverter

@@ -59,6 +59,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
     ReasoningChunkStreamResponse,
     StreamEvent,
+    WorkflowFinishStreamResponse,
 )
 from core.base.tts.app_generator_tts_publisher import AudioTrunk
 from core.moderation.output_moderation import ModerationRule, OutputModeration
@@ -242,7 +243,6 @@ def test_handle_workflow_paused_event_does_not_overwrite_a_concurrent_stop(
     pipeline._get_message = mock.Mock(return_value=message)
     persist_content = mocker.patch.object(pipeline, "_persist_human_input_extra_content")
     pipeline._base_task_pipeline = mock.Mock()
-    pipeline._base_task_pipeline.recorded_moderation_error.return_value = None
     pipeline._base_task_pipeline.queue_manager = mock.Mock()
     pipeline._message_saved_on_pause = False
 
@@ -392,7 +392,9 @@ def test_process_stream_response_breaks_after_workflow_succeeded() -> None:
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_succeeded_event.assert_called_once_with(succeeded_event)
+    pipeline._handle_workflow_succeeded_event.assert_called_once_with(
+        succeeded_event, tts_publisher=None, queue_message=queue_messages[0]
+    )
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
@@ -417,7 +419,9 @@ def test_process_stream_response_breaks_after_workflow_partial_success() -> None
     responses = list(pipeline._process_stream_response())
 
     assert [resp.event for resp in responses] == [StreamEvent.WORKFLOW_FINISHED]
-    pipeline._handle_workflow_partial_success_event.assert_called_once_with(partial_event)
+    pipeline._handle_workflow_partial_success_event.assert_called_once_with(
+        partial_event, tts_publisher=None, queue_message=queue_messages[0]
+    )
     pipeline._base_task_pipeline.ping_stream_response.assert_not_called()
 
 
@@ -954,14 +958,14 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert pipeline._task_state.answer == "hi"
         assert published == [queue_message]
 
-    def test_handle_output_moderation_chunk_appends_token(self):
+    def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
         pipeline = _make_pipeline()
         handler = OutputModeration(
             tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
         )
         pipeline._base_task_pipeline.output_moderation_handler = handler
         result = list(pipeline._handle_text_chunk_event(QueueTextChunkEvent(text="token")))
-        assert len(result) == 1
+        assert result == []
         assert handler.buffer == "token"
 
     def test_handle_retriever_and_annotation_events(self, monkeypatch: pytest.MonkeyPatch, unbound_session: Session):
@@ -1074,8 +1078,35 @@ class TestAdvancedChatGenerateTaskPipeline:
         assert responses == ["end"]
         assert saved == ["saved"]
 
+    def test_output_moderation_finishes_the_reply_before_the_workflow(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        pipeline = _make_pipeline()
+        pipeline._workflow_run_id = "run-id"
+        pipeline._workflow_response_converter.workflow_start_to_stream_response(
+            task_id="task",
+            workflow_run_id="run-id",
+            workflow_id="workflow-id",
+            reason=QueueWorkflowStartedEvent().reason,
+        )
+        pipeline._task_state.answer = "Refused"
+        state = RuntimeState(
+            workflow_id="workflow-id",
+            variable_pool=build_test_variable_pool(variables=build_system_variables(workflow_execution_id="run-id")),
+            start_at=0.0,
+        )
+        monkeypatch.setattr(pipeline, "_save_message", lambda **_kwargs: None)
+        responses = list(
+            pipeline._handle_stop_event(
+                QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), graph_runtime_state=state
+            )
+        )
+        assert [response.event for response in responses] == [StreamEvent.MESSAGE_END, StreamEvent.WORKFLOW_FINISHED]
+        finished = responses[-1]
+        assert isinstance(finished, WorkflowFinishStreamResponse)
+        assert finished.data.status == WorkflowExecutionStatus.STOPPED
+
     def test_handle_message_end_event_applies_output_moderation(self):
         pipeline = _make_pipeline()
+        pipeline._task_state.answer = "unsafe"
         pipeline._graph_runtime_state = RuntimeState(
             workflow_id="test-workflow",
             variable_pool=VariablePool.from_bootstrap(

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Mapping
-from contextlib import AbstractContextManager
 from enum import StrEnum, auto
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
@@ -12,23 +11,11 @@ from core.extension.extensible import Extensible, ExtensionModule
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import AppConfig
-    from core.app.apps.exc import AppGenerateError
-
-
-@runtime_checkable
-class ModerationRecord(Protocol):
-    """One execution's process-local presentation facts, never a workflow failure decision or approval cache."""
-
-    def activate(self) -> AbstractContextManager[None]: ...
-
-    def read(self) -> AppGenerateError | None: ...
 
 
 @runtime_checkable
 class AppModeration(Protocol):
-    """Stateless app policy port; execution records are allocated separately for each generation."""
-
-    def new_record(self, tenant_id: str) -> ModerationRecord: ...
+    """Stateless app checks and response replacement, independent of workflow node error strategies."""
 
     def evaluate_input(
         self, app_config: AppConfig, inputs: Mapping[str, object], query: str
