@@ -372,17 +372,20 @@ class TestBaseIndexProcessor:
         )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        too_large = Mock()
-        too_large.headers = {"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"}
-        too_large.raise_for_status.return_value = None
+        too_large = httpx.Response(
+            200,
+            headers={"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"},
+            content=b"",
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert processor._download_image("https://example.com/too-large.png", current_user=_account()) is None
 
-        empty = Mock()
-        empty.headers = {"Content-Length": "0", "content-type": "image/png"}
-        empty.raise_for_status.return_value = None
-        empty.iter_bytes.return_value = list[bytes]()
+        empty = httpx.Response(
+            200,
+            headers={"Content-Length": "0", "content-type": "image/png"},
+            content=b"",
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert processor._download_image("https://example.com/empty.png", current_user=_account()) is None
