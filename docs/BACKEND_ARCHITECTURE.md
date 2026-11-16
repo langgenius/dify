@@ -34,12 +34,12 @@ The composition root is wiring code at the application's outer boundary; it can 
 
 ## Application services
 
-An application service implements a **use case**, such as creating a workflow comment. It receives ports and plain settings at construction. Each use case takes the caller identity and access scope as its first argument, obtains the required facts, invokes business behavior, performs effects through ports, and returns records. In slices without a domain model, business rules remain in application services until extracted; after extraction, the domain owns those rules.
+An application service implements a **use case**, such as creating a workflow comment. It receives ports and plain settings at construction. Each use case takes the caller identity and access scope as its first argument, obtains the required facts, invokes business behavior, and performs effects through ports. Results are plain values or records; commands that need no result may return `None`. In slices without a domain model, business rules remain in application services until extracted; after extraction, the domain owns those rules.
 
 Document the application's boundary and rules alongside its contracts:
 
 - **Records** are immutable inputs and results. They carry data; a name ending in `Entity` does not make a record a DDD entity. Document what each optional field's absence means. Business state belongs to application contracts or domain objects, not solely to database models.
-- **Ports** are interfaces defined by the application code that needs them, hence **consumer-owned ports**. Name them for their capability, such as persistence, querying, notification, or encryption. Query ports return records; persistence ports accept and return records or whole aggregates where a domain model exists. Document ownership scope, transaction boundaries, enforced rules, concurrency mechanisms, and errors so adapters can honor the same contract.
+- **Ports** are interfaces defined by the application code that needs them, hence **consumer-owned ports**. Name them for their capability, such as persistence, querying, notification, or encryption. Ports exchange plain values and records, or whole aggregates where a domain model exists; commands may return `None`. Document ownership scope, transaction boundaries, enforced rules, concurrency mechanisms, and errors so adapters can honor the same contract.
 - **Errors** use one application error base per slice, with specific subtypes and user-facing messages. Translate domain failures when needed to preserve that contract. Domain errors belong to the domain package and never inherit from application errors. Neither carries protocol status codes or response shapes.
 
 Split large slices into shared contracts, ports, and modules for related use cases. A read whose only rule is ownership scoping may use a query port implemented directly by a repository; wire that port through the composition root. This is still one use case from the handler's perspective. Add an application service when the read gains business rules.
@@ -77,6 +77,8 @@ A named function is sufficient for a small stateless policy; a service class or 
 ## Composition root
 
 The [composition root](https://blog.ploeh.dk/2011/07/28/CompositionRoot/) is the application's dependency-wiring boundary near startup. It is one logical boundary, implemented by the extension and builder modules listed above, rather than a requirement to put all construction in one file.
+
+`api/extensions/ext_application_services.py` builds `ApplicationServices`, stores it on the Flask app, and exposes `application_services()` to handlers. Modules under `api/extensions/application_services/` provide builders for business areas. Keep simple wiring in the extension; extract a builder when grouping related dependencies makes it easier to follow.
 
 Register application services there, grouped by business area. Construct their concrete adapters, read the configuration they need, and pass plain values into services. Application services never construct their own infrastructure dependencies. Keep production repository construction and module-level application-service instances in this wiring boundary; tests may construct services directly with test dependencies.
 
@@ -119,7 +121,7 @@ Checking a mutable fact in the service before a write is not atomic with that wr
 For each rule that concurrent writers can break, document the enforcement mechanism on the port:
 
 - A **database constraint**, translated into an application error when violated.
-- A **conditional write**, guarded by expected state or a version, with zero affected rows treated as a conflict.
+- A **conditional write**, guarded by the required ownership, state, or version. Define what zero affected rows means on the port: a missing or inaccessible target for a scoped delete, or a conflict when expected state no longer matches.
 - A **lock or stricter isolation** covering the check and write, with retries or a clear conflict error.
 
 Checks on immutable facts, such as a record's creator, need no extra coordination inside the write transaction beyond handling a concurrently deleted record. See the [SQLAlchemy guide](BACKEND_SQLALCHEMY.md) for implementation patterns.
