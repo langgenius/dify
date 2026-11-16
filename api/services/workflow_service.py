@@ -10,6 +10,7 @@ from sqlalchemy import exists, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.file_access import DatabaseFileAccessController
@@ -17,7 +18,6 @@ from core.entities import PluginCredentialType
 from core.plugin.impl.model_runtime_factory import create_plugin_model_assembly, create_plugin_provider_manager
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.human_input_repository import FormCreateParams, HumanInputFormRepositoryImpl
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     adapt_human_input_node_data_for_graph,

@@ -5,10 +5,10 @@ import type {
   ParagraphFormInput,
 } from '@/app/components/workflow/nodes/human-input/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { TestLexicalComposer } from '@/test/lexical'
 import { TransferMethod } from '@/types/app'
 import HITLInputComponentUI from '../component-ui'
 import { HITLInputNode } from '../node'
@@ -57,9 +57,9 @@ const renderComponent = (props: Partial<ComponentProps<typeof HITLInputComponent
     nodes: [HITLInputNode],
   }
   const subject = (readonly = defaultProps.readonly) => (
-    <LexicalComposer initialConfig={initialConfig}>
+    <TestLexicalComposer initialConfig={initialConfig}>
       <HITLInputComponentUI {...defaultProps} readonly={readonly} />
-    </LexicalComposer>
+    </TestLexicalComposer>
   )
   const utils = render(subject())
 

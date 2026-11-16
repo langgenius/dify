@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import io
 import json
+from collections.abc import Iterator
 from types import SimpleNamespace
+from typing import Never
 
 import httpx
 import pytest
@@ -135,7 +137,7 @@ def test_direct_moderation_rejects_an_empty_daemon_response(monkeypatch: pytest.
 
 class TestModelClientCases:
     class TestPluginModelClient:
-        def test_fetch_model_providers(self, mocker: MockerFixture):
+        def test_fetch_model_providers(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             request_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response", return_value=["provider-a"]
@@ -150,7 +152,7 @@ class TestModelClientCases:
             )
             assert request_mock.call_args.kwargs["params"] == {"page": 1, "page_size": 256}
 
-        def test_fetch_model_provider_bindings(self, mocker: MockerFixture):
+        def test_fetch_model_provider_bindings(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             request_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response", return_value=["binding-a"]
@@ -165,7 +167,7 @@ class TestModelClientCases:
             )
             assert "params" not in request_mock.call_args.kwargs
 
-        def test_get_model_schema(self, mocker: MockerFixture):
+        def test_get_model_schema(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             schema = SimpleNamespace(name="schema")
             stream_mock = mocker.patch.object(
@@ -188,7 +190,7 @@ class TestModelClientCases:
             assert result is schema
             assert stream_mock.call_args.args[:2] == ("POST", "plugin/tenant-1/dispatch/model/schema")
 
-        def test_get_model_schema_empty_stream_returns_none(self, mocker: MockerFixture):
+        def test_get_model_schema_empty_stream_returns_none(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -205,7 +207,7 @@ class TestModelClientCases:
 
             assert result is None
 
-        def test_validate_provider_credentials(self, mocker: MockerFixture):
+        def test_validate_provider_credentials(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client,
@@ -230,7 +232,7 @@ class TestModelClientCases:
                 "plugin/tenant-1/dispatch/model/validate_provider_credentials",
             )
 
-        def test_validate_provider_credentials_without_dict_update(self, mocker: MockerFixture):
+        def test_validate_provider_credentials_without_dict_update(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -251,7 +253,7 @@ class TestModelClientCases:
             assert result is False
             assert credentials == {"api_key": "same"}
 
-        def test_validate_provider_credentials_empty_returns_false(self, mocker: MockerFixture):
+        def test_validate_provider_credentials_empty_returns_false(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -267,7 +269,7 @@ class TestModelClientCases:
                 is False
             )
 
-        def test_validate_model_credentials(self, mocker: MockerFixture):
+        def test_validate_model_credentials(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client,
@@ -294,7 +296,7 @@ class TestModelClientCases:
                 "plugin/tenant-1/dispatch/model/validate_model_credentials",
             )
 
-        def test_validate_model_credentials_empty_returns_false(self, mocker: MockerFixture):
+        def test_validate_model_credentials_empty_returns_false(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -312,7 +314,7 @@ class TestModelClientCases:
                 is False
             )
 
-        def test_invoke_llm(self, mocker: MockerFixture):
+        def test_invoke_llm(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response_stream", return_value=iter(["chunk-1"])
@@ -343,7 +345,7 @@ class TestModelClientCases:
             assert call_kwargs["data"]["data"]["stream"] is False
             assert call_kwargs["data"]["data"]["model_parameters"] == {"temperature": 0.1}
 
-        def test_invoke_llm_omits_app_id_when_missing(self, mocker: MockerFixture):
+        def test_invoke_llm_omits_app_id_when_missing(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client, "_request_with_plugin_daemon_response_stream", return_value=iter([])
@@ -364,10 +366,10 @@ class TestModelClientCases:
 
             assert "app_id" not in stream_mock.call_args.kwargs["data"]
 
-        def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
+        def test_invoke_llm_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
 
-            def _boom():
+            def _boom() -> Iterator[Never]:
                 raise PluginDaemonInnerError(code=-500, message="invoke failed")
                 yield  # pragma: no cover
 
@@ -387,7 +389,7 @@ class TestModelClientCases:
                     )
                 )
 
-        def test_start_llm_polling(self, mocker: MockerFixture):
+        def test_start_llm_polling(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             polling_result = LLMPollingResult(
                 status=LLMPollingStatus.RUNNING,
@@ -431,7 +433,7 @@ class TestModelClientCases:
                 "json_schema": {"type": "object"},
             }
 
-        def test_check_llm_polling(self, mocker: MockerFixture):
+        def test_check_llm_polling(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             polling_result = LLMPollingResult(
                 status=LLMPollingStatus.SUCCEEDED,
@@ -470,7 +472,7 @@ class TestModelClientCases:
                 "plugin_state": {"task_id": "poll-1"},
             }
 
-        def test_start_llm_polling_maps_unsupported_polling_invoke_error(self, mocker: MockerFixture):
+        def test_start_llm_polling_maps_unsupported_polling_invoke_error(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -497,7 +499,7 @@ class TestModelClientCases:
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_get_llm_num_tokens(self, mocker: MockerFixture):
+        def test_get_llm_num_tokens(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -520,7 +522,7 @@ class TestModelClientCases:
 
             assert result == 42
 
-        def test_get_llm_num_tokens_empty_returns_zero(self, mocker: MockerFixture):
+        def test_get_llm_num_tokens_empty_returns_zero(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -539,7 +541,7 @@ class TestModelClientCases:
                 == 0
             )
 
-        def test_invoke_text_embedding(self, mocker: MockerFixture):
+        def test_invoke_text_embedding(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             embedding_result = SimpleNamespace(data=[[0.1, 0.2]])
             mocker.patch.object(
@@ -560,7 +562,7 @@ class TestModelClientCases:
 
             assert result is embedding_result
 
-        def test_invoke_text_embedding_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_text_embedding_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -577,7 +579,7 @@ class TestModelClientCases:
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_invoke_multimodal_embedding(self, mocker: MockerFixture):
+        def test_invoke_multimodal_embedding(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             embedding_result = SimpleNamespace(data=[[0.3, 0.4]])
             mocker.patch.object(
@@ -598,7 +600,7 @@ class TestModelClientCases:
 
             assert result is embedding_result
 
-        def test_invoke_multimodal_embedding_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_multimodal_embedding_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -615,7 +617,7 @@ class TestModelClientCases:
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_get_text_embedding_num_tokens(self, mocker: MockerFixture):
+        def test_get_text_embedding_num_tokens(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -638,7 +640,7 @@ class TestModelClientCases:
                 3,
             ]
 
-        def test_get_text_embedding_num_tokens_empty_returns_list(self, mocker: MockerFixture):
+        def test_get_text_embedding_num_tokens_empty_returns_list(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -656,7 +658,7 @@ class TestModelClientCases:
                 == []
             )
 
-        def test_invoke_rerank(self, mocker: MockerFixture):
+        def test_invoke_rerank(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             rerank_result = SimpleNamespace(scores=[0.9])
             mocker.patch.object(
@@ -679,7 +681,7 @@ class TestModelClientCases:
 
             assert result is rerank_result
 
-        def test_invoke_rerank_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_rerank_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -696,7 +698,7 @@ class TestModelClientCases:
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_invoke_multimodal_rerank(self, mocker: MockerFixture):
+        def test_invoke_multimodal_rerank(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             rerank_result = SimpleNamespace(scores=[0.8])
             mocker.patch.object(
@@ -710,8 +712,8 @@ class TestModelClientCases:
                 provider="provider-a",
                 model="rerank-a",
                 credentials={},
-                query={"type": "text", "value": "q"},
-                docs=[{"type": "image", "value": "doc"}],
+                query={"content": "q", "content_type": "text"},
+                docs=[{"content": "doc", "content_type": "image"}],
                 score_threshold=0.1,
                 top_n=3,
                 plugin_unique_identifier=PLUGIN_IDENTIFIER,
@@ -719,7 +721,7 @@ class TestModelClientCases:
 
             assert result is rerank_result
 
-        def test_invoke_multimodal_rerank_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_multimodal_rerank_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -731,12 +733,12 @@ class TestModelClientCases:
                     "provider-a",
                     "rerank-a",
                     {},
-                    {"type": "text"},
-                    [{"type": "image"}],
+                    {"content": "q", "content_type": "text"},
+                    [{"content": "doc", "content_type": "image"}],
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_invoke_tts(self, mocker: MockerFixture):
+        def test_invoke_tts(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -766,10 +768,10 @@ class TestModelClientCases:
             assert result == [b"hello", b"!"]
             assert [chunk.mime_type for chunk in result] == ["audio/wav", "audio/wav"]
 
-        def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture):
+        def test_invoke_tts_wraps_plugin_daemon_inner_error(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
 
-            def _boom():
+            def _boom() -> Iterator[Never]:
                 raise PluginDaemonInnerError(code=-400, message="tts error")
                 yield  # pragma: no cover
 
@@ -790,7 +792,7 @@ class TestModelClientCases:
                     )
                 )
 
-        def test_get_tts_model_voices(self, mocker: MockerFixture):
+        def test_get_tts_model_voices(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(
                 client,
@@ -820,7 +822,7 @@ class TestModelClientCases:
 
             assert result == [{"name": "Alloy", "value": "alloy"}, {"name": "Echo", "value": "echo"}]
 
-        def test_get_tts_model_voices_empty_returns_list(self, mocker: MockerFixture):
+        def test_get_tts_model_voices_empty_returns_list(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -837,7 +839,7 @@ class TestModelClientCases:
                 == []
             )
 
-        def test_invoke_speech_to_text(self, mocker: MockerFixture):
+        def test_invoke_speech_to_text(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client,
@@ -859,7 +861,7 @@ class TestModelClientCases:
             assert result == "transcribed text"
             assert stream_mock.call_args.kwargs["data"]["data"]["file"] == "616263"
 
-        def test_invoke_speech_to_text_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_speech_to_text_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 
@@ -875,7 +877,7 @@ class TestModelClientCases:
                     plugin_unique_identifier=PLUGIN_IDENTIFIER,
                 )
 
-        def test_invoke_moderation(self, mocker: MockerFixture):
+        def test_invoke_moderation(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             stream_mock = mocker.patch.object(
                 client,
@@ -897,7 +899,7 @@ class TestModelClientCases:
             assert result is True
             assert stream_mock.call_args.kwargs["path"] == "plugin/tenant-1/dispatch/moderation/invoke"
 
-        def test_invoke_moderation_empty_raises(self, mocker: MockerFixture):
+        def test_invoke_moderation_empty_raises(self, mocker: MockerFixture) -> None:
             client = PluginModelClient()
             mocker.patch.object(client, "_request_with_plugin_daemon_response_stream", return_value=iter([]))
 

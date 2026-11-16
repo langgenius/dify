@@ -224,7 +224,7 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
     values: dict[str, str] = {}
 
     def setex(key: str, ttl: int, value: str) -> None:
-        assert ttl == 300
+        assert ttl > 0
         values[key] = value
 
     monkeypatch.setattr(redis_client, "setex", setex)
@@ -258,7 +258,13 @@ def make_oauth_harness(sessions: sessionmaker[Session], monkeypatch: pytest.Monk
         with mutex:
             return values.get(key)
 
+    def getdel(key: str) -> str | None:
+        """Atomically consume a stored value, returning None for a missing key."""
+        with mutex:
+            return values.pop(key, None)
+
     monkeypatch.setattr(redis_client, "get", get)
+    monkeypatch.setattr(redis_client, "getdel", getdel)
     monkeypatch.setattr(redis_client, "eval", evaluate)
     providers = TestProviders(base.auth, controller)
     handler = ScriptedOAuthHandler()

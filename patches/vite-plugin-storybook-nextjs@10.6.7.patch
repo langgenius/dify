@@ -1,0 +1,60 @@
+diff --git a/dist/index.js b/dist/index.js
+index dd6c754675e09c974b93c01441ea122bf60af29b..1678ec21442f449cfe2427c86c8eb8ebe068f16d 100644
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -14,7 +14,6 @@ import {
+   getAlias,
+   getExecutionEnvironment,
+   getNextjsMajorVersion,
+-  getViteMajorVersion,
+   isVitestEnv,
+   vitePluginNextMocks
+ } from "./_node-chunks/chunk-MRCH7V5N.js";
+@@ -22,7 +21,6 @@ import {
+ // src/index.ts
+ import { dirname, resolve as resolve3 } from "pathe";
+ import { createRequire as createRequire3 } from "node:module";
+-import tsconfigPaths from "vite-tsconfig-paths";
+ 
+ // src/plugins/next-env/plugin.ts
+ import { resolve } from "pathe";
+@@ -625,7 +623,6 @@ typeof Promise.withResolvers > "u" && (Promise.withResolvers = () => {
+ });
+ 
+ // src/index.ts
+-import nextLoadJsConfig2 from "next/dist/build/load-jsconfig.js";
+ import {
+   PHASE_DEVELOPMENT_SERVER,
+   PHASE_PRODUCTION_BUILD,
+@@ -805,28 +802,16 @@ function interopDefault(module) {
+ }
+ 
+ // src/index.ts
+-var require4 = createRequire3(import.meta.url), compiledReactDir = dirname(require4.resolve("next/dist/compiled/react")), compiledReactDomDir = dirname(require4.resolve("next/dist/compiled/react-dom")), loadJsConfig2 = (
+-  // biome-ignore lint/suspicious/noExplicitAny: CJS support
+-  nextLoadJsConfig2.default || nextLoadJsConfig2
+-);
++var require4 = createRequire3(import.meta.url), compiledReactDir = dirname(require4.resolve("next/dist/compiled/react")), compiledReactDomDir = dirname(require4.resolve("next/dist/compiled/react-dom"));
+ function VitePlugin({ dir = process.cwd(), image } = {}) {
+-  let resolvedDir = resolve3(dir), isVite8orNewer = getViteMajorVersion() >= 8, nextConfigResolver = Promise.withResolvers(), nodeEnv = process.env.NODE_ENV;
++  let resolvedDir = resolve3(dir), nextConfigResolver = Promise.withResolvers(), nodeEnv = process.env.NODE_ENV;
+   return loadNextConfig(nodeEnv === "development" ? PHASE_DEVELOPMENT_SERVER : nodeEnv === "test" ? PHASE_TEST : PHASE_PRODUCTION_BUILD, resolvedDir).then(nextConfigResolver.resolve, nextConfigResolver.reject), [
+-    isVite8orNewer ? null : nextConfigResolver.promise.then(async (nextConfig) => {
+-      let loadedJSConfig = await loadJsConfig2(resolvedDir, nextConfig), { enforce, ...tsconfigPathConfig } = tsconfigPaths({
+-        root: resolvedDir,
+-        ...loadedJSConfig.jsConfigPath ? { projects: [loadedJSConfig.jsConfigPath] } : {}
+-      });
+-      return {
+-        ...tsconfigPathConfig
+-      };
+-    }),
+     {
+       name: "vite-plugin-storybook-nextjs",
+       enforce: "pre",
+       async config(config) {
+         let isNext16orNewer = getNextjsMajorVersion() >= 16, nextConfig = await nextConfigResolver.promise, executionEnvironment = getExecutionEnvironment(config), resolveConfig = {
+-          ...isVite8orNewer ? { tsconfigPaths: !0 } : {},
++          tsconfigPaths: !0,
+           ...!isVitestEnv && {
+             alias: [
+               {

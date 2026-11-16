@@ -121,6 +121,7 @@ const toastMock = vi.hoisted(() => ({
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = vi.hoisted(() => ({
   configurationState: 'active' as 'active' | 'setup-required',
+  activeProfileAvailable: undefined as boolean | undefined,
   refetch: vi.fn(),
 }))
 const workspacePermissions = vi.hoisted(() => (datasetKeys: string[]) => ({
@@ -364,17 +365,19 @@ vi.mock('@/service/console', async (importOriginal) => {
     }
   const space = 'knowledgeFs.spaces.byControlSpaceId'
   const settingsResponse = () => {
-    const active = settingsState.configurationState === 'active'
+    const active =
+      settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+    const canIngest = active || settingsState.configurationState === 'active'
     return {
       active_profile_available: active,
       active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
       capabilities: {
         deep: active,
         index: active,
-        ingest: active,
+        ingest: canIngest,
         query: active,
         research: active,
-        source_sync: active,
+        source_sync: canIngest,
       },
       configuration_state: settingsState.configurationState,
       embedding: null,
@@ -858,27 +861,32 @@ describe('DocumentsPage', () => {
     systemFeaturesStateMock.deploymentEdition = 'ENTERPRISE'
     getUploadQuotaFailure.mockReset().mockResolvedValue(undefined)
     settingsState.configurationState = 'active'
-    settingsState.refetch.mockImplementation(async () => ({
-      data: {
-        active_profile_available: settingsState.configurationState === 'active',
-        active_profile_revisions:
-          settingsState.configurationState === 'active' ? { embedding: 1, retrieval: 1 } : {},
-        capabilities: {
-          deep: settingsState.configurationState === 'active',
-          index: settingsState.configurationState === 'active',
-          ingest: settingsState.configurationState === 'active',
-          query: settingsState.configurationState === 'active',
-          research: settingsState.configurationState === 'active',
-          source_sync: settingsState.configurationState === 'active',
+    settingsState.activeProfileAvailable = undefined
+    settingsState.refetch.mockImplementation(async () => {
+      const active =
+        settingsState.activeProfileAvailable ?? settingsState.configurationState === 'active'
+      const canIngest = active || settingsState.configurationState === 'active'
+      return {
+        data: {
+          active_profile_available: active,
+          active_profile_revisions: active ? { embedding: 1, retrieval: 1 } : {},
+          capabilities: {
+            deep: active,
+            index: active,
+            ingest: canIngest,
+            query: active,
+            research: active,
+            source_sync: canIngest,
+          },
+          configuration_state: settingsState.configurationState,
+          embedding: null,
+          issues: [],
+          retrieval: null,
+          revision: 1,
         },
-        configuration_state: settingsState.configurationState,
-        embedding: null,
-        issues: [],
-        retrieval: null,
-        revision: 1,
-      },
-      isError: false,
-    }))
+        isError: false,
+      }
+    })
     documentsQuery.data = { pages: [{ items: [] }] }
     documentsQuery.error = null
     documentsQuery.hasNextPage = false
@@ -5041,6 +5049,30 @@ describe('DocumentsPage', () => {
         name: 'knowledgeSpace.overview.attention.modelReadiness.title',
       }),
     ).toBeInTheDocument()
+  })
+
+  it('allows an explicit re-index while a complete model selection awaits first activation', async () => {
+    const user = userEvent.setup()
+    settingsState.activeProfileAvailable = false
+    documentsQuery.data = {
+      pages: [
+        { items: [document({ id: 'failed-document', title: 'Failed.pdf', status: 'failed' })] },
+      ],
+    }
+
+    await render(<DocumentsPage knowledgeSpaceId="space-1" />)
+    await user.click(screen.getByRole('checkbox', { name: 'Failed.pdf' }))
+    await user.click(screen.getByRole('button', { name: 'knowledgeSpace.reindexDocuments' }))
+
+    expect(reindexMutation.mutateAsync).toHaveBeenCalledWith({
+      body: { documentIds: ['failed-document'] },
+      params: { control_space_id: 'space-1' },
+    })
+    expect(
+      screen.queryByRole('dialog', {
+        name: 'knowledgeSpace.overview.attention.modelReadiness.title',
+      }),
+    ).not.toBeInTheDocument()
   })
 
   it('explains why re-indexing becomes unavailable while results refresh', async () => {

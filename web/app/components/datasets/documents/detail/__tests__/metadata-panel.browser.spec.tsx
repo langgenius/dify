@@ -1,9 +1,14 @@
 import type { Locator } from 'vite-plus/test/browser'
 import { zDocumentDetailResponse } from '@dify/contracts/api/console/datasets/zod.gen'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
+import common from '@/i18n/locales/en-US/common.json'
+import datasetDocuments from '@/i18n/locales/en-US/dataset-documents.json'
+import datasetMessages from '@/i18n/locales/en-US/dataset.json'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
@@ -12,20 +17,7 @@ import { DatasetACLPermission } from '@/utils/permission'
 import { DataType } from '../../../metadata/types'
 import DocumentDetail from '../index'
 
-// Real English copy: raw i18n keys cannot wrap, so they would widen the edit header past the panel.
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const withNamespace = (ns: string, messages: Record<string, string>) =>
-    Object.fromEntries(Object.entries(messages).map(([key, value]) => [`${ns}.${key}`, value]))
-  const { default: common } = await import('@/i18n/locales/en-US/common.json')
-  const { default: dataset } = await import('@/i18n/locales/en-US/dataset.json')
-  const { default: datasetDocuments } = await import('@/i18n/locales/en-US/dataset-documents.json')
-  return createReactI18nextMock({
-    ...withNamespace('common', common),
-    ...withNamespace('dataset', dataset),
-    ...withNamespace('datasetDocuments', datasetDocuments),
-  })
-})
+vi.unmock('react-i18next')
 
 // Enough fields that the metadata panel overflows the viewport and renders its scrollbar. The last
 // one is a time field, whose date picker must shrink to keep its remove button inside the row.
@@ -40,6 +32,7 @@ const fields = [
 ]
 const save = vi.fn()
 
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
   useParams: () => ({ datasetId: 'ds-1', documentId: 'doc-1' }),
@@ -48,6 +41,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
+// boundary: mutations and paginated HTTP reads stop at the generated console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -85,6 +79,12 @@ const documentDetail = zDocumentDetailResponse.parse({
 })
 
 const renderDocumentDetail = async () => {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { common, dataset: datasetMessages, datasetDocuments } },
+  })
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: [],
   })
@@ -109,14 +109,16 @@ const renderDocumentDetail = async () => {
   })
   return render(
     <Wrapper>
-      {/* oxlint-disable-next-line eslint-react/no-context-provider -- This use-context-selector context requires its Provider. */}
-      <DatasetDetailContext.Provider value={{ dataset }}>
-        <EventEmitterContextProvider>
-          <div style={{ height: '100vh' }}>
-            <DocumentDetail datasetId="ds-1" documentId="doc-1" />
-          </div>
-        </EventEmitterContextProvider>
-      </DatasetDetailContext.Provider>
+      <I18nextProvider i18n={i18n}>
+        {/* oxlint-disable-next-line eslint-react/no-context-provider -- This use-context-selector context requires its Provider. */}
+        <DatasetDetailContext.Provider value={{ dataset }}>
+          <EventEmitterContextProvider>
+            <div style={{ height: '100vh' }}>
+              <DocumentDetail datasetId="ds-1" documentId="doc-1" />
+            </div>
+          </EventEmitterContextProvider>
+        </DatasetDetailContext.Provider>
+      </I18nextProvider>
     </Wrapper>,
   )
 }

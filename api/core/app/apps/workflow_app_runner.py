@@ -48,13 +48,13 @@ from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus

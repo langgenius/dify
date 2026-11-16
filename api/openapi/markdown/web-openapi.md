@@ -1758,6 +1758,9 @@ GET /api/workflow/<task_id>/events
 
 Returns Server-Sent Events stream.
 
+Requires a run owned by the current app and end user. Pending V1 forms
+expose only Web App recipient tokens; invalid ownership returns 404.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
