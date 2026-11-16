@@ -45,6 +45,8 @@ vi.mock('@/context/permission-state', async () => {
 
 function render(ui: ReactElement) {
   const { wrapper } = createConsoleQueryWrapper({
+    // The form reads the workspace features to decide whether to offer the malware scan.
+    features: {},
     systemFeatures: { rbac_enabled: false },
   })
   return renderWithConsoleState(ui, { wrapper })

@@ -6,27 +6,26 @@ import type {
 } from '@dify/contracts/api/console/account/types.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
 import { seedSystemFeatures } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createTestQueryClient } from '@/test/query-client'
 import PersonalAccessTokens from '../index'
+import { renderWithTokenMessages as render } from './browser-test-env'
 
-const transport = vi.hoisted(() => ({ call: vi.fn() }))
-vi.mock('@/service/console/browser', () => ({ consoleBrowserLink: transport }))
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const account = await import('@/i18n/locales/en-US/account-settings.json')
-  const common = await import('@/i18n/locales/en-US/common.json')
-  const dataset = await import('@/i18n/locales/en-US/dataset.json')
-  return createReactI18nextMock({ ...account.default, ...common.default, ...dataset.default })
+const responses = vi.hoisted(() => ({ call: vi.fn() }))
+// boundary: supply operation results while preserving generated options and real Query observers.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withTokenResponses } = await import('./operation-responses')
+  return { ...actual, consoleQuery: withTokenResponses(actual.consoleQuery, responses.call) }
 })
+vi.unmock('react-i18next')
 it('lets users submit a long selected scope on a short narrow viewport', async () => {
   // Real hit testing and nested scrolling prove that the footer remains reachable;
   // the unit selection tests cannot detect horizontal overflow or obstructed controls.
   await page.viewport(320, 600)
-  transport.call.mockImplementation(async (path: string[]) => {
-    if (path.includes('personalAccessTokenResources'))
+  responses.call.mockImplementation(async (operation: string) => {
+    if (operation.includes('personalAccessTokenResources'))
       return {
         data: Array.from({ length: 20 }, (_, index) => ({
           resource_id: `019a0000-0000-7000-8000-${String(index).padStart(12, '0')}`,
@@ -40,7 +39,7 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
         next_cursor: null,
         has_more: false,
       }
-    if (path.at(-1) === 'post') throw new Error('Service temporarily unavailable')
+    if (operation.endsWith('.post')) throw new Error('Service temporarily unavailable')
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   const queryClient = createTestQueryClient()
@@ -65,8 +64,8 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
   await dialog.getByRole('checkbox', { name: 'Built-in' }).nth(19).click()
   await dialog.getByRole('button', { name: 'Create', exact: true }).click()
   expect(
-    transport.call.mock.calls.find(([path]) => path.at(-1) === 'post')?.[1].body.resource_scope
-      .resources,
+    responses.call.mock.calls.find(([operation]) => operation.endsWith('.post'))?.[1].body
+      .resource_scope.resources,
   ).toEqual([{ resource_id: '019a0000-0000-7000-8000-000000000019', resource_type: 'app' }])
   await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toHaveValue('Long selection')
   const bounds = dialog.element().getBoundingClientRect()
@@ -115,13 +114,14 @@ it.each(['create', 'duplicate'] as const)(
       name: 'Pending creation',
     }
     let created = false
-    transport.call.mockImplementation(async (path: string[]) => {
-      if (path.at(-1) === 'post') {
+    responses.call.mockImplementation(async (operation: string) => {
+      if (operation.endsWith('.post')) {
         const result = await creation
         created = true
         return result
       }
-      if (path.includes('byTokenId')) return { token: activeToken, resources: [], workspaces: [] }
+      if (operation.includes('byTokenId'))
+        return { token: activeToken, resources: [], workspaces: [] }
       return {
         data: created ? [createdToken, ...previousRows].slice(0, 20) : previousRows,
         page: 1,
@@ -199,9 +199,9 @@ it('pages resource types independently and counts selections across tabs and sea
       display_name: `Handbook ${index + 1}`,
     }),
   )
-  transport.call.mockImplementation(
-    async (path: string[], input: Pick<GetAccountPersonalAccessTokenResourcesData, 'query'>) => {
-      if (!path.includes('personalAccessTokenResources'))
+  responses.call.mockImplementation(
+    async (operation: string, input: Pick<GetAccountPersonalAccessTokenResourcesData, 'query'>) => {
+      if (!operation.includes('personalAccessTokenResources'))
         return { data: [], page: 1, limit: 20, total: 0, has_more: false }
       const { resource_type, keyword = '', cursor = 0, limit = 20 } = input.query ?? {}
       const resources =
@@ -254,10 +254,9 @@ it('pages resource types independently and counts selections across tabs and sea
   await expect
     .element(dialog.getByRole('tab', { name: 'Knowledge bases 1 selected' }))
     .toBeVisible()
-  expect(transport.call.mock.calls).toContainEqual([
-    ['account', 'personalAccessTokenResources', 'get'],
+  expect(responses.call.mock.calls).toContainEqual([
+    'account.personalAccessTokenResources.get',
     { query: { cursor: 20, limit: 20, keyword: 'Handbook', resource_type: 'dataset' } },
-    expect.anything(),
   ])
 
   await appsTab.click()
@@ -273,8 +272,8 @@ it('returns keyboard focus to Create token after deletion removes the trigger ro
   // The feature's list refresh removes the initiating button before the dialog
   // closes. Verify focus restoration through real portal/close transitions.
   let deleted = false
-  transport.call.mockImplementation(async (path: string[]) => {
-    if (path.at(-1) === 'delete') {
+  responses.call.mockImplementation(async (operation: string) => {
+    if (operation.endsWith('.delete')) {
       deleted = true
       return undefined
     }
