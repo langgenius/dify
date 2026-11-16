@@ -78,7 +78,7 @@ const InputItem: FC<Props> = ({
           placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
             ns: 'workflowIntegrations',
           })!}
-          placeholderClassName="leading-[21px]!"
+          placeholderClassName="truncate leading-[21px]!"
           insertVarTipToLeft={insertVarTipToLeft}
         />
       ) : (
@@ -104,7 +104,7 @@ const InputItem: FC<Props> = ({
               placeholder={t(($) => $['nodes.http.insertVarPlaceholder'], {
                 ns: 'workflowIntegrations',
               })!}
-              placeholderClassName="leading-[21px]!"
+              placeholderClassName="truncate leading-[21px]!"
               promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
             />

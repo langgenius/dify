@@ -18,6 +18,14 @@ const zInvalidRequestError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('paid_plan_required'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zInvalidRoleError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -183,14 +191,6 @@ const zNetworkAccessInvalidInputError = /* @__PURE__ */ (() =>
     z.object({
       code: z.literal('network_access_invalid_input'),
       status: z.literal(400),
-    }),
-  ))()
-
-const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
-  zErrorResponse.and(
-    z.object({
-      code: z.literal('paid_plan_required'),
-      status: z.literal(403),
     }),
   ))()
 
@@ -372,6 +372,10 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
 
 export const putErrors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
+export const get4Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
+export const get13Errors = { paid_plan_required: { status: 403, data: zPaidPlanRequiredError } }
+
 export const post24Errors = {
   invalid_role: { status: 400, data: zInvalidRoleError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
@@ -413,11 +417,11 @@ export const delete8Errors = {
   member_not_found: { status: 404, data: zMemberNotFoundError },
 }
 
-export const get35Errors = {
+export const get37Errors = {
   network_access_role_denied: { status: 403, data: zNetworkAccessRoleDeniedError },
 }
 
-export const get36Errors = {
+export const get38Errors = {
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
   network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
@@ -438,7 +442,7 @@ export const delete12Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
-export const get37Errors = {
+export const get39Errors = {
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
   network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
@@ -460,7 +464,7 @@ export const put9Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
-export const get38Errors = {
+export const get40Errors = {
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
   network_access_forbidden: { status: 403, data: zNetworkAccessForbiddenError },
@@ -479,13 +483,13 @@ export const post38Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
 }
 
-export const get40Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get42Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get43Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get44Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get45Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get46Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post41Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -493,17 +497,17 @@ export const post42Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post43Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get45Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get47Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post44Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post45Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get46Errors = { plugin_error: { status: 400, data: zPluginError } }
-
-export const get47Errors = { plugin_error: { status: 400, data: zPluginError } }
-
 export const get48Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get49Errors = { plugin_error: { status: 400, data: zPluginError } }
+
+export const get50Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post46Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -513,9 +517,9 @@ export const post49Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post50Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get51Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get53Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get52Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get54Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post51Errors = { plugin_error: { status: 400, data: zPluginError } }
 
@@ -527,7 +531,7 @@ export const post55Errors = { plugin_error: { status: 400, data: zPluginError } 
 
 export const post56Errors = { plugin_error: { status: 400, data: zPluginError } }
 
-export const get53Errors = { plugin_error: { status: 400, data: zPluginError } }
+export const get55Errors = { plugin_error: { status: 400, data: zPluginError } }
 
 export const post61Errors = {
   filename_missing: { status: 400, data: zFilenameMissingError },
@@ -540,9 +544,9 @@ export const post63Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post65Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get94Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+export const get96Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get95Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
+export const get97Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
 export const patch6Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
@@ -560,11 +564,11 @@ export const patch8Errors = { invalid_request: { status: 400, data: zInvalidRequ
 
 export const post68Errors = { invalid_request: { status: 400, data: zInvalidRequestError } }
 
-export const get101Errors = {
+export const get103Errors = {
   current_workspace_archived: { status: 409, data: zCurrentWorkspaceArchivedError },
 }
 
-export const get127Errors = {
+export const get129Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
 }
 
@@ -579,7 +583,7 @@ export const post85Errors = {
   trigger_subscription_provider_error: { status: 502, data: zTriggerSubscriptionProviderError },
 }
 
-export const get131Errors = {
+export const get133Errors = {
   trigger_oauth_client_config_invalid: { status: 500, data: zTriggerOauthClientConfigInvalidError },
   trigger_oauth_provider_error: { status: 502, data: zTriggerOauthProviderError },
 }

@@ -341,7 +341,10 @@ type Props = Readonly<{
 }> &
   (
     | { hideSearch: true; keyboardTarget: HTMLElement | RefObject<HTMLElement | null> | null }
-    | { hideSearch?: false; keyboardTarget?: never }
+    | {
+        hideSearch?: false
+        keyboardTarget?: HTMLElement | RefObject<HTMLElement | null> | null
+      }
   )
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -432,9 +435,10 @@ const VarReferenceVars: FC<Props> = ({
 
   const handleKeyboardEvent = useCallback(
     (event: Pick<KeyboardEvent, 'key' | 'preventDefault' | 'stopPropagation'>) => {
-      if (event.key === 'Escape') {
+      if (event.key === 'Escape' && onClose) {
         event.preventDefault()
-        onClose?.()
+        event.stopPropagation()
+        onClose()
         return
       }
 
@@ -469,7 +473,7 @@ const VarReferenceVars: FC<Props> = ({
   )
 
   useEffect(() => {
-    if (!hideSearch || !keyboardTarget) return
+    if (!keyboardTarget) return
     const target = 'current' in keyboardTarget ? keyboardTarget.current : keyboardTarget
     if (!target) return
 
@@ -493,7 +497,7 @@ const VarReferenceVars: FC<Props> = ({
     const ownerDocument = target.ownerDocument
     ownerDocument.addEventListener('keydown', handleTargetKeyDown, true)
     return () => ownerDocument.removeEventListener('keydown', handleTargetKeyDown, true)
-  }, [handleKeyboardEvent, hideSearch, keyboardTarget])
+  }, [handleKeyboardEvent, keyboardTarget])
 
   return (
     <>
