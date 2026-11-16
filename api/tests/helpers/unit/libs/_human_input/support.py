@@ -111,7 +111,7 @@ class FormSubmissionData:
     submitted_at: datetime = field(default_factory=naive_utc_now)
 
     @classmethod
-    def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:  # type: ignore
+    def from_request(cls, form_id: str, request: FormSubmissionRequest) -> FormSubmissionData:
         return cls(form_id=form_id, inputs=request.inputs, action=request.action)
 
 
