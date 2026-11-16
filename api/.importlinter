@@ -1233,6 +1233,7 @@ allow_indirect_imports = True
 name = Workflow comment application service is framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs

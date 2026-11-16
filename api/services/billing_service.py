@@ -5,6 +5,7 @@ from warnings import deprecated
 
 from pydantic import ValidationError
 
+from enums import CloudPlan
 from extensions.ext_redis import redis_client
 from services.billing_client import billing, saas
 
@@ -29,6 +30,16 @@ class BillingService:
         return billing.subscription_get_subscription_info(
             tenant_id=tenant_id, exclude_vector_space=exclude_vector_space
         )
+
+    @classmethod
+    def is_cloud_paid_plan(cls, tenant_id: str) -> bool:
+        """Return whether the given Cloud tenant has Professional or Team billing.
+
+        The tenant ID must be trusted. A billing failure propagates without
+        granting access; this method has no state changes.
+        """
+        plan = cls.get_info(tenant_id, exclude_vector_space=True).subscription.plan
+        return plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
 
     @classmethod
     def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> billing.VectorSpaceQuota:
