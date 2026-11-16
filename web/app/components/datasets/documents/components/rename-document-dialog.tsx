@@ -1,4 +1,5 @@
 'use client'
+import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
@@ -18,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 
-export type RenameDocumentPayload = { id: string; name: string; menuTrigger?: HTMLElement | null }
+export type RenameDocumentPayload = Pick<DocumentWithSegmentsResponse, 'id' | 'name'>
 
 export function RenameDocumentDialog({
   handle,
@@ -47,9 +48,7 @@ export function RenameDocumentDialog({
     >
       {({ payload }) =>
         payload && (
-          <DialogContent
-            finalFocus={() => (payload.menuTrigger?.isConnected ? payload.menuTrigger : true)}
-          >
+          <DialogContent>
             <DialogHeader>
               <DialogTitle>
                 {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}

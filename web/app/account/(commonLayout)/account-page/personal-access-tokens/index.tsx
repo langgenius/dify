@@ -37,7 +37,6 @@ export default function PersonalAccessTokens() {
     parseAsInteger.withDefault(1).withOptions({ history: 'push' }),
   )
   const createButtonRef = useRef<HTMLButtonElement | null>(null)
-  const formTriggerRef = useRef<Element | null>(null)
   const [formDialogHandle] = useState(() => createDialogHandle<SavedTokenFormPayload>())
   const [deleteDialogHandle] = useState(() =>
     createAlertDialogHandle<PersonalAccessTokenResponse>(),
@@ -287,7 +286,6 @@ export default function PersonalAccessTokens() {
       <Dialog
         handle={formDialogHandle}
         onOpenChange={(open, details) => {
-          if (open) formTriggerRef.current = details.trigger ?? null
           if (!open && (creating || updating) && details.reason !== 'imperative-action')
             details.cancel()
         }}
@@ -295,13 +293,16 @@ export default function PersonalAccessTokens() {
         {({ payload }) => (
           <DialogContent
             className="w-150 has-data-pat-created:w-130"
-            finalFocus={() =>
-              !query.isFetching &&
-              formTriggerRef.current instanceof HTMLElement &&
-              formTriggerRef.current.isConnected
-                ? formTriggerRef.current
-                : createButtonRef.current
-            }
+            finalFocus={() => {
+              const source = query.data?.data.find((token) => token.id === payload?.tokenId)
+              if (
+                query.isFetching ||
+                !source ||
+                (!payload?.duplicate && source.status === 'expired')
+              )
+                return createButtonRef.current
+              return true
+            }}
           >
             {payload && <SavedTokenForm {...payload} onSaved={() => formDialogHandle.close()} />}
           </DialogContent>

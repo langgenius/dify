@@ -22,7 +22,7 @@ export default function DeleteToken({
   handle: AlertDialogHandle<PersonalAccessTokenResponse>
   fallbackFocus: RefObject<HTMLButtonElement | null>
 }) {
-  const triggerRef = useRef<Element | null>(null)
+  const deletedRef = useRef(false)
   const { t } = useTranslation(['accountSettings', 'common'])
   const mutation = useMutation(
     consoleQuery.account.personalAccessTokens.byTokenId.delete.mutationOptions({
@@ -34,7 +34,7 @@ export default function DeleteToken({
       handle={handle}
       onOpenChange={(open, details) => {
         if (open) {
-          triggerRef.current = details.trigger ?? null
+          deletedRef.current = false
           mutation.reset()
         } else if (mutation.isPending && details.reason !== 'imperative-action') {
           details.cancel()
@@ -45,11 +45,7 @@ export default function DeleteToken({
         token && (
           <AlertDialogContent
             className="w-110"
-            finalFocus={() =>
-              triggerRef.current instanceof HTMLElement && triggerRef.current.isConnected
-                ? triggerRef.current
-                : fallbackFocus.current
-            }
+            finalFocus={() => (deletedRef.current ? fallbackFocus.current : true)}
           >
             <IconButton
               aria-label={t(($) => $['operation.close'], { ns: 'common' })}
@@ -88,7 +84,7 @@ export default function DeleteToken({
                       { params: { token_id: token.id } },
                       {
                         onSuccess: () => {
-                          triggerRef.current = null
+                          deletedRef.current = true
                           handle.close()
                         },
                       },

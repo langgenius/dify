@@ -15,7 +15,7 @@ import {
 import { Input } from '@langgenius/dify-ui/input'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useAtomValueRawSync } from 'jotai'
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   documentCanDownload,
@@ -262,7 +262,6 @@ export function DocumentActionsMenu({
   document: LogicalDocument
 }) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const pendingAction = useDocumentRowPendingAction(document.id)
   const busy = Boolean(pendingAction)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
@@ -272,7 +271,6 @@ export function DocumentActionsMenu({
     <>
       <Menu modal={false}>
         <MenuTrigger
-          ref={menuTriggerRef}
           aria-label={t(($) => $.documentActions, {
             ns: 'knowledgeDocuments',
             name: document.title,
@@ -312,7 +310,7 @@ export function DocumentActionsMenu({
           else setRenameDialogOpen(open)
         }}
       >
-        <DialogContent finalFocus={menuTriggerRef}>
+        <DialogContent>
           <RenameDocumentForm document={document} onClose={() => setRenameDialogOpen(false)} />
         </DialogContent>
       </Dialog>

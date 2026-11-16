@@ -10,7 +10,7 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useRef } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { toast } from '@/app/notifications'
@@ -182,7 +182,6 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
@@ -204,8 +203,7 @@ const Operations = ({
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
   const handleShowRename = () => {
-    if (canEdit)
-      renameDialog.openWithPayload({ id, name: name ?? '', menuTrigger: menuTriggerRef.current })
+    if (canEdit) renameDialog.openWithPayload({ id, name: name ?? '' })
   }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
@@ -322,7 +320,6 @@ const Operations = ({
         <>
           <Menu>
             <MenuTrigger
-              ref={menuTriggerRef}
               aria-label={t(($) => $['operation.more'], { ns: 'common' })}
               className={cn(
                 isListScene
