@@ -23,6 +23,7 @@ from pydantic_ai.models.function import FunctionModel
 from dify_agent.agent_stub.protocol import file_reference
 from dify_agent.layers.read_media.layer import Capability
 from dify_agent.runtime.context import Deps, Services
+from tests.local.dify_agent.shell_support import FakeCommands, completed_shell_command, stub_enabled_shell
 
 FILE = {"transfer_method": "tool_file", "reference": file_reference("tool-file")}
 
@@ -113,29 +114,14 @@ async def run_read(
 
 @pytest.mark.anyio
 async def test_workspace_path_uploads_through_shell_then_attaches_only_reference():
-    from tests.local.dify_agent.layers.shell.test_layer import (
-        FakeCommands,
-        _bind_execution_context,
-        _command_result,
-        _layer,
-    )
-
     def upload(script, cwd, env, timeout):
-        output = json.dumps(FILE)
-        return _command_result("upload", status="exited", done=True, exit_code=0, output=output, offset=len(output))
+        return completed_shell_command(json.dumps(FILE))
 
-    shell, _ = _layer(commands=FakeCommands(run_handler=upload))
-    _bind_execution_context(shell)
-    shell.deps.services.agent_stub_api_base_url = "http://stub/agent-stub"
-    shell.deps.services.agent_stub_token_factory = lambda execution_context, session_id: "stub-token"
-    try:
+    async with stub_enabled_shell(FakeCommands(run_handler=upload)) as shell:
         result, requests, messages = await run_read({"path": "./chart.png"}, shell="shell", shell_session=shell)
         assert json.loads(requests[0].content)["file"] == FILE
         assert attachments(messages)[0].url == f"dify-file://tool_file/{FILE['reference']}"
         assert json.loads(observations(result)[0])["locator"] == {"path": "./chart.png"}
-    finally:
-        await shell.deps.services.dify_api_http_client.aclose()
-        await shell.deps.services.plugin_daemon_http_client.aclose()
 
 
 def attachments(messages):
@@ -210,6 +196,9 @@ async def test_remote_url_remains_original_and_unknown_size_is_allowed():
     assert attachments(messages)[0].url == url
     assert attachments(messages)[0].vendor_metadata["detail"] == "low"
     assert json.loads(observations(result)[0])["size"] is None
+    encoded = ModelMessagesTypeAdapter.dump_json(result.all_messages()).decode()
+    assert "unknown size" in encoded
+    assert "-1 bytes" not in encoded
     assert len(requests) == 1
 
 
@@ -217,22 +206,30 @@ async def test_remote_url_remains_original_and_unknown_size_is_allowed():
 @pytest.mark.parametrize(
     "arguments,modalities,expected",
     [
-        ({}, ["vision"], "exactly one"),
-        ({"file": FILE, "path": "chart.png"}, ["vision"], "exactly one"),
-        ({"file": FILE}, [], "does not support any"),
-        ({"path": "chart.png"}, [], "does not support any"),
-        ({"path": "chart.png"}, ["vision"], "workspace is not enabled"),
-        ({"file": {"transfer_method": "wrong"}}, ["vision"], "inaccessible"),
-        ({"file": {"transfer_method": "tool_file", "reference": "raw-id"}}, ["vision"], "inaccessible"),
-        ({"file": {"transfer_method": "tool_file", "reference": "dify-file-ref:W10="}}, ["vision"], "inaccessible"),
-        ({"file": {"transfer_method": "remote_url", "url": "file:///tmp/chart.png"}}, ["vision"], "HTTP(S)"),
+        ({}, ["vision"], ("exactly one",)),
+        ({"file": FILE, "path": "chart.png"}, ["vision"], ("exactly one",)),
+        ({"file": FILE}, [], ("does not support any",)),
+        ({"path": "chart.png"}, [], ("does not support any",)),
+        ({"path": "chart.png"}, ["vision"], ("workspace is not enabled",)),
+        ({"file": {"transfer_method": "wrong"}}, ["vision"], ("ValidationError", "transfer_method", "literal_error")),
+        (
+            {"file": {"transfer_method": "tool_file", "reference": "raw-id"}},
+            ["vision"],
+            ("ValidationError", "canonical Dify file reference"),
+        ),
+        (
+            {"file": {"transfer_method": "tool_file", "reference": "dify-file-ref:W10="}},
+            ["vision"],
+            ("ValidationError", "canonical Dify file reference"),
+        ),
+        ({"file": {"transfer_method": "remote_url", "url": "file:///tmp/chart.png"}}, ["vision"], ("HTTP(S)",)),
     ],
 )
 async def test_invalid_locator_and_text_model_short_circuit_without_io(arguments, modalities, expected):
     result, requests, messages = await run_read(arguments, modalities=modalities)
     assert requests == [] and attachments(messages) == []
     assert observations(result)[0].startswith("read_media cannot attach multimodal content:")
-    assert expected in observations(result)[0]
+    assert all(diagnostic in observations(result)[0] for diagnostic in expected)
 
 
 @pytest.mark.anyio
@@ -248,6 +245,8 @@ async def test_invalid_locator_and_text_model_short_circuit_without_io(arguments
         ("image/bmp", 100, ["vision"], "unsupported format"),
         ("application/json", 100, ["document"], "unsupported format"),
         ("image/png", 100, ["document"], "requires vision"),
+        ("image/png", -1, ["document"], "requires vision"),
+        ("image/svg+xml", -1, ["vision"], "unsupported format"),
     ],
 )
 async def test_unsupported_or_oversized_media_returns_only_text(mime, size, modalities, expected):
@@ -258,23 +257,26 @@ async def test_unsupported_or_oversized_media_returns_only_text(mime, size, moda
     )
     assert len(requests) == 1 and attachments(messages) == []
     assert expected in observations(result)[0]
+    if size == -1:
+        assert "unknown size" in observations(result)[0]
+        assert "-1 bytes" not in observations(result)[0]
 
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "status,metadata,error",
+    "status,metadata,error,expected",
     [
-        (404, {"code": "file_not_accessible", "message": "not accessible"}, None),
-        (500, {"message": "HEAD probe failed"}, None),
-        (200, {"filename": "malformed"}, None),
-        (200, None, httpx.ReadTimeout("metadata timeout")),
-        (200, None, httpx.ConnectError("connection failed")),
+        (404, {"code": "file_not_accessible", "message": "not accessible"}, None, ("HTTPStatusError", "404")),
+        (500, {"message": "HEAD probe failed"}, None, ("HTTPStatusError", "500")),
+        (200, {"filename": "malformed"}, None, ("ValidationError", "size", "download_uri", "Field required")),
+        (200, None, httpx.ReadTimeout("metadata timeout"), ("ReadTimeout", "metadata timeout")),
+        (200, None, httpx.ConnectError("connection failed"), ("ConnectError", "connection failed")),
     ],
 )
-async def test_control_plane_errors_are_observations(status, metadata, error):
+async def test_control_plane_errors_are_observations(status, metadata, error, expected):
     result, requests, messages = await run_read({"file": FILE}, status=status, metadata=metadata, error=error)
     assert len(requests) == 1 and attachments(messages) == []
-    assert "metadata validation failed" in observations(result)[0]
+    assert all(diagnostic in observations(result)[0] for diagnostic in expected)
 
 
 @pytest.mark.anyio

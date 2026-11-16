@@ -130,6 +130,8 @@ def is_canonical_dify_file_reference(reference: str) -> bool:
         payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
     except (ValueError, json.JSONDecodeError):
         return False
+    if not isinstance(payload, dict):
+        return False
     record_id = payload.get("record_id")
     return isinstance(record_id, str) and bool(record_id)
 

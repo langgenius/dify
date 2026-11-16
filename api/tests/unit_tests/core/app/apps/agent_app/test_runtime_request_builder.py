@@ -352,7 +352,10 @@ class TestAgentAppRuntimeRequestBuilder:
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).agent_mode == "agent_app"
         assert DifyExecutionContextLayerConfig.model_validate(exec_ctx.config).trace_id == "trace-session-1"
         # LLM credentials are resolved by API and never enter the Agent request.
-        assert "credentials" not in result.redacted_request["composition"]["layers"][-1]["config"]
+        redacted_llm = next(
+            layer for layer in result.redacted_request["composition"]["layers"] if layer["name"] == "llm"
+        )
+        assert "credentials" not in redacted_llm["config"]
         assert result.metadata["conversation_id"] == "conv-1"
 
     def test_build_sends_images_directly_to_vision_model(

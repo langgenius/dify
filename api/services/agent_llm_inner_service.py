@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import cast
 from urllib.parse import urlsplit
 
+from dify_agent.layers.read_media import normalize_media_mime
 from pydantic import JsonValue, TypeAdapter
 from sqlalchemy.orm import Session
 
@@ -19,7 +20,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.workflow.file_reference import is_canonical_file_reference
 from factories.file_factory.builders import build_from_mapping
-from graphon.file import FileType, file_manager
+from graphon.file import FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
 from graphon.model_runtime.entities.message_entities import (
     ImagePromptMessageContent,
@@ -32,16 +33,6 @@ from models.model import App
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
 
 _PROMPT_CONTENT_ADAPTER = TypeAdapter(PromptMessageContentUnionTypes)
-_MEDIA_MIME_ALIASES = {
-    "image/jpg": "image/jpeg",
-    "audio/mp3": "audio/mpeg",
-    "audio/mpeg3": "audio/mpeg",
-    "audio/x-wav": "audio/wav",
-    "audio/wave": "audio/wav",
-    "audio/x-flac": "audio/flac",
-    "audio/x-aac": "audio/aac",
-    "application/x-pdf": "application/pdf",
-}
 
 
 class AgentLLMInnerServiceError(RuntimeError):
@@ -215,10 +206,8 @@ def _resolve_agent_media_prompt_messages(request: AgentLLMInvokeRequest) -> list
                             tenant_id=caller.tenant_id,
                             access_controller=controller,
                         )
-                        authoritative_mime = (file.mime_type or "").split(";", 1)[0].strip().lower()
-                        authoritative_mime = _MEDIA_MIME_ALIASES.get(authoritative_mime, authoritative_mime)
-                        requested_mime = media.mime_type.split(";", 1)[0].strip().lower()
-                        requested_mime = _MEDIA_MIME_ALIASES.get(requested_mime, requested_mime)
+                        authoritative_mime = normalize_media_mime(file.mime_type)
+                        requested_mime = normalize_media_mime(media.mime_type)
                         expected_type = requested_mime.split("/", 1)[0]
                         if expected_type not in {"image", "audio", "video"}:
                             expected_type = "document"
@@ -229,8 +218,13 @@ def _resolve_agent_media_prompt_messages(request: AgentLLMInvokeRequest) -> list
                             raise ValueError("Managed media MIME does not match the requested content type")
                         # File factories may classify by filename suffix first.
                         # The validated media MIME/type must survive that lookup.
+                        # Datasource files live in UploadFile, so rendering must
+                        # use its preview URL and storage path rather than ToolFile.
                         file = file.model_copy(
                             update={
+                                "transfer_method": FileTransferMethod.LOCAL_FILE
+                                if file.transfer_method == FileTransferMethod.DATASOURCE_FILE
+                                else file.transfer_method,
                                 "mime_type": media.mime_type,
                                 "extension": "." + media.format,
                                 "type": FileType(media.type.value),

@@ -2,8 +2,10 @@
 
 from collections.abc import Callable, Generator
 from decimal import Decimal
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -161,7 +163,85 @@ def test_managed_media_resolution_uses_authorized_records_and_preserves_wire_req
     assert content.format == requested_format
     assert content.base64_data == ""
     assert content.url.startswith("https://files.example.com/files/")
+    expected_path = (
+        f"/files/tools/{record.id}.{requested_format}"
+        if transfer_method == "tool_file"
+        else f"/files/{record.id}/file-preview"
+    )
+    assert urlsplit(content.url).path == expected_path
     assert "dify-file://" not in content.url
+    assert request.model_dump(mode="json") == original_request
+
+
+@pytest.mark.parametrize("send_format", ["url", "base64"])
+def test_datasource_media_uses_upload_file_preview_and_storage(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+    media_gateway: tuple[AgentLLMInnerService, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    send_format: str,
+) -> None:
+    """Given an authorized datasource file, rendering uses its signed UploadFile preview or stored bytes."""
+    import base64
+
+    from core.workflow.file_reference import build_file_reference
+    from extensions.ext_storage import storage
+    from extensions.storage.opendal_storage import OpenDALStorage
+    from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
+    from services.upload_file_delivery_service import UploadFileDeliveryService
+    from tests.helpers.unit.model_factories import make_upload_file
+
+    config_overrides(MULTIMODAL_SEND_FORMAT=send_format, FILES_URL="https://files.example.com")
+    monkeypatch.setattr(storage, "storage_runner", OpenDALStorage(scheme="fs", root=str(tmp_path)), raising=False)
+    request = _request()
+    _persist_app(sqlite_session, request=request)
+    payload = b"stored datasource image"
+    record = make_upload_file(
+        tenant_id=request.caller.tenant_id,
+        created_by=request.caller.user_id,
+        key="uploads/chart.png",
+        name="chart.png",
+        extension="png",
+        mime_type="image/png",
+        size=len(payload),
+    )
+    sqlite_session.add(record)
+    sqlite_session.commit()
+    storage.save(record.key, payload)
+    reference = build_file_reference(record_id=record.id)
+    request.target.prompt_messages = [
+        UserPromptMessage(
+            content=[
+                ImagePromptMessageContent(
+                    url=f"dify-file://datasource_file/{reference}", mime_type="image/png", format="png"
+                )
+            ]
+        ).model_dump(mode="json")
+    ]
+    original_request = request.model_dump(mode="json")
+    service, invoke = media_gateway
+    assert list(service.invoke(service.prepare(request))) == []
+    message = UserPromptMessage.model_validate(invoke.call_args.kwargs["prompt_messages"][0])
+    assert isinstance(message.content, list)
+    content = message.content[0]
+    assert isinstance(content, ImagePromptMessageContent)
+    if send_format == "url":
+        parsed = urlsplit(content.url)
+        assert parsed.path == f"/files/{record.id}/file-preview"
+        query = parse_qs(parsed.query)
+        delivery = UploadFileDeliveryService(
+            files=UploadFileDeliveryQueryRepository(session_factory=sqlite_session_factory), storage=storage
+        ).get_signed_file_preview(
+            file_id=record.id, timestamp=query["timestamp"][0], nonce=query["nonce"][0], sign=query["sign"][0]
+        )
+        assert not isinstance(delivery.content, bytes)
+        assert b"".join(delivery.content) == payload
+        assert content.base64_data == ""
+    else:
+        assert base64.b64decode(content.base64_data) == payload
+        assert content.url == ""
     assert request.model_dump(mode="json") == original_request
 
 
@@ -272,25 +352,43 @@ def test_managed_media_resolution_rechecks_scope(
 
 
 @pytest.mark.parametrize(
-    ("url", "match"),
+    ("content", "match"),
     [
-        ("dify-file://tool_file/not-a-canonical-reference", "^Invalid managed media reference$"),
-        ("dify-file://remote_url/dify-file-ref:eyJyZWNvcmRfaWQiOiJmaWxlIn0=", "^Invalid managed media reference$"),
+        (
+            ImagePromptMessageContent(
+                url="dify-file://tool_file/not-a-canonical-reference", mime_type="image/png", format="png"
+            ).model_dump(mode="json"),
+            "^Invalid managed media reference$",
+        ),
+        (
+            ImagePromptMessageContent(
+                url="dify-file://remote_url/dify-file-ref:eyJyZWNvcmRfaWQiOiJmaWxlIn0=",
+                mime_type="image/png",
+                format="png",
+            ).model_dump(mode="json"),
+            "^Invalid managed media reference$",
+        ),
+        (
+            {
+                "type": "text",
+                "data": "hello",
+                "url": "dify-file://tool_file/dify-file-ref:eyJyZWNvcmRfaWQiOiJmaWxlIn0=",
+            },
+            "^Managed media reference requires a multimodal content block$",
+        ),
     ],
 )
-def test_managed_media_rejects_malformed_locators_before_record_lookup(
+def test_managed_media_rejects_invalid_content_before_record_lookup(
     sqlite_session: Session,
     media_gateway: tuple[AgentLLMInnerService, MagicMock],
-    url: str,
+    content: dict[str, JsonValue],
     match: str,
 ) -> None:
+    """Given managed wire content, prepare rejects invalid locators or text blocks before model invocation."""
     request = _request()
     _persist_app(sqlite_session, request=request)
-    request.target.prompt_messages = [
-        UserPromptMessage(content=[ImagePromptMessageContent(url=url, mime_type="image/png", format="png")]).model_dump(
-            mode="json"
-        )
-    ]
+    # Preserve raw wire content: constructing a typed text block would discard its forged URL.
+    request.target.prompt_messages = [{"role": "user", "content": [content]}]
     service, invoke = media_gateway
     with pytest.raises(ValueError, match=match):
         service.prepare(request)

@@ -19,7 +19,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from urllib.parse import urlsplit
 
-from dify_agent.agent_stub.protocol import AgentStubFileMapping, file_reference, format_media_observation
+from dify_agent.agent_stub.protocol import AgentStubFileMapping, format_media_observation
 from sqlalchemy.orm import Session
 
 from core.agent.entities import AgentToolEntity
@@ -37,7 +37,7 @@ from core.tools.errors import (
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.file_reference import is_canonical_file_reference
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference
 from graphon.file import File, FileTransferMethod
 from models import ToolFile
 from models.model import App
@@ -184,7 +184,9 @@ def _format_agent_tool_observation(messages: Sequence[ToolInvokeMessage], *, ses
         }:
             record = session.get(ToolFile, str(tool_file_id))
             if record is not None and record.tenant_id == tenant_id:
-                mapping = AgentStubFileMapping(transfer_method="tool_file", reference=file_reference(record.id))
+                mapping = AgentStubFileMapping(
+                    transfer_method="tool_file", reference=build_file_reference(record_id=record.id)
+                )
                 filename, mime_type, size = record.name, record.mimetype, record.size
             else:
                 message = ToolInvokeMessage(
@@ -203,7 +205,7 @@ def _format_agent_tool_observation(messages: Sequence[ToolInvokeMessage], *, ses
                 }:
                     reference = file.reference
                     if not is_canonical_file_reference(reference):
-                        reference = file_reference(reference)
+                        reference = build_file_reference(record_id=reference)
                     mapping = AgentStubFileMapping(transfer_method=file.transfer_method.value, reference=reference)
                 filename, mime_type, size = file.filename, file.mime_type, file.size
         elif message.type in {

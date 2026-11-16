@@ -25,6 +25,7 @@ from dify_agent.layers.dify_plugin.configs import DifyModelModality, DifyPluginL
 from dify_agent.layers.execution_context.configs import DifyExecutionContextLayerConfig
 from dify_agent.layers.read_media.configs import DifyReadMediaLayerConfig
 from dify_agent.layers.read_media.history import attachment_marker, collapse_read_media_content
+from dify_agent.layers.read_media.mime import normalize_media_mime
 from dify_agent.layers.shell.layer import Capability as ShellCapability
 from dify_agent.runtime.context import Deps
 
@@ -60,16 +61,6 @@ _MIMES_BY_MODALITY: dict[DifyModelModality, set[str]] = {
         "application/vnd.ms-excel",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     },
-}
-_MIME_ALIASES = {
-    "image/jpg": "image/jpeg",
-    "audio/mp3": "audio/mpeg",
-    "audio/mpeg3": "audio/mpeg",
-    "audio/x-wav": "audio/wav",
-    "audio/wave": "audio/wav",
-    "audio/x-flac": "audio/flac",
-    "audio/x-aac": "audio/aac",
-    "application/x-pdf": "application/pdf",
 }
 
 
@@ -172,12 +163,12 @@ async def _read_media(
             deps.layers[config.execution_context]["config"]
         )
         metadata = await request_agent_file_download(deps.services, execution_context, mapping, for_frontend=False)
-        mime_type = (metadata.mime_type or "").split(";", 1)[0].strip().lower()
+        mime_type = normalize_media_mime(metadata.mime_type)
         if not mime_type or mime_type == "application/octet-stream":
-            mime_type = (mimetypes.guess_type(metadata.filename)[0] or "").lower()
-        mime_type = _MIME_ALIASES.get(mime_type, mime_type)
+            mime_type = normalize_media_mime(mimetypes.guess_type(metadata.filename)[0])
         modality = next((key for key, values in _MIMES_BY_MODALITY.items() if mime_type in values), None)
-        description = f"{metadata.filename} ({mime_type or 'unknown MIME'}, {metadata.size} bytes)"
+        size_label = f"{metadata.size} bytes" if metadata.size >= 0 else "unknown size"
+        description = f"{metadata.filename} ({mime_type or 'unknown MIME'}, {size_label})"
         if modality is None:
             allowed = ", ".join(sorted(mime for values in _MIMES_BY_MODALITY.values() for mime in values))
             return fallback(f"unsupported format for {description}. Supported formats: {allowed}.")
@@ -219,7 +210,6 @@ async def _read_media(
             },
             ensure_ascii=False,
         )
-        size_label = f"{metadata.size} bytes" if metadata.size >= 0 else "unknown size"
         marker = attachment_marker(modality, f"{metadata.filename}, {mime_type}, {size_label}")
         return ToolReturn(return_value=summary, content=[marker, media_part])
     except Exception as exc:

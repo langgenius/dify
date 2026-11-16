@@ -232,6 +232,12 @@ class _PluginToolFileContext:
     shell: str | None
 
     async def to_plugin_file_parameter(self, value: object) -> dict[str, object]:
+        """Convert a URL, workspace path or copied handle into a daemon file parameter.
+
+        Display metadata on a handle is untrusted and ignored; managed files
+        obtain authoritative metadata through the control plane. Invalid
+        locators raise ValueError before daemon invocation.
+        """
         if isinstance(value, str):
             if _is_remote_url(value):
                 return _plugin_file_parameter_from_url(value)
@@ -241,7 +247,8 @@ class _PluginToolFileContext:
         if isinstance(value, Mapping):
             if _is_plugin_file_parameter(value):
                 return _normalize_plugin_file_parameter(value)
-            return await self._plugin_file_parameter_from_mapping(AgentStubFileMapping.model_validate(value))
+            locator = {key: value[key] for key in ("transfer_method", "reference", "url") if key in value}
+            return await self._plugin_file_parameter_from_mapping(AgentStubFileMapping.model_validate(locator))
 
         raise ValueError("file parameter must be an HTTP(S) URL, sandbox path, or file mapping.")
 

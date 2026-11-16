@@ -47,6 +47,7 @@ def test_resolve_model_runtime_profile_reads_selected_model_schema_once(monkeypa
     assert profile.supported_modalities == ["vision"]
     assert factory.run_contexts == [run_context]
     assert factory.model_lookups == [("langgenius/openai/openai", "gpt-4o")]
+    assert [instance.schema_calls for instance in factory.model_instances] == [1]
 
 
 @pytest.mark.parametrize(

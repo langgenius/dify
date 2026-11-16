@@ -82,7 +82,7 @@ async def test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline
         assert request.url.path == "/files/upload/for-plugin"
         assert request.headers["content-type"].startswith("multipart/form-data")
         assert blob in request.content
-        return httpx.Response(201, json={"id": record_id})
+        return httpx.Response(201, json={"id": record_id, "reference": file_reference(record_id)})
 
     output = await media_observation(
         {
@@ -95,6 +95,7 @@ async def test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline
     assert len(requests) == 2
     summary = media_summary(output)
     assert summary["transfer_method"] == "tool_file"
+    assert summary["reference"] == file_reference(record_id)
     assert reference_payload(summary["reference"]) == {"record_id": record_id}
     assert summary["size"] == len(blob)
     assert "read_media" in output
@@ -102,13 +103,32 @@ async def test_plugin_blob_is_persisted_as_a_copyable_file_handle_without_inline
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("failure", ["missing-user", "oversized", "http-error"])
-async def test_plugin_blob_upload_failures_never_stringify_file_content(failure):
+@pytest.mark.parametrize(
+    "failure,diagnostic,request_count",
+    [
+        ("missing-user", "requires execution context user_id", 0),
+        ("oversized", "exceeds upload limit", 0),
+        ("http-error", "503", 1),
+        ("non-object", "file upload returned a non-object response", 2),
+        ("missing-reference", "reference is required for non-remote file mappings", 2),
+        ("invalid-reference", "canonical Dify file reference", 2),
+    ],
+)
+async def test_plugin_blob_upload_failures_never_stringify_file_content(failure, diagnostic, request_count):
     requests = []
 
     def handler(request):
         requests.append(request)
-        return httpx.Response(503, json={"message": "storage unavailable"})
+        if failure == "http-error":
+            return httpx.Response(503, json={"message": "storage unavailable"})
+        if request.url.path.endswith("/upload-request"):
+            return httpx.Response(200, json={"upload_uri": "/files/upload/for-plugin?sign=signed"})
+        responses = {
+            "non-object": [],
+            "missing-reference": {"id": "dd22ff99-f8d5-4fde-8cb9-c8ec46556960"},
+            "invalid-reference": {"reference": "dify-file-ref:W10="},
+        }
+        return httpx.Response(201, json=responses[failure])
 
     output = await media_observation(
         {
@@ -122,7 +142,8 @@ async def test_plugin_blob_upload_failures_never_stringify_file_content(failure)
     )
     assert "Tool media unavailable" in output and "chart.png" in output and "11 bytes" in output
     assert "secret-blob" not in output and "c2VjcmV0LWJsb2I=" not in output
-    assert len(requests) == (1 if failure == "http-error" else 0)
+    assert diagnostic in output
+    assert len(requests) == request_count
 
 
 @pytest.mark.anyio
@@ -301,13 +322,39 @@ async def test_native_plugin_tool_prepares_schema_merges_hidden_parameters_and_d
 
 @pytest.mark.anyio
 @pytest.mark.parametrize(
-    "value,download",
+    "value,download_uri,expected_url",
     [
-        ({"transfer_method": "tool_file", "reference": file_reference("file-1")}, True),
-        ("https://example.com/file.pdf", False),
+        (
+            {"transfer_method": "tool_file", "reference": file_reference("file-1")},
+            "https://example.com/file.pdf",
+            "https://example.com/file.pdf",
+        ),
+        (
+            {
+                "transfer_method": "tool_file",
+                "reference": file_reference("file-1"),
+                "filename": "untrusted.exe",
+                "mime_type": "untrusted/type",
+                "size": 999_999,
+            },
+            "/files/tools/file-1.pdf?timestamp=1&nonce=n&sign=s",
+            "http://dify-api/files/tools/file-1.pdf?timestamp=1&nonce=n&sign=s",
+        ),
+        (
+            {
+                "transfer_method": "remote_url",
+                "url": "https://example.com/file.pdf",
+                "filename": "untrusted.exe",
+                "mime_type": "untrusted/type",
+                "size": 999_999,
+            },
+            None,
+            "https://example.com/file.pdf",
+        ),
+        ("https://example.com/file.pdf", None, "https://example.com/file.pdf"),
     ],
 )
-async def test_native_plugin_tool_converts_file_inputs(value, download):
+async def test_native_plugin_tool_converts_file_inputs(value, download_uri, expected_url):
     config = tools_layer.Config(
         tools=[
             {
@@ -326,13 +373,13 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
     def handler(request):
         payload = json.loads(request.content)
         if request.url.path.endswith("/agent/files/download-request"):
-            assert download
+            assert download_uri is not None
             assert payload["file"] == {"transfer_method": "tool_file", "reference": file_reference("file-1")}
             assert payload["for_frontend"] is False
             return httpx.Response(
                 200,
                 json={
-                    "download_uri": "https://example.com/file.pdf",
+                    "download_uri": download_uri,
                     "filename": "file.pdf",
                     "mime_type": "application/pdf",
                     "size": 10,
@@ -349,12 +396,15 @@ async def test_native_plugin_tool_converts_file_inputs(value, download):
                 "tools": {"config": config.model_dump(mode="json"), "state": {}},
                 "execution_context": {"config": identity().model_dump(mode="json"), "state": {}},
             },
-            services=Services(client, client),
+            services=Services(client, client, inner_api_url="http://dify-api/"),
             run_id="test",
         )
         result = await invoke_native_tool(deps, tools_layer.Toolset("tools"), "read", {"source": value})
         assert result.output == "read"
-        assert sent[0]["url"] == "https://example.com/file.pdf"
+        assert sent[0]["url"] == expected_url
+        assert sent[0]["filename"] == "file.pdf"
+        assert sent[0]["mime_type"] == "application/pdf"
+        assert sent[0]["size"] == (10 if download_uri is not None else -1)
 
 
 @pytest.mark.anyio

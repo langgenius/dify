@@ -16,6 +16,7 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
+from core.workflow.file_reference import build_file_reference, is_canonical_file_reference, resolve_file_record_id
 from models.model import App, AppMode
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
@@ -99,7 +100,6 @@ def _invoke_observation(session: Session, messages: list[ToolInvokeMessage]) -> 
 def test_media_tool_observations_expose_persisted_canonical_handles(sqlite_session: Session, message_type: str) -> None:
     import json
 
-    from core.workflow.file_reference import resolve_file_record_id
     from models import ToolFile
 
     _persist_app(sqlite_session)
@@ -132,14 +132,73 @@ def test_media_tool_observations_expose_persisted_canonical_handles(sqlite_sessi
     assert "chart.png" not in inaccessible
 
 
-@pytest.mark.parametrize("include_metadata", [False, True])
-@pytest.mark.parametrize("method", ["remote_url", "local_file", "datasource_file"])
-def test_file_message_observations_preserve_copyable_locators(
-    sqlite_session: Session, method: str, include_metadata: bool
+@pytest.mark.parametrize("message_type", ["image_link", "binary_link"])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://example.com/chart.png?token=a%2Fb&part=1#original",
+        "http://example.com/chart.png?token=a%2Fb&part=1#original",
+    ],
+)
+def test_external_media_link_observations_preserve_original_urls(
+    sqlite_session: Session, message_type: str, url: str
 ) -> None:
+    """Given an external media link, invoke exposes a copyable handle with its exact URL."""
     import json
 
-    from core.workflow.file_reference import build_file_reference
+    _persist_app(sqlite_session)
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType(message_type),
+        message=ToolInvokeMessage.TextMessage(text=url),
+    )
+    observation = _invoke_observation(sqlite_session, [message])
+    summary = json.loads(observation.split("Tool generated media link: ")[1].split(" (call")[0])
+    assert summary == {"transfer_method": "remote_url", "url": url}
+    assert "read_media" in observation
+
+
+@pytest.mark.parametrize(
+    ("message_type", "expected_observation"),
+    [
+        (
+            "image_link",
+            "image has been created and sent to user already, "
+            "you do not need to create it, just tell the user to check it now.",
+        ),
+        ("binary_link", "text='file:///workspace/chart.png'"),
+    ],
+)
+def test_non_http_media_links_preserve_existing_observations(
+    sqlite_session: Session, message_type: str, expected_observation: str
+) -> None:
+    """Given a non-HTTP media link, invoke retains its text fallback without creating a handle."""
+    _persist_app(sqlite_session)
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType(message_type),
+        message=ToolInvokeMessage.TextMessage(text="file:///workspace/chart.png"),
+    )
+    assert _invoke_observation(sqlite_session, [message]) == expected_observation
+
+
+@pytest.mark.parametrize("include_metadata", [False, True])
+@pytest.mark.parametrize(
+    ("method", "reference"),
+    [
+        ("remote_url", None),
+        ("local_file", "record"),
+        ("local_file", build_file_reference(record_id="record")),
+        ("tool_file", "record"),
+        ("tool_file", build_file_reference(record_id="record")),
+        ("datasource_file", "record"),
+        ("datasource_file", build_file_reference(record_id="record")),
+    ],
+)
+def test_file_message_observations_preserve_copyable_locators(
+    sqlite_session: Session, method: str, reference: str | None, include_metadata: bool
+) -> None:
+    """Given a File message, invoke preserves URLs and emits canonical references with optional metadata."""
+    import json
+
     from graphon.file import File, FileTransferMethod, FileType
 
     _persist_app(sqlite_session)
@@ -151,7 +210,7 @@ def test_file_message_observations_preserve_copyable_locators(
         transfer_method=FileTransferMethod(method),
         size=25,
         remote_url="https://example.com/report.pdf?key=original" if method == "remote_url" else None,
-        reference=build_file_reference(record_id="record") if method != "remote_url" else None,
+        reference=reference,
     )
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType.FILE,
@@ -165,9 +224,11 @@ def test_file_message_observations_preserve_copyable_locators(
     assert ("mime_type" in summary) is include_metadata
     assert all(value is not None for value in summary.values())
     assert "read_media" in observation
-    locator = file.remote_url or file.reference
-    assert locator is not None
-    assert locator in observation
+    if method == "remote_url":
+        assert summary["url"] == file.remote_url
+    else:
+        assert is_canonical_file_reference(summary["reference"])
+        assert resolve_file_record_id(summary["reference"]) == "record"
 
 
 @pytest.mark.parametrize(

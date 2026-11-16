@@ -105,8 +105,9 @@ async def upload_agent_tool_file(
     """Persist an already-received plugin blob under the current owner.
 
     Reject missing identity and oversized content before upload allocation.
-    Return only a canonical tool_file locator; transport/validation errors
-    propagate without ever rendering the blob as observation text.
+    Require the upload response's canonical reference and return only its
+    tool_file locator. Transport/validation errors propagate without ever
+    rendering the blob as observation text.
     """
     if not execution_context.user_id:
         raise ValueError("plugin file upload requires execution context user_id")
@@ -134,8 +135,9 @@ async def upload_agent_tool_file(
     )
     response.raise_for_status()
     uploaded = response.json()
-    record_id = str(UUID(uploaded["id"]))
-    return AgentStubFileMapping(transfer_method="tool_file", reference=file_reference(record_id))
+    if not isinstance(uploaded, dict):
+        raise ValueError("file upload returned a non-object response")
+    return AgentStubFileMapping(transfer_method="tool_file", reference=uploaded.get("reference"))
 
 
 async def upload_sandbox_path(shell_session: ShellSession, path: str, *, timeout: float = 60.0) -> AgentStubFileMapping:
