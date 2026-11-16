@@ -101,6 +101,32 @@ def _raising[**P](error: Exception) -> Callable[P, NoReturn]:
     return _raise
 
 
+class _RaisingSyncDraftService(WorkflowService):
+    """Named fake whose draft sync raises a fixed error.
+
+    Subclassing the real service keeps the endpoint on a genuine object; ``__init__`` skips the
+    repository wiring the base constructor needs because the sync never reaches the database.
+    """
+
+    def __init__(self, error: Exception) -> None:
+        self._error = error
+
+    @override
+    def sync_draft_workflow(self, **kwargs: object) -> NoReturn:
+        raise self._error
+
+
+class _NoopSyncDraftService(WorkflowService):
+    """Named fake whose draft sync succeeds without touching the database."""
+
+    def __init__(self) -> None:
+        pass
+
+    @override
+    def sync_draft_workflow(self, **kwargs: object) -> Workflow:
+        return _make_workflow()
+
+
 def _make_workflow(
     *,
     graph_dict: dict[str, object] | None = None,
@@ -664,7 +690,7 @@ class TestWorkflowCases:
 
     @staticmethod
     def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        service = SimpleNamespace(sync_draft_workflow=_raising(workflow_module.WorkflowHashNotEqualError()))
+        service = _RaisingSyncDraftService(workflow_module.WorkflowHashNotEqualError())
         monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
 
         api = workflow_module.DraftWorkflowApi()
@@ -685,9 +711,7 @@ class TestWorkflowCases:
             "build_conversation_variable_from_mapping",
             _raising(workflow_module.VariableError("description too long")),
         )
-        monkeypatch.setattr(
-            workflow_module, "WorkflowService", lambda: SimpleNamespace(sync_draft_workflow=lambda **_kwargs: None)
-        )
+        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: _NoopSyncDraftService())
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
