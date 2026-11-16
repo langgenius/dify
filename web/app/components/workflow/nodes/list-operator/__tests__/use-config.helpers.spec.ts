@@ -96,6 +96,28 @@ describe('list operator use-config helpers', () => {
     expect(nextInputs.order_by.key).toBe('name')
   })
 
+  it('resets the filter key to name when switching between file array variables', () => {
+    const nextInputs = updateListFilterVariable({
+      inputs: {
+        ...createInputs(),
+        variable: ['node', 'files'],
+        var_type: VarType.arrayFile,
+        item_var_type: VarType.file,
+        filter_by: {
+          enabled: true,
+          conditions: [{ key: 'size', comparison_operator: '>', value: '10' }],
+        },
+      },
+      variable: ['node', 'other_files'],
+      varType: VarType.arrayFile,
+      itemVarType: VarType.file,
+    })
+
+    expect(nextInputs.filter_by.conditions[0]).toEqual(
+      expect.objectContaining({ key: 'name', comparison_operator: 'contains', value: '' }),
+    )
+  })
+
   it('updates filter, extract, limit and order by sections', () => {
     const condition: ListFilterNodeType['filter_by']['conditions'][number] = {
       key: 'size',
