@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import hashlib
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, TypedDict
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -17,6 +17,33 @@ from services.entities.site_dsl import SiteDsl
 AGENT_PACKAGE_SCHEMA_VERSION = 1
 AGENT_PACKAGE_REF_KEY = "package_ref"
 AGENT_NODE_JOB_DSL_KEY = "agent_job"
+
+
+class AgentNodeBindingDict(TypedDict, total=False):
+    """The ``agent_binding`` payload a workflow graph carries for one Dify Agent node.
+
+    A portable export stores the package reference so the importer can rebuild the binding;
+    a persisted graph stores the resolved agent and snapshot instead.
+    """
+
+    binding_type: str
+    agent_id: str
+    current_snapshot_id: str
+    package_ref: str
+
+
+class AgentNodeGraphNodeDict(TypedDict):
+    """One workflow graph node whose ``data`` may carry an :class:`AgentNodeBindingDict`."""
+
+    id: str
+    data: dict[str, object]
+
+
+class AgentNodeGraphDict(TypedDict):
+    """The workflow graph envelope the portable-package helpers read Agent nodes from."""
+
+    nodes: list[AgentNodeGraphNodeDict]
+    edges: list[dict[str, object]]
 
 
 class AgentPackageMetadata(BaseModel):

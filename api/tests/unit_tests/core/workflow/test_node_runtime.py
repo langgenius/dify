@@ -31,6 +31,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.plugin.plugin_service import PluginService
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.builtin_tool.providers.time.tools.current_time import CurrentTimeTool
 from core.tools.entities.common_entities import I18nObject as CoreI18nObject
 from core.tools.entities.tool_entities import ToolEntity, ToolIdentity, ToolInvokeMessage
 from core.tools.entities.tool_entities import ToolProviderType as CoreToolProviderType
@@ -76,7 +77,7 @@ from graphon.model_runtime.entities import (
 )
 from graphon.model_runtime.entities import UserPromptMessage
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.llm_entities import LLMMode, LLMPollingResult, LLMPollingStatus, LLMUsage
+from graphon.model_runtime.entities.llm_entities import LLMMode, LLMPollingResult, LLMPollingStatus, LLMResult, LLMUsage
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage as _node_runtime_AssistantPromptMessage,
 )
@@ -1483,7 +1484,7 @@ class _ModelInstanceStub(ModelInstance):
         *,
         model_schema: AIModelEntity | None,
         model_runtime: LLMModelRuntime | None = None,
-        invoke_llm_result: object = sentinel.result,
+        invoke_llm_result: LLMResult = sentinel.result,
         get_llm_num_tokens_result: int = 32,
     ) -> None:
         config = make_model_config(provider="langgenius/openai/openai", model="gpt-4o-mini", mode="chat")
@@ -1510,7 +1511,7 @@ class _QuotaManagedModelInstanceStub(_ModelInstanceStub, QuotaManagedModelInstan
         *,
         model_schema: AIModelEntity | None,
         model_runtime: LLMModelRuntime | None = None,
-        invoke_llm_result: object = sentinel.result,
+        invoke_llm_result: LLMResult = sentinel.result,
         get_llm_num_tokens_result: int = 32,
     ) -> None:
         super().__init__(
@@ -1529,27 +1530,8 @@ def _tool_binding(handle: ToolRuntimeHandle) -> _WorkflowToolRuntimeBinding:
     return binding
 
 
-class _StubTool(Tool):
-    """A concrete tool so tests can pass the class production code actually builds."""
-
-    @override
-    def tool_provider_type(self) -> CoreToolProviderType:
-        return CoreToolProviderType.BUILT_IN
-
-    @override
-    def _invoke(
-        self,
-        session: Session,
-        user_id: str,
-        tool_parameters: dict[str, object],
-        conversation_id: str | None = None,
-        app_id: str | None = None,
-        message_id: str | None = None,
-    ) -> ToolInvokeMessage:
-        raise NotImplementedError
-
-
-def _build_tool(*, runtime_parameters: dict[str, object] | None = None) -> _StubTool:
+def _build_tool() -> Tool:
+    """Build the real ``CurrentTimeTool`` production code resolves for a built-in tool node."""
     entity = ToolEntity(
         identity=ToolIdentity(
             author="author",
@@ -1558,8 +1540,8 @@ def _build_tool(*, runtime_parameters: dict[str, object] | None = None) -> _Stub
             provider="provider",
         )
     )
-    runtime = ToolRuntime(tenant_id="tenant-id", runtime_parameters=runtime_parameters or dict[str, object]())
-    return _StubTool(entity=entity, runtime=runtime)
+    runtime = ToolRuntime(tenant_id="tenant-id")
+    return CurrentTimeTool(provider="time", entity=entity, runtime=runtime)
 
 
 def _build_run_context(*, invoke_from: InvokeFrom | str = InvokeFrom.DEBUGGER) -> dict[str, object]:
