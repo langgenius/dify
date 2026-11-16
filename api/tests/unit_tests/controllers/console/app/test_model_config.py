@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session, object_session, scoped_session, sessionmaker
 
 from controllers.common import session as controller_session
 from controllers.console.app import model_config as model_config_module
+from controllers.console.app.model_config_payload import AppAgentToolPayload
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
 from core.app.app_config.easy_ui_based_app.model_config import manager as model_config_manager_module
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
@@ -143,7 +144,7 @@ def model_config_http(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", signal)
 
     class ModelConfigHttpResource(Resource):
-        def post(self) -> object:
+        def post(self) -> dict[str, str]:
             # Admission is supplied by this harness; parsing and HTTP errors use the real controller and API.
             return unwrap(model_config_module.ModelConfigResource.post)(
                 model_config_module.ModelConfigResource(), sqlite_session, "t1", "u1", app_model=app_model
@@ -495,16 +496,16 @@ def test_post_keeps_legacy_tools_readable_across_planning_strategies(
     model_config_http: _ModelConfigHttp, app_mode: AppMode, strategy: str
 ) -> None:
     model_config_http.app_model.mode = app_mode
-    tools: list[dict[str, object]] = [
+    tools: list[AppAgentToolPayload] = [
         {
             "extension": {"values": [None, False]},
             "dataset": {"id": "00000000-0000-0000-0000-000000000001", "enabled": None},
         },
         {"google_search": {"enabled": None}},
-        {"web_reader": dict[str, object]()},
+        {"web_reader": {}},
         {"wikipedia": {"enabled": False}},
         {"current_datetime": {"enabled": True}},
-        {"sensitive-word-avoidance": {"enabled": False, "words": list[object](), "canned_response": ""}},
+        {"sensitive-word-avoidance": {"enabled": False, "words": [], "canned_response": ""}},
     ]
 
     response = model_config_http.client.post(
