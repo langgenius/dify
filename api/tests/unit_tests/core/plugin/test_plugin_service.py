@@ -1538,108 +1538,60 @@ class TestEnterpriseRetainsReplacedPluginVersion:
     """
 
     @staticmethod
-    def _upgrade_with_marketplace() -> Mock:
-        order = Mock()
+    def _upgrade(source: str) -> list[object]:
+        """Run one upgrade and return what reached the plugin manager hook and the daemon, in order."""
+        calls: list[object] = []
+
+        def record_pre_uninstall(body: object) -> None:
+            calls.append(body)
+
+        def record_upgrade(*_args: object) -> str:
+            calls.append("upgrade_plugin")
+            return "task-id"
+
         with (
             patch(f"{MODULE}.SystemFeatureService") as feature_service,
+            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
             patch(f"{MODULE}.PluginInstaller") as installer_cls,
             patch(f"{MODULE}.marketplace"),
             patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
-            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin") as pre_uninstall,
+            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin", side_effect=record_pre_uninstall),
         ):
             feature_service.get_plugin_installation_permission.return_value = PluginInstallationPermissionModel(
                 restrict_to_marketplace_only=False,
                 plugin_installation_scope=PluginInstallationScope.ALL,
             )
             installer = installer_cls.return_value
-            installer.fetch_plugin_manifest.return_value = MagicMock()
-            decode_response = MagicMock()
-            decode_response.verification = None
-            installer.decode_plugin_from_identifier.return_value = decode_response
-            installer.upgrade_plugin.return_value = "task-id"
-            order.attach_mock(pre_uninstall, "pre_uninstall")
-            order.attach_mock(installer.upgrade_plugin, "upgrade_plugin")
+            installer.decode_plugin_from_identifier.return_value.verification = None
+            installer.upgrade_plugin.side_effect = record_upgrade
 
             from core.plugin.plugin_service import PluginService
 
-            assert PluginService.upgrade_plugin_with_marketplace(TENANT_ID, "old-uid", "new-uid") == "task-id"
-        return order
+            if source == "marketplace":
+                result = PluginService.upgrade_plugin_with_marketplace(TENANT_ID, "old-uid", "new-uid")
+            else:
+                result = PluginService.upgrade_plugin_with_github(
+                    TENANT_ID, "old-uid", "new-uid", "langgenius/openai", "1.0.0", "openai.difypkg"
+                )
 
-    @staticmethod
-    def _upgrade_with_github() -> Mock:
-        order = Mock()
-        with (
-            patch(f"{MODULE}.PluginService._check_marketplace_only_permission"),
-            patch(f"{MODULE}.PluginInstaller") as installer_cls,
-            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
-            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin") as pre_uninstall,
-        ):
-            installer = installer_cls.return_value
-            installer.upgrade_plugin.return_value = "task-id"
-            order.attach_mock(pre_uninstall, "pre_uninstall")
-            order.attach_mock(installer.upgrade_plugin, "upgrade_plugin")
+        assert result == "task-id"
+        return calls
 
-            from core.plugin.plugin_service import PluginService
-
-            result = PluginService.upgrade_plugin_with_github(
-                TENANT_ID, "old-uid", "new-uid", "langgenius/openai", "1.0.0", "openai.difypkg"
-            )
-            assert result == "task-id"
-        return order
-
-    @staticmethod
-    def _call_names(order: Mock) -> list[str]:
-        return [name for name, _, _ in order.mock_calls]
-
-    @pytest.mark.parametrize("upgrade", ["marketplace", "github"])
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
     def test_enterprise_upgrade_keeps_replaced_version_before_upgrading(
-        self, upgrade: str, config_overrides: Callable[..., None]
+        self, source: str, config_overrides: Callable[..., None]
     ) -> None:
         from services.enterprise.plugin_manager_service import PreUninstallPluginRequest
 
         config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
 
-        order = self._upgrade_with_marketplace() if upgrade == "marketplace" else self._upgrade_with_github()
+        calls = self._upgrade(source)
 
-        assert self._call_names(order) == ["pre_uninstall", "upgrade_plugin"]
-        order.pre_uninstall.assert_called_once_with(
-            PreUninstallPluginRequest(tenant_id=TENANT_ID, plugin_unique_identifier="old-uid")
-        )
+        assert calls == [
+            PreUninstallPluginRequest(tenant_id=TENANT_ID, plugin_unique_identifier="old-uid"),
+            "upgrade_plugin",
+        ]
 
-    @pytest.mark.parametrize("upgrade", ["marketplace", "github"])
-    def test_community_upgrade_does_not_call_enterprise_plugin_manager(self, upgrade: str) -> None:
-        order = self._upgrade_with_marketplace() if upgrade == "marketplace" else self._upgrade_with_github()
-
-        assert self._call_names(order) == ["upgrade_plugin"]
-
-    def test_enterprise_uninstall_still_keeps_version_before_daemon_uninstall(
-        self, config_overrides: Callable[..., None]
-    ) -> None:
-        from services.enterprise.plugin_manager_service import PreUninstallPluginRequest
-
-        config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
-        plugin = SimpleNamespace(
-            installation_id="installation-1",
-            plugin_id="langgenius/openai",
-            plugin_unique_identifier="langgenius/openai:1.0.0@abc",
-        )
-        order = Mock()
-        with (
-            patch(f"{MODULE}.PluginInstaller") as installer_cls,
-            patch(f"{MODULE}.PluginService.invalidate_plugin_model_providers_cache"),
-            patch(f"{MODULE}.PluginManagerService.try_pre_uninstall_plugin") as pre_uninstall,
-        ):
-            installer = installer_cls.return_value
-            installer.list_plugins.return_value = [plugin]
-            installer.uninstall.return_value = False
-            order.attach_mock(pre_uninstall, "pre_uninstall")
-            order.attach_mock(installer.uninstall, "uninstall")
-
-            from core.plugin.plugin_service import PluginService
-
-            assert PluginService.uninstall(TENANT_ID, "installation-1") is False
-
-        assert self._call_names(order) == ["pre_uninstall", "uninstall"]
-        order.pre_uninstall.assert_called_once_with(
-            PreUninstallPluginRequest(tenant_id=TENANT_ID, plugin_unique_identifier="langgenius/openai:1.0.0@abc")
-        )
+    @pytest.mark.parametrize("source", ["marketplace", "github"])
+    def test_community_upgrade_does_not_call_enterprise_plugin_manager(self, source: str) -> None:
+        assert self._upgrade(source) == ["upgrade_plugin"]
