@@ -49,6 +49,30 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
 })
 const installed = createPluginEntity()
 const identifier = (version: string) => `langgenius/plugin-entity:${version}@test`
+function installTask(
+  id: string,
+  status: 'running' | 'success' | 'failed',
+): Awaited<ReturnType<typeof api.task>>['task'] {
+  return {
+    id,
+    created_at: '',
+    updated_at: '',
+    status,
+    total_plugins: 1,
+    completed_plugins: status === 'success' ? 1 : 0,
+    plugins: [
+      {
+        plugin_id: installed.plugin_id,
+        plugin_unique_identifier: identifier('2.0.0'),
+        status,
+        message: status === 'failed' ? 'Package installation failed' : '',
+        icon: '',
+        labels: { en_US: 'Plugin' },
+      },
+    ],
+  }
+}
+
 beforeEach(() => {
   api.detail.mockReset().mockResolvedValue({ plugins: [installed] })
   api.tasks.mockReset().mockResolvedValue({ tasks: [] })
@@ -160,24 +184,7 @@ it.each(['success', 'failed'] as const)(
     await expect.element(dialog).toBeVisible()
     await act(async () =>
       task.resolve({
-        task: {
-          id: 'upgrade-job',
-          created_at: '',
-          updated_at: '',
-          status,
-          total_plugins: 1,
-          completed_plugins: status === 'success' ? 1 : 0,
-          plugins: [
-            {
-              plugin_id: installed.plugin_id,
-              plugin_unique_identifier: identifier('2.0.0'),
-              status,
-              message: status === 'failed' ? 'Package installation failed' : '',
-              icon: '',
-              labels: { en_US: 'Plugin' },
-            },
-          ],
-        },
+        task: installTask('upgrade-job', status),
       }),
     )
     if (status === 'failed') {
@@ -281,24 +288,7 @@ it('stops polling when the last panel unmounts and resumes the same job when ano
   api.detail.mockResolvedValue({ plugins: [createPluginEntity({ version: '2.0.0' })] })
   await act(async () =>
     resumed.resolve({
-      task: {
-        id: 'saved-task',
-        created_at: '',
-        updated_at: '',
-        status: 'success',
-        total_plugins: 1,
-        completed_plugins: 1,
-        plugins: [
-          {
-            plugin_id: installed.plugin_id,
-            plugin_unique_identifier: identifier('2.0.0'),
-            status: 'success',
-            message: '',
-            icon: '',
-            labels: { en_US: 'Plugin' },
-          },
-        ],
-      },
+      task: installTask('saved-task', 'success'),
     }),
   )
   await expect.element(page.getByRole('button', { name: /switchVersion 2\.0\.0/ })).toBeVisible()
@@ -348,24 +338,7 @@ it('records a task accepted after navigation without polling until a panel comes
   await act(async () => start.resolve({ all_installed: false, task_id: 'late-task' }))
   expect(api.task).not.toHaveBeenCalled()
   api.task.mockResolvedValue({
-    task: {
-      id: 'late-task',
-      status: 'success',
-      created_at: '',
-      updated_at: '',
-      total_plugins: 1,
-      completed_plugins: 1,
-      plugins: [
-        {
-          plugin_id: installed.plugin_id,
-          plugin_unique_identifier: identifier('2.0.0'),
-          status: 'success',
-          message: '',
-          icon: '',
-          labels: { en_US: 'Plugin' },
-        },
-      ],
-    },
+    task: installTask('late-task', 'success'),
   })
   api.detail.mockResolvedValue({ plugins: [createPluginEntity({ version: '2.0.0' })] })
   await render(<SwitchPluginVersion uniqueIdentifier={installed.plugin_unique_identifier} />, {
@@ -385,15 +358,7 @@ it.each(['task on second page', 'list unavailable'] as const)(
     if (scenario === 'list unavailable')
       api.tasks.mockRejectedValue(new Error('Network unavailable'))
     else {
-      const task = {
-        id: 'retry-status',
-        created_at: '',
-        updated_at: '',
-        status: 'running' as const,
-        total_plugins: 1,
-        completed_plugins: 0,
-        plugins: [],
-      }
+      const task = installTask('retry-status', 'running')
       api.tasks
         .mockResolvedValueOnce({
           tasks: Array.from({ length: 100 }, (_, id) => ({ ...task, id: String(id) })),
@@ -402,24 +367,7 @@ it.each(['task on second page', 'list unavailable'] as const)(
     }
     api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'retry-status' })
     api.task.mockRejectedValueOnce(new Error('Status unavailable')).mockResolvedValueOnce({
-      task: {
-        id: 'retry-status',
-        status: 'success',
-        created_at: '',
-        updated_at: '',
-        total_plugins: 1,
-        completed_plugins: 1,
-        plugins: [
-          {
-            plugin_id: installed.plugin_id,
-            plugin_unique_identifier: identifier('2.0.0'),
-            status: 'success',
-            message: '',
-            icon: '',
-            labels: { en_US: 'Plugin' },
-          },
-        ],
-      },
+      task: installTask('retry-status', 'success'),
     })
     const { trigger } = await setup()
     const open = async () => {
