@@ -23,7 +23,9 @@ function checkTaskStatus() {
         status: TaskStatus.success,
       }
     }
-    const res = await fetchCheckTaskStatus(taskId, signal)
+    const res = await (signal
+      ? fetchCheckTaskStatus(taskId, { signal })
+      : fetchCheckTaskStatus(taskId))
     signal?.throwIfAborted()
     const { plugins } = res.task
     const plugin = plugins.find((p) => p.plugin_unique_identifier === pluginUniqueIdentifier)
