@@ -15,9 +15,12 @@ from unittest.mock import patch
 
 import pytest
 from pytest_mock import MockerFixture
-from typing_extensions import TypedDict
 
-from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
+from core.app.app_config.easy_ui_based_app.model_config.converter import (
+    CompletionParameters,
+    ModelConfigConverter,
+    ProviderCredentials,
+)
 from core.app.app_config.entities import (
     EasyUIBasedAppConfig,
     EasyUIBasedAppModelConfigFrom,
@@ -40,7 +43,7 @@ from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMMode
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
-from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from models.model import AppMode
 from models.provider import ProviderType
@@ -49,20 +52,6 @@ TENANT_ID = "tenant_1"
 APP_ID = "app_1"
 PROVIDER_ID = "langgenius/openai/openai"
 MODEL_NAME = "gpt-4"
-
-
-class ProviderCredentials(TypedDict):
-    """The custom (BYOK) provider credentials the converter only checks for presence."""
-
-    api_key: str
-
-
-class CompletionParameters(TypedDict, total=False):
-    """The completion parameters the converter splits into ``parameters`` and ``stop``."""
-
-    temperature: float
-    max_tokens: int
-    stop: list[str]
 
 
 def _model_schema(model_properties: dict[ModelPropertyKey, object] | None = None) -> AIModelEntity:
@@ -123,9 +112,13 @@ def _provider_configuration(
     """Build a real provider configuration.
 
     The model validator records the provider's configure methods in a module-level registry, so the
-    registry is replaced for the duration of the construction to keep tests isolated from each other.
+    registry is replaced with a fresh instance of the production registry type for the duration of
+    the construction to keep tests isolated from each other.
     """
-    with patch("core.entities.provider_configuration.original_provider_configurate_methods", dict[str, object]()):
+    with patch(
+        "core.entities.provider_configuration.original_provider_configurate_methods",
+        dict[str, list[ConfigurateMethod]](),
+    ):
         return ProviderConfiguration(
             tenant_id=TENANT_ID,
             provider=_provider_schema(models=models),
@@ -351,6 +344,7 @@ class TestModelConfigConverter:
             )
 
         expected_stop: list[str] = parameters.get("stop", [])
-        expected_parameters: dict[str, object] = {key: value for key, value in parameters.items() if key != "stop"}
+        expected_parameters = dict(parameters)
+        expected_parameters.pop("stop", None)
         assert result.stop == expected_stop
         assert result.parameters == expected_parameters
