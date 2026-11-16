@@ -100,7 +100,9 @@
     max-width: 360px;
   }
 
-  :global([data-marketplace-standalone]) .headerCatalogTabs {
+  /* Let navigation capture the focused header link before hiding its slot.
+     The pinned state clears after the resize handoff has been scheduled. */
+  :global([data-marketplace-standalone]) .headerCatalogTabs:not(:has(.headerCatalogSlotPinned)) {
     display: none;
   }
 
