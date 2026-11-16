@@ -3,7 +3,11 @@
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 
+from models.enums import CreatorUserRole
+from models.model import AppMode
+from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobRecord
+from services.run_job_service import RunResult
 
 
 @dataclass
@@ -65,3 +69,55 @@ class RecordingJobStopper:
 
     def stop(self, record: JobRecord) -> None:
         self.stopped.append(record)
+
+
+@dataclass
+class InMemoryRunResults:
+    runs: dict[tuple[str, str], RunResult] = field(default_factory=dict)
+    forms: dict[tuple[str, str, str, AppMode], Mapping[str, object]] = field(default_factory=dict)
+
+    def run(self, *, tenant_id: str, run_id: str) -> RunResult | None:
+        return self.runs.get((tenant_id, run_id))
+
+    def pending_form(self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode) -> Mapping[str, object] | None:
+        return self.forms.get((tenant_id, app_id, run_id, mode))
+
+
+@dataclass(frozen=True)
+class WorkflowStop:
+    tenant_id: str
+    app_id: str
+    run_id: str
+    app_mode: AppMode
+    caller_role: CreatorUserRole
+    caller_id: str
+
+
+@dataclass(frozen=True)
+class MessageStop:
+    task_id: str
+    caller_role: CreatorUserRole
+    caller_id: str
+
+
+@dataclass
+class RecordingTaskControl:
+    workflow_stops: list[WorkflowStop] = field(default_factory=list)
+    message_stops: list[MessageStop] = field(default_factory=list)
+
+    def stop_workflow_run(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+        app_mode: AppMode,
+        caller_role: CreatorUserRole,
+        caller_id: str,
+    ) -> WorkflowStopOutcome:
+        self.workflow_stops.append(WorkflowStop(tenant_id, app_id, run_id, app_mode, caller_role, caller_id))
+        return WorkflowStopOutcome.STOPPED
+
+    def stop_message_task(self, *, task_id: str, caller_role: CreatorUserRole, caller_id: str) -> bool:
+        self.message_stops.append(MessageStop(task_id, caller_role, caller_id))
+        return True

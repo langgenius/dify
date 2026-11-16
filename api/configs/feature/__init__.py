@@ -1198,6 +1198,16 @@ class AuthConfig(BaseSettings):
         default=60,
     )
 
+    OPENAPI_JOB_MAX_BACKGROUND_RUNS: PositiveInt = Field(
+        description="Max app runs that one API process reads in the background for /openapi/v1 jobs.",
+        default=10,
+    )
+
+    OPENAPI_JOB_MAX_WAITERS: PositiveInt = Field(
+        description="Max /openapi/v1 job wait calls that one API process holds open at the same time.",
+        default=4,
+    )
+
     DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
         description="Max device-flow approve requests per session per hour on /openapi/oauth/device/approve.",
         default=10,
