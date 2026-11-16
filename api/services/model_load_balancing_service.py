@@ -1,7 +1,7 @@
 import contextlib
 import logging
 from collections.abc import Mapping
-from typing import TypedDict
+from typing import Protocol, TypedDict
 
 from pydantic import ConfigDict, RootModel, ValidationError
 from sqlalchemy import or_, select
@@ -67,7 +67,29 @@ def _decode_encrypted_config(encrypted_config: str | None) -> LoadBalancingCrede
         return LoadBalancingCredentials({})
 
 
-def _parse_submitted_credentials(raw: object) -> LoadBalancingCredentials:
+type LoadBalancingCredentialInput = LoadBalancingCredentials | Mapping[str, str | bool]
+
+
+class LoadBalancingTokenCipher(Protocol):
+    """Encrypts and decrypts secret credential values for one tenant."""
+
+    def encrypt_token(self, tenant_id: str, token: str) -> str: ...
+
+    def decrypt_token(self, tenant_id: str, token: str) -> str: ...
+
+
+class _EncrypterTokenCipher:
+    def encrypt_token(self, tenant_id: str, token: str) -> str:
+        return encrypter.encrypt_token(tenant_id, token)
+
+    def decrypt_token(self, tenant_id: str, token: str) -> str:
+        return encrypter.decrypt_token(tenant_id, token)
+
+
+_DEFAULT_TOKEN_CIPHER = _EncrypterTokenCipher()
+
+
+def _parse_submitted_credentials(raw: LoadBalancingCredentialInput) -> LoadBalancingCredentials:
     """Parse credentials submitted by a caller into :class:`LoadBalancingCredentials`.
 
     Already-parsed values are copied. Anything that is not a ``str | bool`` mapping is rejected.
@@ -401,6 +423,7 @@ class ModelLoadBalancingService:
         configs: list[dict],
         config_from: str,
         session: Session,
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
     ):
         """
         Update load balancing configurations.
@@ -506,6 +529,7 @@ class ModelLoadBalancingService:
                         credentials=parsed_credentials,
                         load_balancing_model_config=load_balancing_config,
                         validate=False,
+                        token_cipher=token_cipher,
                     )
 
                     # update load balancing config
@@ -556,6 +580,7 @@ class ModelLoadBalancingService:
                         model=model,
                         credentials=parsed_credentials,
                         validate=False,
+                        token_cipher=token_cipher,
                     )
 
                     # create load balancing config
@@ -593,9 +618,10 @@ class ModelLoadBalancingService:
         provider: str,
         model: str,
         model_type: str,
-        credentials: LoadBalancingCredentials | Mapping[str, object],
+        credentials: LoadBalancingCredentialInput,
         session: Session,
         config_id: str | None = None,
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
     ):
         """
         Validate load balancing credentials.
@@ -645,6 +671,7 @@ class ModelLoadBalancingService:
             credentials=_parse_submitted_credentials(credentials),
             load_balancing_model_config=load_balancing_model_config,
             model_provider_factory=assembly.model_provider_factory,
+            token_cipher=token_cipher,
         )
 
     def _custom_credentials_validate(
@@ -657,6 +684,7 @@ class ModelLoadBalancingService:
         load_balancing_model_config: LoadBalancingModelConfig | None = None,
         model_provider_factory: ModelProviderFactory | None = None,
         validate: bool = True,
+        token_cipher: LoadBalancingTokenCipher = _DEFAULT_TOKEN_CIPHER,
     ) -> LoadBalancingCredentials:
         """
         Validate custom credentials.
@@ -691,7 +719,7 @@ class ModelLoadBalancingService:
                 original = original_credentials.string_value(key)
                 if original is None:
                     continue
-                credentials.set(key, encrypter.decrypt_token(tenant_id, original))
+                credentials.set(key, token_cipher.decrypt_token(tenant_id, original))
 
         if validate:
             if model_provider_factory is None:
@@ -714,7 +742,7 @@ class ModelLoadBalancingService:
             token = credentials.string_value(key)
             if token is None:
                 continue
-            credentials.set(key, encrypter.encrypt_token(tenant_id, token))
+            credentials.set(key, token_cipher.encrypt_token(tenant_id, token))
 
         return credentials
 
