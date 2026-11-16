@@ -641,27 +641,51 @@ def test_redis_admission_error_retries_without_business_fallback(monkeypatch: py
     assert harness.retry.calls[0]["headers"] == {upgrade_module.COORDINATION_HEADER: reservation.model_dump_json()}
 
 
+def test_expired_delivery_does_not_retry_after_redis_admission_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An unavailable gate cannot extend expired work or authorize a fallback execution."""
+    harness = _setup_admission(monkeypatch)
+    harness.coordinator.acquire_error = RedisError("redis unavailable")
+
+    _run_admitted_task(_reservation(deadline=_ADMISSION_NOW - 1).model_dump(mode="json"))
+
+    assert len(harness.coordinator.acquisitions) == 1
+    assert harness.retry.calls == []
+    assert harness.processor.calls == []
+    assert harness.coordinator.finishes == []
+
+
 def test_busy_child_uses_real_celery_retry_beyond_the_default_three_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A deferred delivery can retry after attempt four without invoking the broker or business work."""
+    """A deferred delivery preserves its public retry publication after the default retry limit."""
     reservation = _reservation()
     harness = _setup_admission(monkeypatch, result=AcquireResult.BUSY, replace_retry=False)
     task = upgrade_module.process_tenant_plugin_autoupgrade_check_task
+    exclude_plugins: list[str] = []
+    include_plugins: list[str] = []
     args = (
         "tenant-1",
         TenantPluginAutoUpgradeStrategySetting.LATEST,
         27000,
         TenantPluginAutoUpgradeMode.ALL,
-        [],
-        [],
+        exclude_plugins,
+        include_plugins,
         TenantPluginAutoUpgradeCategory.TOOL,
     )
     headers = {
         upgrade_module.COORDINATION_HEADER: reservation.model_dump_json(),
         "traceparent": "parent-trace",
     }
-    task.push_request(args=args, kwargs={}, headers=headers, retries=4, is_eager=True, called_directly=False)
+    publications: list[tuple[tuple[object, ...], dict[str, object], dict[str, object]]] = []
+
+    def publish_retry(
+        published_args: tuple[object, ...], published_kwargs: dict[str, object], **options: object
+    ) -> None:
+        """Record the real Celery retry's broker boundary without sending a message."""
+        publications.append((published_args, published_kwargs, options))
+
+    monkeypatch.setattr(task, "apply_async", publish_retry)
+    task.push_request(args=args, kwargs={}, headers=headers, retries=4, is_eager=False, called_directly=False)
     try:
-        with pytest.raises(Retry) as retry_error:
+        with pytest.raises(Retry):
             task.run(*args)
     finally:
         task.pop_request()
@@ -669,11 +693,12 @@ def test_busy_child_uses_real_celery_retry_beyond_the_default_three_attempts(mon
     assert harness.processor.calls == []
     assert harness.coordinator.finishes == []
     assert harness.retry.calls == []
-    signature = retry_error.value.sig
-    assert signature is not None
-    assert signature.args == args
-    assert signature.kwargs == {}
-    assert signature.options["headers"] == headers
+    assert len(publications) == 1
+    published_args, published_kwargs, options = publications[0]
+    assert published_args == args
+    assert published_kwargs == {}
+    assert options["headers"] == headers
+    assert options["retries"] == 5
 
 
 @pytest.mark.parametrize("result", [AcquireResult.DUPLICATE, AcquireResult.EXPIRED])

@@ -1,8 +1,11 @@
 """The scheduler closes its read session and bounds duplicate work and dispatch pacing."""
 
+import subprocess
+import sys
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from pathlib import Path
 from types import TracebackType
 
 import pytest
@@ -19,6 +22,25 @@ from schedule import check_upgradable_plugin_task as scheduler
 from tasks.plugin_autoupgrade_coordination import CheckReservation
 
 SCHEDULED_AT = datetime(2026, 11, 16, 7, 30, tzinfo=UTC).timestamp()
+
+
+def test_scheduler_import_does_not_bootstrap_the_flask_application() -> None:
+    """Importing task definitions must register them without changing process-wide application state."""
+    api_directory = Path(__file__).resolve().parents[3]
+    source = f"""
+import sys
+sys.path.insert(0, {str(api_directory)!r})
+# Make an application bootstrap fail before it can install context/logging hooks.
+sys.modules['app'] = None
+from schedule.check_upgradable_plugin_task import check_upgradable_plugin_task
+assert check_upgradable_plugin_task.name == 'schedule.check_upgradable_plugin_task.check_upgradable_plugin_task'
+assert check_upgradable_plugin_task.queue == 'plugin'
+assert check_upgradable_plugin_task.acks_late is True
+assert check_upgradable_plugin_task.reject_on_worker_lost is True
+"""
+    result = subprocess.run([sys.executable, "-c", source], capture_output=True, text=True, timeout=15, check=False)
+
+    assert result.returncode == 0, result.stdout + result.stderr
 
 
 @dataclass

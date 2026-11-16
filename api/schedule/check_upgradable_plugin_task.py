@@ -4,13 +4,12 @@ import time
 from datetime import UTC, datetime
 
 import click
-from celery import Task
+from celery import Task, shared_task
 from kombu.exceptions import OperationalError
 from redis import RedisError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-import app
 from core.helper.marketplace import fetch_global_plugin_manifest
 from extensions.ext_database import db
 from models.account import TenantPluginAutoUpgradeStrategy, TenantPluginAutoUpgradeStrategySetting
@@ -28,7 +27,7 @@ CACHE_REDIS_KEY_PREFIX = check_task.CACHE_REDIS_KEY_PREFIX
 CACHE_REDIS_TTL = check_task.CACHE_REDIS_TTL
 
 
-@app.celery.task(
+@shared_task(
     bind=True, queue="plugin", max_retries=3, default_retry_delay=30, acks_late=True, reject_on_worker_lost=True
 )
 def check_upgradable_plugin_task(self: Task) -> None:
