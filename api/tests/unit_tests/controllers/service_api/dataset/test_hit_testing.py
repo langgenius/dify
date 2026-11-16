@@ -322,7 +322,7 @@ def test_post_forwards_transport_values_to_the_application_service(
         query="query",
         retrieval_model=retrieval_model,
         external_retrieval_model={"top_k": 3},
-        attachment_ids=["upload"],
+        attachment_ids=["9c603550-52be-46d6-8078-f5047c6b631c"],
     )
 
     assert _call_post(app, monkeypatch, service, payload, dataset_id) == service.result
@@ -334,7 +334,7 @@ def test_post_forwards_transport_values_to_the_application_service(
                 "query",
                 retrieval_model.model_dump(exclude_none=True),
                 ExternalRetrievalConfig(top_k=3),
-                ["upload"],
+                ["9c603550-52be-46d6-8078-f5047c6b631c"],
             ),
         )
     ]
@@ -449,14 +449,21 @@ def test_preserves_retrieval_options_and_metadata_filters(runtime: _Runtime) -> 
             "conditions": [{"name": "category", "comparison_operator": "is", "value": "finance"}],
         },
     }
-    response = _request(runtime, payload={"query": "query", "retrieval_model": model, "attachment_ids": ["upload"]})
+    response = _request(
+        runtime,
+        payload={
+            "query": "query",
+            "retrieval_model": model,
+            "attachment_ids": ["9c603550-52be-46d6-8078-f5047c6b631c"],
+        },
+    )
     assert response.status_code == 200
     request = runtime.service.retrieve.call_args.kwargs["request"]
     assert request == HitTestingRequest(
         "query",
         RetrievalModel.model_validate(model).model_dump(exclude_none=True),
         None,
-        ["upload"],
+        ["9c603550-52be-46d6-8078-f5047c6b631c"],
     )
 
 
@@ -475,7 +482,7 @@ def test_serializes_hit_testing_records(runtime: _Runtime) -> None:
 
 @pytest.mark.parametrize("payload", [{}, {"query": "x" * 251}, {"query": "query", "attachment_ids": "invalid"}])
 def test_invalid_payload_never_reaches_application(runtime: _Runtime, payload: dict[str, object]) -> None:
-    assert _request(runtime, payload=payload).status_code == 422
+    assert _request(runtime, payload=payload).status_code == 400
     runtime.service.retrieve.assert_not_called()
 
 
@@ -563,7 +570,7 @@ def test_external_attachment_only_error_is_a_clear_client_failure(runtime: _Runt
         "External knowledge bases do not support attachment-only retrieval."
     )
 
-    response = _request(runtime, payload={"query": "", "attachment_ids": ["upload-file-id"]})
+    response = _request(runtime, payload={"query": "", "attachment_ids": ["9c603550-52be-46d6-8078-f5047c6b631c"]})
 
     assert response.status_code == 400
     assert response.get_json() == {
@@ -593,8 +600,8 @@ class TestHitTestingPayload:
         assert HitTestingPayload(query="query").query == "query"
 
     def test_optional_fields(self) -> None:
-        payload = HitTestingPayload(query="", attachment_ids=["upload"])
-        assert payload.attachment_ids == ["upload"]
+        payload = HitTestingPayload(query="", attachment_ids=["9c603550-52be-46d6-8078-f5047c6b631c"])
+        assert payload.attachment_ids == ["9c603550-52be-46d6-8078-f5047c6b631c"]
 
     def test_schema_advertises_external_retrieval_settings(self) -> None:
         assert "external_retrieval_model" in HitTestingPayload.model_json_schema()["properties"]

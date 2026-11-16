@@ -1798,7 +1798,7 @@ export const zRetrievalModel = z.object({
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: zHitTestingExternalRetrievalModel.nullish(),
   query: z.string().max(250),
   retrieval_model: zRetrievalModel.nullish(),

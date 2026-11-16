@@ -2,6 +2,7 @@
 
 from collections.abc import Callable
 from functools import wraps
+from inspect import unwrap
 from types import SimpleNamespace
 from unittest.mock import create_autospec
 from uuid import UUID
@@ -12,6 +13,7 @@ from flask_restx import Resource
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from controllers.common.hit_testing import validate_hit_testing_payload
 from controllers.console import api as console_api
 from controllers.console.datasets import hit_testing as console_controller
 from controllers.service_api.dataset import hit_testing as service_controller
@@ -32,10 +34,11 @@ ROUTES = [
 
 def _admitted(view: Callable[..., object]) -> Callable[..., object]:
     """Supply admitted identity while retaining the production payload validator and handler."""
+    validated = validate_hit_testing_payload(unwrap(view))
 
     @wraps(view)
     def admitted(*args: object, **kwargs: object) -> object:
-        return view(*args, request_context=RequestContext("request", None, "account-1", "tenant-1"), **kwargs)
+        return validated(*args, request_context=RequestContext("request", None, "account-1", "tenant-1"), **kwargs)
 
     return admitted
 
@@ -48,10 +51,10 @@ def http_app() -> Flask:
     api.error_handlers = console_api.error_handlers.copy()
 
     class ConsoleEndpoint(Resource):
-        post = _admitted(console_controller.HitTestingApi.post.__wrapped__)
+        post = _admitted(console_controller.HitTestingApi.post)
 
     class ServiceEndpoint(Resource):
-        post = _admitted(service_controller.HitTestingApi.post.__wrapped__)
+        post = _admitted(service_controller.HitTestingApi.post)
 
     api.add_resource(ConsoleEndpoint, "/console/api/datasets/<uuid:dataset_id>/hit-testing")
     api.add_resource(

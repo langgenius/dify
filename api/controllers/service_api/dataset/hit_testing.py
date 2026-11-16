@@ -8,8 +8,8 @@ from controllers.common.errors import (
     NotFoundError,
     ServiceUnavailableError,
 )
+from controllers.common.hit_testing import validate_hit_testing_payload
 from controllers.common.schema import register_response_schema_models, register_schema_models
-from controllers.console.wraps import model_validate
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     CompletionRequestError,
@@ -118,7 +118,7 @@ class HitTestingApi(DatasetApiResource):
     @service_api_ns.response(404, "Dataset not found")
     @service_api_ns.expect(service_api_ns.models[HitTestingPayload.__name__])
     @dataset_admission(rate_limit=True)
-    @model_validate(HitTestingPayload)
+    @validate_hit_testing_payload
     def post(
         self,
         payload: HitTestingPayload,

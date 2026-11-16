@@ -1,6 +1,6 @@
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { ModalContextProvider } from '@/context/modal-context-provider'
+import { TriggerEventsLimitPrompt } from '@/app/components/billing/trigger-events-limit-modal/prompt'
 import { consoleQuery } from '@/service/console'
 import {
   createConsoleQueryClient,
@@ -130,9 +130,10 @@ it('shows a dismissible limit dialog when the workspace receives a zero event qu
     const { wrapper: NuqsWrapper } = createNuqsTestWrapper()
     render(
       <NuqsWrapper>
-        <ModalContextProvider>
+        <>
           <span>Workspace</span>
-        </ModalContextProvider>
+          <TriggerEventsLimitPrompt />
+        </>
       </NuqsWrapper>,
       { wrapper },
     )

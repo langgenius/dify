@@ -38,6 +38,7 @@ from models.workflow import WorkflowNodeExecutionOffload
 from repositories.workflow.upload_file_references import lock_new_workflow_upload_file_references
 from repositories.workflow_run_control import apply_workflow_stop_to_node, get_stopped_workflow_run
 from services.entities.upload_file import FileUploadActor
+from services.file_reference_parser import trusted_upload_file_ids
 from services.file_service import UploadFileCreator
 from services.variable_truncator import VariableTruncator
 from services.workflow.persistence import WorkflowNodeExecutionRepository
@@ -485,6 +486,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
 
         Create a new record or update only fields owned by execution persistence.
         The workspace store owns the workspace binding independently of execution snapshots.
+        The converted model must belong to this repository's tenant, app and run
+        scope. New upload references are validated under their locks before the
+        write commits; unrelated Agent and Workflow Tool identifiers are retained.
+        Exceptions propagate and uncommitted work rolls back when the session closes.
 
         Args:
             db_model: The database model to persist
@@ -511,24 +516,40 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
                 WorkflowNodeExecutionModel.workflow_run_id == db_model.workflow_run_id,
                 WorkflowNodeExecutionModel.triggered_from == self._triggered_from,
             )
-            existing = session.scalar(select(WorkflowNodeExecutionModel).where(*execution_scope).with_for_update())
-
-            lock_new_workflow_upload_file_references(
-                session,
-                tenant_id=self._tenant_id,
-                previous_payloads=(
-                    existing.inputs if existing is not None else None,
-                    existing.process_data if existing is not None else None,
-                    existing.outputs if existing is not None else None,
-                    existing.execution_metadata if existing is not None else None,
-                ),
-                current_payloads=(
-                    db_model.inputs,
-                    db_model.process_data,
-                    db_model.outputs,
-                    db_model.execution_metadata,
-                ),
+            current_payloads = (
+                db_model.inputs,
+                db_model.process_data,
+                db_model.outputs,
+                db_model.execution_metadata,
             )
+            if any(trusted_upload_file_ids(payload) for payload in current_payloads):
+                existing = session.execute(
+                    select(
+                        WorkflowNodeExecutionModel.inputs,
+                        WorkflowNodeExecutionModel.process_data,
+                        WorkflowNodeExecutionModel.outputs,
+                        WorkflowNodeExecutionModel.execution_metadata,
+                    )
+                    .where(*execution_scope)
+                    .with_for_update()
+                ).first()
+                lock_new_workflow_upload_file_references(
+                    session,
+                    tenant_id=self._tenant_id,
+                    previous_payloads=(
+                        existing.inputs if existing is not None else None,
+                        existing.process_data if existing is not None else None,
+                        existing.outputs if existing is not None else None,
+                        existing.execution_metadata if existing is not None else None,
+                    ),
+                    current_payloads=current_payloads,
+                )
+            else:
+                # Without upload references, only process data is needed to retain
+                # the Agent and Workflow Tool IDs owned by other stores.
+                existing = session.execute(
+                    select(WorkflowNodeExecutionModel.process_data).where(*execution_scope)
+                ).first()
 
             if existing is not None:
                 merged_process_data = keep_agent_and_tool_ids(

@@ -12,6 +12,7 @@ from controllers.common.errors import (
     NotFoundError,
     ServiceUnavailableError,
 )
+from controllers.common.hit_testing import validate_hit_testing_payload
 from controllers.common.rbac import DatasetId, RBACCheck
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console import console_ns
@@ -23,7 +24,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.datasets.error import DatasetNotInitializedError
 from controllers.console.flask_admission import console_account_admission
-from controllers.console.wraps import RBACPermission, model_validate
+from controllers.console.wraps import RBACPermission
 from extensions.ext_application_services import application_services
 from fields.hit_testing_fields import HitTestingPayload, HitTestingResponse
 from libs.external_api import error_responses
@@ -98,7 +99,7 @@ class HitTestingApi(Resource):
         billing_rate_limit="knowledge",
         rbac_checks=(RBACCheck(RBACPermission.DATASET_PIPELINE_TEST, DatasetId()),),
     )
-    @model_validate(HitTestingPayload)
+    @validate_hit_testing_payload
     def post(
         self,
         payload: HitTestingPayload,

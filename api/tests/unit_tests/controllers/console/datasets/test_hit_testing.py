@@ -477,7 +477,7 @@ def test_forwards_context_and_parsed_retrieval_options(monkeypatch: pytest.Monke
     payload = HitTestingPayload.model_validate(
         {
             "query": "query",
-            "attachment_ids": ["upload"],
+            "attachment_ids": ["9c603550-52be-46d6-8078-f5047c6b631c"],
             "retrieval_model": {
                 "search_method": "semantic_search",
                 "reranking_enable": False,
@@ -498,5 +498,5 @@ def test_forwards_context_and_parsed_retrieval_options(monkeypatch: pytest.Monke
         query="query",
         retrieval_model=payload.retrieval_model.model_dump(exclude_none=True),
         external_retrieval_model=None,
-        attachment_ids=["upload"],
+        attachment_ids=["9c603550-52be-46d6-8078-f5047c6b631c"],
     )

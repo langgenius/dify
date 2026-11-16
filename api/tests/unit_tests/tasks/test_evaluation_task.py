@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import timedelta
 from functools import partial
 from threading import Event
+from types import SimpleNamespace
 from uuid import UUID
 
 import pytest
@@ -92,6 +93,7 @@ from tasks.evaluation_task import (
 )
 from tests.helpers.unit.core.evaluation.capturing_evaluation_instance import CapturingEvaluationInstance
 from tests.helpers.unit.model_factories import make_account, make_app, make_tenant, make_workflow
+from tests.unit_tests.core.workflow.knowledge_retrieval_test_utils import make_knowledge_retriever
 
 
 def test_collect_retrieval_contexts_keeps_only_content_from_requested_nodes() -> None:
@@ -186,6 +188,10 @@ def test_customized_workflow_uses_pinned_version_and_keeps_row_errors(
     monkeypatch.setattr(
         "services.workflow_service.WorkflowService",
         partial(WorkflowService, session_maker=sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False)),
+    )
+    monkeypatch.setattr(
+        "tasks.evaluation_task.application_services",
+        lambda: SimpleNamespace(knowledge=SimpleNamespace(retrieval=make_knowledge_retriever())),
     )
     generated: list[dict[str, object]] = []
 

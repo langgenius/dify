@@ -5,6 +5,7 @@ from pydantic import BaseModel, ConfigDict, Discriminator, Field, Tag, field_val
 
 from fields.base import ResponseModel
 from libs.helper import to_timestamp
+from libs.uuid_utils import UUIDStr
 from services.knowledge.entities.external import ExternalRetrievalConfig
 from services.knowledge.entities.knowledge_entities import RetrievalModel
 
@@ -43,7 +44,7 @@ class HitTestingPayload(BaseModel):
             "stored on the knowledge base."
         ),
     )
-    attachment_ids: list[str] | None = Field(
+    attachment_ids: list[UUIDStr] | None = Field(
         default=None,
         description="List of attachment IDs to include in the retrieval context.",
     )

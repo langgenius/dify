@@ -1,5 +1,4 @@
 import type { DatasetUpdatePayload } from '@dify/contracts/api/console/datasets/types.gen'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import type { FetchDatasetsParams } from '@/models/datasets'
 import type { ConsoleClientContext } from '@/service/console'
@@ -52,22 +51,10 @@ export const createEmptyDataset = ({ name }: { name: string }, context?: Console
 }
 
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
-}
-
-export const updateExternalAPI = ({
-  apiTemplateId,
-  body,
-}: {
-  apiTemplateId: string
-  body: CreateExternalAPIReq
-}) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.patch({
-    params: { external_knowledge_api_id: apiTemplateId },
-    body,
-  })
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get(
+    { params: { external_knowledge_api_id: apiTemplateId } },
+    { context: { silent: true } },
+  )
 }
 
 export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
@@ -80,10 +67,6 @@ export const checkUsageExternalAPI = ({ apiTemplateId }: { apiTemplateId: string
   return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.useCheck.get({
     params: { external_knowledge_api_id: apiTemplateId },
   })
-}
-
-export const createExternalAPI = ({ body }: { body: CreateExternalAPIReq }) => {
-  return consoleClient.datasets.externalKnowledgeApi.post({ body }, { context: { silent: true } })
 }
 
 export const createExternalKnowledgeBase = (

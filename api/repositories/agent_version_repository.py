@@ -122,7 +122,11 @@ class SQLAlchemyAgentVersionRepository:
     def restore_version(
         self, *, tenant_id: str, agent_id: str, version_id: str, account_id: str
     ) -> AgentVersionRestored:
-        """Commit the visible snapshot and its home reference to the Agent's shared draft."""
+        """Restore an owned, visible snapshot after validating its new upload references.
+
+        Success commits the shared draft and its home reference atomically. An
+        unavailable snapshot or upload leaves the previous draft unchanged.
+        """
         with self._session_factory.begin() as session:
             agent = _agent(session, tenant_id, agent_id)
             visible_ids = visible_version_ids(tenant_id=tenant_id, agent_id=agent_id, agent=agent)
