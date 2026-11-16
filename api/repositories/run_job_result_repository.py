@@ -47,6 +47,20 @@ class _Closable(Protocol):
     def close(self) -> None: ...
 
 
+def _form_data(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
+    """Pick the form out of a decoded frame.
+
+    Precondition: payload is a decoded frame.
+    Postcondition: the data object of a human_input_required frame, else None.
+    """
+    if payload.get("event") != _FORM_EVENT:
+        return None
+    data = payload.get("data")
+    if not isinstance(data, Mapping):
+        return None
+    return data
+
+
 def _last_form(frames: Iterable[str]) -> Mapping[str, Any] | None:
     """Read frames up to the first pause or finish and keep the last human input form.
 
@@ -57,12 +71,11 @@ def _last_form(frames: Iterable[str]) -> Mapping[str, Any] | None:
     form: Mapping[str, Any] | None = None
     for frame in frames:
         payload = decode_frame(frame) or {}
-        event = payload.get("event")
-        data = payload.get("data")
-        if event == _FORM_EVENT and isinstance(data, Mapping):
-            form = data
-        if event in _STOP_EVENTS:
+        if payload.get("event") in _STOP_EVENTS:
             return form
+        found = _form_data(payload)
+        if found is not None:
+            form = found
     return form
 
 
