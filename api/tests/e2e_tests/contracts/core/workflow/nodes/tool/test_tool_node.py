@@ -86,7 +86,7 @@ class _StubToolFileStore:
     ) -> ToolFile:
         raise NotImplementedError
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]:
         self.requested_ids.append(tool_file_id)
         return None, self.tool_files.get(tool_file_id)
 

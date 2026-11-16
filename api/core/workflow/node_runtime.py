@@ -501,7 +501,7 @@ class ToolFileStore(Protocol):
         filename: str | None = None,
     ) -> ToolFile: ...
 
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]: ...
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]: ...
 
 
 class DifyToolFileManager(ToolFileManagerProtocol):
@@ -539,7 +539,7 @@ class DifyToolFileManager(ToolFileManagerProtocol):
         )
 
     @override
-    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator | None, File | None]:
+    def get_file_generator_by_tool_file_id(self, tool_file_id: str) -> tuple[Generator[bytes] | None, File | None]:
         return self._store.get_file_generator_by_tool_file_id(tool_file_id)
 
 
