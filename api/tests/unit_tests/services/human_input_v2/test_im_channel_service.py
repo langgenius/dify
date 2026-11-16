@@ -423,6 +423,39 @@ def test_classified_provider_failures_map_to_safe_stable_errors(
 
 
 @pytest.mark.parametrize("operation", ["test", "create"])
+@pytest.mark.parametrize("provider_code", ["AADSTS90002", "AADSTS900021"])
+def test_teams_tenant_rejections_explain_azure_fields_without_saving(
+    monkeypatch: pytest.MonkeyPatch, operation: str, provider_code: str
+) -> None:
+    state = _State()
+    service = _TestService(state)
+    credentials = _CASES[4].credentials
+    _install_adapter(
+        monkeypatch,
+        state,
+        provider=IMProvider.MS_TEAMS,
+        result=CredentialTestFailure(
+            CredentialTestFailureKind.AUTHENTICATION_REJECTED,
+            "raw provider-secret-diagnostic",
+            provider_error_code=provider_code,
+        ),
+    )
+
+    command = service.test if operation == "test" else service.create
+    with pytest.raises(ChannelProviderError) as captured:
+        command(credentials)
+
+    assert captured.value.kind is ProviderFailureKind.INVALID_CREDENTIALS
+    assert captured.value.status_description == (
+        "The Microsoft Teams Tenant ID is invalid. In Azure Bot Configuration, copy App Tenant ID into Tenant ID "
+        f"and Microsoft App ID into Client ID. API error code: {provider_code}."
+    )
+    assert "provider-secret-diagnostic" not in str(captured.value)
+    assert state.current is None
+    assert service.cipher.plaintexts == []
+
+
+@pytest.mark.parametrize("operation", ["test", "create"])
 def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(
     monkeypatch: pytest.MonkeyPatch, operation: str
 ) -> None:
