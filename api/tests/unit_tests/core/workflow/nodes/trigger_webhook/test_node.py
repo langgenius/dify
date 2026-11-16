@@ -11,7 +11,12 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode, WebhookFileDict
+from core.workflow.nodes.trigger_webhook.node import (
+    TriggerWebhookNode,
+    WebhookFileDict,
+    _webhook_file_record_id,
+    parse_webhook_file,
+)
 from core.workflow.system_variables import default_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -896,3 +901,80 @@ def test_webhook_data_field_defaults() -> None:
     assert data.response_body == ""
     assert data.webhook_id is None
     assert data.timeout == 30
+
+
+def test_parse_webhook_file_rejects_non_mapping_and_empty_values() -> None:
+    assert parse_webhook_file(None) is None
+    assert parse_webhook_file("file-123") is None
+    assert parse_webhook_file(["file-123"]) is None
+    assert parse_webhook_file({}) is None
+    assert parse_webhook_file({"nested": {"id": "file-123"}}) is None
+    assert parse_webhook_file({1: "file-123"}) is None
+
+
+def test_parse_webhook_file_keeps_only_scalar_string_keyed_fields() -> None:
+    raw = {
+        "id": "file-123",
+        "size": 1024,
+        "used_at": None,
+        "nested": {"id": "inner"},
+        7: "non-string-key",
+    }
+    parsed = parse_webhook_file(raw)
+    assert parsed == {"id": "file-123", "size": 1024, "used_at": None}
+    assert raw["nested"] == {"id": "inner"}
+
+
+def test_webhook_file_record_id_prefers_reference_then_related_id() -> None:
+    assert _webhook_file_record_id({"reference": "ref-1", "related_id": "rel-1"}) == "ref-1"
+    assert _webhook_file_record_id({"reference": "", "related_id": "rel-1"}) == "rel-1"
+    assert _webhook_file_record_id({"reference": 42, "related_id": "rel-1"}) == "rel-1"
+    assert _webhook_file_record_id({"related_id": ""}) is None
+    assert _webhook_file_record_id({}) is None
+
+
+def test_generate_file_var_without_transfer_method_returns_none() -> None:
+    data = WebhookData(
+        title="Test Webhook",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool({"webhook_data": {}})
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    assert node.generate_file_var("upload", {"id": "file-123"}) is None
+    assert node.generate_file_var("upload", {"transfer_method": ""}) is None
+    assert node.generate_file_var("upload", {"transfer_method": 42}) is None
+
+
+def test_generate_file_var_returns_none_when_file_build_fails() -> None:
+    data = WebhookData(
+        title="Test Webhook",
+        method=Method.POST,
+        content_type=ContentType.FORM_DATA,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool({"webhook_data": {}})
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    with patch.object(node._file_reference_factory, "build_from_mapping", side_effect=ValueError("bad file")):
+        assert node.generate_file_var("upload", create_test_file_dict()) is None
+
+
+def test_webhook_node_binary_upload_without_parsable_file_keeps_raw() -> None:
+    data = WebhookData(
+        title="Test Webhook Binary",
+        method=Method.POST,
+        content_type=ContentType.BINARY,
+        body=[WebhookBodyParameter(name="upload", type="file", required=True)],
+    )
+    variable_pool = _webhook_file_conversion_build_webhook_variable_pool(
+        {"webhook_data": {"headers": {}, "query_params": {}, "body": {"raw": {"nested": {"id": "x"}}}}}
+    )
+    node = _webhook_file_conversion_create_webhook_node(data, variable_pool)
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs["upload"] == {"nested": {"id": "x"}}
