@@ -1156,7 +1156,7 @@ export function AgentPromptEditor() {
               wrapperClassName="min-h-[104px]"
               className={cn('min-h-26 text-text-primary', readOnly && 'cursor-not-allowed')}
               placeholder={promptPlaceholder}
-              placeholderClassName="top-0!"
+              placeholderClassName="top-0! truncate"
               editable={!readOnly}
               value={value}
               onChange={setValue}
