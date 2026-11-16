@@ -11,7 +11,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
     WebhookData,
     WebhookParameter,
 )
-from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode
+from core.workflow.nodes.trigger_webhook.node import TriggerWebhookNode, WebhookFileDict
 from core.workflow.system_variables import default_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
 from graphon.file import File, FileTransferMethod, FileType
@@ -69,7 +69,7 @@ def create_test_file_dict(
     filename: str = "test.jpg",
     file_type: str = "image",
     transfer_method: str = "local_file",
-) -> dict[str, object]:
+) -> WebhookFileDict:
     """Create a test file dictionary as it would come from webhook service."""
     return {
         "id": "file-123",

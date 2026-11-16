@@ -1,6 +1,8 @@
 import logging
 from collections.abc import Mapping
-from typing import Any, TypedDict, override
+from typing import Any, NotRequired, override
+
+from typing_extensions import TypedDict
 
 from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
 from core.workflow.file_reference import resolve_file_record_id
@@ -38,6 +40,63 @@ class WebhookNodeDefaultConfig(TypedDict):
 
     type: str
     config: WebhookNodeConfig
+
+
+type WebhookFileValue = str | int | None
+
+
+class WebhookFileDict(TypedDict, extra_items=WebhookFileValue):
+    """One webhook upload file entry, as produced by ``File.to_dict`` and consumed by the node.
+
+    The webhook payload crosses an external boundary, so the known fields are declared here instead
+    of being re-discovered with ``dict[str, Any]`` lookups further down. Field values keep the width
+    of ``File.to_dict`` (JSON scalars); unknown scalars remain allowed through ``extra_items``.
+    """
+
+    id: NotRequired[WebhookFileValue]
+    type: NotRequired[WebhookFileValue]
+    transfer_method: NotRequired[WebhookFileValue]
+    reference: NotRequired[WebhookFileValue]
+    related_id: NotRequired[WebhookFileValue]
+    upload_file_id: NotRequired[WebhookFileValue]
+    tool_file_id: NotRequired[WebhookFileValue]
+    datasource_file_id: NotRequired[WebhookFileValue]
+    filename: NotRequired[WebhookFileValue]
+    extension: NotRequired[WebhookFileValue]
+    mime_type: NotRequired[WebhookFileValue]
+    url: NotRequired[WebhookFileValue]
+    size: NotRequired[WebhookFileValue]
+
+
+def _is_webhook_file_value(value: object) -> bool:
+    """Return whether ``value`` is a scalar the webhook file payload can carry."""
+    return value is None or isinstance(value, str | int)
+
+
+def parse_webhook_file(raw: object) -> WebhookFileDict | None:
+    """Parse one external webhook file entry into :class:`WebhookFileDict`.
+
+    Preconditions: ``raw`` is any value reached from the untrusted webhook inputs.
+    Postconditions: returns the scalar fields of ``raw`` as a ``WebhookFileDict`` when ``raw`` is a
+    non-empty mapping of string keys to scalars, and ``None`` otherwise. ``raw`` is never mutated.
+    """
+    if not isinstance(raw, Mapping):
+        return None
+    values: dict[str, WebhookFileValue] = {
+        key: value for key, value in raw.items() if isinstance(key, str) and _is_webhook_file_value(value)
+    }
+    if not values:
+        return None
+    return WebhookFileDict(**values)
+
+
+def _webhook_file_record_id(file: WebhookFileDict) -> str | None:
+    """Return the file reference id carried by ``file``, if any."""
+    for field_name in ("reference", "related_id"):
+        value = file.get(field_name)
+        if isinstance(value, str) and value:
+            return value
+    return None
 
 
 class TriggerWebhookNode(Node[WebhookData]):
@@ -110,10 +169,16 @@ class TriggerWebhookNode(Node[WebhookData]):
             outputs=outputs,
         )
 
-    def generate_file_var(self, param_name: str, file: dict[str, Any]):
-        file_id = resolve_file_record_id(file.get("reference") or file.get("related_id"))
+    def generate_file_var(self, param_name: str, file: WebhookFileDict) -> FileVariable | None:
+        """Build the ``FileVariable`` output for one webhook file parameter.
+
+        Preconditions: ``file`` is a parsed webhook file entry.
+        Postconditions: returns the file variable when the entry can be resolved into a stored file,
+        and ``None`` otherwise. ``file`` is annotated in place with the transfer-method-specific id.
+        """
+        file_id = resolve_file_record_id(_webhook_file_record_id(file))
         transfer_method_value = file.get("transfer_method")
-        if transfer_method_value:
+        if isinstance(transfer_method_value, str) and transfer_method_value:
             transfer_method = FileTransferMethod.value_of(transfer_method_value)
             match transfer_method:
                 case FileTransferMethod.LOCAL_FILE | FileTransferMethod.REMOTE_URL:
@@ -182,8 +247,10 @@ class TriggerWebhookNode(Node[WebhookData]):
                 outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
                 continue
             elif self.node_data.content_type == ContentType.BINARY:
-                raw_data: dict[str, Any] = webhook_data.get("body", {}).get("raw", {})
-                file_var = self.generate_file_var(param_name, raw_data)
+                # Binary uploads arrive as a single ``File.to_dict()`` payload under ``raw``.
+                raw_data: Mapping[str, WebhookFileValue] = webhook_data.get("body", {}).get("raw", {})
+                parsed_file = parse_webhook_file(raw_data)
+                file_var = self.generate_file_var(param_name, parsed_file) if parsed_file else None
                 if file_var:
                     outputs[param_name] = file_var
                 else:
@@ -196,12 +263,10 @@ class TriggerWebhookNode(Node[WebhookData]):
                     files = webhook_data.get("files", {})
                     if files and isinstance(files, dict):
                         file = files.get(param_name)
-                        if file and isinstance(file, dict):
-                            file_var = self.generate_file_var(param_name, file)
-                            if file_var:
-                                outputs[param_name] = file_var
-                            else:
-                                outputs[param_name] = files
+                        parsed_file = parse_webhook_file(file)
+                        file_var = self.generate_file_var(param_name, parsed_file) if parsed_file else None
+                        if file_var:
+                            outputs[param_name] = file_var
                         else:
                             outputs[param_name] = files
                     else:
