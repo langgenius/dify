@@ -15,6 +15,7 @@ import { toast } from '@/app/notifications'
 import { useDocLink } from '@/context/i18n'
 import { consoleQuery } from '@/service/console'
 import { fetchExternalAPI } from '@/service/datasets'
+import { getHttpErrorStatus } from '@/service/http-error'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
@@ -107,7 +108,11 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({
                   onEdit={() =>
                     details.mutate(api.id, {
                       onError: (error) => {
-                        if (error instanceof TypeError) toast.error(t(($) => $['api.actionFailed']))
+                        toast.error(
+                          getHttpErrorStatus(error) && error.message
+                            ? error.message
+                            : t(($) => $['api.actionFailed']),
+                        )
                       },
                       onSuccess: (detail) => dialog.openWithPayload(detail),
                     })

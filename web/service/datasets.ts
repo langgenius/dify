@@ -51,9 +51,10 @@ export const createEmptyDataset = ({ name }: { name: string }, context?: Console
 }
 
 export const fetchExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
-  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get({
-    params: { external_knowledge_api_id: apiTemplateId },
-  })
+  return consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get(
+    { params: { external_knowledge_api_id: apiTemplateId } },
+    { context: { silent: true } },
+  )
 }
 
 export const deleteExternalAPI = ({ apiTemplateId }: { apiTemplateId: string }) => {
