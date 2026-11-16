@@ -1,5 +1,5 @@
-import { delay } from 'es-toolkit/promise'
 import { checkTaskStatus as fetchCheckTaskStatus } from '@/service/plugins'
+import { sleep } from '@/utils'
 import { TaskStatus } from '../../types'
 
 const INTERVAL = 10 * 1000 // 10 seconds
@@ -7,7 +7,6 @@ const isUnfinishedStatus = (status: TaskStatus) =>
   status === TaskStatus.pending || status === TaskStatus.running
 
 type Params = {
-  signal?: AbortSignal
   taskId: string
   pluginUniqueIdentifier: string
 }
@@ -16,17 +15,13 @@ function checkTaskStatus() {
   let nextStatus: TaskStatus = TaskStatus.running
   let isStop = false
 
-  const doCheckStatus = async ({ taskId, pluginUniqueIdentifier, signal }: Params) => {
-    signal?.throwIfAborted()
+  const doCheckStatus = async ({ taskId, pluginUniqueIdentifier }: Params) => {
     if (isStop) {
       return {
         status: TaskStatus.success,
       }
     }
-    const res = await (signal
-      ? fetchCheckTaskStatus(taskId, { signal })
-      : fetchCheckTaskStatus(taskId))
-    signal?.throwIfAborted()
+    const res = await fetchCheckTaskStatus(taskId)
     const { plugins } = res.task
     const plugin = plugins.find((p) => p.plugin_unique_identifier === pluginUniqueIdentifier)
     if (!plugin) {
@@ -38,9 +33,8 @@ function checkTaskStatus() {
     }
     nextStatus = plugin.status
     if (isUnfinishedStatus(nextStatus)) {
-      await delay(INTERVAL, { signal })
+      await sleep(INTERVAL)
       return await doCheckStatus({
-        signal,
         taskId,
         pluginUniqueIdentifier,
       })

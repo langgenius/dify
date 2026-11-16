@@ -83,15 +83,4 @@ describe('checkTaskStatus', () => {
     await expect(result).resolves.toEqual({ status: TaskStatus.success })
     expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1')
   })
-  it('aborts the active delay without another request or reporting a successful installation', async () => {
-    const controller = new AbortController()
-    fetchTask.mockResolvedValue(task(TaskStatus.running))
-    const result = checkTaskStatus().check({ ...params, signal: controller.signal })
-    const aborted = expect(result).rejects.toThrow('The operation was aborted')
-    await vi.advanceTimersByTimeAsync(0)
-    controller.abort()
-    await aborted
-    await vi.advanceTimersByTimeAsync(20_000)
-    expect(fetchTask).toHaveBeenCalledExactlyOnceWith('task-1', { signal: controller.signal })
-  })
 })

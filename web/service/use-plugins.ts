@@ -761,22 +761,19 @@ export const useRemoveFilteredInstalledPluginPageOnUnmount = (
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
-  const invalidateAllBuiltInTools = (refetchType: 'active' | 'none') =>
+  const invalidateAllBuiltInTools = () =>
     queryClient.invalidateQueries({
-      refetchType,
       queryKey: consoleQuery.workspaces.current.tools.builtin.get.queryKey(),
     })
-  return (category?: PluginCategoryEnum, refetchType: 'active' | 'none' = 'active') => {
+  return (category?: PluginCategoryEnum) => {
     if (category) {
       const invalidateCategoryPluginList = queryClient.invalidateQueries({
-        refetchType,
         queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key({
           type: 'infinite',
           input: { params: { category } },
         }),
       })
       const invalidateCategoryInstalledIds = queryClient.invalidateQueries({
-        refetchType,
         queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key({
           type: 'query',
           input: { query: { category } },
@@ -787,7 +784,7 @@ export const useInvalidateInstalledPluginList = () => {
         return Promise.all([
           invalidateCategoryPluginList,
           invalidateCategoryInstalledIds,
-          invalidateAllBuiltInTools(refetchType),
+          invalidateAllBuiltInTools(),
         ]).then(() => undefined)
 
       return Promise.all([invalidateCategoryPluginList, invalidateCategoryInstalledIds]).then(
@@ -797,18 +794,15 @@ export const useInvalidateInstalledPluginList = () => {
 
     return Promise.all([
       queryClient.invalidateQueries({
-        refetchType,
         queryKey: consoleQuery.workspaces.current.plugin.list.get.key(),
       }),
       queryClient.invalidateQueries({
-        refetchType,
         queryKey: consoleQuery.workspaces.current.plugin.byCategory.list.get.key(),
       }),
       queryClient.invalidateQueries({
-        refetchType,
         queryKey: consoleQuery.workspaces.current.plugin.installedIds.get.key(),
       }),
-      invalidateAllBuiltInTools(refetchType),
+      invalidateAllBuiltInTools(),
     ]).then(() => undefined)
   }
 }
