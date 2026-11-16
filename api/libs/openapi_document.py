@@ -221,9 +221,7 @@ def _location(steps: Sequence[str | int]) -> str:
         else:
             parts.append(str(step))
         previous = str(step)
-    return "".join(
-        part if index == 0 or part.startswith("[") else f".{part}" for index, part in enumerate(parts)
-    )
+    return "".join(part if index == 0 or part.startswith("[") else f".{part}" for index, part in enumerate(parts))
 
 
 def _structure_error(error: ValidationError) -> OpenAPIStructureError:
