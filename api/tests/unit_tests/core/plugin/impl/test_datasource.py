@@ -140,6 +140,75 @@ class TestPluginDatasourceManager:
         assert result.declaration.identity.name == "org/plugin/provider"
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
+    def test_list_transformer_keeps_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
+        manager = PluginDatasourceManager()
+        repack = mocker.patch("core.plugin.impl.datasource.ToolTransformService.repack_provider")
+        resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs")
+        provider = _datasource_provider("remote")
+
+        def fake_request(
+            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
+        ) -> list[SimpleNamespace]:
+            transformer = kwargs["transformer"]
+            payload: PluginDatasourceListPayload = {
+                "data": [
+                    {},
+                    {"declaration": {}},
+                    {"declaration": {"identity": {}, "datasources": [{"identity": {"provider": "old"}}]}},
+                    {
+                        "declaration": {
+                            "identity": {"name": "remote"},
+                            "datasources": [{"identity": {"provider": "old"}}],
+                        }
+                    },
+                ]
+            }
+            transformed = transformer(payload)
+            data = transformed["data"]
+            assert "declaration" not in data[0]
+            assert "datasources" not in data[1]["declaration"]
+            assert data[2]["declaration"]["datasources"][0]["identity"]["provider"] is None
+            assert data[3]["declaration"]["datasources"][0]["identity"]["provider"] == "remote"
+            assert "output_schema" not in data[3]["declaration"]["datasources"][0]
+            return [provider]
+
+        mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+
+        manager.fetch_datasource_providers("tenant-1")
+        manager.fetch_installed_datasource_providers("tenant-1")
+
+        resolver.assert_not_called()
+        assert repack.call_count == 2
+
+    def test_single_transformer_tolerates_missing_data_and_declaration(self, mocker: MockerFixture) -> None:
+        manager = PluginDatasourceManager()
+        resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs")
+        remote = _datasource_provider("provider")
+        seen: list[PluginDatasourceSinglePayload] = []
+
+        def fake_request(
+            method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
+        ) -> SimpleNamespace:
+            transformer = kwargs["transformer"]
+            empty: PluginDatasourceSinglePayload = {}
+            seen.append(transformer(empty))
+            no_declaration: PluginDatasourceSinglePayload = {"data": {}}
+            seen.append(transformer(no_declaration))
+            no_schema: PluginDatasourceSinglePayload = {
+                "data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}
+            }
+            seen.append(transformer(no_schema))
+            return remote
+
+        mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
+
+        manager.fetch_datasource_provider("tenant-1", "org/plugin/provider")
+
+        assert "data" not in seen[0]
+        assert "declaration" not in seen[1]["data"]
+        assert seen[2]["data"]["declaration"]["datasources"][0]["identity"]["provider"] == "provider"
+        resolver.assert_not_called()
+
     def test_get_website_crawl_streaming(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
         stream_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response_stream")
