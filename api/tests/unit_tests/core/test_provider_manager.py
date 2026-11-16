@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from flask import has_app_context
-from sqlalchemy import Engine, event, select
+from sqlalchemy import Engine, delete, event, select
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import QueuePool
 
@@ -75,8 +75,8 @@ def _persist_model_configuration(
 
 
 @pytest.fixture
-def provider_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Iterator[Session]:
-    """Yield a test-owned session and bind the manager's short-lived sessions to the same SQLite database."""
+def provider_db(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    """Yield a test-owned session on the SQLite database that the manager's own sessions also use."""
     models = (
         Provider,
         ProviderCredential,
@@ -89,9 +89,7 @@ def provider_db(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> Itera
     )
     tables = [model.metadata.tables[model.__tablename__] for model in models]
     TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    owned_session_factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(provider_manager_module.session_factory, "create_session", owned_session_factory)
-    with owned_session_factory() as test_session:
+    with sqlite_session_factory() as test_session:
         yield test_session
 
 
@@ -1326,7 +1324,18 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
     assert str(ModelProviderID("anthropic")) not in result
 
 
-def test_init_trial_provider_records_attaches_credential_of_concurrently_created_record(provider_db: Session) -> None:
+def _init_openai_trial_provider_records(session_maker: sessionmaker[Session]) -> dict[str, list[Provider]]:
+    return ProviderManager._init_trial_provider_records(
+        "tenant-id",
+        defaultdict(list),
+        hosting_providers={"openai": _build_hosting_provider()},
+        session_maker=session_maker,
+    )
+
+
+def test_init_trial_provider_records_attaches_credential_of_concurrently_created_record(
+    provider_db: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     existing_provider = _build_trial_provider_record()
     existing_provider.credential_id = "credential-id"
     credential = ProviderCredential(
@@ -1339,11 +1348,7 @@ def test_init_trial_provider_records_attaches_credential_of_concurrently_created
     provider_db.add_all([existing_provider, credential])
     provider_db.commit()
 
-    with patch(
-        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-        {"openai": _build_hosting_provider()},
-    ):
-        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+    result = _init_openai_trial_provider_records(sqlite_session_factory)
 
     assert result["openai"][0].encrypted_config == '{"api_key": "secret"}'
 
@@ -1352,14 +1357,12 @@ def _build_unrelated_provider_record() -> Provider:
     return Provider(tenant_id="other-tenant", provider_name="anthropic", provider_type=ProviderType.CUSTOM)
 
 
-def test_init_trial_provider_records_does_not_commit_the_callers_pending_work(provider_db: Session) -> None:
+def test_init_trial_provider_records_does_not_commit_the_callers_pending_work(
+    provider_db: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     provider_db.add(_build_unrelated_provider_record())
 
-    with patch(
-        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-        {"openai": _build_hosting_provider()},
-    ):
-        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+    result = _init_openai_trial_provider_records(sqlite_session_factory)
 
     provider_db.rollback()
     persisted = {
@@ -1369,34 +1372,30 @@ def test_init_trial_provider_records_does_not_commit_the_callers_pending_work(pr
     assert [record.quota_type for record in result["openai"]] == [ProviderQuotaType.TRIAL]
 
 
-def test_init_trial_provider_records_conflict_keeps_the_callers_pending_work(provider_db: Session) -> None:
+def test_init_trial_provider_records_conflict_keeps_the_callers_pending_work(
+    provider_db: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     provider_db.add(_build_trial_provider_record())
     provider_db.commit()
     unrelated_provider = _build_unrelated_provider_record()
     provider_db.add(unrelated_provider)
 
-    with patch(
-        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-        {"openai": _build_hosting_provider()},
-    ):
-        ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+    _init_openai_trial_provider_records(sqlite_session_factory)
 
     assert unrelated_provider in provider_db.new
     provider_db.commit()
     assert provider_db.scalar(select(Provider).where(Provider.tenant_id == "other-tenant")) is not None
 
 
-def test_init_trial_provider_records_revives_invalid_existing_record(provider_db: Session) -> None:
+def test_init_trial_provider_records_revives_invalid_existing_record(
+    provider_db: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     existing_provider = _build_trial_provider_record()
     existing_provider.is_valid = False
     provider_db.add(existing_provider)
     provider_db.commit()
 
-    with patch(
-        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-        {"openai": _build_hosting_provider()},
-    ):
-        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+    result = _init_openai_trial_provider_records(sqlite_session_factory)
 
     assert [record.id for record in result["openai"]] == [existing_provider.id]
     provider_db.expire_all()
@@ -1405,23 +1404,24 @@ def test_init_trial_provider_records_revives_invalid_existing_record(provider_db
     assert stored_provider.is_valid
 
 
-def test_init_trial_provider_records_skips_conflict_without_a_matching_record(provider_db: Session) -> None:
-    unrelated_provider = _build_unrelated_provider_record()
-    provider_db.add(unrelated_provider)
+def test_init_trial_provider_records_skips_conflict_whose_record_was_deleted_concurrently(
+    provider_db: Session, sqlite_engine: Engine
+) -> None:
+    provider_db.add(_build_trial_provider_record())
     provider_db.commit()
+    trial_session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
 
-    # The new record reuses the unrelated primary key, so the insert conflicts but no trial record exists.
-    with (
-        patch(
-            "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
-            {"openai": _build_hosting_provider()},
-        ),
-        patch("models.provider.uuidv7", return_value=unrelated_provider.id),
-    ):
-        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+    def delete_conflicting_record(_session: Session) -> None:
+        # Another worker removes the record between the conflicting insert and the lookup.
+        with provider_db.begin():
+            provider_db.execute(delete(Provider).where(Provider.tenant_id == "tenant-id"))
+
+    event.listen(trial_session_maker, "after_rollback", delete_conflicting_record, once=True)
+
+    result = _init_openai_trial_provider_records(trial_session_maker)
 
     assert result == {}
-    assert [record.tenant_id for record in provider_db.scalars(select(Provider))] == ["other-tenant"]
+    assert provider_db.scalars(select(Provider)).all() == []
 
 
 def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
