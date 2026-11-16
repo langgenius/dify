@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import TypedDict, Unpack
+from typing import Any, TypedDict, Unpack
 
 from pytest_mock import MockerFixture
 
@@ -10,23 +10,19 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     OnlineDriveDownloadMessage,
 )
-from core.plugin.impl.datasource import (
-    PluginDatasourceListPayload,
-    PluginDatasourceManager,
-    PluginDatasourceSinglePayload,
-)
+from core.plugin.impl.datasource import PluginDatasourceManager
 
 
 class PluginDatasourceListRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when listing providers."""
 
-    transformer: Callable[[PluginDatasourceListPayload], PluginDatasourceListPayload]
+    transformer: Callable[[dict[str, Any]], dict[str, Any]]
 
 
 class PluginDatasourceSingleRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when resolving one provider."""
 
-    transformer: Callable[[PluginDatasourceSinglePayload], PluginDatasourceSinglePayload]
+    transformer: Callable[[dict[str, Any]], dict[str, Any]]
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -50,7 +46,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: PluginDatasourceListPayload = {
+            payload: dict[str, Any] = {
                 "data": [
                     {
                         "declaration": {
@@ -85,7 +81,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: PluginDatasourceListPayload = {
+            payload: dict[str, Any] = {
                 "data": [
                     {
                         "declaration": {
@@ -121,7 +117,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            payload: PluginDatasourceSinglePayload = {
+            payload: dict[str, Any] = {
                 "data": {
                     "declaration": {
                         "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
@@ -150,7 +146,7 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: PluginDatasourceListPayload = {
+            payload: dict[str, Any] = {
                 "data": [
                     {},
                     {"declaration": {}},
@@ -184,19 +180,17 @@ class TestPluginDatasourceManager:
         manager = PluginDatasourceManager()
         resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs")
         remote = _datasource_provider("provider")
-        seen: list[PluginDatasourceSinglePayload] = []
+        seen: list[dict[str, Any]] = []
 
         def fake_request(
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            empty: PluginDatasourceSinglePayload = {}
+            empty: dict[str, Any] = {}
             seen.append(transformer(empty))
-            no_declaration: PluginDatasourceSinglePayload = {"data": {}}
+            no_declaration: dict[str, Any] = {"data": {}}
             seen.append(transformer(no_declaration))
-            no_schema: PluginDatasourceSinglePayload = {
-                "data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}
-            }
+            no_schema: dict[str, Any] = {"data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}}
             seen.append(transformer(no_schema))
             return remote
 
