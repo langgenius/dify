@@ -18,6 +18,7 @@ vi.mock('@/service/plugins', async (importOriginal) => ({
   uploadGitHub,
   updateFromGitHub,
 }))
+// boundary: Isolate workspace model queries and plugin cache refreshes from the dialog lifecycle.
 vi.mock('../../hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: vi.fn() }),
 }))

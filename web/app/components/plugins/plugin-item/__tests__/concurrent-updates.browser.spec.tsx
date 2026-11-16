@@ -9,11 +9,13 @@ import { fetchReleases } from '../../install-plugin/hooks'
 import { PluginCategoryEnum } from '../../types'
 import Action from '../action'
 
+// boundary: Control when each external GitHub release lookup resolves.
 vi.mock('../../install-plugin/hooks', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../install-plugin/hooks')>()),
   fetchReleases: vi.fn(),
 }))
 
+// boundary: Isolate workspace model queries and plugin cache refreshes from the dialog lifecycle.
 vi.mock('../../install-plugin/hooks/use-refresh-plugin-list', () => ({
   default: () => ({ refreshPluginList: vi.fn() }),
 }))
