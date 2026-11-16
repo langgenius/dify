@@ -151,7 +151,7 @@ it('validates an external tool in the real modal and inserts the saved variable 
   )
   const dialog = await screen.findByRole('dialog')
   await user.type(
-    within(dialog).getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    await within(dialog).findByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
     'Search',
   )
   const variableName = within(dialog).getByPlaceholderText(

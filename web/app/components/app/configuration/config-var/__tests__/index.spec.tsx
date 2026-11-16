@@ -142,7 +142,7 @@ it('preserves existing variables when a new API variable is canceled', async () 
   await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
   await user.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
   const dialog = await screen.findByRole('dialog')
-  await user.click(within(dialog).getByRole('button', { name: 'common.operation.cancel' }))
+  await user.click(await within(dialog).findByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(screen.getByText('existing')).toBeInTheDocument()
   expect(screen.getAllByRole('button', { name: 'common.operation.edit' })).toHaveLength(1)
@@ -158,7 +158,7 @@ it('appends a new API variable after an external tool arrives while the form is 
   const dialog = within(await screen.findByRole('dialog'))
   await act(async () => ready.resolve())
   await user.type(
-    dialog.getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    await dialog.findByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
     'New API',
   )
   await user.type(
@@ -240,7 +240,7 @@ it('appends external tools received through the real event subscription', async 
   await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
   const dialog = await screen.findByRole('dialog')
   expect(
-    within(dialog).getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    await within(dialog).findByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
   ).toHaveValue('API Var')
 })
 
@@ -249,7 +249,7 @@ it('edits an API variable through its real modal and retains the selected API ex
   renderConfigVar({ promptVariables: [apiVariable] })
   await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
   const dialog = await screen.findByRole('dialog')
-  const key = within(dialog).getByPlaceholderText(
+  const key = await within(dialog).findByPlaceholderText(
     'appDebug.feature.tools.modal.variableName.placeholder',
   )
   await user.clear(key)
@@ -263,7 +263,7 @@ it('edits an API variable through its real modal and retains the selected API ex
   await user.click(screen.getByRole('button', { name: 'common.operation.edit' }))
   const reopened = await screen.findByRole('dialog')
   expect(
-    within(reopened).getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    await within(reopened).findByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
   ).toHaveValue('Next API Var')
   expect(within(reopened).getByRole('button', { name: /Search API/ })).toBeInTheDocument()
 })
@@ -273,7 +273,7 @@ it('keeps the API modal open when its variable name duplicates an existing varia
   renderConfigVar({ promptVariables: [apiVariable, variable('existing_var')] })
   await user.click(screen.getAllByRole('button', { name: 'common.operation.edit' })[0]!)
   const dialog = await screen.findByRole('dialog')
-  const key = within(dialog).getByPlaceholderText(
+  const key = await within(dialog).findByPlaceholderText(
     'appDebug.feature.tools.modal.variableName.placeholder',
   )
   await user.clear(key)
