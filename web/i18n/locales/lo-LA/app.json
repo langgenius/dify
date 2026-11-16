@@ -336,5 +336,6 @@
   "types.all": "ທັງໝົດ",
   "types.chatbot": "ແຊັດບັອດ (Chatbot)",
   "types.completion": "ຕົວສ້າງຂໍ້ຄວາມ",
+  "types.evaluationWorkflow": "ເວີກໂຟລວການປະເມີນ",
   "types.workflow": "Workflow"
 }
