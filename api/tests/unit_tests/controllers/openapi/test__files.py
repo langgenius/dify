@@ -30,7 +30,7 @@ def uploads(monkeypatch: pytest.MonkeyPatch) -> Mock:
     service.upload_file.side_effect = lambda **kw: SimpleNamespace(
         id=f"uf-{kw['filename']}", extension=kw["filename"].rsplit(".", 1)[-1], mime_type=kw["mimetype"]
     )
-    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(files=service))
+    monkeypatch.setattr(module, "application_services", lambda: SimpleNamespace(file_uploads=service))
     return service
 
 

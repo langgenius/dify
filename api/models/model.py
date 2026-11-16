@@ -50,6 +50,7 @@ from .enums import (
     PromptType,
     ProviderQuotaType,
     TagType,
+    UploadFilePurpose,
 )
 from .provider_ids import GenericProviderID
 from .types import EnumText, LongText, StringUUID
@@ -2305,7 +2306,7 @@ class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
-        sa.Index("upload_file_tenant_idx", "tenant_id"),
+        sa.Index("upload_file_quota_usage_idx", "tenant_id", "created_by_role", "purpose", "size"),
     )
 
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips
@@ -2353,6 +2354,13 @@ class UploadFile(TypeBase):
     hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     source_url: Mapped[str] = mapped_column(LongText, default="")
 
+    purpose: Mapped[UploadFilePurpose] = mapped_column(
+        EnumText(UploadFilePurpose, length=32),
+        nullable=False,
+        default=UploadFilePurpose.UPLOAD,
+        server_default=sa.text("'upload'"),
+    )
+
     def __init__(
         self,
         *,
@@ -2371,7 +2379,13 @@ class UploadFile(TypeBase):
         used_at: datetime | None = None,
         hash: str | None = None,
         source_url: str = "",
+        purpose: UploadFilePurpose = UploadFilePurpose.UPLOAD,
     ):
+        """Initialize metadata from admitted values without reading or writing storage.
+
+        User uploads default to UPLOAD; only trusted runtime writers select
+        WORKFLOW_OFFLOAD. Repositories own persistence and stable classification.
+        """
         self.id = str(uuid.uuid4())
         self.tenant_id = tenant_id
         self.storage_type = storage_type
@@ -2388,6 +2402,7 @@ class UploadFile(TypeBase):
         self.used_at = used_at
         self.hash = hash
         self.source_url = source_url
+        self.purpose = purpose
 
 
 class ApiRequest(TypeBase):

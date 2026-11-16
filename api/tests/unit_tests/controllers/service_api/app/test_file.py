@@ -265,7 +265,7 @@ class TestFileApiPost:
         mock_upload.tenant_id = mock_end_user.tenant_id
         mock_upload.conversation_id = None
         mock_upload.file_key = None
-        file_service = mock_application_services.return_value.files
+        file_service = mock_application_services.return_value.file_uploads
         file_service.upload_file.return_value = mock_upload
 
         data = {"file": (BytesIO(b"file content"), "test.pdf", "application/pdf")}
@@ -380,7 +380,7 @@ class TestFileApiPost:
         from controllers.service_api.app.file import FileApi
 
         service_error = services.errors.file.FileTooLargeError("File exceeds 15MB limit")
-        mock_application_services.return_value.files.upload_file.side_effect = service_error
+        mock_application_services.return_value.file_uploads.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"big content"), "big.pdf", "application/pdf")}
 
@@ -411,7 +411,7 @@ class TestFileApiPost:
         from controllers.service_api.app.file import FileApi
 
         service_error = services.errors.file.UnsupportedFileTypeError()
-        mock_application_services.return_value.files.upload_file.side_effect = service_error
+        mock_application_services.return_value.file_uploads.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"content"), "test.xyz", "application/octet-stream")}
 
@@ -442,7 +442,7 @@ class TestFileApiPost:
         from controllers.service_api.app.file import FileApi
 
         service_error = services.errors.file.BlockedFileExtensionError("File extension '.exe' is blocked")
-        mock_application_services.return_value.files.upload_file.side_effect = service_error
+        mock_application_services.return_value.file_uploads.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"content"), "blocked.exe", "application/octet-stream")}
 

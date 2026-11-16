@@ -91,7 +91,7 @@ class TestFileApi:
         form_source: str | None,
         expected_source: str | None,
     ) -> None:
-        file_service = mock_application_services.return_value.files
+        file_service = mock_application_services.return_value.file_uploads
         file_service.upload_file.return_value = _upload_file()
         app_model = _app_model()
         end_user = _end_user()
@@ -145,7 +145,7 @@ class TestFileApi:
         expected_code: str,
         expected_message: str,
     ) -> None:
-        mock_application_services.return_value.files.upload_file.side_effect = service_error
+        mock_application_services.return_value.file_uploads.upload_file.side_effect = service_error
 
         data = {"file": (BytesIO(b"big"), "big.txt")}
         with app.test_request_context("/files/upload", method="POST", data=data, content_type="multipart/form-data"):

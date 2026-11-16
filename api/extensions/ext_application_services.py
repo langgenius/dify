@@ -37,6 +37,7 @@ from extensions.application_services.data_sources import (
     build_data_source_services,
 )
 from extensions.application_services.datasets import build_dataset_dependencies
+from extensions.application_services.files import build_file_upload_services
 from extensions.application_services.installed_app import InstalledAppServices, build_installed_app_services
 from extensions.application_services.knowledge import (
     KnowledgeServices,
@@ -158,6 +159,7 @@ from services.conversation_service import ConversationService
 from services.conversation_variable_command_service import ConversationVariableCommandService
 from services.conversation_variable_query import ConversationVariableQuery
 from services.credentials.query import CredentialQuery
+from services.end_user_upload_service import EndUserUploadService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.file_grant_entities import FileGrantLimits
 from services.errors.enterprise import EnterpriseServiceError
@@ -168,6 +170,7 @@ from services.feature_service_gateway import FeatureServiceGateway
 from services.file_grant_gateways import FileGrantFileGateway, FileGrantRemoteFileGateway, FileGrantTokenGateway
 from services.file_grant_service import FileGrantService
 from services.file_service import FileService
+from services.file_upload_gateway import FileUploadGateway
 from services.human_input_file_upload_service import HumanInputFileUploadService
 from services.init_validation_service import InitValidationService
 from services.inner_mail_service import InnerMailService
@@ -357,6 +360,8 @@ class ApplicationServices:
     feature_queries: FeatureQueryService
     file_grants: FileGrantService
     files: FileService
+    file_uploads: FileUploadGateway
+    end_user_uploads: EndUserUploadService
     human_input_file_uploads: HumanInputFileUploadService
     message_feedbacks: MessageFeedbackService
     message_queries: MessageQueryService
@@ -431,14 +436,27 @@ def _build_oauth_device_service(
     )
 
 
-def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> FileGrantService:
+def _build_file_grant_service(
+    *, database_client: sessionmaker[Session], file_uploads: FileUploadGateway | None = None
+) -> FileGrantService:
+    """Wire admitted file grants to the configured upload gateway without performing I/O.
+
+    An omitted gateway is composed here for isolated consumers/tests; production
+    shares its already-configured gateway with API, Web and Human Input uploads.
+    """
+    if file_uploads is None:
+        file_uploads = build_file_upload_services(
+            database_client=database_client,
+            staff=FileService(session_factory=database_client),
+            deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        ).gateway
     repository = FileGrantRepository(session_factory=database_client)
     return FileGrantService(
         repository=repository,
         files=FileGrantFileGateway(
             load_end_user=repository.get_end_user,
             subject_exists=repository.subject_exists,
-            file_service=FileService(session_factory=database_client),
+            file_service=file_uploads,
             tool_files=ToolFileManager(),
             storage=storage,
         ),
@@ -569,7 +587,10 @@ def build_application_services(
     )
     app_scoped_end_user_repository = AppScopedEndUserRepo(session_factory=database_client)
     file_service = FileService(session_factory=database_client)
-    remote_file_service = RemoteFileService(files=file_service)
+    uploads = build_file_upload_services(
+        database_client=database_client, staff=file_service, deployment_edition=deployment_edition
+    )
+    remote_file_service = RemoteFileService(files=uploads.gateway)
     passwords = DefaultAccountPasswordHasher()
     web_authentication_tokens = TokenManagerWebAuthenticationGateway(
         reset_password_rate_limiter=RateLimiter(
@@ -799,14 +820,16 @@ def build_application_services(
             features=feature_gateway,
             app_dsl_version=CURRENT_APP_DSL_VERSION,
         ),
-        file_grants=_build_file_grant_service(database_client=database_client),
+        file_grants=_build_file_grant_service(database_client=database_client, file_uploads=uploads.gateway),
+        file_uploads=uploads.gateway,
+        end_user_uploads=uploads.end_users,
         files=file_service,
         human_input_file_uploads=HumanInputFileUploadService(
             uploads=SQLAlchemyHumanInputFileUploadRepository(session_factory=database_client),
             workflow_run_repository=DifyAPIRepositoryFactory.create_api_workflow_run_repository(
                 session_maker=database_client,
             ),
-            files=file_service,
+            files=uploads.gateway,
             remote_files=remote_file_service,
         ),
         message_feedbacks=MessageFeedbackService(repository=messages),

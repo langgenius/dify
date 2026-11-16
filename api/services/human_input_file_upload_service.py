@@ -12,7 +12,8 @@ from models.account import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from services.file_service import FileService
+from services.file_service import FileUploadResult
+from services.file_upload_gateway import FileUploadGateway
 from services.human_input_service import FormExpiredError, FormNotFoundError, FormSubmittedError
 from services.remote_file_service import RemoteFileService, RemoteFileUploadResult
 
@@ -101,7 +102,7 @@ class HumanInputFileUploadService:
 
     _uploads: HumanInputFileUploadRepository
     _workflow_run_repository: APIWorkflowRunRepository
-    _files: FileService
+    _files: FileUploadGateway
     _remote_files: RemoteFileService
 
     def __init__(
@@ -109,7 +110,7 @@ class HumanInputFileUploadService:
         *,
         uploads: HumanInputFileUploadRepository,
         workflow_run_repository: APIWorkflowRunRepository,
-        files: FileService,
+        files: FileUploadGateway,
         remote_files: RemoteFileService,
     ) -> None:
         self._uploads = uploads
@@ -166,7 +167,7 @@ class HumanInputFileUploadService:
         filename: str,
         content: bytes,
         mimetype: str,
-    ) -> UploadFile:
+    ) -> UploadFile | FileUploadResult:
         upload_file = self._files.upload_file(
             filename=filename,
             content=content,

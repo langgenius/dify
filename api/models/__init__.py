@@ -227,6 +227,7 @@ from .trigger import (
     TriggerSubscription,
     WorkflowSchedulePlan,
 )
+from .upload_quota import UploadQuotaReservation
 from .web import PinnedConversation, SavedMessage
 from .workflow import (
     ConversationVariable,
@@ -454,6 +455,7 @@ __all__ = [
     "TriggerOAuthTenantClient",
     "TriggerSubscription",
     "UploadFile",
+    "UploadQuotaReservation",
     "Whitelist",
     "Workflow",
     "WorkflowAgentBindingType",

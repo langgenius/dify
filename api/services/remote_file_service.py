@@ -14,6 +14,7 @@ from models import Account
 from models.model import EndUser
 from services.errors.file import FileTooLargeError
 from services.file_service import FileService, FileUploadActor
+from services.file_upload_gateway import FileUploadGateway
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,7 +64,7 @@ class RemoteFileInvalidResponseError(RemoteFileError):
 
 
 class RemoteFileService:
-    def __init__(self, *, files: FileService) -> None:
+    def __init__(self, *, files: FileUploadGateway | FileService) -> None:
         self._files = files
 
     def fetch_info(self, *, url: str) -> RemoteFileInfoResult:

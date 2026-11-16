@@ -8,6 +8,13 @@ from constants.trigger import (
 )
 
 
+class UploadFilePurpose(StrEnum):
+    """Stable storage purpose; cleanup of references must not change quota classification."""
+
+    UPLOAD = "upload"
+    WORKFLOW_OFFLOAD = "workflow_offload"
+
+
 class CreatorUserRole(StrEnum):
     ACCOUNT = "account"
     END_USER = "end_user"

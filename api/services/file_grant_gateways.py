@@ -32,6 +32,7 @@ from services.entities.file_grant_entities import (
 from services.errors.file import FileTooLargeError
 from services.errors.file_grant import EndUserNotFoundError
 from services.file_service import FileService
+from services.file_upload_gateway import FileUploadGateway
 
 FILE_GRANT_AUDIENCE = "dify-files"
 FILE_CONTENT_AUDIENCE = "dify-files-content"
@@ -144,7 +145,7 @@ class FileGrantFileGateway:
         *,
         load_end_user: Callable[[FileGrantContext], EndUser | None],
         subject_exists: Callable[[FileGrantContext], bool],
-        file_service: FileService,
+        file_service: FileUploadGateway,
         tool_files: ToolFileManager,
         storage: Storage,
     ) -> None:

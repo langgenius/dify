@@ -27,6 +27,7 @@ from controllers.openapi._errors import FilenameNotExists, InvalidFilePart
 from extensions.ext_application_services import application_services
 from graphon.file import FileTransferMethod, standardize_file_type
 from models.model import UploadFile
+from services.file_service import FileUploadResult
 
 FileMapping = dict[str, Any]
 
@@ -41,13 +42,13 @@ def end_read_transaction(session: Session) -> None:
     session.commit()
 
 
-def upload(part: FileStorage, caller: Any) -> UploadFile:
+def upload(part: FileStorage, caller: Any) -> UploadFile | FileUploadResult:
     if not part.mimetype:
         raise UnsupportedFileTypeError()
     if not part.filename:
         raise FilenameNotExists()
     try:
-        return application_services().files.upload_file(
+        return application_services().file_uploads.upload_file(
             filename=part.filename,
             content=part.stream.read(),
             mimetype=part.mimetype,
