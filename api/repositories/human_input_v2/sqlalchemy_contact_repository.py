@@ -108,6 +108,27 @@ class SQLAlchemyContactRepository:
         )
         return self._contact_from_row(row) if row is not None else None
 
+    def get_contacts_by_account_ids(
+        self, tenant_id: TenantId, account_ids: Sequence[AccountId]
+    ) -> Mapping[AccountId, Contact]:
+        """Return current Contacts for the supplied Accounts without any writes.
+
+        The caller owns the Session. Unavailable identities are omitted; all
+        returned identities are visible in the requested workspace.
+        """
+        if not account_ids:
+            return {}
+        current_contacts = self._current_contacts_subquery(tenant_id)
+        rows = self._session.execute(
+            sa.select(current_contacts, HumanInputContactIdentity.account_id)
+            .join(HumanInputContactIdentity, HumanInputContactIdentity.id == current_contacts.c.contact_id)
+            .where(
+                HumanInputContactIdentity.subject_type == ContactSubjectType.ACCOUNT,
+                HumanInputContactIdentity.account_id.in_(account_ids),
+            )
+        ).mappings()
+        return {AccountId(row["account_id"]): self._contact_from_row(row) for row in rows}
+
     def get_contacts_by_ids(
         self,
         tenant_id: TenantId,

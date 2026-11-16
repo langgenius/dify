@@ -34,7 +34,7 @@ from core.workflow.nodes.human_input_v2.entities import (
     Initiator,
     OnetimeEmail,
 )
-from core.workflow.nodes.human_input_v2.migration import MemberEmailSnapshot, convert_legacy_human_input_node_data
+from core.workflow.nodes.human_input_v2.migration import MemberContactSnapshot, convert_legacy_human_input_node_data
 from core.workflow.nodes.human_input_v2.runtime import HumanInputDeliveryError, PreparedForm
 from enums import DeploymentEdition
 from graphon.enums import WorkflowExecutionStatus
@@ -68,6 +68,7 @@ from repositories.human_input_v2.delivery_repository import IMUserTargetSnapshot
 from repositories.human_input_v2.email_channel.entities import ResendCandidate, ResendCredentials
 from repositories.human_input_v2.form_repository import Form
 from repositories.human_input_v2.recipient_repository import ContactRecipientSubject, EmailRecipientSubject
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -78,6 +79,11 @@ from services.human_input_v2.form_service import (
     CreatedForm,
     FormExecutionContext,
     HumanInputFormService,
+)
+from services.human_input_v2.node_data_migration import (
+    HumanInputNodeDataMigrationService,
+    MigrationNode,
+    NodeDataMigrationSuccess,
 )
 
 _TENANT = TenantId("00000000-0000-0000-0000-000000000001")
@@ -209,7 +215,7 @@ def test_migrated_webapp_node_creates_waiting_form_with_initiator(
             "user_actions": [{"id": "approve", "title": "Approve"}],
         }
     )
-    conversion = convert_legacy_human_input_node_data(legacy, MemberEmailSnapshot())
+    conversion = convert_legacy_human_input_node_data(legacy, MemberContactSnapshot())
     assert conversion.blockers == ()
     assert conversion.node_data is not None
     assert conversion.node_data.recipients_spec == [Initiator()]
@@ -226,6 +232,43 @@ def test_migrated_webapp_node_creates_waiting_form_with_initiator(
     )
     assert len(created.recipients) == 1
     assert created.recipients[0].subject == ContactRecipientSubject(_CONTACT)
+
+
+def test_migrated_member_creates_contact_recipient_separately_from_same_email_target(context: Context) -> None:
+    legacy = HumanInputNodeDataFull.model_validate(
+        {
+            "delivery_methods": [
+                {
+                    "type": "email",
+                    "config": {
+                        "subject": "Review",
+                        "body": "Open {{#url#}}",
+                        "recipients": {
+                            "items": [
+                                {"type": "member", "reference_id": _ACCOUNT},
+                                {"type": "external", "email": "MEMBER@example.com"},
+                            ],
+                        },
+                    },
+                },
+            ],
+            "user_actions": [{"id": "approve", "title": "Approve"}],
+        }
+    )
+    migration = HumanInputNodeDataMigrationService(
+        session_factory=context.sessions,
+        contact_repository_factory=SQLAlchemyContactRepository,
+    ).migrate(tenant_id=_TENANT, nodes=(MigrationNode("approval", legacy),))
+    assert isinstance(migration, NodeDataMigrationSuccess)
+
+    created = context.prepare(migration.data[0].node_data)
+
+    assert isinstance(created, CreatedForm)
+    assert created.form.status == HumanInputFormStatus.WAITING
+    assert [recipient.subject for recipient in created.recipients] == [
+        ContactRecipientSubject(_CONTACT),
+        EmailRecipientSubject(NormalizedEmail("member@example.com")),
+    ]
 
 
 @pytest.mark.usefixtures("providers")
