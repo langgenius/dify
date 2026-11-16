@@ -126,7 +126,7 @@ EVENT_HANDLERS: Final[Mapping[str, _Handler]] = {
 }
 
 
-def _decode(frame: str) -> Mapping[str, Any] | None:
+def decode_frame(frame: str) -> Mapping[str, Any] | None:
     """Decode the JSON object of an SSE data frame.
 
     Precondition: none.
@@ -170,7 +170,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     sent once when the task id is first stored.
     """
     store.touch(job_id)
-    payload = _decode(frame)
+    payload = decode_frame(frame)
     if payload is None:
         return
     task_id_known = "task_id" in stored_ids
