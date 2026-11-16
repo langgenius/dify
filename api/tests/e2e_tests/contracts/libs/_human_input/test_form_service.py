@@ -51,13 +51,6 @@ class _CreateFormPayload(TypedDict, closed=True):
     form_token: NotRequired[str | None]
 
 
-def _definition_inputs(definition: dict[str, object]) -> list[object]:
-    """Narrow the untyped ``inputs`` entry of a form definition to a list."""
-    inputs = definition["inputs"]
-    assert isinstance(inputs, list)
-    return inputs
-
-
 class TestFormService:
     """Test FormService functionality."""
 
@@ -151,7 +144,7 @@ class TestFormService:
         assert "form_content" in definition
         assert "inputs" in definition
         assert definition["form_content"] == "# Test Form\n\nInput: {{#$output.input#}}"
-        assert len(_definition_inputs(definition)) == 1
+        assert len(definition["inputs"]) == 1
         assert "site" not in definition  # Should not include site info for ID-based access
 
     def test_get_form_definition_by_token(

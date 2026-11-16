@@ -2,7 +2,7 @@
 
 import json
 import uuid
-from collections.abc import Callable, Iterator
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 from unittest.mock import patch
@@ -10,7 +10,7 @@ from unittest.mock import patch
 import pytest
 from flask import Flask
 from sqlalchemy import Engine, inspect, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -24,12 +24,10 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_manager import ToolManager
-from core.tools.workflow_as_tool import tool as workflow_tool_module
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from graphon.enums import WorkflowExecutionStatus
 from graphon.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.base import TypeBase
 from models.engine import db
 from models.enums import EndUserType
 from models.model import App, AppMode, EndUser
@@ -45,11 +43,13 @@ ACCOUNT_ID = "00000000-0000-0000-0000-000000000004"
 END_USER_ID = "00000000-0000-0000-0000-000000000005"
 CREATOR_ID = "00000000-0000-0000-0000-000000000006"
 
+# The scalar payloads ``WorkflowTool.create_variable_message`` carries, matching the
+# parametrized cases exercised below.
+type VariableValue = str | int | float | bool | list[int] | dict[str, str]
+
 
 @dataclass(frozen=True)
 class SqliteToolDb:
-    engine: Engine
-    session_maker: sessionmaker[Session]
     caller_session: Session
 
 
@@ -93,18 +93,15 @@ def _record_calls(
 
 
 @pytest.fixture
-def sqlite_tool_db(
-    monkeypatch: pytest.MonkeyPatch,
-    sqlite_engine: Engine,
-) -> Iterator[SqliteToolDb]:
-    """Bind service-owned sessions to SQLite."""
-    models = (App, Workflow, EndUser, Account, Tenant, TenantAccountJoin)
-    tables = [TypeBase.metadata.tables[model.__tablename__] for model in models]
-    TypeBase.metadata.create_all(sqlite_engine, tables=tables)
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(workflow_tool_module.session_factory, "create_session", session_maker)
-    with session_maker() as caller_session:
-        yield SqliteToolDb(engine=sqlite_engine, session_maker=session_maker, caller_session=caller_session)
+def sqlite_tool_db(sqlite_session: Session) -> SqliteToolDb:
+    """Persist real rows through the shared full-schema SQLite session.
+
+    ``tests/unit_tests/conftest.py`` binds ``core.db.session_factory`` to this same
+    SQLite database, so rows added here are visible to the service-owned sessions the
+    tool opens on its own.
+    """
+
+    return SqliteToolDb(caller_session=sqlite_session)
 
 
 def _persist_tenant(db: SqliteToolDb, *, tenant_id: str = TENANT_ID) -> Tenant:
@@ -214,9 +211,9 @@ def _build_tool(*, tenant_id: str = "test_tool", workflow_app_id: str = "app-1",
 
 
 def test_legacy_workflow_tool_executes_with_the_upper_owned_driver(
-    sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session], sqlite_session: Session
+    sqlite_engine: Engine, sqlite_session: Session
 ) -> None:
-    tool_db = SqliteToolDb(sqlite_engine, sqlite_session_factory, sqlite_session)
+    tool_db = SqliteToolDb(caller_session=sqlite_session)
     _persist_tenant(tool_db)
     user = _persist_end_user(tool_db)
     app_model = _persist_app(tool_db)
@@ -656,7 +653,7 @@ def test_workflow_tool_should_handle_empty_outputs(
         ("dict_var", {"key": "value"}),
     ],
 )
-def test_create_variable_message(var_name: str, var_value: object) -> None:
+def test_create_variable_message(var_name: str, var_value: VariableValue) -> None:
     """Create variable messages for multiple value types."""
     tool = _build_tool()
 

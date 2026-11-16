@@ -1,7 +1,7 @@
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from decimal import Decimal
 from types import SimpleNamespace
-from typing import override
+from typing import Protocol, override
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -9,6 +9,7 @@ from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import TraceCorrelation, TraceEvent
 from sqlalchemy import event
 from sqlalchemy.orm import Session
+from typing_extensions import TypedDict
 
 import core.app.apps.chat.app_generator as generator_module
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -18,6 +19,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import ChatAppGenerateEntity, InvokeFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueAnnotationReplyEvent
 from core.moderation.base import ModerationError
+from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
 from models import Account
 from models.enums import ConversationFromSource, ConversationStatus
@@ -25,9 +27,84 @@ from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, AppModelConfig, Conversation, IconType, Message, MessageAnnotation
 
 
+class _AppConfigLike(Protocol):
+    """Structural view of the app config the generator reads from the entity."""
+
+    app_id: str
+    tenant_id: str
+    app_mode: AppMode
+    prompt_template: object | None
+    external_data_variables: Sequence[object]
+    dataset: object | None
+    additional_features: object | None
+
+
+class _ModelConfLike(Protocol):
+    """Structural view of the model config the generator reads from the entity."""
+
+    provider_model_bundle: object | None
+    model: str | None
+    parameters: Mapping[str, object]
+    app_model_config_dict: Mapping[str, object]
+
+
+class _TraceScopeRequest(TypedDict, closed=True):
+    """Keyword arguments the generator passes to ``create_trace_scope``."""
+
+    tenant_id: str
+    app_id: str | None
+    app_tracing: str | None
+    user_id: str | None
+    extras: Mapping[str, object]
+
+
+class _GenerateArgs(TypedDict, closed=True):
+    """Keyword payload accepted by ``ChatAppGenerator.generate``."""
+
+    query: str
+    inputs: Mapping[str, object]
+    conversation_id: str
+    model_config: Mapping[str, object]
+    trace_session_id: str
+
+
 class DummyGenerateEntity(ChatAppGenerateEntity):
-    def __init__(self, **kwargs: object) -> None:
-        self.__dict__.update(kwargs)
+    """Generate entity assembled field by field, bypassing pydantic validation."""
+
+    def __init__(
+        self,
+        *,
+        task_id: str = "",
+        app_config: _AppConfigLike | None = None,
+        model_conf: _ModelConfLike | None = None,
+        inputs: Mapping[str, object] | None = None,
+        query: str = "",
+        files: Sequence[File] | None = None,
+        file_upload_config: FileUploadConfig | None = None,
+        conversation_id: str | None = None,
+        parent_message_id: str | None = None,
+        stream: bool = False,
+        user_id: str = "",
+        invoke_from: InvokeFrom = InvokeFrom.SERVICE_API,
+        extras: Mapping[str, object] | None = None,
+        trace_scope: TraceScope | None = None,
+    ) -> None:
+        self.__dict__.update(
+            task_id=task_id,
+            app_config=app_config,
+            model_conf=model_conf,
+            inputs=inputs,
+            query=query,
+            files=files,
+            file_upload_config=file_upload_config,
+            conversation_id=conversation_id,
+            parent_message_id=parent_message_id,
+            stream=stream,
+            user_id=user_id,
+            invoke_from=invoke_from,
+            extras=extras,
+            trace_scope=trace_scope,
+        )
 
 
 class _TraceRecorder:
@@ -176,16 +253,31 @@ class TestChatAppGenerator:
         app_model.tracing = '{"enabled": true, "tracing_provider": "langfuse"}'
         user = _account()
         trace_scope = _trace_scope()
-        scope_requests: list[dict[str, object]] = []
+        scope_requests: list[_TraceScopeRequest] = []
 
-        def create_trace_scope(**kwargs: object) -> TraceScope:
-            scope_requests.append(kwargs)
+        def create_trace_scope(
+            *,
+            tenant_id: str,
+            app_id: str | None,
+            app_tracing: str | None,
+            user_id: str | None,
+            extras: Mapping[str, object],
+        ) -> TraceScope:
+            scope_requests.append(
+                {
+                    "tenant_id": tenant_id,
+                    "app_id": app_id,
+                    "app_tracing": app_tracing,
+                    "user_id": user_id,
+                    "extras": extras,
+                }
+            )
             return trace_scope
 
         monkeypatch.setattr(generator_module, "create_trace_scope", create_trace_scope)
-        args: dict[str, object] = {
+        args: _GenerateArgs = {
             "query": "hi",
-            "inputs": dict[str, object](),
+            "inputs": {},
             "conversation_id": "conversation-1",
             "model_config": {"foo": "bar"},
             "trace_session_id": "session-1",
