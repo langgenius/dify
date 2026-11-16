@@ -103,14 +103,20 @@ class OpenedJob:
 
 
 class RunJobStore(Protocol):
-    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob: ...
+    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
+        """Precondition: record.id unused. Postcondition: created=True stores the job; False returns the earlier one."""
 
-    def get(self, job_id: str) -> JobRecord | None: ...
+    def get(self, job_id: str) -> JobRecord | None:
+        """Precondition: none. Postcondition: the stored record, or None."""
 
-    def patch(self, job_id: str, patch: JobPatch) -> None: ...
+    def patch(self, job_id: str, patch: JobPatch) -> None:
+        """Precondition: none. Postcondition: set fields change; None fields and missing jobs are untouched."""
 
-    def discard(self, job_id: str, *, idempotency_key: str | None) -> None: ...
+    def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
+        """Precondition: none. Postcondition: the job and its alive key are gone."""
 
-    def touch(self, job_id: str) -> None: ...
+    def touch(self, job_id: str) -> None:
+        """Precondition: none. Postcondition: the alive key is refreshed."""
 
-    def is_alive(self, job_id: str) -> bool: ...
+    def is_alive(self, job_id: str) -> bool:
+        """Precondition: none. Postcondition: true while the alive key is live."""

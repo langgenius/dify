@@ -7,6 +7,7 @@ that the running side refreshes and an optional idempotency key that maps to the
 import json
 from collections.abc import Mapping
 from dataclasses import asdict
+from dataclasses import fields as dataclass_fields
 from typing import Any, Protocol
 
 from models.enums import CreatorUserRole
@@ -25,6 +26,13 @@ _JOB_KEY = "openapi:job:{job_id}"
 _ALIVE_KEY = "openapi:job:{job_id}:alive"
 _IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{caller_role}:{caller_id}:{key}"
 _ALIVE_VALUE = "1"
+_RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
+_DELETE_IF_EQUAL = """
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+    return redis.call('DEL', KEYS[1])
+end
+return 0
+"""
 
 
 class RunJobRedis(Protocol):
@@ -44,22 +52,30 @@ class RunJobRedis(Protocol):
 
     def delete(self, *names: str) -> Any: ...
 
+    def register_script(self, script: str) -> Any: ...
+
 
 def _text(value: bytes | str) -> str:
+    """Decode Redis output. Precondition: bytes or str. Postcondition: the str form."""
     return value.decode("utf-8") if isinstance(value, bytes) else value
 
 
 def _encode_record(record: JobRecord) -> dict[str, str]:
+    """Encode every record field. Precondition: JSON-serialisable fields. Postcondition: one JSON string per field."""
     fields = asdict(record)
     return {name: json.dumps(value) for name, value in fields.items()}
 
 
 def _encode_patch(patch: JobPatch) -> dict[str, str]:
+    """Encode the set fields of a patch. Precondition: none. Postcondition: omits fields that are None."""
     fields = asdict(patch)
     return {name: json.dumps(value) for name, value in fields.items() if value is not None}
 
 
-def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord:
+def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
+    """Rebuild a record from a hash. Precondition: none. Postcondition: None unless every record field is present."""
+    if not _RECORD_FIELDS.issubset(_text(name) for name in raw):
+        return None
     fields = {_text(name): json.loads(_text(value)) for name, value in raw.items()}
     fields["owner"] = JobOwner(
         tenant_id=fields["owner"]["tenant_id"],
@@ -87,21 +103,24 @@ class RedisRunJobStore:
         if idempotency_key is None:
             return OpenedJob(record=record, created=True)
         idem_name = self._idempotency_name(record.owner, idempotency_key)
-        if self._redis.set(idem_name, record.id, nx=True, ex=JOB_TTL_SECONDS):
-            return OpenedJob(record=record, created=True)
-        existing_id = self._redis.get(idem_name)
-        existing = None if existing_id is None else self.get(_text(existing_id))
-        if existing is None:
-            self._redis.set(idem_name, record.id, ex=JOB_TTL_SECONDS)
+        reserved = self._reserve(idem_name, record.id)
+        existing = None if reserved else self._bound_job(idem_name)
+        if not reserved and existing is None:
+            self._release_stale(idem_name)
+            reserved = self._reserve(idem_name, record.id)
+            existing = None if reserved else self._bound_job(idem_name)
+        if reserved:
             return OpenedJob(record=record, created=True)
         self.discard(record.id, idempotency_key=None)
+        if existing is None:
+            raise RuntimeError("Idempotency key is contended; retry the request")
         return OpenedJob(record=existing, created=False)
 
     def get(self, job_id: str) -> JobRecord | None:
         """Load a job.
 
         Precondition: none.
-        Postcondition: returns the stored record, or None when it is absent or expired.
+        Postcondition: returns the stored record, or None when it is absent, expired or incomplete.
         """
         raw = self._redis.hgetall(self._job_name(job_id))
         if not raw:
@@ -157,7 +176,30 @@ class RedisRunJobStore:
         """
         return bool(self._redis.exists(self._alive_name(job_id)))
 
+    def _reserve(self, idem_name: str, job_id: str) -> bool:
+        """Bind the idempotency key. Precondition: none. Postcondition: true only if this call bound it."""
+        return bool(self._redis.set(idem_name, job_id, nx=True, ex=JOB_TTL_SECONDS))
+
+    def _bound_job(self, idem_name: str) -> JobRecord | None:
+        """Load the job a key names. Precondition: none. Postcondition: None if unbound or the job vanished."""
+        bound_id = self._redis.get(idem_name)
+        return None if bound_id is None else self.get(_text(bound_id))
+
+    def _release_stale(self, idem_name: str) -> None:
+        """Free a key whose job vanished. Precondition: none.
+
+        Postcondition: the key is deleted only if it still holds the id read now and that job is gone.
+        """
+        bound_id = self._redis.get(idem_name)
+        if bound_id is None:
+            return
+        if self.get(_text(bound_id)) is not None:
+            return
+        delete_if_equal = self._redis.register_script(_DELETE_IF_EQUAL)
+        delete_if_equal(keys=[idem_name], args=[_text(bound_id)])
+
     def _write_new(self, record: JobRecord) -> None:
+        """Persist a record. Precondition: none. Postcondition: hash and alive key exist with their TTLs."""
         name = self._job_name(record.id)
         self._redis.hset(name, mapping=_encode_record(record))
         self._redis.expire(name, JOB_TTL_SECONDS)
@@ -165,14 +207,17 @@ class RedisRunJobStore:
 
     @staticmethod
     def _job_name(job_id: str) -> str:
+        """Job hash key. Precondition: none. Postcondition: the key."""
         return _JOB_KEY.format(job_id=job_id)
 
     @staticmethod
     def _alive_name(job_id: str) -> str:
+        """Alive key. Precondition: none. Postcondition: the key."""
         return _ALIVE_KEY.format(job_id=job_id)
 
     @staticmethod
     def _idempotency_name(owner: JobOwner, key: str) -> str:
+        """Idempotency key. Precondition: none. Postcondition: scoped to tenant, role and caller."""
         return _IDEMPOTENCY_KEY.format(
             tenant_id=owner.tenant_id, caller_role=owner.caller_role.value, caller_id=owner.caller_id, key=key
         )
