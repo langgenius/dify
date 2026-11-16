@@ -1,5 +1,5 @@
 import i18next from 'i18next'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { supportedLocales } from '@/i18n/locale'
 import enUS from '@/i18n/locales/en-US/workflow.json'

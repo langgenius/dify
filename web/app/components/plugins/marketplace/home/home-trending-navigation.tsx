@@ -169,11 +169,11 @@ function TrendingNavigation({
   useEffect(() => {
     const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     const syncReducedMotion = () => {
-      // oxlint-disable-next-line eslint-react/set-state-in-effect -- This state mirrors an external media query.
       setIsReducedMotionPaused(reducedMotionQuery.matches)
       setPauseReason('reduced-motion', reducedMotionQuery.matches)
     }
 
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- This state mirrors the initial external media query before subscribing to updates.
     syncReducedMotion()
     reducedMotionQuery.addEventListener('change', syncReducedMotion)
 

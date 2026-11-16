@@ -5,15 +5,10 @@ import { render } from 'vitest-browser-react'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
-const { cropImage, uploadImage } = vi.hoisted(() => ({
-  cropImage: vi.fn<() => Promise<Blob>>(),
-  uploadImage: vi.fn<() => Promise<PostFilesUploadResponse>>(),
+const { uploadImage } = vi.hoisted(() => ({
+  uploadImage: vi.fn<(request: { body: { file: File } }) => Promise<PostFilesUploadResponse>>(),
 }))
 
-vi.mock('../image-crop', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../image-crop')>()),
-  default: cropImage,
-}))
 vi.mock('@/service/console', () => ({
   consoleQuery: {
     files: { upload: { post: { mutationOptions: () => ({ mutationFn: uploadImage }) } } },
@@ -23,9 +18,13 @@ vi.mock('@/next/navigation', () => ({ useParams: () => ({}) }))
 
 async function createImageFile() {
   const canvas = document.createElement('canvas')
-  canvas.width = 100
-  canvas.height = 100
-  canvas.getContext('2d')!.fillRect(0, 0, 100, 100)
+  canvas.width = 120
+  canvas.height = 80
+  const context = canvas.getContext('2d')!
+  context.fillStyle = '#ef4444'
+  context.fillRect(0, 0, 60, 80)
+  context.fillStyle = '#3b82f6'
+  context.fillRect(60, 0, 60, 80)
   const blob = await new Promise<Blob>((resolve) =>
     canvas.toBlob((value) => resolve(value!), 'image/png'),
   )
@@ -57,6 +56,41 @@ async function openImageSession() {
   return { screen, client, trigger, dialog, save, file, onConfirm }
 }
 
+function deferNextCanvasBlob() {
+  const originalToBlob = HTMLCanvasElement.prototype.toBlob
+  let release!: () => void
+  let encodedBlob!: Blob
+  const encoded = new Promise<void>((resolve) => {
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(function (
+      this: HTMLCanvasElement,
+      callback,
+      type,
+      quality,
+    ) {
+      originalToBlob.call(
+        this,
+        (blob) => {
+          if (!blob) {
+            callback(null)
+            resolve()
+            return
+          }
+          encodedBlob = blob
+          release = () => callback(blob)
+          resolve()
+        },
+        type,
+        quality,
+      )
+    })
+  })
+  return {
+    encoded,
+    getBlob: () => encodedBlob,
+    release: () => release(),
+  }
+}
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
@@ -67,24 +101,22 @@ afterEach(() => {
 })
 
 it('ignores crop completion during the closing animation while Cancel remains available', async () => {
-  let finishCrop!: (blob: Blob) => void
-  cropImage.mockReturnValueOnce(
-    new Promise<Blob>((resolve) => {
-      finishCrop = resolve
-    }),
-  )
-  const { client, trigger, dialog, save, file, onConfirm } = await openImageSession()
+  const { client, trigger, dialog, save, onConfirm } = await openImageSession()
+  const crop = deferNextCanvasBlob()
   const popup = dialog.element()
   await expect.poll(() => getComputedStyle(popup).opacity).toBe('1')
   await save.click()
-  await expect.poll(() => cropImage.mock.calls.length).toBe(1)
+  await crop.encoded
+  const bitmap = await createImageBitmap(crop.getBlob())
+  expect({ width: bitmap.width, height: bitmap.height }).toEqual({ width: 80, height: 80 })
+  bitmap.close()
   const cancel = dialog.getByRole('button', { name: 'app.iconPicker.cancel' })
   await expect.element(cancel).toBeEnabled()
   const exitFrame = new Promise<number>((resolve) => {
     const onTransition = (event: Event) => {
       if (event.target !== popup || (event as TransitionEvent).propertyName !== 'opacity') return
       popup.removeEventListener('transitionrun', onTransition)
-      finishCrop(file)
+      crop.release()
       resolve(Number(getComputedStyle(popup).opacity))
     }
     popup.addEventListener('transitionrun', onTransition)
@@ -112,9 +144,12 @@ it('ignores an old upload when reopened as soon as keyboard focus returns', asyn
   })
   uploadImage.mockReturnValueOnce(pendingUpload)
   const { client, trigger, dialog, save, file, onConfirm } = await openImageSession()
-  cropImage.mockResolvedValueOnce(file)
   await save.click()
   await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
+  const uploadedFile = uploadImage.mock.calls[0]![0].body.file
+  const bitmap = await createImageBitmap(uploadedFile)
+  expect({ width: bitmap.width, height: bitmap.height }).toEqual({ width: 80, height: 80 })
+  bitmap.close()
   await expect.element(dialog.getByRole('button', { name: 'app.iconPicker.cancel' })).toBeEnabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(trigger).toHaveFocus()

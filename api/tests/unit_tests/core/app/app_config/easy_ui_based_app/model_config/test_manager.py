@@ -326,7 +326,7 @@ class TestModelConfigManagerCases:
 
 class TestEasyUiModelConfigManagerCases:
     @staticmethod
-    def test_validate_and_set_defaults_reuses_single_model_assembly():
+    def test_validate_and_set_defaults_reuses_single_model_assembly() -> None:
         provider_name = str(ModelProviderID("openai"))
         provider_entity = SimpleNamespace(provider=provider_name)
         model = SimpleNamespace(model="gpt-4o-mini", model_properties={ModelPropertyKey.MODE: "chat"})
@@ -339,7 +339,7 @@ class TestEasyUiModelConfigManagerCases:
             "model": {
                 "provider": "openai",
                 "name": "gpt-4o-mini",
-                "completion_params": {"stop": []},
+                "completion_params": {"stop": []},  # pyrefly: ignore[implicit-any-empty-container]
             }
         }
 
@@ -355,7 +355,7 @@ class TestEasyUiModelConfigManagerCases:
         mock_assembly.assert_called_once_with(tenant_id="tenant-1")
 
     @staticmethod
-    def test_convert_keeps_model_config_shape():
+    def test_convert_keeps_model_config_shape() -> None:
         config = {
             "model": {
                 "provider": "openai",
@@ -365,7 +365,7 @@ class TestEasyUiModelConfigManagerCases:
             }
         }
 
-        result = ModelConfigManager.convert(config)
+        result = ModelConfigManager.convert(config)  # pyrefly: ignore[bad-argument-type]
 
         assert result == ModelConfigEntity(
             provider="openai",

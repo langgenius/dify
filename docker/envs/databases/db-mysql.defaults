@@ -1,6 +1,8 @@
 # Defaults for db_mysql. Copy this file to db-mysql.env to customize it.
 # Edit the settings below in the copy; docker/.env takes precedence.
 # Optional application settings are commented to retain their application defaults.
+# For bundled MySQL, set DB_TYPE=mysql, DB_HOST=db_mysql, DB_PORT=3306 and DB_USERNAME=root
+# in docker/.env, and replace postgresql with mysql in COMPOSE_PROFILES.
 
 MYSQL_INNODB_LOG_FILE_SIZE=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
 MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}

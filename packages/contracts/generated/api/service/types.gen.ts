@@ -1773,6 +1773,8 @@ export type KnowledgeFsDocumentProcessingTaskResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2150,6 +2152,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2574,6 +2578,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2750,6 +2756,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2881,6 +2889,7 @@ export type KnowledgeFsSourceListResponse = {
 }
 
 export type KnowledgeFsSourcePageResponse = {
+  has_children?: boolean | null
   last_edited_time?: string | null
   page_id: string
   page_name: string
@@ -2891,6 +2900,8 @@ export type KnowledgeFsSourcePageResponse = {
 export type KnowledgeFsSourcePagesQuery = {
   cursor?: string | null
   limit?: number
+  parentId?: string | null
+  view?: 'tree' | null
 }
 
 export type KnowledgeFsSourcePagesResponse = {
@@ -3040,6 +3051,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -3482,6 +3495,9 @@ export type Parameters = {
     enabled?: boolean
   }
   sensitive_word_avoidance: {
+    enabled?: boolean
+  }
+  show_thoughts?: {
     enabled?: boolean
   }
   speech_to_text: {
@@ -8619,6 +8635,8 @@ export type GetKnowledgeFsSpacesByControlSpaceIdSourcesBySourceIdPagesData = {
   query?: {
     cursor?: string
     limit?: number
+    parentId?: string
+    view?: string
   }
   url: '/knowledge-fs/spaces/{control_space_id}/sources/{source_id}/pages'
 }

@@ -337,6 +337,7 @@ def test_permission_dependency_failure_preserves_cause_without_leaking_details(
     harness: _Harness,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a failed permission dependency, retain its cause and exclude internal details from the response."""
     failure = WebAppAccessUnavailableError("private upstream response containing credentials")
     harness.state.permission_error = failure
     exceptions: list[Exception] = []
@@ -362,7 +363,7 @@ def test_permission_dependency_failure_preserves_cause_without_leaking_details(
     assert exceptions[0].__cause__ is failure
     records = [record for record in caplog.records if record.name == admission_module.__name__]
     assert len(records) == 1
-    assert records[0].exc_info is not None
+    assert isinstance(records[0].exc_info, tuple)
     assert records[0].exc_info[1] is failure
     assert harness.installed_app.id in records[0].getMessage()
     assert harness.installed_app.tenant_id in records[0].getMessage()
@@ -490,6 +491,7 @@ def test_migrated_saved_message_and_parameter_handlers_dispatch_through_full_adm
                 "retriever_resource",
                 "annotation_reply",
                 "more_like_this",
+                "show_thoughts",
                 "sensitive_word_avoidance",
                 "file_upload",
             )
@@ -867,6 +869,7 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     sqlite_session_factory: sessionmaker[Session],
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given a graph Redis failure, keep the stop flag, return success, and log the cause."""
     _set_app_mode(harness, sqlite_session_factory, AppMode.ADVANCED_CHAT)
     failure = RedisConnectionError("Graph channel unavailable")
     stop_redis.command_error = failure
@@ -879,7 +882,7 @@ def test_chat_stop_preserves_success_and_legacy_flag_when_graph_redis_fails(
     assert stop_redis.values[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == b"1"
     assert stop_redis.expirations[f"generate_task_stopped:{_WORKFLOW_TASK_ID}"] == 600
     assert stop_redis.commands == {}
-    assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+    assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
     with sqlite_session_factory() as session:
         run = session.get(WorkflowRun, running_workflow.id)
         assert run is not None

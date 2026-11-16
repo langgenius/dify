@@ -6,6 +6,7 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from '@langgenius/d
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { modelNameMap, providerLogoMap } from '../utils'
 
 type MarketplaceSectionProps = {
@@ -14,7 +15,6 @@ type MarketplaceSectionProps = {
   marketplaceCollapsed: boolean
   installingProvider: ModelProviderQuotaGetPaid | null
   canInstallPlugin: boolean
-  theme?: string
   onMarketplaceCollapsedChange: (collapsed: boolean) => void
   onInstallPlugin: (key: ModelProviderQuotaGetPaid) => void | Promise<void>
   onOpenMarketplace?: () => void
@@ -26,12 +26,12 @@ function MarketplaceSection({
   marketplaceCollapsed,
   installingProvider,
   canInstallPlugin,
-  theme,
   onMarketplaceCollapsedChange,
   onInstallPlugin,
   onOpenMarketplace,
 }: MarketplaceSectionProps) {
   const { t } = useTranslation(['plugin', 'modelProvider'])
+  const theme = useResolvedTheme()
   const headingId = useId()
 
   if (marketplaceProviders.length === 0) return null

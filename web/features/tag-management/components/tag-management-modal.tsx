@@ -89,9 +89,9 @@ export const TagManagementModal = ({
         </DialogHeader>
         <DialogBody className="flex flex-wrap gap-2">
           <input
-            aria-label={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            aria-label={t(($) => $['tag.addNew'], { ns: 'common' })}
             className="w-25 shrink-0 appearance-none rounded-lg border border-dashed border-divider-regular bg-transparent px-2 py-1 text-sm/5 text-text-secondary caret-primary-600 outline-hidden placeholder:text-text-quaternary focus:border-solid"
-            placeholder={t(($) => $['tag.addNew'], { ns: 'common' }) || ''}
+            placeholder={t(($) => $['tag.addNew'], { ns: 'common' })}
             value={name}
             readOnly={createTagMutation.isPending}
             onChange={(e) => setName(e.target.value)}

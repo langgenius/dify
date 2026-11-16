@@ -40,7 +40,7 @@ const HumanInputMigrationDialog = ({
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="w-120 max-w-[calc(100vw-2rem)]">
+      <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>
             {t(($) => $['nodes.humanInputMigration.dialog.title'], {

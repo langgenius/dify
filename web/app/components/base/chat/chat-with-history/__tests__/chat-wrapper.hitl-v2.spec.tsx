@@ -121,7 +121,7 @@ const createContext = (
   handleFeedback: vi.fn().mockResolvedValue(undefined),
   pinnedConversationList: [],
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   currentConversationInputs: {},
   setCurrentConversationInputs: vi.fn(),
   allInputsHidden: false,

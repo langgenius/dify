@@ -1,16 +1,18 @@
 """Build dify-agent run requests for one Agent App conversation turn.
 
 Mirrors the workflow ``WorkflowAgentRuntimeRequestBuilder`` but for the Agent
-App surface: the user prompt is the chat message (no workflow-node job / no
-previous-node context), multi-turn continuity flows through the
-conversation-keyed ``session_snapshot`` plus the history layer, and Agent Soul
-knowledge config is mapped into the same fixed ``dify.knowledge_base`` layer
-used by workflow runs.
+App surface: the user prompt combines declared app inputs with the chat message
+(no workflow-node job / previous-node context). Multi-turn continuity flows
+through the conversation-keyed ``session_snapshot`` plus the history layer,
+and Agent Soul knowledge config is mapped into the same fixed
+``dify.knowledge_base`` layer used by workflow runs.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import json
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from typing import Any, Literal, cast
 
 from dify_agent.layers.execution_context import (
@@ -53,6 +55,10 @@ from core.workflow.nodes.agent_v2.runtime_request_builder import (
     build_shell_layer_config,
     load_runtime_agent_skill_configs,
 )
+from core.workflow.nodes.agent_v2.tool_snapshot import (
+    AgentRuntimeToolDefinition,
+    build_runtime_tool_definitions,
+)
 from extensions.tracing import application_tracing_hooks
 from graphon.file import File, FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
@@ -86,8 +92,13 @@ class AgentAppRuntimeBuildContext:
     backend_binding_ref: str
     files: tuple[File, ...] = ()
     image_detail_config: ImagePromptMessageContent.DETAIL | None = None
+    capture_available_tools: bool = False
     agent_config_version_kind: Literal["snapshot", "draft", "build_draft"] = "snapshot"
     session_snapshot: SessionSnapshot | None = None
+    inputs: Mapping[str, Any] = field(default_factory=dict)
+
+
+AgentAppRuntimeToolDefinition = AgentRuntimeToolDefinition
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,6 +107,7 @@ class AgentAppRuntimeRequest:
     redacted_request: dict[str, Any]
     metadata: dict[str, Any]
     binding_id: str
+    available_tools: tuple[AgentAppRuntimeToolDefinition, ...] = ()
 
 
 class AgentAppRuntimeRequestBuilder:
@@ -176,6 +188,7 @@ class AgentAppRuntimeRequestBuilder:
         )
 
         tracing_hooks = application_tracing_hooks()
+        shell_config = build_shell_layer_config(agent_soul)
         request = self._request_builder.build_for_agent_app(
             AgentBackendAgentAppRunInput(
                 model=AgentBackendModelConfig(
@@ -206,7 +219,7 @@ class AgentAppRuntimeRequestBuilder:
                 agent_soul_prompt=expand_prompt_mentions(agent_soul.prompt.system_prompt, soul_prompt_resolver).strip()
                 or None,
                 agent_config_version_kind=context.agent_config_version_kind,
-                user_prompt=context.user_query,
+                user_prompt=_build_user_prompt(context.agent_soul, context.inputs, context.user_query),
                 user_files=user_files,
                 tools=tool_layers.plugin_tools,
                 core_tools=tool_layers.core_tools,
@@ -214,7 +227,7 @@ class AgentAppRuntimeRequestBuilder:
                 knowledge_fs=knowledge_fs_config,
                 config_layer_config=config_layer_config,
                 include_shell=dify_config.AGENT_SHELL_ENABLED,
-                shell_config=build_shell_layer_config(agent_soul),
+                shell_config=shell_config,
                 session_snapshot=context.session_snapshot,
                 idempotency_key=context.idempotency_key,
                 metadata=metadata,
@@ -226,6 +239,14 @@ class AgentAppRuntimeRequestBuilder:
             redacted_request=redacted,
             metadata=metadata,
             binding_id=context.binding_id,
+            available_tools=(
+                build_runtime_tool_definitions(
+                    tool_layers=tool_layers,
+                    include_shell=dify_config.AGENT_SHELL_ENABLED,
+                )
+                if context.capture_available_tools
+                else ()
+            ),
         )
 
     @staticmethod
@@ -285,6 +306,29 @@ class AgentAppRuntimeRequestBuilder:
             "agent_id": context.agent_id,
             "agent_config_snapshot_id": context.agent_config_snapshot_id,
         }
+
+
+def _build_user_prompt(agent_soul: AgentSoulConfig, inputs: Mapping[str, Any], query: str) -> str:
+    """Prefix declared app inputs to the query in declaration order.
+
+    Skips None and "" values; returns the query unchanged when nothing applies or it is blank.
+    """
+    if not query.strip():
+        return query
+    lines: list[str] = []
+    for variable in agent_soul.app_variables:
+        value = inputs.get(variable.name)
+        if value is None or value == "":
+            continue
+        lines.append(f"- {variable.name}: {json.dumps(value, ensure_ascii=False)}")
+    if not lines:
+        return query
+    return (
+        "App inputs for this run:\n"
+        + "\n".join(lines)
+        + "\nThe above app inputs are run-specific. Do not treat them as Agent Soul or persistent memory.\n\n"
+        + query
+    )
 
 
 def _build_user_image(
@@ -347,4 +391,5 @@ __all__ = [
     "AgentAppRuntimeRequest",
     "AgentAppRuntimeRequestBuildError",
     "AgentAppRuntimeRequestBuilder",
+    "AgentAppRuntimeToolDefinition",
 ]

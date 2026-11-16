@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from unittest.mock import patch
+from collections.abc import Iterator
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask.testing import FlaskClient
@@ -40,7 +41,7 @@ def api_extension_client(
 
 
 @pytest.fixture(autouse=True)
-def mock_api_based_extension_ping():
+def mock_api_based_extension_ping() -> Iterator[MagicMock]:
     with patch("services.api_based_extension_adapters.APIBasedExtensionRequestor") as requestor:
         requestor.return_value.request.return_value = {"result": "pong"}
         yield requestor

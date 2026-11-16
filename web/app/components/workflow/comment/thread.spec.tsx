@@ -143,14 +143,14 @@ describe('CommentThread', () => {
   it('supports editing and direct deleting an existing reply', async () => {
     const user = userEvent.setup()
     const onReplyEdit = vi.fn()
-    const onReplyDeleteDirect = vi.fn()
+    const onReplyDelete = vi.fn()
 
     render(
       <CommentThread
         comment={createComment()}
         onClose={vi.fn()}
         onReplyEdit={onReplyEdit}
-        onReplyDeleteDirect={onReplyDeleteDirect}
+        onReplyDelete={onReplyDelete}
       />,
     )
 
@@ -174,6 +174,6 @@ describe('CommentThread', () => {
     await user.click(await screen.findByText('workflowComments.comments.actions.deleteReply'))
     await user.click(await screen.findByRole('button', { name: 'common.operation.delete' }))
 
-    expect(onReplyDeleteDirect).toHaveBeenCalledWith('reply-1')
+    expect(onReplyDelete).toHaveBeenCalledWith('reply-1')
   })
 })

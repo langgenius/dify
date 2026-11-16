@@ -22,8 +22,15 @@ class SMTPClient:
         self.opportunistic_tls = opportunistic_tls
 
     def send(self, mail: dict[str, Any]):
+        """Send a mail containing subject/to/html with the configured local EHLO identity.
+
+        Returns after SMTP acceptance. Connection, TLS, authentication and send
+        failures propagate; cleanup never replaces the primary outcome.
+        """
         smtp: smtplib.SMTP | None = None
-        local_host = dify_config.SMTP_LOCAL_HOSTNAME
+        # A blank value must fall back to smtplib's socket.getfqdn() default;
+        # SMTP(local_hostname="") would send a bare "ehlo" with no hostname.
+        local_host = dify_config.SMTP_LOCAL_HOSTNAME or None
         try:
             if self.use_tls and not self.opportunistic_tls:
                 # SMTP with SSL (implicit TLS)
@@ -34,9 +41,9 @@ class SMTPClient:
 
             assert smtp is not None
             if self.use_tls and self.opportunistic_tls:
-                smtp.ehlo(self.server)
+                smtp.ehlo()
                 smtp.starttls()
-                smtp.ehlo(self.server)
+                smtp.ehlo()
 
             # Only authenticate if both username and password are non-empty
             if self.username and self.password and self.username.strip() and self.password.strip():

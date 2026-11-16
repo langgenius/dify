@@ -20,6 +20,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { DatasetACLPermission } from '@/utils/permission'
 import DocumentDetail from '../index'
 const expectDocumentListInvalidated = (queryClient: QueryClient) =>
@@ -300,7 +301,7 @@ describe('DocumentDetail', () => {
 
     it('opens metadata in a drawer on mobile instead of beside the chunks', async () => {
       const user = userEvent.setup()
-      vi.stubGlobal('innerWidth', 390)
+      setViewportWidth(390)
       try {
         render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
         expect(
@@ -314,7 +315,27 @@ describe('DocumentDetail', () => {
           ),
         ).toBeVisible()
       } finally {
-        vi.unstubAllGlobals()
+        resetViewportWidth()
+      }
+    })
+
+    it('does not open the mobile drawer when an open inline panel crosses the breakpoint', () => {
+      try {
+        render(<DocumentDetail datasetId="ds-1" documentId="doc-1" />)
+        const toggle = screen.getByRole('button', { name: /metadata\.title/ })
+        expect(toggle).toHaveAttribute('aria-expanded', 'true')
+
+        act(() => setViewportWidth(390))
+        expect(toggle).toHaveAttribute('aria-expanded', 'false')
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+        act(() => resetViewportWidth())
+        expect(toggle).toHaveAttribute('aria-expanded', 'true')
+        expect(
+          screen.getByText('dataset.metadata.documentMetadata.documentInformation'),
+        ).toBeInTheDocument()
+      } finally {
+        resetViewportWidth()
       }
     })
 

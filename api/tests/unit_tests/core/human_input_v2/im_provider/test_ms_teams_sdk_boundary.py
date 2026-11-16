@@ -184,7 +184,7 @@ def connector_server() -> Generator[_ConnectorServer]:
     state = _ConnectorState()
     server = _ConnectorHTTPServer(("127.0.0.1", 0), _ConnectorHandler)
     server.state = state
-    thread = threading.Thread(target=server.serve_forever)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
     thread.start()
     try:
         yield _ConnectorServer(server, state)

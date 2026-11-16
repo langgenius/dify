@@ -169,9 +169,9 @@ function AgentSkillDetailSectionBlock({ section }: { section: AgentSkillDetailSe
         </p>
       ))}
       {!!section.items?.length && (
-        <ul className="mt-1 flex list-disc flex-col gap-0.5 pl-5 system-xs-regular text-text-secondary">
+        <ul className="mt-1 flex list-disc flex-col gap-0.5 ps-5 system-xs-regular text-text-secondary">
           {section.items.map((item) => (
-            <li key={item} className="pl-0.5">
+            <li key={item} className="ps-0.5">
               {item}
             </li>
           ))}
@@ -413,7 +413,7 @@ function AgentFileTextPreview({ content, fileName }: { content: string; fileName
         <div key={line.key} className="flex min-w-0 items-start">
           <span
             aria-hidden="true"
-            className="w-7 shrink-0 pr-2 text-right text-text-quaternary select-none"
+            className="w-7 shrink-0 pe-2 text-end text-text-quaternary select-none"
           >
             {line.lineNumber}
           </span>
@@ -447,7 +447,7 @@ export function AgentSkillDetailDialog({
   return (
     <DialogContent
       backdropProps={{ forceRender: true, className: 'fixed' }}
-      className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
+      className="h-180 w-240 overflow-hidden"
     >
       <AgentSkillDetailBody skillName={skillName} detail={detail} />
     </DialogContent>
@@ -474,7 +474,7 @@ export function AgentSkillDetailBody({
       <div className="flex min-h-0 flex-1">
         <div
           className={cn(
-            'flex w-56 min-w-0 shrink-0 border-r-[0.5px] border-divider-subtle bg-background-section',
+            'flex w-56 min-w-0 shrink-0 border-e-[0.5px] border-divider-subtle bg-background-section',
             detail.fileListPanelClassName,
           )}
         >
@@ -552,7 +552,7 @@ export function AgentSkillDetailBody({
               />
             </div>
           </div>
-          <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-br-2xl">
+          <ScrollArea className="min-h-0 flex-1 overflow-hidden rounded-ee-2xl">
             <ScrollAreaViewport
               aria-labelledby={dialogTitleId}
               className="overscroll-contain"

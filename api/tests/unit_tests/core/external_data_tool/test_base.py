@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from typing import Any, override
 
 import pytest
@@ -14,22 +14,19 @@ class TestExternalDataTool:
 
     def test_init(self) -> None:
         # Create a concrete subclass to test init
+        """Given a concrete tool and explicit configuration, retain its tenant, app, variable, and configuration."""
+
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
-            def validate_config(
-                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
-            ) -> None:
-                return super().validate_config(tenant_id, config, session)
+            def validate_config(cls, tenant_id: str, config: dict[str, Any]) -> None:
+                """Given tool configuration, perform no validation in this initialization-only fake."""
+                pass
 
             @override
-            def query(
-                self,
-                inputs: Mapping[str, Any],
-                session: Session | scoped_session[Session],
-                query: str | None = None,
-            ) -> str:
-                return super().query(inputs, session, query)
+            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+                """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+                return ExternalDataTool.query(self, inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1", config={"key": "value"})
         assert tool.tenant_id == "tenant_1"
@@ -62,28 +59,15 @@ class TestExternalDataTool:
         assert tool.variable == "var_1"
         assert tool.config is None
 
-    def test_validate_config_raises_not_implemented(self, sqlite_session: Session) -> None:
-        class ConcreteTool(ExternalDataTool):
-            @classmethod
-            @override
-            def validate_config(
-                cls, tenant_id: str, config: dict[str, Any], session: Session | scoped_session[Session]
-            ) -> None:
-                return super().validate_config(tenant_id, config, session)
-
-            @override
-            def query(
-                self,
-                inputs: Mapping[str, Any],
-                session: Session | scoped_session[Session],
-                query: str | None = None,
-            ) -> str:
-                return ""
-
+    @pytest.mark.parametrize("base_method", [ExternalDataTool.validate_config])
+    def test_validate_config_raises_not_implemented(self, base_method: Callable[[str, dict[str, Any]], None]) -> None:
+        """Given the base validator, verify its unimplemented contract raises."""
         with pytest.raises(NotImplementedError):
-            ConcreteTool.validate_config("tenant_1", {}, sqlite_session)
+            base_method("tenant_1", {})
 
-    def test_query_raises_not_implemented(self, sqlite_session: Session) -> None:
+    def test_query_raises_not_implemented(self) -> None:
+        """Given a concrete tool that calls the base query, propagate NotImplementedError."""
+
         class ConcreteTool(ExternalDataTool):
             @classmethod
             @override
@@ -93,13 +77,9 @@ class TestExternalDataTool:
                 pass
 
             @override
-            def query(
-                self,
-                inputs: Mapping[str, Any],
-                session: Session | scoped_session[Session],
-                query: str | None = None,
-            ) -> str:
-                return super().query(inputs, session, query)
+            def query(self, inputs: Mapping[str, Any], query: str | None = None) -> str:
+                """Given the declared arguments, call the base stub and propagate NotImplementedError."""
+                return ExternalDataTool.query(self, inputs, query)
 
         tool = ConcreteTool(tenant_id="tenant_1", app_id="app_1", variable="var_1")
         with pytest.raises(NotImplementedError):

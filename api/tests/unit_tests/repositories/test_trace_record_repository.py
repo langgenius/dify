@@ -6,6 +6,7 @@ import pytest
 from dify_trace_sdk.events import (
     MessageCompleted,
     ModerationChecked,
+    SuggestedQuestionsGenerated,
     ToolInvoked,
     TraceCorrelation,
     TraceEvent,
@@ -34,10 +35,12 @@ from models.workflow import (
 )
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.trace_record_repository import TraceRecordRepository
+from services.tracing.canonical import CanonicalTraceBuilder
 from services.tracing.errors import SourceNotFoundError, SourceNotReadyError, TracingStoreUnavailableError
 from services.tracing.records import (
     MessageTraceInfo,
     ModerationTraceInfo,
+    SuggestedQuestionTraceInfo,
     ToolTraceInfo,
     TraceMessage,
     WorkflowTraceInfo,
@@ -431,3 +434,48 @@ def test_workflow_trace_loads_only_descendants_of_its_owned_tools(
     for owner in ({"app_id": APP_ID}, {"tenant_id": "other-tenant"}):
         with pytest.raises(SourceNotReadyError):
             _assembler(sqlite_session_factory).assemble(event.model_copy(update=owner))
+
+
+@pytest.mark.usefixtures("records")
+@pytest.mark.parametrize("prompt", ["", [], {}, [{"role": "user", "text": "Recorded prompt"}]])
+@pytest.mark.parametrize("query", ["What is Dify?", ""])
+def test_suggested_questions_preserve_prompt_or_fall_back_to_query(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    prompt: str | list[dict[str, str]] | dict[str, str],
+    query: str,
+) -> None:
+    """Given a committed chatflow message, trace its input without changing stored data."""
+    message = sqlite_session.get(Message, MESSAGE_ID)
+    app = sqlite_session.get(App, APP_ID)
+    assert message is not None
+    assert app is not None
+    app.mode = AppMode.ADVANCED_CHAT
+    message.app_mode = AppMode.ADVANCED_CHAT
+    message.message = prompt
+    message.query = query
+    sqlite_session.commit()
+    payload = SuggestedQuestionsGenerated(
+        message_id=MESSAGE_ID,
+        questions=["How do I create an app?"],
+        started_at=CREATED_AT,
+        ended_at=CREATED_AT + timedelta(seconds=1),
+    )
+
+    record = _assembler(sqlite_session_factory).assemble(_event(payload))
+
+    assert isinstance(record, SuggestedQuestionTraceInfo)
+    expected_input = prompt or query
+    assert record.inputs == expected_input
+    assert record.message_id == MESSAGE_ID
+    assert record.trace_id == "caller-trace"
+    assert record.suggested_question == payload.questions
+    assert (record.start_time, record.end_time) == (payload.started_at, payload.ended_at)
+    trace = CanonicalTraceBuilder().build(record)
+    assert trace is not None
+    span = next(span for span in trace.spans if span.name == "suggested_question")
+    assert span.inputs == expected_input
+    assert span.outputs == payload.questions
+    sqlite_session.refresh(message)
+    assert message.message == prompt
+    assert message.query == query

@@ -1,11 +1,31 @@
 import type { ApiBasedExtensionResponse } from '@dify/contracts/api/console/api-based-extension/types.gen'
+import type { ComponentProps } from 'react'
 import type { ModerationConfig } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
-import ModerationSettingModal from '../moderation-setting-modal'
+import FormContent from '../moderation-setting-modal'
+
+function ModerationSettingModal({
+  onCancel,
+  ...props
+}: ComponentProps<typeof FormContent> & { onCancel: () => void }) {
+  return (
+    <Dialog
+      defaultOpen
+      onOpenChange={(open) => {
+        if (!open) onCancel()
+      }}
+    >
+      <DialogContent>
+        <FormContent {...props} />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const { getExtensions, createExtension } = vi.hoisted(() => ({
   getExtensions: vi.fn<ConsoleClient['apiBasedExtension']['get']>(),

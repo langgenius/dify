@@ -9,8 +9,8 @@ import { Suspense, useEffect, useState } from 'react'
 import { I18nextProvider, Trans, useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import ThemeSelector from '@/app/components/base/theme-selector'
 import { I18nDirectionProvider } from '@/app/components/provider/i18n-direction'
+import { ThemeSelector } from '@/features/theme/theme-selector'
 import { loadI18nResource } from '@/i18n/load-resource'
 import { getInitOptions } from '@/i18n/settings'
 import { usePathname, useSearchParams } from '@/next/navigation'
@@ -60,7 +60,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
       )}
     >
       <div className="flex min-h-full min-w-0 flex-col rounded-lg border border-effects-highlight bg-background-default-subtle">
-        <header className="flex shrink-0 items-center justify-between gap-2 pt-4 pr-3 pb-3 pl-6">
+        <header className="flex shrink-0 items-center justify-between gap-2 ps-6 pe-3 pt-4 pb-3">
           <DifyLogo alt="Dify" size="large" className="w-15.75 shrink-0" />
           <div className="flex min-w-0 items-center gap-1">
             <LocaleMenu
@@ -84,7 +84,7 @@ function PageContent({ clientIp, embedded }: AppNotAccessibleProps) {
                   width={18}
                   height={29.1429}
                   alt=""
-                  className="absolute top-[21.43%] left-[12.5%] w-3/4 max-w-none"
+                  className="absolute inset-s-[12.5%] top-[21.43%] w-3/4 max-w-none"
                 />
               </span>
               <span className="px-2 system-sm-medium whitespace-nowrap">

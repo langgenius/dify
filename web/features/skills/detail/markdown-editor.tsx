@@ -19,6 +19,7 @@ import type { MarkdownProps } from '@/app/components/base/markdown'
 import { AlertDialog, AlertDialogTrigger } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
 import { useMutation } from '@tanstack/react-query'
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -385,37 +386,39 @@ export function MarkdownModeSwitch({
   mode: 'live' | 'source'
   onChange: (mode: 'live' | 'source') => void
 }) {
-  const { t } = useTranslation(['skill'])
+  const { t } = useTranslation(['skill', 'common'])
 
   return (
-    <div className="absolute inset-e-2 top-3 z-10 flex h-8 items-center rounded-md bg-components-segmented-control-bg-normal p-0.5">
-      <button
-        type="button"
-        aria-label={t(($) => $['skillManagement.detail.markdownLiveMode'])}
-        title={t(($) => $['skillManagement.detail.markdownLiveMode'])}
-        className={cn(
-          'flex size-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          mode === 'live' &&
-            'border-[0.5px] border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-primary shadow-xs',
-        )}
-        onClick={() => onChange('live')}
-      >
-        <span aria-hidden className="i-ri-eye-line size-4" />
-      </button>
-      <button
-        type="button"
-        aria-label={t(($) => $['skillManagement.detail.markdownSourceMode'])}
-        title={t(($) => $['skillManagement.detail.markdownSourceMode'])}
-        className={cn(
-          'flex size-7 cursor-pointer items-center justify-center rounded-md text-text-tertiary outline-hidden hover:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid',
-          mode === 'source' &&
-            'border-[0.5px] border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-primary shadow-xs',
-        )}
-        onClick={() => onChange('source')}
-      >
-        <span aria-hidden className="i-ri-code-s-slash-line size-4" />
-      </button>
-    </div>
+    <SegmentedControl
+      className="absolute inset-e-2 top-3 z-10 h-8 gap-0 rounded-md"
+      aria-label={t(($) => $['operation.view'], { ns: 'common' })}
+      value={mode}
+      onValueChange={onChange}
+    >
+      {(['live', 'source'] as const).map((value) => {
+        const label =
+          value === 'live'
+            ? t(($) => $['skillManagement.detail.markdownLiveMode'], { ns: 'skill' })
+            : t(($) => $['skillManagement.detail.markdownSourceMode'], { ns: 'skill' })
+        return (
+          <SegmentedControlItem
+            key={value}
+            value={value}
+            aria-label={label}
+            title={label}
+            className="size-7 cursor-pointer rounded-md p-0 text-text-tertiary not-data-checked:hover:bg-transparent data-checked:text-text-primary"
+          >
+            <span
+              aria-hidden
+              className={cn(
+                'size-4 shrink-0',
+                value === 'live' ? 'i-ri-eye-line' : 'i-ri-code-s-slash-line',
+              )}
+            />
+          </SegmentedControlItem>
+        )
+      })}
+    </SegmentedControl>
   )
 }
 

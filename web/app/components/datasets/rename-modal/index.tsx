@@ -198,7 +198,7 @@ function RenameDatasetForm({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="h-9 grow"
-                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+                placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' })}
               />
             </div>
           </Field>
@@ -212,7 +212,7 @@ function RenameDatasetForm({
             value={description}
             onValueChange={(value) => setDescription(value)}
             className="resize-none"
-            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' })}
           />
         </Field>
       </DialogBody>

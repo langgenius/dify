@@ -6,6 +6,7 @@ import { Button } from '@langgenius/dify-ui/button'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -27,25 +28,21 @@ import PermissionRoleChip from './permission-role-chip'
 
 type MemberDetailsContentProps = {
   member: AccountWithRoleResponse
+  saving?: boolean
   canAssignRoles?: boolean
   allowMultipleRoles?: boolean
-  onClose: () => void
-  onAssignSubmit?: (roles: Role[]) => void | Promise<unknown>
 }
 
 const MemberDetailsContent = ({
   member,
   canAssignRoles = false,
+  saving = false,
   allowMultipleRoles = true,
-  onClose,
-  onAssignSubmit,
 }: MemberDetailsContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const locale = useLocale()
   const searchInputRef = useRef<HTMLInputElement>(null)
   const [assignOpen, setAssignOpen] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [saveFailed, setSaveFailed] = useState(false)
   const language = useMemo(() => getAccessControlTemplateLanguage(locale), [locale])
 
   const { data: rolesOfMember, isLoading: isLoadingRolesOfMember } = useQuery(
@@ -106,22 +103,11 @@ const MemberDetailsContent = ({
     [allowMultipleRoles, selectedRoles],
   )
 
-  const handleSave = useCallback(async () => {
-    if (isSaving || !onAssignSubmit) return
-    setIsSaving(true)
-    setSaveFailed(false)
-    try {
-      await onAssignSubmit(allowMultipleRoles ? selectedRoles : selectedRoles.slice(0, 1))
-      onClose()
-    } catch {
-      setSaveFailed(true)
-    } finally {
-      setIsSaving(false)
-    }
-  }, [allowMultipleRoles, isSaving, onAssignSubmit, onClose, selectedRoles])
-
   return (
     <>
+      {(allowMultipleRoles ? selectedRoleIds : selectedRoleIds.slice(0, 1)).map((id) => (
+        <input key={id} type="hidden" name="roleId" value={id} />
+      ))}
       <DialogHeader>
         <DialogTitle>
           {t(($) => $['members.memberDetails.title'], {
@@ -129,10 +115,7 @@ const MemberDetailsContent = ({
             defaultValue: 'Member Details',
           })}
         </DialogTitle>
-        <DialogHeaderCloseButton
-          disabled={isSaving}
-          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-        />
+        <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
       </DialogHeader>
 
       <DialogBody>
@@ -168,7 +151,7 @@ const MemberDetailsContent = ({
                     variant="ghost"
                     size="small"
                     className="ms-auto shrink-0"
-                    disabled={isSaving || isLoadingRolesOfMember}
+                    disabled={!rolesOfMember}
                   />
                 }
               >
@@ -208,7 +191,7 @@ const MemberDetailsContent = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
+                      onRemove={canRemoveRoles ? handleRemove : undefined}
                     />
                   ))}
                 </div>
@@ -229,7 +212,7 @@ const MemberDetailsContent = ({
                       label={role.name}
                       isOwner={role.role_tag === 'owner'}
                       permissionKeys={role.permission_keys}
-                      onRemove={canRemoveRoles && !isSaving ? handleRemove : undefined}
+                      onRemove={canRemoveRoles ? handleRemove : undefined}
                     />
                   ))}
                 </div>
@@ -238,19 +221,12 @@ const MemberDetailsContent = ({
           </>
         )}
       </DialogBody>
-
-      {saveFailed && <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>}
       {canAssignRoles && (
         <DialogFooter>
-          <Button variant="secondary" disabled={isSaving} onClick={onClose}>
+          <DialogClose render={<Button variant="secondary" />}>
             {t(($) => $['operation.cancel'], { ns: 'common' })}
-          </Button>
-          <Button
-            variant="primary"
-            onClick={handleSave}
-            loading={isSaving}
-            disabled={!onAssignSubmit}
-          >
+          </DialogClose>
+          <Button type="submit" variant="primary" disabled={!rolesOfMember} loading={saving}>
             {t(($) => $['operation.save'], { ns: 'common' })}
           </Button>
         </DialogFooter>

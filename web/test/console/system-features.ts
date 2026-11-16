@@ -24,7 +24,6 @@ const baseSystemFeatures = {
   enable_email_code_login: false,
   enable_email_password_login: true,
   enable_social_oauth_login: false,
-  enable_collaboration_mode: true,
   is_allow_register: false,
   is_email_setup: false,
   enable_change_email: true,

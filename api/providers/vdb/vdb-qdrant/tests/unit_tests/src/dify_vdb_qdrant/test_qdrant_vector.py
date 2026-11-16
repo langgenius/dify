@@ -10,6 +10,8 @@ from typing import Protocol, cast, override
 from unittest.mock import MagicMock, patch
 
 import pytest
+from dify_vdb_qdrant import qdrant_vector as native_vector_module
+from qdrant_client.http import models as native_qdrant_models
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session
 
@@ -460,3 +462,52 @@ def test_vector_reads_uncommitted_annotation_binding(
             assert session.scalar(stmt) is None
     finally:
         engine.dispose()
+
+
+@pytest.mark.parametrize(
+    "ids",
+    [
+        pytest.param([], id="empty"),
+        pytest.param(["attachment-shared", "attachment-tail", "missing-id"], id="shared-collection"),
+    ],
+)
+def test_delete_by_ids_preserves_other_dataset_vectors(tmp_path: Path, ids: list[str]) -> None:
+    """A shared collection keeps other datasets' points and unrelated points in this dataset."""
+    # Legacy tests reload this module with SDK import overrides. Restore the real SDK
+    # before constructing a normal provider backed by its supported local storage mode.
+    importlib.reload(native_vector_module)
+    vector = native_vector_module.QdrantVector(
+        collection_name="shared-attachment-scope",
+        group_id="dataset-a",
+        config=native_vector_module.QdrantConfig(endpoint=f"path:{tmp_path}"),
+    )
+    try:
+        vector._client.create_collection(
+            collection_name="shared-attachment-scope",
+            vectors_config=native_qdrant_models.VectorParams(size=2, distance=native_qdrant_models.Distance.COSINE),
+        )
+        records = [
+            (1, "dataset-a", "attachment-shared"),
+            (2, "dataset-a", "attachment-tail"),
+            (3, "dataset-a", "attachment-unrelated"),
+            (4, "dataset-b", "attachment-shared"),
+            (5, "dataset-b", "attachment-tail"),
+        ]
+        vector._client.upsert(
+            collection_name="shared-attachment-scope",
+            points=[
+                native_qdrant_models.PointStruct(
+                    id=point_id,
+                    vector=[1.0, 0.0],
+                    payload={"group_id": group_id, "metadata": {"doc_id": doc_id}},
+                )
+                for point_id, group_id, doc_id in records
+            ],
+        )
+
+        vector.delete_by_ids(ids)
+
+        remaining, _ = vector._client.scroll(collection_name="shared-attachment-scope", limit=10)
+        assert {point.id for point in remaining} == ({1, 2, 3, 4, 5} if not ids else {3, 4, 5})
+    finally:
+        vector._client.close()

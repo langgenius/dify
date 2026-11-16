@@ -43,7 +43,7 @@ def _build_mcp_entity(*, icon: str = "icon.svg") -> MCPProviderEntity:
     )
 
 
-def test_mcp_tool_provider_controller_from_entity_and_get_tools():
+def test_mcp_tool_provider_controller_from_entity_and_get_tools() -> None:
     entity = _build_mcp_entity()
     with patch("core.tools.mcp_tool.provider.ToolTransformService.convert_mcp_schema_to_parameter", return_value=[]):
         controller = MCPToolProviderController.from_entity(entity)
@@ -63,14 +63,14 @@ def test_mcp_tool_provider_controller_from_entity_and_get_tools():
         controller.get_tool("missing")
 
 
-def test_mcp_tool_provider_controller_from_entity_requires_icon():
+def test_mcp_tool_provider_controller_from_entity_requires_icon() -> None:
     entity = _build_mcp_entity(icon="")
     with patch("core.tools.mcp_tool.provider.ToolTransformService.convert_mcp_schema_to_parameter", return_value=[]):
         with pytest.raises(ValueError, match="icon is required"):
             MCPToolProviderController.from_entity(entity)
 
 
-def test_mcp_tool_provider_controller_from_db_delegates_to_entity(sqlite_session: Session):
+def test_mcp_tool_provider_controller_from_db_delegates_to_entity(sqlite_session: Session) -> None:
     entity = _build_mcp_entity()
     db_provider = MCPToolProvider(
         name=entity.name,
@@ -97,7 +97,7 @@ def test_mcp_tool_provider_controller_from_db_delegates_to_entity(sqlite_session
     assert controller.entity.tools[0].identity.name == "remote-tool"
 
 
-def _build_mcp_entity_with_tools(tools: list[dict]) -> MCPProviderEntity:
+def _build_mcp_entity_with_tools(tools: list[dict[str, object]]) -> MCPProviderEntity:
     now = datetime.now()
     return MCPProviderEntity(
         id="db-id",
@@ -118,7 +118,7 @@ def _build_mcp_entity_with_tools(tools: list[dict]) -> MCPProviderEntity:
     )
 
 
-def test_mcp_tool_provider_controller_falls_back_to_name_when_title_is_null():
+def test_mcp_tool_provider_controller_falls_back_to_name_when_title_is_null() -> None:
     """Tools where the server returned ``title: null`` should fall back to the tool name.
 
     Regression test for langgenius/dify#42453.
@@ -155,7 +155,7 @@ def test_mcp_tool_provider_controller_falls_back_to_name_when_title_is_null():
     assert controller.entity.tools[1].identity.label.zh_Hans == "get_content"
 
 
-def test_mcp_tool_provider_controller_uses_title_when_provided():
+def test_mcp_tool_provider_controller_uses_title_when_provided() -> None:
     """When the server provides a non-null title, it should drive the label."""
     entity = _build_mcp_entity_with_tools(
         tools=[

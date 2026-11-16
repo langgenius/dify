@@ -3,7 +3,7 @@ import type {
   AccountWithRoleResponse,
   MemberInviteResponse,
 } from '@dify/contracts/api/console/workspaces/types.gen'
-import type { Role } from '@/models/access-control'
+import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -107,35 +107,28 @@ const MembersPageContent = () => {
     isNotUnlimitedMemberPlan &&
     features.members.limit > 0 &&
     accounts.length >= features.members.limit
-  const [detailsDialogHandle] = useState(() => createDialogHandle<AccountWithRoleResponse>())
+  const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
 
-  const { mutateAsync: updateRolesOfMember, isPending: isSavingMember } = useMutation(
+  const roleUpdate = useMutation(
     consoleQuery.workspaces.current.rbac.members.byMemberId.rbacRoles.put.mutationOptions({
       context: { silent: true },
     }),
   )
 
-  const handleAssignRolesSubmit = (member: AccountWithRoleResponse, roles: Role[]) => {
-    const roleIds = systemFeatures.rbac_enabled
-      ? roles.map((role) => role.id)
-      : roles.slice(0, 1).map((role) => role.id)
-
-    return updateRolesOfMember({
-      params: { member_id: member.id },
-      body: { role_ids: roleIds },
-    })
-  }
+  const canAssignRoles = (member: AccountWithRoleResponse) =>
+    canManageMembers && member.role !== 'owner' && member.email !== userProfileEmail
 
   return (
-    <Dialog
-      handle={detailsDialogHandle}
+    <Dialog<AccountWithRoleResponse>
+      actionsRef={detailsActionsRef}
       onOpenChange={(open, details) => {
-        if (!open && isSavingMember) details.cancel()
+        if (open) roleUpdate.reset()
+        else if (roleUpdate.isPending && details.reason !== 'imperative-action') details.cancel()
       }}
     >
       {({ payload: member }) => (
@@ -428,16 +421,31 @@ const MembersPageContent = () => {
           </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
-              <MemberDetailsContent
+              <form
+                className="contents"
                 key={member.id}
-                member={member}
-                canAssignRoles={
-                  canManageMembers && member.role !== 'owner' && userProfileEmail !== member.email
-                }
-                allowMultipleRoles={systemFeatures.rbac_enabled}
-                onClose={() => detailsDialogHandle.close()}
-                onAssignSubmit={(roles) => handleAssignRolesSubmit(member, roles)}
-              />
+                onSubmit={(event) => {
+                  event.preventDefault()
+                  if (!canAssignRoles(member) || roleUpdate.isPending) return
+                  const roleIds = new FormData(event.currentTarget).getAll('roleId').map(String)
+                  roleUpdate.mutate(
+                    { params: { member_id: member.id }, body: { role_ids: roleIds } },
+                    { onSuccess: () => detailsActionsRef.current?.close() },
+                  )
+                }}
+              >
+                <fieldset className="contents" disabled={roleUpdate.isPending}>
+                  <MemberDetailsContent
+                    member={member}
+                    canAssignRoles={canAssignRoles(member)}
+                    saving={roleUpdate.isPending}
+                    allowMultipleRoles={systemFeatures.rbac_enabled}
+                  />
+                </fieldset>
+                {roleUpdate.isError && (
+                  <p role="alert">{t(($) => $['api.actionFailed'], { ns: 'common' })}</p>
+                )}
+              </form>
             )}
           </DialogContent>
         </>

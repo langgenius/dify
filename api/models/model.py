@@ -31,7 +31,6 @@ from models.utils.file_input_compat import build_file_from_input_mapping
 
 from .account import Account, Tenant
 from .base import Base, TypeBase, gen_uuidv4_string
-from .engine import db
 from .enums import (
     ApiTokenBindingResourceType,
     ApiTokenType,
@@ -1739,19 +1738,6 @@ class Message(TypeBase):
     @property
     def extra_contents(self) -> list[ExtraContentDict]:
         return getattr(self, "_extra_contents", [])
-
-    @property
-    def workflow_run(self):
-        if self.workflow_run_id:
-            from sqlalchemy.orm import sessionmaker
-
-            from repositories.factory import DifyAPIRepositoryFactory
-
-            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            return repo.get_workflow_run_by_id_without_tenant(run_id=self.workflow_run_id)
-
-        return None
 
     def to_dict(self, *, session: Session) -> MessageDict:
         return {

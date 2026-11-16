@@ -934,6 +934,30 @@ class TestErrorResponseContractCheckCases:
         assert f"{field}:" in found
 
     @staticmethod
+    def test_documents_only_the_surface_models_a_test_api_references(monkeypatch: pytest.MonkeyPatch) -> None:
+        # Copying every surface model into each test API made every document carry thousands of schemas.
+        surface = ExternalApi(Flask("surface"))
+        surface.model("BorrowedItem", {"value": fields.String})
+        surface.model("UnrelatedItem", {"value": fields.String})
+        monkeypatch.setattr(error_contract, "_module_apis", lambda *_names: iter([surface]))
+        app = Flask(__name__)
+        api = ExternalApi(app)
+
+        @api.route("/items")
+        class Items(Resource):
+            @api.response(200, "OK", "BorrowedItem")
+            def get(self) -> dict[str, str]:
+                return {}
+
+        own_models = dict(api.models)
+        with app.test_request_context("/items"):
+            schemas = error_contract._document(api)["components"]["schemas"]  # type: ignore[index]
+
+        assert "BorrowedItem" in schemas
+        assert "UnrelatedItem" not in schemas
+        assert dict(api.models) == own_models
+
+    @staticmethod
     @pytest.mark.allow_error_contract_violations
     def test_checks_responses_served_by_an_api_mounted_on_the_app() -> None:
         app = Flask(__name__)

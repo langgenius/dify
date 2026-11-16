@@ -263,7 +263,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             value={localeCurrentDataset.name}
             onValueChange={(value) => handleValueChange('name', value)}
             className="block h-9"
-            placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' })}
           />
         </div>
         <div className={cn(rowClass)}>
@@ -278,7 +278,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               value={localeCurrentDataset.description || ''}
               onValueChange={(value) => handleValueChange('description', value)}
               className="resize-none"
-              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' })}
             />
           </div>
         </div>

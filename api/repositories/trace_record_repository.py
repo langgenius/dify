@@ -488,6 +488,10 @@ class TraceRecordRepository(TraceRecordSource):
     def _suggested_questions(
         self, event: TraceEvent, payload: SuggestedQuestionsGenerated
     ) -> SuggestedQuestionTraceInfo:
+        """Read an owned message without writes, preserving prompts or falling back to its query.
+
+        Missing or uncommitted messages retain the standard source lookup errors.
+        """
         with tracing_store_errors(), self._sessions() as session:
             message = self._message_in_app(session, event, payload.message_id)
             workflow_app_log_id = self._workflow_app_log_id(session, message)
@@ -502,7 +506,7 @@ class TraceRecordRepository(TraceRecordSource):
             trace_id=event.correlation.external_trace_id,
             message_id=workflow_app_log_id or message.id,
             message_data=_trace_message(message),
-            inputs=message.message,
+            inputs=message.message or message.query,
             outputs=message.answer,
             start_time=payload.started_at,
             end_time=payload.ended_at,

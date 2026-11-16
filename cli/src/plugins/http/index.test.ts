@@ -174,6 +174,25 @@ describe('http plugin', () => {
     expect(body).toContain('"answer":"hi"')
   })
 
+  it('cancels an active response stream when the caller aborts', async () => {
+    mock.setScenario('slow-stream')
+    const controller = new AbortController()
+    const res = await (
+      await new Context().get(http)
+    ).request(() => ({
+      method: 'POST',
+      path: '/openapi/v1/apps/app-1/chat:run',
+      json: { app_id: 'app-1', inputs: {}, query: 'hi' },
+      signal: controller.signal,
+    }))
+    const reader = res.body!.getReader()
+    expect((await reader.read()).done).toBe(false)
+
+    controller.abort()
+
+    await expect(reader.read()).rejects.toMatchObject({ name: 'AbortError' })
+  })
+
   it('a server that never sends headers within the timeout is network_connection', async () => {
     writeTimeout(SHORT_TIMEOUT_MS)
     await expect(

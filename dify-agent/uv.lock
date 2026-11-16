@@ -536,7 +536,7 @@ wheels = [
 
 [[package]]
 name = "dify-agent"
-version = "1.18.0"
+version = "1.19.0"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
@@ -573,6 +573,8 @@ dev = [
     { name = "pytest-examples" },
     { name = "pytest-mock" },
     { name = "ruff" },
+    { name = "types-grpcio" },
+    { name = "types-protobuf" },
 ]
 docs = [
     { name = "mkdocs" },
@@ -592,7 +594,7 @@ requires-dist = [
     { name = "jsonschema", marker = "extra == 'server'", specifier = ">=4.23.0,<5.0.0" },
     { name = "jwcrypto", marker = "extra == 'server'", specifier = ">=1.5.6,<2" },
     { name = "logfire", extras = ["fastapi", "httpx", "redis"], marker = "extra == 'server'", specifier = ">=4.37.0,<5.0.0" },
-    { name = "openshell", marker = "extra == 'server'", specifier = ">=0.0.106,<0.1.0" },
+    { name = "openshell", marker = "extra == 'server'", specifier = ">=0.1.3,<0.2.0" },
     { name = "pillow", marker = "extra == 'server'", specifier = ">=13.0.0,<14" },
     { name = "pydantic", specifier = ">=2.12.5,<2.13" },
     { name = "pydantic-ai-harness", specifier = ">=0.20.0,<0.21.0" },
@@ -614,6 +616,8 @@ dev = [
     { name = "pytest-examples", specifier = ">=0.0.18" },
     { name = "pytest-mock", specifier = ">=3.14.0" },
     { name = "ruff", specifier = ">=0.15.11" },
+    { name = "types-grpcio", specifier = ">=1.60.0" },
+    { name = "types-protobuf", specifier = ">=4.25.0" },
 ]
 docs = [
     { name = "mkdocs", specifier = ">=1.6.1,<2" },
@@ -1877,18 +1881,17 @@ wheels = [
 
 [[package]]
 name = "openshell"
-version = "0.0.110"
+version = "0.1.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cloudpickle" },
+    { name = "googleapis-common-protos" },
     { name = "grpcio" },
     { name = "httpx" },
     { name = "protobuf" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7f/bd/ca4ea5311e5f7537a9cce09ef6cd759409a1f3b427e3ed14f8a24c733ad6/openshell-0.0.110-py3-none-macosx_13_0_arm64.whl", hash = "sha256:6c0133bb5a96cb11522700c07c8147948ee8f2a6ff99648b1a43728d953c4105", size = 8577190, upload-time = "2026-08-20T19:06:27.076Z" },
-    { url = "https://files.pythonhosted.org/packages/23/11/b2201f5f7b54a35ef838232b422b28fdce37ef672f71351ccc62c8c96fb8/openshell-0.0.110-py3-none-manylinux_2_39_aarch64.whl", hash = "sha256:eedea0fe0ceba6f57fc63d62d5238ce6af1795edf2aa479182d50240728a5dbd", size = 8649486, upload-time = "2026-08-20T19:06:46.764Z" },
-    { url = "https://files.pythonhosted.org/packages/76/8f/7019dc20f01f59cbb78eb74cf8a471238badb2b602d14d41050404c11afd/openshell-0.0.110-py3-none-manylinux_2_39_x86_64.whl", hash = "sha256:7715f2efb77f7d0078fed1621ab8140750fae755619b7f3bd2d66f156974934c", size = 9142871, upload-time = "2026-08-20T19:07:15.89Z" },
+    { url = "https://files.pythonhosted.org/packages/eb/32/abced5a8175714c36c93bdd0937e019989301f2cb3a9e51c42422bfae7b8/openshell-0.1.3-py3-none-any.whl", hash = "sha256:d1eaa6abcd714e2f19d4a8ecbc2079bebeb7b56d81e9f8d3f5a9b5165ed1956c", size = 131882, upload-time = "2026-10-09T15:23:07.155Z" },
 ]
 
 [[package]]
@@ -3618,6 +3621,24 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/43/78/d90f616bf5f88f8710ad067c1f8705bf7618059836ca084e5bb2a0855d75/typer-0.16.1.tar.gz", hash = "sha256:d358c65a464a7a90f338e3bb7ff0c74ac081449e53884b12ba658cbd72990614", size = 102836, upload-time = "2025-08-18T19:18:22.898Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2d/76/06dbe78f39b2203d2a47d5facc5df5102d0561e2807396471b5f7c5a30a1/typer-0.16.1-py3-none-any.whl", hash = "sha256:90ee01cb02d9b8395ae21ee3368421faf21fa138cb2a541ed369c08cec5237c9", size = 46397, upload-time = "2025-08-18T19:18:21.663Z" },
+]
+
+[[package]]
+name = "types-grpcio"
+version = "1.85.0.20261028"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/01/6b/5248f1b10df2c02ffbd99f3c913259bf73cabd2bee0ca1c28d6f3e66c3f4/types_grpcio-1.85.0.20261028.tar.gz", hash = "sha256:4ea4f36a54cf9a62fcb09515f7305e89c01f4edca54b32de24f6b1204b84522c", size = 16127, upload-time = "2026-10-28T07:38:58.025Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/c5/ee/e2b2f2d677478456869ca922c1d5bb68f64052c9dfd9ad6c2a91a1122269/types_grpcio-1.85.0.20261028-py3-none-any.whl", hash = "sha256:2c2684330ae57ab64ffb43183ac652e73d2609024e6076e3e9d2b8ae06816207", size = 16076, upload-time = "2026-10-28T07:38:57.193Z" },
+]
+
+[[package]]
+name = "types-protobuf"
+version = "7.35.1.20260906"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/e1/6c/e3e5b3e10bc328126a39637c138f9ebfd734bf14342b9f3540039b4ab995/types_protobuf-7.35.1.20260906.tar.gz", hash = "sha256:efd1a3862d4c967dad5512ef8d56b1530ac84f182c41735b94004756518c4998", size = 69895, upload-time = "2026-09-06T06:35:28.308Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/44/4e/f63e826c68f77ef875506d72f225918800346545ee99847bc28f3394f18d/types_protobuf-7.35.1.20260906-py3-none-any.whl", hash = "sha256:5155e48569e0dabff303fdf578db96cd31ea9a4a63b18018a4ceac6b0ae17462", size = 86419, upload-time = "2026-09-06T06:35:27.247Z" },
 ]
 
 [[package]]

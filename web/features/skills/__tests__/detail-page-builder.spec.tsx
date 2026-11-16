@@ -833,7 +833,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -866,7 +866,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -1014,7 +1014,7 @@ describe('SkillDetailPage builder', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -1094,7 +1094,7 @@ describe('SkillDetailPage builder', () => {
     await user.click(await screen.findByText('references'))
     await user.click(await screen.findByText('refund-policy.md'))
     await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
+      screen.getByRole('radio', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
     )
     expect(getSourceEditor()).toHaveValue('# Refund Policy\n')
     expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()

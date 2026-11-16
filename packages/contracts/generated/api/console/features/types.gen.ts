@@ -12,6 +12,7 @@ export type FeatureModel = {
   can_replace_logo: boolean
   documents_upload_quota: LimitationModel
   education: EducationModel
+  enable_file_scan: boolean
   enable_knowledge_fs: boolean
   enable_skill: boolean
   human_input_email_delivery_enabled: boolean
@@ -22,6 +23,7 @@ export type FeatureModel = {
   model_load_balancing_enabled: boolean
   trigger_event: Quota
   webapp_copyright_enabled: boolean
+  workflow_collaboration_enabled: boolean
   workspace_members: LicenseLimitationModel
 }
 

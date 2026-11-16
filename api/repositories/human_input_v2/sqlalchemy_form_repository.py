@@ -211,6 +211,18 @@ class SQLAlchemyFormRepository(FormRepository):
         return tuple(_form_from_record(record) for record in records)
 
     @override
+    def get_submitted_forms(self, *, workflow_run_id: str) -> tuple[Form, ...]:
+        """Return only accepted runtime forms in the bound owner scope without writes."""
+        records = self._session.scalars(
+            self._query().where(
+                HumanInputForm.workflow_run_id == workflow_run_id,
+                HumanInputForm.form_kind == HumanInputFormKind.RUNTIME,
+                HumanInputForm.status == HumanInputFormStatus.SUBMITTED,
+            )
+        )
+        return tuple(_form_from_record(record) for record in records)
+
+    @override
     def create_form(self, params: FormCreateParams) -> Form:
         execution_ids = (params.workflow_run_id, params.node_execution_id)
         if params.form_kind == HumanInputFormKind.RUNTIME:

@@ -81,6 +81,12 @@ class SystemFeatureService:
         edition = deployment_edition if deployment_edition is not None else dify_config.DEPLOYMENT_EDITION
         return edition == DeploymentEdition.ENTERPRISE
 
+    @staticmethod
+    def is_evaluation_enabled(*, deployment_edition: DeploymentEdition | None = None) -> bool:
+        """Return whether Evaluation is available for the deployment edition."""
+        edition = deployment_edition if deployment_edition is not None else dify_config.DEPLOYMENT_EDITION
+        return edition in {DeploymentEdition.ENTERPRISE, DeploymentEdition.CLOUD}
+
     @classmethod
     def get_license_status(cls) -> feature_entities.LicenseStatus:
         """Return the deployment license status used by internal admission policies."""
@@ -148,7 +154,6 @@ class SystemFeatureService:
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
-        system_features.enable_collaboration_mode = dify_config.ENABLE_COLLABORATION_MODE
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""
         system_features.enable_change_email = dify_config.ENABLE_CHANGE_EMAIL

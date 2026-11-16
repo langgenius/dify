@@ -9,7 +9,7 @@ from collections.abc import Callable, Generator, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import override
+from typing import ClassVar, override
 from urllib.parse import parse_qs, urlencode
 
 import pytest
@@ -161,7 +161,7 @@ def slack_api_server() -> Generator[_SlackApiServer]:
     state = _SlackApiState()
     server = _SlackApiHTTPServer(("127.0.0.1", 0), _SlackApiHandler)
     server.state = state
-    thread = threading.Thread(target=server.serve_forever)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
     thread.start()
     try:
         yield _SlackApiServer(server, state)
@@ -1078,6 +1078,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given an SDK socket request, acknowledge it only after the consumer accepts the event."""
     control_request = SocketModeRequest(type="hello", envelope_id="sanitized-control", payload={})
     invalid_request = SocketModeRequest(type="events_api", envelope_id="sanitized-invalid", payload={})
     accepted_request = SocketModeRequest(
@@ -1092,7 +1093,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
@@ -1175,6 +1176,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     disconnect_kind: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given an SDK disconnect notification, expose it safely to registered listeners."""
     sensitive_marker = f"sanitized-sensitive-remote-{disconnect_kind}"
     request = SocketModeRequest(
         type="events_api",
@@ -1184,7 +1186,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     consumer = _RecordingConsumer()
 
     class _ListenerSocketTransport:
-        instance: _ListenerSocketTransport | None = None
+        instance: ClassVar[_ListenerSocketTransport | None] = None
 
         def __init__(
             self,
@@ -1238,6 +1240,7 @@ def test_socket_start_waits_for_transport_construction(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given transport construction in progress, keep start pending until construction completes."""
     construction_started = threading.Event()
     release_construction = threading.Event()
     start_returned = threading.Event()
@@ -1245,7 +1248,7 @@ def test_socket_start_waits_for_transport_construction(
     lifecycle_errors: list[BaseException] = []
 
     class _ConstructionBlockedSocketTransport:
-        instance: _ConstructionBlockedSocketTransport | None = None
+        instance: ClassVar[_ConstructionBlockedSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -1300,6 +1303,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given a pending connection, wait for readiness and then accept the SDK callback."""
     connect_started = threading.Event()
     release_connect = threading.Event()
     start_returned = threading.Event()
@@ -1313,7 +1317,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     )
 
     class _SuccessfulSocketTransport:
-        instance: _SuccessfulSocketTransport | None = None
+        instance: ClassVar[_SuccessfulSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs

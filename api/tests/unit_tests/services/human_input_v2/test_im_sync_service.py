@@ -13,9 +13,16 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.human_input_v2.entities import IMProvider, IMSyncResultType, IMSyncRunStatus
 from core.human_input_v2.im_integration import SyncResultFact
+from core.human_input_v2.im_integration.sync_records import (
+    AccountIMSyncInitiator,
+    IMSyncInitiator,
+    SysUserId,
+    SysUserIMSyncInitiator,
+)
 from core.human_input_v2.shared import (
     AccountId,
     ContactId,
+    DeploymentScope,
     DirectoryScope,
     IMBindingId,
     IMIdentityId,
@@ -24,7 +31,9 @@ from core.human_input_v2.shared import (
     TenantId,
     WorkspaceScope,
 )
+from models.account import Account
 from models.human_input_v2 import HumanInputIMSyncRun
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.im_binding_repository import IMBindingAssignment
 from repositories.human_input_v2.im_channel_repository import (
@@ -37,6 +46,7 @@ from repositories.human_input_v2.im_identity_repository import IMIdentityObserva
 from repositories.human_input_v2.im_integration.mappers import sync_result_to_record
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
+    DeploymentIMChannelWriter,
     WorkspaceIMChannelReader,
     WorkspaceIMChannelWriter,
 )
@@ -90,6 +100,7 @@ class _ServiceContext:
             self.sessions,
             resolve_channel,
             lambda run_id, scope: self.dispatched.append((run_id, scope)),
+            account_query=SQLAlchemyAccountRepository(self.sessions),
             clock=lambda: _NOW,
             run_id_factory=lambda: _RUN_ID,
         )
@@ -108,17 +119,17 @@ def test_created_or_existing_active_run_is_serialized_and_dispatched_by_state(
 ) -> None:
     service = service_context.service()
 
-    created = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
-    retried = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+    created = service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
+    retried = service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
 
     assert created == retried
-    assert created.channel_revision.channel_id == str(_CHANNEL_ID)
+    assert created.run.channel_revision.channel_id == str(_CHANNEL_ID)
     assert service_context.dispatched == [(_RUN_ID, _SCOPE), (_RUN_ID, _SCOPE)]
     with service_context.sessions.begin() as session:
         session.get_one(HumanInputIMSyncRun, str(_RUN_ID)).status = IMSyncRunStatus.RUNNING
 
-    running = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
-    assert running.status is IMSyncRunStatus.RUNNING
+    running = service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
+    assert running.run.status is IMSyncRunStatus.RUNNING
     assert service_context.dispatched == [(_RUN_ID, _SCOPE), (_RUN_ID, _SCOPE)]
     with service_context.sessions() as session:
         assert session.scalar(sa.select(sa.func.count(HumanInputIMSyncRun.id))) == 1
@@ -139,12 +150,13 @@ def test_dispatch_failure_occurs_after_queued_run_is_committed(
         service_context.sessions,
         resolve_channel,
         fail_dispatch,
+        account_query=SQLAlchemyAccountRepository(service_context.sessions),
         clock=lambda: _NOW,
         run_id_factory=lambda: _RUN_ID,
     )
 
     with caplog.at_level(logging.ERROR), pytest.raises(IMSyncDispatchUnavailableError) as error_info:
-        service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+        service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
 
     assert isinstance(error_info.value.__cause__, ConnectionError)
     assert str(_RUN_ID) in caplog.text
@@ -153,14 +165,19 @@ def test_dispatch_failure_occurs_after_queued_run_is_committed(
 
 
 def test_missing_or_stale_channel_fails_before_run_creation(service_context: _ServiceContext) -> None:
-    missing = IMSyncService(service_context.sessions, lambda _session, _scope: None, lambda _id, _scope: None)
+    missing = IMSyncService(
+        service_context.sessions,
+        lambda _session, _scope: None,
+        lambda _id, _scope: None,
+        account_query=SQLAlchemyAccountRepository(service_context.sessions),
+    )
     with pytest.raises(IMChannelNotConfiguredError):
-        missing.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+        missing.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
 
     with pytest.raises(IMSyncRevisionChangedError):
         service_context.service(channel_override=replace(_channel(), config_version=2)).create_or_get_active_run(
             _SCOPE,
-            _ACCOUNT_ID,
+            AccountIMSyncInitiator(_ACCOUNT_ID),
         )
 
     with service_context.sessions() as session:
@@ -169,7 +186,8 @@ def test_missing_or_stale_channel_fails_before_run_creation(service_context: _Se
 
 def test_latest_result_and_identity_queries_use_current_channel(service_context: _ServiceContext) -> None:
     service = service_context.service()
-    run = service.create_or_get_active_run(_SCOPE, _ACCOUNT_ID)
+    summary = service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
+    run = summary.run
     with service_context.sessions.begin() as session:
         identities = SQLAlchemyIMIdentityRepository(session, _CHANNEL_ID)
         identities.create(
@@ -218,7 +236,7 @@ def test_latest_result_and_identity_queries_use_current_channel(service_context:
             )
         )
 
-    assert service.get_latest_run(_SCOPE) == run
+    assert service.get_latest_run(_SCOPE) == summary
     result_page = service.list_latest_results(_SCOPE, IMSyncResultType.NOT_MATCHED, page=1, limit=20)
     identity_page = service.search_identities(_SCOPE, keyword="REVIEWER", page=1, limit=20)
     assert [result.id for result in result_page.items] == [IMSyncResultId("00000000-0000-0000-0000-000000000701")]
@@ -229,3 +247,75 @@ def test_latest_result_and_identity_queries_use_current_channel(service_context:
 def test_latest_queries_fail_closed_without_a_current_run(service_context: _ServiceContext) -> None:
     with pytest.raises(IMSyncRunNotFoundError):
         service_context.service().get_latest_run(_SCOPE)
+
+
+@pytest.mark.parametrize(
+    ("owner_scope", "started_by", "account_id", "sys_user_id", "display_name"),
+    [
+        (_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID), _ACCOUNT_ID, None, "Workspace Owner"),
+        (DeploymentScope(), SysUserIMSyncInitiator(SysUserId(str(_ACCOUNT_ID))), None, str(_ACCOUNT_ID), ""),
+    ],
+    ids=["ce-saas-account", "ee-administrator"],
+)
+def test_sync_run_preserves_initiating_identity_when_another_caller_reuses_it(
+    sqlite_engine: Engine,
+    owner_scope: DirectoryScope,
+    started_by: IMSyncInitiator,
+    account_id: AccountId | None,
+    sys_user_id: str | None,
+    display_name: str,
+) -> None:
+    sessions = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
+    channel = _channel()
+    with sessions.begin() as session:
+        account = Account(name="Workspace Owner", email="owner@example.com")
+        account.id = str(_ACCOUNT_ID)
+        session.add(account)
+        if isinstance(owner_scope, WorkspaceScope):
+            WorkspaceIMChannelWriter(session, owner_scope.id, _ACCOUNT_ID).create(channel)
+        else:
+            DeploymentIMChannelWriter(session).create(channel)
+    service = IMSyncService(
+        sessions,
+        lambda _session, _scope: channel,
+        lambda _run_id, _scope: None,
+        account_query=SQLAlchemyAccountRepository(sessions),
+    )
+
+    created = service.create_or_get_active_run(owner_scope, started_by)
+    next_initiator = (
+        AccountIMSyncInitiator(AccountId("00000000-0000-0000-0000-000000000202"))
+        if isinstance(started_by, AccountIMSyncInitiator)
+        else SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000202"))
+    )
+    reused = service.create_or_get_active_run(owner_scope, next_initiator)
+
+    assert reused == created
+    assert created.initiator_display_name == display_name
+    assert service.get_latest_run(owner_scope).initiator_display_name == display_name
+    loaded = service.load_run(created.run.id)
+    assert loaded is not None
+    assert loaded.started_by == started_by
+    with sessions() as session:
+        stored = session.get_one(HumanInputIMSyncRun, str(created.run.id))
+        assert stored.started_by_account_id == account_id
+        assert stored.started_by_sys_user_id == sys_user_id
+
+
+def test_sync_run_returns_current_account_name(service_context: _ServiceContext) -> None:
+    with service_context.sessions.begin() as session:
+        account = Account(name="Original Admin", email="initiator@example.com")
+        account.id = str(_ACCOUNT_ID)
+        session.add(account)
+    service = service_context.service()
+    service.create_or_get_active_run(_SCOPE, AccountIMSyncInitiator(_ACCOUNT_ID))
+    with service_context.sessions.begin() as session:
+        account = session.get_one(Account, str(_ACCOUNT_ID))
+        account.name = "Renamed Admin"
+
+    assert service.get_latest_run(_SCOPE).initiator_display_name == "Renamed Admin"
+
+    with service_context.sessions.begin() as session:
+        session.delete(session.get_one(Account, str(_ACCOUNT_ID)))
+
+    assert service.get_latest_run(_SCOPE).initiator_display_name == ""

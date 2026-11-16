@@ -86,7 +86,12 @@ describe('useLastRun', () => {
         () =>
           useLastRun({
             id: 'human-input-node',
-            resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+            resource: {
+              kind: 'app',
+              collaborationEnabled: false,
+              appId: 'flow-id',
+              mode: 'workflow',
+            },
 
             data: humanInputData(version),
             defaultRunInputData: {},
@@ -135,7 +140,12 @@ describe('useLastRun', () => {
       () =>
         useLastRun({
           id: 'human-input-node',
-          resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+          resource: {
+            kind: 'app',
+            collaborationEnabled: false,
+            appId: 'flow-id',
+            mode: 'workflow',
+          },
 
           data: humanInputData('2'),
           defaultRunInputData: {},
@@ -169,7 +179,12 @@ describe('useLastRun', () => {
       () =>
         useLastRun({
           id: 'human-input-node',
-          resource: { kind: 'app', appId: 'flow-id', mode: 'workflow' },
+          resource: {
+            kind: 'app',
+            collaborationEnabled: false,
+            appId: 'flow-id',
+            mode: 'workflow',
+          },
 
           data: humanInputData('2'),
           defaultRunInputData: {},

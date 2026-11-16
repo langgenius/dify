@@ -12,8 +12,6 @@ export function renderWorkflowEditor(
 ) {
   const { queryClient } = createConsoleQueryWrapper({
     appDslVersion: '0.6.0',
-    // Local editing tests do not establish a collaboration socket or hydrate a CRDT document.
-    systemFeatures: { enable_collaboration_mode: false },
   })
   seedModelProviderQueries(queryClient)
   seedToolProviders(queryClient, {

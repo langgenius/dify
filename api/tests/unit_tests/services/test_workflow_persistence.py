@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -1256,6 +1257,56 @@ class TestPersistenceLayerCases:
             assert retry_history[0]["outputs"] == {"status_code": 500, "body": "failure-1"}
             assert retry_history[0]["error"] == "attempt 1 failed"
             assert retry_history[0]["execution_metadata"] == {"iteration_id": "iteration-1"}
+
+        def test_retry_history_records_unix_timestamps(self, monkeypatch: pytest.MonkeyPatch):
+            """Retry attempts store epoch seconds, so the host timezone must not shift them."""
+            if not hasattr(time, "tzset"):
+                pytest.skip("tzset is only available on POSIX platforms")
+            recorded_at = datetime(2024, 5, 1)
+            expected = int(recorded_at.replace(tzinfo=UTC).timestamp())
+            monkeypatch.setattr(persistence_mod, "naive_utc_now", lambda: recorded_at)
+            monkeypatch.setenv("TZ", "Asia/Shanghai")
+            time.tzset()
+            try:
+                layer, _, node_repo, _ = _make_layer(node_run_indices={"exec": 1})
+                layer.on_event(GraphRunStartedEvent())
+                layer.on_event(
+                    NodeRunStartedEvent(
+                        id="exec",
+                        node_id="node",
+                        node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                        node_title="HTTP",
+                        start_at=recorded_at,
+                    )
+                )
+                layer.on_event(
+                    NodeRunRetryEvent(
+                        id="exec",
+                        node_id="node",
+                        node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                        node_title="HTTP",
+                        start_at=recorded_at,
+                        error="attempt 1 failed",
+                        retry_index=1,
+                        node_run_result=NodeRunResult(inputs={}, process_data={}, outputs={}, metadata={}),
+                    )
+                )
+                layer.on_event(
+                    NodeRunSucceededEvent(
+                        id="exec",
+                        node_id="node",
+                        node_type=BuiltinNodeTypes.HTTP_REQUEST,
+                        node_title="HTTP",
+                        start_at=recorded_at,
+                        node_run_result=NodeRunResult(inputs={}, process_data={}, outputs={}, metadata={}),
+                    )
+                )
+                attempt = node_repo.saved_exec_data[-1].process_data["__dify_retry_history"][0]
+            finally:
+                monkeypatch.undo()
+                time.tzset()
+            assert attempt["created_at"] == expected
+            assert attempt["finished_at"] == expected
 
         @pytest.mark.parametrize(
             ("event_type", "expected_status"),

@@ -769,6 +769,11 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
     __table_args__ = (
         sa.CheckConstraint("channel_config_version > 0", name="captured_version_positive"),
         sa.CheckConstraint(
+            "(started_by_account_id IS NOT NULL AND started_by_sys_user_id IS NULL) OR "
+            "(started_by_account_id IS NULL AND started_by_sys_user_id IS NOT NULL)",
+            name="initiator_exclusive",
+        ),
+        sa.CheckConstraint(
             "added_count >= 0 AND not_matched_count >= 0 AND failed_count >= 0 AND removed_count >= 0 "
             "AND skipped_count >= 0",
             name="result_counts_nonnegative",
@@ -836,7 +841,13 @@ class HumanInputIMSyncRun(DefaultFieldsDCMixin, TypeBase):
         StringUUID,
         nullable=True,
         default=None,
-        comment="Logical foreign key to accounts.id for the administrator who started this run.",
+        comment="Logical accounts.id reference for CE/SaaS initiators; null only for EE sys_user initiators.",
+    )
+    started_by_sys_user_id: Mapped[str | None] = mapped_column(
+        StringUUID,
+        nullable=True,
+        default=None,
+        comment="Logical reference to upstream EE sys_users.id; mutually exclusive with started_by_account_id.",
     )
     started_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
