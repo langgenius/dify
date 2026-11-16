@@ -15,6 +15,7 @@ from unittest.mock import patch
 
 import pytest
 from pytest_mock import MockerFixture
+from typing_extensions import TypedDict
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.entities import (
@@ -50,6 +51,20 @@ PROVIDER_ID = "langgenius/openai/openai"
 MODEL_NAME = "gpt-4"
 
 
+class ProviderCredentials(TypedDict):
+    """The custom (BYOK) provider credentials the converter only checks for presence."""
+
+    api_key: str
+
+
+class CompletionParameters(TypedDict, total=False):
+    """The completion parameters the converter splits into ``parameters`` and ``stop``."""
+
+    temperature: float
+    max_tokens: int
+    stop: list[str]
+
+
 def _model_schema(model_properties: dict[ModelPropertyKey, object] | None = None) -> AIModelEntity:
     """Build the real provider-side schema the converter copies into the returned entity."""
     return AIModelEntity(
@@ -72,7 +87,7 @@ def _provider_schema(*, models: list[AIModelEntity] | None = None) -> ProviderEn
     )
 
 
-def _custom_configuration(*, credentials: dict[str, object] | None = None) -> CustomConfiguration:
+def _custom_configuration(*, credentials: ProviderCredentials | None = None) -> CustomConfiguration:
     """Return a custom (BYOK) configuration; ``credentials=None`` means no credential is configured."""
     if credentials is None:
         return CustomConfiguration(provider=None)
@@ -137,7 +152,7 @@ def _app_config(
     *,
     model: str = MODEL_NAME,
     mode: str | None = None,
-    parameters: dict[str, object] | None = None,
+    parameters: CompletionParameters | None = None,
 ) -> EasyUIBasedAppConfig:
     """Build the real app config the converter reads its model settings from."""
     return EasyUIBasedAppConfig(
@@ -326,20 +341,16 @@ class TestModelConfigConverter:
             {"stop": ["END"], "max_tokens": 100},
         ],
     )
-    def test_convert_parameter_edge_cases(self, parameters: dict[str, object]) -> None:
+    def test_convert_parameter_edge_cases(self, parameters: CompletionParameters) -> None:
         bundle = _provider_model_bundle(_provider_configuration())
 
         with _provider_schema_lookup(_model_schema()):
             result = ModelConfigConverter.convert(
-                _app_config(parameters=dict(parameters)),
+                _app_config(parameters=parameters),
                 provider_model_bundle=bundle,
             )
 
-        if "stop" in parameters:
-            assert result.stop == parameters["stop"]
-            expected_params = dict(parameters)
-            expected_params.pop("stop", None)
-            assert result.parameters == expected_params
-        else:
-            assert result.stop == []
-            assert result.parameters == parameters
+        expected_stop: list[str] = parameters.get("stop", [])
+        expected_parameters: dict[str, object] = {key: value for key, value in parameters.items() if key != "stop"}
+        assert result.stop == expected_stop
+        assert result.parameters == expected_parameters
