@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
@@ -9,6 +10,7 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from werkzeug.test import TestResponse
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import jobs
@@ -131,7 +133,7 @@ def test_wait_returns_the_state_of_the_callers_job(world: World) -> None:
     assert body["id"] == job_id
     assert body["status"] == "succeeded"
     assert body["outputs"] == {"x": 1}
-    assert body["hints"] in (None, [])
+    assert body["hints"] == []
 
 
 def test_wait_answers_404_for_a_job_of_another_caller(world: World) -> None:
@@ -188,7 +190,7 @@ def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
 
     body = world.wait(job_id).get_json()
 
-    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.RESUMED_WAIT_HINT_SUMMARY)]
+    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
 def test_a_paused_job_with_a_form_missing_ids_hints_only_wait(world: World) -> None:
@@ -196,7 +198,7 @@ def test_a_paused_job_with_a_form_missing_ids_hints_only_wait(world: World) -> N
 
     body = world.wait(job_id).get_json()
 
-    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.RESUMED_WAIT_HINT_SUMMARY)]
+    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
 def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> None:
@@ -206,7 +208,7 @@ def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> N
 
     body = world.wait(job_id).get_json()
 
-    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.RESUMED_WAIT_HINT_SUMMARY)]
+    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
 @pytest.mark.parametrize("status", [JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.STOPPED])
@@ -216,7 +218,7 @@ def test_a_final_job_carries_no_hints(world: World, status: JobStatus) -> None:
     body = world.wait(job_id).get_json()
 
     assert body["status"] == status.value
-    assert body["hints"] in (None, [])
+    assert body["hints"] == []
 
 
 def test_every_status_has_a_hint_builder() -> None:
@@ -246,14 +248,20 @@ def test_stop_answers_404_for_a_job_of_another_caller(world: World) -> None:
     assert world.tasks.workflow_stops == []
 
 
-@pytest.mark.parametrize("route", [WAIT_ROUTE, STOP_ROUTE])
+def _request_wait(world: World, job_id: str) -> TestResponse:
+    return world.wait(job_id)
+
+
+def _request_stop(world: World, job_id: str) -> TestResponse:
+    return world.stop(job_id)
+
+
+@pytest.mark.parametrize("request_route", [_request_wait, _request_stop])
 def test_handlers_end_the_read_transaction_before_calling_the_service(
-    world: World, monkeypatch: pytest.MonkeyPatch, route: str
+    world: World, monkeypatch: pytest.MonkeyPatch, request_route: Callable[[World, str], TestResponse]
 ) -> None:
     job_id = world.open_job()
     order: list[str] = []
-    view, stop = world.service.view, world.service.stop
-    wait = world.service.wait
 
     def recording(name: str, call):
         def run(*args: object, **kwargs: object):
@@ -263,18 +271,33 @@ def test_handlers_end_the_read_transaction_before_calling_the_service(
         return run
 
     monkeypatch.setattr(jobs, "end_read_transaction", lambda _session: order.append("end"))
-    monkeypatch.setattr(world.service, "view", recording("view", view))
-    monkeypatch.setattr(world.service, "wait", recording("wait", wait))
-    monkeypatch.setattr(world.service, "stop", recording("stop", stop))
+    monkeypatch.setattr(world.service, "view", recording("view", world.service.view))
+    monkeypatch.setattr(world.service, "wait", recording("wait", world.service.wait))
+    monkeypatch.setattr(world.service, "stop", recording("stop", world.service.stop))
 
-    url = route.format(app_id=world.client.app_id, job_id=job_id)
-    if route == WAIT_ROUTE:
-        world.client.client.get(url + "?wait_seconds=0", headers=world.client.headers)
-    else:
-        world.client.client.post(url, headers=world.client.headers)
+    request_route(world, job_id)
 
     assert order[0] == "end"
     assert len(order) >= 2
+
+
+@pytest.mark.parametrize("request_route", [_request_wait, _request_stop])
+def test_a_job_of_another_app_is_a_404_for_the_same_caller(
+    world: World, request_route: Callable[[World, str], TestResponse]
+) -> None:
+    other_app = JobOwner(
+        tenant_id=world.client.workspace_id,
+        app_id="another-app",
+        caller_role=CreatorUserRole.ACCOUNT,
+        caller_id=world.caller_id,
+    )
+    opened = world.service.open(JobOpening(owner=other_app, mode=AppMode.WORKFLOW, op="start.x", idempotency_key=None))
+
+    response = request_route(world, opened.record.id)
+
+    assert response.status_code == 404
+    assert response.get_json()["code"] == OpenApiErrorCode.JOB_NOT_FOUND
+    assert world.tasks.workflow_stops == []
 
 
 def test_wait_and_stop_are_in_the_catalog_as_read_and_destructive(openapi_app: Flask) -> None:
