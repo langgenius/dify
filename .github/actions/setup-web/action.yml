@@ -18,12 +18,16 @@ runs:
       with:
         node-version-file: package.json
         package-manager-cache: false
-    # pnpm/setup also restores pnpm's lockfile verification log; without it every job
-    # re-checks the whole lockfile against the registry before installing.
+    # pnpm/setup restores its lockfile verification log and, with `cache: true`,
+    # the pnpm store keyed on the shared lockfile. Without the store cache every
+    # job re-downloads all packages before installing.
     - name: Setup pnpm
       uses: pnpm/setup@a0881977cd8ea73b1ed212236c99ca10dcc80cf4 # v3.1.1
       with:
         install: false
+        cache: true
+        # Read-only jobs restore the store but do not write it back.
+        save-cache: ${{ inputs.cache-save || 'true' }}
     - name: Setup Vite+
       uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
       with:
