@@ -2,7 +2,6 @@ import logging
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -19,6 +18,7 @@ from graphon.engine_events import (
     GraphRunPausedEvent,
     GraphRunSucceededEvent,
 )
+from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.runtime import ReadOnlyRuntimeStateWrapper, RuntimeState, VariablePool
 from models.enums import AppTriggerType, WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
@@ -86,16 +86,26 @@ def _persist_trigger_log(database: TriggerDatabase, *, trigger_log_id: str = "lo
     return trigger_log
 
 
-class TestTriggerPostLayer:
-    def test_on_event_updates_trigger_log(self, trigger_database: TriggerDatabase) -> None:
-        trigger_log = _persist_trigger_log(trigger_database)
-        runtime_state = SimpleNamespace(
-            outputs={"answer": "ok"},
+def _runtime_state(*, outputs: dict[str, object], total_tokens: int) -> ReadOnlyRuntimeStateWrapper:
+    """Build a real workflow runtime exposing the outputs and usage under test."""
+    usage = LLMUsage.empty_usage().model_copy(update={"prompt_tokens": total_tokens, "total_tokens": total_tokens})
+    return ReadOnlyRuntimeStateWrapper(
+        RuntimeState(
+            workflow_id="workflow-1",
             variable_pool=VariablePool.from_bootstrap(
                 system_variables=build_system_variables(workflow_execution_id="run-1")
             ),
-            total_tokens=12,
+            start_at=0.0,
+            outputs=outputs,
+            llm_usage=usage,
         )
+    )
+
+
+class TestTriggerPostLayer:
+    def test_on_event_updates_trigger_log(self, trigger_database: TriggerDatabase) -> None:
+        trigger_log = _persist_trigger_log(trigger_database)
+        runtime_state = _runtime_state(outputs={"answer": "ok"}, total_tokens=12)
 
         with (
             patch("core.app.layers.trigger_post_layer.datetime") as mock_datetime,
@@ -106,7 +116,7 @@ class TestTriggerPostLayer:
                 start_time=datetime(2026, 2, 20, tzinfo=UTC) - timedelta(seconds=10),
                 trigger_log_id="log-1",
             )
-            layer.initialize(runtime_state, Mock())
+            layer.initialize(runtime_state, InMemoryChannel())
 
             layer.on_event(GraphRunSucceededEvent())
 
@@ -122,13 +132,7 @@ class TestTriggerPostLayer:
 
     def test_on_event_updates_trigger_log_for_aborted_event(self, trigger_database: TriggerDatabase) -> None:
         trigger_log = _persist_trigger_log(trigger_database)
-        runtime_state = SimpleNamespace(
-            outputs={"partial": "ok"},
-            variable_pool=VariablePool.from_bootstrap(
-                system_variables=build_system_variables(workflow_execution_id="run-1")
-            ),
-            total_tokens=7,
-        )
+        runtime_state = _runtime_state(outputs={"partial": "ok"}, total_tokens=7)
 
         with (
             patch("core.app.layers.trigger_post_layer.datetime") as mock_datetime,
@@ -139,7 +143,7 @@ class TestTriggerPostLayer:
                 start_time=datetime(2026, 2, 20, tzinfo=UTC) - timedelta(seconds=10),
                 trigger_log_id="log-1",
             )
-            layer.initialize(runtime_state, Mock())
+            layer.initialize(runtime_state, InMemoryChannel())
 
             layer.on_event(GraphRunAbortedEvent(reason="timeout"))
 
@@ -189,19 +193,13 @@ class TestTriggerPostLayer:
         caplog: pytest.LogCaptureFixture,
         trigger_database: TriggerDatabase,
     ) -> None:
-        runtime_state = SimpleNamespace(
-            outputs={},
-            variable_pool=VariablePool.from_bootstrap(
-                system_variables=build_system_variables(workflow_execution_id="run-1")
-            ),
-            total_tokens=0,
-        )
+        runtime_state = _runtime_state(outputs={}, total_tokens=0)
 
         layer = TriggerPostLayer(
             start_time=datetime(2026, 2, 20, tzinfo=UTC),
             trigger_log_id="missing",
         )
-        layer.initialize(runtime_state, Mock())
+        layer.initialize(runtime_state, InMemoryChannel())
 
         with caplog.at_level(logging.ERROR, logger="core.app.layers.trigger_post_layer"):
             layer.on_event(GraphRunFailedEvent(error="boom"))
@@ -210,19 +208,13 @@ class TestTriggerPostLayer:
         assert trigger_database.session.get(WorkflowTriggerLog, "missing") is None
 
     def test_on_event_ignores_non_status_events(self, trigger_database: TriggerDatabase) -> None:
-        runtime_state = SimpleNamespace(
-            outputs={},
-            variable_pool=VariablePool.from_bootstrap(
-                system_variables=build_system_variables(workflow_execution_id="run-1")
-            ),
-            total_tokens=0,
-        )
+        runtime_state = _runtime_state(outputs={}, total_tokens=0)
 
         layer = TriggerPostLayer(
             start_time=datetime(2026, 2, 20, tzinfo=UTC),
             trigger_log_id="log-1",
         )
-        layer.initialize(runtime_state, Mock())
+        layer.initialize(runtime_state, InMemoryChannel())
 
         trigger_database.statements.clear()
         layer.on_event(Mock())
