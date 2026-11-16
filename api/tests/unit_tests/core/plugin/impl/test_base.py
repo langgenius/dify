@@ -41,6 +41,12 @@ def _legacy_array_response(payload: list[object]) -> httpx.Response:
     return httpx.Response(200, json=payload, request=httpx.Request("GET", "http://plugin-daemon/test"))
 
 
+def _stream_line_response(line: str) -> httpx.Response:
+    """Serve one SSE-style daemon line through the real response the stream client consumes."""
+
+    return httpx.Response(200, content=f"data: {line}\n", request=httpx.Request("GET", "http://plugin-daemon/test"))
+
+
 class TestBasePluginClientImpl:
     def test_inject_trace_headers(self, mocker: MockerFixture, config_overrides: Callable[..., None]) -> None:
         client = BasePluginClient()
@@ -126,59 +132,71 @@ class TestBasePluginClientImpl:
         assert result is True
         assert transformed == [envelope]
 
-    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(
-        self, mocker: MockerFixture
-    ) -> None:
-        client = BasePluginClient()
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_data_array(self) -> None:
         envelope = PluginDaemonBasicResponse[list[object]](code=0, message="", data=[])
-        mocker.patch.object(client, "_request", return_value=_response(envelope))
+        client = BasePluginClient(
+            httpx_client=httpx.Client(transport=httpx.MockTransport(lambda _: _response(envelope)))
+        )
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
         assert result.list == []
         assert result.total == 0
 
-    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(
-        self, mocker: MockerFixture
-    ) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_request", return_value=_legacy_array_response([]))
+    def test_request_with_plugin_daemon_response_accepts_legacy_plugin_list_top_level_array(self) -> None:
+        client = BasePluginClient(
+            httpx_client=httpx.Client(transport=httpx.MockTransport(lambda _: _legacy_array_response([])))
+        )
 
         result = client._request_with_plugin_daemon_response("GET", "plugin/tenant/management/list", PluginListResponse)
 
         assert result.list == []
         assert result.total == 0
 
-    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_stream_request", return_value=iter(['{"error":"bad-line"}']))
+    def test_request_with_plugin_daemon_response_stream_malformed_json_error(self) -> None:
+        client = BasePluginClient(
+            httpx_client=httpx.Client(
+                transport=httpx.MockTransport(lambda _: _stream_line_response('{"error":"bad-line"}'))
+            )
+        )
 
         with pytest.raises(ValueError, match="bad-line"):
-            list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
+            list(client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool))
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(
-            client, "_stream_request", return_value=iter(['{"code":-500,"message":"not-json","data":null}'])
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_inner_error(self) -> None:
+        client = BasePluginClient(
+            httpx_client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda _: _stream_line_response('{"code":-500,"message":"not-json","data":null}')
+                )
+            )
         )
 
         with pytest.raises(PluginDaemonInnerError) as exc_info:
-            list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
+            list(client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool))
         assert exc_info.value.message == "not-json"
 
-    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":-1,"message":"err","data":null}']))
+    def test_request_with_plugin_daemon_response_stream_plugin_daemon_error(self) -> None:
+        client = BasePluginClient(
+            httpx_client=httpx.Client(
+                transport=httpx.MockTransport(
+                    lambda _: _stream_line_response('{"code":-1,"message":"err","data":null}')
+                )
+            )
+        )
 
         with pytest.raises(ValueError, match="plugin daemon: err, code: -1"):
-            list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
+            list(client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool))
 
-    def test_request_with_plugin_daemon_response_stream_empty_data_error(self, mocker: MockerFixture) -> None:
-        client = BasePluginClient()
-        mocker.patch.object(client, "_stream_request", return_value=iter(['{"code":0,"message":"","data":null}']))
+    def test_request_with_plugin_daemon_response_stream_empty_data_error(self) -> None:
+        client = BasePluginClient(
+            httpx_client=httpx.Client(
+                transport=httpx.MockTransport(lambda _: _stream_line_response('{"code":0,"message":"","data":null}'))
+            )
+        )
 
         with pytest.raises(ValueError, match="got empty data"):
-            list(client._request_with_plugin_daemon_response_stream("GET", "p", bool))
+            list(client._request_with_plugin_daemon_response_stream("GET", "plugin/tenant/stream", bool))
 
     @pytest.mark.parametrize(
         ("error_type", "expected"),
