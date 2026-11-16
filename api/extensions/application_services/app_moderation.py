@@ -9,10 +9,9 @@ from machinery.context import AppRequestContext
 from models.model import AppMode
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
     PlatformModerationRejectedInvocationError,
 )
+from services.moderation_record import ModerationRecord
 from services.moderation_service import (
     ModerationPhase,
     ModerationRequest,
@@ -24,19 +23,6 @@ from services.moderation_service import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_CHAT_MODERATION_REPLY = "This message can’t be processed."
-
-
-def workflow_moderation_error(
-    error_type: str,
-) -> PlatformModerationRejectedInvocationError | ModerationUnavailableInvocationError | None:
-    """Restore public classification from trusted node error types, never from error message text."""
-    if error_type == PlatformModerationInputRejectedInvocationError.__name__:
-        return PlatformModerationInputRejectedInvocationError("Model input was rejected by moderation.")
-    if error_type == PlatformModerationOutputRejectedInvocationError.__name__:
-        return PlatformModerationOutputRejectedInvocationError("Model output was rejected by moderation.")
-    if error_type == ModerationUnavailableInvocationError.__name__:
-        return ModerationUnavailableInvocationError()
-    return None
 
 
 def _app_service() -> ModerationService:
@@ -219,4 +205,4 @@ class AppModeration:
     evaluate_input = staticmethod(evaluate_app_input)
     output_evaluator = staticmethod(app_output_evaluator)
     replacement = staticmethod(app_rejection_replacement)
-    workflow_error = staticmethod(workflow_moderation_error)
+    new_record = staticmethod(ModerationRecord)

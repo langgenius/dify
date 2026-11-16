@@ -17,6 +17,8 @@ from core.credit_usage import (
     normalize_credit_usage_created_by,
 )
 from core.entities.provider_configuration import ProviderModelBundle
+from core.moderation.base import ModerationRecord
+from core.moderation.factory import create_moderation_record
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
 from models.model import AppMode
@@ -170,8 +172,11 @@ class ModelConfigWithCredentialsEntity(BaseModel):
 
 
 class AppGenerateEntity(BaseModel):
-    """
-    App Generate Entity.
+    """Admitted generation data and process-local execution handles.
+
+    The producer and response consumer share one moderation record. Snapshots
+    exclude it so a resumed execution starts fresh. Without an injected app
+    policy it is None; model guards still enforce their own checks normally.
     """
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -203,6 +208,9 @@ class AppGenerateEntity(BaseModel):
 
     # Process-local: a resumed execution creates its scope again.
     trace_scope: TraceScope | None = Field(default=None, exclude=True, repr=False)
+    moderation_record: ModerationRecord | None = Field(
+        default_factory=create_moderation_record, exclude=True, repr=False
+    )
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):

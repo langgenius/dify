@@ -9,11 +9,6 @@ from core.workflow.node_runtime import DifyPreparedPollingLLM, DifyPromptMessage
 from graphon.nodes.llm.entities import LLMNodeData
 from graphon.nodes.llm.node import LLMNode
 from graphon.runtime import RuntimeState
-from services.moderation_invocation_errors import (
-    ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
-)
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_run_context, build_test_variable_pool
 
@@ -43,27 +38,6 @@ def node(polling_model: DifyPreparedPollingLLM) -> DifyLLMNode:
         prompt_message_serializer=DifyPromptMessageSerializer(),
         polling_finalizer=polling_model.finalize_llm_polling,
     )
-
-
-@pytest.mark.parametrize(
-    "error",
-    [
-        PlatformModerationInputRejectedInvocationError("Rejected"),
-        PlatformModerationOutputRejectedInvocationError("Rejected"),
-        ModerationUnavailableInvocationError(),
-    ],
-)
-def test_llm_failure_result_retains_moderation_type(
-    monkeypatch: pytest.MonkeyPatch, node: DifyLLMNode, error: Exception
-) -> None:
-    def prepare(*, node_inputs: dict[str, object]) -> Generator[object]:
-        assert node_inputs == {}
-        raise error
-
-    monkeypatch.setattr(node, "_prepare_run_prompt", prepare)
-    [completed] = list(node._run())
-    assert completed.node_run_result.error_type == type(error).__name__
-    assert completed.node_run_result.error == str(error)
 
 
 def test_dify_llm_node_finalizes_polling_when_generator_is_closed(

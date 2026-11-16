@@ -49,6 +49,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.db.session_factory import session_factory
+from core.moderation.factory import use_moderation_record
 from extensions.ext_database import db
 from extensions.tracing import application_tracing_hooks, create_trace_scope
 from factories import file_factory
@@ -231,7 +232,10 @@ class AgentAppGenerator(MessageBasedAppGenerator):
     ) -> None:
         from libs.flask_utils import preserve_flask_contexts
 
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            use_moderation_record(application_generate_entity.moderation_record),
+        ):
             try:
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)

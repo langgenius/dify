@@ -931,7 +931,7 @@ def build_application_services(
 
 
 def init_app(app: Flask) -> None:
-    from core.moderation.input_moderation import AppModeration as AppModerationPort
+    from core.moderation.base import AppModeration as AppModerationPort
     from extensions.application_services.app_moderation import AppModeration
     from extensions.application_services.tools import resolve_tool_credentials
     from extensions.ext_login import bind_account_loader, bind_account_only_loader

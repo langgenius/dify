@@ -32,8 +32,7 @@ from services.errors.workspace import WorkspaceApplicationError
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
+    PlatformModerationRejectedInvocationError,
 )
 
 
@@ -122,13 +121,13 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
             "This message can’t be processed right now. Please try again later.",
         ),
         (
-            PlatformModerationInputRejectedInvocationError("Input rejected"),
+            PlatformModerationRejectedInvocationError("input", "Input rejected"),
             400,
             "moderation_rejected",
             "Input rejected",
         ),
         (
-            PlatformModerationOutputRejectedInvocationError("Output rejected"),
+            PlatformModerationRejectedInvocationError("output", "Output rejected"),
             400,
             "moderation_rejected",
             "Output rejected",

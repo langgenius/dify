@@ -56,7 +56,6 @@ from extensions.application_services.app_moderation import (
     app_rejection_replacement,
     evaluate_app_input,
     evaluate_app_output,
-    workflow_moderation_error,
 )
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -69,10 +68,9 @@ from services.moderation_adapters import HostedOpenAIModerationGateway, LLMModer
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
     PlatformModerationRejectedInvocationError,
 )
+from services.moderation_record import record_moderation_failure
 from services.moderation_service import (
     ModerationPhase,
     ModerationReplacement,
@@ -90,6 +88,7 @@ from tests.workflow_test_utils import build_test_variable_pool
 @pytest.fixture(autouse=True)
 def inject_app_moderation(monkeypatch: pytest.MonkeyPatch) -> None:
     moderation = AppModeration()
+    monkeypatch.setattr("core.moderation.factory.get_app_moderation", lambda: moderation)
     monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", lambda: moderation)
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", lambda: moderation)
 
@@ -238,29 +237,6 @@ def test_model_owns_input_checks_and_app_only_renders_rejection() -> None:
     assert app_result is not None
     assert not app_result.flagged
     assert gateway.calls == [("safe", "input"), ("blocked", "input")]
-
-
-@pytest.mark.parametrize(
-    ("error_type", "phase"),
-    [
-        (PlatformModerationInputRejectedInvocationError, "input"),
-        (PlatformModerationOutputRejectedInvocationError, "output"),
-    ],
-)
-def test_workflow_rejection_phase_comes_from_node_error_type(
-    error_type: type[PlatformModerationRejectedInvocationError], phase: ModerationPhase
-) -> None:
-    error = workflow_moderation_error(error_type.__name__)
-    assert isinstance(error, error_type)
-    assert error.phase == phase
-    assert app_rejection_replacement(app_config(), error) == (f"App {phase} replacement", phase)
-
-
-def test_workflow_classification_does_not_use_display_text() -> None:
-    unavailable = workflow_moderation_error(ModerationUnavailableInvocationError.__name__)
-    assert isinstance(unavailable, ModerationUnavailableInvocationError)
-    for value in ("", "ValueError", str(unavailable), "Model input was rejected by moderation."):
-        assert workflow_moderation_error(value) is None
 
 
 def test_unrelated_capabilities_cannot_be_marked_as_shared_platform_openai_checks() -> None:
@@ -992,9 +968,30 @@ def test_default_chat_reply_finishes_and_persists_without_app_configuration(
                 pipeline._task_state.llm_result.usage = LLMUsage.empty_usage().model_copy(
                     update={"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5}
                 )
-        queue.publish_error(
-            PlatformModerationRejectedInvocationError(phase, "Platform rejected content"), PublishFrom.TASK_PIPELINE
-        )
+        if isinstance(pipeline, EasyUIBasedGenerateTaskPipeline) and phase == "output":
+            record = pipeline._application_generate_entity.moderation_record
+            assert record is not None
+            with record.activate():
+                record_moderation_failure("tenant-1", phase=phase, rejected=True)
+            queue.publish(
+                QueueLLMChunkEvent(
+                    chunk=LLMResultChunk(
+                        model="test-model",
+                        prompt_messages=[],
+                        delta=LLMResultChunkDelta(
+                            index=0, message=AssistantPromptMessage(content="recovered model reply")
+                        ),
+                    )
+                ),
+                PublishFrom.APPLICATION_MANAGER,
+            )
+            final_result = pipeline._task_state.llm_result.model_copy(deep=True)
+            final_result.message.content = "recovered model reply"
+            queue.publish(QueueMessageEndEvent(llm_result=final_result), PublishFrom.APPLICATION_MANAGER)
+        else:
+            queue.publish_error(
+                PlatformModerationRejectedInvocationError(phase, "Platform rejected content"), PublishFrom.TASK_PIPELINE
+            )
         responses = pipeline._process_stream_response(None)
         if stream:
             converter = AdvancedChatAppGenerateResponseConverter if advanced else ChatAppGenerateResponseConverter

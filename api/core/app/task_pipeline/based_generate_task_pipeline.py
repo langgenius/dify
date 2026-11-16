@@ -18,7 +18,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
-from core.moderation.input_moderation import get_app_moderation
+from core.moderation.factory import get_app_moderation
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
@@ -143,9 +143,10 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
             self.output_moderation_handler = None
         return replacement
 
-    def workflow_moderation_error(self, error_type: str) -> AppGenerateError | None:
-        """Restore classification from an internal node error type using the startup-injected policy port."""
-        return self._moderation.workflow_error(error_type) if self._moderation is not None else None
+    def recorded_moderation_error(self) -> AppGenerateError | None:
+        """Read this execution's presentation facts without changing workflow error handling or state."""
+        record = self._application_generate_entity.moderation_record
+        return record.read() if record is not None else None
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """

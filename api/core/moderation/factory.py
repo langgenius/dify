@@ -1,8 +1,41 @@
+from contextlib import AbstractContextManager, nullcontext
 from typing import Any
 
+from flask import current_app, has_app_context
+
 from core.extension.extensible import ExtensionModule
-from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.base import (
+    AppModeration,
+    Moderation,
+    ModerationInputsResult,
+    ModerationOutputsResult,
+    ModerationRecord,
+)
 from extensions.ext_code_based_extension import code_based_extension
+
+
+def get_app_moderation() -> AppModeration | None:
+    """Return the injected policy or None for standalone kernel execution; malformed registrations fail closed."""
+    if not has_app_context():
+        return None
+    moderation = current_app.extensions.get("app_moderation")
+    if moderation is not None and not isinstance(moderation, AppModeration):
+        raise TypeError("Invalid app moderation policy registration.")
+    return moderation
+
+
+def create_moderation_record(validated_data: dict[str, Any]) -> ModerationRecord | None:
+    """Allocate one record from admitted generation data; snapshots never contain its process-local state."""
+    moderation = get_app_moderation()
+    app_config = validated_data.get("app_config")
+    if moderation is None or app_config is None:
+        return None
+    return moderation.new_record(app_config.tenant_id)
+
+
+def use_moderation_record(record: ModerationRecord | None) -> AbstractContextManager[None]:
+    """Activate only the owning producer's record; independent calls retain their ordinary exception path."""
+    return record.activate() if record is not None else nullcontext()
 
 
 class ModerationFactory:

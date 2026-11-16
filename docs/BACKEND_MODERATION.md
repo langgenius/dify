@@ -92,27 +92,27 @@ for a real platform rejection. Disabling an app phase does not disable mandatory
 platform checks. Different model invocations remain independent even when their
 text is identical.
 
-App checks and reply selection are stateless functions of the admitted app
-configuration. There is no moderation scope, context variable, failure queue,
-observer, or cross-thread model-to-response side channel. Parallel workflow model
-calls do not serialize their moderation requests.
-Startup injects one stateless policy port into the application container; response
-pipelines retain that port, not an invocation-scoped session. The kernel does not
-import service implementations or require a moderation wrapper around each entry.
+App checks and reply selection remain stateless functions of admitted app
+configuration. Startup injects a stateless policy port. Each generation entity
+owns a process-local moderation record, excluded from serialization. Workers bind
+that record through a context variable; the existing execution context layer
+propagates it into Graphon nodes and nested frames. The response consumer can
+read the record after the worker exits. Resumed executions allocate a fresh record.
 
-Graphon node results retain exception type names, but terminal graph events only
-carry display text. The Dify workflow runner propagates the failing node's type
-through an internal field on its terminal queue event. Container failures inherit
-their failed child's type; handled failures and retries do not classify a later
-terminal failure. Platform input and output rejections have distinct exception
-types so phase-specific presets survive this boundary without parsing messages.
-Because Graphon has no terminal failure source ID, container error text correlates
-its selected failure with typed child events. Text never supplies a type or phase;
-conflicting child types retain the generic error instead of inventing a verdict.
-The internal field is excluded from serialization and does not change public SSE.
-The parameter-extraction node has a small compatibility adapter because Graphon
-currently drops even the exception type when catching model invocation failures.
-It retains only that type during one node run and clears it on every exit.
+The record stores only content-free rejection phases and unavailability facts,
+never approved text, original exceptions, credentials, or traceback frames.
+Concurrent producers append through a queue; the single response consumer merges
+facts. Reads are repeatable and never suppress later checks. There is no business
+lock or cross-invocation sharing. Tenant ownership is checked before recording.
+
+Graphon remains responsible for retries, default values, error branches, and
+terminal status. The record neither aborts execution nor reconstructs the cause
+of a terminal failure. Any platform rejection during the execution selects the
+App preset or chat default, even if Graphon later succeeds or partially succeeds.
+The first observed rejected phase selects its preset; any rejection takes
+precedence over unavailability. Console node events, workflow outputs, terminal
+status, and original errors remain Graphon's results. There is no failed-node
+index, error-text correlation, parameter-extractor shim, or private terminal field.
 
 Keyword and API app rules still use `ModerationService.evaluate` and retain their
 direct-reply and text-override semantics. They are independent policies, not
@@ -154,16 +154,19 @@ Chat replies use the existing `message` or `message_replace` event followed by
 `message_end`, without exposing the rejected segment. A replacement covers the
 entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
-usage again. A failed chatflow retains its failed workflow status while rendering
-the failing node's platform rejection with its preset or default reply.
-The reply and `message_end` precede the failed `workflow_finished` event because
+usage again. A chatflow retains its actual workflow status while rendering
+any recorded platform rejection with its preset or default reply. Further text
+delivery is suppressed after a rejection, without stopping Graphon execution.
+The reply and `message_end` precede terminal `workflow_finished` or
+`workflow_paused` delivery, including user-stopped runs, because
 the Redis/SSE subscriber stops reading at that terminal event; sending the reply
 afterwards would persist it without ever delivering it to the WebApp client.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
-Chatflow restores the typed `moderation_unavailable` error from the failing node's
-error type. Error text alone cannot classify an unrelated failure, and no request
-state is shared between invocations.
+On a failed Chatflow or a direct error path, recorded unavailability produces the
+safe `moderation_unavailable` presentation error, not a claim about the workflow's
+terminal cause. If Graphon's strategy recovers to success or partial success,
+historical unavailability does not turn that result into a failure.
 The error event precedes `workflow_finished` so public subscribers receive its
 503 payload, while blocking requests raise the typed error for HTTP mapping.
 No unavailable check becomes a preset or default chat reply.

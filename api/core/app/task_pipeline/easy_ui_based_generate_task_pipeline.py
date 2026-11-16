@@ -291,17 +291,25 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         require token estimation or rebuilding already settled model usage.
         """
         for message in self.queue_manager.listen():
-            if publisher:
+            recorded_error = self.recorded_moderation_error()
+            recorded_reply = self.moderation_replacement(recorded_error) if recorded_error is not None else None
+            if publisher and recorded_reply is None:
                 publisher.publish(message)
             event = message.event
             moderation_reply = False
 
-            if isinstance(event, QueueErrorEvent):
-                replacement = self.moderation_replacement(event.error)
+            if isinstance(event, QueueErrorEvent | QueueStopEvent | QueueMessageEndEvent):
+                had_answer = bool(self._task_state.llm_result.message.get_text_content())
+                if isinstance(event, QueueMessageEndEvent) and event.llm_result is not None:
+                    self._task_state.llm_result = event.llm_result
+                if isinstance(event, QueueErrorEvent):
+                    event = QueueErrorEvent(error=recorded_error or event.error)
+                replacement = recorded_reply or (
+                    self.moderation_replacement(event.error) if isinstance(event, QueueErrorEvent) else None
+                )
                 if replacement is not None:
                     moderation_reply = True
                     answer, phase = replacement
-                    had_answer = bool(self._task_state.llm_result.message.get_text_content())
                     self._task_state.llm_result.message.content = answer
                     if had_answer:
                         yield self._message_cycle_manager.message_replace_to_stream_response(answer=answer)
@@ -320,10 +328,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     yield from self._handle_error_event(event)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
-                    if isinstance(event, QueueMessageEndEvent):
-                        if event.llm_result:
-                            self._task_state.llm_result = event.llm_result
-                    elif not moderation_reply:
+                    if isinstance(event, QueueStopEvent) and not moderation_reply:
                         self._handle_stop(event)
 
                     # handle output moderation
@@ -380,7 +385,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                 case QueueAgentMessageEvent():
                     chunk = event.chunk
                     delta_text = self._chunk_delta_text(chunk)
-                    if delta_text is None:
+                    if delta_text is None or recorded_reply is not None:
                         continue
                     yield self._agent_message_to_stream_response(
                         answer=delta_text,
@@ -621,6 +626,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
     def _handle_output_moderation_chunk(self, text: str) -> Generator[StreamResponse]:
         """Check new text on this consumer and render replacement before consuming another queued chunk."""
+        recorded_error = self.recorded_moderation_error()
+        if recorded_error is not None and self.moderation_replacement(recorded_error) is not None:
+            return
         handler = self.output_moderation_handler
         if handler is not None and handler.should_direct_output():
             return

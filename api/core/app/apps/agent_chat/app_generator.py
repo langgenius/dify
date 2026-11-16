@@ -23,6 +23,7 @@ from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueMa
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
 from core.db.session_factory import session_factory
 from core.helper.trace_id_helper import extract_trace_session_id_from_args
+from core.moderation.factory import use_moderation_record
 from extensions.tracing import create_trace_scope
 from factories import file_factory
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError
@@ -275,7 +276,10 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
 
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            use_moderation_record(application_generate_entity.moderation_record),
+        ):
             try:
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
