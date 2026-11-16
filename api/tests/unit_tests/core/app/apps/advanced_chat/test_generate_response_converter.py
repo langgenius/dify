@@ -1,7 +1,7 @@
-from collections.abc import Callable, Generator
+from collections.abc import Generator
+from typing import Literal
 
 import pytest
-from pydantic import BaseModel
 
 from core.app.apps.advanced_chat.generate_response_converter import AdvancedChatAppGenerateResponseConverter
 from core.app.entities.task_entities import (
@@ -51,10 +51,11 @@ class TestAdvancedChatGenerateResponseConverter:
             total_steps=0,
         )
         original_model_dump = type(data).model_dump
-        dump: Callable[..., dict[str, object]] = original_model_dump
 
-        def _model_dump_with_future_field[**P](self: BaseModel, *args: P.args, **kwargs: P.kwargs) -> dict[str, object]:
-            payload = dump(self, *args, **kwargs)
+        def _model_dump_with_future_field(
+            self: AdvancedChatPausedBlockingResponse.Data, *, mode: Literal["json", "python"] = "python"
+        ) -> dict[str, object]:
+            payload = original_model_dump(self, mode=mode)
             payload["future_field"] = "future-value"
             return payload
 
