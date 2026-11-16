@@ -38,6 +38,8 @@ export default function DeleteToken({
           mutation.reset()
         } else if (mutation.isPending && details.reason !== 'imperative-action') {
           details.cancel()
+        } else if (!details.trigger?.isConnected) {
+          finalFocusRef.current = fallbackFocus.current
         }
       }}
     >

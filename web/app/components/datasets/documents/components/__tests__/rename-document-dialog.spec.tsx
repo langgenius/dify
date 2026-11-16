@@ -1,7 +1,6 @@
-import type { RenameDocumentPayload } from '../rename-document-dialog'
-import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { RenameDocumentDialog } from '../rename-document-dialog'
@@ -26,25 +25,27 @@ const props = {
 }
 const renamed = { id: 'doc-1', name: 'Updated document', data_source_detail_dict: {} }
 
-async function renderRenameDialog(user: ReturnType<typeof userEvent.setup>) {
-  const handle = createDialogHandle<RenameDocumentPayload>()
-  render(
-    <>
-      <DialogTrigger handle={handle} payload={{ id: props.documentId, name: props.name }}>
-        Rename
-      </DialogTrigger>
-      <RenameDocumentDialog handle={handle} datasetId={props.datasetId} onSaved={props.onSaved} />
-    </>,
+const firstDocument = { id: props.documentId, name: props.name }
+const secondDocument = { id: 'doc-2', name: 'Second document' }
+
+function RenameSession({ document = firstDocument }) {
+  const [open, setOpen] = useState(true)
+  return (
+    <RenameDocumentDialog
+      document={document}
+      open={open}
+      onClose={() => setOpen(false)}
+      datasetId={props.datasetId}
+      onSaved={props.onSaved}
+    />
   )
-  await user.click(screen.getByRole('button', { name: 'Rename' }))
-  return handle
 }
 
 it('submits the edited document name once while saving and reports completion', async () => {
   const user = userEvent.setup()
   const pending = createDeferred<typeof renamed>()
   rename.mockReturnValue(pending.promise)
-  await renderRenameDialog(user)
+  render(<RenameSession />)
   const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
   expect(input).toHaveValue(props.name)
   await user.clear(input)
@@ -68,7 +69,7 @@ it('submits the edited document name once while saving and reports completion', 
 it('keeps the edited name after a failed save so the user can retry', async () => {
   const user = userEvent.setup()
   rename.mockRejectedValueOnce(new Error('API Error')).mockResolvedValue(renamed)
-  await renderRenameDialog(user)
+  render(<RenameSession />)
   const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
   await user.clear(input)
   await user.type(input, 'Updated document')
@@ -83,7 +84,7 @@ it('keeps the edited name after a failed save so the user can retry', async () =
 
 it('cancels an edited name without saving', async () => {
   const user = userEvent.setup()
-  const handle = await renderRenameDialog(user)
+  const { rerender } = render(<RenameSession />)
   await user.type(
     screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' }),
     ' draft',
@@ -91,7 +92,7 @@ it('cancels an edited name without saving', async () => {
   await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   expect(rename).not.toHaveBeenCalled()
-  act(() => handle.openWithPayload({ id: 'doc-2', name: 'Second document' }))
+  rerender(<RenameSession key={secondDocument.id} document={secondDocument} />)
   expect(screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })).toHaveValue(
     'Second document',
   )
@@ -101,12 +102,10 @@ it('does not close a replacement draft when an earlier rename finishes', async (
   const user = userEvent.setup()
   const first = createDeferred<typeof renamed>()
   rename.mockReturnValueOnce(first.promise)
-  const handle = await renderRenameDialog(user)
+  const { rerender } = render(<RenameSession />)
   await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() => expect(rename).toHaveBeenCalledOnce())
-  act(() => handle.close())
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  act(() => handle.openWithPayload({ id: 'doc-2', name: 'Second document' }))
+  rerender(<RenameSession key={secondDocument.id} document={secondDocument} />)
   const input = screen.getByRole('textbox', { name: 'datasetDocuments.list.table.name' })
   await waitFor(() => expect(input).toBeEnabled())
   await user.type(input, ' draft')

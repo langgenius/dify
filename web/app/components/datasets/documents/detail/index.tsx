@@ -2,7 +2,6 @@
 
 import type { DocumentDetailResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { RenameDocumentPayload } from '../components/rename-document-dialog'
 import type { FileItem } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import {
@@ -16,7 +15,6 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -215,7 +213,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
-  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
       invalidDocumentList()
@@ -381,12 +379,15 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               />
             )}
             <RenameDocumentDialog
-              handle={renameDialog}
+              key={documentId}
+              document={operationsDetail}
+              open={renameOpen}
+              onClose={() => setRenameOpen(false)}
               datasetId={datasetId}
               onSaved={handleOperate}
             />
             <Operations
-              renameDialog={renameDialog}
+              onRename={() => setRenameOpen(true)}
               scene="detail"
               embeddingAvailable={embeddingAvailable}
               detail={operationsDetail}

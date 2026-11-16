@@ -174,3 +174,18 @@ it('clears the previous deletion error and returns focus to the current row on c
   await userEvent.keyboard('{Escape}')
   await expect.element(second).toHaveFocus()
 })
+
+it('returns to Create token if a refresh removes the row while deletion is open', async () => {
+  const { screen, queryClient } = await renderTokenPage()
+  await screen.getByRole('button', { name: 'Delete', exact: true }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await expect.element(dialog).toBeVisible()
+  api.list.mockResolvedValue(tokenList())
+  await queryClient.invalidateQueries({
+    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+  })
+  await expect.element(screen.getByText(token.name, { exact: true })).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
+})

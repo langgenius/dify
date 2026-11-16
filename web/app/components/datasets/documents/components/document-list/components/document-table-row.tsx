@@ -1,8 +1,5 @@
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
-import type { RenameDocumentPayload } from '../../rename-document-dialog'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
-import { DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
@@ -36,7 +33,7 @@ type DocumentTableRowProps = {
   isGeneralMode: boolean
   isQAMode: boolean
   embeddingAvailable: boolean
-  renameDialog: DialogHandle<RenameDocumentPayload>
+  onRename: () => void
   onDelete: (row: HTMLTableRowElement | null) => void
   onUpdate: () => void
 }
@@ -57,7 +54,7 @@ const DocumentTableRow = React.memo(
     isGeneralMode,
     isQAMode,
     embeddingAvailable,
-    renameDialog,
+    onRename,
     onUpdate,
     onDelete,
   }: DocumentTableRowProps) => {
@@ -146,20 +143,12 @@ const DocumentTableRow = React.memo(
                 <Tooltip>
                   <TooltipTrigger
                     render={
-                      <DialogTrigger
-                        handle={renameDialog}
-                        payload={{ id: doc.id, name: doc.name }}
-                        onClick={stopPropagation}
-                        render={
-                          <IconButton
-                            aria-label={t(($) => $['list.table.rename'], {
-                              ns: 'datasetDocuments',
-                            })}
-                          >
-                            <span aria-hidden="true" className="i-ri-edit-line size-4" />
-                          </IconButton>
-                        }
-                      />
+                      <IconButton
+                        aria-label={t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
+                        onClick={onRename}
+                      >
+                        <span aria-hidden="true" className="i-ri-edit-line size-4" />
+                      </IconButton>
                     }
                   />
                   <TooltipContent>
@@ -190,7 +179,7 @@ const DocumentTableRow = React.memo(
         </td>
         <td>
           <Operations
-            renameDialog={renameDialog}
+            onRename={onRename}
             embeddingAvailable={embeddingAvailable}
             datasetId={datasetId}
             detail={pick(doc, [

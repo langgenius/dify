@@ -1,11 +1,10 @@
 'use client'
 
 import type { DocumentWithSegmentsResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { RenameDocumentPayload } from './rename-document-dialog'
+import type { DocumentToRename } from './rename-document-dialog'
 import type { SortType } from '@/service/datasets'
 import { Checkbox } from '@langgenius/dify-ui/checkbox'
 import { CheckboxGroup } from '@langgenius/dify-ui/checkbox-group'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { Pagination } from '@langgenius/dify-ui/pagination'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -124,7 +123,7 @@ const DocumentList = ({
       onUpdate,
     })
 
-  const [renameDialog] = useState(() => createDialogHandle<RenameDocumentPayload>())
+  const [rename, setRename] = useState<{ document: DocumentToRename; open: boolean }>()
   return (
     <div className="relative mt-3 flex size-full flex-col">
       <div role="status" aria-atomic="true" className="sr-only">
@@ -215,7 +214,7 @@ const DocumentList = ({
                 isGeneralMode={isGeneralMode}
                 isQAMode={isQAMode}
                 embeddingAvailable={embeddingAvailable}
-                renameDialog={renameDialog}
+                onRename={() => setRename({ document: { id: doc.id, name: doc.name }, open: true })}
                 onUpdate={onUpdate}
                 onDelete={(row) => onDelete(doc.id, row)}
               />
@@ -287,7 +286,16 @@ const DocumentList = ({
         />
       )}
 
-      <RenameDocumentDialog handle={renameDialog} datasetId={datasetId} onSaved={onUpdate} />
+      {rename && (
+        <RenameDocumentDialog
+          key={rename.document.id}
+          document={rename.document}
+          open={rename.open}
+          onClose={() => setRename({ ...rename, open: false })}
+          datasetId={datasetId}
+          onSaved={onUpdate}
+        />
+      )}
 
       {isShowEditModal && (
         <EditMetadataBatchModal

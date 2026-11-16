@@ -83,11 +83,15 @@ async function setup(ids: string[]) {
           value={{
             dataset: createDatasetFixture({
               embedding_available: true,
-              permission_keys: [DatasetACLPermission.Use, DatasetACLPermission.DeleteFile],
+              permission_keys: [
+                DatasetACLPermission.Use,
+                DatasetACLPermission.Edit,
+                DatasetACLPermission.DeleteFile,
+              ],
             }),
           }}
         >
-          <div className="h-screen">
+          <div className="isolate h-screen">
             <Documents datasetId="dataset-1" />
           </div>
         </DatasetDetailContext.Provider>
@@ -161,3 +165,23 @@ describe('Classic document deletion', () => {
     await expect.element(screen.getByRole('region')).toHaveFocus()
   })
 })
+
+it.each(['pencil', 'menu'])(
+  'returns focus to the selected row after cancelling rename from its %s entry',
+  async (entry) => {
+    const { screen } = await setup(['Alpha', 'Beta'])
+    const row = screen.getByRole('row', { name: /Beta/ })
+    await row.getByRole('link', { name: 'Beta' }).hover()
+    const rename = 'datasetDocuments.list.table.rename'
+    const trigger = row.getByRole('button', {
+      name: entry === 'pencil' ? rename : 'common.operation.more',
+    })
+    await trigger.click()
+    if (entry === 'menu') await screen.getByRole('menuitem', { name: rename }).click()
+    const dialog = screen.getByRole('dialog', { name: rename })
+    await expect.element(dialog.getByRole('textbox')).toHaveValue('Beta')
+    await userEvent.keyboard('{Escape}')
+    await expect.element(dialog).not.toBeInTheDocument()
+    await expect.element(trigger).toHaveFocus()
+  },
+)

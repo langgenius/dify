@@ -1,7 +1,5 @@
 import type { ReactElement } from 'react'
-import type { RenameDocumentPayload } from '../rename-document-dialog'
 import type { consoleClient } from '@/service/console'
-import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -94,7 +92,7 @@ describe('Operations', () => {
   }
 
   const defaultProps = {
-    renameDialog: createDialogHandle<RenameDocumentPayload>(),
+    onRename: vi.fn(),
     embeddingAvailable: true,
     datasetId: 'dataset-1',
     detail: defaultDetail,

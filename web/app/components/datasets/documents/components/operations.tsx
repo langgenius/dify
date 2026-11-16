@@ -1,6 +1,4 @@
-import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { OperationName } from '../types'
-import type { RenameDocumentPayload } from './rename-document-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
@@ -23,7 +21,7 @@ import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
 
 type OperationsProps = {
-  renameDialog: DialogHandle<RenameDocumentPayload>
+  onRename: () => void
   embeddingAvailable: boolean
   detail: {
     id: string
@@ -46,7 +44,7 @@ type OperationsProps = {
   canViewSettings: boolean
 }
 const Operations = ({
-  renameDialog,
+  onRename,
   embeddingAvailable,
   datasetId,
   detail,
@@ -202,9 +200,6 @@ const Operations = ({
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
-  const handleShowRename = () => {
-    if (canEdit) renameDialog.openWithPayload({ id, name: name ?? '' })
-  }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
       void onOperate(operationName)
@@ -346,7 +341,7 @@ const Operations = ({
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (
-                    <MenuItem className={menuActionClassName} onClick={handleShowRename}>
+                    <MenuItem className={menuActionClassName} onClick={onRename}>
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}

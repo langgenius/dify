@@ -113,7 +113,7 @@ const renderDocumentDetail = async () => {
         {/* oxlint-disable-next-line eslint-react/no-context-provider -- This use-context-selector context requires its Provider. */}
         <DatasetDetailContext.Provider value={{ dataset }}>
           <EventEmitterContextProvider>
-            <div style={{ height: '100vh' }}>
+            <div className="isolate h-screen">
               <DocumentDetail datasetId="ds-1" documentId="doc-1" />
             </div>
           </EventEmitterContextProvider>
@@ -154,4 +154,17 @@ it('keeps edit controls clickable beside the metadata scrollbar and reaches the 
     },
   })
   await expect.element(saveButton).not.toBeInTheDocument()
+})
+
+it('returns focus to More after closing the rename dialog from the document menu', async () => {
+  const screen = await renderDocumentDetail()
+  const more = screen.getByRole('button', { name: 'More', exact: true })
+  await more.click()
+  await screen.getByRole('menuitem', { name: 'Rename' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'Rename' })
+  await expect.element(dialog.getByRole('textbox')).toHaveValue(documentDetail.name)
+  await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(more).toHaveFocus()
 })
