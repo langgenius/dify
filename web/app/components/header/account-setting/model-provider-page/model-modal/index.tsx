@@ -25,6 +25,7 @@ import {
   DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
+import { ORPCError } from '@orpc/client'
 import { memo, useCallback, useId, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
@@ -39,7 +40,7 @@ import ModelIcon from '@/app/components/header/account-setting/model-provider-pa
 import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { getHttpErrorStatus } from '@/service/http-error'
+import { getHttpErrorBodyMessage } from '@/service/http-error'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
 import { isAbortError } from '@/utils/is-abort-error'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
@@ -123,8 +124,13 @@ const ModelModal: FC<ModelModalProps> = ({
       try {
         await request
       } catch (error) {
-        if (getHttpErrorStatus(error) === undefined && !isAbortError(error))
-          toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+        if (isAbortError(error)) return
+        if (
+          error instanceof ORPCError &&
+          (error.status === 401 || getHttpErrorBodyMessage(error.data))
+        )
+          return
+        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
         return
       }
       onSuccess(values)

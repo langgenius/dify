@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client'
 import { onlineManager } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -70,35 +71,38 @@ async function setup(options: Partial<Payload> = {}) {
   return screen
 }
 
-it('keeps a pending save open on Escape and retains the entered draft for retry', async () => {
-  const failed = createDeferred()
-  api.save.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({ result: 'success' })
-  const onSave = vi.fn()
-  const screen = await setup({ onSave })
-  const key = screen.getByLabelText(/API key/)
-  const save = screen.getByRole('button', { name: 'common.operation.save' })
-  onlineManager.setOnline(false)
-  onTestFinished(() => onlineManager.setOnline(true))
-  await key.fill('draft-key')
-  await userEvent.keyboard('{Enter}')
-  await expect.element(save).toBeDisabled()
-  await expect
-    .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
-    .toBeDisabled()
-  await userEvent.keyboard('{Escape}')
-  await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
-  failed.reject(new TypeError('Failed to fetch'))
-  await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
-  await expect.element(key).toBeEnabled()
-  await expect.element(key).toHaveValue('draft-key')
-  expect(onSave).not.toHaveBeenCalled()
-  onlineManager.setOnline(true)
-  await save.click()
-  await expect
-    .element(screen.getByRole('dialog', { name: /modelProvider/ }))
-    .not.toBeInTheDocument()
-  expect(onSave).toHaveBeenCalledTimes(1)
-})
+it.each([new TypeError('Failed to fetch'), new ORPCError('HTTP_ERROR', { status: 502 })])(
+  'retains the draft and allows retry after %s',
+  async (error) => {
+    const failed = createDeferred()
+    api.save.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({ result: 'success' })
+    const onSave = vi.fn()
+    const screen = await setup({ onSave })
+    const key = screen.getByLabelText(/API key/)
+    const save = screen.getByRole('button', { name: 'common.operation.save' })
+    onlineManager.setOnline(false)
+    onTestFinished(() => onlineManager.setOnline(true))
+    await key.fill('draft-key')
+    await userEvent.keyboard('{Enter}')
+    await expect.element(save).toBeDisabled()
+    await expect
+      .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
+      .toBeDisabled()
+    await userEvent.keyboard('{Escape}')
+    await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
+    failed.reject(error)
+    await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
+    await expect.element(key).toBeEnabled()
+    await expect.element(key).toHaveValue('draft-key')
+    expect(onSave).not.toHaveBeenCalled()
+    onlineManager.setOnline(true)
+    await save.click()
+    await expect
+      .element(screen.getByRole('dialog', { name: /modelProvider/ }))
+      .not.toBeInTheDocument()
+    expect(onSave).toHaveBeenCalledTimes(1)
+  },
+)
 
 it('submits the custom model and key together with Enter and focuses the first missing field', async () => {
   api.save.mockResolvedValue({ result: 'success' })
