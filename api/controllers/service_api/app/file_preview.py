@@ -5,7 +5,7 @@ from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -184,11 +184,12 @@ class FilePreviewApi(Resource):
             # Override content-type for downloads to force download
             response.headers["Content-Type"] = "application/octet-stream"
 
-        enforce_download_for_html(
+        harden_active_content_response(
             response,
             mime_type=upload_file.mime_type,
             filename=upload_file.name,
             extension=upload_file.extension,
+            inline_svg=not as_attachment,
         )
 
         # Add caching headers for performance
