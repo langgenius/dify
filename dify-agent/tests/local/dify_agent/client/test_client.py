@@ -4,7 +4,6 @@ import asyncio
 import json
 from collections.abc import AsyncIterator, Iterator
 from datetime import UTC, datetime
-from types import SimpleNamespace
 from typing import cast, override
 
 import httpx
@@ -248,15 +247,21 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
 
 @pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
 def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPatch, sync: bool) -> None:
-    now = 0.0
+    class PollingClock:
+        def __init__(self) -> None:
+            self.now = 0.0
+
+        def monotonic(self) -> float:
+            return self.now
+
+        def sleep(self, seconds: float) -> None:
+            self.now += seconds
+
+        async def sleep_async(self, seconds: float) -> None:
+            self.sleep(seconds)
+
+    clock = PollingClock()
     request_count = 0
-
-    def sleep(seconds: float) -> None:
-        nonlocal now
-        now += seconds
-
-    async def sleep_async(seconds: float) -> None:
-        sleep(seconds)
 
     def handler(request: httpx.Request) -> httpx.Response:
         nonlocal request_count
@@ -265,9 +270,9 @@ def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPat
         request_count += 1
         return httpx.Response(200, json=_run_status_json("running" if request_count == 1 else "succeeded"))
 
-    monkeypatch.setattr(client_module, "time", SimpleNamespace(monotonic=lambda: now))
-    monkeypatch.setattr(client_module, "_sleep_sync", sleep)
-    monkeypatch.setattr(client_module, "_sleep_async", sleep_async)
+    monkeypatch.setattr(client_module, "time", clock)
+    monkeypatch.setattr(client_module, "_sleep_sync", clock.sleep)
+    monkeypatch.setattr(client_module, "_sleep_async", clock.sleep_async)
     transport = httpx.MockTransport(handler)
 
     async def scenario() -> None:
@@ -283,7 +288,7 @@ def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPat
         else:
             asyncio.run(scenario())
     assert request_count == 1
-    assert now == 1
+    assert clock.now == 1
 
 
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
