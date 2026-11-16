@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Generator
 from contextlib import contextmanager
 from typing import cast
@@ -40,7 +39,9 @@ from models.provider import (
     ProviderType,
 )
 from models.provider_ids import ModelProviderID
-from services.model_load_balancing_service import ModelLoadBalancingService
+from services.model_load_balancing_service import LoadBalancingCredentials, ModelLoadBalancingService
+
+_DEFAULT_STORED_CREDENTIALS = LoadBalancingCredentials({"api_key": "encrypted"}).model_dump_json()
 
 pytestmark = pytest.mark.parametrize(
     "sqlite_session",
@@ -114,7 +115,7 @@ def _config(
     provider: str = "openai",
     model: str = "gpt-4o-mini",
     name: str = "primary",
-    encrypted_config: str | None = '{"api_key":"encrypted"}',
+    encrypted_config: str | None = _DEFAULT_STORED_CREDENTIALS,
     credential_id: str | None = None,
     source: CredentialSourceType | None = None,
     enabled: bool = True,
@@ -236,7 +237,7 @@ def test_get_configs_inserts_inherit_and_filters_tenant_provider_and_source(
     assert enabled is True
     assert [config["name"] for config in configs] == ["__inherit__", "matching"]
     assert configs[1]["id"] == matching.id
-    assert configs[1]["credentials"] == {"api_key": "*" * 20}
+    assert configs[1]["credentials"] == LoadBalancingCredentials({"api_key": "*" * 20}).root
     persisted = sqlite_session.scalar(
         select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.name == "__inherit__")
     )
@@ -267,7 +268,11 @@ def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
 ) -> None:
     svc, _, configuration = service
     configuration.custom_configuration.provider = CustomProviderConfiguration(credentials={})
-    _config(sqlite_session, name="normal", encrypted_config='{"api_key":"bad"}')
+    _config(
+        sqlite_session,
+        name="normal",
+        encrypted_config=LoadBalancingCredentials({"api_key": "bad"}).model_dump_json(),
+    )
     _config(sqlite_session, name="__inherit__", encrypted_config="not-json", enabled=False)
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.get_decrypt_decoding", lambda _tenant: ("rsa", "cipher")
@@ -284,17 +289,25 @@ def test_get_configs_reorders_existing_inherit_and_tolerates_bad_credentials(
         "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, session=sqlite_session
     )
     assert [config["name"] for config in configs] == ["__inherit__", "normal"]
-    assert configs[0]["credentials"] == {}
-    assert configs[1]["credentials"] == {"api_key": "*" * 20}
+    assert configs[0]["credentials"] == LoadBalancingCredentials({}).root
+    assert configs[1]["credentials"] == LoadBalancingCredentials({"api_key": "*" * 20}).root
     assert configs[1]["in_cooldown"] is True
 
 
 def test_get_single_config_is_tenant_scoped_and_obfuscated(service: ServiceFixture, sqlite_session: Session) -> None:
     svc, _, _ = service
-    config = _config(sqlite_session, encrypted_config='{"api_key":"secret"}')
+    config = _config(
+        sqlite_session,
+        encrypted_config=LoadBalancingCredentials({"api_key": "secret"}).model_dump_json(),
+    )
     assert svc.get_load_balancing_config(
         "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
-    ) == {"id": config.id, "name": "primary", "credentials": {"api_key": "*" * 20}, "enabled": True}
+    ) == {
+        "id": config.id,
+        "name": "primary",
+        "credentials": LoadBalancingCredentials({"api_key": "*" * 20}).root,
+        "enabled": True,
+    }
     assert (
         svc.get_load_balancing_config(
             "tenant-2", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
@@ -371,21 +384,38 @@ def test_update_configs_updates_creates_and_deletes_persisted_rows(
     sqlite_session: Session,
 ) -> None:
     svc, _, _ = service
-    keep = _config(sqlite_session, name="keep", encrypted_config='{"api_key":"old"}')
-    removed = _config(sqlite_session, name="remove")
-    monkeypatch.setattr(
-        svc,
-        "_custom_credentials_validate",
-        lambda **kwargs: {"api_key": f"enc-{kwargs['credentials']['api_key']}"},
+    keep = _config(
+        sqlite_session,
+        name="keep",
+        encrypted_config=LoadBalancingCredentials({"api_key": "old"}).model_dump_json(),
     )
+    removed = _config(sqlite_session, name="remove")
+
+    def _encrypt_submitted(**kwargs: object) -> LoadBalancingCredentials:
+        submitted = kwargs["credentials"]
+        assert isinstance(submitted, LoadBalancingCredentials)
+        api_key = submitted.string_value("api_key")
+        assert api_key is not None
+        return LoadBalancingCredentials({"api_key": f"enc-{api_key}"})
+
+    monkeypatch.setattr(svc, "_custom_credentials_validate", _encrypt_submitted)
     svc.update_load_balancing_configs(
         "tenant-1",
         "openai",
         "gpt-4o-mini",
         ModelType.LLM,
         [
-            {"id": keep.id, "name": "updated", "enabled": False, "credentials": {"api_key": "new"}},
-            {"name": "created", "enabled": True, "credentials": {"api_key": "fresh"}},
+            {
+                "id": keep.id,
+                "name": "updated",
+                "enabled": False,
+                "credentials": LoadBalancingCredentials({"api_key": "new"}),
+            },
+            {
+                "name": "created",
+                "enabled": True,
+                "credentials": LoadBalancingCredentials({"api_key": "fresh"}),
+            },
         ],
         "custom-model",
         sqlite_session,
@@ -398,7 +428,9 @@ def test_update_configs_updates_creates_and_deletes_persisted_rows(
     assert updated is not None
     assert updated.enabled is False
     assert updated.encrypted_config is not None
-    assert json.loads(updated.encrypted_config) == {"api_key": "enc-new"}
+    assert LoadBalancingCredentials.model_validate_json(updated.encrypted_config) == LoadBalancingCredentials(
+        {"api_key": "enc-new"}
+    )
 
 
 def test_update_configs_creates_from_tenant_scoped_provider_credential(
@@ -409,13 +441,13 @@ def test_update_configs_creates_from_tenant_scoped_provider_credential(
         tenant_id="tenant-1",
         provider_name="openai",
         credential_name="Credential",
-        encrypted_config='{"api_key":"enc"}',
+        encrypted_config=LoadBalancingCredentials({"api_key": "enc"}).model_dump_json(),
     )
     foreign = ProviderCredential(
         tenant_id="tenant-2",
         provider_name="openai",
         credential_name="Foreign",
-        encrypted_config="{}",
+        encrypted_config=LoadBalancingCredentials({}).model_dump_json(),
     )
     sqlite_session.add_all([credential, foreign])
     sqlite_session.commit()
@@ -465,18 +497,29 @@ def test_validate_credentials_uses_real_config_lookup(
         "openai",
         "gpt-4o-mini",
         ModelType.LLM,
-        {"api_key": "raw"},
+        LoadBalancingCredentials({"api_key": "raw"}),
         sqlite_session,
         config.id,
     )
     assert validate.call_args.kwargs["load_balancing_model_config"].id == config.id
+    submitted = validate.call_args.kwargs["credentials"]
+    assert submitted == LoadBalancingCredentials({"api_key": "raw"})
     with pytest.raises(ValueError, match="does not exist"):
         svc.validate_load_balancing_credentials(
-            "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, {}, sqlite_session, "missing"
+            "tenant-1",
+            "openai",
+            "gpt-4o-mini",
+            ModelType.LLM,
+            LoadBalancingCredentials({}),
+            sqlite_session,
+            "missing",
         )
 
 
-@pytest.mark.parametrize("encrypted_config", [None, "", "not-json", '["api_key"]', '"api_key"', "null"])
+@pytest.mark.parametrize(
+    "encrypted_config",
+    [None, "", "not-json", '["api_key"]', '"api_key"', "null", '{"api_key": 1}', '{"api_key": {"nested": true}}'],
+)
 def test_get_single_config_tolerates_missing_malformed_and_non_object_credentials(
     service: ServiceFixture, sqlite_session: Session, encrypted_config: str | None
 ) -> None:
@@ -484,7 +527,26 @@ def test_get_single_config_tolerates_missing_malformed_and_non_object_credential
     config = _config(sqlite_session, encrypted_config=encrypted_config)
     assert svc.get_load_balancing_config(
         "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
-    ) == {"id": config.id, "name": "primary", "credentials": {}, "enabled": True}
+    ) == {
+        "id": config.id,
+        "name": "primary",
+        "credentials": LoadBalancingCredentials({}).root,
+        "enabled": True,
+    }
+
+
+def test_get_single_config_keeps_switch_values(service: ServiceFixture, sqlite_session: Session) -> None:
+    svc, _, _ = service
+    stored = LoadBalancingCredentials({"api_key": "secret", "use_international": True})
+    config = _config(sqlite_session, encrypted_config=stored.model_dump_json())
+    assert svc.get_load_balancing_config(
+        "tenant-1", "openai", "gpt-4o-mini", ModelType.LLM, config.id, session=sqlite_session
+    ) == {
+        "id": config.id,
+        "name": "primary",
+        "credentials": LoadBalancingCredentials({"api_key": "*" * 20, "use_international": True}).root,
+        "enabled": True,
+    }
 
 
 def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
@@ -493,7 +555,10 @@ def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
     sqlite_session: Session,
 ) -> None:
     svc, _, configuration = service
-    config = _config(sqlite_session, encrypted_config='{"api_key":"old-encrypted"}')
+    config = _config(
+        sqlite_session,
+        encrypted_config=LoadBalancingCredentials({"api_key": "old-encrypted"}).model_dump_json(),
+    )
     monkeypatch.setattr("services.model_load_balancing_service.encrypter.decrypt_token", lambda *_args: "old-plain")
     monkeypatch.setattr(
         "services.model_load_balancing_service.encrypter.encrypt_token", lambda _tenant, value: f"enc-{value}"
@@ -503,11 +568,11 @@ def test_custom_credentials_validate_reuses_hidden_secret_and_encrypts(
         configuration,
         ModelType.LLM,
         "gpt-4o-mini",
-        {"api_key": HIDDEN_VALUE},
+        LoadBalancingCredentials({"api_key": HIDDEN_VALUE}),
         config,
         validate=False,
     )
-    assert result == {"api_key": "enc-old-plain"}
+    assert result == LoadBalancingCredentials({"api_key": "enc-old-plain"})
 
 
 def test_schema_selection_and_cache_boundary(service: ServiceFixture) -> None:
