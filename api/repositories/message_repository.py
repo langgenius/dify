@@ -15,10 +15,13 @@ from copy import deepcopy
 from typing import NamedTuple, cast
 
 from pydantic import JsonValue
-from sqlalchemy import Select, and_, or_, select
+from sqlalchemy import Select, and_, bindparam, case, func, literal, or_, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from constants import UUID_NIL
 from core.memory.token_buffer_memory import PreparedHistory, TokenBufferMemory
+from machinery.context import ServiceApiEndUserContext
+from machinery.message_history import MessageHistory
 from models import Account, App, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from models.enums import FeedbackFromSource, FeedbackRating
 from models.model import AppMode, InstalledApp, MessageFeedback, load_annotation_reply_config
@@ -28,6 +31,7 @@ from services.entities.message_entities import (
     ConsoleMessageRecord,
     MessageAccount,
     MessageActor,
+    MessageEndUser,
     MessagePage,
     MessageRecord,
     MessageSource,
@@ -58,6 +62,157 @@ class SuggestedQuestionsRecords(NamedTuple):
 class MessageRepository:
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory: sessionmaker[Session] = session_factory
+
+    def admit_message_history(
+        self,
+        *,
+        context: ServiceApiEndUserContext,
+        conversation_id: str,
+        parent_message_id: str | None,
+    ) -> MessageHistory:
+        """Atomically admit a scoped chain and materialize unambiguous legacy edges.
+
+        Lock the owned conversation before resolving metadata. All validation
+        and selected-row locks precede conditional nil-edge updates. Missing,
+        cyclic, overlong, ambiguous or concurrently changed chains roll back
+        entirely. Success changes only nil parent links and returns frozen IDs;
+        no model I/O, message text or descendant rewrites occur in this transaction.
+        """
+        with self._session_factory.begin() as session:
+            self._require_branch_context(session, context=context, conversation_id=conversation_id, lock=True)
+            if parent_message_id is None:
+                return MessageHistory(app_id=context.app_id, conversation_id=conversation_id, message_ids=())
+            scope = self._branch_statement(context=context, conversation_id=conversation_id)
+            metadata = scope.add_columns(
+                func.lag(Message.id).over(order_by=(Message.created_at, Message.id)).label("legacy_parent"),
+                func.count().over(partition_by=Message.created_at).label("timestamp_count"),
+            ).cte("branch_metadata")
+            next_parent = case(
+                (metadata.c.parent_message_id == UUID_NIL, metadata.c.legacy_parent),
+                else_=metadata.c.parent_message_id,
+            )
+            ancestors = (
+                select(
+                    metadata.c.id,
+                    metadata.c.parent_message_id,
+                    next_parent.label("next_parent"),
+                    metadata.c.timestamp_count,
+                    literal(1).label("depth"),
+                )
+                .where(metadata.c.id == parent_message_id)
+                .cte("branch_ancestors", recursive=True)
+            )
+            ancestors = ancestors.union_all(
+                select(
+                    metadata.c.id,
+                    metadata.c.parent_message_id,
+                    next_parent,
+                    metadata.c.timestamp_count,
+                    ancestors.c.depth + 1,
+                )
+                .join(ancestors, metadata.c.id == ancestors.c.next_parent)
+                .where(ancestors.c.depth <= 500)
+            )
+            rows = session.execute(select(ancestors).order_by(ancestors.c.depth)).all()
+            ids = [row.id for row in rows]
+            if not rows or rows[-1].next_parent is not None and len(rows) <= 500:
+                raise ValueError("Message branch is unavailable in this conversation.")
+            ambiguous_timestamps = {row.id for row in rows if row.timestamp_count > 1}
+            if any(
+                row.parent_message_id == UUID_NIL
+                and (row.id in ambiguous_timestamps or row.next_parent in ambiguous_timestamps)
+                for row in rows
+            ):
+                raise ValueError("Legacy message timestamps are ambiguous; select an explicit branch or a new root.")
+            if len(set(ids)) != len(ids):
+                raise ValueError("Message branch contains a cycle.")
+            if len(rows) > 500:
+                raise ValueError("Explicit message branches support at most 500 ancestors.")
+            locked = session.execute(scope.where(Message.id.in_(ids)).with_for_update()).all()
+            expected = {row.id: row.parent_message_id for row in rows}
+            if {row.id: row.parent_message_id for row in locked} != expected:
+                raise ValueError("Selected message history changed during admission.")
+            changes = [
+                {"selected_id": row.id, "resolved_parent": row.next_parent}
+                for row in rows
+                if row.parent_message_id == UUID_NIL
+            ]
+            if changes:
+                statement = (
+                    update(Message)
+                    .where(
+                        Message.id == bindparam("selected_id"),
+                        Message.parent_message_id == UUID_NIL,
+                        Message.app_id == context.app_id,
+                        Message.conversation_id == conversation_id,
+                        Message.from_source == "api",
+                        Message.from_end_user_id == context.end_user_id,
+                        Message.from_account_id.is_(None),
+                    )
+                    .values(parent_message_id=bindparam("resolved_parent"))
+                )
+                result = session.connection().execute(statement, changes)
+                if result.rowcount != len(changes):
+                    raise ValueError("Selected message history changed during admission.")
+            return MessageHistory(
+                app_id=context.app_id, conversation_id=conversation_id, message_ids=tuple(reversed(ids))
+            )
+
+    def validate_message_history(self, *, context: ServiceApiEndUserContext, history: MessageHistory) -> MessageHistory:
+        """Batch-revalidate frozen ownership and explicit edges after async boundaries.
+
+        Missing or changed ancestors fail without writes or chronological
+        re-resolution. New siblings and descendants cannot change this result.
+        """
+        with self._session_factory() as session:
+            self._require_branch_context(session, context=context, conversation_id=history.conversation_id, lock=False)
+            rows = session.execute(
+                self._branch_statement(context=context, conversation_id=history.conversation_id).where(
+                    Message.id.in_(history.message_ids)
+                )
+            ).all()
+            parents = {row.id: row.parent_message_id for row in rows}
+            expected = dict(zip(history.message_ids, (None, *history.message_ids[:-1]), strict=False))
+            if parents != expected:
+                raise ValueError("Selected message history is no longer available or its links changed.")
+            return MessageHistory(
+                app_id=context.app_id, conversation_id=history.conversation_id, message_ids=history.message_ids
+            )
+
+    def _require_branch_context(
+        self, session: Session, *, context: ServiceApiEndUserContext, conversation_id: str, lock: bool
+    ) -> None:
+        """Require the persisted owner chain and optionally lock the owned conversation."""
+        app = self._get_app(session, app_id=context.app_id, tenant_id=context.tenant_id)
+        if app is None or app.mode != AppMode.ADVANCED_CHAT:
+            raise ValueError("Advanced Chat app is unavailable.")
+        self._require_page_actor(
+            session,
+            app_id=context.app_id,
+            tenant_id=context.tenant_id,
+            actor=MessageEndUser(end_user_id=context.end_user_id),
+        )
+        statement = select(Conversation.id).where(
+            Conversation.id == conversation_id,
+            Conversation.app_id == context.app_id,
+            Conversation.from_source == "api",
+            Conversation.from_end_user_id == context.end_user_id,
+            Conversation.from_account_id.is_(None),
+            Conversation.is_deleted.is_(False),
+        )
+        if session.scalar(statement.with_for_update() if lock else statement) is None:
+            raise ConversationNotExistsError("Conversation is unavailable for this app and end user.")
+
+    @staticmethod
+    def _branch_statement(*, context: ServiceApiEndUserContext, conversation_id: str) -> Select[tuple[str, str | None]]:
+        """Select only scoped parent metadata; prompt bodies are never loaded here."""
+        return select(Message.id, Message.parent_message_id).where(
+            Message.app_id == context.app_id,
+            Message.conversation_id == conversation_id,
+            Message.from_source == "api",
+            Message.from_end_user_id == context.end_user_id,
+            Message.from_account_id.is_(None),
+        )
 
     def get_message_page(
         self,

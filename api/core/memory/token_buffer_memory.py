@@ -21,6 +21,7 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from machinery.message_history import MessageHistory
 from models.agent_config_entities import AgentSoulConfig
 from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
@@ -144,9 +145,16 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
+        message_history: MessageHistory | None = None,
     ) -> None:
+        """Bind memory to one conversation and optional admitted history.
+
+        None preserves legacy lookup; an empty selection deliberately has no
+        history. Scope and availability are rechecked on every history read.
+        """
         self.conversation = conversation
         self.model_instance = model_instance
+        self.message_history = message_history
 
     @staticmethod
     def _file_config(
@@ -228,12 +236,16 @@ class TokenBufferMemory:
         session: Session,
         message_limit: int | None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
+        message_history: MessageHistory | None = None,
     ) -> PreparedHistory:
         """Read ordered history and attachment configuration without provider or file I/O.
 
         ``None`` for message_limit uses the existing 500-message ceiling. A missing
         app keeps text-only legacy history available; Agent and workflow attachments still
         require the app. An omitted workflow repository uses the configured factory.
+        Explicit history must match the conversation and contain available rows;
+        it is read in selected order, without consulting newer branches. Failures
+        never mutate records or fall back to the most recent conversation row.
         """
         # fetch limited messages, and return reversed
         # Load only the columns used to rebuild history. Message.message stores the full prompt of each turn,
@@ -257,16 +269,26 @@ class TokenBufferMemory:
 
         message_limit = min(message_limit, 500) if message_limit and message_limit > 0 else 500
 
-        msg_limit_stmt = stmt.limit(message_limit)
-
-        messages = session.scalars(msg_limit_stmt).all()
-
-        # instead of all messages from the conversation, we only need to extract messages
-        # that belong to the thread of last message
-        thread_messages = extract_thread_messages(messages)
+        if message_history is None:
+            messages = session.scalars(stmt.limit(message_limit)).all()
+            thread_messages = extract_thread_messages(messages)
+        else:
+            if message_history.app_id != conversation.app_id or message_history.conversation_id != conversation.id:
+                raise ValueError("Resolved message history does not match this conversation.")
+            ids = message_history.message_ids[-message_limit:]
+            rows = session.scalars(stmt.where(Message.app_id == conversation.app_id, Message.id.in_(ids))).all()
+            indexed = {row.id: row for row in rows}
+            if len(indexed) != len(ids):
+                raise ValueError("A selected message-history ancestor is no longer available.")
+            thread_messages = [indexed[message_id] for message_id in reversed(ids)]
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-        if thread_messages and not thread_messages[0].answer and thread_messages[0].answer_tokens == 0:
+        if (
+            message_history is None
+            and thread_messages
+            and not thread_messages[0].answer
+            and thread_messages[0].answer_tokens == 0
+        ):
             thread_messages.pop(0)
 
         messages = list(reversed(thread_messages))
@@ -344,6 +366,7 @@ class TokenBufferMemory:
             app_record=self.conversation.app(session=session),
             session=session,
             message_limit=message_limit,
+            message_history=self.message_history,
         )
         return history.get_prompt_messages(model_instance=self.model_instance, max_token_limit=max_token_limit)
 

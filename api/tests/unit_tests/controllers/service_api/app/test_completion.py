@@ -55,6 +55,22 @@ from tests.helpers.unit.model_factories import make_app, make_end_user
 
 class TestChatRequestPayloadCases:
     @staticmethod
+    def test_parent_selection_distinguishes_omission_null_and_uuid() -> None:
+        """Clients can select a new root without changing omitted-field semantics."""
+        omitted = ChatRequestPayload.model_validate({"inputs": {}, "query": "edited"})
+        root = ChatRequestPayload.model_validate({"inputs": {}, "query": "edited", "parent_message_id": None})
+        parent_id = uuid.uuid4()
+        selected = ChatRequestPayload.model_validate(
+            {"inputs": {}, "query": "edited", "parent_message_id": str(parent_id)}
+        )
+        assert "parent_message_id" not in omitted.model_fields_set
+        assert "parent_message_id" in root.model_fields_set
+        assert root.parent_message_id is None
+        assert selected.parent_message_id == parent_id
+        with pytest.raises(ValidationError):
+            ChatRequestPayload.model_validate({"inputs": {}, "query": "edited", "parent_message_id": "invalid"})
+
+    @staticmethod
     def test_chat_request_payload_accepts_blank_conversation_id():
         payload = ChatRequestPayload.model_validate({"inputs": {}, "query": "hello", "conversation_id": ""})
 

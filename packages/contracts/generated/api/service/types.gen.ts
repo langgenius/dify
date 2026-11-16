@@ -305,6 +305,7 @@ export type ChatRequestPayload = {
   inputs: {
     [key: string]: unknown
   }
+  parent_message_id?: string | null
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   workflow_id?: string | null
@@ -346,6 +347,7 @@ export type ChatRequestPayloadWithUser = {
   inputs: {
     [key: string]: unknown
   }
+  parent_message_id?: string | null
   query: string
   response_mode?: 'blocking' | 'streaming' | null
   user: string

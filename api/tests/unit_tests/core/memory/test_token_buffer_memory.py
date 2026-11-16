@@ -12,11 +12,12 @@ from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine, event
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.file_access import FileAccessControllerProtocol
 from core.memory import token_buffer_memory as memory_module
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities import (
     AssistantPromptMessage,
@@ -26,6 +27,7 @@ from graphon.model_runtime.entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from machinery.message_history import MessageHistory
 from models.agent import (
     AgentConfigDraft,
     AgentConfigDraftType,
@@ -45,6 +47,9 @@ from models.workflow import (
     WorkflowRunTriggeredFrom,
     WorkflowType,
 )
+from tests.helpers.unit.core.message_branch_model import RecordingBranchModel
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
 
 # ---------------------------------------------------------------------------
 # Helpers / shared fixtures
@@ -858,3 +863,81 @@ class TestPreparedHistory:
         assert repository.get_workflow_run_by_id.call_count == 2
         assert len(history.prompts) == 4
         assert [len(prompt.files) for prompt in history.prompts] == [1, 0, 1, 0]
+
+
+@pytest.mark.parametrize("selected_indices", [(), (0,), (0, 1), (0, 3)])
+def test_selected_branch_reaches_model_without_replaced_or_concurrent_descendants(
+    sqlite_session_factory: sessionmaker[Session], selected_indices: tuple[int, ...]
+) -> None:
+    """Exact selected prompts reach the model even when another branch finishes later."""
+    app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.ADVANCED_CHAT)
+    conversation = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=app.id,
+        mode=AppMode.ADVANCED_CHAT,
+        inputs={},
+        from_source=ConversationFromSource.API,
+    )
+    messages = [
+        make_message(
+            message_id=str(uuid4()),
+            app_id=app.id,
+            conversation_id=conversation.id,
+            query=f"query:{i}",
+            answer=f"answer:{i}",
+            inputs={},
+            message={},
+            answer_tokens=1,
+            from_source=ConversationFromSource.API,
+            created_at=datetime(2026, 1, 1) + timedelta(seconds=i),
+        )
+        for i in range(5)
+    ]
+    for i, parent_index in enumerate((None, 0, 1, 0, 3)):
+        messages[i].parent_message_id = messages[parent_index].id if parent_index is not None else None
+    with sqlite_session_factory.begin() as session:
+        session.add_all([app, conversation, *messages[:4]])
+    selection = MessageHistory(
+        app_id=app.id,
+        conversation_id=conversation.id,
+        message_ids=tuple(messages[i].id for i in selected_indices),
+    )
+    selection = MessageHistory.model_validate_json(selection.model_dump_json())
+    with sqlite_session_factory.begin() as session:
+        session.add(messages[4])
+    with sqlite_session_factory() as session:
+        prepared = TokenBufferMemory.load_history(
+            conversation=conversation, app_record=app, session=session, message_limit=None, message_history=selection
+        )
+    config = make_model_config(provider="recording", model="branch-test", mode="chat")
+    provider = RecordingBranchModel(
+        provider_schema=config.provider_model_bundle.configuration.provider,
+        model_runtime=config.provider_model_bundle.model_type_instance.model_runtime,
+    )
+    config.provider_model_bundle.model_type_instance = provider
+    model = ModelInstance(provider_model_bundle=config.provider_model_bundle, model="branch-test", credentials={})
+    prompts = prepared.get_prompt_messages(model_instance=model, max_token_limit=100)
+    model.invoke_llm(prompt_messages=list(prompts), stream=False)
+    assert [prompt.content for prompt in provider.recorded] == [
+        f"{role}:{i}" for i in selected_indices for role in ("query", "answer")
+    ]
+
+
+def test_deleted_or_wrong_conversation_selection_never_falls_back(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Memory fails closed after admission instead of reading the newest branch."""
+    app = make_app(app_id=str(uuid4()), tenant_id=str(uuid4()), mode=AppMode.ADVANCED_CHAT)
+    conversation = make_conversation(conversation_id=str(uuid4()), app_id=app.id, mode=AppMode.ADVANCED_CHAT)
+    missing = MessageHistory(app_id=app.id, conversation_id=conversation.id, message_ids=(str(uuid4()),))
+    foreign = missing.model_copy(update={"conversation_id": str(uuid4())})
+    with sqlite_session_factory() as session:
+        for selection in (missing, foreign):
+            with pytest.raises(ValueError, match="no longer available|does not match"):
+                TokenBufferMemory.load_history(
+                    conversation=conversation,
+                    app_record=app,
+                    session=session,
+                    message_limit=10,
+                    message_history=selection,
+                )

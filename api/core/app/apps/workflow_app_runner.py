@@ -111,6 +111,7 @@ from graphon.graph.scoping import resolve_container_id
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from graphon.variables.factory import build_segment
+from machinery.message_history import MessageHistory
 from models.workflow import Workflow
 from services.workflow_node_variables import load_additional_node_variables
 from tasks.mail_human_input_delivery_task import dispatch_human_input_form_delivery_task
@@ -239,9 +240,13 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        message_history: MessageHistory | None = None,
     ) -> Graph:
         """
-        Init graph
+        Initialize a graph with an optional admitted transcript selection.
+
+        The caller must resolve ownership before construction. The selection
+        travels in graph context into every node; None retains legacy memory.
         """
         graph_config = _WorkflowGraphConfig.model_validate(graph_config).to_graph_config()
 
@@ -254,6 +259,7 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            message_history=message_history,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,

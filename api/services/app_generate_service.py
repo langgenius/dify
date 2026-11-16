@@ -21,6 +21,7 @@ from core.app.features.rate_limiting import RateLimit
 from core.app.layers.pause_state_persist_layer import PauseStateLayerConfig
 from core.db import session_factory
 from enums import DeploymentEdition, QuotaType
+from extensions.application_services.message_branches import resolve_message_history
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
@@ -182,6 +183,12 @@ class AppGenerateService:
         rate_limit: RateLimit,
         request_id: str,
     ):
+        """Dispatch an admitted app call through its existing generation protocol.
+
+        Explicit Chatflow branches validate the selected workflow before legacy
+        edge admission and carry frozen IDs across queue serialization. A later
+        generation failure does not undo already committed link normalization.
+        """
         effective_mode = (
             AppMode.AGENT_CHAT
             if app_model.is_agent_with_session(session=session) and app_model.mode != AppMode.AGENT_CHAT
@@ -248,6 +255,17 @@ class AppGenerateService:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id, session=session)
 
+                if invoke_from == InvokeFrom.SERVICE_API and "parent_message_id" in args:
+                    message_history = resolve_message_history(
+                        app=app_model,
+                        workflow=workflow,
+                        end_user_id=user.id,
+                        conversation_id=args.get("conversation_id"),
+                        parent_message_id=args["parent_message_id"],
+                        message_history=args.get("message_history"),
+                    )
+                    args = {**args, "message_history": message_history.model_dump(mode="json")}
+
                 if streaming:
                     # Streaming mode: subscribe to SSE and enqueue the execution on first subscriber
                     payload = AppExecutionParams.new(
@@ -283,7 +301,9 @@ class AppGenerateService:
                     session_factory=session_factory.get_session_maker(),
                     state_owner_user_id=workflow.created_by,
                 )
-                advanced_generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+                advanced_generator = AdvancedChatAppGenerator(
+                    execution_driver=WorkflowRunAgg.run, message_history_resolver=resolve_message_history
+                )
                 return rate_limit.generate(
                     advanced_generator.convert_to_event_stream(
                         advanced_generator.generate(

@@ -19,6 +19,7 @@ from core.credit_usage import (
 from core.entities.provider_configuration import ProviderModelBundle
 from graphon.file import File, FileUploadConfig
 from graphon.model_runtime.entities.model_entities import AIModelEntity
+from machinery.message_history import MessageHistory
 from models.model import AppMode
 from repositories.entities.workflow_execution import WorkflowExecutionTiming
 
@@ -103,6 +104,7 @@ class DifyRunContext(BaseModel):
     created_by: CreditUsageCreatedBy | None = None
     trace_session_id: str | None = None
     workflow_tool_invocation_id: str | None = None
+    message_history: MessageHistory | None = None
 
     @field_validator("created_by", mode="before")
     @classmethod
@@ -130,12 +132,15 @@ def build_dify_run_context(
     created_by: CreditUsageCreatedByInput = None,
     trace_session_id: str | None = None,
     extra_context: Mapping[str, Any] | None = None,
+    message_history: MessageHistory | None = None,
 ) -> dict[str, Any]:
     """
     Build graph run_context with the reserved Dify runtime payload.
 
     `extra_context` can carry user-defined context keys. The reserved `_dify`
     payload is always overwritten by this function to keep one canonical source.
+    Optional message_history is already owner-resolved by admission and remains
+    explicit through graph serialization; None preserves legacy memory lookup.
     """
     run_context = dict(extra_context) if extra_context else {}
     run_context[DIFY_RUN_CONTEXT_KEY] = DifyRunContext(
@@ -147,6 +152,7 @@ def build_dify_run_context(
         app_type=normalize_credit_usage_app_type(app_type) if app_type is not None else None,
         created_by=normalize_credit_usage_created_by(created_by) if created_by is not None else None,
         trace_session_id=trace_session_id,
+        message_history=message_history,
     )
     return run_context
 
@@ -227,21 +233,37 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
 
     conversation_id: str | None = None
     is_new_conversation: bool = False
+    message_history: MessageHistory | None = None
     parent_message_id: str | None = Field(
         default=None,
         description=(
             "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
-            "For service API, we need to ensure its forward compatibility, "
-            "so passing in the parent_message_id as request arg is not supported for now. "
-            "It needs to be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
+            "Service API calls default to UUID_NIL for legacy linear history. "
+            "Explicit Advanced Chat branches carry an owner-resolved message_history."
         ),
     )
 
     @field_validator("parent_message_id")
     @classmethod
-    def validate_parent_message_id(cls, v, info: ValidationInfo):
+    def validate_parent_message_id(cls, v: str | None, info: ValidationInfo) -> str | None:
+        """Accept explicit API parents only with a matching Advanced Chat selection.
+
+        Nil preserves the legacy contract. Invalid or incomplete selected state
+        fails validation before generation records can be created.
+        """
         if info.data.get("invoke_from") == InvokeFrom.SERVICE_API and v != UUID_NIL:
-            raise ValueError("parent_message_id should be UUID_NIL for service API")
+            history = info.data.get("message_history")
+            app_config = info.data.get("app_config")
+            if (
+                history is None
+                or not isinstance(app_config, WorkflowUIBasedAppConfig)
+                or app_config.app_mode != AppMode.ADVANCED_CHAT
+                or history.conversation_id != info.data.get("conversation_id")
+                or history.app_id != app_config.app_id
+                or (v is None and history.message_ids)
+                or (v is not None and (not history.message_ids or history.message_ids[-1] != v))
+            ):
+                raise ValueError("Explicit Service API parents require a matching resolved message history.")
         return v
 
 

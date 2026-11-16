@@ -1379,7 +1379,7 @@ def test_resume_advanced_chat_publishes_events_for_originally_blocking_runs(
     generator_instance.resume.return_value = response_stream
     monkeypatch.setattr(
         "tasks.app_generate.workflow_execute_task.AdvancedChatAppGenerator",
-        lambda *, execution_driver: generator_instance,
+        lambda *, execution_driver, message_history_resolver: generator_instance,
     )
 
     publish_streaming_response = MagicMock()
