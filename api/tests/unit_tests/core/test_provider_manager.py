@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, PropertyMock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from flask import has_app_context
@@ -39,7 +39,13 @@ from core.provider_manager import (
 from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from graphon.model_runtime.entities.provider_entities import (
+    ConfigurateMethod,
+    FieldModelSchema,
+    ModelCredentialSchema,
+    ProviderCredentialSchema,
+    ProviderEntity,
+)
 from models.base import TypeBase
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import (
@@ -165,25 +171,21 @@ class _FakeRedis:
 
 
 @pytest.fixture
-def mock_provider_entity() -> Mock:
-    mock_entity = Mock()
-    mock_entity.provider = "openai"
-    mock_entity.configurate_methods = ["predefined-model"]
-    mock_entity.supported_model_types = [ModelType.LLM]
-
-    # Use PropertyMock to ensure credential_form_schemas is iterable
-    provider_credential_schema = Mock()
-    type(provider_credential_schema).credential_form_schemas = PropertyMock(return_value=[])
-    mock_entity.provider_credential_schema = provider_credential_schema
-
-    model_credential_schema = Mock()
-    type(model_credential_schema).credential_form_schemas = PropertyMock(return_value=[])
-    mock_entity.model_credential_schema = model_credential_schema
-
-    return mock_entity
+def mock_provider_entity() -> ProviderEntity:
+    return ProviderEntity(
+        provider="openai",
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        provider_credential_schema=ProviderCredentialSchema(credential_form_schemas=[]),
+        model_credential_schema=ModelCredentialSchema(
+            model=FieldModelSchema(label=I18nObject(en_US="OpenAI")),
+            credential_form_schemas=[],
+        ),
+    )
 
 
-def test__to_model_settings(mock_provider_entity: Mock, provider_db: Session) -> None:
+def test__to_model_settings(mock_provider_entity: ProviderEntity, provider_db: Session) -> None:
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -270,7 +272,7 @@ def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) 
 
 @pytest.mark.parametrize("encrypted_config", ["{", "[]"])
 def test_invalid_load_balancing_credentials_preserve_valid_configs(
-    mock_provider_entity: Mock, provider_db: Session, encrypted_config: str
+    mock_provider_entity: ProviderEntity, provider_db: Session, encrypted_config: str
 ) -> None:
     setting = ProviderModelSetting(
         tenant_id="tenant-id",
@@ -488,7 +490,7 @@ def test_package_provider_keeps_custom_configuration() -> None:
     assert configuration.custom_configuration.provider.credentials == {"api_key": "user-secret"}
 
 
-def test__to_model_settings_only_one_lb(mock_provider_entity: Mock, provider_db: Session) -> None:
+def test__to_model_settings_only_one_lb(mock_provider_entity: ProviderEntity, provider_db: Session) -> None:
     # Mocking the inputs
 
     ps = ProviderModelSetting(
@@ -539,7 +541,7 @@ def test__to_model_settings_only_one_lb(mock_provider_entity: Mock, provider_db:
     assert len(result[0].load_balancing_configs) == 0
 
 
-def test__to_model_settings_lb_disabled(mock_provider_entity: Mock, provider_db: Session) -> None:
+def test__to_model_settings_lb_disabled(mock_provider_entity: ProviderEntity, provider_db: Session) -> None:
     # Mocking the inputs
     ps = ProviderModelSetting(
         tenant_id="tenant_id",
@@ -700,7 +702,9 @@ def test_get_provider_model_bundle_raises_for_unknown_provider() -> None:
             manager.get_provider_model_bundle("tenant-id", "openai", ModelType.LLM)
 
 
-def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock_provider_entity: Mock) -> None:
+def test_get_configurations_binds_manager_runtime_to_provider_configuration(
+    mock_provider_entity: ProviderEntity,
+) -> None:
     manager = _build_provider_manager()
     provider_configuration = Mock()
     provider_factory = Mock()
@@ -739,7 +743,7 @@ def test_get_configurations_binds_manager_runtime_to_provider_configuration(mock
     ],
 )
 def test_get_configurations_resolves_system_preference_with_quota_and_custom_fallback(
-    mock_provider_entity: Mock,
+    mock_provider_entity: ProviderEntity,
     quota_is_valid: bool | None,
     has_custom_provider: bool,
     has_custom_model: bool,
@@ -785,7 +789,7 @@ def test_get_configurations_resolves_system_preference_with_quota_and_custom_fal
     assert mock_provider_configuration.call_args.kwargs["using_provider_type"] == expected_using_provider_type
 
 
-def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity: Mock) -> None:
+def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_entity: ProviderEntity) -> None:
     manager = _build_provider_manager()
     provider_configuration = Mock()
     provider_factory = Mock()
@@ -821,7 +825,7 @@ def test_get_configurations_reuses_cached_result_for_same_tenant(mock_provider_e
     provider_configuration.bind_model_runtime.assert_called_once_with(manager._model_runtime)
 
 
-def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_entity: Mock) -> None:
+def test_clear_configurations_cache_rebuilds_requested_tenant(mock_provider_entity: ProviderEntity) -> None:
     manager = _build_provider_manager()
     provider_factory = Mock()
     provider_factory.get_providers.return_value = [mock_provider_entity]
