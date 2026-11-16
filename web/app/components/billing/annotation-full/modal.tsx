@@ -1,7 +1,6 @@
 'use client'
-import type { FC } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent } from '@langgenius/dify-ui/dialog'
+import { DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,53 +9,43 @@ import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 import Usage from './usage'
 
-type Props = Readonly<{
-  show: boolean
-  onHide: () => void
-}>
-const AnnotationFullModal: FC<Props> = ({ show, onHide }) => {
+function AnnotationFullContent() {
   const { t } = useTranslation(['billing', 'common'])
 
   return (
-    <Dialog
-      open={show}
-      onOpenChange={(open) => {
-        if (!open) onHide()
-      }}
-    >
-      <DialogContent className="w-full">
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <GridMask
-          wrapperClassName="rounded-lg"
-          canvasClassName="rounded-lg"
-          gradientClassName="rounded-lg"
-        >
-          <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">
-            <div className="flex items-center justify-between">
-              <div className={cn(s.textGradient, 'text-[18px] leading-6.75 font-semibold')}>
-                <div>{t(($) => $['annotatedResponse.fullTipLine1'], { ns: 'billing' })}</div>
-                <div>{t(($) => $['annotatedResponse.fullTipLine2'], { ns: 'billing' })}</div>
-              </div>
-            </div>
-            <Usage className="mt-4" />
-            <div className="mt-7 flex justify-end">
-              <UpgradeBtn loc="annotation-create" />
+    <DialogContent className="w-full">
+      <GridMask
+        wrapperClassName="isolate rounded-lg"
+        canvasClassName="rounded-lg"
+        gradientClassName="rounded-lg"
+      >
+        <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">
+          <div className="flex items-center justify-between">
+            <div className={cn(s.textGradient, 'text-[18px] leading-6.75 font-semibold')}>
+              <DialogTitle>
+                {t(($) => $['annotatedResponse.fullTipLine1'], { ns: 'billing' })}
+              </DialogTitle>
+              <div>{t(($) => $['annotatedResponse.fullTipLine2'], { ns: 'billing' })}</div>
             </div>
           </div>
-        </GridMask>
-      </DialogContent>
-    </Dialog>
+          <Usage className="mt-4" />
+          <div className="mt-7 flex justify-end">
+            <UpgradeBtn loc="annotation-create" />
+          </div>
+        </div>
+      </GridMask>
+      <DialogClose
+        render={
+          <IconButton
+            aria-label={t(($) => $['operation.close'], { ns: 'common' })}
+            size="lg"
+            className="absolute inset-e-6 top-6"
+          >
+            <span aria-hidden className="i-ri-close-line size-4" />
+          </IconButton>
+        }
+      />
+    </DialogContent>
   )
 }
-export default React.memo(AnnotationFullModal)
+export default AnnotationFullContent
