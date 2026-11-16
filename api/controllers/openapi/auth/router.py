@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from functools import partial, wraps
-from typing import Any, ParamSpec
+from typing import Any
 
 from flask import request
 from werkzeug.exceptions import HTTPException, NotFound, Unauthorized
@@ -24,14 +24,12 @@ from enums import DeploymentEdition
 from libs.oauth_bearer import InvalidBearerError, assert_bearer_feature_enabled, extract_bearer, get_authenticator
 from services.auth.resource_access_token_contracts import is_resource_access_token
 
-_P = ParamSpec("_P")
-
 
 class AuthRouter:
-    def guard(self, spec: EndpointSpec) -> Callable[[Callable[_P, Any]], Callable[_P, Any]]:
-        def decorator(view: Callable[_P, Any]) -> Callable[_P, Any]:
+    def guard(self, spec: EndpointSpec) -> Callable[[Callable[..., Any]], Callable[..., Any]]:
+        def decorator(view: Callable[..., Any]) -> Callable[..., Any]:
             @wraps(view)
-            def decorated(*args: _P.args, **kwargs: _P.kwargs) -> Any:
+            def decorated(*args: Any, **kwargs: Any) -> Any:
                 return self._execute(spec, partial(view, *args, **kwargs))
 
             return decorated
