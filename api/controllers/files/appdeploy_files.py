@@ -36,6 +36,7 @@ from controllers.common.errors import (
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.files import files_ns
 from controllers.files.wraps import FileGrantInvalidError, GrantedFileNotFoundError, file_grant_required
+from controllers.trigger.webhook_request import WebhookRequestParser
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from fields.file_fields import FileResponse
@@ -136,7 +137,7 @@ class GrantedFileUploadApi(Resource):
     )
     @files_ns.response(201, "File uploaded", files_ns.models[FileResponse.__name__])
     def post(self, grant: FileGrantClaims):
-        upload = _single_upload()
+        upload = _single_upload(require_filename=True)
         upload_file = _store_upload(
             grant,
             filename=upload.filename or "",
@@ -205,13 +206,24 @@ class ProducedFileApi(Resource):
     )
     @files_ns.response(201, "Produced file stored", files_ns.models[ProducedFileResponse.__name__])
     def post(self, grant: FileGrantClaims):
-        upload = _single_upload()
+        """Store a granted multipart file, detecting generic binary content.
+
+        A valid produce grant and seekable multipart stream are required. Peek
+        without consuming bytes; the existing service enforces ownership/size.
+        An empty filename delegates name and extension generation to ToolFileManager.
+        """
+        upload = _single_upload(require_filename=False)
+        mimetype = upload.mimetype
+        if mimetype == "application/octet-stream":
+            position = upload.stream.tell()
+            mimetype = WebhookRequestParser._detect_binary_mimetype(upload.stream.read(1024))
+            upload.stream.seek(position)
         try:
             tool_file, access = application_services().file_grants.store_produced(
                 context=_grant_context(grant),
-                filename=upload.filename,
+                filename=upload.filename or None,
                 stream=upload.stream,
-                mimetype=upload.mimetype,
+                mimetype=mimetype,
             )
         except services.errors.file.FileTooLargeError as exc:
             raise FileTooLargeError(exc.description) from exc
@@ -325,14 +337,19 @@ def _normalized_mime_type(mime_type: str | None) -> str:
     return mime_type.split(";", 1)[0].strip().lower() if mime_type else ""
 
 
-def _single_upload() -> FileStorage:
+def _single_upload(*, require_filename: bool) -> FileStorage:
+    """Require exactly one multipart file, optionally requiring its filename.
+
+    Only produced files accept unnamed parts; ordinary uploads retain their
+    filename validation. Missing or multiple files fail before storage.
+    """
     if "file" not in request.files:
         raise NoFileUploadedError()
     if len(request.files) > 1:
         raise TooManyFilesError()
 
     upload = request.files["file"]
-    if not upload.filename:
+    if require_filename and not upload.filename:
         raise FilenameNotExistsError()
     return upload
 

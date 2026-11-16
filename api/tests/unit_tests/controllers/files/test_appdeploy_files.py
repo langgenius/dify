@@ -527,6 +527,76 @@ def test_produced_stores_a_tool_file_and_returns_both_urls(
     )
 
 
+def test_produced_detects_octet_stream_without_consuming_content(
+    app: Flask, end_user: EndUser, file_gateway: FileGrantFileGateway
+) -> None:
+    content = b"binary-content" * 100
+    with (
+        patch(f"{CONTROLLER_MODULE}.WebhookRequestParser._detect_binary_mimetype", return_value="image/png") as detect,
+        patch.object(
+            file_gateway._tool_files,
+            "create_file_by_raw",
+            return_value=SimpleNamespace(
+                id="88888888-8888-4888-8888-888888888888", name="image.png", size=len(content), mimetype="image/png"
+            ),
+        ) as create_file,
+    ):
+        with app.test_request_context(
+            "/files/appdeploy/produced",
+            method="POST",
+            headers=_bearer(FileGrantScope.PRODUCE, end_user_id=end_user.id),
+            data={"file": (BytesIO(content), "image", "application/octet-stream")},
+            content_type="multipart/form-data",
+        ):
+            _, status = _post_with_file_grant(ProducedFileApi())
+    assert status == 201
+    detect.assert_called_once_with(content[:1024])
+    assert create_file.call_args.kwargs["file_binary"] == content
+    assert create_file.call_args.kwargs["mimetype"] == "image/png"
+
+
+@pytest.mark.usefixtures("sqlite_db")
+@pytest.mark.parametrize(
+    ("content", "mime_type", "extension"),
+    [
+        ("原文保持不变\r\nhello\tworld\n".encode() * 100, "text/plain", ".txt"),
+        (b"%PDF-1.7\n" + b"1 0 obj\n<< /Type /Catalog >>\nendobj\n" * 100 + b"%%EOF\n", "application/pdf", ".pdf"),
+    ],
+    ids=["text-original-bytes", "pdf-complete-content"],
+)
+def test_produced_accepts_unnamed_octet_stream_and_generates_filename(
+    app: Flask,
+    end_user: EndUser,
+    sqlite_session: Session,
+    content: bytes,
+    mime_type: str,
+    extension: str,
+) -> None:
+    """Native unnamed multipart parts retain all bytes through real MIME/name handling."""
+    with patch("core.tools.tool_file_manager.storage") as storage:
+        with app.test_request_context(
+            "/files/appdeploy/produced",
+            method="POST",
+            headers=_bearer(FileGrantScope.PRODUCE, end_user_id=end_user.id),
+            data={"file": (BytesIO(content), "", "application/octet-stream")},
+            content_type="multipart/form-data",
+        ):
+            body, status = _post_with_file_grant(ProducedFileApi())
+
+    assert status == 201
+    assert body["mime_type"] == mime_type
+    assert isinstance(body["name"], str)
+    assert body["name"].endswith(extension)
+    assert len(body["name"].removesuffix(extension)) == 32
+    assert body["size"] == len(content)
+    stored = sqlite_session.get(ToolFile, body["id"])
+    assert stored is not None
+    assert stored.name == body["name"]
+    assert stored.user_id == end_user.id
+    assert stored.file_key.endswith(extension)
+    storage.save.assert_called_once_with(stored.file_key, content)
+
+
 def test_produced_rejects_a_grant_whose_subject_was_deleted(app: Flask, file_gateway: FileGrantFileGateway) -> None:
     with patch.object(file_gateway._tool_files, "create_file_by_raw") as create_file:
         with app.test_request_context(

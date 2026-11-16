@@ -7,17 +7,12 @@ claims to reference, and signs a short-lived grant.
 
 from __future__ import annotations
 
-import base64
-import binascii
-import io
-
 from flask_restx import Resource
 from pydantic import BaseModel, Field, ValidationError
 
-from controllers.common.errors import FileTooLargeError
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.wraps import setup_required
-from controllers.files.wraps import GrantedFileNotFoundError, file_grant_required
+from controllers.files.wraps import GrantedFileNotFoundError
 from controllers.inner_api import inner_api_ns
 from controllers.inner_api.wraps import enterprise_inner_api_only
 from extensions.ext_application_services import application_services
@@ -26,14 +21,11 @@ from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from services.entities.file_grant_entities import (
-    FileGrantClaims,
-    FileGrantContext,
     FileGrantMintRequest,
     FileGrantScope,
     FileKind,
     FileRef,
 )
-from services.errors.file import FileTooLargeError as ServiceFileTooLargeError
 from services.file_grant_service import (
     AppNotFoundError,
     EndUserNotFoundError,
@@ -209,58 +201,6 @@ class EnterpriseFileGrantApi(Resource):
                 )
             ],
         ).model_dump(mode="json")
-
-
-class TriggerFileUploadPayload(BaseModel):
-    filename: str = Field(min_length=1, max_length=255)
-    mime_type: str = Field(min_length=1, max_length=255)
-    content: str = Field(max_length=6 * 1024 * 1024)
-
-
-class TriggerFileUploadResponse(ResponseModel):
-    id: str
-    name: str
-    mime_type: str | None
-    size: int
-
-
-register_schema_models(inner_api_ns, TriggerFileUploadPayload)
-register_response_schema_models(inner_api_ns, TriggerFileUploadResponse)
-
-
-@inner_api_ns.route("/app-deploy/triggers/files")
-class EnterpriseTriggerFileApi(Resource):
-    @setup_required
-    @enterprise_inner_api_only
-    @file_grant_required(FileGrantScope.PRODUCE)
-    @inner_api_ns.expect(inner_api_ns.models[TriggerFileUploadPayload.__name__])
-    @inner_api_ns.response(201, "Trigger file stored", inner_api_ns.models[TriggerFileUploadResponse.__name__])
-    def post(self, grant: FileGrantClaims):
-        """Store trusted HTTP bytes as a ToolFile owned by the grant subject.
-
-        Requires enterprise admission and a produce grant. Validates the bounded
-        payload before storage; success returns a reference without signed URLs.
-        Ownership and size checks remain with the existing file grant service.
-        """
-        try:
-            payload = TriggerFileUploadPayload.model_validate(inner_api_ns.payload or {})
-            content = base64.b64decode(payload.content, validate=True)
-        except (ValidationError, binascii.Error) as exc:
-            raise InvalidGrantRequestError() from exc
-        try:
-            stored, _ = application_services().file_grants.store_produced(
-                context=FileGrantContext(tenant_id=grant.tenant_id, app_id=grant.app_id, end_user_id=grant.sub),
-                filename=payload.filename,
-                stream=io.BytesIO(content),
-                mimetype=payload.mime_type,
-            )
-        except EndUserNotFoundError as exc:
-            raise GrantedFileNotFoundError() from exc
-        except ServiceFileTooLargeError as exc:
-            raise FileTooLargeError(exc.description) from exc
-        return TriggerFileUploadResponse(
-            id=stored.id, name=stored.name, mime_type=stored.mime_type, size=stored.size
-        ).model_dump(mode="json"), 201
 
 
 __all__ = [

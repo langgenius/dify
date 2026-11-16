@@ -193,6 +193,7 @@ def init_app(app: DifyApp) -> Celery:
     setup_workflow_warm_shutdown_handler()
 
     imports = [
+        "tasks.app_deploy_trigger_tasks",  # enterprise plugin targets and independent result delivery
         "schedule.collect_agent_sandbox_usage",  # optional background provider accounting
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection

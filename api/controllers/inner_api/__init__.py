@@ -34,7 +34,7 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     from . import datasource_credentials, mail, runtime_credentials
     from .agent import files, knowledge, llm, runtime_usage, tools, tracing
-    from .app import app, dsl, file_grants, triggers
+    from .app import app, dsl, file_grants
     from .knowledge import retrieval
     from .knowledge_fs import background, storage, texts, vectors
     from .plugin import agent_config, plugin, skills
@@ -53,7 +53,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         app,
         dsl,
         file_grants,
-        triggers,
         retrieval,
         background,
         storage,
@@ -79,7 +78,6 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _app_app,
     _app_dsl,
     _app_file_grants,
-    _app_triggers,
     _knowledge_retrieval,
     _knowledge_fs_background,
     _knowledge_fs_storage,
@@ -103,7 +101,6 @@ __all__ = [
     "_app_app",
     "_app_dsl",
     "_app_file_grants",
-    "_app_triggers",
     "_datasource_credentials",
     "_knowledge_fs_background",
     "_knowledge_fs_storage",

@@ -15,6 +15,7 @@ from libs.pagination import PaginatedResult
 from models.enums import MessageStatus, WorkflowRunTriggeredFrom
 from models.model import AppMode, IconType
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from services.app.trigger_native import NativeTriggerNode, NativeTriggerState
 
 EnterpriseAppSortBy = Literal["created_at", "name"]
 EnterpriseAppSortOrder = Literal["asc", "desc"]
@@ -180,6 +181,12 @@ class EnterpriseAppMessageStats:
 
 
 class EnterpriseAppStore(Protocol):
+    def native_trigger_states(
+        self, tenant_id: str, app_id: str, nodes: Sequence[NativeTriggerNode]
+    ) -> dict[str, NativeTriggerState]:
+        """Read exact native nodes and tenant/provider-scoped subscription existence; unknown stays None."""
+        ...
+
     def list_apps(self, params: EnterpriseAppListParams) -> PaginatedResult[EnterpriseAppListEntry]: ...
 
     def get_app(self, app_id: str) -> EnterpriseAppRecord | None:
@@ -271,6 +278,12 @@ class EnterpriseAppService:
             invocation_count=invocations.count,
             failed_invocation_count=invocations.failed_count,
         )
+
+    def native_trigger_states(
+        self, tenant_id: str, app_id: str, nodes: Sequence[NativeTriggerNode]
+    ) -> dict[str, NativeTriggerState]:
+        """Given validated owner IDs and nodes, return current read-only state; propagate dependency errors."""
+        return self._apps.native_trigger_states(tenant_id, app_id, nodes)
 
     def _invocations(self, apps: Sequence[EnterpriseAppSummary]) -> dict[str, _Invocations]:
         """Read invocations: workflow runs for workflow Apps, messages otherwise."""
