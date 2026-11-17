@@ -38,11 +38,11 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
 from services.agent.skill_package_service import SkillPackageError
+from services.agent_config_contracts import AgentConfigVersionKind
 from services.agent_config_service import (
     AgentConfigService,
     AgentConfigServiceError,
     AgentConfigTarget,
-    AgentConfigVersionKind,
     ConfigDownloadRequest,
     ConfigPushPayload,
     ConfigPushSkillItem,

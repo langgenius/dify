@@ -38,7 +38,8 @@ from models.workflow import Workflow
 from services.agent import knowledge_gateway as gateway
 from services.agent.knowledge_citations import knowledge_sources_from_tool_part
 from services.agent.knowledge_spaces import collect_workflow_agent_knowledge_space_ids
-from services.agent_config_service import AgentConfigTarget, AgentConfigVersionKind
+from services.agent_config_contracts import AgentConfigVersionKind
+from services.agent_config_service import AgentConfigTarget
 from services.knowledge_fs.capability_broker import KnowledgeFSIssuedProductCapability
 from services.knowledge_fs.errors import KnowledgeFSWorkflowQueryImageReference
 from services.knowledge_fs.query_images import KnowledgeFSQueryImageMetadata

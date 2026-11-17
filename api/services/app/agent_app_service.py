@@ -5,7 +5,7 @@ from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
-from services.agent.config_inspector_store import AgentConfigSelection
+from services.agent_config_contracts import AgentConfigSelection
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,

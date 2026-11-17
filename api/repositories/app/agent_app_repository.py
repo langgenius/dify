@@ -87,18 +87,18 @@ from services.agent.app_composer_store import (
     AgentPublicationHomeUnavailableError,
     AgentPublicationSource,
 )
-from services.agent.config_inspector_store import (
+from services.agent.errors import AgentNameConflictError, AgentNotFoundError
+from services.agent.roster_service import AgentRosterService
+from services.agent_config_contracts import (
     AgentConfigNodeUnboundError,
     AgentConfigRuntimeMissingError,
     AgentConfigSelection,
     AgentConfigVersionMissingError,
     AgentConfigWorkflowMissingError,
 )
-from services.agent.config_inspector_store import (
+from services.agent_config_contracts import (
     AgentConfigVersionKind as ConfigSelectionKind,
 )
-from services.agent.errors import AgentNameConflictError, AgentNotFoundError
-from services.agent.roster_service import AgentRosterService
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,

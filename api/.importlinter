@@ -1677,7 +1677,6 @@ forbidden_modules =
 allow_indirect_imports = True
 ignore_imports =
     repositories.app.agent_app_repository -> services.agent.app_composer_store
-    repositories.app.agent_app_repository -> services.agent.config_inspector_store
     repositories.app.agent_app_repository -> services.agent.errors
     repositories.app.agent_app_repository -> services.agent.roster_service
 

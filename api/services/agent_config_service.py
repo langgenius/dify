@@ -48,9 +48,9 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.tools import ToolFile
-from services.agent.config_inspector_store import AgentConfigVersionKind
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
+from services.agent_config_contracts import AgentConfigVersionKind as _AgentConfigVersionKind
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
 
 
@@ -108,7 +108,7 @@ class AgentConfigTarget:
     tenant_id: str
     agent_id: str
     version_id: str
-    kind: AgentConfigVersionKind
+    kind: _AgentConfigVersionKind
     writable: bool
     version: AgentConfigSnapshot | AgentConfigDraft
     agent_soul: AgentSoulConfig
@@ -157,7 +157,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> AgentConfigTarget:
         with self._session_factory() as session:
@@ -185,7 +185,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> dict[str, object]:
         target = self.resolve_target(
@@ -203,7 +203,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> dict[str, object]:
         target = self.resolve_target(
@@ -225,7 +225,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> dict[str, object]:
         target = self.resolve_target(
@@ -247,7 +247,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         kind: Literal["file", "skill"],
         name: str,
         user_id: str | None = None,
@@ -281,7 +281,7 @@ class AgentConfigService:
                     for item in SkillManagementService().list_runtime_agent_skills(
                         tenant_id=tenant_id,
                         agent_id=agent_id,
-                        include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                        include_draft=config_version_kind != _AgentConfigVersionKind.SNAPSHOT,
                     )
                     if item["name"] == name
                 ),
@@ -316,7 +316,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
     ) -> str:
@@ -337,7 +337,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
     ) -> dict[str, object]:
@@ -361,7 +361,7 @@ class AgentConfigService:
                     tenant_id=tenant_id,
                     agent_id=agent_id,
                     name=name,
-                    include_draft=config_version_kind != AgentConfigVersionKind.SNAPSHOT,
+                    include_draft=config_version_kind != _AgentConfigVersionKind.SNAPSHOT,
                 )
             except SkillManagementServiceError as skill_exc:
                 raise AgentConfigServiceError(
@@ -410,7 +410,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         path: str,
         user_id: str | None = None,
@@ -438,7 +438,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         path: str,
         user_id: str | None = None,
@@ -470,7 +470,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         path: str,
         user_id: str | None = None,
@@ -498,7 +498,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
     ) -> ConfigDownload:
@@ -526,7 +526,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
     ) -> str:
@@ -548,7 +548,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         content: bytes,
         filename: str,
     ) -> dict[str, object]:
@@ -570,7 +570,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         content: bytes,
         filename: str,
     ) -> dict[str, object]:
@@ -592,7 +592,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         content: bytes,
         filename: str,
         surface: AgentConfigMutationSurface,
@@ -648,7 +648,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         payload: ConfigPushPayload,
     ) -> dict[str, object]:
         return self._push(
@@ -668,7 +668,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         payload: ConfigPushPayload,
     ) -> dict[str, object]:
         return self._push(
@@ -688,7 +688,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         upload_file_id: str,
     ) -> dict[str, object]:
         with self._session_factory() as session:
@@ -724,7 +724,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         upload_file_ids: list[str],
     ) -> dict[str, object]:
         """Bind a validated batch atomically, replacing same-name files in input order.
@@ -771,7 +771,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         payload: ConfigPushPayload,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
@@ -825,7 +825,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         name: str,
         user_id: str | None = None,
     ) -> dict[str, object]:
@@ -854,7 +854,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         env_text: str,
     ) -> dict[str, object]:
         return self._update_env(
@@ -874,7 +874,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         env_text: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
@@ -902,7 +902,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         note: str,
     ) -> dict[str, object]:
         return self._update_note(
@@ -922,7 +922,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         note: str,
         surface: AgentConfigMutationSurface,
     ) -> dict[str, object]:
@@ -949,7 +949,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None = None,
     ) -> dict[str, str]:
         """Read the saved system prompt verbatim, including unexpanded mentions."""
@@ -969,7 +969,7 @@ class AgentConfigService:
         agent_id: str,
         user_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         prompt: str,
     ) -> dict[str, str]:
         """Replace only the caller's build-draft prompt; an empty string clears it.
@@ -1001,7 +1001,7 @@ class AgentConfigService:
         tenant_id: str,
         agent_id: str,
         config_version_id: str,
-        config_version_kind: AgentConfigVersionKind,
+        config_version_kind: _AgentConfigVersionKind,
         user_id: str | None,
         for_update: bool = False,
     ) -> AgentConfigTarget:
@@ -1009,14 +1009,14 @@ class AgentConfigService:
         version_query: Select[tuple[AgentConfigSnapshot]] | Select[tuple[AgentConfigDraft]]
         try:
             match config_version_kind:
-                case AgentConfigVersionKind.SNAPSHOT:
+                case _AgentConfigVersionKind.SNAPSHOT:
                     version_query = select(AgentConfigSnapshot).where(
                         AgentConfigSnapshot.tenant_id == tenant_id,
                         AgentConfigSnapshot.agent_id == agent_id,
                         AgentConfigSnapshot.id == config_version_id,
                     )
                     writable = False
-                case AgentConfigVersionKind.DRAFT:
+                case _AgentConfigVersionKind.DRAFT:
                     version_query = select(AgentConfigDraft).where(
                         AgentConfigDraft.tenant_id == tenant_id,
                         AgentConfigDraft.agent_id == agent_id,
@@ -1025,7 +1025,7 @@ class AgentConfigService:
                         AgentConfigDraft.account_id.is_(None),
                     )
                     writable = False
-                case AgentConfigVersionKind.BUILD_DRAFT:
+                case _AgentConfigVersionKind.BUILD_DRAFT:
                     if not user_id:
                         raise AgentConfigServiceError(
                             "missing_user_id",
@@ -1043,7 +1043,7 @@ class AgentConfigService:
                 case _:
                     raise AgentConfigServiceError("invalid_config_version_kind", "unsupported config version kind")
             version_query = version_query.execution_options(autoflush=False)
-            if for_update and config_version_kind != AgentConfigVersionKind.SNAPSHOT:
+            if for_update and config_version_kind != _AgentConfigVersionKind.SNAPSHOT:
                 # Re-read under the lock even when this Session already loaded the draft.
                 version_query = version_query.with_for_update().execution_options(
                     populate_existing=True, autoflush=False
@@ -1097,7 +1097,7 @@ class AgentConfigService:
     def _require_writable(target: AgentConfigTarget, *, surface: AgentConfigMutationSurface) -> None:
         if target.writable:
             return
-        if surface == AgentConfigMutationSurface.CONSOLE and target.kind == AgentConfigVersionKind.DRAFT:
+        if surface == AgentConfigMutationSurface.CONSOLE and target.kind == _AgentConfigVersionKind.DRAFT:
             return
         if surface == AgentConfigMutationSurface.CONSOLE:
             raise AgentConfigServiceError(
@@ -1415,7 +1415,7 @@ class AgentConfigService:
         for item in SkillManagementService().list_runtime_agent_skills(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
-            include_draft=target.kind != AgentConfigVersionKind.SNAPSHOT,
+            include_draft=target.kind != _AgentConfigVersionKind.SNAPSHOT,
         ):
             if item["name"] in seen_names:
                 continue
@@ -1433,7 +1433,7 @@ class AgentConfigService:
 
     @staticmethod
     def _is_console_writable(target: AgentConfigTarget) -> bool:
-        return target.writable or target.kind == AgentConfigVersionKind.DRAFT
+        return target.writable or target.kind == _AgentConfigVersionKind.DRAFT
 
     @staticmethod
     def _serialize_skill_item(skill: AgentConfigSkillRefConfig) -> dict[str, object]:
@@ -1699,7 +1699,6 @@ __all__ = [
     "AgentConfigService",
     "AgentConfigServiceError",
     "AgentConfigTarget",
-    "AgentConfigVersionKind",
     "ConfigDownload",
     "ConfigDownloadRequest",
     "ConfigPushFileItem",

@@ -1,4 +1,4 @@
-"""Console config selection independent of asset storage and HTTP transport."""
+"""Shared Agent configuration contracts for version selection and asset access."""
 
 from dataclasses import dataclass
 from enum import StrEnum
