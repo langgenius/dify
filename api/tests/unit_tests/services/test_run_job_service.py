@@ -588,6 +588,21 @@ def test_a_run_error_with_the_not_confirmed_text_is_still_read_from_the_run() ->
     assert (view.status, view.outputs, view.error) == (JobStatus.FAILED, {"x": 1}, text)
 
 
+def test_a_message_job_reported_interrupted_never_changes_when_its_message_appears_later() -> None:
+    harness = _harness()
+    opened = harness.service.open(_opening(AppMode.CHAT))
+    _lapse_alive_key(harness, opened.record.id)
+    reported = harness.service.view(OWNER, opened.record.id)
+    harness.store.patch(opened.record.id, JobPatch(message_id="msg-1"))
+    harness.store.touch(opened.record.id)
+    harness.results.messages[("a1", "msg-1")] = MessageResult(answer="late", error=None)
+
+    later = harness.service.view(OWNER, opened.record.id)
+
+    assert (reported.status, reported.error) == (JobStatus.FAILED, RUN_INTERRUPTED)
+    assert (later.status, later.error, later.answer) == (JobStatus.FAILED, RUN_INTERRUPTED, None)
+
+
 def test_view_of_a_message_job_uses_the_record() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
