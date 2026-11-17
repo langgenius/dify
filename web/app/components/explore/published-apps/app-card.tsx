@@ -8,7 +8,6 @@ import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useMutation } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import AppCardSummary from '@/app/components/app/app-card-summary'
-import ItemOperation from '@/app/components/explore/item-operation'
 import { consoleQuery } from '@/service/console'
 
 type Props = {
@@ -66,14 +65,6 @@ export default function PublishedAppCard({ app, dialog }: Props) {
             )}
           />
         </IconButton>
-        <div className="relative">
-          <ItemOperation
-            className="[&>span]:opacity-100"
-            itemName={app.app.name}
-            isPinned={app.is_pinned}
-            togglePin={togglePin}
-          />
-        </div>
       </div>
       {pin.error && (
         <p role="alert" className="px-4 system-xs-regular text-text-destructive">
