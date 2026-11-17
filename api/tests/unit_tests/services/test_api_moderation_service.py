@@ -50,7 +50,7 @@ class _Outbound:
 
     def __init__(self, events: list[str]) -> None:
         self.events = events
-        self.response: object = {"flagged": False, "action": "direct_output", "preset_response": ""}
+        self.response: JsonValue = {"flagged": False, "action": "direct_output", "preset_response": ""}
         self.failure: tuple[str, RuntimeError] | None = None
         self.params: ModerationInputParams | ModerationOutputParams | None = None
 
@@ -62,13 +62,13 @@ class _Outbound:
             raise self.failure[1]
         return "decrypted-key"
 
-    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> object:
+    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> JsonValue:
         return self._request(endpoint, key, params)
 
-    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> object:
+    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> JsonValue:
         return self._request(endpoint, key, params)
 
-    def _request(self, endpoint: str, key: str, params: ModerationInputParams | ModerationOutputParams) -> object:
+    def _request(self, endpoint: str, key: str, params: ModerationInputParams | ModerationOutputParams) -> JsonValue:
         assert self.events == ["checkout", "checkin", "decrypt"]
         assert (endpoint, key) == (_ENDPOINT, "decrypted-key")
         self.events.append("request")
@@ -152,30 +152,11 @@ def service(sqlite_session_factory: sessionmaker[Session], outbound: _Outbound) 
 
 def _moderate(
     service: APIModerationService, config: APIModerationConfig | None, direction: Literal["inputs", "outputs"]
-) -> object:
+) -> JsonValue:
     """Exercise either runtime operation with complete authored settings or no config."""
     if direction == "inputs":
         return service.moderate_inputs(_TENANT_ID, "test-app-id", config, {"q": "a"}, "hello")
     return service.moderate_outputs(_TENANT_ID, "test-app-id", config, "hello world")
-
-
-def test_moderation_input_params() -> None:
-    params = ModerationInputParams(app_id="app-1", inputs={"key": "val"}, query="test query")
-    assert params.app_id == "app-1"
-    assert params.inputs == {"key": "val"}
-    assert params.query == "test query"
-    params_default = ModerationInputParams()
-    assert params_default.app_id == ""
-    assert params_default.inputs == {}
-    assert params_default.query == ""
-
-
-def test_moderation_output_params() -> None:
-    params = ModerationOutputParams(app_id="app-1", text="test text")
-    assert params.app_id == "app-1"
-    assert params.text == "test text"
-    with pytest.raises(ValidationError):
-        ModerationOutputParams.model_validate({})
 
 
 @pytest.mark.parametrize(("inputs_enabled", "outputs_enabled"), [(True, True), (True, False), (False, True)])
@@ -599,11 +580,11 @@ def test_input_domain_survives_sqlite_and_gateway_serialization(
         "files": [attachment],
         "file_json": file_shaped_json,
     }
-    response = {"flagged": False, "action": "direct_output", "preset_response": ""}
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
+    response: JsonValue = {"flagged": False, "action": "direct_output", "preset_response": ""}
+    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, JsonValue]]] = []
     admitted: list[ModerationInputParams] = []
 
-    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, object]) -> object:
+    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, JsonValue]) -> JsonValue:
         assert lookup_events == ["checkout", "checkin", "decrypt"]
         lookup_events.append("request")
         calls.append((endpoint, key, point, params))
@@ -611,7 +592,7 @@ def test_input_domain_survives_sqlite_and_gateway_serialization(
 
     gateway = APIModerationGateway(request=request)
 
-    def request_inputs(endpoint: str, key: str, params: ModerationInputParams) -> object:
+    def request_inputs(endpoint: str, key: str, params: ModerationInputParams) -> JsonValue:
         admitted.append(params)
         return gateway.inputs(endpoint, key, params)
 

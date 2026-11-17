@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from flask import current_app
+from pydantic import JsonValue
 
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
@@ -16,8 +17,8 @@ class APIModerationCallbacks:
     """Required API capabilities bound by the composition root to one Flask app."""
 
     validate_config: Callable[[str, Mapping[str, object]], None]
-    moderate_inputs: Callable[[str, str, Mapping[str, object] | None, dict[str, object], str], object]
-    moderate_outputs: Callable[[str, str, Mapping[str, object] | None, str], object]
+    moderate_inputs: Callable[[str, str, Mapping[str, object] | None, dict[str, object], str], JsonValue]
+    moderate_outputs: Callable[[str, str, Mapping[str, object] | None, str], JsonValue]
 
 
 @dataclass(slots=True)

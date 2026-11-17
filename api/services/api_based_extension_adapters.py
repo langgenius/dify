@@ -3,6 +3,8 @@
 from collections.abc import Callable
 from typing import override
 
+from pydantic import JsonValue
+
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.helper.encrypter import decrypt_token, encrypt_token
 from models.api_based_extension import APIBasedExtensionPoint
@@ -15,8 +17,8 @@ from services.api_moderation_service import ModerationInputParams, ModerationOut
 
 
 def request_api_based_extension(
-    endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, object]
-) -> object:
+    endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, JsonValue]
+) -> JsonValue:
     """Return the original requestor response; preserve its SSRF policy and errors."""
     return APIBasedExtensionRequestor(endpoint, key).request(point, params)
 
@@ -24,14 +26,16 @@ def request_api_based_extension(
 class APIModerationGateway:
     """Translate typed moderation parameters to the existing extension wire format."""
 
-    def __init__(self, *, request: Callable[[str, str, APIBasedExtensionPoint, dict[str, object]], object]) -> None:
+    def __init__(
+        self, *, request: Callable[[str, str, APIBasedExtensionPoint, dict[str, JsonValue]], JsonValue]
+    ) -> None:
         self._request = request
 
-    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> object:
+    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> JsonValue:
         """Dispatch the input point with validated params; propagate request errors."""
         return self._request(endpoint, key, APIBasedExtensionPoint.APP_MODERATION_INPUT, params.model_dump())
 
-    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> object:
+    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> JsonValue:
         """Dispatch the output point with validated params; propagate request errors."""
         return self._request(endpoint, key, APIBasedExtensionPoint.APP_MODERATION_OUTPUT, params.model_dump())
 

@@ -98,8 +98,8 @@ class APIModerationService:
         *,
         find_extension: Callable[[str, str], APIBasedExtensionRecord | None],
         decrypt_key: Callable[[str, str], str],
-        request_inputs: Callable[[str, str, ModerationInputParams], object],
-        request_outputs: Callable[[str, str, ModerationOutputParams], object],
+        request_inputs: Callable[[str, str, ModerationInputParams], JsonValue],
+        request_outputs: Callable[[str, str, ModerationOutputParams], JsonValue],
     ) -> None:
         """Store all four required capabilities without performing I/O."""
         self._find_extension = find_extension
@@ -123,7 +123,7 @@ class APIModerationService:
         raw: Mapping[str, object] | None,
         inputs: Mapping[str, object],
         query: str = "",
-    ) -> object:
+    ) -> JsonValue:
         """Return the disabled result or raw input response for facade validation.
 
         Raw mappings admit dynamic variable names with JSON, File or list[File]
@@ -138,7 +138,7 @@ class APIModerationService:
         key = self._decrypt_key(tenant_id, extension.api_key)
         return self._request_inputs(extension.api_endpoint, key, params)
 
-    def moderate_outputs(self, tenant_id: str, app_id: str, raw: Mapping[str, object] | None, text: str) -> object:
+    def moderate_outputs(self, tenant_id: str, app_id: str, raw: Mapping[str, object] | None, text: str) -> JsonValue:
         """Return the disabled result or raw output response for facade validation.
 
         Enabled settings and request parameters validate before lookup. Disabled

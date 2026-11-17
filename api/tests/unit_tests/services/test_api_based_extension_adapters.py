@@ -68,10 +68,10 @@ def test_ping_probe_wraps_transport_failures(monkeypatch: pytest.MonkeyPatch) ->
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 def test_moderation_gateway_translates_point_and_validated_parameters(direction: Literal["inputs", "outputs"]) -> None:
     """Validated input/output parameters retain their point, payload and response identity."""
-    response = object()
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
+    response: JsonValue = {"flagged": False}
+    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, JsonValue]]] = []
 
-    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, object]) -> object:
+    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, params: dict[str, JsonValue]) -> JsonValue:
         calls.append((endpoint, key, point, params))
         return response
 
@@ -126,10 +126,10 @@ def test_input_domain_serialization_preserves_files_and_json() -> None:
         "file_json": file_shaped_json,
     }
     params = ModerationInputParams(inputs=values)
-    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
-    response = {"flagged": False}
+    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, JsonValue]]] = []
+    response: JsonValue = {"flagged": False}
 
-    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, payload: dict[str, object]) -> object:
+    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, payload: dict[str, JsonValue]) -> JsonValue:
         calls.append((endpoint, key, point, payload))
         wire_inputs = payload["inputs"]
         assert isinstance(wire_inputs, dict)
@@ -164,7 +164,7 @@ def test_moderation_gateway_preserves_request_failure_identity(direction: Litera
     """Either gateway method propagates the original request failure instance."""
     failure = ValueError("request timeout")
 
-    def request(_endpoint: str, _key: str, _point: APIBasedExtensionPoint, _params: dict[str, object]) -> object:
+    def request(_endpoint: str, _key: str, _point: APIBasedExtensionPoint, _params: dict[str, JsonValue]) -> JsonValue:
         raise failure
 
     gateway = APIModerationGateway(request=request)

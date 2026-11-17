@@ -3,6 +3,7 @@ from collections.abc import Callable
 
 import httpx
 import pytest
+from pydantic import JsonValue
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from models.api_based_extension import APIBasedExtensionPoint
@@ -65,7 +66,7 @@ def test_request_success(install_client: InstallClient) -> None:
     ],
 )
 def test_request_adapter_preserves_moderation_wire_contract(
-    install_client: InstallClient, point: APIBasedExtensionPoint, params: dict[str, object]
+    install_client: InstallClient, point: APIBasedExtensionPoint, params: dict[str, JsonValue]
 ) -> None:
     """Use the fixture's in-process transport for each moderation point and payload.
 

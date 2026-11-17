@@ -2,7 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 from flask import Flask
-from pydantic import ValidationError
+from pydantic import JsonValue, ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -12,7 +12,12 @@ from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationC
 from extensions.ext_code_based_extension import code_based_extension
 from models.api_based_extension import APIBasedExtension
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
-from services.api_moderation_service import APIModerationService, ModerationInputParams, ModerationOutputParams
+from services.api_moderation_service import (
+    APIModerationConfig,
+    APIModerationService,
+    ModerationInputParams,
+    ModerationOutputParams,
+)
 
 _TENANT_ID = "a0000000-0000-0000-0000-000000000004"
 _EXTENSION_ID = "a0000000-0000-0000-0000-000000000001"
@@ -20,18 +25,18 @@ _EXTENSION_ID = "a0000000-0000-0000-0000-000000000001"
 
 class _Requests:
     def __init__(self) -> None:
-        self.response: object = {"flagged": True, "action": "direct_output", "preset_response": "Blocked by API"}
-        self.calls: list[object] = []
+        self.response: JsonValue = {"flagged": True, "action": "direct_output", "preset_response": "Blocked by API"}
+        self.calls: list[tuple[str, str] | tuple[str, str, ModerationInputParams | ModerationOutputParams]] = []
 
     def decrypt(self, tenant_id: str, value: str) -> str:
         self.calls.append((tenant_id, value))
         return "plaintext"
 
-    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> object:
+    def inputs(self, endpoint: str, key: str, params: ModerationInputParams) -> JsonValue:
         self.calls.append((endpoint, key, params))
         return self.response
 
-    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> object:
+    def outputs(self, endpoint: str, key: str, params: ModerationOutputParams) -> JsonValue:
         self.calls.append((endpoint, key, params))
         return self.response
 
@@ -65,8 +70,18 @@ def moderation_app(sqlite_session_factory: sessionmaker[Session], requests: _Req
     return app
 
 
-@pytest.mark.parametrize("config", [None, {"inputs_config": {"enabled": False}, "outputs_config": {"enabled": False}}])
-def test_api_construction_needs_no_app_context_or_io(config: dict[str, object] | None, sqlite_engine: Engine) -> None:
+@pytest.mark.parametrize(
+    "config",
+    [
+        None,
+        {
+            "inputs_config": {"enabled": False},
+            "outputs_config": {"enabled": False},
+            "api_based_extension_id": _EXTENSION_ID,
+        },
+    ],
+)
+def test_api_construction_needs_no_app_context_or_io(config: APIModerationConfig | None, sqlite_engine: Engine) -> None:
     events: list[str] = []
 
     def checkout(*_args: object) -> None:
@@ -74,7 +89,7 @@ def test_api_construction_needs_no_app_context_or_io(config: dict[str, object] |
 
     event.listen(sqlite_engine, "checkout", checkout)
     try:
-        ModerationFactory("api", "app", _TENANT_ID, config)
+        ModerationFactory("api", "app", _TENANT_ID, dict(config) if config is not None else None)
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
     assert events == []
@@ -110,7 +125,7 @@ def test_api_factory_adapts_response_with_existing_model(
 
 @pytest.mark.parametrize("response", [None, [], "invalid", {"action": "invalid"}])
 def test_api_factory_retains_external_response_validation(
-    moderation_app: Flask, requests: _Requests, response: object
+    moderation_app: Flask, requests: _Requests, response: JsonValue
 ) -> None:
     requests.response = response
     with moderation_app.app_context(), pytest.raises(ValidationError):
