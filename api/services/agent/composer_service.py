@@ -1,5 +1,6 @@
 import logging
 import uuid
+from dataclasses import asdict
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -34,6 +35,7 @@ from models.agent_config_entities import (
 )
 from models.agent_soul_state import agent_soul_has_model
 from models.workflow import Workflow
+from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
@@ -467,18 +469,21 @@ class AgentComposerService:
     ) -> AgentSoulConfig:
         """Load the same normal or account-owned build draft used by Agent debug chat."""
         if draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            state = cls.load_agent_app_build_draft(
+            draft = find_agent_draft(
+                session,
                 tenant_id=tenant_id,
                 agent_id=agent_id,
+                draft_type=draft_type,
                 account_id=account_id,
-                session=session,
             )
-        else:
-            state = cls.load_agent_composer(
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                session=session,
-            )
+            if draft is None:
+                raise AgentVersionNotFoundError()
+            return AgentSoulConfig.model_validate(draft.config_snapshot_dict)
+        state = cls.load_agent_composer(
+            tenant_id=tenant_id,
+            agent_id=agent_id,
+            session=session,
+        )
         return AgentSoulConfig.model_validate(state["agent_soul"])
 
     @classmethod
@@ -494,7 +499,7 @@ class AgentComposerService:
         draft = (
             None
             if published_only
-            else cls._get_agent_draft(
+            else find_agent_draft(
                 session=session,
                 tenant_id=tenant_id,
                 agent_id=agent.id,
@@ -837,7 +842,7 @@ class AgentComposerService:
             account_id=None,
             created_by=account_id,
         )
-        build_draft = cls._get_agent_draft(
+        build_draft = find_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -919,7 +924,8 @@ class AgentComposerService:
     def load_agent_app_build_draft(
         cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
     ) -> dict[str, Any]:
-        build_draft = cls._get_agent_draft(
+        """Load an existing account draft in the legacy Config Inspector transaction."""
+        build_draft = find_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent_id,
@@ -987,7 +993,7 @@ class AgentComposerService:
         account_id: str,
     ) -> tuple[dict[str, Any], list[str]]:
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        build_draft = cls._get_agent_draft(
+        build_draft = find_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -1117,60 +1123,6 @@ class AgentComposerService:
             conversation.agent_workspace_binding_id = None
             retired_binding_ids.append(binding_id)
         return retired_binding_ids
-
-    @classmethod
-    def discard_agent_app_build_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> dict[str, Any]:
-        try:
-            result, retired_binding_id = cls._discard_agent_app_build_draft_in_transaction(
-                session=session,
-                tenant_id=tenant_id,
-                agent_id=agent_id,
-                account_id=account_id,
-            )
-            session.commit()
-        except Exception:
-            session.rollback()
-            raise
-        if retired_binding_id is not None:
-            enqueue_agent_resource_collection(
-                tenant_id=tenant_id,
-                binding_ids=(retired_binding_id,),
-            )
-        return result
-
-    @classmethod
-    def _discard_agent_app_build_draft_in_transaction(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str
-    ) -> tuple[dict[str, Any], str | None]:
-        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        build_draft = cls._get_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            draft_type=AgentConfigDraftType.DEBUG_BUILD,
-            account_id=account_id,
-        )
-        if build_draft is None:
-            return {"result": "success"}, None
-        retired_binding_id: str | None = None
-        if build_draft.agent_workspace_binding_id is not None:
-            cls._validate_active_build_draft_binding(
-                session=session,
-                tenant_id=tenant_id,
-                agent=agent,
-                build_draft=build_draft,
-            )
-            retired_binding_id = AgentWorkspaceService.retire_binding(
-                session=session,
-                tenant_id=tenant_id,
-                binding_id=build_draft.agent_workspace_binding_id,
-            )
-            if retired_binding_id is None:
-                raise AgentBuildSandboxNotFoundError()
-        session.delete(build_draft)
-        return {"result": "success"}, retired_binding_id
 
     @classmethod
     def collect_validation_findings(
@@ -1523,7 +1475,7 @@ class AgentComposerService:
                     agent_id=binding.agent_id,
                     version_id=binding.current_snapshot_id,
                 )
-                normal_draft = cls._get_agent_draft(
+                normal_draft = find_agent_draft(
                     session=session,
                     tenant_id=tenant_id,
                     agent_id=agent.id,
@@ -2088,30 +2040,6 @@ class AgentComposerService:
         return agent
 
     @classmethod
-    def _get_agent_draft(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        draft_type: AgentConfigDraftType,
-        account_id: str | None,
-        for_update: bool = False,
-    ) -> AgentConfigDraft | None:
-        stmt = select(AgentConfigDraft).where(
-            AgentConfigDraft.tenant_id == tenant_id,
-            AgentConfigDraft.agent_id == agent_id,
-            AgentConfigDraft.draft_type == draft_type,
-        )
-        if draft_type == AgentConfigDraftType.DEBUG_BUILD:
-            stmt = stmt.where(AgentConfigDraft.account_id == account_id)
-        else:
-            stmt = stmt.where(AgentConfigDraft.account_id.is_(None))
-        if for_update:
-            stmt = stmt.with_for_update().execution_options(populate_existing=True, autoflush=False)
-        return session.scalar(stmt.order_by(AgentConfigDraft.updated_at.desc()).limit(1))
-
-    @classmethod
     def get_or_create_normal_agent_draft(
         cls,
         *,
@@ -2175,7 +2103,7 @@ class AgentComposerService:
         # An UPDATE itself acquires the parent lock; do not flush an older cached Draft here.
         session.flush([agent])
         agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent.id, for_update=True)
-        draft = cls._get_agent_draft(
+        draft = find_agent_draft(
             session=session,
             tenant_id=tenant_id,
             agent_id=agent.id,
@@ -2275,19 +2203,8 @@ class AgentComposerService:
 
     @classmethod
     def _serialize_draft(cls, draft: AgentConfigDraft | None) -> dict[str, Any] | None:
-        if draft is None:
-            return None
-        return {
-            "id": draft.id,
-            "agent_id": draft.agent_id,
-            "draft_type": draft.draft_type.value,
-            "account_id": draft.account_id,
-            "base_snapshot_id": draft.base_snapshot_id,
-            "created_by": draft.created_by,
-            "updated_by": draft.updated_by,
-            "created_at": to_timestamp(draft.created_at),
-            "updated_at": to_timestamp(draft.updated_at),
-        }
+        """Return the shared draft metadata in the legacy response shape, or None if no draft was loaded."""
+        return asdict(project_agent_draft_summary(draft)) if draft is not None else None
 
     @classmethod
     def _serialize_build_draft_state(cls, draft: AgentConfigDraft) -> dict[str, Any]:
@@ -2581,7 +2498,7 @@ class AgentComposerService:
         agent_soul = cls._workflow_agent_soul_config(version.config_snapshot_dict)
         if not include_draft_files or agent is None or agent.scope != AgentScope.WORKFLOW_ONLY:
             return agent_soul
-        normal_draft = cls._get_agent_draft(
+        normal_draft = find_agent_draft(
             session=session,
             tenant_id=agent.tenant_id,
             agent_id=agent.id,

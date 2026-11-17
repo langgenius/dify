@@ -3,9 +3,10 @@
 from sqlalchemy import ColumnElement, or_, select
 from sqlalchemy.orm import Session
 
-from core.agent.workspace import WorkspaceOwnerScope
+from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
+    AgentConfigVersionKind,
     AgentHomeSnapshot,
     AgentWorkingResourceStatus,
     AgentWorkspace,
@@ -13,6 +14,24 @@ from models.agent import (
     AgentWorkspaceOwnerType,
 )
 from models.workflow import WorkflowNodeExecutionModel
+
+
+def validate_binding_generation(
+    binding: AgentWorkspaceBinding,
+    *,
+    base_home_snapshot_id: str | None,
+    agent_config_version_id: str,
+    agent_config_version_kind: AgentConfigVersionKind,
+) -> None:
+    """Require an owner-checked binding to match the expected Agent config and Home generation."""
+    if (
+        binding.base_home_snapshot_id != base_home_snapshot_id
+        or binding.agent_config_version_id != agent_config_version_id
+        or binding.agent_config_version_kind != agent_config_version_kind
+    ):
+        raise AgentWorkspaceBindingGenerationMismatchError(
+            "ACTIVE Binding belongs to a different Agent config/Home generation"
+        )
 
 
 def workflow_tool_workspace_owned_by_app(tenant_id: str, app_id: str) -> ColumnElement[bool]:
