@@ -10,7 +10,13 @@ from services.entities.feature_entities import SystemFeatureModel
 
 
 class WebSystemFeatureResponse(SystemFeatureModel):
-    """Extend public bootstrap with the Web-only Account console endpoint."""
+    """Extend public bootstrap with the Web-only Account login entry points."""
+
+    account_login_url: str | None = Field(
+        description=(
+            "Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled."
+        ),
+    )
 
     console_web_url: str | None = Field(
         description=(
@@ -44,7 +50,8 @@ class SystemFeatureApi(Resource):
 
         Authentication configuration must be available before the authentication flow can be selected.
         No Account, App Passport, or app code is required. Return the configured
-        Web console endpoint URL, preserving its base path, or null when disabled.
+        Account sign-in page and Web console endpoint URL, preserving their base path,
+        or null when disabled.
         Read deployment settings without issuing credentials or changing state;
         feature-query failures propagate unchanged.
         """
@@ -52,6 +59,9 @@ class SystemFeatureApi(Resource):
             WebSystemFeatureResponse,
             {
                 **application_services().feature_queries.get_public_system_features().model_dump(mode="json"),
+                "account_login_url": f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
+                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
+                else None,
                 "console_web_url": dify_config.CONSOLE_WEB_URL.rstrip("/")
                 if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
                 else None,

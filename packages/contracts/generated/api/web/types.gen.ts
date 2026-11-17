@@ -1497,6 +1497,7 @@ export type WebAppHumanInputV2SubmitResponse = {
 
 export type WebAppParametersResponse = {
   account_login_enabled: boolean
+  account_login_url: string | null
   allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
@@ -1912,6 +1913,7 @@ export type WebSiteResponse = {
 }
 
 export type WebSystemFeatureResponse = {
+  account_login_url: string | null
   agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   console_web_url: string | null

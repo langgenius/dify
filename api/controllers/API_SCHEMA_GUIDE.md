@@ -61,19 +61,22 @@ Route excluded values to their actual owner:
   and failure cost explicitly.
 - Load large, slow, or page-specific data lazily through a consumer-owned query.
 
-### Web Account console endpoint discovery
+### Web Account login discovery
 
 The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
-`WebSystemFeatureResponse`. Its required nullable `console_web_url` lets anonymous
-WebApp clients discover the Web console endpoint that hosts the Account login flow
-even when `/account/profile` returns 401. It is derived only from `CONSOLE_WEB_URL`
-and `WEBAPP_ACCOUNT_PASSPORT_ENABLED`; null means Account login is disabled. The value
-is the console base URL with deployment base paths preserved and trailing slashes
-removed; the `/signin` route belongs to the console and is not appended here. An
-empty string means the same-origin root. The Console endpoint and shared
-`SystemFeatureModel` remain unchanged.
+`WebSystemFeatureResponse`. Its required nullable `account_login_url` lets anonymous
+WebApp clients discover the Account-origin sign-in page even when `/account/profile`
+returns 401. Its required nullable `console_web_url` also exposes the Web console base
+endpoint that hosts that login flow, so existing WebApp clients can keep using the
+ready-to-use `account_login_url` while clients that own the login route consume the
+console base directly. Both are derived only from `CONSOLE_WEB_URL`
+and `WEBAPP_ACCOUNT_PASSPORT_ENABLED`; null means Account login is disabled.
+`account_login_url` appends the `/signin` route, while `console_web_url` is the
+console base URL with deployment base paths preserved and trailing slashes removed.
+An empty `console_web_url` means the same-origin root. The Console endpoint and
+shared `SystemFeatureModel` remain unchanged.
 
-This extension adds one scalar to the existing Web bootstrap request, no extra I/O,
+This extension adds two scalars to the existing Web bootstrap request, no extra I/O,
 and no credentials. Existing SSR timing, caching ownership, and query failure behavior
 are unchanged. Clients must not interpret a failed bootstrap request or a missing
 field as confirmed disabled login. App-specific return targets and PKCE proofs remain

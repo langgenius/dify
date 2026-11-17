@@ -1625,7 +1625,8 @@ except it is intended for use by the web app, instead of the console dashboard.
 
 Authentication configuration must be available before the authentication flow can be selected.
 No Account, App Passport, or app code is required. Return the configured
-Web console endpoint URL, preserving its base path, or null when disabled.
+Account sign-in page and Web console endpoint URL, preserving their base path,
+or null when disabled.
 Read deployment settings without issuing credentials or changing state;
 feature-query failures propagate unchanged.
 
@@ -3789,6 +3790,7 @@ Personal settings only; credentials, login IPs and Builder lifecycle stay privat
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
+| account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
@@ -3907,10 +3909,11 @@ Web App login is temporarily unavailable. Please retry.
 
 #### WebSystemFeatureResponse
 
-Extend public bootstrap with the Web-only Account console endpoint.
+Extend public bootstrap with the Web-only Account login entry points.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
 | agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
 | console_web_url | string | Web console base URL that hosts the Account login flow, preserving its deployment base path; an empty string means the same-origin root. Null when Account login is disabled. | Yes |
