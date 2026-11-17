@@ -10,6 +10,7 @@ import {
   zAppNotFoundError,
   zAppSuggestedQuestionsAfterAnswerDisabledError,
   zAppUnavailableError,
+  zArchivedDocumentImmutableError,
   zAudioTooLargeError,
   zCompletionRequestError,
   zConversationCursorNotFoundError,
@@ -1947,6 +1948,7 @@ export const delete6 = oc
   })
   .input(z.object({ params: zDeleteDatasetsByDatasetIdDocumentsByDocumentIdPath }))
   .output(zDeleteDatasetsByDatasetIdDocumentsByDocumentIdResponse)
+  .errors({ archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError } })
 
 /**
  * Get Document

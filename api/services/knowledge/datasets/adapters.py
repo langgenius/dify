@@ -172,6 +172,38 @@ class SQLAlchemyDatasetOperations:
         accessible_ids: list[str] | None,
         include_own: bool,
     ) -> DatasetPage:
+        """List datasets visible to the account actor within its resolved scope.
+
+        Fails with ``DatasetAccessDeniedError`` when the actor is not a member
+        of the active workspace.
+        """
+        return self._list_datasets(context, query, accessible_ids, include_own, account_visibility=True)
+
+    def list_workspace_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        resource_ids: list[str] | None,
+    ) -> DatasetPage:
+        """List workspace datasets without applying any account's dataset ACL.
+
+        The caller must already be admitted to the whole workspace (Dataset
+        Service API). The result is bounded by the active workspace and, when
+        ``resource_ids`` is not ``None``, by that resource grant; the context
+        account's role, legacy permissions and ``query.include_all`` do not
+        affect it.
+        """
+        return self._list_datasets(context, query, resource_ids, False, account_visibility=False)
+
+    def _list_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        accessible_ids: list[str] | None,
+        include_own: bool,
+        *,
+        account_visibility: bool,
+    ) -> DatasetPage:
         page, limit = clamp_pagination(query.page, query.limit, 100)
         tag_target_ids = (
             self._tags.find_target_ids(
@@ -184,12 +216,18 @@ class SQLAlchemyDatasetOperations:
             else None
         )
         with self._sessions() as session:
-            actor_role = get_dataset_list_actor_role(
-                session,
-                tenant_id=context.active_workspace_id,
-                actor_id=context.account_id,
+            # The role only feeds account visibility; workspace-scope callers are
+            # not acting as a member and must not be rejected for lacking one.
+            actor_role = (
+                get_dataset_list_actor_role(
+                    session,
+                    tenant_id=context.active_workspace_id,
+                    actor_id=context.account_id,
+                )
+                if account_visibility
+                else None
             )
-            if actor_role is None:
+            if account_visibility and actor_role is None:
                 raise DatasetAccessDeniedError()
             if query.ids and not query.for_selection:
                 datasets, total = list_visible_datasets_by_ids(
@@ -202,6 +240,7 @@ class SQLAlchemyDatasetOperations:
                     include_all=query.include_all,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
+                    account_visibility=account_visibility,
                     creator_ids=query.creator_ids,
                 )
             else:
@@ -214,6 +253,7 @@ class SQLAlchemyDatasetOperations:
                     include_all=query.include_all,
                     accessible_dataset_ids=accessible_ids,
                     include_own_datasets=include_own,
+                    account_visibility=account_visibility,
                     keyword=query.keyword,
                     tag_target_ids=tag_target_ids,
                     page=page,

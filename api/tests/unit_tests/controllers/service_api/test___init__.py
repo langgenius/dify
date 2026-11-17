@@ -645,8 +645,8 @@ def test_service_delete_schemas_omit_unenforced_state_constraints(openapi_json: 
 
     delete_document = paths["/datasets/{dataset_id}/documents/{document_id}"]["delete"]
     assert "document_indexing" not in json.dumps(delete_document["responses"])
-    assert "403" in delete_document["responses"]
-    assert "archived_document_immutable" not in delete_document["responses"]["403"]["description"]
+    # The archived guard is enforced on Service API document deletion, so it stays documented.
+    assert "archived_document_immutable" in delete_document["responses"]["403"]["description"]
 
 
 def test_service_schemas_only_document_reachable_not_found_responses(openapi_json: OpenAPIJSONLoader):

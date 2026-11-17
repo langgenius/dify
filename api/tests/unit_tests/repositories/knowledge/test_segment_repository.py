@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import AttachmentDocument, ChildDocument
 from core.rag.models.document import Document as IndexDocument
+from core.workflow.file_reference import build_file_reference
 from enums.creator import CreatorUserRole
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -177,7 +178,7 @@ def test_save_for_indexing_validates_content_files_before_replacing_rows(
     missing_id = "missing-upload"
     replacement = [
         IndexDocument(
-            page_content=f"![image](/files/{missing_id}/file-preview)",
+            page_content=f"image {build_file_reference(record_id=missing_id)}",
             metadata={"doc_id": "replacement", "doc_hash": "replacement-hash"},
         )
     ]
@@ -190,10 +191,27 @@ def test_save_for_indexing_validates_content_files_before_replacing_rows(
         assert [row.index_node_id for row in rows] == ["node-0", "node-1"]
 
 
+def test_save_for_indexing_stores_markdown_links_to_files_the_tenant_does_not_own(
+    sqlite_session_factory: sessionmaker[Session], indexing_rows: IndexingRows
+) -> None:
+    segments, job, _ = indexing_rows
+    content = (
+        "![other workspace](https://other.example/files/11111111-1111-4111-8111-111111111111/file-preview) "
+        "![blog](https://blog.example/files/2024/image-preview)"
+    )
+    crawled = [IndexDocument(page_content=content, metadata={"doc_id": "crawled", "doc_hash": "crawled-hash"})]
+
+    segments.save_for_indexing(job, crawled, [19])
+
+    with sqlite_session_factory() as session:
+        assert session.scalars(select(DocumentSegment.content)).all() == [content]
+
+
 def test_segment_content_guard_checks_only_new_file_references(
     sqlite_session_factory: sessionmaker[Session], indexing_rows: IndexingRows
 ) -> None:
     segments, job, chunks = indexing_rows
+    historical_content = f"historical {build_file_reference(record_id='missing-historical')}"
     segments.save_for_indexing(job, chunks, [13, 17])
     segments.complete_indexing_segments(job.ref, ["node-0", "node-1"])
     SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory).complete_indexing(
@@ -203,22 +221,23 @@ def test_segment_content_guard_checks_only_new_file_references(
         segment = session.scalars(select(DocumentSegment).order_by(DocumentSegment.position)).first()
         assert segment is not None
         ref = job.ref.segment(segment.id)
-        segment.content = "![historical](/files/missing-historical/file-preview)"
+        segment.content = historical_content
 
     segments.save_segment(ref, {"enabled": False})
     with pytest.raises(UploadFileReferenceNotFoundError):
-        segments.save_segment(ref, {"content": "![new](/files/missing-new/file-preview)"})
+        segments.save_segment(ref, {"content": f"new {build_file_reference(record_id='missing-new')}"})
 
     with sqlite_session_factory() as session:
         segment = session.get_one(DocumentSegment, ref.segment_id)
         assert segment.enabled is False
-        assert segment.content == "![historical](/files/missing-historical/file-preview)"
+        assert segment.content == historical_content
 
 
 def test_child_content_guard_checks_only_new_file_references(
     sqlite_session_factory: sessionmaker[Session], indexing_rows: IndexingRows
 ) -> None:
     segments, job, chunks = indexing_rows
+    historical_content = f"historical {build_file_reference(record_id='missing-historical')}"
     segments.save_for_indexing(job, chunks, [13, 17])
     segments.complete_indexing_segments(job.ref, ["node-0", "node-1"])
     SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory).complete_indexing(
@@ -230,7 +249,7 @@ def test_child_content_guard_checks_only_new_file_references(
         ref = job.ref.segment(segment.id)
         child = session.scalar(select(ChildChunk).where(ChildChunk.segment_id == segment.id))
         assert child is not None
-        child.content = "![historical](/files/missing-historical/file-preview)"
+        child.content = historical_content
 
     existing = segments.get_children(ref)
     assert existing is not None
@@ -238,14 +257,14 @@ def test_child_content_guard_checks_only_new_file_references(
     segments.save_children(ref, updated=(unchanged,))
     changed = replace(
         unchanged,
-        data=unchanged.data.model_copy(update={"content": "![new](/files/missing-new/file-preview)"}),
+        data=unchanged.data.model_copy(update={"content": f"new {build_file_reference(record_id='missing-new')}"}),
     )
     with pytest.raises(UploadFileReferenceNotFoundError):
         segments.save_children(ref, updated=(changed,))
 
     with sqlite_session_factory() as session:
         child = session.get_one(ChildChunk, unchanged.data.id)
-        assert child.content == "![historical](/files/missing-historical/file-preview)"
+        assert child.content == historical_content
 
 
 def test_token_count_mismatch_rolls_back_segments_and_state(

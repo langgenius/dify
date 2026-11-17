@@ -38,6 +38,8 @@ def test_segment_mutation_scope_rejects_cross_dataset_document() -> None:
         dataset_id="other-dataset",
         workspace_id="workspace",
         doc_form="text_model",
+        indexing_status="completed",
+        enabled=True,
     )
 
     with pytest.raises(ValueError, match="does not belong"):

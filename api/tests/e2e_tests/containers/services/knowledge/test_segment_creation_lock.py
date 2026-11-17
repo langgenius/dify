@@ -49,9 +49,9 @@ class _ObservedIndexingState:
         self._entered = entered
 
     @contextmanager
-    def lock(self, name: str, *, timeout: int) -> Generator[object]:
+    def lock(self, name: str, *, timeout: int, blocking_timeout: float) -> Generator[object]:
         self._attempted.set()
-        with self._state.lock(name, timeout=timeout) as lease:
+        with self._state.lock(name, timeout=timeout, blocking_timeout=blocking_timeout) as lease:
             self._entered.set()
             yield lease
 
@@ -284,7 +284,7 @@ def test_full_indexing_lock_blocks_manual_segment_persistence_and_publication(
     )
     scope = SegmentMutationScope(
         dataset=SegmentDatasetRecord(dataset_id, tenant_id, "economy", None, None),
-        document=SegmentDocumentRecord(document_id, dataset_id, tenant_id, "text_model"),
+        document=SegmentDocumentRecord(document_id, dataset_id, tenant_id, "text_model", "completed", True),
     )
     lock_name = document_index_lock_name(document_id)
     executor = ThreadPoolExecutor(max_workers=2)

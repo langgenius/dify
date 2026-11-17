@@ -1051,6 +1051,8 @@ class SQLAlchemySegmentRepository:
             summary.error = error
             summary.updated_at = naive_utc_now()
             session.flush()
+            # Callers use updated_at as a CAS token; carry the stored value, which MySQL rounds to seconds.
+            session.refresh(summary)
             session.expunge(summary)
             return summary
 
@@ -1195,19 +1197,22 @@ def _detail(session: Session, segment: DocumentSegment, document: Document) -> S
 
 
 def _check_document_mutation_state(document: Document) -> None:
-    if (
-        not document.enabled
-        or document.archived
-        or document.indexing_status
-        in {
-            IndexingStatus.WAITING,
-            IndexingStatus.PARSING,
-            IndexingStatus.CLEANING,
-            IndexingStatus.SPLITTING,
-            IndexingStatus.INDEXING,
-        }
-    ):
-        raise SegmentDocumentMutationBusyError("Document is being indexed or is unavailable, please try again later")
+    """Refuse segment writes only while full-document indexing is queued or running.
+
+    Indexing replaces the document's segment rows, so a concurrent chunk write
+    would be lost or would publish vectors for rows about to be replaced. A
+    disabled, archived, errored or paused document is not being rewritten and
+    stays editable here; callers that want a stricter rule (for example the
+    Service API create path) enforce it before reaching the store.
+    """
+    if document.indexing_status in {
+        IndexingStatus.WAITING,
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    }:
+        raise SegmentDocumentMutationBusyError("Document is being indexed, please try again later")
 
 
 def _require_scope_models(

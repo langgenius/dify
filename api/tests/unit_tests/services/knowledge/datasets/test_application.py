@@ -161,7 +161,7 @@ def test_list_applies_visibility_and_reports_model_availability(
 
 
 def test_list_workspace_datasets_skips_account_visibility(service: DatasetApplicationService, operations: Mock) -> None:
-    operations.list_datasets.return_value = {
+    operations.list_workspace_datasets.return_value = {
         "data": [
             {
                 "id": "a",
@@ -176,12 +176,8 @@ def test_list_workspace_datasets_skips_account_visibility(service: DatasetApplic
     result = service.list_workspace_datasets(CONTEXT, DatasetListFilter(keyword="query"))
 
     operations.visibility.assert_not_called()
-    operations.list_datasets.assert_called_once_with(
-        CONTEXT,
-        DatasetListFilter(keyword="query"),
-        None,
-        False,
-    )
+    operations.list_datasets.assert_not_called()
+    operations.list_workspace_datasets.assert_called_once_with(CONTEXT, DatasetListFilter(keyword="query"), None)
     assert result["data"] == [
         {
             "id": "a",
@@ -199,13 +195,14 @@ def test_resource_token_list_preserves_binding_scope(
 ) -> None:
     context = CONTEXT._replace(resource_dataset_ids=bound_ids)
     page: DatasetPage = {"data": [], "has_more": False, "page": 1, "limit": 20, "total": 0}
-    operations.list_datasets.return_value = page
+    operations.list_workspace_datasets.return_value = page
     operations.embedding_models.return_value = set()
     query = DatasetListFilter(include_all=True)
 
     service.list_workspace_datasets(context, query)
 
-    operations.list_datasets.assert_called_once_with(context, query, sorted(bound_ids), False)
+    operations.list_datasets.assert_not_called()
+    operations.list_workspace_datasets.assert_called_once_with(context, query, sorted(bound_ids))
 
 
 def test_resource_token_list_intersects_account_scope_and_disables_owner_bypass(

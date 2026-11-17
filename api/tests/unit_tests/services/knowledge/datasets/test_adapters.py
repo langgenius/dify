@@ -55,6 +55,7 @@ from services.enterprise import rbac_service
 from services.enterprise.base import EnterpriseRequest
 from services.knowledge.dataset_access import (
     AccessibleDataset,
+    DatasetAccessDeniedError,
     DatasetAccessSnapshot,
     DatasetNotFoundError,
 )
@@ -505,6 +506,79 @@ def test_list_visibility_restricts_even_requested_ids(
         row.maintainer = maintainer
     result = operations.list_datasets(CONTEXT, DatasetListFilter(ids=["dataset"]), ids, True)
     assert result["total"] == (1 if maintainer == "actor" else len(ids))
+
+
+@pytest.mark.parametrize("requested_ids", [(), ("dataset", "member-private", "member-partial", "foreign")])
+@pytest.mark.parametrize("has_workspace_role", [True, False])
+def test_workspace_listing_ignores_context_account_dataset_acl(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    requested_ids: tuple[str, ...],
+    has_workspace_role: bool,
+) -> None:
+    """Service API listing is bounded by tenant only, not by the owner's legacy ACL or role."""
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                dataset(
+                    id="member-private",
+                    name="Member private",
+                    created_by="member",
+                    maintainer="member",
+                    permission=DatasetPermissionEnum.ONLY_ME,
+                ),
+                dataset(
+                    id="member-partial",
+                    name="Member partial",
+                    created_by="member",
+                    maintainer="member",
+                    permission=DatasetPermissionEnum.PARTIAL_TEAM,
+                ),
+                DatasetPermission(tenant_id="tenant", dataset_id="member-partial", account_id="member"),
+            ]
+        )
+        if not has_workspace_role:
+            join = session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.account_id == "actor"))
+            assert join is not None
+            session.delete(join)
+    query = DatasetListFilter(ids=requested_ids)
+
+    workspace = operations.list_workspace_datasets(CONTEXT, query, None)
+
+    assert {row["id"] for row in workspace["data"]} == {"dataset", "member-private", "member-partial"}
+    assert workspace["total"] == 3
+    if has_workspace_role:
+        # The account-facing listing keeps hiding other members' private datasets.
+        account = operations.list_datasets(CONTEXT, query, None, False)
+        assert {row["id"] for row in account["data"]} == {"dataset"}
+    else:
+        with pytest.raises(DatasetAccessDeniedError):
+            operations.list_datasets(CONTEXT, query, None, False)
+
+
+@pytest.mark.parametrize("requested_ids", [(), ("dataset", "member-private")])
+@pytest.mark.parametrize("bound_ids", [[], ["member-private"]])
+def test_workspace_listing_is_restricted_to_resource_grant(
+    operations: SQLAlchemyDatasetOperations,
+    sqlite_session_factory: sessionmaker[Session],
+    requested_ids: tuple[str, ...],
+    bound_ids: list[str],
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add(
+            dataset(
+                id="member-private",
+                name="Member private",
+                created_by="member",
+                maintainer="member",
+                permission=DatasetPermissionEnum.ONLY_ME,
+            )
+        )
+
+    result = operations.list_workspace_datasets(CONTEXT, DatasetListFilter(ids=requested_ids), bound_ids)
+
+    assert [row["id"] for row in result["data"]] == bound_ids
+    assert result["total"] == len(bound_ids)
 
 
 @pytest.mark.parametrize("requested_ids", [[], ["dataset", "unbound"]])

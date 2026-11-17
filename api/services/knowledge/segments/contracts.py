@@ -23,10 +23,19 @@ class SegmentDatasetRecord:
 
 @dataclass(frozen=True, slots=True)
 class SegmentDocumentRecord:
+    """Detached document facts read with the segment scope.
+
+    ``indexing_status`` and ``enabled`` are a snapshot for admission rules such
+    as the Service API create precondition; stores recheck concurrency-sensitive
+    state under their own row locks.
+    """
+
     id: str
     dataset_id: str
     workspace_id: str
     doc_form: str
+    indexing_status: str
+    enabled: bool
 
     @property
     def ref(self) -> DocumentRef:

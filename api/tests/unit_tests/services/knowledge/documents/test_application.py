@@ -220,6 +220,7 @@ def service(
     [
         DatasetDocumentApplicationService.get_document,
         DatasetDocumentApplicationService.delete_document,
+        DatasetDocumentApplicationService.delete_unarchived_document,
         DatasetDocumentApplicationService.pause_document,
         DatasetDocumentApplicationService.recover_document,
         DatasetDocumentApplicationService.sync_website,
@@ -242,6 +243,7 @@ def test_denied_dataset_never_loads_or_mutates_documents(
     [
         DatasetDocumentApplicationService.get_document,
         DatasetDocumentApplicationService.delete_document,
+        DatasetDocumentApplicationService.delete_unarchived_document,
         DatasetDocumentApplicationService.pause_document,
         DatasetDocumentApplicationService.recover_document,
         DatasetDocumentApplicationService.sync_website,
@@ -265,6 +267,7 @@ def test_missing_document_stops_before_any_side_effect(
 @pytest.mark.parametrize(
     "operation",
     [
+        DatasetDocumentApplicationService.delete_unarchived_document,
         DatasetDocumentApplicationService.pause_document,
         DatasetDocumentApplicationService.recover_document,
         DatasetDocumentApplicationService.sync_website,
@@ -277,6 +280,19 @@ def test_archived_documents_cannot_be_reprocessed(
     with pytest.raises(DocumentArchivedError):
         operation(service, CONTEXT, dataset_id="dataset-1", document_id="document-1")
     assert operations.mock_calls == []
+
+
+def test_unarchived_document_delete_removes_document_and_dispatches_cleanup(
+    service: DatasetDocumentApplicationService,
+    documents: Mock,
+    tasks: Mock,
+) -> None:
+    service.delete_unarchived_document(CONTEXT, dataset_id="dataset-1", document_id="document-1")
+
+    documents.delete_document.assert_called_once_with(DOCUMENT)
+    tasks.cleanup.assert_called_once_with(
+        DATASET, DocumentCleanupJob("document-1", "dataset-1", "text_model", "file-1")
+    )
 
 
 def test_archived_document_can_be_deleted(

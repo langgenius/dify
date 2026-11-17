@@ -892,6 +892,8 @@ class SQLAlchemyDatasetRepository:
                     dataset_id=document.dataset_id,
                     workspace_id=document.tenant_id,
                     doc_form=str(document.doc_form),
+                    indexing_status=str(document.indexing_status),
+                    enabled=bool(document.enabled),
                 )
                 if document is not None
                 else None,

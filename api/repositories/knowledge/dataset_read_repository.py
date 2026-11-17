@@ -500,9 +500,15 @@ def list_visible_datasets_by_ids(
     include_all: bool,
     accessible_dataset_ids: Sequence[str] | None,
     include_own_datasets: bool,
+    account_visibility: bool,
     creator_ids: Sequence[str] = (),
 ) -> tuple[list[Dataset], int]:
-    """List requested datasets under the same account policy as the ordinary list."""
+    """List requested datasets under the same policy as the ordinary list.
+
+    ``account_visibility`` has the meaning documented on
+    :func:`list_visible_datasets`: ``False`` bounds the result only by tenant
+    and ``accessible_dataset_ids``.
+    """
 
     unique_ids = tuple(dict.fromkeys(dataset_ids))
     if not unique_ids:
@@ -514,15 +520,16 @@ def list_visible_datasets_by_ids(
         accessible_dataset_ids=accessible_dataset_ids,
         include_own_datasets=include_own_datasets,
     )
-    statement = _apply_legacy_dataset_visibility(
-        statement,
-        session,
-        tenant_id=tenant_id,
-        actor_id=actor_id,
-        actor_role=actor_role,
-        rbac_enabled=rbac_enabled,
-        include_all=include_all,
-    )
+    if account_visibility:
+        statement = _apply_legacy_dataset_visibility(
+            statement,
+            session,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            rbac_enabled=rbac_enabled,
+            include_all=include_all,
+        )
     if creator_ids:
         statement = statement.where(Dataset.created_by.in_(tuple(dict.fromkeys(creator_ids))))
     page = paginate_query(statement, session=session, page=1, per_page=len(unique_ids), max_per_page=len(unique_ids))
@@ -575,6 +582,7 @@ def list_visible_datasets(
     include_all: bool,
     accessible_dataset_ids: Sequence[str] | None,
     include_own_datasets: bool,
+    account_visibility: bool,
     keyword: str | None,
     tag_target_ids: Sequence[str] | None,
     page: int,
@@ -583,7 +591,17 @@ def list_visible_datasets(
     for_selection: bool = False,
     dataset_ids: Sequence[str] | None = None,
 ) -> tuple[list[Dataset], int]:
-    """List datasets using access decisions already resolved by the application adapter."""
+    """List datasets using access decisions already resolved by the application adapter.
+
+    ``account_visibility=True`` is the account-facing listing: the legacy
+    per-account dataset ACL of ``actor_id``/``actor_role`` is applied on top of
+    the resolved scope. ``account_visibility=False`` is the workspace-scope
+    listing used by Dataset Service API callers, which are admitted to the
+    whole workspace rather than acting as one member: the account ACL,
+    ``actor_role``, ``rbac_enabled`` and ``include_all`` are ignored and the
+    result is bounded only by ``tenant_id`` and, when not ``None``,
+    ``accessible_dataset_ids`` (the resource grant).
+    """
 
     statement = select(Dataset).where(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc(), Dataset.id)
     statement = _apply_resolved_dataset_scope(
@@ -592,15 +610,16 @@ def list_visible_datasets(
         accessible_dataset_ids=accessible_dataset_ids,
         include_own_datasets=include_own_datasets,
     )
-    statement = _apply_legacy_dataset_visibility(
-        statement,
-        session,
-        tenant_id=tenant_id,
-        actor_id=actor_id,
-        actor_role=actor_role,
-        rbac_enabled=rbac_enabled,
-        include_all=include_all,
-    )
+    if account_visibility:
+        statement = _apply_legacy_dataset_visibility(
+            statement,
+            session,
+            tenant_id=tenant_id,
+            actor_id=actor_id,
+            actor_role=actor_role,
+            rbac_enabled=rbac_enabled,
+            include_all=include_all,
+        )
 
     if dataset_ids is not None:
         statement = statement.where(Dataset.id.in_(dataset_ids))

@@ -72,6 +72,15 @@ class _CreatorAccessFailureOperations:
         del context, query, accessible_ids, include_own
         return _unexpected_dependency_call("dataset listing")
 
+    def list_workspace_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        resource_ids: list[str] | None,
+    ) -> DatasetPage:
+        del context, query, resource_ids
+        return _unexpected_dependency_call("workspace dataset listing")
+
     def embedding_models(self, workspace_id: str) -> set[str]:
         del workspace_id
         return _unexpected_dependency_call("embedding model listing")

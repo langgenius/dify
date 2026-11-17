@@ -144,8 +144,14 @@ class RedisSegmentIndexingState:
         self._redis = redis
         self._locks = locks
 
-    def lock(self, name: str, *, timeout: int):
-        return self._locks.hold(name, timeout=timeout, blocking_timeout=timeout)
+    def lock(self, name: str, *, timeout: int, blocking_timeout: float):
+        """Hold ``name`` for up to ``timeout`` seconds, waiting at most ``blocking_timeout`` to get it.
+
+        Raises ``KnowledgeIndexingLockBusyError`` when the lease is still owned
+        elsewhere after the wait. The wait is the caller's choice because the
+        TTL of a lease says nothing about how long a request thread may block.
+        """
+        return self._locks.hold(name, timeout=timeout, blocking_timeout=blocking_timeout)
 
     def is_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> bool:
         suffix = "delete_indexing" if deleting else "indexing"

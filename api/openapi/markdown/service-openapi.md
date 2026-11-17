@@ -3116,7 +3116,7 @@ Permanently delete a document and all its chunks from the knowledge base.
 | ---- | ----------- | ------ |
 | 204 | Success. |  |
 | 401 | Unauthorized - invalid API token | **application/json**: [ErrorResponse](#errorresponse)<br> |
-| 403 | Forbidden - dataset API access or workspace access denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | `archived_document_immutable` : The archived document is not editable. | **application/json**: [ArchivedDocumentImmutableError](#archiveddocumentimmutableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | `not_found` : Document Not Exists. | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -4271,6 +4271,14 @@ App unavailable, please check your app configurations.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | AppUnavailableError |  | App unavailable, please check your app configurations. |  |
+
+#### ArchivedDocumentImmutableError
+
+The archived document is not editable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ArchivedDocumentImmutableError |  | The archived document is not editable. |  |
 
 #### AudioBinaryResponse
 

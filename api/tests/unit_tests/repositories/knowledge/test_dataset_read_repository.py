@@ -41,6 +41,7 @@ from models.dataset import (
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
 from models.model import UploadFile
 from models.tools import ToolFile
+from repositories.knowledge import dataset_read_repository
 from repositories.knowledge.dataset_read_repository import (
     get_dataset_for_tenant,
     get_dataset_list_actor_role,
@@ -546,6 +547,7 @@ def test_non_rbac_explicit_and_ordinary_lists_share_dataset_visibility(
             include_all=include_all,
             accessible_dataset_ids=None,
             include_own_datasets=False,
+            account_visibility=True,
         )
     else:
         rows, total = list_visible_datasets(
@@ -557,6 +559,85 @@ def test_non_rbac_explicit_and_ordinary_lists_share_dataset_visibility(
             include_all=include_all,
             accessible_dataset_ids=None,
             include_own_datasets=False,
+            account_visibility=True,
+            keyword=None,
+            tag_target_ids=None,
+            page=1,
+            per_page=20,
+        )
+
+    assert {row.id for row in rows} == expected_ids
+    assert total == len(expected_ids)
+
+
+@pytest.mark.parametrize("entry", ["explicit_ids", "ordinary_list"])
+@pytest.mark.parametrize("rbac_enabled", [False, True])
+@pytest.mark.parametrize(
+    ("grant_ids", "expected_ids"),
+    [
+        (None, {"all-team", "only-other", "partial-hidden"}),
+        (("only-other", "foreign"), {"only-other"}),
+        ((), set()),
+    ],
+)
+def test_workspace_scope_lists_skip_account_visibility(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    entry: str,
+    rbac_enabled: bool,
+    grant_ids: tuple[str, ...] | None,
+    expected_ids: set[str],
+) -> None:
+    """Workspace-scope listing is bounded by tenant and resource grant, never by the actor's ACL."""
+    datasets = [
+        Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            name=dataset_id,
+            created_by="account-2",
+            maintainer="account-2",
+            permission=permission,
+        )
+        for dataset_id, tenant_id, permission in [
+            ("all-team", "tenant-1", "all_team_members"),
+            ("only-other", "tenant-1", "only_me"),
+            ("partial-hidden", "tenant-1", "partial_members"),
+            ("foreign", "tenant-2", "all_team_members"),
+        ]
+    ]
+    sqlite_session.add_all(datasets)
+    sqlite_session.flush()
+
+    def fail_account_visibility(*args: object, **kwargs: object) -> None:
+        del args, kwargs
+        raise AssertionError("account visibility must be bypassed for workspace-scope listing")
+
+    monkeypatch.setattr(dataset_read_repository, "_apply_legacy_dataset_visibility", fail_account_visibility)
+
+    if entry == "explicit_ids":
+        rows, total = list_visible_datasets_by_ids(
+            sqlite_session,
+            tenant_id="tenant-1",
+            dataset_ids=[dataset.id for dataset in datasets],
+            actor_id="actor-1",
+            actor_role=None,
+            rbac_enabled=rbac_enabled,
+            include_all=False,
+            accessible_dataset_ids=grant_ids,
+            include_own_datasets=False,
+            account_visibility=False,
+        )
+    else:
+        rows, total = list_visible_datasets(
+            sqlite_session,
+            tenant_id="tenant-1",
+            actor_id="actor-1",
+            actor_role=None,
+            rbac_enabled=rbac_enabled,
+            include_all=False,
+            accessible_dataset_ids=grant_ids,
+            include_own_datasets=False,
+            account_visibility=False,
             keyword=None,
             tag_target_ids=None,
             page=1,

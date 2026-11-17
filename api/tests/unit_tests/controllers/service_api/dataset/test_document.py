@@ -29,11 +29,13 @@ from controllers.service_api.dataset.document import (
     DocumentListApi,
     DocumentUpdateByTextApi,
 )
+from controllers.service_api.dataset.error import ArchivedDocumentImmutableError
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from fields.service_api.document import DocumentListQuery, DocumentTextCreatePayload, DocumentTextUpdate
 from libs.exception import BaseHTTPException
 from machinery.context import RequestContext
 from services.knowledge.documents.application import (
+    DocumentArchivedError,
     DocumentNotFoundError,
     DocumentProviderError,
     DocumentUploadError,
@@ -155,8 +157,8 @@ class RecordingDocuments:
         assert isinstance(result, dict)
         return result
 
-    def delete_document(self, context: RequestContext, *, dataset_id: str, document_id: str) -> None:
-        self._invoke("delete_document", context, {"dataset_id": dataset_id, "document_id": document_id})
+    def delete_unarchived_document(self, context: RequestContext, *, dataset_id: str, document_id: str) -> None:
+        self._invoke("delete_unarchived_document", context, {"dataset_id": dataset_id, "document_id": document_id})
 
     def get_download_url(self, context: RequestContext, *, dataset_id: str, document_id: str) -> str:
         result = self._invoke("get_download_url", context, {"dataset_id": dataset_id, "document_id": document_id})
@@ -501,13 +503,32 @@ class TestDocumentControllerDelegation:
     def test_domain_not_found_is_mapped_at_http_boundary(
         self, documents: RecordingDocuments, request_context: RequestContext
     ) -> None:
-        documents.errors["delete_document"] = DocumentNotFoundError("Document not found.")
+        documents.errors["delete_unarchived_document"] = DocumentNotFoundError("Document not found.")
 
         with pytest.raises(NotFoundError) as raised:
             DocumentApi().delete(request_context, uuid4(), uuid4())
 
         assert raised.value.code == 404
         assert raised.value.description == "Document not found."
+
+    def test_delete_uses_archived_guard_and_maps_it_to_403(
+        self, documents: RecordingDocuments, request_context: RequestContext
+    ) -> None:
+        dataset_id, document_id = uuid4(), uuid4()
+        documents.errors["delete_unarchived_document"] = DocumentArchivedError()
+
+        with pytest.raises(ArchivedDocumentImmutableError) as raised:
+            DocumentApi().delete(request_context, dataset_id, document_id)
+
+        assert raised.value.code == 403
+        assert raised.value.error_code == "archived_document_immutable"
+        assert documents.calls == [
+            (
+                "delete_unarchived_document",
+                request_context,
+                {"dataset_id": str(dataset_id), "document_id": str(document_id)},
+            )
+        ]
 
     def test_download_delegates_and_serializes_url(
         self, documents: RecordingDocuments, request_context: RequestContext

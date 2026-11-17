@@ -762,7 +762,20 @@ class DatasetDocumentApplicationService:
         return result
 
     def delete_document(self, context: RequestContext, *, dataset_id: str, document_id: str) -> None:
+        """Delete a document regardless of its archived flag (console behavior)."""
         ref, _ = self._document(context, dataset_id, document_id)
+        cleanup = self._documents.delete_document(ref)
+        if cleanup is not None:
+            self._tasks.cleanup(ref.dataset, cleanup)
+
+    def delete_unarchived_document(self, context: RequestContext, *, dataset_id: str, document_id: str) -> None:
+        """Delete a document unless it is archived (Dataset Service API behavior).
+
+        Raises ``DocumentArchivedError`` for an archived document and leaves it
+        and its index untouched; otherwise behaves like :meth:`delete_document`.
+        """
+        ref, state = self._document(context, dataset_id, document_id)
+        self._require_mutable(state)
         cleanup = self._documents.delete_document(ref)
         if cleanup is not None:
             self._tasks.cleanup(ref.dataset, cleanup)

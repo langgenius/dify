@@ -66,6 +66,14 @@ const zAppUnavailableError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zArchivedDocumentImmutableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('archived_document_immutable'),
+      status: z.literal(403),
+    }),
+  ))()
+
 const zAudioTooLargeError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -733,6 +741,10 @@ export const post25Errors = {
   model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
   provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
   provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+}
+
+export const delete6Errors = {
+  archived_document_immutable: { status: 403, data: zArchivedDocumentImmutableError },
 }
 
 export const get13Errors = { invalid_metadata: { status: 400, data: zInvalidMetadataError } }

@@ -63,6 +63,7 @@ def _query_visible_datasets(
         include_all=include_all,
         accessible_dataset_ids=None,
         include_own_datasets=False,
+        account_visibility=True,
         keyword=keyword,
         tag_target_ids=target_ids,
         creator_ids=creator_ids or (),

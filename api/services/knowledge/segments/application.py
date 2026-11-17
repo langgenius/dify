@@ -22,7 +22,7 @@ from services.knowledge.entities.segments import (
     SegmentRecord,
     SegmentUpdateArgs,
 )
-from services.knowledge.indexing.locks import document_index_lock_name
+from services.knowledge.indexing.locks import KnowledgeIndexingLockBusyError, document_index_lock_name
 from services.knowledge.segments.contracts import (
     ChildChunkListFilter,
     ChildChunkPage,
@@ -43,6 +43,14 @@ from services.knowledge.segments.contracts import (
 )
 
 _HIGH_QUALITY = "high_quality"
+_COMPLETED = "completed"
+# TTL of a held mutation lease; the holder's heartbeat renews it while it works.
+_MUTATION_LOCK_TTL_SECONDS = 600
+# The document lease is also held for a whole indexing run, so a request thread
+# only waits out a short concurrent chunk write and then reports the document busy.
+_REQUEST_LOCK_WAIT_SECONDS = 5
+# Background imports have no caller waiting on them and may queue behind indexing.
+_BACKGROUND_LOCK_WAIT_SECONDS = 600
 logger = logging.getLogger(__name__)
 
 
@@ -152,7 +160,13 @@ class SegmentUploadCatalog(Protocol):
 
 
 class SegmentIndexingState(Protocol):
-    def lock(self, name: str, *, timeout: int) -> AbstractContextManager[object]: ...
+    def lock(self, name: str, *, timeout: int, blocking_timeout: float) -> AbstractContextManager[object]:
+        """Hold ``name`` with a ``timeout`` TTL after waiting at most ``blocking_timeout`` seconds.
+
+        Raises ``KnowledgeIndexingLockBusyError`` when the wait elapses.
+        """
+        ...
+
     def is_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> bool: ...
     def mark_segment_indexing(self, segment_id: str, *, deleting: bool = False) -> None: ...
 
@@ -356,7 +370,18 @@ class DatasetSegmentApplicationService:
         document_id: str,
         values: Sequence[Mapping[str, object]],
     ) -> tuple[SegmentDetail, ...]:
+        """Create chunks for the Dataset Service API.
+
+        The document must have finished indexing and be enabled; otherwise
+        ``SegmentDocumentNotCompletedError`` / ``SegmentDocumentDisabledError``
+        is raised before any model, limit or payload check and nothing is
+        written. This also keeps errored documents from accepting chunks.
+        """
         scope = self._require_scope(context, dataset_id=dataset_id, document_id=document_id)
+        if scope.document.indexing_status != _COMPLETED:
+            raise SegmentDocumentNotCompletedError("Document is not completed.")
+        if not scope.document.enabled:
+            raise SegmentDocumentDisabledError("Document is disabled.")
         self._check_embedding_model(scope.dataset)
         limit = self._limits.DATASET_MAX_SEGMENTS_PER_REQUEST
         if limit > 0 and len(values) > limit:
@@ -383,7 +408,13 @@ class DatasetSegmentApplicationService:
             document_id=ref.document_id,
         )
         args = tuple(self._validate_create_values(item, scope.document.doc_form) for item in values)
-        return self.mutations.create_segments(scope, actor_id=actor_id, args=args, fail_on_indexing_error=True)
+        return self.mutations.create_segments(
+            scope,
+            actor_id=actor_id,
+            args=args,
+            fail_on_indexing_error=True,
+            lock_wait_seconds=_BACKGROUND_LOCK_WAIT_SECONDS,
+        )
 
     def delete_segments(
         self,
@@ -692,6 +723,11 @@ class SegmentMutationService:
     Callers supply an owner chain reconstructed from authorized database rows.
     Persistence ports recheck that chain and own their transactions. Partial
     update arguments are accepted here; transport validation stays at admission.
+
+    Every write takes the document indexing lease, which full-document indexing
+    holds for its whole run. Request paths wait ``_REQUEST_LOCK_WAIT_SECONDS``
+    for it and then fail with ``SegmentDocumentIndexingError`` instead of
+    blocking a request thread or leaking the lock adapter's error.
     """
 
     def __init__(
@@ -708,6 +744,40 @@ class SegmentMutationService:
         self._text_hash = text_hash
         self._uploads = uploads
         self._indexing_state = indexing_state
+
+    @contextmanager
+    def _hold(self, name: str, *, busy_message: str, wait_seconds: float) -> Generator[None]:
+        """Hold the ``name`` mutation lease for the block, waiting at most ``wait_seconds``.
+
+        Raises ``SegmentDocumentIndexingError(busy_message)`` when the lease is
+        still owned elsewhere after the wait; the block is then not entered.
+        Errors raised by the block itself propagate unchanged.
+        """
+        acquired = False
+        try:
+            with self._indexing_state.lock(name, timeout=_MUTATION_LOCK_TTL_SECONDS, blocking_timeout=wait_seconds):
+                acquired = True
+                yield
+        except KnowledgeIndexingLockBusyError as error:
+            if acquired:
+                raise
+            raise SegmentDocumentIndexingError(busy_message) from error
+
+    def _hold_document(
+        self, document_id: str, *, wait_seconds: float = _REQUEST_LOCK_WAIT_SECONDS
+    ) -> AbstractContextManager[None]:
+        return self._hold(
+            document_index_lock_name(document_id),
+            busy_message="Document is being indexed, please try again later",
+            wait_seconds=wait_seconds,
+        )
+
+    def _hold_segment(self, segment_id: str) -> AbstractContextManager[None]:
+        return self._hold(
+            f"knowledge:indexing:segment-mutation:{segment_id}",
+            busy_message="Segment is being modified, please try again later",
+            wait_seconds=_REQUEST_LOCK_WAIT_SECONDS,
+        )
 
     def index_segments(
         self,
@@ -742,7 +812,7 @@ class SegmentMutationService:
         *,
         segment_ids: Sequence[str],
     ) -> tuple[SegmentIndexTarget, ...]:
-        with self._indexing_state.lock(document_index_lock_name(document_ref.document_id), timeout=600):
+        with self._hold_document(document_ref.document_id):
             segments = self._store.get_segments(document_ref, tuple(dict.fromkeys(segment_ids)))
             children = self._store.get_children_for_segments(document_ref, [segment.id for segment in segments])
             if segments:
@@ -762,7 +832,7 @@ class SegmentMutationService:
         segment_ids: Sequence[str],
         action: Literal["enable", "disable"],
     ) -> tuple[str, ...]:
-        with self._indexing_state.lock(document_index_lock_name(scope.document.id), timeout=600):
+        with self._hold_document(scope.document.id):
             return self._change_status_locked(
                 scope.document.ref,
                 actor_id=actor_id,
@@ -813,7 +883,15 @@ class SegmentMutationService:
         actor_id: str,
         args: Sequence[SegmentUpdateArgs],
         fail_on_indexing_error: bool = False,
+        lock_wait_seconds: float = _REQUEST_LOCK_WAIT_SECONDS,
     ) -> tuple[SegmentRef, ...]:
+        """Persist and index a batch of chunks under the document lease.
+
+        ``lock_wait_seconds`` bounds the wait for that lease; the default is the
+        request wait, and only background callers with nobody waiting on them
+        should pass a longer one. Raises ``SegmentDocumentIndexingError`` when
+        the lease stays busy or the document is being indexed.
+        """
         if not args:
             return ()
         self._require_attachment_ids(
@@ -841,7 +919,7 @@ class SegmentMutationService:
         )
         segment_ids = tuple(record.segment_id for record in records)
         document_ref = scope.document.ref
-        with self._indexing_state.lock(document_index_lock_name(scope.document.id), timeout=600):
+        with self._hold_document(scope.document.id, wait_seconds=lock_wait_seconds):
             try:
                 self._store.create_segments(document_ref, records)
             except SegmentDocumentMutationBusyError as error:
@@ -871,8 +949,8 @@ class SegmentMutationService:
         segment_id: str,
         args: SegmentUpdateArgs,
     ) -> None:
-        with self._indexing_state.lock(document_index_lock_name(scope.document.id), timeout=600):
-            with self._indexing_state.lock(f"knowledge:indexing:segment-mutation:{segment_id}", timeout=600):
+        with self._hold_document(scope.document.id):
+            with self._hold_segment(segment_id):
                 self._update_segment_locked(scope, actor_id=actor_id, segment_id=segment_id, args=args)
 
     def _update_segment_locked(
@@ -964,10 +1042,8 @@ class SegmentMutationService:
             self._mark_error(segment_ref, error)
 
     def delete_segment(self, segment_ref: SegmentRef) -> None:
-        with self._indexing_state.lock(document_index_lock_name(segment_ref.document.document_id), timeout=600):
-            with self._indexing_state.lock(
-                f"knowledge:indexing:segment-mutation:{segment_ref.segment_id}", timeout=600
-            ):
+        with self._hold_document(segment_ref.document.document_id):
+            with self._hold_segment(segment_ref.segment_id):
                 segments = self._store.get_segments(segment_ref.document, (segment_ref.segment_id,))
                 if not segments:
                     raise SegmentNotFoundError("Segment not found")
@@ -1029,13 +1105,18 @@ class SegmentMutationService:
             return child.data
 
     def _mark_error(self, segment_ref: SegmentRef, error: Exception) -> None:
+        """Record an indexing failure on the segment.
+
+        Uses the store's unconditional status write rather than ``save_segment``:
+        the failure must be recorded even if the document entered indexing after
+        the content was saved, so the document-state gate must not refuse it.
+        """
         logger.exception("Segment indexing failed: %s", segment_ref.segment_id)
-        try:
-            self._store.save_segment(
-                segment_ref, {"enabled": False, "disabled_at": naive_utc_now(), "status": "error", "error": str(error)}
-            )
-        except SegmentDocumentMutationBusyError as conflict:
-            raise SegmentDocumentIndexingError(str(conflict)) from conflict
+        self._store.set_segments(
+            segment_ref.document,
+            (segment_ref.segment_id,),
+            {"enabled": False, "disabled_at": naive_utc_now(), "status": "error", "error": str(error)},
+        )
 
     def _require_attachment_ids(self, workspace_id: str, attachment_ids: Sequence[str] | None) -> None:
         if attachment_ids is None:
@@ -1093,10 +1174,8 @@ class SegmentMutationService:
 
     @contextmanager
     def _child_mutation_lock(self, segment_ref: SegmentRef) -> Generator[None]:
-        with self._indexing_state.lock(document_index_lock_name(segment_ref.document.document_id), timeout=600):
-            with self._indexing_state.lock(
-                f"knowledge:indexing:segment-mutation:{segment_ref.segment_id}", timeout=600
-            ):
+        with self._hold_document(segment_ref.document.document_id):
+            with self._hold_segment(segment_ref.segment_id):
                 yield
 
     def _write_children_locked(

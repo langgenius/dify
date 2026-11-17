@@ -899,12 +899,14 @@ class DocumentApi(DatasetApiResource):
             _raise_document_error(error)
         return _document_and_batch_response(result), 200
 
+    @error_responses(ArchivedDocumentImmutableError)
     @service_api_ns.doc(
         summary="Delete Document",
         description="Permanently delete a document and all its chunks from the knowledge base.",
         tags=["Documents"],
         responses={
             204: "Success.",
+            403: "`archived_document_immutable` : The archived document is not editable.",
             404: "`not_found` : Document Not Exists.",
         },
     )
@@ -915,14 +917,15 @@ class DocumentApi(DatasetApiResource):
         responses={
             204: "Document deleted successfully",
             401: "Unauthorized - invalid API token",
+            403: "Forbidden - document is archived",
             404: "Document not found",
         }
     )
     @dataset_admission(rate_limit=True)
     def delete(self, context: RequestContext, dataset_id: UUID, document_id: UUID):
-        """Delete document."""
+        """Delete document; archived documents are refused with 403."""
         try:
-            application_services().knowledge.documents.delete_document(
+            application_services().knowledge.documents.delete_unarchived_document(
                 context, dataset_id=str(dataset_id), document_id=str(document_id)
             )
         except Exception as error:

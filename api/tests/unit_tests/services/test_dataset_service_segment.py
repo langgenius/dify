@@ -128,6 +128,8 @@ def test_mutation_scope_rejects_a_document_outside_the_dataset(
         document_dataset_id,
         document_workspace_id,
         "text_model",
+        "completed",
+        True,
     )
 
     with pytest.raises(ValueError, match="Document does not belong to the dataset"):

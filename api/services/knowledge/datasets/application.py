@@ -45,6 +45,15 @@ class DatasetOperations(Protocol):
         accessible_ids: list[str] | None,
         include_own: bool,
     ) -> DatasetPage: ...
+    def list_workspace_datasets(
+        self,
+        context: RequestContext,
+        query: DatasetListFilter,
+        resource_ids: list[str] | None,
+    ) -> DatasetPage:
+        """List workspace datasets bounded only by tenant and ``resource_ids``; no account ACL."""
+        ...
+
     def embedding_models(self, workspace_id: str) -> set[str]: ...
     def get_dataset(self, context: RequestContext, ref: DatasetRef) -> DatasetDetailRecord: ...
     def initialize_creator_access(self, context: RequestContext, dataset_id: str) -> None: ...
@@ -228,15 +237,25 @@ class DatasetApplicationService:
         *,
         accessible_ids: list[str] | None,
         include_own: bool,
+        account_visibility: bool,
     ) -> DatasetPage:
-        """Read the resolved scope; absent IDs admit all datasets in the workspace."""
+        """Read the resolved scope; absent IDs admit all datasets in the workspace.
+
+        ``account_visibility=False`` is the workspace-scope listing: the context
+        account's dataset ACL is not applied and only the tenant boundary and
+        the resource grant, when present, bound the result.
+        """
         if context.resource_dataset_ids is not None:
             resource_ids = context.resource_dataset_ids
             accessible_ids = sorted(
                 resource_ids if accessible_ids is None else resource_ids.intersection(accessible_ids)
             )
             include_own = False
-        result = self._operations.list_datasets(context, query, accessible_ids, include_own)
+        result = (
+            self._operations.list_datasets(context, query, accessible_ids, include_own)
+            if account_visibility
+            else self._operations.list_workspace_datasets(context, query, accessible_ids)
+        )
         if query.for_selection:
             return result
         models = self._operations.embedding_models(context.active_workspace_id)
@@ -253,14 +272,20 @@ class DatasetApplicationService:
             query,
             accessible_ids=accessible_ids,
             include_own=include_own,
+            account_visibility=True,
         )
         for item in result["data"]:
             item["permission_keys"] = list(visibility.overrides.get(item["id"], visibility.default_permissions))
         return result
 
     def list_workspace_datasets(self, context: RequestContext, query: DatasetListFilter) -> DatasetPage:
-        """List workspace datasets for a caller already admitted to the workspace scope."""
-        return self._list_datasets(context, query, accessible_ids=None, include_own=False)
+        """List workspace datasets for a caller already admitted to the workspace scope.
+
+        Dataset Service API callers skip account ACLs while retaining the tenant
+        boundary; a resource-scoped grant further restricts the result to its
+        dataset IDs.
+        """
+        return self._list_datasets(context, query, accessible_ids=None, include_own=False, account_visibility=False)
 
     def get_dataset(
         self,

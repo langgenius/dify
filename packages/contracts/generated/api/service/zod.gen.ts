@@ -1002,6 +1002,18 @@ export const zAppUnavailableError = zErrorResponse.and(
 )
 
 /**
+ * ArchivedDocumentImmutableError
+ *
+ * The archived document is not editable.
+ */
+export const zArchivedDocumentImmutableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('archived_document_immutable'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * AudioTooLargeError
  *
  * Audio size exceeded. {message}

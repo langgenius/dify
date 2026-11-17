@@ -132,6 +132,11 @@ export type AppUnavailableError = ErrorResponse & {
   status: 400
 }
 
+export type ArchivedDocumentImmutableError = ErrorResponse & {
+  code: 'archived_document_immutable'
+  status: 403
+}
+
 export type AudioBinaryResponse = Blob | File
 
 export type AudioTooLargeError = ErrorResponse & {
@@ -5789,7 +5794,7 @@ export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdData = {
 
 export type DeleteDatasetsByDatasetIdDocumentsByDocumentIdErrors = {
   401: ErrorResponse
-  403: ErrorResponse
+  403: ArchivedDocumentImmutableError | ErrorResponse
   404: ErrorResponse
   default: ErrorResponse
 }

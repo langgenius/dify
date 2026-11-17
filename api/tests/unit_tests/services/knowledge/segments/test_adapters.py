@@ -55,6 +55,8 @@ from services.knowledge.segments.application import (
     DatasetSegmentApplicationService,
     SegmentBatchImportDispatcher,
     SegmentDatasetNotFoundError,
+    SegmentDocumentDisabledError,
+    SegmentDocumentNotCompletedError,
     SegmentIndex,
     SegmentIndexingState,
     SegmentModelGuard,
@@ -186,11 +188,11 @@ def test_summary_image_query_prefers_bound_images_then_falls_back_to_markdown(
     attachment = _upload("attachment-image", "workspace-1", "attachment.png")
     attachment.extension = "png"
     attachment.mime_type = "image/png"
-    markdown = _upload("markdown-image", "workspace-1", "markdown.jpg")
+    markdown = _upload("11111111-1111-4111-8111-111111111111", "workspace-1", "markdown.jpg")
     markdown.extension = "jpg"
     markdown.mime_type = "image/jpeg"
     segment = _segment("segment-1", "workspace-1", "dataset-1", "document-1")
-    segment.content = "![image](/files/markdown-image/image-preview)"
+    segment.content = "![image](/files/11111111-1111-4111-8111-111111111111/image-preview)"
     binding = SegmentAttachmentBinding(
         tenant_id="workspace-1",
         dataset_id="dataset-1",
@@ -219,7 +221,7 @@ def test_summary_image_query_prefers_bound_images_then_falls_back_to_markdown(
         assert persisted_binding is not None
         session.delete(persisted_binding)
 
-    assert [file.id for file in repository.get_summary_image_files(ref)] == ["markdown-image"]
+    assert [file.id for file in repository.get_summary_image_files(ref)] == ["11111111-1111-4111-8111-111111111111"]
 
 
 def test_scope_lookup_enforces_owner_chain(
@@ -730,6 +732,138 @@ def test_rag_pipeline_terminal_document_allows_segment_create(
         assert session.get(DocumentSegment, "segment-1") is not None
 
 
+def _set_document_state(document: Document, state: str) -> None:
+    if state == "disabled":
+        document.enabled = False
+    elif state == "archived":
+        document.archived = True
+    elif state == "error":
+        document.indexing_status = IndexingStatus.ERROR
+    elif state == "paused":
+        document.indexing_status = IndexingStatus.PAUSED
+        document.is_paused = True
+    else:
+        raise AssertionError(state)
+
+
+@pytest.mark.parametrize("state", ["disabled", "archived", "error", "paused"])
+def test_idle_document_keeps_segment_writes_available_at_the_store(
+    sqlite_session_factory: sessionmaker[Session],
+    state: str,
+) -> None:
+    """Only active indexing blocks chunk writes; disabled/archived/errored documents stay editable."""
+    document = _document("document-1", "workspace-1", "dataset-1")
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    _set_document_state(document, state)
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                document,
+                _segment("segment-1", "workspace-1", "dataset-1", "document-1"),
+            ]
+        )
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+    segment_ref = document_ref.segment("segment-1")
+
+    repository.create_segments(document_ref, (_segment_create_record("segment-2"),))
+    repository.save_segment(segment_ref, {"content": "edited"})
+    transitions = repository.stage_segment_status(document_ref, ("segment-1",), action="disable", actor_id="account-1")
+    with repository.child_mutation(segment_ref):
+        pass
+    repository.delete_segments(document_ref, ("segment-2",))
+
+    assert [transition.applied.enabled for transition in transitions] == [False]
+    with sqlite_session_factory() as session:
+        assert session.get_one(DocumentSegment, "segment-1").content == "edited"
+        assert session.get_one(DocumentSegment, "segment-1").enabled is False
+        assert session.get(DocumentSegment, "segment-2") is None
+
+
+@pytest.mark.parametrize(
+    "status",
+    [
+        IndexingStatus.WAITING,
+        IndexingStatus.PARSING,
+        IndexingStatus.CLEANING,
+        IndexingStatus.SPLITTING,
+        IndexingStatus.INDEXING,
+    ],
+)
+def test_active_document_rejects_every_segment_write_at_the_store(
+    sqlite_session_factory: sessionmaker[Session],
+    status: IndexingStatus,
+) -> None:
+    document = _document("document-1", "workspace-1", "dataset-1")
+    document.indexing_status = status
+    with sqlite_session_factory.begin() as session:
+        session.add_all(
+            [
+                _dataset("dataset-1", "workspace-1"),
+                document,
+                _segment("segment-1", "workspace-1", "dataset-1", "document-1"),
+            ]
+        )
+    repository = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory)
+    document_ref = DatasetRef("workspace-1", "dataset-1").document("document-1")
+
+    with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
+        repository.delete_segments(document_ref, ("segment-1",))
+    with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
+        repository.stage_segment_status(document_ref, ("segment-1",), action="disable", actor_id="account-1")
+    with pytest.raises(SegmentDocumentMutationBusyError, match="being indexed"):
+        with repository.child_mutation(document_ref.segment("segment-1")):
+            raise AssertionError("child mutation must not start while the document is indexing")
+
+    with sqlite_session_factory() as session:
+        assert session.get_one(DocumentSegment, "segment-1").enabled is True
+
+
+@pytest.mark.parametrize(
+    ("state", "error_type", "message"),
+    [
+        ("disabled", SegmentDocumentDisabledError, "Document is disabled."),
+        ("archived", None, None),
+        ("error", SegmentDocumentNotCompletedError, "Document is not completed."),
+        ("paused", SegmentDocumentNotCompletedError, "Document is not completed."),
+    ],
+)
+def test_service_api_create_requires_completed_enabled_document_while_console_does_not(
+    sqlite_session_factory: sessionmaker[Session],
+    state: str,
+    error_type: type[Exception] | None,
+    message: str | None,
+) -> None:
+    document = _document("document-1", "workspace-1", "dataset-1")
+    _set_document_state(document, state)
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), document])
+    app = _application(sqlite_session_factory)
+    context = RequestContext("request-1", None, "author-1", "workspace-1")
+
+    # Console single-chunk create never had a document-state precondition.
+    console = app.create_segment(
+        context, dataset_id="dataset-1", document_id="document-1", values={"content": "console"}
+    )
+    assert console.data.content == "console"
+
+    def service_api_create() -> tuple[SegmentDetail, ...]:
+        return app.create_segments(
+            context, dataset_id="dataset-1", document_id="document-1", values=[{"content": "service"}]
+        )
+
+    if error_type is None:
+        assert [item.data.content for item in service_api_create()] == ["service"]
+    else:
+        with pytest.raises(error_type) as raised:
+            service_api_create()
+        assert str(raised.value) == message
+    with sqlite_session_factory() as session:
+        contents = session.scalars(select(DocumentSegment.content).order_by(DocumentSegment.content)).all()
+    assert contents == (["console", "service"] if error_type is None else ["console"])
+
+
 def test_list_revalidates_owner_chain_for_paginated_reads(sqlite_session_factory: sessionmaker[Session]) -> None:
     with sqlite_session_factory.begin() as session:
         session.add(_dataset("dataset-1", "workspace-1"))
@@ -796,6 +930,22 @@ def test_redis_state_uses_existing_keys_and_decodes_status() -> None:
     assert state.get_batch_status("job-1") == "completed"
     redis.get.assert_any_call("document_document-1_indexing")
     redis.set.assert_called_once_with("segment_batch_import_job-1", "waiting", nx=True, ex=86_400)
+
+
+def test_redis_state_lock_waits_only_as_long_as_the_caller_allows() -> None:
+    from services.knowledge.indexing.locks import KnowledgeIndexingLock
+    from services.knowledge.segments.adapters import RedisSegmentClient
+
+    locks = create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True)
+    state = RedisSegmentIndexingState(
+        create_autospec(RedisSegmentClient, instance=True, spec_set=True),
+        locks=locks,
+    )
+
+    held = state.lock("lock-name", timeout=600, blocking_timeout=5)
+
+    assert held is locks.hold.return_value
+    locks.hold.assert_called_once_with("lock-name", timeout=600, blocking_timeout=5)
 
 
 def test_child_chunk_mutations_preserve_explicit_actors(
