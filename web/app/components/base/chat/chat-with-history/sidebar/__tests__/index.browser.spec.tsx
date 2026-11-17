@@ -1,7 +1,11 @@
 import type { ChatWithHistoryContextValue } from '../../context'
+import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
+import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import type { AppData } from '@/models/share'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { ConnectionsContext } from '@/app/components/share/connections/use-connections'
+import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import { useWebAppStore } from '@/context/web-app-context'
 import {
   AppSourceType,
@@ -14,9 +18,9 @@ import {
 } from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
-import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
+import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
 import Header from '../../header'
 import Sidebar from '../index'
 
@@ -34,6 +38,7 @@ vi.mock('@/service/share', async (importOriginal) => ({
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   usePathname: () => '/chat/app-1',
+  useSearchParams: () => new URLSearchParams(),
 }))
 
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
@@ -53,7 +58,22 @@ const appInfo: AppData = {
 }
 
 beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(guardUnexpectedFetch())
+  // boundary: the authenticated footer loads its account through the Webapp HTTP service.
+  const unexpectedRequests: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn<typeof fetch>(async (input) => {
+      const url = input instanceof Request ? input.url : String(input)
+      if (new URL(url, window.location.origin).pathname === '/api/account/profile')
+        return Response.json({ name: 'Test Account', avatar: null, avatar_url: null })
+      unexpectedRequests.push(url)
+      throw new Error(`Unexpected request: ${url}`)
+    }),
+  )
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+    expect(unexpectedRequests).toEqual([])
+  })
   const oldUrl = window.location.href
   window.history.replaceState({}, '', '/')
   onTestFinished(() => {
@@ -86,6 +106,8 @@ async function renderSidebar(
   options: Parameters<typeof createChatHistoryTestEnvironment>[0] = {},
   branding = noBranding,
   showCurrentConversation = false,
+  entry: WebAppEntryState | null = null,
+  connections: ConnectionsState = createChatConnections(),
 ) {
   const { Owner, queryClient } = createChatHistoryTestEnvironment({
     currentConversationId: '1',
@@ -110,7 +132,11 @@ async function renderSidebar(
           aria-label="Conversation history"
           style={{ display: 'flex', height: 600, width: 320 }}
         >
-          <Sidebar />
+          <WebAppEntryContext value={entry}>
+            <ConnectionsContext value={connections}>
+              <Sidebar />
+            </ConnectionsContext>
+          </WebAppEntryContext>
         </aside>
       </Owner>
     </QueryProvider>
@@ -147,6 +173,74 @@ async function operate(name: string, action: 'pin' | 'unpin' | 'rename' | 'delet
   await openOperations(name)
   await page.getByRole('menuitem', { name: `explore.sidebar.action.${action}` }).click()
 }
+
+function anonymousEntry(allowAnonymous = false): WebAppEntryState {
+  if (!('parameters' in chatConnectionEntry)) throw new Error('Connection entry required')
+  return {
+    ...chatConnectionEntry,
+    account: 'anonymous',
+    showSignIn: true,
+    parameters: {
+      ...chatConnectionEntry.parameters,
+      allow_anonymous_end_user_auth: allowAnonymous,
+    },
+  }
+}
+
+it.each([false, true])(
+  'places My apps before application information in the narrow=%s sidebar',
+  async (isBelowSm) => {
+    await page.viewport(isBelowSm ? 390 : 900, 700)
+    await renderSidebar(
+      { sidebarCollapsed: false, ownerProps: { isBelowSm } },
+      noBranding,
+      false,
+      chatConnectionEntry,
+    )
+    const navigation = page.getByRole('link', { name: 'app.endUser.myApps' })
+    await expect.element(navigation).toBeVisible()
+    await expect.element(navigation).toHaveAttribute('href', '/my-apps')
+    const appTitle = conversationHistory().getByText('Test App')
+    await expect.element(appTitle).toBeVisible()
+    expect(navigation.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      appTitle.element().getBoundingClientRect().top,
+    )
+    await expect.element(page.getByRole('button', { name: 'Test Account' })).toBeVisible()
+  },
+)
+
+it('offers sign-in instead of the footer menu and blocks new chat while personal connections require login', async () => {
+  await renderSidebar(
+    { currentConversationId: '1', conversations: [], pinnedConversations: [] },
+    noBranding,
+    false,
+    anonymousEntry(),
+    createChatConnections({ status: 'sign-in-required', canRun: false }),
+  )
+  await expect.element(page.getByRole('button', { name: 'share.chat.newChat' })).toBeDisabled()
+  await expect.element(page.getByRole('button', { name: 'share.auth.signIn' })).toBeVisible()
+  await expect
+    .element(page.getByRole('link', { name: 'app.endUser.myApps' }))
+    .not.toBeInTheDocument()
+  await expect
+    .element(page.getByRole('button', { name: 'common.operation.more' }))
+    .not.toBeInTheDocument()
+  await expect.element(page.getByText('share.chat.emptyConversation')).toBeVisible()
+  expect(selectedConversation()).toBe('1')
+})
+
+it('keeps new chat available for an anonymous user allowed to configure connections', async () => {
+  await renderSidebar(
+    { currentConversationId: '1', conversations: [], pinnedConversations: [] },
+    noBranding,
+    false,
+    anonymousEntry(true),
+  )
+  const start = page.getByRole('button', { name: 'share.chat.newChat' })
+  await expect.element(start).toBeEnabled()
+  await start.click()
+  expect(selectedConversation()).toBe('')
+})
 
 it('selects conversations from both lists and persists the visible result', async () => {
   await renderSidebar({}, noBranding, true)

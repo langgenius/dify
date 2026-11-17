@@ -8,6 +8,7 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import type { CredentialSaved } from '@/app/components/header/account-setting/model-provider-page/model-modal/handle'
 import {
   AlertDialog,
   AlertDialogCancelButton,
@@ -32,7 +33,7 @@ type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align'> & {
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   authParams?: {
     isModelCredential?: boolean
-    onUpdate?: (newPayload?: Record<string, unknown>, formValues?: Record<string, unknown>) => void
+    onUpdate?: CredentialSaved
     onRemove?: (credentialId: string) => void
     mode?: ModelModalModeEnum
   }

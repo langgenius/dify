@@ -15,6 +15,12 @@ from services.moderation_invocation_errors import (
 )
 
 
+class PaidPlanRequiredError(BaseHTTPException):
+    error_code = "paid_plan_required"
+    description = "This feature requires a paid plan."
+    code = 403
+
+
 class FilenameNotExistsError(BaseHTTPException):
     error_code = "filename_not_exists_error"
     code = 400

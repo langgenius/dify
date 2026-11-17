@@ -143,12 +143,12 @@ export function MainNavPanel({ headerAction }: { headerAction: ReactNode }) {
             )}
           </MainNavLink>
         ))}
+        {!isCurrentWorkspaceDatasetOperator && (
+          <Suspense fallback={null}>
+            <WebAppsSection />
+          </Suspense>
+        )}
       </nav>
-      {!isCurrentWorkspaceDatasetOperator && (
-        <Suspense fallback={null}>
-          <WebAppsSection />
-        </Suspense>
-      )}
       {showEnvTag && (
         <div className="mt-auto shrink-0 px-3 pb-2">
           <EnvNav />

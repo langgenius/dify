@@ -206,7 +206,7 @@ it('loads subsequent installed-app pages before showing all starred applications
     .element(screen.getByRole('button', { name: 'Assistant first', exact: true }))
     .not.toBeInTheDocument()
   expect(service.list).toHaveBeenCalledWith({
-    query: { limit: 100, cursor: 'next-page', mode: 'all', sort_by: 'last_modified' },
+    query: { limit: 100, cursor: 'next-page', mode: 'all', sort_by: 'recently_created' },
   })
 })
 
@@ -246,12 +246,12 @@ it('hides list errors without showing a false empty state and remains usable thr
     .element(screen.getByRole('button', { name: 'Assistant workflow', exact: true }))
     .toBeVisible()
   expect(service.list).toHaveBeenLastCalledWith({
-    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'last_modified' },
+    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'recently_created' },
   })
   expect(service.urlUpdate.mock.lastCall?.[0].searchParams.get('category')).toBe('workflow')
 })
 
-it('requests the selected sort and type, updates the URL and displays the server result order', async () => {
+it('falls back from the removed sort, offers creation sorts and preserves the selected sort when filtering', async () => {
   const first = createApp('first')
   const second = createApp('second')
   const workflow = createApp('workflow', false, 'workflow')
@@ -263,7 +263,7 @@ it('requests the selected sort and type, updates the URL and displays the server
         : page([first, second, workflow])
     },
   )
-  const screen = await renderPublished()
+  const screen = await renderPublished('sort_by=last_modified')
   const cardOrder = () =>
     screen
       .getByRole('button', { name: /^Assistant / })
@@ -271,21 +271,33 @@ it('requests the selected sort and type, updates the URL and displays the server
       .map((card) => card.getAttribute('aria-label'))
   await expect
     .poll(cardOrder)
-    .toEqual(['Assistant first', 'Assistant second', 'Assistant workflow'])
+    .toEqual(['Assistant workflow', 'Assistant second', 'Assistant first'])
 
   const sort = screen.getByRole('combobox', { name: 'app.studio.sort.sortBy' })
-  await sort.click()
-  await screen.getByRole('option', { name: 'app.studio.sort.recentlyCreated' }).click()
-  await expect
-    .poll(cardOrder)
-    .toEqual(['Assistant workflow', 'Assistant second', 'Assistant first'])
   await expect
     .element(sort)
     .toHaveTextContent('app.studio.sort.sortBy app.studio.sort.recentlyCreated')
   expect(service.list).toHaveBeenLastCalledWith({
     query: { limit: 100, cursor: undefined, mode: 'all', sort_by: 'recently_created' },
   })
-  expect(service.urlUpdate.mock.lastCall?.[0].searchParams.get('sort_by')).toBe('recently_created')
+  await sort.click()
+  await expect
+    .element(screen.getByRole('option', { name: 'app.studio.sort.earliestCreated' }))
+    .toBeVisible()
+  await expect
+    .element(screen.getByRole('option', { name: 'app.studio.sort.lastModified' }))
+    .not.toBeInTheDocument()
+  await screen.getByRole('option', { name: 'app.studio.sort.earliestCreated' }).click()
+  await expect
+    .poll(cardOrder)
+    .toEqual(['Assistant first', 'Assistant second', 'Assistant workflow'])
+  await expect
+    .element(sort)
+    .toHaveTextContent('app.studio.sort.sortBy app.studio.sort.earliestCreated')
+  expect(service.list).toHaveBeenLastCalledWith({
+    query: { limit: 100, cursor: undefined, mode: 'all', sort_by: 'earliest_created' },
+  })
+  expect(service.urlUpdate.mock.lastCall?.[0].searchParams.get('sort_by')).toBe('earliest_created')
 
   const types = screen.getByRole('combobox', { name: 'app.studio.filters.types' })
   await types.click()
@@ -293,11 +305,11 @@ it('requests the selected sort and type, updates the URL and displays the server
   await expect.poll(cardOrder).toEqual(['Assistant workflow'])
   await expect.element(types).toHaveTextContent('app.types.workflow')
   expect(service.list).toHaveBeenLastCalledWith({
-    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'recently_created' },
+    query: { limit: 100, cursor: undefined, mode: 'workflow', sort_by: 'earliest_created' },
   })
   const url = service.urlUpdate.mock.lastCall?.[0].searchParams
   expect(url?.get('category')).toBe('workflow')
-  expect(url?.get('sort_by')).toBe('recently_created')
+  expect(url?.get('sort_by')).toBe('earliest_created')
 })
 
 it('initializes filters from the URL and starts a fresh pagination cursor when the sort changes', async () => {
@@ -338,5 +350,5 @@ it('initializes filters from the URL and starts a fresh pagination cursor when t
   ])
   const url = service.urlUpdate.mock.lastCall?.[0].searchParams
   expect(url?.get('category')).toBe('chat')
-  expect(url?.get('sort_by')).toBe('recently_created')
+  expect(url?.get('sort_by')).toBeNull()
 })

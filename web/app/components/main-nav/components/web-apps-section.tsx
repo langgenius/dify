@@ -18,18 +18,16 @@ const WebAppsSection = () => {
   if (!hasPermission(workspacePermissionKeys, 'app_library.access')) return null
 
   return (
-    <div className="px-2 pb-2">
-      <MainNavLink
-        item={{
-          href: '/published-apps',
-          label: t(($) => $['mainNav.publishedApps'], { ns: 'navigation' }),
-          active: (path) => path === '/published-apps' || isInstalledAppPath(path),
-          icon: 'i-ri-apps-2-add-line',
-          activeIcon: 'i-ri-apps-2-add-fill',
-        }}
-        pathname={pathname}
-      />
-    </div>
+    <MainNavLink
+      item={{
+        href: '/published-apps',
+        label: t(($) => $['mainNav.publishedApps'], { ns: 'navigation' }),
+        active: (path) => path === '/published-apps' || isInstalledAppPath(path),
+        icon: 'i-ri-apps-2-add-line',
+        activeIcon: 'i-ri-apps-2-add-fill',
+      }}
+      pathname={pathname}
+    />
   )
 }
 

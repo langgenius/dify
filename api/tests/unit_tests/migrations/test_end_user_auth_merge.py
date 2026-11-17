@@ -43,6 +43,14 @@ from alembic.script import ScriptDirectory
             "2026_11_16_1200-c3a8e5d1f902_merge_saas_and_file_scan_heads",
             {"9c4a7e2b1d60", "9f2c7a6e4b31"},
         ),
+        (
+            "2026_11_17_1200-3b7a9d1e6c42_merge_end_user_auth_and_evaluation",
+            {"92d7a3f1c6e8", "f8b6e2c4a901"},
+        ),
+        (
+            "2026_11_17_1300-e6d2b8c4a913_merge_saas_and_evaluation_heads",
+            {"c3a8e5d1f902", "3b7a9d1e6c42"},
+        ),
     ],
 )
 def test_merge_preserves_parent_revisions_without_schema_operations(module: str, parents: set[str]) -> None:
@@ -56,7 +64,7 @@ def test_merge_preserves_parent_revisions_without_schema_operations(module: str,
 
 def test_merge_has_one_acyclic_head_reaching_all_existing_revisions() -> None:
     """Require the filesystem graph to converge and remain fully reachable without a database."""
-    migration = import_module("migrations.versions.2026_11_16_1200-c3a8e5d1f902_merge_saas_and_file_scan_heads")
+    migration = import_module("migrations.versions.2026_11_17_1300-e6d2b8c4a913_merge_saas_and_evaluation_heads")
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
     scripts = ScriptDirectory.from_config(configuration)

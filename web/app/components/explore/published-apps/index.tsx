@@ -1,5 +1,6 @@
 'use client'
 
+import type { AppListUrlQuery } from '@/app/components/apps/query-params'
 import { createDialogHandle, Dialog } from '@langgenius/dify-ui/dialog'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
@@ -17,6 +18,11 @@ import { hasPermission } from '@/utils/permission'
 import PublishedAppCard from './app-card'
 import PublishedAppsToolbar from './toolbar'
 
+const publishedAppSortParser = parseAsStringLiteral<AppListUrlQuery['sort_by']>([
+  'recently_created',
+  'earliest_created',
+]).withDefault('recently_created')
+
 function PublishedAppsList() {
   const { t } = useTranslation(['common', 'navigation'])
   const [view, setView] = useQueryState(
@@ -25,7 +31,7 @@ function PublishedAppsList() {
   )
   const [filters, setFilters] = useQueryStates({
     category: appListQueryParsers.category,
-    sort_by: appListQueryParsers.sort_by,
+    sort_by: publishedAppSortParser,
   })
   const { category, sort_by: sortBy } = filters
   const [dialog] = useState(() => createDialogHandle<string>())

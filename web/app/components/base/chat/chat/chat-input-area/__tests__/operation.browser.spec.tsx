@@ -130,6 +130,7 @@ it('starts real voice UI only while the operation is available and editable', as
     />,
   )
   await expect.element(page.getByRole('button', { name: 'Voice input' })).toBeDisabled()
+  expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
   await screen.rerender(
     <Chat
       chatList={[]}
