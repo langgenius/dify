@@ -26,6 +26,7 @@ from controllers.openapi.apps import AppDescribeApi, AppListApi, AppListQuery
 from controllers.openapi.apps import AppDescribeQuery as _app_describe_query_AppDescribeQuery
 from controllers.openapi.apps_permitted_external import PermittedExternalAppDescribeApi, PermittedExternalAppsListApi
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
 from libs.helper import UUIDStr
 from libs.pagination import PaginatedResult
@@ -386,7 +387,8 @@ def test_an_external_sso_login_is_passed_without_a_workspace(
 
 
 def test_the_catalog_lists_apps_without_a_workspace() -> None:
-    spec = cast(Endpoint[AppListResponse], AppListApi.get)
-    assert spec.__spec__.catalog.summary == "List the apps this login may use, in one workspace or in all of them"
-    assert {"page": 1, "limit": 20} in [example.input for example in spec.__spec__.catalog.examples]
+    spec = spec_of(AppListApi.get)
+    assert spec is not None
+    assert spec.catalog.summary == "List the apps this login may use, in one workspace or in all of them"
+    assert {"page": 1, "limit": 20} in [example.input for example in spec.catalog.examples]
     assert "workspace_id" not in AppListQuery.model_json_schema().get("required", [])
