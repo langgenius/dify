@@ -44,6 +44,8 @@ class CredentialTestFailure:
     provider_error_code: str | None = None
     missing_permissions: tuple[str, ...] = ()
     http_status: int | None = None
+    # Opaque upstream request identifier, absent when the provider did not supply one.
+    provider_request_id: str | None = None
 
 
 class IMProviderError(Exception):

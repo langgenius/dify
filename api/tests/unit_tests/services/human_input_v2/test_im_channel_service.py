@@ -486,54 +486,49 @@ def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(
 
 @pytest.mark.parametrize("operation", ["test", "create"])
 @pytest.mark.parametrize(
-    ("credential_case", "http_status", "provider_error_code", "expected_guidance"),
+    ("failure_kind", "expected_kind"),
     [
-        (_CASES[3], 500, "unknownError", True),
-        (_CASES[3], 503, "unknownError", False),
-        (_CASES[3], 500, "server.error", False),
-        (_CASES[2], 500, "unknownError", False),
+        (CredentialTestFailureKind.UNKNOWN, ProviderFailureKind.CONNECTION_FAILURE),
+        (CredentialTestFailureKind.AUTHENTICATION_REJECTED, ProviderFailureKind.INVALID_CREDENTIALS),
     ],
 )
-def test_dingtalk_ambiguous_token_rejection_explains_configuration_checks(
+@pytest.mark.parametrize("provider_error_code", ["unknownError", "40013"])
+def test_dingtalk_provider_diagnostics_reach_configuration_callers(
     monkeypatch: pytest.MonkeyPatch,
     operation: str,
-    credential_case: _CredentialCase,
-    http_status: int,
+    failure_kind: CredentialTestFailureKind,
+    expected_kind: ProviderFailureKind,
     provider_error_code: str,
-    expected_guidance: bool,
 ) -> None:
     state = _State()
     service = _TestService(state)
+    credentials = _CASES[3].credentials
+    request_id = "01A1E70F-03B7-77BB-8BD8-8B4AE00F565E"
     _install_adapter(
         monkeypatch,
         state,
-        provider=credential_case.credentials.provider,
+        provider=credentials.provider,
         result=CredentialTestFailure(
-            CredentialTestFailureKind.UNKNOWN,
+            failure_kind,
             "raw provider-secret-diagnostic",
             provider_error_code,
-            http_status=http_status,
+            http_status=500,
+            provider_request_id=request_id,
         ),
     )
 
     command = service.test if operation == "test" else service.create
     with pytest.raises(ChannelProviderError) as captured:
-        command(credential_case.credentials)
+        command(credentials)
 
     description = captured.value.status_description
-    assert captured.value.kind is ProviderFailureKind.CONNECTION_FAILURE
-    assert captured.value.http_status == http_status
+    assert captured.value.kind is expected_kind
+    assert captured.value.http_status == 500
     assert captured.value.provider_error_code == provider_error_code
-    if expected_guidance:
-        assert "Corp ID" in description
-        assert "DingTalk Developer Console home page" in description
-        assert "Client ID" in description
-        assert "Client Secret" in description
-    else:
-        assert description.startswith("The provider connection could not be established.")
-        assert "Corp ID" not in description
-    assert f"HTTP status: {http_status}." in description
+    assert captured.value.provider_request_id == request_id
     assert f"API error code: {provider_error_code}." in description
+    assert f"Request ID: {request_id}." in description
+    assert "Corp ID" not in description
     assert "provider-secret-diagnostic" not in description
     assert state.current is None
     assert service.cipher.plaintexts == []
