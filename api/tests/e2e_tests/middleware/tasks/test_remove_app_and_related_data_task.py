@@ -379,7 +379,9 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
             draft_vars_after = session.scalar(
                 select(func.count()).select_from(WorkflowDraftVariable).filter_by(app_id=app_id)
             )
-        assert draft_vars_after == 3
+        # Only the variables whose blobs failed stay as retry evidence; the
+        # variable without offloaded data is still deleted in the same attempt.
+        assert draft_vars_after == 2
 
         with session_factory.create_session() as session:
             var_files_after = session.scalar(
@@ -395,7 +397,7 @@ class TestDeleteDraftVariablesWithOffloadIntegration:
 
         mock_storage.reset_mock()
         mock_storage.delete.side_effect = [FileNotFoundError("test/file1.json"), None]
-        assert delete_draft_variables_batch(app_id, batch_size=10) == 3
+        assert delete_draft_variables_batch(app_id, batch_size=10) == 2
 
         assert mock_storage.delete.call_count == 2
 

@@ -5,7 +5,7 @@ from contextlib import ExitStack, contextmanager
 from datetime import datetime
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import select
 
@@ -30,12 +30,18 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    is_terminal_failure,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 _RETRY_LEASE_TIMEOUT_SECONDS = 600
 _RETRY_LEASE_HANDOFF_WAIT_SECONDS = 5
 _RETRY_LEASE_BUSY_RETRY_SECONDS = 60
 _RETRY_LEASE_BUSY_MAX_RETRIES = 12
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
 _RETRY_ACTIVE_STATUSES = (
     IndexingStatus.WAITING,
     IndexingStatus.PARSING,
@@ -240,15 +246,40 @@ def _run_retry_document_indexing(
             raise
 
 
+def _fail_unstarted_retries(retry_generations: Mapping[str, datetime | None], error: Exception) -> None:
+    """Fail retry generations this wake-up was responsible for and never started.
+
+    Only a document still ``waiting`` in the snapshotted generation is touched:
+    a document a worker has advanced, or a newer generation admitted by a later
+    request, belongs to someone else.
+    """
+
+    message = f"Document retry could not be indexed: {error}"
+
+    def still_unstarted(document: Document) -> bool:
+        return (
+            document.indexing_status == IndexingStatus.WAITING
+            and document.processing_started_at == retry_generations[document.id]
+        )
+
+    resolve_documents_after_terminal_failure(
+        list(retry_generations),
+        still_owned=still_unstarted,
+        resolve=lambda document: mark_document_indexing_error(document, message),
+    )
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     max_retries=_RETRY_LEASE_BUSY_MAX_RETRIES,
     default_retry_delay=_RETRY_LEASE_BUSY_RETRY_SECONDS,
     acks_late=True,
     reject_on_worker_lost=True,
 )
 def retry_document_indexing_task(
+    self: Task,
     dataset_id: str,
     document_ids: list[str],
     user_id: str,
@@ -264,24 +295,40 @@ def retry_document_indexing_task(
     as owner. If both Redis keys are externally lost, that legacy fallback is
     indistinguishable from a pre-marker message; DB scope and in-progress state
     still constrain the work, but original-request attribution is unavailable.
+
+    Postcondition: the retry endpoint only accepts documents in ``error``, so
+    a wake-up that ends without starting its generation (retries exhausted, or
+    a non-retryable error) moves the documents still ``waiting`` in that
+    generation to ``error``. Documents already advanced by any worker and
+    newer generations are left untouched.
     """
 
     preflight_generations = _active_retry_generations(dataset_id, document_ids)
     if not preflight_generations:
         return
     active_document_ids = list(preflight_generations)
-    with _claim_retry_leases(active_document_ids, user_id) as leases:
-        # Resolve the generation only after claiming the server-side producer
-        # handoff. A queued message is a wake-up for the current same-actor
-        # generation, not a capability for the HTTP request that created it.
-        retry_generations = _active_retry_generations(dataset_id, active_document_ids)
-        if not retry_generations:
-            return
-        current_document_ids = list(retry_generations)
-        _run_retry_document_indexing(
-            dataset_id,
-            current_document_ids,
-            user_id,
-            {document_id: leases[document_id] for document_id in current_document_ids},
-            retry_generations,
-        )
+    try:
+        with _claim_retry_leases(active_document_ids, user_id) as leases:
+            # Resolve the generation only after claiming the server-side producer
+            # handoff. A queued message is a wake-up for the current same-actor
+            # generation, not a capability for the HTTP request that created it.
+            retry_generations = _active_retry_generations(dataset_id, active_document_ids)
+            if not retry_generations:
+                return
+            current_document_ids = list(retry_generations)
+            _run_retry_document_indexing(
+                dataset_id,
+                current_document_ids,
+                user_id,
+                {document_id: leases[document_id] for document_id in current_document_ids},
+                retry_generations,
+            )
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Document retry indexing failed terminally: dataset_id=%s document_ids=%s",
+                dataset_id,
+                active_document_ids,
+            )
+            _fail_unstarted_retries(preflight_generations, error)
+        raise

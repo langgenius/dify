@@ -701,3 +701,52 @@ def test_completed_document_drops_stale_message_before_redis_claim(sqlite_sessio
         sync_website_document_indexing_task(dataset.id, document.id)
 
     hold_lease.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("retries", "persisted_status", "expected_status"),
+    [
+        # Exhausted while still waiting: no worker will ever start this sync.
+        (12, IndexingStatus.WAITING, IndexingStatus.ERROR),
+        # Not the final attempt: Celery will run the sync again.
+        (11, IndexingStatus.WAITING, IndexingStatus.WAITING),
+        # A worker already advanced the sync; its progress must not be clobbered.
+        (12, IndexingStatus.PARSING, IndexingStatus.PARSING),
+    ],
+)
+def test_lock_busy_exhaustion_fails_only_a_sync_still_waiting(
+    sqlite_session: Session,
+    retries: int,
+    persisted_status: IndexingStatus,
+    expected_status: IndexingStatus,
+) -> None:
+    dataset = _dataset(str(uuid.uuid4()))
+    document = _document(dataset)
+    document.indexing_status = persisted_status
+    sqlite_session.add_all([dataset, document])
+    sqlite_session.commit()
+
+    sync_website_document_indexing_task.push_request(retries=retries)
+    try:
+        with (
+            patch(
+                "tasks.sync_website_document_indexing_task._hold_website_sync_lease",
+                side_effect=KnowledgeIndexingLockBusyError("website sync is busy"),
+            ),
+            patch("tasks.sync_website_document_indexing_task._run_website_document_sync") as run_sync,
+            pytest.raises(KnowledgeIndexingLockBusyError),
+        ):
+            sync_website_document_indexing_task.run(dataset.id, document.id)
+    finally:
+        sync_website_document_indexing_task.pop_request()
+
+    run_sync.assert_not_called()
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == expected_status
+    if expected_status == IndexingStatus.ERROR:
+        assert persisted.error == "Website sync could not be indexed: website sync is busy"
+        assert persisted.stopped_at is not None
+    else:
+        assert persisted.error is None
+        assert persisted.stopped_at is None

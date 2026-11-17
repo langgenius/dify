@@ -20,9 +20,15 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Se
 from models.model import UploadFile
 from services.entities.upload_file import UploadFileReferenceCandidate
 from services.knowledge.indexing.contracts import pending_upload_cleanup_ids
-from tasks.delete_segment_from_index_task import delete_segment_from_index_task
+from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, KnowledgeIndexingLockBusyError
+from tasks.delete_segment_from_index_task import SEGMENT_INDEX_CLEANUP_MAX_RETRIES, delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
-from tasks.disable_segments_from_index_task import _disable_segments_from_index, disable_segments_from_index_task
+from tasks.disable_segments_from_index_task import (
+    SEGMENT_INDEX_MAX_RETRIES,
+    _disable_segments_from_index,
+    disable_segments_from_index_task,
+)
+from tasks.indexing_task_retry import TaskRetriesExhaustedError
 
 
 class _OwnedLease:
@@ -282,7 +288,10 @@ def test_delete_segment_cleanup_uses_explicit_nodes_after_document_state_changes
 def test_delete_segment_cleanup_uses_bounded_late_ack_retry_policy() -> None:
     assert isinstance(delete_segment_from_index_task, _AutoretryTask)
     assert delete_segment_from_index_task.autoretry_for == (Exception,)
-    assert delete_segment_from_index_task.max_retries == 5
+    # Celery's own limit is lifted so lock-busy waits never run out; real
+    # failures are bounded by the task's own budget instead.
+    assert delete_segment_from_index_task.max_retries is None
+    assert SEGMENT_INDEX_CLEANUP_MAX_RETRIES == 5
     assert delete_segment_from_index_task.retry_backoff is True
     assert delete_segment_from_index_task.acks_late is True
     assert delete_segment_from_index_task.reject_on_worker_lost is True
@@ -683,3 +692,119 @@ def test_delete_segment_rejects_document_outside_dataset_owner_chain(
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
     processor_factory.assert_not_called()
+
+
+class _ScriptedLocks:
+    """Fail the first ``hold`` calls with the scripted errors, then grant the lease."""
+
+    def __init__(self, *errors: Exception) -> None:
+        self._errors = list(errors)
+        self.attempts = 0
+
+    @contextmanager
+    def hold(self, _name: str, *, timeout: int, blocking_timeout: float) -> Generator[_OwnedLease]:
+        del timeout, blocking_timeout
+        self.attempts += 1
+        if self._errors:
+            raise self._errors.pop(0)
+        yield _OwnedLease()
+
+
+def test_delete_segment_waits_for_a_busy_index_lock_beyond_the_bounded_retry_budget() -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLockBusyError("busy"), KnowledgeIndexingLockBusyError("busy"))
+
+    with (
+        patch("tasks.delete_segment_from_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+        patch("tasks.delete_segment_from_index_task._delete_segment_from_index") as delete_index,
+    ):
+        # The segment rows are already deleted: giving up here would orphan their vectors for good.
+        result = delete_segment_from_index_task.apply(
+            args=(["node-1"], "dataset-1", "document-1", ["segment-1"]),
+            retries=500,
+            throw=False,
+        )
+
+    assert result.state == "SUCCESS"
+    assert locks.attempts == 3
+    delete_index.assert_called_once()
+
+
+def test_delete_segment_stops_retrying_a_persistent_failure_and_reports_the_orphan(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with (
+        patch("tasks.delete_segment_from_index_task.RedisKnowledgeIndexingLock", return_value=_ScriptedLocks()),
+        patch(
+            "tasks.delete_segment_from_index_task._delete_segment_from_index",
+            side_effect=RuntimeError("vector store unavailable"),
+        ) as delete_index,
+    ):
+        result = delete_segment_from_index_task.apply(
+            args=(["node-1"], "dataset-1", "document-1", ["segment-1"]),
+            retries=SEGMENT_INDEX_CLEANUP_MAX_RETRIES - 1,
+            throw=False,
+        )
+
+    assert result.state == "FAILURE"
+    assert isinstance(result.result, TaskRetriesExhaustedError)
+    assert isinstance(result.result.__cause__, RuntimeError)
+    # One retryable attempt plus the final one; a real failure does not retry forever.
+    assert delete_index.call_count == 2
+    assert "index nodes are orphaned" in caplog.text
+    assert "node-1" in caplog.text
+
+
+def test_disable_segments_waits_for_a_busy_index_lock_beyond_the_bounded_retry_budget() -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLockBusyError("busy"))
+
+    with (
+        patch("tasks.disable_segments_from_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+        patch("tasks.disable_segments_from_index_task._disable_segments_from_index") as disable,
+        patch("tasks.disable_segments_from_index_task.redis_client.delete") as clear_cache,
+    ):
+        result = disable_segments_from_index_task.apply(
+            args=(["segment-1"], "dataset-1", "document-1"),
+            retries=500,
+            throw=False,
+        )
+
+    assert result.state == "SUCCESS"
+    assert locks.attempts == 2
+    disable.assert_called_once()
+    clear_cache.assert_called_once_with("segment_segment-1_indexing")
+
+
+@pytest.mark.parametrize(("retries", "exhausted"), [(0, False), (SEGMENT_INDEX_MAX_RETRIES, True)])
+def test_disable_segments_clears_indexing_flags_only_on_its_final_attempt(retries: int, exhausted: bool) -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLeaseLostError("lost"))
+    expected_error = TaskRetriesExhaustedError if exhausted else KnowledgeIndexingLeaseLostError
+
+    disable_segments_from_index_task.push_request(retries=retries)
+    try:
+        with (
+            patch("tasks.disable_segments_from_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+            patch("tasks.disable_segments_from_index_task.redis_client.delete") as clear_cache,
+            pytest.raises(expected_error),
+        ):
+            disable_segments_from_index_task.run(["segment-1"], "dataset-1", "document-1")
+    finally:
+        disable_segments_from_index_task.pop_request()
+
+    assert [call.args[0] for call in clear_cache.call_args_list] == (
+        ["segment_segment-1_indexing"] if exhausted else []
+    )
+
+
+def test_disable_segments_clears_indexing_flags_when_a_stale_delivery_is_skipped(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+) -> None:
+    dataset, document, segment = indexed_segment
+
+    with (
+        patch("tasks.disable_segments_from_index_task.RedisKnowledgeIndexingLock", return_value=_ScriptedLocks()),
+        patch("tasks.disable_segments_from_index_task.redis_client.delete") as clear_cache,
+    ):
+        # The segment is still enabled, so this late disable has nothing to do.
+        disable_segments_from_index_task.run([segment.id], dataset.id, document.id)
+
+    clear_cache.assert_called_once_with(f"segment_{segment.id}_indexing")

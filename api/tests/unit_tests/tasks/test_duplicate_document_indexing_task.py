@@ -9,6 +9,7 @@ from typing import override
 from uuid import uuid4
 
 import pytest
+from celery import Task
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -21,6 +22,7 @@ from services.knowledge.entities.resource_scope import DatasetRef, DocumentRef
 from services.knowledge.indexing.locks import (
     KnowledgeIndexingLease,
     KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
 from tasks.duplicate_document_indexing_task import (
@@ -270,6 +272,7 @@ def test_queue_wrapper_runs_current_work_and_dispatches_waiting_work(
         dataset_id,
         document_ids,
         task,
+        final_attempt=False,
     )
 
     assert execute_calls == [(dataset_id, document_ids)]
@@ -290,8 +293,15 @@ def test_celery_entrypoints_use_established_three_argument_message(
     calls: list[tuple[str, str, list[str], object]] = []
 
     def delegate(
-        actual_tenant_id: str, actual_dataset_id: str, actual_document_ids: Sequence[str], actual_task: object
+        actual_tenant_id: str,
+        actual_dataset_id: str,
+        actual_document_ids: Sequence[str],
+        actual_task: object,
+        *,
+        final_attempt: bool,
     ) -> None:
+        # A direct run is attempt zero of a bounded retry budget.
+        assert final_attempt is False
         calls.append((actual_tenant_id, actual_dataset_id, list(actual_document_ids), actual_task))
 
     monkeypatch.setattr(
@@ -302,6 +312,143 @@ def test_celery_entrypoints_use_established_three_argument_message(
     task.run(tenant_id, dataset_id, document_ids)  # type: ignore[attr-defined]
 
     assert calls == [(tenant_id, dataset_id, document_ids, task)]
+
+
+@pytest.mark.parametrize("error", [KnowledgeIndexingLockBusyError("busy"), KnowledgeIndexingLeaseLostError("lost")])
+def test_queue_wrapper_keeps_tenant_slot_while_attempt_will_be_retried(
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+    error: Exception,
+) -> None:
+    def execute(_dataset_id: str, _document_ids: Sequence[str]) -> None:
+        raise error
+
+    task = _DelayedTaskStub()
+    queue = _DuplicateQueueStub(
+        pending=[{"tenant_id": tenant_id, "dataset_id": dataset_id, "document_ids": [str(uuid4())]}]
+    )
+    queue_factory = _DuplicateQueueFactory(queue)
+    monkeypatch.setattr("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", execute)
+    monkeypatch.setattr("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", queue_factory)
+
+    with pytest.raises(type(error)):
+        _duplicate_document_indexing_task_with_tenant_queue(
+            tenant_id,
+            dataset_id,
+            document_ids,
+            task,
+            final_attempt=False,
+        )
+
+    # A retried attempt still owns its slot: nothing is pulled, dispatched, or cleared.
+    assert queue_factory.calls == []
+    assert queue.pull_counts == []
+    assert queue.deleted is False
+    assert task.calls == []
+
+
+def test_queue_wrapper_releases_tenant_slot_once_retries_are_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+) -> None:
+    def execute(_dataset_id: str, _document_ids: Sequence[str]) -> None:
+        raise KnowledgeIndexingLockBusyError("busy")
+
+    task = _DelayedTaskStub()
+    queue = _DuplicateQueueStub(pending=[])
+    queue_factory = _DuplicateQueueFactory(queue)
+    monkeypatch.setattr("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", execute)
+    monkeypatch.setattr("tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue", queue_factory)
+
+    with pytest.raises(KnowledgeIndexingLockBusyError):
+        _duplicate_document_indexing_task_with_tenant_queue(
+            tenant_id,
+            dataset_id,
+            document_ids,
+            task,
+            final_attempt=True,
+        )
+
+    assert queue_factory.calls == [(tenant_id, "duplicate_document_indexing")]
+    assert len(queue.pull_counts) == 1
+    assert queue.deleted is True
+
+
+@pytest.mark.parametrize(
+    ("final_attempt", "expected_status"), [(True, IndexingStatus.ERROR), (False, IndexingStatus.WAITING)]
+)
+def test_queue_wrapper_fails_waiting_documents_only_once_retries_are_exhausted(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+    final_attempt: bool,
+    expected_status: IndexingStatus,
+) -> None:
+    _persist_rows(sqlite_session, tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids)
+    # Another worker already advanced the second document; it must never be clobbered.
+    advanced = sqlite_session.get_one(Document, document_ids[1])
+    advanced.indexing_status = IndexingStatus.PARSING
+    sqlite_session.commit()
+
+    def execute(_dataset_id: str, _document_ids: Sequence[str]) -> None:
+        raise KnowledgeIndexingLockBusyError("document index is busy")
+
+    monkeypatch.setattr("tasks.duplicate_document_indexing_task._duplicate_document_indexing_task", execute)
+    monkeypatch.setattr(
+        "tasks.duplicate_document_indexing_task.TenantIsolatedTaskQueue",
+        _DuplicateQueueFactory(_DuplicateQueueStub(pending=[])),
+    )
+
+    with pytest.raises(KnowledgeIndexingLockBusyError):
+        _duplicate_document_indexing_task_with_tenant_queue(
+            tenant_id,
+            dataset_id,
+            document_ids,
+            _DelayedTaskStub(),
+            final_attempt=final_attempt,
+        )
+
+    sqlite_session.expire_all()
+    waiting = sqlite_session.get_one(Document, document_ids[0])
+    assert waiting.indexing_status == expected_status
+    assert (waiting.error == "Document could not be indexed: document index is busy") is final_attempt
+    assert sqlite_session.get_one(Document, document_ids[1]).indexing_status == IndexingStatus.PARSING
+
+
+@pytest.mark.parametrize("task", [normal_duplicate_document_indexing_task, priority_duplicate_document_indexing_task])
+@pytest.mark.parametrize(("retries", "expected_final"), [(9, False), (10, True)])
+def test_celery_entrypoints_report_final_attempt_only_when_retries_are_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: list[str],
+    task: Task[..., None],
+    retries: int,
+    expected_final: bool,
+) -> None:
+    observed: list[bool] = []
+
+    def delegate(*_args: object, final_attempt: bool) -> None:
+        observed.append(final_attempt)
+
+    monkeypatch.setattr(
+        "tasks.duplicate_document_indexing_task._duplicate_document_indexing_task_with_tenant_queue",
+        delegate,
+    )
+
+    task.push_request(retries=retries)
+    try:
+        task.run(tenant_id, dataset_id, document_ids)
+    finally:
+        task.pop_request()
+
+    assert observed == [expected_final]
 
 
 def test_missing_dataset_returns_before_index_processor_lookup(

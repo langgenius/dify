@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
@@ -15,10 +15,17 @@ from repositories.file.upload_file_repository import UploadFileRepository
 from services.file_adapters import build_upload_file_reclaimer, delete_upload_blob
 from services.knowledge.indexing.adapters.redis_lock import RedisKnowledgeIndexingLock
 from services.knowledge.indexing.contracts import PENDING_UPLOAD_CLEANUP_IDS_KEY, pending_upload_cleanup_ids
-from services.knowledge.indexing.locks import KnowledgeIndexingLease, document_index_lock_name
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from tasks.indexing_task_retry import TaskRetriesExhaustedError, is_final_attempt, lock_busy_countdown
 
 logger = logging.getLogger(__name__)
+
+SEGMENT_INDEX_CLEANUP_MAX_RETRIES = 5
 
 
 def _stage_attachment_cleanup(
@@ -108,15 +115,24 @@ def _acknowledge_attachment_cleanup(
 
 
 @shared_task(
+    bind=True,
     queue="dataset",
     autoretry_for=(Exception,),
+    dont_autoretry_for=(TaskRetriesExhaustedError,),
     retry_backoff=True,
-    max_retries=5,
+    # Unbounded for Celery so lock-busy waits never run out; every other
+    # failure is bounded below by SEGMENT_INDEX_CLEANUP_MAX_RETRIES.
+    max_retries=None,
     acks_late=True,
     reject_on_worker_lost=True,
 )
 def delete_segment_from_index_task(
-    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
+    self: Task,
+    index_node_ids: list,
+    dataset_id: str,
+    document_id: str,
+    segment_ids: list,
+    child_node_ids: list | None = None,
 ):
     """
     Async Remove segment from index
@@ -124,19 +140,47 @@ def delete_segment_from_index_task(
     :param dataset_id:
     :param document_id:
 
+    Retry contract: the segment rows are already committed deleted when this
+    message is published, so this task is the only owner of their vectors and
+    keywords. The per-document index lock is also held for the whole of
+    document indexing; a busy lock is therefore waited for without limit
+    (capped backoff). Every other failure shares the bounded
+    ``SEGMENT_INDEX_CLEANUP_MAX_RETRIES`` budget, after which the orphaned
+    index nodes are logged and the task ends with ``TaskRetriesExhaustedError``.
+
     Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
-    locks = RedisKnowledgeIndexingLock(redis=redis_client)
-    with locks.hold(document_index_lock_name(document_id), timeout=600, blocking_timeout=5) as lease:
-        _delete_segment_from_index(
-            index_node_ids,
+    final_attempt = is_final_attempt(self, max_retries=SEGMENT_INDEX_CLEANUP_MAX_RETRIES)
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(document_index_lock_name(document_id), timeout=600, blocking_timeout=5) as lease:
+            _delete_segment_from_index(
+                index_node_ids,
+                dataset_id,
+                document_id,
+                segment_ids,
+                child_node_ids,
+                lease=lease,
+            )
+            lease.assert_owned()
+    except KnowledgeIndexingLockBusyError as error:
+        # Another owner (often document indexing) holds the lock; contention is not a failure.
+        raise self.retry(exc=error, countdown=lock_busy_countdown(self)) from error
+    except Exception as error:
+        if not final_attempt:
+            raise
+        logger.exception(
+            "Segment index cleanup exhausted its retries; index nodes are orphaned: "
+            "dataset_id=%s document_id=%s segment_ids=%s index_node_ids=%s",
             dataset_id,
             document_id,
             segment_ids,
-            child_node_ids,
-            lease=lease,
+            index_node_ids,
         )
-        lease.assert_owned()
+        raise TaskRetriesExhaustedError(
+            f"Segment index cleanup failed after {SEGMENT_INDEX_CLEANUP_MAX_RETRIES} retries, "
+            f"document_id={document_id}: {error}"
+        ) from error
 
 
 def _delete_segment_from_index(

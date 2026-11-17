@@ -381,3 +381,106 @@ def test_retry_batch_requeues_without_processing_a_partial_claim() -> None:
     run_retry.assert_not_called()
     assert exited == [first]
     retry.assert_called_once()
+
+
+def _persist_waiting_retry(sqlite_session: Session, *, generation: datetime) -> Document:
+    tenant_id = str(uuid4())
+    creator_id = str(uuid4())
+    dataset = Dataset(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        name="Exhausted retry dataset",
+        created_by=creator_id,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        indexing_technique=IndexTechniqueType.ECONOMY,
+        chunk_structure=IndexStructureType.PARAGRAPH_INDEX,
+        runtime_mode=DatasetRuntimeMode.GENERAL,
+    )
+    document = Document(
+        id=str(uuid4()),
+        tenant_id=tenant_id,
+        dataset_id=dataset.id,
+        position=1,
+        data_source_type=DataSourceType.UPLOAD_FILE,
+        data_source_info="{}",
+        batch="exhausted-retry-batch",
+        name="Exhausted retry document",
+        created_from=DocumentCreatedFrom.WEB,
+        created_by=creator_id,
+        indexing_status=IndexingStatus.WAITING,
+        processing_started_at=generation,
+        enabled=True,
+        archived=False,
+        doc_form=IndexStructureType.PARAGRAPH_INDEX,
+    )
+    sqlite_session.add_all([dataset, document])
+    sqlite_session.commit()
+    return document
+
+
+def _run_busy_retry_attempt(document: Document, *, retries: int) -> None:
+    indexing_locks = create_autospec(KnowledgeIndexingLock, instance=True, spec_set=True)
+    indexing_locks.hold_handoff.side_effect = KnowledgeIndexingLockBusyError("owned by another worker")
+
+    retry_document_indexing_task.push_request(retries=retries)
+    try:
+        with (
+            patch("tasks.retry_document_indexing_task.RedisKnowledgeIndexingLock", return_value=indexing_locks),
+            patch("tasks.retry_document_indexing_task._run_retry_document_indexing") as run_retry,
+            pytest.raises(KnowledgeIndexingLockBusyError),
+        ):
+            retry_document_indexing_task.run(document.dataset_id, [document.id], "actor-1")
+    finally:
+        retry_document_indexing_task.pop_request()
+    run_retry.assert_not_called()
+
+
+def test_exhausted_retry_marks_its_waiting_generation_error_so_the_user_can_retry_again(
+    sqlite_session: Session,
+) -> None:
+    generation = datetime(2026, 10, 29, 12, 30, 45, 123456)
+    document = _persist_waiting_retry(sqlite_session, generation=generation)
+
+    _run_busy_retry_attempt(document, retries=12)
+
+    # The retry endpoint only accepts documents in error; a stranded WAITING document would be stuck.
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.ERROR
+    assert persisted.error == "Document retry could not be indexed: owned by another worker"
+    assert persisted.stopped_at is not None
+
+
+def test_retry_keeps_its_waiting_generation_while_the_message_will_be_requeued(
+    sqlite_session: Session,
+) -> None:
+    generation = datetime(2026, 10, 29, 12, 30, 45, 123456)
+    document = _persist_waiting_retry(sqlite_session, generation=generation)
+
+    _run_busy_retry_attempt(document, retries=11)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.WAITING
+    assert persisted.error is None
+
+
+def test_exhausted_retry_does_not_fail_a_newer_generation_admitted_after_its_snapshot(
+    sqlite_session: Session,
+) -> None:
+    stale_generation = datetime(2026, 10, 29, 12, 30, 45, 123456)
+    newer_generation = datetime(2026, 10, 29, 13, 0, 0)
+    document = _persist_waiting_retry(sqlite_session, generation=newer_generation)
+
+    # This wake-up snapshotted an older generation before a later retry request replaced it.
+    with patch(
+        "tasks.retry_document_indexing_task._active_retry_generations",
+        return_value={document.id: stale_generation},
+    ):
+        _run_busy_retry_attempt(document, retries=12)
+
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.WAITING
+    assert persisted.processing_started_at == newer_generation
+    assert persisted.error is None

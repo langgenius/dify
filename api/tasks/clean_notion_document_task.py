@@ -12,7 +12,13 @@ from models.dataset import Dataset, Document
 from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.knowledge.indexing.adapters.cleanup import document_cleanup_batches, hold_document_cleanup_locks
 from services.knowledge.indexing.locks import KnowledgeIndexingLockBusyError
-from tasks.clean_document_task import _clean_documents, _resolve_tenant_id
+from tasks.clean_document_task import (
+    DOCUMENT_CLEANUP_MAX_RETRIES,
+    _clean_documents,
+    _resolve_tenant_id,
+    document_cleanup_retries_exhausted,
+)
+from tasks.indexing_task_retry import TaskRetriesExhaustedError, is_final_attempt
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +62,7 @@ def _prepare_legacy_notion_cleanup(
     autoretry_for=(Exception,),
     retry_backoff=True,
     max_retries=None,
-    dont_autoretry_for=(ValueError,),
+    dont_autoretry_for=(ValueError, TaskRetriesExhaustedError),
     acks_late=True,
     reject_on_worker_lost=True,
 )
@@ -65,7 +71,12 @@ def clean_notion_document_task(
     document_ids: list[str],
     dataset_id: str,
 ) -> None:
-    """Clean removed Notion documents using the original two-field message."""
+    """Clean removed Notion documents using the original two-field message.
+
+    Shares ``clean_document_task``'s retry contract: unbounded waits for a busy
+    index lock, a bounded budget for every other error, and relational cleanup
+    that still runs once index cleanup has failed terminally.
+    """
 
     unique_document_ids = tuple(dict.fromkeys(document_ids))
     if not unique_document_ids:
@@ -79,6 +90,7 @@ def clean_notion_document_task(
         file_ids=(),
     )
 
+    final_attempt = is_final_attempt(self, max_retries=DOCUMENT_CLEANUP_MAX_RETRIES)
     try:
         for batch in document_cleanup_batches(unique_document_ids):
             with hold_document_cleanup_locks(batch) as leases:
@@ -93,9 +105,16 @@ def clean_notion_document_task(
                     doc_form=doc_form,
                     file_ids=(),
                     owned_leases=leases,
+                    final_attempt=final_attempt,
                 )
     except KnowledgeIndexingLockBusyError as error:
         raise self.retry(exc=error, countdown=60, max_retries=None) from error
+    except ValueError:
+        raise
+    except Exception as error:
+        if final_attempt:
+            raise document_cleanup_retries_exhausted(error, dataset_id=dataset_id) from error
+        raise
 
     logger.info(
         click.style(

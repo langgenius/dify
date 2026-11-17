@@ -435,10 +435,12 @@ def test_app_cleanup_retries_remaining_model_configs_after_a_real_delete_failure
     finally:
         event.remove(engine, "before_cursor_execute", fail_model_config_delete)
 
+    # Only the failing record survives: the other record is still deleted in the
+    # same attempt whether it was selected before or after the failure.
     with sqlite_session_factory() as session:
         assert (
             session.scalar(select(func.count()).select_from(AppModelConfig).where(AppModelConfig.app_id == "app-1"))
-            == 3 - failed_delete_number
+            == 1
         )
 
     remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
@@ -452,6 +454,157 @@ def test_app_cleanup_retries_remaining_model_configs_after_a_real_delete_failure
             session.scalar(select(func.count()).select_from(AppModelConfig).where(AppModelConfig.app_id == "other-app"))
             == 1
         )
+
+
+def _isolate_cleanup_steps(monkeypatch: pytest.MonkeyPatch, events: list[str]) -> None:
+    """Replace every cleanup owner with a recorder so only step orchestration is exercised."""
+
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
+    for name in tuple(vars(remove_app_task_module)):
+        if (name.startswith("_delete_") and name != "_delete_records") or name in {
+            "cleanup_app_storage",
+            "cleanup_app_uploads",
+        }:
+
+            def record(*_args: object, _name: str = name, **_kwargs: object) -> None:
+                events.append(_name)
+
+            monkeypatch.setattr(remove_app_task_module, name, record)
+
+
+def test_app_cleanup_runs_every_later_step_after_one_step_fails(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    _isolate_cleanup_steps(monkeypatch, events)
+
+    def fail_site(*_args: object) -> None:
+        events.append("_delete_app_site")
+        raise RuntimeError("site row is locked")
+
+    def fail_triggers(*_args: object) -> None:
+        events.append("_delete_app_triggers")
+        raise RuntimeError("trigger row is locked")
+
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_site", fail_site)
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_triggers", fail_triggers)
+
+    with pytest.raises(remove_app_task_module.AppCleanupIncompleteError) as raised:
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    # One failure must not strand the steps after it; both failures are reported once.
+    assert raised.value.failures == ("site: site row is locked", "app triggers: trigger row is locked")
+    for later_step in (
+        "_delete_app_conversations",
+        "_delete_app_messages",
+        "_delete_app_triggers",
+        "_delete_workflow_trigger_logs",
+        "cleanup_app_uploads",
+    ):
+        assert later_step in events
+    assert events.index("_delete_app_site") < events.index("_delete_app_messages")
+    # EndUser rows rediscover App-owned uploads; an incomplete attempt keeps them for its retry.
+    assert "_delete_end_users" not in events
+
+
+def test_app_cleanup_keeps_storage_evidence_rows_while_storage_cleanup_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    _isolate_cleanup_steps(monkeypatch, events)
+
+    def fail_storage(*_args: object) -> None:
+        raise RuntimeError("object storage unavailable")
+
+    monkeypatch.setattr(remove_app_task_module, "cleanup_app_storage", fail_storage)
+
+    with pytest.raises(remove_app_task_module.AppCleanupIncompleteError, match="object storage unavailable"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    for evidence_step in (
+        "_delete_app_workflows",
+        "_delete_app_workflow_node_executions",
+        "_delete_app_workflow_runs",
+        "_delete_app_conversations",
+        "_delete_app_messages",
+        "_delete_end_users",
+    ):
+        assert evidence_step not in events
+    for independent_step in ("_delete_app_model_configs", "_delete_app_triggers", "_delete_workflow_trigger_logs"):
+        assert independent_step in events
+
+
+def test_app_cleanup_retries_through_celery_with_the_failure_summary(monkeypatch: pytest.MonkeyPatch) -> None:
+    events: list[str] = []
+    _isolate_cleanup_steps(monkeypatch, events)
+
+    def fail_messages(*_args: object) -> None:
+        raise RuntimeError("message row is locked")
+
+    monkeypatch.setattr(remove_app_task_module, "_delete_app_messages", fail_messages)
+    retry_error = RuntimeError("retry scheduled")
+    retry_calls: list[tuple[Exception, int]] = []
+
+    def retry(*, exc: Exception, countdown: int) -> None:
+        retry_calls.append((exc, countdown))
+        raise retry_error
+
+    monkeypatch.setattr(remove_app_task_module.remove_app_and_related_data_task, "retry", retry)
+
+    with pytest.raises(RuntimeError, match="retry scheduled"):
+        remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    assert len(retry_calls) == 1
+    error, countdown = retry_calls[0]
+    assert isinstance(error, remove_app_task_module.AppCleanupIncompleteError)
+    assert error.failures == ("messages: message row is locked",)
+    assert countdown == 60
+
+
+def test_app_cleanup_completes_and_removes_end_users_when_every_step_succeeds(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    events: list[str] = []
+    _isolate_cleanup_steps(monkeypatch, events)
+
+    remove_app_task_module.remove_app_and_related_data_task.run(tenant_id="tenant-1", app_id="app-1")
+
+    assert events[0] == "cleanup_app_storage"
+    assert events[-2:] == ["cleanup_app_uploads", "_delete_end_users"]
+
+
+@pytest.mark.parametrize("sqlite_session", [(AppStar,)], indirect=True)
+def test_delete_records_skips_a_persistently_failing_record_without_looping(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    stars = [AppStar(tenant_id="tenant-1", app_id="app-1", account_id=f"account-{index}") for index in range(3)]
+    sqlite_session.add_all(stars)
+    sqlite_session.commit()
+    poisoned_id = stars[0].id
+    monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", sqlite_session_factory)
+    attempts: list[str] = []
+
+    def delete_star(session: Session, star_id: str) -> None:
+        attempts.append(star_id)
+        if star_id == poisoned_id:
+            raise RuntimeError("star row is locked")
+        star = session.get(AppStar, star_id)
+        assert star is not None
+        session.delete(star)
+
+    with pytest.raises(remove_app_task_module.AppCleanupIncompleteError) as raised:
+        remove_app_task_module._delete_records(
+            "select id from app_stars where app_id=:app_id limit 1000",
+            {"app_id": "app-1"},
+            delete_star,
+            "app star",
+        )
+
+    assert raised.value.failures == (f"app star {poisoned_id}: star row is locked",)
+    # The poisoned record is re-selected by the next batch query but attempted only once.
+    assert attempts.count(poisoned_id) == 1
+    sqlite_session.expire_all()
+    assert [star.id for star in sqlite_session.scalars(select(AppStar))] == [poisoned_id]
 
 
 class TestDeleteDraftVariablesBatch:
@@ -636,6 +789,69 @@ class TestDeleteDraftVariableOffloadData:
             assert session.get(WorkflowDraftVariableFile, variable_file.id) is None
             assert session.get(UploadFile, upload.id) is None
         assert cleanup_storage.deleted == [upload.key, upload.key]
+
+    def test_one_failing_blob_does_not_block_other_draft_variables(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        app = make_app(app_id="app-1", tenant_id="tenant-1")
+        rows: list[tuple[UploadFile, WorkflowDraftVariableFile, WorkflowDraftVariable]] = []
+        for index in range(3):
+            upload = make_upload_file(file_id=f"upload-{index}", tenant_id="tenant-1", key=f"draft/offload-{index}")
+            variable_file = WorkflowDraftVariableFile(
+                tenant_id="tenant-1",
+                app_id=app.id,
+                user_id="account-1",
+                upload_file_id=upload.id,
+                size=128,
+                length=8,
+                value_type=SegmentType.STRING,
+            )
+            variable = WorkflowDraftVariable.new_node_variable(
+                app_id=app.id,
+                user_id="account-1",
+                node_id=f"node-{index}",
+                name="result",
+                value=StringSegment(value="truncated"),
+                node_execution_id=f"execution-{index}",
+                file_id=variable_file.id,
+            )
+            rows.append((upload, variable_file, variable))
+        with sqlite_session_factory.begin() as session:
+            session.add(app)
+            for upload, variable_file, variable in rows:
+                session.add_all([upload, variable_file, variable])
+
+        class _PoisonedStorage:
+            def __init__(self) -> None:
+                self.deleted: list[str] = []
+
+            def delete(self, key: str) -> None:
+                self.deleted.append(key)
+                if key == "draft/offload-1":
+                    raise RuntimeError("storage unavailable")
+
+        cleanup_storage = _PoisonedStorage()
+        monkeypatch.setattr(remove_app_task_module.session_factory, "create_session", sqlite_session_factory)
+        monkeypatch.setattr("extensions.ext_storage.storage", cleanup_storage)
+
+        # batch_size=1 re-queries after every variable: a retained variable must not be selected forever.
+        with pytest.raises(remove_app_task_module.AppCleanupIncompleteError, match="storage unavailable") as raised:
+            delete_draft_variables_batch(app.id, batch_size=1)
+
+        poisoned_upload, poisoned_file, poisoned_variable = rows[1]
+        assert raised.value.failures == (f"draft variable offload file {poisoned_file.id}: storage unavailable",)
+        assert sorted(cleanup_storage.deleted) == ["draft/offload-0", "draft/offload-1", "draft/offload-2"]
+        with sqlite_session_factory() as session:
+            # The failing blob keeps all three of its rows as retry evidence.
+            assert session.get(WorkflowDraftVariable, poisoned_variable.id) is not None
+            assert session.get(WorkflowDraftVariableFile, poisoned_file.id) is not None
+            assert session.get(UploadFile, poisoned_upload.id) is not None
+            for upload, variable_file, variable in (rows[0], rows[2]):
+                assert session.get(WorkflowDraftVariable, variable.id) is None
+                assert session.get(WorkflowDraftVariableFile, variable_file.id) is None
+                assert session.get(UploadFile, upload.id) is None
 
 
 class TestDeleteDraftVariablesBatchTransactionScope:
@@ -850,6 +1066,22 @@ class TestDeleteArchivedWorkflowRunFiles:
             _delete_archived_workflow_run_files("tenant-1", "app-1")
 
         assert storage.deleted == ["key-1", "key-2"]
+
+    @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
+    def test_delete_archived_workflow_run_files_continues_after_a_failed_object(
+        self, mock_get_storage: MagicMock
+    ) -> None:
+        storage = _ArchiveStorage(
+            keys=["key-1", "key-2", "key-3"],
+            delete_failures=[RuntimeError("archive delete failed"), None, None],
+        )
+        mock_get_storage.return_value = storage
+
+        with pytest.raises(remove_app_task_module.AppCleanupIncompleteError) as raised:
+            _delete_archived_workflow_run_files("tenant-1", "app-1")
+
+        assert storage.deleted == ["key-1", "key-2", "key-3"]
+        assert raised.value.failures == ("archive object key-1: archive delete failed",)
 
     @patch("tasks.remove_app_and_related_data_task.get_archive_storage")
     def test_delete_archived_workflow_run_files_success(

@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import select, update
 
@@ -19,36 +19,73 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    TaskRetriesExhaustedError,
+    clear_segment_indexing_cache,
+    is_final_attempt,
+    lock_busy_countdown,
+)
 
 logger = logging.getLogger(__name__)
 
+SEGMENT_INDEX_MAX_RETRIES = 5
+
 
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=(KnowledgeIndexingLeaseLostError, RedisError),
     retry_backoff=True,
-    max_retries=5,
+    # Unbounded for Celery so lock-busy waits never run out; lease loss and
+    # Redis errors are bounded below by SEGMENT_INDEX_MAX_RETRIES.
+    max_retries=None,
     acks_late=True,
     reject_on_worker_lost=True,
 )
-def disable_segments_from_index_task(segment_ids: list, dataset_id: str, document_id: str):
+def disable_segments_from_index_task(self: Task, segment_ids: list, dataset_id: str, document_id: str):
     """
     Async disable segments from index
     :param segment_ids: list of segment ids
     :param dataset_id: dataset id
     :param document_id: document id
 
+    Retry contract: the per-document index lock is also held for the whole of
+    document indexing, so a busy lock is waited for without limit (capped
+    backoff) instead of leaving disabled segments searchable. Lease loss and
+    Redis errors keep a bounded budget of ``SEGMENT_INDEX_MAX_RETRIES`` and end
+    with ``TaskRetriesExhaustedError``.
+    Postcondition: every terminal exit, successful or not, clears the
+    ``segment_{id}_indexing`` flag of each requested segment; an attempt that
+    will be retried keeps them.
+
     Usage: disable_segments_from_index_task.delay(segment_ids, dataset_id, document_id)
     """
-    locks = RedisKnowledgeIndexingLock(redis=redis_client)
-    with locks.hold(document_index_lock_name(document_id), timeout=600, blocking_timeout=5) as lease:
-        processed_ids = _disable_segments_from_index(segment_ids, dataset_id, document_id, lease=lease)
-        lease.assert_owned()
-        for segment_id in processed_ids:
-            try:
-                redis_client.delete(f"segment_{segment_id}_indexing")
-            except Exception:
-                logger.warning("Failed to clear indexing cache for segment %s", segment_id, exc_info=True)
+    final_attempt = is_final_attempt(self, max_retries=SEGMENT_INDEX_MAX_RETRIES)
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(document_index_lock_name(document_id), timeout=600, blocking_timeout=5) as lease:
+            _disable_segments_from_index(segment_ids, dataset_id, document_id, lease=lease)
+            lease.assert_owned()
+    except KnowledgeIndexingLockBusyError as error:
+        # Another owner (often document indexing) holds the lock; contention is not a failure.
+        raise self.retry(exc=error, countdown=lock_busy_countdown(self)) from error
+    except (KnowledgeIndexingLeaseLostError, RedisError) as error:
+        if not final_attempt:
+            raise
+        logger.exception(
+            "Segment disable exhausted its retries: dataset_id=%s document_id=%s segment_ids=%s",
+            dataset_id,
+            document_id,
+            segment_ids,
+        )
+        clear_segment_indexing_cache(redis_client, segment_ids)
+        raise TaskRetriesExhaustedError(
+            f"Segment disable failed after {SEGMENT_INDEX_MAX_RETRIES} retries, document_id={document_id}: {error}"
+        ) from error
+    except Exception:
+        clear_segment_indexing_cache(redis_client, segment_ids)
+        raise
+    clear_segment_indexing_cache(redis_client, segment_ids)
 
 
 def _disable_segments_from_index(

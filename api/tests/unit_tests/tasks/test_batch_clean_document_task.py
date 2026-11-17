@@ -21,6 +21,7 @@ def test_batch_cleanup_delegates_once_with_original_task_contract(monkeypatch: p
             "dataset_id": "dataset-1",
             "doc_form": "text_model",
             "file_ids": ["file-1", "file-2"],
+            "final_attempt": False,
         }
     ]
     assert batch_clean_document_task.acks_late is True

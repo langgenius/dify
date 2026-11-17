@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from uuid import uuid4
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import delete, select
 
@@ -29,12 +29,18 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    is_terminal_failure,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 _SYNC_LEASE_TIMEOUT_SECONDS = 600
 _SYNC_WORKER_TOKEN_PREFIX = "website-worker:"
 _SYNC_LEASE_RETRY_SECONDS = 60
 _SYNC_LEASE_MAX_RETRIES = 12
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
 _SYNC_ACTIVE_STATUSES = (
     IndexingStatus.WAITING,
     IndexingStatus.PARSING,
@@ -110,15 +116,31 @@ def _hold_document_indexing_lease(document_id: str) -> Generator[KnowledgeIndexi
         yield lease
 
 
+def _fail_unstarted_sync(document_id: str, error: Exception) -> None:
+    """Fail a website sync that never left the ``waiting`` state its request persisted."""
+
+    message = f"Website sync could not be indexed: {error}"
+    resolve_documents_after_terminal_failure(
+        [document_id],
+        still_owned=lambda document: (
+            document.data_source_type == DataSourceType.WEBSITE_CRAWL
+            and document.indexing_status == IndexingStatus.WAITING
+        ),
+        resolve=lambda document: mark_document_indexing_error(document, message),
+    )
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     max_retries=_SYNC_LEASE_MAX_RETRIES,
     default_retry_delay=_SYNC_LEASE_RETRY_SECONDS,
     acks_late=True,
     reject_on_worker_lost=True,
 )
 def sync_website_document_indexing_task(
+    self: Task,
     dataset_id: str,
     document_id: str,
 ):
@@ -127,8 +149,27 @@ def sync_website_document_indexing_task(
     :param dataset_id:
     :param document_id:
 
+    Postcondition: when the task ends without having started the sync
+    (retries exhausted, or a non-retryable error), a document still in the
+    ``waiting`` state its sync request persisted is moved to ``error`` so the
+    user can retry it. A document any worker has already advanced is left
+    untouched.
+
     Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
     """
+    try:
+        _sync_website_document(dataset_id, document_id)
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Website sync indexing failed terminally: dataset_id=%s document_id=%s", dataset_id, document_id
+            )
+            _fail_unstarted_sync(document_id, error)
+        raise
+
+
+def _sync_website_document(dataset_id: str, document_id: str) -> None:
+    """Run one website sync attempt; retryable lock and Redis errors propagate."""
     start_at = time.perf_counter()
 
     # Every production sync request persists WAITING before dispatch. A late-ack

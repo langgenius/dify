@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import select
 
@@ -24,31 +24,65 @@ from services.knowledge.indexing.locks import (
     document_index_lock_name,
 )
 from tasks.generate_summary_index_task import generate_summary_index_task
+from tasks.indexing_task_retry import (
+    is_terminal_failure,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def document_indexing_update_task(dataset_id: str, document_id: str) -> None:
+def document_indexing_update_task(self: Task, dataset_id: str, document_id: str) -> None:
     """
     Async update document
     :param dataset_id:
     :param document_id:
 
+    Postcondition: when the task ends without having started the update
+    (retries exhausted, or a non-retryable error), a document still in the
+    ``waiting`` state its update request persisted is moved to ``error`` so
+    the user can retry it. A document any worker has already advanced is left
+    untouched.
+
     Usage: document_indexing_update_task.delay(dataset_id, document_id)
     """
-    locks = RedisKnowledgeIndexingLock(redis=redis_client)
-    with locks.hold(
-        document_index_lock_name(document_id),
-        timeout=600,
-        blocking_timeout=5,
-    ) as lease:
-        _run_document_indexing_update_task(dataset_id, document_id, lease=lease)
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(
+            document_index_lock_name(document_id),
+            timeout=600,
+            blocking_timeout=5,
+        ) as lease:
+            _run_document_indexing_update_task(dataset_id, document_id, lease=lease)
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Document update indexing failed terminally: dataset_id=%s document_id=%s", dataset_id, document_id
+            )
+            _fail_unstarted_update(document_id, error)
+        raise
+
+
+def _fail_unstarted_update(document_id: str, error: Exception) -> None:
+    """Fail an update that never left the ``waiting`` state its request persisted."""
+
+    message = f"Document update could not be indexed: {error}"
+    resolve_documents_after_terminal_failure(
+        [document_id],
+        still_owned=lambda document: document.indexing_status == IndexingStatus.WAITING,
+        resolve=lambda document: mark_document_indexing_error(document, message),
+    )
 
 
 def _run_document_indexing_update_task(

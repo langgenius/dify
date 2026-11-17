@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import delete, select, update
 
@@ -28,35 +28,76 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    clear_document_indexing_cache,
+    is_terminal_failure,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def add_document_to_index_task(dataset_document_id: str):
+def add_document_to_index_task(self: Task, dataset_document_id: str):
     """
     Async Add document to index
     :param dataset_document_id:
 
+    Postconditions: every terminal exit clears ``document_{id}_indexing``; an
+    attempt that will be retried keeps it. When the task ends without having
+    loaded the index (retries exhausted, or a non-retryable error), a document
+    that still asks to be indexed is moved to the same disabled ``error`` state
+    as a failed load, so the user can retry it instead of seeing an enabled
+    document that is missing from the index.
+
     Usage: add_document_to_index_task.delay(dataset_document_id)
     """
-    locks = RedisKnowledgeIndexingLock(redis=redis_client)
-    with locks.hold(
-        document_index_lock_name(dataset_document_id),
-        timeout=600,
-        blocking_timeout=5,
-    ) as lease:
-        _add_document_to_index(dataset_document_id, lease=lease)
-        lease.assert_owned()
-        try:
-            redis_client.delete(f"document_{dataset_document_id}_indexing")
-        except Exception:
-            logger.warning("Failed to clear indexing cache for document %s", dataset_document_id, exc_info=True)
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(
+            document_index_lock_name(dataset_document_id),
+            timeout=600,
+            blocking_timeout=5,
+        ) as lease:
+            _add_document_to_index(dataset_document_id, lease=lease)
+            lease.assert_owned()
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception("Add document to index failed terminally: document_id=%s", dataset_document_id)
+            _resolve_unindexed_document(dataset_document_id, error)
+            clear_document_indexing_cache(redis_client, dataset_document_id)
+        raise
+    clear_document_indexing_cache(redis_client, dataset_document_id)
+
+
+def _resolve_unindexed_document(dataset_document_id: str, error: Exception) -> None:
+    """Record a terminal failure on a document that is still enabled but was never indexed."""
+
+    message = f"Document could not be added to the index: {error}"
+
+    def still_requires_add(document: DatasetDocument) -> bool:
+        return document.indexing_status == IndexingStatus.COMPLETED and bool(document.enabled) and not document.archived
+
+    def disable_with_error(document: DatasetDocument) -> None:
+        document.enabled = False
+        document.disabled_at = naive_utc_now()
+        mark_document_indexing_error(document, message)
+
+    resolve_documents_after_terminal_failure(
+        [dataset_document_id],
+        still_owned=still_requires_add,
+        resolve=disable_with_error,
+    )
 
 
 def _add_document_to_index(dataset_document_id: str, *, lease: KnowledgeIndexingLease) -> None:

@@ -9,6 +9,7 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
+from celery import Task
 from celery.exceptions import Retry
 from redis.exceptions import RedisError
 from sqlalchemy.orm import Session, sessionmaker
@@ -17,7 +18,11 @@ from core.db import session_factory as session_factory_module
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
-from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, document_index_lock_name
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+    document_index_lock_name,
+)
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from tasks import add_document_to_index_task as add_task_module
 from tasks import remove_document_from_index_task as remove_task_module
@@ -77,6 +82,21 @@ class RedisAcquireFailureLocks:
     ) -> Generator[RecordingLease]:
         del timeout, expected_token, blocking_timeout
         raise RedisError("redis unavailable")
+        yield RecordingLease()
+
+
+class BusyLocks:
+    @contextmanager
+    def hold(
+        self,
+        _name: str,
+        *,
+        timeout: int,
+        expected_token: str | None = None,
+        blocking_timeout: float = 0,
+    ) -> Generator[RecordingLease]:
+        del timeout, expected_token, blocking_timeout
+        raise KnowledgeIndexingLockBusyError("document index is busy")
         yield RecordingLease()
 
 
@@ -262,3 +282,111 @@ def test_status_worker_cache_clear_failure_does_not_retry_completed_work(
     add_task_module.add_document_to_index_task(document.id)
 
     assert locks.names == [document_index_lock_name(document.id)]
+
+
+def _run_with_retries(task: "Task[..., None]", document_id: str, *, retries: int) -> None:
+    """Run one attempt as Celery would after ``retries`` earlier attempts."""
+
+    task.push_request(retries=retries)
+    try:
+        with pytest.raises(KnowledgeIndexingLockBusyError):
+            task.run(document_id)
+    finally:
+        task.pop_request()
+
+
+def test_add_task_resolves_enabled_document_when_lock_busy_retries_are_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    document, _segment = _persist_document(sqlite_session, enabled=True, archived=False, segment_enabled=False)
+    redis = RecordingRedis()
+    monkeypatch.setattr(add_task_module, "RedisKnowledgeIndexingLock", lambda **_kwargs: BusyLocks())
+    monkeypatch.setattr(add_task_module, "redis_client", redis)
+    task = add_task_module.add_document_to_index_task
+
+    _run_with_retries(task, document.id, retries=10)
+
+    # The document was enabled in the database but never loaded: surface it as a retryable error.
+    assert task.max_retries == 10
+    assert redis.deleted == [f"document_{document.id}_indexing"]
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.ERROR
+    assert persisted.enabled is False
+    assert persisted.disabled_at is not None
+    assert persisted.stopped_at is not None
+    assert persisted.error == "Document could not be added to the index: document index is busy"
+
+
+def test_add_task_leaves_document_and_cache_alone_while_lock_busy_will_be_retried(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    document, _segment = _persist_document(sqlite_session, enabled=True, archived=False, segment_enabled=False)
+    redis = RecordingRedis()
+    monkeypatch.setattr(add_task_module, "RedisKnowledgeIndexingLock", lambda **_kwargs: BusyLocks())
+    monkeypatch.setattr(add_task_module, "redis_client", redis)
+
+    _run_with_retries(add_task_module.add_document_to_index_task, document.id, retries=9)
+
+    assert redis.deleted == []
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.COMPLETED
+    assert persisted.enabled is True
+    assert persisted.error is None
+
+
+def test_add_task_does_not_clobber_document_that_no_longer_requires_indexing(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    # The user disabled the document again while this add task was still retrying.
+    document, _segment = _persist_document(sqlite_session, enabled=False, archived=False, segment_enabled=False)
+    redis = RecordingRedis()
+    monkeypatch.setattr(add_task_module, "RedisKnowledgeIndexingLock", lambda **_kwargs: BusyLocks())
+    monkeypatch.setattr(add_task_module, "redis_client", redis)
+
+    _run_with_retries(add_task_module.add_document_to_index_task, document.id, retries=10)
+
+    assert redis.deleted == [f"document_{document.id}_indexing"]
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == IndexingStatus.COMPLETED
+    assert persisted.enabled is False
+    assert persisted.error is None
+
+
+@pytest.mark.parametrize(
+    ("archived", "retries", "expected_enabled", "expected_cache_clear"),
+    [
+        # Exhausted: the disable never reached the index, so the database is restored to match it.
+        (False, 10, True, True),
+        # Still retryable: the pending disable and its cache flag stay in place.
+        (False, 9, False, False),
+        # An archived document stays archived, exactly as after a failed removal.
+        (True, 10, False, True),
+    ],
+)
+def test_remove_task_restores_disabled_document_only_when_lock_busy_retries_are_exhausted(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    archived: bool,
+    retries: int,
+    expected_enabled: bool,
+    expected_cache_clear: bool,
+) -> None:
+    document, _segment = _persist_document(sqlite_session, enabled=False, archived=archived, segment_enabled=True)
+    redis = RecordingRedis()
+    monkeypatch.setattr(remove_task_module, "RedisKnowledgeIndexingLock", lambda **_kwargs: BusyLocks())
+    monkeypatch.setattr(remove_task_module, "redis_client", redis)
+
+    _run_with_retries(remove_task_module.remove_document_from_index_task, document.id, retries=retries)
+
+    assert redis.deleted == ([f"document_{document.id}_indexing"] if expected_cache_clear else [])
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.enabled is expected_enabled
+    assert persisted.archived is archived
+    assert persisted.indexing_status == IndexingStatus.COMPLETED

@@ -4,7 +4,7 @@ from collections.abc import Callable, Sequence
 from contextlib import ExitStack
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import delete, select
 
@@ -29,17 +29,41 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    is_final_attempt,
+    mark_document_indexing_error,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
+def _fail_unstarted_duplicates(document_ids: Sequence[str], error: Exception) -> None:
+    """Fail duplicate-indexing documents that never left the ``waiting`` state their request persisted.
+
+    Called only once the batch will not be attempted again, so a document that
+    no worker advanced becomes retryable by the user instead of waiting forever.
+    """
+
+    message = f"Document could not be indexed: {error}"
+    resolve_documents_after_terminal_failure(
+        document_ids,
+        still_owned=lambda document: document.indexing_status == IndexingStatus.WAITING,
+        resolve=lambda document: mark_document_indexing_error(document, message),
+    )
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
+def duplicate_document_indexing_task(self: Task, dataset_id: str, document_ids: list):
     """
     Async process document
     :param dataset_id:
@@ -52,15 +76,46 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     Usage: duplicate_document_indexing_task.delay(dataset_id, document_ids)
     """
     logger.warning("duplicate document indexing task received: %s - %s", dataset_id, document_ids)
-    _duplicate_document_indexing_task(dataset_id, document_ids)
+    try:
+        _duplicate_document_indexing_task(dataset_id, document_ids)
+    except _RETRYABLE_ERRORS as error:
+        if is_final_attempt(self, max_retries=self.max_retries):
+            _fail_unstarted_duplicates(document_ids, error)
+        raise
 
 
 def _duplicate_document_indexing_task_with_tenant_queue(
-    tenant_id: str, dataset_id: str, document_ids: Sequence[str], task_func: Callable[[str, str, Sequence[str]], None]
-):
+    tenant_id: str,
+    dataset_id: str,
+    document_ids: Sequence[str],
+    task_func: Callable[[str, str, Sequence[str]], None],
+    *,
+    final_attempt: bool,
+) -> None:
+    """Run one duplicate-indexing batch and release its tenant queue slot once.
+
+    Precondition: ``final_attempt`` is ``True`` exactly when Celery will not
+    retry this attempt after a lock-busy, lease-lost, or Redis error.
+    Postcondition: the tenant-isolated queue hand-off runs on success and on
+    terminal failure, and never on an attempt that will be retried, so one
+    batch occupies exactly one concurrency slot across all of its retries.
+    On terminal failure, documents still ``waiting`` are moved to ``error``.
+    Failure behavior: retryable errors always propagate to Celery.
+    """
     try:
         _duplicate_document_indexing_task(dataset_id, document_ids)
-    except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError):
+    except _RETRYABLE_ERRORS as error:
+        if not final_attempt:
+            # Retain the tenant's queue slot until this batch has actually finished.
+            raise
+        logger.exception(
+            "Duplicate document indexing exhausted its retries: tenant_id=%s dataset_id=%s document_ids=%s",
+            tenant_id,
+            dataset_id,
+            document_ids,
+        )
+        _fail_unstarted_duplicates(document_ids, error)
+        _hand_off_tenant_queue_slot(tenant_id, task_func)
         raise
     except Exception:
         logger.exception(
@@ -70,29 +125,36 @@ def _duplicate_document_indexing_task_with_tenant_queue(
             document_ids,
             exc_info=True,
         )
-    finally:
-        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "duplicate_document_indexing")
+    _hand_off_tenant_queue_slot(tenant_id, task_func)
 
-        # Check if there are waiting tasks in the queue
-        # Use rpop to get the next task from the queue (FIFO order)
-        next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
-        logger.info("duplicate document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
+def _hand_off_tenant_queue_slot(
+    tenant_id: str,
+    task_func: Callable[[str, str, Sequence[str]], None],
+) -> None:
+    """Dispatch the tenant's next waiting batches, or clear the running flag when none wait."""
+    tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "duplicate_document_indexing")
 
-        if next_tasks:
-            for next_task in next_tasks:
-                document_task = DocumentTask(**next_task)
-                # Process the next waiting task
-                # Keep the flag set to indicate a task is running
-                tenant_isolated_task_queue.set_task_waiting_time()
-                task_func.delay(  # type: ignore
-                    tenant_id=document_task.tenant_id,
-                    dataset_id=document_task.dataset_id,
-                    document_ids=document_task.document_ids,
-                )
-        else:
-            # No more waiting tasks, clear the flag
-            tenant_isolated_task_queue.delete_task_key()
+    # Check if there are waiting tasks in the queue
+    # Use rpop to get the next task from the queue (FIFO order)
+    next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
+
+    logger.info("duplicate document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
+
+    if next_tasks:
+        for next_task in next_tasks:
+            document_task = DocumentTask(**next_task)
+            # Process the next waiting task
+            # Keep the flag set to indicate a task is running
+            tenant_isolated_task_queue.set_task_waiting_time()
+            task_func.delay(  # type: ignore
+                tenant_id=document_task.tenant_id,
+                dataset_id=document_task.dataset_id,
+                document_ids=document_task.document_ids,
+            )
+    else:
+        # No more waiting tasks, clear the flag
+        tenant_isolated_task_queue.delete_task_key()
 
 
 def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[str]):
@@ -226,12 +288,13 @@ def _run_duplicate_document_indexing_task(
 
 
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def normal_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
+def normal_duplicate_document_indexing_task(self: Task, tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process duplicate documents
     :param tenant_id:
@@ -242,17 +305,22 @@ def normal_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, doc
     """
     logger.info("normal duplicate document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
     _duplicate_document_indexing_task_with_tenant_queue(
-        tenant_id, dataset_id, document_ids, normal_duplicate_document_indexing_task
+        tenant_id,
+        dataset_id,
+        document_ids,
+        normal_duplicate_document_indexing_task,
+        final_attempt=is_final_attempt(self, max_retries=self.max_retries),
     )
 
 
 @shared_task(
+    bind=True,
     queue="priority_dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def priority_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
+def priority_duplicate_document_indexing_task(self: Task, tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
     """
     Async process duplicate documents
     :param tenant_id:
@@ -263,5 +331,9 @@ def priority_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, d
     """
     logger.info("priority duplicate document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
     _duplicate_document_indexing_task_with_tenant_queue(
-        tenant_id, dataset_id, document_ids, priority_duplicate_document_indexing_task
+        tenant_id,
+        dataset_id,
+        document_ids,
+        priority_duplicate_document_indexing_task,
+        final_attempt=is_final_attempt(self, max_retries=self.max_retries),
     )

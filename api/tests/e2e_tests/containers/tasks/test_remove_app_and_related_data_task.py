@@ -283,7 +283,8 @@ class TestDeleteDraftVariableOffloadData:
         with pytest.raises(RuntimeError, match="Storage error"):
             _delete_draft_variable_offload_data(file_ids)
 
-        mock_storage.delete.assert_called_once_with(storage_keys[0])
+        # One failing blob must not stop the others from being attempted.
+        assert sorted(call.args[0] for call in mock_storage.delete.call_args_list) == sorted(storage_keys)
 
         remaining_var_files_count = db_session_with_containers.scalar(
             select(func.count())

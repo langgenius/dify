@@ -1,14 +1,14 @@
 import logging
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from contextlib import suppress
+from dataclasses import dataclass, field
 from typing import Any
 
 import click
 import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import delete, select
-from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -109,53 +109,171 @@ def _schedule_app_network_access_group_binding_cleanup(tenant_id: str, app_id: s
     )
 
 
+_MAX_REPORTED_CLEANUP_FAILURES = 5
+
+
+class AppCleanupIncompleteError(RuntimeError):
+    """Some App-owned records or blobs could not be removed.
+
+    Raised only after every independent record and step was still attempted, so
+    the retrying task reports one summary instead of stopping at the first
+    failure. ``failures`` keeps every individual description.
+    """
+
+    def __init__(self, failures: Sequence[str]) -> None:
+        self.failures = tuple(failures)
+        reported = "; ".join(self.failures[:_MAX_REPORTED_CLEANUP_FAILURES])
+        remaining = len(self.failures) - _MAX_REPORTED_CLEANUP_FAILURES
+        suffix = f"; and {remaining} more" if remaining > 0 else ""
+        super().__init__(f"App cleanup incomplete ({len(self.failures)} failure(s)): {reported}{suffix}")
+
+
+class _DraftVariableOffloadCleanupError(AppCleanupIncompleteError):
+    """Blobs of the listed draft-variable offload files could not be deleted."""
+
+    def __init__(self, failed_file_ids: Sequence[str], failures: Sequence[str], *, files_deleted: int) -> None:
+        super().__init__(failures)
+        self.failed_file_ids = tuple(failed_file_ids)
+        self.files_deleted = files_deleted
+
+
+def _failure_descriptions(name: str, error: Exception) -> tuple[str, ...]:
+    """Flatten a step failure into the per-record descriptions it already collected."""
+
+    if isinstance(error, AppCleanupIncompleteError):
+        return error.failures
+    return (f"{name}: {error}",)
+
+
+@dataclass
+class _AppCleanupRun:
+    """Run App cleanup steps to the end while protecting retry evidence.
+
+    Invariants:
+    - A failing step never prevents an independent later step from running.
+    - A step that deletes rows another step needs to rediscover storage objects
+      runs only after that step succeeded in this attempt; otherwise it is
+      skipped (not failed) and stays available to the next attempt.
+    """
+
+    tenant_id: str
+    app_id: str
+    failures: list[str] = field(default_factory=list)
+    failed_steps: set[str] = field(default_factory=set)
+    first_error: Exception | None = None
+
+    def step(
+        self,
+        name: str,
+        action: Callable[[], object],
+        *,
+        requires: tuple[str, ...] = (),
+        requires_clean_run: bool = False,
+    ) -> None:
+        """Run ``action`` unless evidence it would delete is still needed.
+
+        Postcondition: on failure the step name and its descriptions are
+        recorded and the exception is not propagated.
+        """
+        blocked_by = (
+            sorted(self.failed_steps) if requires_clean_run else sorted(self.failed_steps.intersection(requires))
+        )
+        if blocked_by:
+            logger.warning(
+                "Skipping app cleanup step %s for app %s: retry evidence is still required by failed step(s) %s",
+                name,
+                self.app_id,
+                blocked_by,
+            )
+            return
+        try:
+            action()
+        except Exception as error:
+            logger.exception(
+                "App cleanup step %s failed: tenant_id=%s app_id=%s; continuing with remaining steps",
+                name,
+                self.tenant_id,
+                self.app_id,
+            )
+            self.failed_steps.add(name)
+            self.failures.extend(_failure_descriptions(name, error))
+            if self.first_error is None:
+                self.first_error = error
+
+
 @shared_task(queue="app_deletion", bind=True, max_retries=3)
 def remove_app_and_related_data_task(self, tenant_id: str, app_id: str) -> None:
+    """Delete everything an already-deleted App owned.
+
+    Precondition: the App row is committed deleted, so no later request can
+    reach rows this task leaves behind.
+    Postconditions: every cleanup step whose retry evidence is intact was
+    attempted, even after earlier records or steps failed. On any failure the
+    task retries with one ``AppCleanupIncompleteError`` summarizing all of
+    them; redelivery is idempotent because each step re-reads what remains.
+    Evidence rules: rows that locate App-owned storage objects (runs, node
+    executions, workflows, conversations, messages) are kept while the storage
+    step is failing, and EndUser rows are removed only by a fully clean run.
+    """
     logger.info(click.style(f"Start deleting app and related data: {tenant_id}:{app_id}", fg="green"))
     start_at = time.perf_counter()
-    try:
-        _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id)
-        cleanup_app_storage(tenant_id, app_id)
-        # Delete related data
-        _delete_app_evaluation_data(tenant_id, app_id)
-        _delete_app_model_configs(tenant_id, app_id)
-        _delete_app_site(tenant_id, app_id)
-        _delete_app_mcp_servers(tenant_id, app_id)
-        _delete_app_api_tokens(tenant_id, app_id)
-        _delete_app_resource_access_token_relations(tenant_id, app_id)
-        _delete_installed_apps(tenant_id, app_id)
-        _delete_app_stars(tenant_id, app_id)
-        _delete_recommended_apps(tenant_id, app_id)
-        _delete_app_annotation_data(tenant_id, app_id)
-        _delete_app_dataset_joins(tenant_id, app_id)
-        _delete_workflow_agent_node_bindings(tenant_id, app_id)
-        _delete_app_workflows(tenant_id, app_id)
-        _delete_app_workflow_node_executions(tenant_id, app_id)
-        _delete_app_workflow_runs(tenant_id, app_id)
-        _delete_app_workflow_app_logs(tenant_id, app_id)
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
-            _delete_app_workflow_archive_logs(tenant_id, app_id)
-            _delete_archived_workflow_run_files(tenant_id, app_id)
-        _delete_app_conversations(tenant_id, app_id)
-        _delete_app_messages(tenant_id, app_id)
-        _delete_workflow_tool_providers(tenant_id, app_id)
-        _delete_app_tag_bindings(tenant_id, app_id)
-        _delete_trace_app_configs(tenant_id, app_id)
-        _delete_conversation_variables(app_id=app_id)
-        _delete_draft_variables(app_id)
-        _delete_app_triggers(tenant_id, app_id)
-        _delete_workflow_plugin_triggers(tenant_id, app_id)
-        _delete_workflow_webhook_triggers(tenant_id, app_id)
-        _delete_workflow_schedule_plans(tenant_id, app_id)
-        _delete_workflow_trigger_logs(tenant_id, app_id)
-        cleanup_app_uploads(tenant_id, app_id)
-        _delete_end_users(tenant_id, app_id)
-    except SQLAlchemyError as error:
-        logger.exception(click.style(f"Database error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=error, countdown=60) from error
-    except Exception as error:
-        logger.exception(click.style(f"Error occurred while deleting app {app_id} and related data", fg="red"))
-        raise self.retry(exc=error, countdown=60) from error
+    run = _AppCleanupRun(tenant_id=tenant_id, app_id=app_id)
+    storage_evidence = ("app storage",)
+    run.step(
+        "network access group binding",
+        lambda: _schedule_app_network_access_group_binding_cleanup(tenant_id, app_id),
+    )
+    run.step("app storage", lambda: cleanup_app_storage(tenant_id, app_id))
+    # Delete related data
+    run.step("evaluation data", lambda: _delete_app_evaluation_data(tenant_id, app_id))
+    run.step("app model configs", lambda: _delete_app_model_configs(tenant_id, app_id))
+    run.step("site", lambda: _delete_app_site(tenant_id, app_id))
+    run.step("mcp servers", lambda: _delete_app_mcp_servers(tenant_id, app_id))
+    run.step("api tokens", lambda: _delete_app_api_tokens(tenant_id, app_id))
+    run.step(
+        "resource access token relations",
+        lambda: _delete_app_resource_access_token_relations(tenant_id, app_id),
+    )
+    run.step("installed apps", lambda: _delete_installed_apps(tenant_id, app_id))
+    run.step("app stars", lambda: _delete_app_stars(tenant_id, app_id))
+    run.step("recommended apps", lambda: _delete_recommended_apps(tenant_id, app_id))
+    run.step("annotation data", lambda: _delete_app_annotation_data(tenant_id, app_id))
+    run.step("dataset joins", lambda: _delete_app_dataset_joins(tenant_id, app_id))
+    run.step("workflow agent node bindings", lambda: _delete_workflow_agent_node_bindings(tenant_id, app_id))
+    run.step("workflows", lambda: _delete_app_workflows(tenant_id, app_id), requires=storage_evidence)
+    run.step(
+        "workflow node executions",
+        lambda: _delete_app_workflow_node_executions(tenant_id, app_id),
+        requires=storage_evidence,
+    )
+    run.step("workflow runs", lambda: _delete_app_workflow_runs(tenant_id, app_id), requires=storage_evidence)
+    run.step("workflow app logs", lambda: _delete_app_workflow_app_logs(tenant_id, app_id))
+    if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and dify_config.ARCHIVE_STORAGE_ENABLED:
+        run.step("workflow archive logs", lambda: _delete_app_workflow_archive_logs(tenant_id, app_id))
+        run.step("archived workflow run files", lambda: _delete_archived_workflow_run_files(tenant_id, app_id))
+    run.step("conversations", lambda: _delete_app_conversations(tenant_id, app_id), requires=storage_evidence)
+    run.step("messages", lambda: _delete_app_messages(tenant_id, app_id), requires=storage_evidence)
+    run.step("workflow tool providers", lambda: _delete_workflow_tool_providers(tenant_id, app_id))
+    run.step("tag bindings", lambda: _delete_app_tag_bindings(tenant_id, app_id))
+    run.step("trace app configs", lambda: _delete_trace_app_configs(tenant_id, app_id))
+    run.step("conversation variables", lambda: _delete_conversation_variables(app_id=app_id))
+    run.step("draft variables", lambda: _delete_draft_variables(app_id))
+    run.step("app triggers", lambda: _delete_app_triggers(tenant_id, app_id))
+    run.step("workflow plugin triggers", lambda: _delete_workflow_plugin_triggers(tenant_id, app_id))
+    run.step("workflow webhook triggers", lambda: _delete_workflow_webhook_triggers(tenant_id, app_id))
+    run.step("workflow schedule plans", lambda: _delete_workflow_schedule_plans(tenant_id, app_id))
+    run.step("workflow trigger logs", lambda: _delete_workflow_trigger_logs(tenant_id, app_id))
+    run.step("app uploads", lambda: cleanup_app_uploads(tenant_id, app_id))
+    # EndUser rows are the last evidence that rediscovers App-owned uploads and
+    # tool files; an incomplete attempt must leave them for its retry.
+    run.step("end users", lambda: _delete_end_users(tenant_id, app_id), requires_clean_run=True)
+    if run.failures:
+        error = AppCleanupIncompleteError(run.failures)
+        error.__cause__ = run.first_error
+        logger.error(
+            click.style(f"Error occurred while deleting app {app_id} and related data: {error}", fg="red"),
+        )
+        raise self.retry(exc=error, countdown=60)
     end_at = time.perf_counter()
     logger.info(click.style(f"App and related data deleted: {app_id} latency: {end_at - start_at}", fg="green"))
 
@@ -432,16 +550,20 @@ def _delete_archived_workflow_run_files(tenant_id: str, app_id: str):
         raise
 
     deleted = 0
+    failures: list[str] = []
     for key in keys:
         try:
             with suppress(FileNotFoundError):
                 archive_storage.delete_object(key)
             deleted += 1
-        except Exception:
+        except Exception as error:
+            # Keep deleting the remaining objects; the task reports every failed key at the end.
             logger.exception("Failed to delete archive object %s", key)
-            raise
+            failures.append(f"archive object {key}: {error}")
 
     logger.info("Deleted %s archive objects for app %s", deleted, app_id)
+    if failures:
+        raise AppCleanupIncompleteError(failures)
 
 
 def _delete_app_conversations(tenant_id: str, app_id: str):
@@ -595,42 +717,57 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
 
     total_deleted = 0
     total_files_deleted = 0
+    failures: list[str] = []
+    # Keyset pagination: variables retained as evidence for a failed blob must
+    # not be selected again by the next batch of this same call.
+    after_id: str | None = None
+    has_more = True
 
-    while True:
+    while has_more:
         # Read the batch in a transaction of its own: the offload cleanup in between
         # must run with no transaction open.
         with session_factory.create_session() as session:
-            rows = session.execute(
-                select(WorkflowDraftVariable.id, WorkflowDraftVariable.file_id)
-                .where(WorkflowDraftVariable.app_id == app_id)
-                .order_by(WorkflowDraftVariable.id)
-                .limit(batch_size)
-            ).all()
-
-        if not rows:
-            break
-
-        draft_var_ids = [row[0] for row in rows]
-        file_ids = [row[1] for row in rows if row[1] is not None]
-
-        # Clean up associated Offload data first, outside any transaction, so the rows
-        # remain visible if the storage cleanup has to be retried.
-        if file_ids:
-            files_deleted = _delete_draft_variable_offload_data(file_ids)
-            total_files_deleted += files_deleted
-
-        # Delete the draft variables
-        with session_factory.create_session() as session, session.begin():
-            deleted_result = session.execute(
-                delete(WorkflowDraftVariable).where(
-                    WorkflowDraftVariable.app_id == app_id,
-                    WorkflowDraftVariable.id.in_(draft_var_ids),
-                )
+            query = select(WorkflowDraftVariable.id, WorkflowDraftVariable.file_id).where(
+                WorkflowDraftVariable.app_id == app_id
             )
-            batch_deleted: int = int(getattr(deleted_result, "rowcount", 0) or 0)
-            total_deleted += batch_deleted
+            if after_id is not None:
+                query = query.where(WorkflowDraftVariable.id > after_id)
+            rows = session.execute(query.order_by(WorkflowDraftVariable.id).limit(batch_size)).all()
 
-            logger.info(click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green"))
+        has_more = bool(rows)
+        if has_more:
+            after_id = rows[-1][0]
+            file_ids = [row[1] for row in rows if row[1] is not None]
+            failed_file_ids: frozenset[str] = frozenset()
+
+            # Clean up associated Offload data first, outside any transaction, so the rows
+            # remain visible if the storage cleanup has to be retried.
+            if file_ids:
+                try:
+                    total_files_deleted += _delete_draft_variable_offload_data(file_ids)
+                except _DraftVariableOffloadCleanupError as error:
+                    total_files_deleted += error.files_deleted
+                    failed_file_ids = frozenset(error.failed_file_ids)
+                    failures.extend(error.failures)
+
+            # Variables whose blob could not be deleted stay as retry evidence.
+            draft_var_ids = [row[0] for row in rows if row[1] is None or row[1] not in failed_file_ids]
+
+            # Delete the draft variables
+            if draft_var_ids:
+                with session_factory.create_session() as session, session.begin():
+                    deleted_result = session.execute(
+                        delete(WorkflowDraftVariable).where(
+                            WorkflowDraftVariable.app_id == app_id,
+                            WorkflowDraftVariable.id.in_(draft_var_ids),
+                        )
+                    )
+                    batch_deleted: int = int(getattr(deleted_result, "rowcount", 0) or 0)
+                    total_deleted += batch_deleted
+
+                    logger.info(
+                        click.style(f"Deleted {batch_deleted} draft variables (batch) for app {app_id}", fg="green")
+                    )
 
     logger.info(
         click.style(
@@ -639,6 +776,8 @@ def delete_draft_variables_batch(app_id: str, batch_size: int = 1000) -> int:
             fg="green",
         )
     )
+    if failures:
+        raise AppCleanupIncompleteError(failures)
     return total_deleted
 
 
@@ -650,6 +789,11 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
     as durable storage-key evidence until every blob delete succeeds. If the
     database commit then fails, the retry treats an already-missing blob as
     success and repeats the metadata deletion.
+
+    A blob that cannot be deleted does not stop the batch: every other blob is
+    still deleted together with its metadata, the failing record keeps both of
+    its rows as evidence, and ``_DraftVariableOffloadCleanupError`` reports the
+    failed variable-file ids once the rest is committed.
     """
 
     unique_file_ids = tuple(dict.fromkeys(file_id for file_id in file_ids if file_id))
@@ -673,16 +817,33 @@ def _delete_draft_variable_offload_data(file_ids: list[str]) -> int:
             .order_by(WorkflowDraftVariableFile.id)
         ).all()
 
+    failed_file_ids: list[str] = []
+    failures: list[str] = []
     for record in records:
-        with suppress(FileNotFoundError):
-            storage.delete(record.key)
+        try:
+            with suppress(FileNotFoundError):
+                storage.delete(record.key)
+        except Exception as error:
+            logger.exception(
+                "Failed to delete draft variable offload blob: variable_file_id=%s upload_file_id=%s",
+                record.variable_file_id,
+                record.upload_file_id,
+            )
+            failed_file_ids.append(record.variable_file_id)
+            failures.append(f"draft variable offload file {record.variable_file_id}: {error}")
 
+    failed = frozenset(failed_file_ids)
+    cleaned_records = [record for record in records if record.variable_file_id not in failed]
+    cleaned_file_ids = [file_id for file_id in unique_file_ids if file_id not in failed]
     with session_factory.create_session() as session, session.begin():
-        upload_file_ids = tuple(dict.fromkeys(record.upload_file_id for record in records))
+        upload_file_ids = tuple(dict.fromkeys(record.upload_file_id for record in cleaned_records))
         if upload_file_ids:
             session.execute(delete(UploadFile).where(UploadFile.id.in_(upload_file_ids)))
-        session.execute(delete(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(unique_file_ids)))
+        if cleaned_file_ids:
+            session.execute(delete(WorkflowDraftVariableFile).where(WorkflowDraftVariableFile.id.in_(cleaned_file_ids)))
 
+    if failures:
+        raise _DraftVariableOffloadCleanupError(failed_file_ids, failures, files_deleted=len(cleaned_records))
     return len(records)
 
 
@@ -767,26 +928,37 @@ def _delete_workflow_trigger_logs(tenant_id: str, app_id: str):
 def _delete_records(
     query_sql: str, params: dict[str, Any], delete_func: Callable[[Session, str], None], name: str
 ) -> None:
-    """Commit each deletion and propagate failures to the retrying task.
+    """Commit each deletion, skip failing records, and report them once at the end.
 
-    Prior successful deletions remain committed. A later attempt reads only the
-    remaining records; an incomplete batch must never mark its App completed.
+    Postconditions: every selected record that can be deleted is committed
+    deleted. A record whose deletion fails is rolled back, remembered, and not
+    attempted again in this call, so re-selecting it cannot loop forever; the
+    loop stops as soon as a pass deletes nothing. If any record failed,
+    ``AppCleanupIncompleteError`` lists them so the retrying task never marks
+    an incomplete App cleanup completed. A later attempt reads only the
+    remaining records.
     """
-    while True:
+    failed: dict[str, str] = {}
+    progressed = True
+    while progressed:
+        progressed = False
         with session_factory.create_session() as session:
             rs = session.execute(sa.text(query_sql), params)
             rows = rs.fetchall()
             rs.close()
-            if not rows:
-                break
 
             for i in rows:
                 record_id = str(i.id)
-                try:
-                    delete_func(session, record_id)
-                    session.commit()
-                except Exception:
-                    logger.exception("Error occurred while deleting %s %s", name, record_id)
-                    session.rollback()
-                    raise
-                logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))
+                if record_id not in failed:
+                    try:
+                        delete_func(session, record_id)
+                        session.commit()
+                        progressed = True
+                        logger.info(click.style(f"Deleted {name} {record_id}", fg="green"))
+                    except Exception as error:
+                        logger.exception("Error occurred while deleting %s %s", name, record_id)
+                        # continue with next record even if one deletion fails
+                        session.rollback()
+                        failed[record_id] = str(error)
+    if failed:
+        raise AppCleanupIncompleteError([f"{name} {record_id}: {error}" for record_id, error in failed.items()])

@@ -21,6 +21,7 @@ def test_batch_clean_document_task_preserves_four_field_message() -> None:
         dataset_id="dataset-1",
         doc_form="text_model",
         file_ids=["file-1"],
+        final_attempt=False,
     )
 
 

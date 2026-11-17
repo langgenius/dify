@@ -2,7 +2,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from redis.exceptions import RedisError
 from sqlalchemy import select, update
 
@@ -20,35 +20,73 @@ from services.knowledge.indexing.locks import (
     KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
+from tasks.indexing_task_retry import (
+    clear_document_indexing_cache,
+    is_terminal_failure,
+    resolve_documents_after_terminal_failure,
+)
 
 logger = logging.getLogger(__name__)
 
 
+_RETRYABLE_ERRORS = (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError)
+
+
 @shared_task(
+    bind=True,
     queue="dataset",
-    autoretry_for=(KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError, RedisError),
+    autoretry_for=_RETRYABLE_ERRORS,
     retry_backoff=True,
     max_retries=10,
 )
-def remove_document_from_index_task(document_id: str):
+def remove_document_from_index_task(self: Task, document_id: str):
     """
     Async Remove document from index
     :param document_id: document id
 
+    Postconditions: every terminal exit clears ``document_{id}_indexing``; an
+    attempt that will be retried keeps it. When the task ends without having
+    cleaned the index (retries exhausted, or a non-retryable error), a
+    disabled document is re-enabled exactly as after a failed removal, so the
+    database matches the index again and the user can repeat the action. An
+    archived document stays archived; its remaining index nodes are logged.
+
     Usage: remove_document_from_index.delay(document_id)
     """
-    locks = RedisKnowledgeIndexingLock(redis=redis_client)
-    with locks.hold(
-        document_index_lock_name(document_id),
-        timeout=600,
-        blocking_timeout=5,
-    ) as lease:
-        _remove_document_from_index(document_id, lease=lease)
-        lease.assert_owned()
-        try:
-            redis_client.delete(f"document_{document_id}_indexing")
-        except Exception:
-            logger.warning("Failed to clear indexing cache for document %s", document_id, exc_info=True)
+    try:
+        locks = RedisKnowledgeIndexingLock(redis=redis_client)
+        with locks.hold(
+            document_index_lock_name(document_id),
+            timeout=600,
+            blocking_timeout=5,
+        ) as lease:
+            _remove_document_from_index(document_id, lease=lease)
+            lease.assert_owned()
+    except Exception as error:
+        if is_terminal_failure(self, error, retryable=_RETRYABLE_ERRORS, max_retries=self.max_retries):
+            logger.exception(
+                "Remove document from index failed terminally; index nodes remain: document_id=%s", document_id
+            )
+            _restore_unremoved_document(document_id)
+            clear_document_indexing_cache(redis_client, document_id)
+        raise
+    clear_document_indexing_cache(redis_client, document_id)
+
+
+def _restore_unremoved_document(document_id: str) -> None:
+    """Re-enable a disabled document whose index nodes were never removed."""
+
+    def still_requires_removal(document: Document) -> bool:
+        return document.indexing_status == IndexingStatus.COMPLETED and not document.enabled and not document.archived
+
+    def enable(document: Document) -> None:
+        document.enabled = True
+
+    resolve_documents_after_terminal_failure(
+        [document_id],
+        still_owned=still_requires_removal,
+        resolve=enable,
+    )
 
 
 def _remove_document_from_index(document_id: str, *, lease: KnowledgeIndexingLease) -> None:

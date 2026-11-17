@@ -12,8 +12,10 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.knowledge.indexing.locks import KnowledgeIndexingLeaseLostError, KnowledgeIndexingLockBusyError
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
-from tasks.enable_segments_to_index_task import enable_segments_to_index_task
+from tasks.enable_segments_to_index_task import SEGMENT_INDEX_MAX_RETRIES, enable_segments_to_index_task
+from tasks.indexing_task_retry import LOCK_BUSY_RETRY_MAX_SECONDS, TaskRetriesExhaustedError
 
 
 class _LoadProbe:
@@ -244,3 +246,104 @@ def test_late_enable_delivery_skips_segment_restored_after_publish_failure(
         enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
 
     assert index_processor.called is False
+
+
+class _OwnedLease:
+    def assert_owned(self) -> None:
+        return None
+
+
+class _ScriptedLocks:
+    """Fail the first ``hold`` calls with the scripted errors, then grant the lease."""
+
+    def __init__(self, *errors: Exception) -> None:
+        self._errors = list(errors)
+        self.attempts = 0
+
+    @contextmanager
+    def hold(self, _name: str, *, timeout: int, blocking_timeout: float) -> Generator[_OwnedLease]:
+        del timeout, blocking_timeout
+        self.attempts += 1
+        if self._errors:
+            raise self._errors.pop(0)
+        yield _OwnedLease()
+
+
+def test_enable_segments_waits_for_a_busy_index_lock_beyond_the_bounded_retry_budget() -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLockBusyError("busy"), KnowledgeIndexingLockBusyError("busy"))
+    with (
+        patch("tasks.enable_segments_to_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+        patch("tasks.enable_segments_to_index_task._enable_segments_to_index") as enable,
+        patch("tasks.enable_segments_to_index_task.redis_client.delete") as clear_cache,
+        patch.object(enable_segments_to_index_task, "retry", wraps=enable_segments_to_index_task.retry) as retry,
+    ):
+        # Far beyond the old five-retry limit: indexing may hold this lock for a long time.
+        result = enable_segments_to_index_task.apply(
+            args=(["segment-1"], "dataset-1", "document-1"),
+            retries=500,
+            throw=False,
+        )
+
+    assert result.state == "SUCCESS"
+    assert locks.attempts == 3
+    enable.assert_called_once()
+    # Capped backoff, and no per-call max_retries override that Celery would leak to later failures.
+    assert [call.kwargs["countdown"] for call in retry.call_args_list] == [
+        LOCK_BUSY_RETRY_MAX_SECONDS,
+        LOCK_BUSY_RETRY_MAX_SECONDS,
+    ]
+    assert all("max_retries" not in call.kwargs for call in retry.call_args_list)
+    # The flag is cleared once, by the attempt that finally ran.
+    clear_cache.assert_called_once_with("segment_segment-1_indexing")
+
+
+def test_enable_segments_keeps_indexing_flags_while_a_lease_loss_will_be_retried() -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLeaseLostError("lost"))
+
+    with (
+        patch("tasks.enable_segments_to_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+        patch("tasks.enable_segments_to_index_task.redis_client.delete") as clear_cache,
+        pytest.raises(KnowledgeIndexingLeaseLostError),
+    ):
+        enable_segments_to_index_task.run(["segment-1"], "dataset-1", "document-1")
+
+    clear_cache.assert_not_called()
+
+
+def test_enable_segments_clears_indexing_flags_when_retries_are_exhausted() -> None:
+    locks = _ScriptedLocks(KnowledgeIndexingLeaseLostError("lost"))
+
+    enable_segments_to_index_task.push_request(retries=SEGMENT_INDEX_MAX_RETRIES)
+    try:
+        with (
+            patch("tasks.enable_segments_to_index_task.RedisKnowledgeIndexingLock", return_value=locks),
+            patch("tasks.enable_segments_to_index_task.redis_client.delete") as clear_cache,
+            pytest.raises(TaskRetriesExhaustedError) as raised,
+        ):
+            enable_segments_to_index_task.run(["segment-1", "segment-2"], "dataset-1", "document-1")
+    finally:
+        enable_segments_to_index_task.pop_request()
+
+    assert isinstance(raised.value.__cause__, KnowledgeIndexingLeaseLostError)
+    assert [call.args[0] for call in clear_cache.call_args_list] == [
+        "segment_segment-1_indexing",
+        "segment_segment-2_indexing",
+    ]
+
+
+def test_enable_segments_clears_indexing_flags_when_a_stale_delivery_is_skipped(
+    sqlite_session: Session,
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+) -> None:
+    dataset, document, segment = indexed_segment
+    document.enabled = False
+    sqlite_session.commit()
+
+    with (
+        patch("tasks.enable_segments_to_index_task.RedisKnowledgeIndexingLock", return_value=_ScriptedLocks()),
+        patch("tasks.enable_segments_to_index_task.redis_client.delete") as clear_cache,
+    ):
+        enable_segments_to_index_task.run([segment.id], dataset.id, document.id)
+
+    # Skipping is a terminal exit too; the flag must not linger for its TTL.
+    clear_cache.assert_called_once_with(f"segment_{segment.id}_indexing")

@@ -32,10 +32,27 @@ from services.knowledge.indexing.adapters.cleanup import (
     hold_document_cleanup_locks,
 )
 from services.knowledge.indexing.contracts import pending_upload_cleanup_ids
-from services.knowledge.indexing.locks import KnowledgeIndexingLease, KnowledgeIndexingLockBusyError
+from services.knowledge.indexing.locks import (
+    KnowledgeIndexingLease,
+    KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
+)
+from tasks.indexing_task_retry import TaskRetriesExhaustedError, is_final_attempt
 from tasks.refresh_billing_vector_space_task import schedule_billing_vector_space_refresh
 
 logger = logging.getLogger(__name__)
+
+# Lock-busy waits are unbounded (see the tasks below); every other failure
+# shares this bounded budget so a persistent error cannot retry forever.
+DOCUMENT_CLEANUP_MAX_RETRIES = 8
+
+
+def document_cleanup_retries_exhausted(error: Exception, *, dataset_id: str) -> TaskRetriesExhaustedError:
+    """Build the terminal error for a cleanup failure that spent its retry budget."""
+
+    return TaskRetriesExhaustedError(
+        f"Document cleanup failed after {DOCUMENT_CLEANUP_MAX_RETRIES} retries, dataset_id={dataset_id}: {error}"
+    )
 
 
 def _delete_unreferenced_files_in_session(
@@ -274,7 +291,21 @@ def _clean_documents(
     doc_form: str,
     file_ids: Sequence[str],
     owned_leases: Mapping[str, KnowledgeIndexingLease] | None = None,
+    final_attempt: bool = False,
 ) -> None:
+    """Clean deleted documents' indexes, rows, and files under their index locks.
+
+    Precondition: ``final_attempt`` is ``True`` only when the calling task will
+    not be retried after a non-lock failure. The default keeps a failed index
+    cleanup retryable with every row intact.
+    Postconditions: on success the documents' relational rows and unreferenced
+    files are gone. When index cleanup fails terminally (``final_attempt``, or
+    an error the tasks never retry), the failure is logged as a vector orphan
+    and relational/storage cleanup still runs, so rows of an already-deleted
+    document cannot outlive the task.
+    Failure behavior: lock-busy and lease-lost errors always propagate; other
+    index failures propagate only while they can still be retried.
+    """
     if owned_leases is None:
         for batch in document_cleanup_batches(document_ids):
             with hold_document_cleanup_locks(batch) as leases:
@@ -284,6 +315,7 @@ def _clean_documents(
                     doc_form=doc_form,
                     file_ids=file_ids,
                     owned_leases=leases,
+                    final_attempt=final_attempt,
                 )
         return
     ownership = nullcontext(owned_leases)
@@ -296,6 +328,7 @@ def _clean_documents(
             doc_form=doc_form,
             file_ids=file_ids,
             owned_leases=leases,
+            final_attempt=final_attempt,
         )
         for lease in leases.values():
             lease.assert_owned()
@@ -308,6 +341,7 @@ def _clean_documents_owned(
     doc_form: str,
     file_ids: Sequence[str],
     owned_leases: Mapping[str, KnowledgeIndexingLease],
+    final_attempt: bool,
 ) -> None:
     unique_document_ids = tuple(dict.fromkeys(document_ids))
     if not unique_document_ids:
@@ -327,13 +361,30 @@ def _clean_documents_owned(
         )
         return
 
-    index_tenant_id = clean_document_indexes(
-        dataset_id=dataset_id,
-        document_ids=unique_document_ids,
-        doc_form=doc_form,
-        new_session=session_factory.create_session,
-        owned_leases=owned_leases,
-    )
+    try:
+        index_tenant_id = clean_document_indexes(
+            dataset_id=dataset_id,
+            document_ids=unique_document_ids,
+            doc_form=doc_form,
+            new_session=session_factory.create_session,
+            owned_leases=owned_leases,
+        )
+    except (KnowledgeIndexingLockBusyError, KnowledgeIndexingLeaseLostError):
+        # Without the index lock nothing below may run; the task waits or retries.
+        raise
+    except Exception as error:
+        if not (final_attempt or isinstance(error, ValueError)):
+            # Still retryable: keep every row so the retry can find the index nodes.
+            raise
+        # The Document rows are already deleted, so nothing can reference these
+        # rows again. Prefer vector orphans over relational rows that live forever.
+        logger.exception(
+            "Failed to clean vector / keyword index for deleted documents, dataset_id=%s, document_ids=%s. "
+            "Continuing with relational and storage cleanup; vector orphans remain to be reaped.",
+            dataset_id,
+            list(unique_document_ids),
+        )
+        index_tenant_id = None
     if index_tenant_id is not None and index_tenant_id != resolved_tenant_id:
         raise ValueError("Document cleanup dataset ownership changed")
     if index_tenant_id is not None:
@@ -358,7 +409,7 @@ def _clean_documents_owned(
     autoretry_for=(Exception,),
     retry_backoff=True,
     max_retries=None,
-    dont_autoretry_for=(ValueError,),
+    dont_autoretry_for=(ValueError, TaskRetriesExhaustedError),
     acks_late=True,
     reject_on_worker_lost=True,
 )
@@ -369,20 +420,39 @@ def clean_document_task(
     doc_form: str,
     file_id: str | None,
 ) -> None:
-    """Clean one deleted document using the established four-field message."""
+    """Clean one deleted document using the established four-field message.
+
+    Retry contract: a busy index lock is waited for without limit, because a
+    healthy long-running indexer is not a failure; Celery's ``max_retries``
+    therefore stays unbounded. Every other error shares the
+    ``DOCUMENT_CLEANUP_MAX_RETRIES`` budget enforced here: its final attempt
+    ends with ``TaskRetriesExhaustedError``. Once index cleanup has failed
+    terminally the relational and storage cleanup still runs (see
+    ``_clean_documents``). Celery counts lock waits in the same retry counter,
+    so a long wait can make a later failure terminal sooner; it never removes
+    the wait.
+    """
 
     logger.info(click.style(f"Start clean document when document deleted: {document_id}", fg="green"))
     start_at = time.perf_counter()
+    final_attempt = is_final_attempt(self, max_retries=DOCUMENT_CLEANUP_MAX_RETRIES)
     try:
         _clean_documents(
             document_ids=(document_id,),
             dataset_id=dataset_id,
             doc_form=doc_form,
             file_ids=(file_id,) if file_id else (),
+            final_attempt=final_attempt,
         )
     except KnowledgeIndexingLockBusyError as error:
         # Healthy long-running index owners must not exhaust deletion retries.
         raise self.retry(exc=error, countdown=60, max_retries=None) from error
+    except ValueError:
+        raise
+    except Exception as error:
+        if final_attempt:
+            raise document_cleanup_retries_exhausted(error, dataset_id=dataset_id) from error
+        raise
     logger.info(
         click.style(
             f"Cleaned document when document deleted: {document_id} latency: {time.perf_counter() - start_at}",

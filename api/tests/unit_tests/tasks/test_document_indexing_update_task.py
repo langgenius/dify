@@ -26,6 +26,7 @@ from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.indexing.locks import (
     KnowledgeIndexingLease,
     KnowledgeIndexingLeaseLostError,
+    KnowledgeIndexingLockBusyError,
     document_index_lock_name,
 )
 from tasks.document_indexing_update_task import document_indexing_update_task
@@ -563,3 +564,56 @@ def test_reindex_rejects_document_outside_dataset_owner_chain(
     sqlite_session.expire_all()
     assert sqlite_session.get(Document, document.id) is not None
     assert sqlite_session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document.id)).all()
+
+
+class _BusyLockStub:
+    @contextmanager
+    def hold(self, _name: str, *, timeout: int, blocking_timeout: float) -> Generator[_OwnedLease]:
+        del timeout, blocking_timeout
+        raise KnowledgeIndexingLockBusyError("document index is busy")
+        yield _OwnedLease()
+
+
+@pytest.mark.parametrize(
+    ("retries", "persisted_status", "expected_status"),
+    [
+        # Exhausted while still waiting: nothing will ever start this update, so the user must be able to retry.
+        (10, IndexingStatus.WAITING, IndexingStatus.ERROR),
+        # Not the final attempt: Celery will run the update again.
+        (9, IndexingStatus.WAITING, IndexingStatus.WAITING),
+        # Another worker already advanced the document; its progress must not be clobbered.
+        (10, IndexingStatus.PARSING, IndexingStatus.PARSING),
+    ],
+)
+def test_lock_busy_exhaustion_fails_only_a_document_still_waiting(
+    sqlite_session: Session,
+    task_harness: tuple[MagicMock, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+    retries: int,
+    persisted_status: IndexingStatus,
+    expected_status: IndexingStatus,
+) -> None:
+    runner, _processor = task_harness
+    dataset, document = _persist_rows(sqlite_session)
+    document.indexing_status = persisted_status
+    sqlite_session.commit()
+    monkeypatch.setattr(task_module, "RedisKnowledgeIndexingLock", lambda **_kwargs: _BusyLockStub())
+
+    document_indexing_update_task.push_request(retries=retries)
+    try:
+        with pytest.raises(KnowledgeIndexingLockBusyError):
+            document_indexing_update_task.run(dataset.id, document.id)
+    finally:
+        document_indexing_update_task.pop_request()
+
+    runner.run.assert_not_called()
+    assert document_indexing_update_task.max_retries == 10
+    sqlite_session.expire_all()
+    persisted = sqlite_session.get_one(Document, document.id)
+    assert persisted.indexing_status == expected_status
+    if expected_status == IndexingStatus.ERROR:
+        assert persisted.error == "Document update could not be indexed: document index is busy"
+        assert persisted.stopped_at is not None
+    else:
+        assert persisted.error is None
+        assert persisted.stopped_at is None
