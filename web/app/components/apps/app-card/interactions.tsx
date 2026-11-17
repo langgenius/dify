@@ -4,7 +4,6 @@ import type {
   AppPartial,
   EnvironmentVariableItemResponse,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import type { MouseEvent, ReactElement } from 'react'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
@@ -272,7 +271,6 @@ export function AppCardInteractions({
     consoleQuery.apps.byAppId.star.delete.mutationOptions({ context: { silent: true } }),
   )
 
-  const editActionsRef = useRef<DialogActions>(null)
   const edit = useMutation(
     consoleQuery.apps.byAppId.put.mutationOptions({ context: { silent: true } }),
   )
@@ -521,11 +519,10 @@ export function AppCardInteractions({
         </div>
       </div>
       <Dialog
-        actionsRef={editActionsRef}
         open={activeDialog === 'edit'}
         disablePointerDismissal
         onOpenChange={(open, details) => {
-          if (!open && edit.isPending && details.reason !== 'imperative-action') details.cancel()
+          if (!open && edit.isPending) details.cancel()
           else if (!open) setActiveDialog(null)
         }}
         onOpenChangeComplete={(open) => {
@@ -546,7 +543,7 @@ export function AppCardInteractions({
               edit.mutate(
                 { params: { app_id: app.id }, body },
                 {
-                  onSuccess: () => editActionsRef.current?.close(),
+                  onSuccess: () => setActiveDialog(null),
                 },
               )
             }}
@@ -566,13 +563,7 @@ export function AppCardInteractions({
         />
       )}
       {activeDialog === 'switch' && (
-        <SwitchAppModal
-          open
-          sourceApp={app}
-          onOpenChange={(open) => {
-            if (!open) setActiveDialog(null)
-          }}
-        />
+        <SwitchAppModal open sourceApp={app} onClose={() => setActiveDialog(null)} />
       )}
       {secretEnvList.length > 0 && (
         <AppExportConfirmModal

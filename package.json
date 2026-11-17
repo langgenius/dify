@@ -26,7 +26,6 @@
     "@iconify-json/logos": "catalog:",
     "@iconify-json/ri": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "concurrently": "catalog:",
     "eslint": "catalog:",
     "knip": "catalog:",

@@ -21,7 +21,11 @@ from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import ConvertToWorkflowApi
+from controllers.console.app.workflow import (
+    ConvertToWorkflowApi,
+    EvaluationPublishedWorkflowApi,
+    WorkflowKindConvertApi,
+)
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from graphon.file import File, FileTransferMethod, FileType
@@ -1401,6 +1405,20 @@ class TestWorkflowConvertApiCases:
 
             assert response["new_app_id"] == "new-app-1"
             assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+@pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
+def test_evaluation_workflow_mutations_reject_community(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+) -> None:
+    monkeypatch.setattr("controllers.console.wraps.SystemFeatureService.is_evaluation_enabled", lambda: False)
+
+    with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+        resource_class().post()
+
+    assert exc_info.value.code == 404
 
 
 def _make_account() -> _workflow_human_input_debug_api_Account:

@@ -2,7 +2,6 @@
   "dialog.addTitle": "Добавить сканер",
   "dialog.apiKey": "Ключ API",
   "dialog.apiSecret": "Секрет API",
-  "dialog.clamavHint": "ClamAV работает внутри этого развертывания. Его адрес задает администратор развертывания.",
   "dialog.dataNotice": "Содержимое файлов отправляется в этот сервис.",
   "dialog.editTitle": "Редактировать сканер",
   "dialog.endpoint": "Конечная точка (необязательно)",

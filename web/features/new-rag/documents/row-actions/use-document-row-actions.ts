@@ -42,12 +42,16 @@ import {
 import { removeDocumentFromSelectionAtom } from '../state/selection'
 import { queryKeyMatchesKnowledgeSpace } from '../tasks/recovery'
 
-function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+export function useDocumentRowPendingAction(documentId: string) {
   const pendingActionAtom = useMemo(
     () => createDocumentRowPendingActionAtom(documentId),
     [documentId],
   )
-  const pendingAction = useAtomValue(pendingActionAtom)
+  return useAtomValue(pendingActionAtom)
+}
+
+function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
+  const pendingAction = useDocumentRowPendingAction(documentId)
   const beginAction = useSetAtom(beginDocumentRowActionAtom)
   const finishAction = useSetAtom(finishDocumentRowActionAtom)
 
@@ -57,14 +61,6 @@ function useDocumentActionLock(documentId: string, action: DocumentRowAction) {
     finish: () => finishAction({ action, documentId }),
     pending: pendingAction === action,
   }
-}
-
-export function useDocumentRowActionBusy(documentId: string) {
-  const pendingActionAtom = useMemo(
-    () => createDocumentRowPendingActionAtom(documentId),
-    [documentId],
-  )
-  return Boolean(useAtomValue(pendingActionAtom))
 }
 
 function useDocumentCanEdit(documentId: string) {
@@ -112,20 +108,12 @@ export function useRenameDocumentAction(document: LogicalDocument) {
   const canEdit = useDocumentCanEdit(document.id)
   const onWriteDenied = useSetAtom(denyDocumentWriteAtom)
   const { begin, busy, finish, pending } = useDocumentActionLock(document.id, 'rename')
-  const { invalidateDocuments, knowledgeSpaceId } = useDocumentInvalidation()
-  const { mutateAsync: renameDocument } = useMutation({
-    mutationFn: (title: string) =>
-      consoleClient.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch(
-        {
-          body: {
-            expectedRowVersion: document.rowVersion,
-            patch: { displayName: title },
-          },
-          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
-        },
-        { context: { silent: true } },
-      ),
-  })
+  const knowledgeSpaceId = useAtomValue(documentsKnowledgeSpaceIdAtom)
+  const { mutateAsync: renameDocument } = useMutation(
+    consoleQuery.knowledgeFs.spaces.byControlSpaceId.documents.byDocumentId.patch.mutationOptions({
+      context: { silent: true },
+    }),
+  )
 
   const run = useCallback(
     async (title: string) => {
@@ -133,8 +121,13 @@ export function useRenameDocumentAction(document: LogicalDocument) {
       if (!canEdit || !normalizedTitle || normalizedTitle === documentTitle(document) || !begin())
         return false
       try {
-        await renameDocument(normalizedTitle)
-        invalidateDocuments()
+        await renameDocument({
+          body: {
+            expectedRowVersion: document.rowVersion,
+            patch: { displayName: normalizedTitle },
+          },
+          params: { control_space_id: knowledgeSpaceId, document_id: document.id },
+        })
         return true
       } catch (error) {
         if (getHttpErrorStatus(error) === 403) onWriteDenied()
@@ -147,7 +140,7 @@ export function useRenameDocumentAction(document: LogicalDocument) {
         finish()
       }
     },
-    [begin, canEdit, document, finish, invalidateDocuments, onWriteDenied, renameDocument, t],
+    [begin, canEdit, document, finish, knowledgeSpaceId, onWriteDenied, renameDocument, t],
   )
 
   return { busy, pending, run }

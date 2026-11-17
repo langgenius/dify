@@ -4,7 +4,6 @@ from enum import StrEnum
 
 
 class ScanProviderType(StrEnum):
-    CLAMAV = "clamav"
     CLOUDMERSIVE = "cloudmersive"
     SCANII = "scanii"
     METADEFENDER = "metadefender"

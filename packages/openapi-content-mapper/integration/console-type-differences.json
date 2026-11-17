@@ -3,6 +3,14 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
+  "console GET /{evaluate_target_type}/{evaluate_target_id}/evaluation": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
+  "console GET /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console GET /account/delete/verify": ["no-input-schema", "compatible"],
   "console GET /account/education": ["no-input-schema", "compatible"],
   "console GET /account/education/verify": ["no-input-schema", "compatible"],
@@ -105,6 +113,7 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
+  "console GET /datasets/{dataset_id}/evaluation": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/{dataset_id}/metadata": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/{resource_id}/api-keys": ["compatible", "parsed-vs-wire-output"],
   "console GET /datasets/api-base-info": ["no-input-schema", "compatible"],
@@ -700,6 +709,10 @@
     "parsed-vs-wire-output"
   ],
   "console POST /workspaces/current/tool-provider/mcp": ["compatible", "parsed-vs-wire-output"],
+  "console PUT /{evaluate_target_type}/{evaluate_target_id}/evaluation": [
+    "compatible",
+    "parsed-vs-wire-output"
+  ],
   "console PUT /agent/{agent_id}": ["compatible", "parsed-vs-wire-output"],
   "console PUT /agent/{agent_id}/build-draft": ["compatible", "parsed-vs-wire-output"],
   "console PUT /agent/{agent_id}/composer": ["compatible", "parsed-vs-wire-output"],
@@ -707,6 +720,7 @@
     "compatible",
     "parsed-vs-wire-output"
   ],
+  "console PUT /datasets/{dataset_id}/evaluation": ["compatible", "parsed-vs-wire-output"],
   "console PUT /knowledge-fs/spaces/{control_space_id}/tags": [
     "compatible",
     "parsed-vs-wire-output"

@@ -79,6 +79,14 @@ class ConversationDeletion:
     retired_workspace_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class ConversationAgentWorkspaceRetirement:
+    """Committed workspace retirement of a Conversation that itself stays live."""
+
+    tenant_id: str
+    retired_agent_workspace_ids: tuple[str, ...]
+
+
 type ConsoleConversationKind = Literal["completion", "chat"]
 type ConversationAnnotationStatus = Literal["annotated", "not_annotated", "all"]
 
