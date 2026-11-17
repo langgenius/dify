@@ -380,3 +380,40 @@ def test_a_body_just_under_the_cap_still_parses(openapi_app: Flask) -> None:
 
     assert response.status_code == 200
     assert response.get_json()["result"] == {}
+
+
+@JSON_RPC_ERROR_BODY
+@pytest.mark.parametrize("origin", ["http://evil.example.com", "null", "http://localhost.evil.example.com"])
+def test_a_foreign_origin_is_403_before_the_body_is_read(openapi_app: Flask, origin: str) -> None:
+    response = openapi_app.test_client().post(
+        MCP_PATH, data=b"not json at all", content_type="application/json", headers={"Origin": origin}
+    )
+
+    assert response.status_code == 403
+    assert _error_code(response) == mcp_types.INVALID_REQUEST
+    assert response.get_json()["id"] is None
+
+
+@pytest.mark.parametrize("origin", ["http://localhost", "https://localhost"])
+def test_the_servers_own_origin_is_accepted(openapi_app: Flask, origin: str) -> None:
+    response = _post(openapi_app.test_client(), _rpc("ping"), {"Origin": origin})
+
+    assert response.status_code == 200
+    assert response.get_json()["result"] == {}
+
+
+@JSON_RPC_ERROR_BODY
+def test_an_origin_in_the_openapi_cors_list_is_accepted(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(mcp_module.dify_config, "inner_openapi_cors_allow_origins", "https://agent.example.com")
+
+    allowed = _post(openapi_app.test_client(), _rpc("ping"), {"Origin": "https://agent.example.com"})
+    other = _post(openapi_app.test_client(), _rpc("ping"), {"Origin": "https://other.example.com"})
+
+    assert allowed.status_code == 200
+    assert other.status_code == 403
+
+
+def test_no_origin_header_is_unchanged(openapi_app: Flask) -> None:
+    response = _post(openapi_app.test_client(), _rpc("ping"))
+
+    assert response.status_code == 200
