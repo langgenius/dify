@@ -10,7 +10,9 @@ from steering the request to another op: no value may hold ``/``, ``?`` or ``#``
 and the built path must resolve, in the app's url map, to the op's own rule.
 The proved path is percent-encoded for the inner request, because the WSGI
 environ decodes it once; the op therefore sees exactly the path that was proved
-(``%2F`` in a value reaches the op as text, never as a separator).
+(``%2F`` in a value reaches the op as text, never as a separator). Path and
+query text must encode as UTF-8 (a lone surrogate is legal JSON but not), or the
+call is refused before anything runs.
 """
 
 from __future__ import annotations
@@ -24,14 +26,14 @@ from http import HTTPMethod
 from typing import Any, Final
 from urllib.parse import quote
 
-from flask import Flask, current_app
+from flask import Flask, current_app, request
 from werkzeug.datastructures import Headers
 from werkzeug.exceptions import HTTPException
 from werkzeug.routing import Rule
 from werkzeug.test import EnvironBuilder
 from werkzeug.wrappers import Response
 
-from controllers.openapi._catalog import CATALOG_HEADER, Bind, current_catalog, iter_handlers
+from controllers.openapi._catalog import _QUERY_METHODS, CATALOG_HEADER, Bind, current_catalog, iter_handlers
 from controllers.openapi.auth.spec import spec_of
 
 AUTHORIZATION_HEADER: Final = "Authorization"
@@ -39,7 +41,8 @@ TRACE_ID_HEADER: Final = "X-Trace-Id"
 ACCEPT_HEADER: Final = "Accept"
 JSON_CONTENT_TYPE: Final = "application/json"
 _UNSAFE_PATH_CHARS: Final = frozenset("/?#")
-_BODY_METHODS: Final = frozenset({HTTPMethod.POST, HTTPMethod.PUT, HTTPMethod.PATCH})
+_REMOTE_ADDR_KEY: Final = "REMOTE_ADDR"
+_URL_ENCODING: Final = "utf-8"
 _PLACEHOLDER_RE: Final = re.compile(r"\{(\w+)\}")
 # Kept unescaped when the proved path is encoded: the separators the template itself holds.
 _PATH_SAFE: Final = "/"
@@ -71,7 +74,8 @@ class UnknownOp(Exception):  # noqa: N818
 
 
 class UnsafePathValue(Exception):  # noqa: N818
-    """A path value is missing, is not a string, or holds ``/``, ``?`` or ``#``."""
+    """A path value is missing, is not a string, or holds ``/``, ``?`` or ``#``; or a
+    path or query text does not encode as UTF-8, so it cannot be placed in the URL."""
 
 
 class FileInputUnsupported(Exception):  # noqa: N818
@@ -130,7 +134,8 @@ def _split_input(entry: Mapping[str, Any], method: HTTPMethod, input: Mapping[st
     so the op's own validation answers them. Raises ``FileInputUnsupported`` when a
     file-bound key is present and ``UnsafePathValue`` for a bad path value.
     """
-    default = Bind.BODY if method in _BODY_METHODS else Bind.QUERY
+    body_bound = method not in _QUERY_METHODS
+    default = Bind.BODY if body_bound else Bind.QUERY
     bind: Mapping[str, str] = entry["bind"]
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
@@ -139,7 +144,8 @@ def _split_input(entry: Mapping[str, Any], method: HTTPMethod, input: Mapping[st
         raise FileInputUnsupported(sorted(parts[Bind.FILE]))
     path_values = parts[Bind.PATH]
     path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry["path"])
-    body = parts[Bind.BODY] if method in _BODY_METHODS else None
+    _check_query_text(parts[Bind.QUERY])
+    body = parts[Bind.BODY] if body_bound else None
     return _Request(path=path, query=parts[Bind.QUERY], body=body)
 
 
@@ -154,7 +160,36 @@ def _safe_path_value(name: str, values: Mapping[str, Any]) -> str:
         raise UnsafePathValue(f"{name}: expected a string")
     if _UNSAFE_PATH_CHARS & set(value):
         raise UnsafePathValue(f"{name}: may not contain '/', '?' or '#'")
+    if not _is_utf8_text(value):
+        raise UnsafePathValue(f"{name}: not valid UTF-8 text")
     return value
+
+
+def _check_query_text(query: Mapping[str, Any]) -> None:
+    """Refuse query text the URL cannot carry.
+
+    Postcondition: returns when every key, and every string value or list item,
+    encodes as UTF-8; raises ``UnsafePathValue`` naming the first key that does not.
+    Other values are left for werkzeug to stringify and the op to validate.
+    """
+    bad = [name for name, value in query.items() if not all(map(_is_utf8_text, _query_texts(name, value)))]
+    if bad:
+        raise UnsafePathValue(f"{bad[0]!r}: not valid UTF-8 text")
+
+
+def _query_texts(name: str, value: Any) -> list[str]:
+    """Postcondition: the key plus the string values werkzeug will encode for it."""
+    items = value if isinstance(value, (list, tuple)) else [value]
+    return [name, *(item for item in items if isinstance(item, str))]
+
+
+def _is_utf8_text(text: str) -> bool:
+    """Postcondition: True when ``text`` encodes as UTF-8 (no lone surrogates)."""
+    try:
+        text.encode(_URL_ENCODING)
+    except UnicodeEncodeError:
+        return False
+    return True
 
 
 def _prove_route(op: str, method: HTTPMethod, path: str) -> None:
@@ -190,10 +225,13 @@ def _op_rules(app: Flask) -> Mapping[str, Rule]:
 def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any]:
     """The WSGI environ for the inner request.
 
-    Postcondition: ``PATH_INFO`` equals ``built.path`` (the builder decodes the
-    encoded path once); a list query value becomes a repeated parameter; the body,
-    when present, is JSON. Headers: the caller's Authorization and trace id when
-    given, the current catalog fingerprint, and ``Accept: application/json``.
+    Precondition: runs inside the outer Flask request. Postcondition: ``PATH_INFO``
+    equals ``built.path`` (the builder decodes the encoded path once); a list query
+    value becomes a repeated parameter; the body, when present, is JSON;
+    ``REMOTE_ADDR`` is the outer request's, as already resolved by any proxy
+    middleware (forwarding headers are not copied, so nothing resolves twice).
+    Headers: the caller's Authorization and trace id when given, the current
+    catalog fingerprint, and ``Accept: application/json``.
     """
     _, fingerprint = current_catalog()
     headers = Headers({CATALOG_HEADER: fingerprint, ACCEPT_HEADER: JSON_CONTENT_TYPE})
@@ -207,6 +245,7 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
         query_string=built.query,
         json=built.body,
         headers=headers,
+        environ_overrides={_REMOTE_ADDR_KEY: request.remote_addr},
     )
     try:
         return builder.get_environ()
