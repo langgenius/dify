@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import cast
 
 from celery import shared_task
 from sqlalchemy import select
@@ -120,7 +119,9 @@ def _update_integration(
 
         integration.status = status
         if plugin_install_task_id is not _UNSET:
-            integration.plugin_install_task_id = cast(str | None, plugin_install_task_id)
+            if plugin_install_task_id is not None and not isinstance(plugin_install_task_id, str):
+                raise ValueError("Invalid plugin installation task identifier")
+            integration.plugin_install_task_id = plugin_install_task_id
         integration.last_error_code = error_code
         if provider_credential_id is not None:
             integration.provider_credential_id = provider_credential_id

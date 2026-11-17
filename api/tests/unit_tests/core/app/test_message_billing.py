@@ -171,7 +171,7 @@ def test_classic_message_reserves_once_and_commits_original_receipt_after_cutove
 
 
 def test_tokener_message_never_touches_legacy_even_if_profile_read_would_allow_it(billing: BillingFixture) -> None:
-    billing.state.update(phase="active", route_epoch=1)
+    billing.state.update(phase="active", route_epoch=1, persisted_model_billing_source="tokener")
     billing.profile.return_value = True
     app = entity(tokener=True)
     owner = begin_message_billing(app, MESSAGE)

@@ -3,13 +3,14 @@ import logging
 import time
 from collections.abc import Generator, Mapping, Sequence
 from threading import Thread
-from typing import Any, cast
+from typing import Any, Literal, cast, overload
 
 from dify_trace_sdk.events import MessageCompleted
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.execution_stream import StreamDeliveryReady, arm_stream_delivery
 from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
@@ -146,8 +147,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if self.stream:
             if execution_owned:
                 response = self._to_stream_response(generator, arm_close=True)
-                next(response)  # Consume the private cleanup-ready marker.
-                return response
+                return arm_stream_delivery(response)
             return self._to_stream_response(generator)
         else:
             try:
@@ -205,16 +205,26 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
 
         raise RuntimeError("queue listening stopped unexpectedly.")
 
+    @overload
+    def _to_stream_response(
+        self, generator: Generator[StreamResponse], *, arm_close: Literal[False] = False
+    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse]: ...
+
+    @overload
+    def _to_stream_response(
+        self, generator: Generator[StreamResponse], *, arm_close: Literal[True]
+    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse | StreamDeliveryReady]: ...
+
     def _to_stream_response(
         self, generator: Generator[StreamResponse], *, arm_close: bool = False
-    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse]:
+    ) -> Generator[ChatbotAppStreamResponse | CompletionAppStreamResponse | StreamDeliveryReady]:
         """
         To stream response.
         :return:
         """
         try:
             if arm_close:
-                yield cast(ChatbotAppStreamResponse, None)
+                yield StreamDeliveryReady()
             for stream_response in generator:
                 if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
                     yield CompletionAppStreamResponse(
