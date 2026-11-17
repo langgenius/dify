@@ -114,6 +114,13 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   await screen.getByRole('region', { name: 'Chat preview' }).hover({ position: { x: 2, y: 150 } })
   const conversation = screen.getByRole('button', { name: 'Saved conversation' }).last()
   await expect.element(conversation).toBeVisible()
+  // The panel slides in over 500ms. Opening the menu mid-slide can position it against a
+  // partly offscreen anchor, which hides the popup and drops focus to the body.
+  await vi.waitFor(() =>
+    expect(
+      document.getAnimations().filter((animation) => animation.playState === 'running'),
+    ).toHaveLength(0),
+  )
   conversation.element().focus()
   await expect.element(conversation).toHaveFocus()
   await userEvent.tab()
