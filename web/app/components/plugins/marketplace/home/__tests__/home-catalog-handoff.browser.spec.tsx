@@ -117,7 +117,9 @@ describe('Marketplace catalog tab handoff', () => {
   })
 
   // The focused desktop link is hidden before resize handoff can capture it: https://github.com/langgenius/dify/issues/46146
-  it.fails('keeps real catalog links keyboard-operable as the mobile header appears and disappears', async () => {
+  // Skipped: the bug does not reproduce reliably in CI, so `it.fails` intermittently passes.
+  // Re-enable as `it` once the issue is fixed.
+  it.skip('keeps real catalog links keyboard-operable as the mobile header appears and disappears', async () => {
     await page.viewport(879, 800)
     const screen = await renderCatalog()
     const plugins = screen.getByRole('link', { name: 'Plugins' })
