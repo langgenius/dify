@@ -395,37 +395,6 @@ describe('AppUserAuth', () => {
     },
   )
 
-  it('saves and authorizes through the real Workspace OAuth flow without creating a mock test credential', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn<(draft: AppUserAuthDraft) => void>()
-    render(<ControlledHarness initialDraft={createAppUserAuthDraft()} onChange={onChange} />)
-    await user.click(screen.getByRole('button', { name: 'plugin.auth.common.configureClient' }))
-    const clientDialog = await screen.findByRole('dialog', { name: clientDialogName })
-    await user.type(within(clientDialog).getByRole('textbox', { name: clientIdLabel }), 'client-id')
-    await user.type(
-      within(clientDialog).getByLabelText(clientSecretLabel, { exact: false }),
-      'client-secret',
-    )
-    await user.click(within(clientDialog).getByRole('button', { name: 'plugin.auth.saveAndAuth' }))
-    const permissions = await screen.findByRole('dialog', { name: 'plugin.auth.whoCanUse' })
-    await user.click(within(permissions).getByRole('button', { name: 'plugin.auth.authorize' }))
-    await waitFor(() =>
-      expect(mocks.openOAuthPopup).toHaveBeenCalledWith(
-        'https://example.com/authorize',
-        authorization.invalidPluginCredentialInfo,
-      ),
-    )
-    expect(mocks.consoleCall).toHaveBeenCalledWith(
-      ['oauth', 'plugin', 'byProvider', 'tool', 'authorizationUrl', 'get'],
-      { params: { provider: pluginPayload.provider }, query: { visibility: 'only_me' } },
-      expect.anything(),
-    )
-    expect(onChange).toHaveBeenLastCalledWith(
-      expect.objectContaining({ client: { type: 'custom' } }),
-    )
-    expect(onChange.mock.calls.every(([draft]) => draft.testCredentialId === undefined)).toBe(true)
-  })
-
   it('saves the shared custom client and retains its server configuration while OAuth is disabled', async () => {
     const user = userEvent.setup()
     render(

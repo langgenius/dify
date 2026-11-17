@@ -9,7 +9,7 @@ import { Fieldset } from '@langgenius/dify-ui/fieldset'
 import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { useMutation } from '@tanstack/react-query'
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { openOAuthPopup } from '@/hooks/use-oauth'
@@ -40,7 +40,7 @@ const AppUserAuth = ({
   onChange,
 }: AppUserAuthProps) => {
   const { t } = useTranslation(['plugin'])
-  const { canManageCredential } = useCredentialPermissions()
+  const { canManageCredential, canUseCredential } = useCredentialPermissions()
   const canOAuth = !!authorization.canOAuth
   const canApiKey = !!authorization.canApiKey
   const oauthClient = useOAuthClient(pluginPayload, canOAuth && active)
@@ -116,6 +116,11 @@ const AppUserAuth = ({
     if (!value) setLocalDraft(nextDraft)
     onChange?.(nextDraft)
   }
+  // OAuth can finish after the user edits the draft while the popup is open.
+  const updateDraftRef = useRef(updateDraft)
+  useEffect(() => {
+    updateDraftRef.current = updateDraft
+  })
   const [clientDialogSession, setClientDialogSession] = useState(0)
   const [clientDialogOpen, setClientDialogOpen] = useState(false)
   const openClientDialog = () => {
@@ -129,7 +134,17 @@ const AppUserAuth = ({
     consoleQuery.oauth.plugin.byProvider.tool.authorizationUrl.get.mutationOptions({
       onSuccess: ({ authorization_url }) => {
         if (!authorization_url) return
-        openOAuthPopup(authorization_url, authorization.invalidPluginCredentialInfo)
+        let handled = false
+        openOAuthPopup(authorization_url, (result) => {
+          if (handled) return
+          handled = true
+          void Promise.resolve(authorization.invalidPluginCredentialInfo({ throwOnError: true }))
+            .then(() => {
+              if (result?.success && result.connectionId && canUseCredential)
+                updateDraftRef.current({ testCredentialId: result.connectionId })
+            })
+            .catch(() => {})
+        })
         setVisibilityOpen(false)
       },
     }),
@@ -331,7 +346,9 @@ const AppUserAuth = ({
             testCredentialUsesDisabledMethod ? undefined : (draft.testCredentialId ?? undefined)
           }
           providerName={providerName}
-          onAuthorizationItemClick={(testCredentialId) => updateDraft({ testCredentialId })}
+          onAuthorizationItemClick={(testCredentialId) =>
+            updateDraftRef.current({ testCredentialId })
+          }
           onClientTypeChange={handleClientTypeChange}
         />
       </section>
