@@ -120,6 +120,9 @@ later deltas. Blocking output uses the non-stream segment size. Segments have no
 overlap or cross-boundary context. Unchecked stream text is buffered rather than
 displayed or sent to speech synthesis. A final short segment is checked before
 delivery. Only already approved prefixes may be visible before a later replacement.
+Before a Chatflow pauses for human input, its pending output tail is checked and
+delivered before `workflow_paused`. The pause snapshot stores the approved or
+replaced answer, so resumption does not lose buffered text or recheck the prefix.
 
 Application entry points call the same stateless app adapters; no request wrapper
 is required to enable the correct behavior. Standalone kernel callers without an

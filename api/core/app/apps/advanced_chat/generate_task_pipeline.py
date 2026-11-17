@@ -715,10 +715,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     def _handle_workflow_paused_event(
         self,
         event: QueueWorkflowPausedEvent,
+        *,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
         **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle workflow paused events."""
+        """Flush checked output before pause delivery and persistence, without completing the message trace."""
         validated_state = self._ensure_graph_runtime_initialized()
+        yield from self._flush_output_moderation(tts_publisher=tts_publisher, queue_message=queue_message)
         responses = self._workflow_response_converter.workflow_pause_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
@@ -820,18 +824,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         yield self._message_end_to_stream_response()
 
-    def _handle_advanced_chat_message_end_event(
+    def _flush_output_moderation(
         self,
-        event: QueueAdvancedChatMessageEndEvent,
         *,
-        graph_runtime_state: RuntimeState | None = None,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
-        **kwargs,
     ) -> Generator[StreamResponse]:
-        """Handle advanced chat message end events."""
-        resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
-
+        """Check and deliver the pending tail before a terminal event, without persisting or completing the message."""
         output_moderation_answer = self._base_task_pipeline.handle_output_moderation_when_task_finished(
             self._task_state.answer
         )
@@ -853,6 +852,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                         answer=output_moderation_answer,
                         reason=QueueMessageReplaceEvent.MessageReplaceReason.OUTPUT_MODERATION,
                     )
+
+    def _handle_advanced_chat_message_end_event(
+        self,
+        event: QueueAdvancedChatMessageEndEvent,
+        *,
+        graph_runtime_state: RuntimeState | None = None,
+        tts_publisher: AppGeneratorTTSPublisher | None = None,
+        queue_message: WorkflowQueueMessage | MessageQueueMessage | None = None,
+        **kwargs,
+    ) -> Generator[StreamResponse]:
+        """Handle advanced chat message end events."""
+        resolved_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
+        yield from self._flush_output_moderation(tts_publisher=tts_publisher, queue_message=queue_message)
 
         # Save message unless it has already been persisted on pause.
         if not self._message_saved_on_pause:
@@ -1032,7 +1044,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     yield from self._handle_workflow_failed_event(event)
                     break
                 case QueueWorkflowPausedEvent():
-                    yield from self._handle_workflow_paused_event(event)
+                    yield from self._handle_workflow_paused_event(
+                        event, tts_publisher=tts_publisher, queue_message=queue_message
+                    )
                     break
 
                 case QueueWorkflowSucceededEvent():
