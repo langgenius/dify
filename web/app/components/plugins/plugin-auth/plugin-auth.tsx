@@ -18,6 +18,7 @@ export type PluginAuthProps = {
   nodeAuth?: Omit<WorkspaceConnectionSelectorProps, 'pluginPayload' | 'authorization'>
   className?: string
   showAuthorizationTabs?: boolean
+  endUserAuthEnabled?: boolean
   authorizationTab?: AuthorizationTab
   onAuthorizationTabChange?: (tab: AuthorizationTab) => void
   appUserAuth?: {
@@ -34,6 +35,7 @@ const PluginAuth = ({
   nodeAuth,
   className,
   showAuthorizationTabs = false,
+  endUserAuthEnabled = true,
   authorizationTab,
   onAuthorizationTabChange,
   appUserAuth,
@@ -65,6 +67,37 @@ const PluginAuth = ({
     )
   }
 
+  const authorizationHeading = (
+    <div className="flex h-6 items-center gap-0.5">
+      <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
+        {t(($) => $['auth.authorization'], { ns: 'plugin' })}
+      </h3>
+      <Infotip>
+        <InfotipTrigger aria-labelledby={labelId} className="size-4" />
+        <InfotipContent aria-labelledby={labelId}>
+          {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+        </InfotipContent>
+      </Infotip>
+    </div>
+  )
+  const workspaceAuthorization = (
+    <WorkspaceAuth
+      pluginPayload={pluginPayload}
+      authorization={authorization}
+      nodeAuth={nodeAuth}
+      showDescription
+    />
+  )
+
+  if (!endUserAuthEnabled) {
+    return (
+      <div className="pt-2">
+        <div className="px-4 py-2">{authorizationHeading}</div>
+        <div className={cn('px-4 py-2', className)}>{workspaceAuthorization}</div>
+      </div>
+    )
+  }
+
   return (
     <Tabs
       defaultValue="workspace-auth"
@@ -84,17 +117,7 @@ const PluginAuth = ({
       className="pt-2"
     >
       <div className="space-y-2 px-4 py-2">
-        <div className="flex h-6 items-center gap-0.5">
-          <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
-            {t(($) => $['auth.authorization'], { ns: 'plugin' })}
-          </h3>
-          <Infotip>
-            <InfotipTrigger aria-labelledby={labelId} className="size-4" />
-            <InfotipContent aria-labelledby={labelId}>
-              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
-            </InfotipContent>
-          </Infotip>
-        </div>
+        {authorizationHeading}
         <TabsList aria-labelledby={labelId} className="gap-2">
           <TabsTab value="workspace-auth" className={authorizationTabClassName}>
             {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
@@ -112,12 +135,7 @@ const PluginAuth = ({
         </TabsList>
       </div>
       <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
-        <WorkspaceAuth
-          pluginPayload={pluginPayload}
-          authorization={authorization}
-          nodeAuth={nodeAuth}
-          showDescription
-        />
+        {workspaceAuthorization}
       </TabsPanel>
       <TabsPanel
         value="app-user-auth"
