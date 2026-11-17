@@ -122,6 +122,7 @@ from services.enterprise.base import EnterpriseRequest
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import AppEvent
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.model_factories import make_app, make_upload_file, make_workflow
 from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
@@ -1101,6 +1102,161 @@ def test_agent_config_selects_personal_build_draft_and_persists_shared_file_uplo
         assert not AgentSoulConfig.model_validate(
             session.get_one(AgentConfigDraft, build_id).config_snapshot_dict
         ).config_files
+
+
+@pytest.mark.parametrize("foreign", [False, True], ids=["missing", "foreign"])
+def test_agent_config_rejects_unavailable_agent(harness: Harness, foreign: bool) -> None:
+    """Return the same Agent error for missing and foreign IDs on reads and uploads."""
+    agent_id = harness.create_agent(tenant_id=str(uuid4()))[0] if foreign else str(uuid4())
+    path = f"/console/api/agent/{agent_id}/config"
+    manifest = harness.client.get(f"{path}/manifest", headers=harness.headers)
+    upload = harness.client.post(
+        f"{path}/files/batch", headers=harness.headers, json={"upload_file_ids": [str(uuid4())]}
+    )
+    for response in (manifest, upload):
+        assert response.status_code == HTTPStatus.NOT_FOUND, response.get_json()
+        assert response.get_json()["code"] == "agent_not_found_error"
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft.id)) is None
+
+
+@pytest.mark.parametrize("failure", ["missing", "foreign", "unsupported-mode"])
+def test_workflow_config_rejects_unavailable_app(harness: Harness, failure: str) -> None:
+    """Require a tenant-owned Workflow or Chatflow App before reaching node config."""
+    app_id = str(uuid4())
+    if failure != "missing":
+        with harness.sessions.begin() as session:
+            session.add(
+                make_app(
+                    app_id=app_id,
+                    tenant_id=str(uuid4()) if failure == "foreign" else harness.tenant_id,
+                    mode=AppMode.COMPLETION if failure == "unsupported-mode" else AppMode.WORKFLOW,
+                )
+            )
+    path = f"/console/api/apps/{app_id}/agent/config"
+    manifest = harness.client.get(f"{path}/manifest?node_id=node-1", headers=harness.headers)
+    upload = harness.client.post(
+        f"{path}/files/batch?node_id=node-1", headers=harness.headers, json={"upload_file_ids": [str(uuid4())]}
+    )
+    for response in (manifest, upload):
+        assert response.status_code == HTTPStatus.NOT_FOUND, response.get_json()
+        assert response.get_json()["code"] == "app_not_found"
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft.id)) is None
+
+
+@pytest.mark.parametrize(
+    ("failure", "status", "code"),
+    [
+        ("unbound", HTTPStatus.BAD_REQUEST, "agent_not_bound"),
+        ("foreign-binding", HTTPStatus.BAD_REQUEST, "agent_not_bound"),
+        ("foreign-agent", HTTPStatus.NOT_FOUND, "agent_not_found_error"),
+    ],
+)
+def test_workflow_config_requires_owned_node_binding_and_agent(
+    harness: Harness, failure: str, status: HTTPStatus, code: str
+) -> None:
+    """Reject a different node, a foreign binding, or a binding to a foreign Agent."""
+    tenant_id = str(uuid4()) if failure == "foreign-agent" else harness.tenant_id
+    agent_id, _ = harness.create_agent(tenant_id=tenant_id)
+    app_id = str(uuid4())
+    with harness.sessions.begin() as session:
+        workflow = make_workflow(app_id=app_id, tenant_id=harness.tenant_id, created_by=harness.account_id)
+        session.add_all(
+            [
+                make_app(app_id=app_id, tenant_id=harness.tenant_id, mode=AppMode.WORKFLOW),
+                workflow,
+                WorkflowAgentNodeBinding(
+                    tenant_id=str(uuid4()) if failure == "foreign-binding" else harness.tenant_id,
+                    app_id=app_id,
+                    workflow_id=workflow.id,
+                    workflow_version=Workflow.VERSION_DRAFT,
+                    node_id="other-node" if failure == "unbound" else "node-1",
+                    binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+                    agent_id=agent_id,
+                    node_job_config=WorkflowNodeJobConfig(),
+                ),
+            ]
+        )
+    response = harness.client.post(
+        f"/console/api/apps/{app_id}/agent/config/files/batch?node_id=node-1",
+        headers=harness.headers,
+        json={"upload_file_ids": [str(uuid4())]},
+    )
+    assert response.status_code == status, response.get_json()
+    assert response.get_json()["code"] == code
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft.id)) is None
+
+
+@pytest.mark.parametrize("failure", ["missing-build", "other-editor-build", "missing-snapshot", "other-agent-snapshot"])
+def test_agent_config_rejects_missing_or_unowned_config_version(harness: Harness, failure: str) -> None:
+    """Failed reads and uploads never fall back to, or prepare, a shared draft."""
+    agent_id, _ = harness.create_agent()
+    snapshot_id = str(uuid4()) if failure.endswith("snapshot") else None
+    with harness.sessions.begin() as session:
+        upload_file = make_upload_file(tenant_id=harness.tenant_id, created_by=harness.account_id)
+        owned_snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version=1, config_snapshot=AgentSoulConfig()
+        )
+        session.get_one(Agent, agent_id).active_config_snapshot_id = owned_snapshot.id
+        session.add_all([upload_file, owned_snapshot])
+        upload_file_id = upload_file.id
+        before_draft_ids: list[str] = []
+        if failure == "other-editor-build":
+            other_editor_id = str(uuid4())
+            draft = AgentConfigDraft(
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=other_editor_id,
+                draft_owner_key=other_editor_id,
+                config_snapshot=AgentSoulConfig(),
+            )
+            session.add(draft)
+            before_draft_ids.append(draft.id)
+        if snapshot_id is not None and failure == "other-agent-snapshot":
+            other_agent = Agent(
+                tenant_id=harness.tenant_id,
+                name="Other roster Agent",
+                scope=AgentScope.ROSTER,
+                source=AgentSource.ROSTER,
+            )
+            session.add_all(
+                [
+                    other_agent,
+                    AgentConfigSnapshot(
+                        id=snapshot_id,
+                        tenant_id=harness.tenant_id,
+                        agent_id=other_agent.id,
+                        version=1,
+                        config_snapshot=AgentSoulConfig(),
+                    ),
+                ]
+            )
+
+    query = {"version_id": snapshot_id} if snapshot_id is not None else {"draft_type": "debug_build"}
+    path = f"/console/api/agent/{agent_id}/config"
+    manifest = harness.client.get(f"{path}/manifest", headers=harness.headers, query_string=query)
+    upload = harness.client.post(
+        f"{path}/files/batch", headers=harness.headers, query_string=query, json={"upload_file_ids": [upload_file_id]}
+    )
+    for response in (manifest, upload):
+        assert response.status_code == HTTPStatus.NOT_FOUND, response.get_json()
+        assert response.get_json()["code"] == "config_version_not_found"
+    with harness.sessions() as session:
+        assert list(session.scalars(select(AgentConfigDraft.id))) == before_draft_ids
+
+
+def test_workflow_config_validates_request_before_resolving_missing_app(harness: Harness) -> None:
+    """An invalid query or body precedes target resolution after Console admission."""
+    path = f"/console/api/apps/{uuid4()}/agent/config"
+    manifest = harness.client.get(f"{path}/manifest?draft_type=invalid", headers=harness.headers)
+    assert manifest.status_code == HTTPStatus.BAD_REQUEST, manifest.get_json()
+    assert manifest.get_json()["code"] == "invalid_param"
+    upload = harness.client.post(f"{path}/files/batch", headers=harness.headers, json={"upload_file_ids": []})
+    assert upload.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, upload.get_json()
+    assert upload.get_json()["code"] == "unprocessable_entity"
 
 
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:

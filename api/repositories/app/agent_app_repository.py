@@ -566,7 +566,11 @@ class AgentAppRepository:
     def resolve_config_selection(
         self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
     ) -> AgentConfigSelection:
-        """Resolve the eligible Agent and commit a normal draft only for an explicit asset mutation."""
+        """Select the eligible Agent's config and prepare a normal draft for asset writes.
+
+        Runtime App resolution may also create and commit a missing hidden
+        backing App for a workflow-only Agent, including on reads.
+        """
         tenant_id = context.active_workspace_id
         with self._session_factory() as session:
             if resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id) is None:

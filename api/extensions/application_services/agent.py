@@ -90,7 +90,7 @@ def build_agent_app_services(
         notify_updated=notify_agent_app_updated,
     )
     return AgentAppServices(
-        access=AgentAppAccessService(references=apps),
+        access=AgentAppAccessService(store=apps),
         api_access=AgentApiAccessService(store=apps, notify_updated=notify_agent_app_updated),
         lifecycle=deletion_service,
         detail=detail,

@@ -204,7 +204,7 @@ def harness(
     )
     services = _Services(
         app_services,
-        _Agents(AgentAppAccessService(references=AgentAppRepository(session_factory=sqlite_session_factory))),
+        _Agents(AgentAppAccessService(store=AgentAppRepository(session_factory=sqlite_session_factory))),
         MessageSuggestedQuestionsService(
             queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
         ),
