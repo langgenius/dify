@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "درخواست اشکال‌زدایی Webhook ناموفق بود",
   "common.workflowAsToolDescription": "استفاده به‌عنوان ابزار در برنامه‌های دیگر",
   "common.workflowAsToolDisabledHint": "برای تنظیم به عنوان ابزار، ابتدا گردش کار را منتشر کنید و مطمئن شوید که گره ورودی کاربر متصل است.",
+  "common.workflowAsToolEndUserAuth": "گردش‌کارهایی که ابزارهای آن‌ها از مجوز کاربر برنامه استفاده می‌کنند، نمی‌توانند به‌عنوان ابزار منتشر شوند.",
   "common.workflowAsToolReady": "آماده",
   "common.workflowAsToolReconfigure": "پیکربندی مجدد",
   "common.workflowAsToolTip": "پس از به‌روزرسانی گردش کار، پیکربندی مجدد ابزار الزامی است.",

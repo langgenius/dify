@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhook hata ayıklama isteği başarısız oldu",
   "common.workflowAsToolDescription": "Diğer uygulamalarda araç olarak kullan",
   "common.workflowAsToolDisabledHint": "En son iş akışını yayınlayın ve bunu bir araç olarak yapılandırmadan önce bağlı bir Kullanıcı Girdisi düğümünün olduğundan emin olun.",
+  "common.workflowAsToolEndUserAuth": "Uygulama kullanıcısı yetkilendirmesi kullanan araçlar içeren iş akışları araç olarak yayımlanamaz.",
   "common.workflowAsToolReady": "Hazır",
   "common.workflowAsToolReconfigure": "Yeniden yapılandır",
   "common.workflowAsToolTip": "İş Akışı güncellemesinden sonra araç yeniden yapılandırması gereklidir.",

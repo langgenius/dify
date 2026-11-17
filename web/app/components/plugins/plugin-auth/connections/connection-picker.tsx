@@ -101,7 +101,7 @@ const ConnectionPicker = ({
       ) : (
         <PopoverTrigger
           disabled={disabled}
-          className="flex h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
+          className="flex min-h-13 w-full cursor-pointer items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-1 py-1.5 text-start hover:bg-state-base-hover-alt data-popup-open:bg-state-base-hover-alt"
         >
           <span className="flex size-6 shrink-0 items-center justify-center" aria-hidden>
             <Avatar size="xs" className="border-[0.5px] border-divider-regular">
@@ -114,7 +114,8 @@ const ConnectionPicker = ({
             {/* The connection picker discloses the complete name through its wrapping rows. */}
             <span
               className={cn(
-                'truncate system-sm-regular text-components-input-text-filled',
+                'system-sm-regular text-components-input-text-filled',
+                selected ? 'truncate' : 'wrap-anywhere whitespace-normal',
                 unavailable && 'text-text-destructive',
               )}
             >

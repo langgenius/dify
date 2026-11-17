@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Zahteva za razhroščevanje Webhook ni uspela",
   "common.workflowAsToolDescription": "Uporabi kot orodje v drugih aplikacijah",
   "common.workflowAsToolDisabledHint": "Objavite najnovejše delovne tokove in zagotovite, da je pred konfiguracijo kot orodje povezan vozel za vnos uporabnika.",
+  "common.workflowAsToolEndUserAuth": "Delovnih tokov z orodji, ki uporabljajo pooblastilo uporabnika aplikacije, ni mogoče objaviti kot orodja.",
   "common.workflowAsToolReady": "Pripravljeno",
   "common.workflowAsToolReconfigure": "Ponovno konfiguriraj",
   "common.workflowAsToolTip": "Zaradi posodobitve delovnega poteka je potrebna ponovna konfiguracija orodja.",

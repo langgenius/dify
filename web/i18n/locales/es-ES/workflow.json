@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Falló la solicitud de depuración del Webhook",
   "common.workflowAsToolDescription": "Usarlo como herramienta en otras aplicaciones",
   "common.workflowAsToolDisabledHint": "Publica el flujo de trabajo más reciente y asegúrate de que haya un nodo de Entrada de Usuario conectado antes de configurarlo como una herramienta.",
+  "common.workflowAsToolEndUserAuth": "Los flujos de trabajo con herramientas que usan la autorización del usuario de la aplicación no se pueden publicar como herramientas.",
   "common.workflowAsToolReady": "Listo",
   "common.workflowAsToolReconfigure": "Reconfigurar",
   "common.workflowAsToolTip": "Se requiere la reconfiguración de la herramienta después de la actualización del flujo de trabajo.",

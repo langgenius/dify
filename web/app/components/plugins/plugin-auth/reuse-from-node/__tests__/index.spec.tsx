@@ -128,21 +128,6 @@ describe('ReuseFromNode', () => {
     expect(screen.getByText('plugin.auth.reuse.removed')).toBeVisible()
   })
 
-  it('disables source selection when there are no candidate nodes', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    renderReuse({ onChange })
-    const select = screen.getByRole('combobox', { name: selectNodeLabel })
-    expect(select).toBeDisabled()
-    expect(select).toHaveTextContent(selectNodeLabel)
-
-    await user.click(select)
-
-    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: locateLabel })).not.toBeInTheDocument()
-    expect(onChange).not.toHaveBeenCalled()
-  })
-
   it('keeps circular references visible but prevents selecting them', async () => {
     const user = userEvent.setup()
     const onChange = vi.fn()

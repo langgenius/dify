@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Yêu cầu gỡ lỗi Webhook thất bại",
   "common.workflowAsToolDescription": "Sử dụng làm công cụ trong các ứng dụng khác",
   "common.workflowAsToolDisabledHint": "Xuất bản quy trình làm việc mới nhất và đảm bảo một nút Nhập liệu Người dùng kết nối trước khi cấu hình nó như một công cụ.",
+  "common.workflowAsToolEndUserAuth": "Không thể xuất bản quy trình làm việc có công cụ sử dụng ủy quyền của người dùng ứng dụng dưới dạng công cụ.",
   "common.workflowAsToolReady": "Sẵn sàng",
   "common.workflowAsToolReconfigure": "Cấu hình lại",
   "common.workflowAsToolTip": "Cần cấu hình lại công cụ sau khi cập nhật quy trình làm việc.",

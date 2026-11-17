@@ -27,6 +27,7 @@ export type WorkspaceConnectionSelectorProps = {
   active?: boolean
   disabled?: boolean
   placeholder?: string
+  removedPlaceholder?: string
   onClientTypeChange?: (type: 'default' | 'custom' | undefined) => void
   providerName?: string
   onAuthorizationItemClick: (id: string) => void
@@ -44,6 +45,7 @@ const WorkspaceConnectionSelector = ({
   active = true,
   disabled = false,
   placeholder,
+  removedPlaceholder,
   onClientTypeChange,
   providerName,
   onAuthorizationItemClick,
@@ -115,7 +117,7 @@ const WorkspaceConnectionSelector = ({
     (isLoading
       ? t(($) => $.loading, { ns: 'common' })
       : credentialId && !authorization.loadError
-        ? t(($) => $['auth.authRemoved'], { ns: 'plugin' })
+        ? (removedPlaceholder ?? t(($) => $['auth.authRemoved'], { ns: 'plugin' }))
         : (placeholder ?? t(($) => $['auth.workspaceDefault'], { ns: 'plugin' })))
 
   useEffect(() => {

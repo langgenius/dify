@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Niepowodzenie żądania debugowania Webhook",
   "common.workflowAsToolDescription": "Używaj jako narzędzia w innych aplikacjach",
   "common.workflowAsToolDisabledHint": "Opublikuj najnowszy przepływ pracy i upewnij się, że węzeł Wprowadzanie danych użytkownika jest połączony przed skonfigurowaniem go jako narzędzie.",
+  "common.workflowAsToolEndUserAuth": "Przepływów pracy z narzędziami korzystającymi z autoryzacji użytkownika aplikacji nie można publikować jako narzędzi.",
   "common.workflowAsToolReady": "Gotowe",
   "common.workflowAsToolReconfigure": "Skonfiguruj ponownie",
   "common.workflowAsToolTip": "Wymagana rekonfiguracja narzędzia po aktualizacji przepływu pracy.",

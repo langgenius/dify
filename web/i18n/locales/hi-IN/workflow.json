@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhook डीबग अनुरोध विफल",
   "common.workflowAsToolDescription": "इसे अन्य ऐप्स में टूल के रूप में उपयोग करें",
   "common.workflowAsToolDisabledHint": "सबसे नया वर्कफ़्लो प्रकाशित करें और इसे टूल के रूप में कॉन्फ़िगर करने से पहले एक कनेक्टेड यूज़र इनपुट नोड सुनिश्चित करें।",
+  "common.workflowAsToolEndUserAuth": "ऐप उपयोगकर्ता प्राधिकरण का उपयोग करने वाले टूल वाले वर्कफ़्लो को टूल के रूप में प्रकाशित नहीं किया जा सकता।",
   "common.workflowAsToolReady": "तैयार",
   "common.workflowAsToolReconfigure": "फिर से कॉन्फ़िगर करें",
   "common.workflowAsToolTip": "कार्यप्रवाह अपडेट के बाद टूल पुनः कॉन्फ़िगरेशन आवश्यक है।",

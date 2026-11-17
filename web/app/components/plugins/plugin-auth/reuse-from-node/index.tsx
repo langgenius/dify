@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 
@@ -26,6 +27,7 @@ export type ReuseFromNodeProps = {
 
 const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeProps) => {
   const { t } = useTranslation(['plugin'])
+  const noNodesId = useId()
   const selectedNode = nodes.find((node) => node.id === value?.id)
   const reference = selectedNode ?? value
   const removed = !!value && !selectedNode
@@ -53,6 +55,7 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
         <SelectTrigger
           aria-label={t(($) => $['auth.reuse.selectNode'], { ns: 'plugin' })}
           aria-invalid={invalid || undefined}
+          aria-describedby={!nodes.length ? noNodesId : undefined}
           className={cn(
             'px-2',
             !nodes.length && !removed && 'opacity-50',
@@ -127,6 +130,11 @@ const ReuseFromNode = ({ nodes = [], value, onChange, onLocate }: ReuseFromNodeP
           </SelectPositioner>
         </SelectPortal>
       </Select>
+      {!nodes.length && (
+        <p id={noNodesId} role="alert" className="body-xs-regular text-text-destructive">
+          {t(($) => $['auth.reuse.noConfiguredNodes'], { ns: 'plugin' })}
+        </p>
+      )}
       {selectedNode && (
         <div className="flex h-6 items-center justify-between gap-2">
           <span className="system-xs-regular leading-4.5 text-text-tertiary">

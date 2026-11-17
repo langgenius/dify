@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Помилка запиту налагодження Webhook",
   "common.workflowAsToolDescription": "Використовувати як інструмент в інших застосунках",
   "common.workflowAsToolDisabledHint": "Опублікуйте останній робочий процес і переконайтеся, що перед налаштуванням його як інструменту є підключений вузол введення користувача.",
+  "common.workflowAsToolEndUserAuth": "Робочі процеси з інструментами, які використовують авторизацію користувача застосунку, не можна публікувати як інструменти.",
   "common.workflowAsToolReady": "Готово",
   "common.workflowAsToolReconfigure": "Переналаштувати",
   "common.workflowAsToolTip": "Після оновлення робочого потоку необхідна переконфігурація інструменту.",

@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "فشل طلب تصحيح أخطاء Webhook",
   "common.workflowAsToolDescription": "استخدمه كأداة في تطبيقات أخرى",
   "common.workflowAsToolDisabledHint": "انشر أحدث سير عمل وتأكد من وجود عقدة إدخال مستخدم متصلة قبل تكوينها كأداة.",
+  "common.workflowAsToolEndUserAuth": "لا يمكن نشر سير العمل كأداة إذا احتوى على أدوات تستخدم تفويض مستخدم التطبيق.",
   "common.workflowAsToolReady": "جاهز",
   "common.workflowAsToolReconfigure": "إعادة التهيئة",
   "common.workflowAsToolTip": "التكوين المطلوب للأداة بعد تحديث سير العمل.",

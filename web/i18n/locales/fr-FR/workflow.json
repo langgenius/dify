@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Échec de la demande de débogage du Webhook",
   "common.workflowAsToolDescription": "L’utiliser comme outil dans d’autres applications",
   "common.workflowAsToolDisabledHint": "Publiez le dernier flux de travail et assurez-vous qu'un nœud d'entrée utilisateur est connecté avant de le configurer comme outil.",
+  "common.workflowAsToolEndUserAuth": "Les workflows contenant des outils qui utilisent l’autorisation de l’utilisateur de l’application ne peuvent pas être publiés en tant qu’outils.",
   "common.workflowAsToolReady": "Prêt",
   "common.workflowAsToolReconfigure": "Reconfigurer",
   "common.workflowAsToolTip": "Reconfiguration de l'outil requise après la mise à jour du flux de travail.",

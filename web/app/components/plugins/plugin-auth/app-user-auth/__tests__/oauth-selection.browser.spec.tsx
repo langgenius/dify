@@ -42,7 +42,7 @@ const createdOAuth: Credential = {
 }
 let serverClient: OAuthClientSchema
 let serverCredentials: Credential[]
-let refreshRequest: ReturnType<typeof createDeferred> | undefined
+let refreshRequest: ReturnType<typeof createDeferred<void>> | undefined
 
 async function showAppUserAuth() {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
@@ -100,19 +100,28 @@ async function startAuthorization(screen: Awaited<ReturnType<typeof showAppUserA
   await permissions.getByRole('button', { name: 'plugin.auth.authorize' }).click()
   await expect.poll(() => mocks.openOAuthPopup.mock.calls.length).toBe(1)
   await expect.element(permissions).not.toBeInTheDocument()
-  return mocks.openOAuthPopup.mock.calls[0][1]
+  const call = mocks.openOAuthPopup.mock.calls[0]
+  if (!call) throw new Error('Expected the OAuth popup to open')
+  return call[1]
 }
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
   serverClient = {
     schema: [
-      { name: 'client_id', label: { en_US: 'Client ID' }, type: 'text-input', required: true },
+      {
+        name: 'client_id',
+        label: { en_US: 'Client ID' },
+        type: 'text-input',
+        required: true,
+        multiple: false,
+      },
       {
         name: 'client_secret',
         label: { en_US: 'Client Secret' },
         type: 'secret-input',
         required: true,
+        multiple: false,
       },
     ],
     is_oauth_custom_client_enabled: false,
@@ -158,7 +167,11 @@ it('selects the completed OAuth account after refreshing and preserves edits mad
   try {
     await expect.poll(() => mocks.refresh.mock.calls.length).toBeGreaterThan(0)
     await expect
-      .element(testConnection.getByRole('button', { name: 'plugin.auth.appUser.testConnection' }))
+      .element(
+        testConnection.getByRole('button', {
+          name: 'plugin.auth.appUser.testConnectionPlaceholder',
+        }),
+      )
       .toBeVisible()
     expect(
       mocks.draftChanged.mock.calls.some(([draft]) => draft.testCredentialId === createdOAuth.id),
@@ -189,7 +202,7 @@ it('leaves the test connection unselected when the OAuth popup closes without a 
     .element(
       screen
         .getByRole('region', { name: 'plugin.auth.appUser.testConnection' })
-        .getByRole('button', { name: 'plugin.auth.appUser.testConnection' }),
+        .getByRole('button', { name: 'plugin.auth.appUser.testConnectionPlaceholder' }),
     )
     .toBeVisible()
   expect(
