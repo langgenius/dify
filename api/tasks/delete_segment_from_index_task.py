@@ -9,7 +9,7 @@ from sqlalchemy import delete, select
 from core.db.session_factory import session_factory
 from core.rag.index_processor.index_processor import IndexProcessorFactory
 from extensions.ext_storage import storage
-from models.dataset import Dataset, Document, SegmentAttachmentBinding
+from models.dataset import ChildChunk, Dataset, Document, SegmentAttachmentBinding
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -60,18 +60,35 @@ def delete_segment_from_index_task(
                 and dataset_document.indexing_status == "completed"
             )
             if document_can_be_indexed:
-                # Proceed with index cleanup using the index_node_ids directly.
-                # For actual deletion, we should delete summaries (not just disable them).
-                index_processor = IndexProcessorFactory(doc_form).init_index_processor()
-                index_processor.clean(
-                    dataset,
-                    index_node_ids,
-                    with_keywords=True,
-                    delete_child_chunks=True,
-                    precomputed_child_node_ids=child_node_ids,
-                    delete_summaries=True,  # Actually delete summaries when segment is deleted,
-                    session=session,
-                )
+                if index_node_ids:
+                    # Empty IDs mean "delete the whole dataset" in processors.
+                    index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+                    index_processor.clean(
+                        dataset,
+                        index_node_ids,
+                        with_keywords=True,
+                        delete_child_chunks=True,
+                        precomputed_child_node_ids=child_node_ids,
+                        delete_summaries=True,
+                        session=session,
+                    )
+                else:
+                    # Disabled/unindexed segments have no parent node IDs. Delete
+                    # their summaries by segment ID, never via clean([]), which
+                    # selects dataset-wide index and summary cleanup.
+                    from services.knowledge.summaries.adapters import SummaryIndexAdapter
+
+                    SummaryIndexAdapter.delete_summaries_for_segments(
+                        dataset, segment_ids, session=session
+                    )
+                    session.execute(
+                        delete(ChildChunk).where(
+                            ChildChunk.tenant_id == dataset.tenant_id,
+                            ChildChunk.dataset_id == dataset.id,
+                            ChildChunk.document_id == document_id,
+                            ChildChunk.segment_id.in_(segment_ids),
+                        )
+                    )
                 session.commit()
             if dataset.is_multimodal:
                 # Attachment records are durable resources and must be cleaned even

@@ -6,13 +6,29 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from celery.exceptions import Retry
+from google.api_core.exceptions import NotFound
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.rag.index_processor.constant.index_type import IndexStructureType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from extensions.storage.google_cloud_storage import GoogleCloudStorage
 from extensions.storage.storage_type import StorageType
-from models.dataset import Dataset, Document, DocumentSegment, SegmentAttachmentBinding
-from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from models.dataset import (
+    ChildChunk,
+    Dataset,
+    Document,
+    DocumentSegment,
+    DocumentSegmentSummary,
+    SegmentAttachmentBinding,
+)
+from models.enums import (
+    CreatorUserRole,
+    DataSourceType,
+    DocumentCreatedFrom,
+    IndexingStatus,
+    SegmentStatus,
+    SummaryStatus,
+)
 from models.model import UploadFile
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
@@ -156,6 +172,138 @@ def test_delete_segment_commits_index_cleanup_without_attachments(
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
     assert phase_events == ["clean", "commit"]
+
+
+def test_delete_disabled_segment_with_no_index_node_ids_preserves_other_segments(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, disabled_segment = indexed_segment
+    dataset.indexing_technique = IndexTechniqueType.HIGH_QUALITY
+    dataset.index_struct = '{"type":"pgvector"}'
+    dataset.is_multimodal = True
+    document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
+    disabled_segment.enabled = False
+    disabled_segment.index_node_id = None
+    live_segment = DocumentSegment(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        position=2,
+        content="live content",
+        word_count=2,
+        tokens=2,
+        created_by=disabled_segment.created_by,
+        index_node_id="live-node",
+        index_node_hash="live-hash",
+        status=SegmentStatus.COMPLETED,
+    )
+    disabled_summary = DocumentSegmentSummary(
+        dataset_id=dataset.id,
+        document_id=document.id,
+        chunk_id=disabled_segment.id,
+        summary_content="disabled summary",
+        summary_index_node_id="disabled-summary-node",
+        status=SummaryStatus.COMPLETED,
+    )
+    live_summary = DocumentSegmentSummary(
+        dataset_id=dataset.id,
+        document_id=document.id,
+        chunk_id=live_segment.id,
+        summary_content="live summary",
+        summary_index_node_id="live-summary-node",
+        status=SummaryStatus.COMPLETED,
+    )
+    disabled_child = ChildChunk(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=disabled_segment.id,
+        position=1,
+        content="disabled child",
+        word_count=2,
+        created_by=disabled_segment.created_by,
+        index_node_id="disabled-child-node",
+    )
+    live_child = ChildChunk(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=live_segment.id,
+        position=1,
+        content="live child",
+        word_count=2,
+        created_by=live_segment.created_by,
+        index_node_id="live-child-node",
+    )
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/disabled-segment-image.png",
+        name="disabled-segment-image.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=disabled_segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=disabled_segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all(
+        [
+            dataset,
+            live_segment,
+            disabled_summary,
+            live_summary,
+            disabled_child,
+            live_child,
+            attachment,
+            binding,
+        ]
+    )
+    sqlite_session.commit()
+    live_segment_id = live_segment.id
+    live_child_id = live_child.id
+    disabled_child_id = disabled_child.id
+    disabled_summary_id = disabled_summary.id
+    live_summary_id = live_summary.id
+    attachment_id = attachment.id
+    binding_id = binding.id
+
+    vector_backend = MagicMock()
+    vector_factory_instance = MagicMock()
+    vector_factory_instance.init_vector.return_value = vector_backend
+    with (
+        patch(
+            "core.rag.datasource.vdb.vector_factory.Vector.get_vector_factory",
+            return_value=lambda: vector_factory_instance,
+        ),
+        patch("core.rag.datasource.keyword.keyword_factory.Keyword.delete") as keyword_delete,
+        patch("tasks.delete_segment_from_index_task.storage.delete") as storage_delete,
+    ):
+        delete_segment_from_index_task.run([], dataset.id, document.id, [disabled_segment.id], [])
+
+    assert [entry.args for entry in vector_backend.delete_by_ids.call_args_list] == [
+        (["disabled-summary-node"],)
+    ]
+    vector_backend.delete.assert_not_called()
+    keyword_delete.assert_not_called()
+    storage_delete.assert_called_once_with(attachment.key)
+    sqlite_session.expire_all()
+    assert sqlite_session.get(DocumentSegment, live_segment_id) is not None
+    assert sqlite_session.get(DocumentSegmentSummary, live_summary_id) is not None
+    assert sqlite_session.get(ChildChunk, live_child_id) is not None
+    assert sqlite_session.get(DocumentSegmentSummary, disabled_summary_id) is None
+    assert sqlite_session.get(ChildChunk, disabled_child_id) is None
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
 
 
 def test_delete_segment_removes_attachment_blobs_from_storage(
@@ -380,3 +528,183 @@ def test_delete_segment_retries_attachment_storage_delete_before_database_cleanu
     sqlite_session.expire_all()
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
     assert sqlite_session.get(UploadFile, attachment_id) is None
+
+
+def test_delete_segment_retry_tolerates_google_missing_object_after_partial_success(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    attachments = [
+        UploadFile(
+            tenant_id=dataset.tenant_id,
+            storage_type=StorageType.GOOGLE_STORAGE,
+            key=f"attachments/retry-{index}.png",
+            name=f"retry-{index}.png",
+            size=10,
+            extension="png",
+            mime_type="image/png",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=segment.created_by,
+            created_at=datetime.now(UTC),
+            used=True,
+        )
+        for index in range(2)
+    ]
+    bindings = [
+        SegmentAttachmentBinding(
+            tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            segment_id=segment.id,
+            attachment_id=attachment.id,
+        )
+        for attachment in attachments
+    ]
+    sqlite_session.add_all([dataset, *attachments, *bindings])
+    sqlite_session.commit()
+    attachment_ids = [attachment.id for attachment in attachments]
+    attachment_keys = [attachment.key for attachment in attachments]
+    binding_ids = [binding.id for binding in bindings]
+
+    bucket = MagicMock()
+    bucket.delete_blob.side_effect = [None, RuntimeError("temporary failure"), NotFound("missing"), None]
+    google_storage = GoogleCloudStorage.__new__(GoogleCloudStorage)
+    google_storage.bucket_name = "test-bucket"
+    google_storage.client = MagicMock()
+    google_storage.client.get_bucket.return_value = bucket
+
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
+        patch(
+            "tasks.delete_segment_from_index_task.storage.delete",
+            side_effect=google_storage.delete,
+        ) as storage_delete,
+        patch.object(delete_segment_from_index_task, "retry", side_effect=Retry()) as retry_task,
+    ):
+        with pytest.raises(Retry):
+            delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+        retry_task.assert_called_once()
+        assert storage_delete.call_count == 2
+        sqlite_session.expire_all()
+        assert all(sqlite_session.get(SegmentAttachmentBinding, item) is not None for item in binding_ids)
+        assert all(sqlite_session.get(UploadFile, item) is not None for item in attachment_ids)
+
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    assert storage_delete.call_count == 4
+    deleted_keys = [entry.args[0] for entry in bucket.delete_blob.call_args_list]
+    assert deleted_keys[:2] == deleted_keys[2:]
+    assert set(deleted_keys[:2]) == set(attachment_keys)
+    sqlite_session.expire_all()
+    assert all(sqlite_session.get(SegmentAttachmentBinding, item) is None for item in binding_ids)
+    assert all(sqlite_session.get(UploadFile, item) is None for item in attachment_ids)
+
+
+def test_delete_segment_treats_google_missing_object_on_first_attempt_as_success(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.GOOGLE_STORAGE,
+        key="attachments/already-absent.png",
+        name="already-absent.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    binding_id = binding.id
+
+    bucket = MagicMock()
+    bucket.delete_blob.side_effect = NotFound("missing")
+    google_storage = GoogleCloudStorage.__new__(GoogleCloudStorage)
+    google_storage.bucket_name = "test-bucket"
+    google_storage.client = MagicMock()
+    google_storage.client.get_bucket.return_value = bucket
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
+        patch(
+            "tasks.delete_segment_from_index_task.storage.delete",
+            side_effect=google_storage.delete,
+        ) as storage_delete,
+        patch.object(delete_segment_from_index_task, "retry") as retry_task,
+    ):
+        delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    storage_delete.assert_called_once_with(attachment.key)
+    retry_task.assert_not_called()
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
+    assert sqlite_session.get(UploadFile, attachment_id) is None
+
+
+def test_delete_segment_keeps_attachment_references_after_retries_are_exhausted(
+    indexed_segment: tuple[Dataset, Document, DocumentSegment],
+    sqlite_session: Session,
+) -> None:
+    dataset, document, segment = indexed_segment
+    dataset.is_multimodal = True
+    attachment = UploadFile(
+        tenant_id=dataset.tenant_id,
+        storage_type=StorageType.LOCAL,
+        key="attachments/exhausted-retry.png",
+        name="exhausted-retry.png",
+        size=10,
+        extension="png",
+        mime_type="image/png",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by=segment.created_by,
+        created_at=datetime.now(UTC),
+        used=True,
+    )
+    binding = SegmentAttachmentBinding(
+        tenant_id=dataset.tenant_id,
+        dataset_id=dataset.id,
+        document_id=document.id,
+        segment_id=segment.id,
+        attachment_id=attachment.id,
+    )
+    sqlite_session.add_all([dataset, attachment, binding])
+    sqlite_session.commit()
+    attachment_id = attachment.id
+    binding_id = binding.id
+    terminal_error = RuntimeError("retries exhausted")
+
+    with (
+        patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
+        patch(
+            "tasks.delete_segment_from_index_task.storage.delete",
+            side_effect=RuntimeError("storage unavailable"),
+        ),
+        patch.object(
+            delete_segment_from_index_task,
+            "retry",
+            side_effect=[Retry(), Retry(), Retry(), terminal_error],
+        ) as retry_task,
+    ):
+        for _ in range(4):
+            with pytest.raises((Retry, RuntimeError)):
+                delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+
+    assert retry_task.call_count == 4
+    sqlite_session.expire_all()
+    assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is not None
+    assert sqlite_session.get(UploadFile, attachment_id) is not None
