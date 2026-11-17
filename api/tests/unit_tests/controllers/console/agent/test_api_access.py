@@ -2,7 +2,7 @@
 
 import json
 from collections.abc import Iterator
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from functools import partial
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -11,12 +11,14 @@ from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Blueprint, Flask, request
 from flask.testing import FlaskClient
 from redis import Redis
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
+from werkzeug.serving import make_server
 from werkzeug.test import TestResponse
+from yarl import URL
 
 from constants import HEADER_NAME_CSRF_TOKEN
 from controllers.console.agent.api_access import AgentApiAccessApi, AgentApiStatusApi
@@ -31,9 +33,17 @@ from controllers.console.agent.composer import (
     AgentComposerCandidatesApi,
     AgentComposerValidateApi,
     SnippetAgentComposerApi,
+    SnippetAgentComposerCandidatesApi,
+    SnippetAgentComposerCopyFromRosterApi,
     SnippetAgentComposerImpactApi,
+    SnippetAgentComposerSaveToRosterApi,
+    SnippetAgentComposerValidateApi,
     WorkflowAgentComposerApi,
+    WorkflowAgentComposerCandidatesApi,
+    WorkflowAgentComposerCopyFromRosterApi,
     WorkflowAgentComposerImpactApi,
+    WorkflowAgentComposerSaveToRosterApi,
+    WorkflowAgentComposerValidateApi,
 )
 from controllers.console.agent.roster import (
     AgentAppApi,
@@ -50,6 +60,7 @@ from controllers.console.agent.roster import (
     AgentStatisticsSummaryApi,
 )
 from controllers.console.wraps import _is_setup_completed
+from core.plugin.impl import base as plugin_http
 from enums import DeploymentEdition
 from events.app_event import app_was_updated
 from extensions.ext_application_services import application_services, build_application_services
@@ -68,13 +79,15 @@ from models.agent import (
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
+    AgentDebugConversation,
     AgentHomeSnapshot,
     AgentScope,
     AgentSource,
     AgentWorkingResourceStatus,
+    WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.engine import db
 from models.enums import ApiTokenType
 from models.knowledge_fs import (
@@ -89,7 +102,7 @@ from models.knowledge_fs_cutover import (
     KnowledgeFSWorkspaceCutoverLedger,
     KnowledgeFSWorkspaceCutoverPhase,
 )
-from models.model import ApiToken, App, AppMode, AppModelConfig
+from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
@@ -197,8 +210,16 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         snippet_composer = "/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer"
         api.add_resource(WorkflowAgentComposerApi, workflow_composer)
         api.add_resource(WorkflowAgentComposerImpactApi, f"{workflow_composer}/impact")
+        api.add_resource(WorkflowAgentComposerCopyFromRosterApi, f"{workflow_composer}/copy-from-roster")
+        api.add_resource(WorkflowAgentComposerValidateApi, f"{workflow_composer}/validate")
+        api.add_resource(WorkflowAgentComposerCandidatesApi, f"{workflow_composer}/candidates")
+        api.add_resource(WorkflowAgentComposerSaveToRosterApi, f"{workflow_composer}/save-to-roster")
         api.add_resource(SnippetAgentComposerApi, snippet_composer)
         api.add_resource(SnippetAgentComposerImpactApi, f"{snippet_composer}/impact")
+        api.add_resource(SnippetAgentComposerCopyFromRosterApi, f"{snippet_composer}/copy-from-roster")
+        api.add_resource(SnippetAgentComposerValidateApi, f"{snippet_composer}/validate")
+        api.add_resource(SnippetAgentComposerCandidatesApi, f"{snippet_composer}/candidates")
+        api.add_resource(SnippetAgentComposerSaveToRosterApi, f"{snippet_composer}/save-to-roster")
         api.add_resource(AgentComposerApi, "/agent/<uuid:agent_id>/composer")
         api.add_resource(AgentComposerCandidatesApi, "/agent/<uuid:agent_id>/composer/candidates")
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
@@ -628,9 +649,18 @@ def test_publish_and_copy_keep_the_source_and_target_publication_histories_separ
         assert [binding.skill_id for binding in snapshot_bindings] == [skill_id]
 
 
-@pytest.mark.parametrize("surface", ["workflow", "snippet"])
-def test_node_composer_resolves_only_the_current_workspace(harness: Harness, surface: str) -> None:
-    """Read, save and calculate impact through the routes using tenant-scoped draft data."""
+@dataclass(frozen=True)
+class NodeComposerTarget:
+    surface: str
+    path: str
+    app_id: str
+    workflow_id: str
+
+
+@pytest.fixture(params=["workflow", "snippet"])
+def node_composer_target(harness: Harness, request: pytest.FixtureRequest) -> NodeComposerTarget:
+    """Persist a tenant-owned Workflow or Snippet and its editable draft."""
+    surface: str = request.param
     with harness.sessions.begin() as session:
         if surface == "workflow":
             app = App(
@@ -649,22 +679,79 @@ def test_node_composer_resolves_only_the_current_workspace(harness: Harness, sur
             session.add(snippet)
             session.flush()
             app_id, workflow_type = snippet.id, WorkflowType.SNIPPET
-        session.add(
-            Workflow.new(
-                tenant_id=harness.tenant_id,
-                app_id=app_id,
-                type=workflow_type,
-                version=Workflow.VERSION_DRAFT,
-                graph='{"nodes": [], "edges": []}',
-                features="{}",
-                created_by=harness.account_id,
-                environment_variables=[],
-                conversation_variables=[],
-                rag_pipeline_variables=[],
-            )
+        workflow = Workflow.new(
+            tenant_id=harness.tenant_id,
+            app_id=app_id,
+            type=workflow_type,
+            version=Workflow.VERSION_DRAFT,
+            graph='{"nodes": [], "edges": []}',
+            features="{}",
+            created_by=harness.account_id,
+            environment_variables=[],
+            conversation_variables=[],
+            rag_pipeline_variables=[],
         )
+        session.add(workflow)
+        workflow_id = workflow.id
     prefix = "apps" if surface == "workflow" else "snippets"
     path = f"/console/api/{prefix}/{app_id}/workflows/draft/nodes/node-1/agent-composer"
+    return NodeComposerTarget(surface, path, app_id, workflow_id)
+
+
+@dataclass
+class ComposerBackends:
+    allowed_scenes: set[str] = field(default_factory=set)
+    permission_checks: list[dict[str, str]] = field(default_factory=list)
+    tool_tenants: list[str] = field(default_factory=list)
+
+
+@pytest.fixture
+def composer_backends() -> Iterator[ComposerBackends]:
+    """Serve RBAC decisions and an empty plugin installation over loopback HTTP."""
+    backends = ComposerBackends()
+    app = Flask(__name__)
+
+    @app.post("/rbac/check-access")
+    def check_access() -> dict[str, bool]:
+        """Record the authorization request and allow only the configured scenes."""
+        payload: dict[str, str] = request.get_json()
+        backends.permission_checks.append(payload)
+        return {"allowed": payload["scene"] in backends.allowed_scenes}
+
+    @app.get("/plugin/<_tenant_id>/management/models")
+    def list_models(_tenant_id: str) -> dict[str, object]:
+        """Return an empty model catalog for built-in tool discovery."""
+        return {"code": 0, "message": "success", "data": []}
+
+    @app.get("/plugin/<tenant_id>/management/tools")
+    def list_tools(tenant_id: str) -> dict[str, object]:
+        """Return no installed tool providers and record the requested tenant."""
+        backends.tool_tenants.append(tenant_id)
+        return {"code": 0, "message": "success", "data": []}
+
+    server = make_server("127.0.0.1", 0, app, threaded=True)
+    thread = Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+    thread.start()
+    base_url = f"http://127.0.0.1:{server.server_port}"
+    previous_rbac_url = EnterpriseRequest.rbac_base_url
+    previous_plugin_url = plugin_http.plugin_daemon_inner_api_baseurl
+    EnterpriseRequest.rbac_base_url = base_url
+    plugin_http.plugin_daemon_inner_api_baseurl = URL(base_url)
+    try:
+        yield backends
+    finally:
+        EnterpriseRequest.rbac_base_url = previous_rbac_url
+        plugin_http.plugin_daemon_inner_api_baseurl = previous_plugin_url
+        server.shutdown()
+        thread.join()
+        server.server_close()
+
+
+def test_node_composer_resolves_only_the_current_workspace(
+    harness: Harness, node_composer_target: NodeComposerTarget
+) -> None:
+    """Read, save and calculate impact through the routes using tenant-scoped draft data."""
+    surface, path, app_id = node_composer_target.surface, node_composer_target.path, node_composer_target.app_id
     state = harness.client.get(path, headers=harness.headers)
     assert state.status_code == HTTPStatus.OK, state.get_json()
     assert state.get_json()["variant"] == "workflow"
@@ -737,6 +824,213 @@ def test_node_composer_resolves_only_the_current_workspace(harness: Harness, sur
     unavailable = harness.client.get(path, headers=harness.headers)
     assert unavailable.status_code == HTTPStatus.NOT_FOUND
     assert unavailable.get_json()["code"] == ("app_not_found" if surface == "workflow" else "not_found")
+
+
+def test_node_composer_checks_edit_and_roster_create_permissions(
+    harness: Harness, node_composer_target: NodeComposerTarget, composer_backends: ComposerBackends
+) -> None:
+    """Reject denied writes on both surfaces before creating any Agent or node binding."""
+    target = node_composer_target
+    workspace_check = {"tenant_id": harness.tenant_id, "account_id": harness.account_id}
+    if target.surface == "workflow":
+        edit_scene = "app_edit"
+        edit_check = {**workspace_check, "scene": edit_scene, "resource_type": "app", "resource_id": target.app_id}
+    else:
+        edit_scene = "snippets_create_and_modify"
+        edit_check = {**workspace_check, "scene": edit_scene}
+    create_check = {**workspace_check, "scene": "agent_create"}
+    save_payload = {"variant": "workflow", "save_strategy": "node_job_only", "node_job": {"workflow_prompt": "Run"}}
+    roster_payload = {"variant": "workflow", "save_strategy": "save_to_roster", "new_agent_name": "New roster Agent"}
+    roster_path = f"{target.path}/save-to-roster"
+
+    with config_overrides_context(RBAC_ENABLED=True):
+        composer_backends.allowed_scenes = {"agent_create"}
+        no_edit = harness.client.put(target.path, json=save_payload, headers=harness.headers)
+        copy_no_edit = harness.client.post(
+            f"{target.path}/copy-from-roster", json={"source_agent_id": str(uuid4())}, headers=harness.headers
+        )
+        roster_no_edit = harness.client.post(roster_path, json=roster_payload, headers=harness.headers)
+        composer_backends.allowed_scenes = {edit_scene}
+        roster_no_create = harness.client.post(roster_path, json=roster_payload, headers=harness.headers)
+
+    for denied in (no_edit, copy_no_edit, roster_no_edit, roster_no_create):
+        assert denied.status_code == HTTPStatus.FORBIDDEN, denied.get_json()
+        assert denied.get_json()["code"] == "forbidden"
+    assert composer_backends.permission_checks == [edit_check, edit_check, edit_check, edit_check, create_check]
+    with harness.sessions() as session:
+        assert session.scalar(select(WorkflowAgentNodeBinding.id)) is None
+        assert session.scalar(select(AgentConfigSnapshot.id)) is None
+        assert session.scalar(select(Agent.id)) is None
+
+
+def test_node_composer_get_commits_and_reuses_inline_debug_conversation(
+    harness: Harness, node_composer_target: NodeComposerTarget
+) -> None:
+    """Persist the current editor's Build conversation on first GET and reuse it on repeated GET."""
+    target = node_composer_target
+    with harness.sessions.begin() as session:
+        backing_app = App(
+            tenant_id=harness.tenant_id,
+            name="Inline Agent runtime",
+            mode=AppMode.AGENT,
+            enable_api=False,
+            enable_site=False,
+        )
+        agent = Agent(
+            tenant_id=harness.tenant_id,
+            name="Inline Agent",
+            scope=AgentScope.WORKFLOW_ONLY,
+            source=AgentSource.WORKFLOW,
+            app_id=target.app_id,
+            backing_app_id=backing_app.id,
+            workflow_id=target.workflow_id,
+            workflow_node_id="node-1",
+        )
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent.id, version=1, config_snapshot=AgentSoulConfig()
+        )
+        agent.active_config_snapshot_id = snapshot.id
+        session.add_all(
+            [
+                backing_app,
+                agent,
+                snapshot,
+                WorkflowAgentNodeBinding(
+                    tenant_id=harness.tenant_id,
+                    app_id=target.app_id,
+                    workflow_id=target.workflow_id,
+                    workflow_version=Workflow.VERSION_DRAFT,
+                    node_id="node-1",
+                    binding_type=WorkflowAgentBindingType.INLINE_AGENT,
+                    agent_id=agent.id,
+                    current_snapshot_id=snapshot.id,
+                    node_job_config=WorkflowNodeJobConfig(),
+                ),
+            ]
+        )
+        agent_id, backing_app_id = agent.id, backing_app.id
+
+    mapping_query = select(AgentDebugConversation).where(AgentDebugConversation.agent_id == agent_id)
+    with harness.sessions() as session:
+        assert session.scalar(mapping_query) is None
+    first = harness.client.get(target.path, headers=harness.headers)
+    assert first.status_code == HTTPStatus.OK, first.get_json()
+    conversation_id = first.get_json()["debug_conversation_id"]
+    assert conversation_id
+    with harness.sessions() as session:
+        mapping = session.scalars(mapping_query).one()
+        assert mapping.conversation_id == conversation_id
+        assert mapping.tenant_id == harness.tenant_id
+        assert mapping.account_id == harness.account_id
+        assert mapping.draft_type == AgentConfigDraftType.DEBUG_BUILD
+        conversation = session.get_one(Conversation, conversation_id)
+        assert conversation.app_id == backing_app_id
+        assert conversation.from_account_id == harness.account_id
+
+    second = harness.client.get(target.path, headers=harness.headers)
+    assert second.status_code == HTTPStatus.OK, second.get_json()
+    assert second.get_json()["debug_conversation_id"] == conversation_id
+    with harness.sessions() as session:
+        assert list(session.scalars(select(Conversation.id).where(Conversation.app_id == backing_app_id))) == [
+            conversation_id
+        ]
+
+
+def test_node_composer_copy_validate_and_candidates(
+    harness: Harness, node_composer_target: NodeComposerTarget, composer_backends: ComposerBackends
+) -> None:
+    """Copy a published roster snapshot, validate the node and load candidates through the mounted routes."""
+    target = node_composer_target
+    source_agent_id, _ = harness.create_agent(published=True)
+    with harness.sessions.begin() as session:
+        source = session.get_one(Agent, source_agent_id)
+        snapshot_id = source.active_config_snapshot_id
+        assert snapshot_id is not None
+        session.add(
+            AgentConfigSnapshot(
+                id=snapshot_id,
+                tenant_id=harness.tenant_id,
+                agent_id=source_agent_id,
+                version=1,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+        binding = WorkflowAgentNodeBinding(
+            tenant_id=harness.tenant_id,
+            app_id=target.app_id,
+            workflow_id=target.workflow_id,
+            workflow_version=Workflow.VERSION_DRAFT,
+            node_id="node-1",
+            binding_type=WorkflowAgentBindingType.ROSTER_AGENT,
+            agent_id=source_agent_id,
+            current_snapshot_id=snapshot_id,
+            node_job_config=WorkflowNodeJobConfig(workflow_prompt="Run"),
+        )
+        session.add(binding)
+        binding_id = binding.id
+
+    copied = harness.client.post(
+        f"{target.path}/copy-from-roster", json={"source_agent_id": source_agent_id}, headers=harness.headers
+    )
+    assert copied.status_code == HTTPStatus.OK, copied.get_json()
+    copied_state = copied.get_json()
+    copied_agent_id = copied_state["agent"]["id"]
+    assert copied_agent_id != source_agent_id
+    assert copied_state["binding"]["binding_type"] == "inline_agent"
+    with harness.sessions() as session:
+        persisted_binding = session.get_one(WorkflowAgentNodeBinding, binding_id)
+        assert persisted_binding.agent_id == copied_agent_id
+        assert persisted_binding.binding_type == WorkflowAgentBindingType.INLINE_AGENT
+        assert session.get_one(Agent, source_agent_id).active_config_snapshot_id == snapshot_id
+
+    validated = harness.client.post(
+        f"{target.path}/validate",
+        json={"variant": "workflow", "save_strategy": "node_job_only", "node_job": copied_state["node_job"]},
+        headers=harness.headers,
+    )
+    assert validated.status_code == HTTPStatus.OK, validated.get_json()
+    assert validated.get_json()["result"] == "success"
+    assert validated.get_json()["errors"] == []
+
+    # SQLite can run the default-provider lookup's window query.
+    with config_overrides_context(DB_TYPE="mysql", POSITION_TOOL_INCLUDES="time", POSITION_TOOL_EXCLUDES=""):
+        candidates = harness.client.get(f"{target.path}/candidates", headers=harness.headers)
+    assert candidates.status_code == HTTPStatus.OK, candidates.get_json()
+    candidate_state = candidates.get_json()
+    assert candidate_state["variant"] == "workflow"
+    assert candidate_state["allowed_node_job_candidates"]["previous_node_outputs"] == []
+    assert "time/*" in {tool["id"] for tool in candidate_state["allowed_soul_candidates"]["dify_tools"]}
+    assert composer_backends.tool_tenants == [harness.tenant_id]
+
+
+@pytest.mark.parametrize("target_failure", ["missing", "foreign", "unsupported-mode"])
+def test_workflow_composer_validates_payload_before_resolving_unavailable_app(
+    harness: Harness, target_failure: str
+) -> None:
+    """After Console admission, payload errors precede target errors when both conditions fail."""
+    app_id = str(uuid4())
+    if target_failure != "missing":
+        with harness.sessions.begin() as session:
+            session.add(
+                App(
+                    id=app_id,
+                    name="Unavailable Workflow",
+                    tenant_id=str(uuid4()) if target_failure == "foreign" else harness.tenant_id,
+                    mode=AppMode.WORKFLOW if target_failure == "foreign" else AppMode.COMPLETION,
+                    enable_api=False,
+                    enable_site=False,
+                )
+            )
+    path = f"/console/api/apps/{app_id}/workflows/draft/nodes/node-1/agent-composer"
+    invalid = harness.client.put(path, json={}, headers=harness.headers)
+    assert invalid.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, invalid.get_json()
+    assert invalid.get_json()["code"] == "unprocessable_entity"
+
+    valid = harness.client.put(
+        path, json={"variant": "workflow", "save_strategy": "node_job_only"}, headers=harness.headers
+    )
+    assert valid.status_code == HTTPStatus.NOT_FOUND, valid.get_json()
+    assert valid.get_json()["code"] == "app_not_found"
 
 
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:

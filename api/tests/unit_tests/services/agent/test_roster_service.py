@@ -52,6 +52,7 @@ from repositories.app.console_repository import ConsoleAppRepository
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent import composer_service, roster_service
 from services.agent.composer_service import AgentComposerService
+from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.errors import (
     AgentNameConflictError,
@@ -1116,7 +1117,8 @@ def test_load_agent_soul_for_debug_requires_existing_build_draft(sqlite_session:
         )
 
 
-def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+def test_workflow_composer_impact_includes_roster_agent_references(sqlite_session: Session) -> None:
+    """Count direct snapshot references and roster bindings to the same Agent."""
     session = sqlite_session
     bindings = [
         WorkflowAgentNodeBinding(
@@ -1136,24 +1138,6 @@ def test_workflow_composer_candidates_and_impact(monkeypatch: pytest.MonkeyPatch
     session.add(_snapshot(snapshot_id="older-version"))
     session.commit()
 
-    # Candidates assembly is covered in test_composer_candidates.py; here we stub
-    # the IO loaders and assert the response envelope per variant (ENG-615).
-    def _no_draft_workflow(**kwargs):
-        raise ValueError("draft workflow not found")
-
-    monkeypatch.setattr(AgentComposerService, "_get_draft_workflow", _no_draft_workflow)
-    monkeypatch.setattr(AgentComposerService, "_workspace_dify_tools", lambda **kwargs: [])
-
-    workflow_candidates = AgentComposerService.get_workflow_candidates(
-        session=session,
-        tenant_id="tenant-1",
-        app_id="app-1",
-        node_id="node-1",
-        user_id="account-1",
-    )
-    assert workflow_candidates["variant"] == "workflow"
-    assert workflow_candidates["allowed_node_job_candidates"]["previous_node_outputs"] == []
-    assert workflow_candidates["truncated"] is False
     for snapshot_id in ("version-1", "older-version"):
         impact = read_workflow_agent_impact(session, tenant_id="tenant-1", current_snapshot_id=snapshot_id)
         assert impact["current_snapshot_id"] == snapshot_id
@@ -5334,7 +5318,7 @@ def test_workspace_dify_tools_returns_provider_and_tool_granularities(monkeypatc
         staticmethod(lambda user_id, tenant_id: [provider]),
     )
 
-    entries = AgentComposerService._workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
+    entries = list_workspace_dify_tools(tenant_id="tenant-1", user_id="user-1")
 
     assert entries[0] == {
         "id": "duckduckgo/*",

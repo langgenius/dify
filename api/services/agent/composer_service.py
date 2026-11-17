@@ -43,7 +43,6 @@ from repositories.agent_roster_queries import find_agent_draft, project_agent_dr
 from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent.app_composer import composer_validation_findings
 from services.agent.app_composer_store import AgentComposerSnapshotMissingError
-from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
@@ -731,17 +730,6 @@ class AgentComposerService:
         response.truncated = response.truncated or len(tools) > MAX_CANDIDATES_PER_LIST
         return response
 
-    @classmethod
-    def get_workflow_candidates(
-        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str, user_id: str
-    ) -> dict[str, Any]:
-        """Keep the legacy candidate entry point available to existing callers."""
-        response = cls.prepare_workflow_candidates(
-            session=session, tenant_id=tenant_id, app_id=app_id, node_id=node_id, user_id=user_id
-        )
-        tools = cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id)
-        return cls.attach_workflow_candidate_tools(response, tools).model_dump(mode="json")
-
     # ── candidates IO helpers (ENG-615) ──────────────────────────────────────
 
     @staticmethod
@@ -802,8 +790,6 @@ class AgentComposerService:
 
         variables = WorkflowDraftVariableService(session=session).list_system_variables(app_id, user_id)
         return [(variable.name, variable.value_type.value) for variable in variables.variables]
-
-    _workspace_dify_tools = staticmethod(list_workspace_dify_tools)
 
     @classmethod
     def _save_node_job_only(
