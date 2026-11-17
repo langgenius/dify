@@ -206,7 +206,7 @@ class EvaluationService:
         Generate evaluation dataset template as XLSX bytes.
 
         Creates an XLSX file with headers based on the evaluation target's input parameters
-        and the selected evaluation metrics.
+        and the selected evaluation metrics, followed by a help row to delete before upload.
 
         :param target: App, CustomizedSnippet, or Agent instance
         :param target_type: Target type string ("apps", "snippets", or "agents")
@@ -216,7 +216,13 @@ class EvaluationService:
         :raises ValueError: If target type is not supported or app mode is excluded
         """
         columns = cls.get_dataset_column_names(target, target_type, data, session)
-        xlsx_content = cls._generate_xlsx_template(columns, target.name)
+        retrieval_output_columns = frozenset(
+            f"{node.title} : expected_output"
+            for metric in data.default_metrics
+            for node in metric.node_info_list
+            if cls.NODE_TYPE_CATEGORY_MAPPING.get(node.type) == EvaluationCategory.RETRIEVAL
+        )
+        xlsx_content = cls._generate_xlsx_template(columns, target.name, retrieval_output_columns)
 
         # Build filename
         truncated_name = target.name[:10] + "..." if len(target.name) > 10 else target.name
@@ -272,23 +278,46 @@ class EvaluationService:
 
         return []
 
+    @staticmethod
+    def _template_column_help(column_name: str, retrieval_output_columns: frozenset[str]) -> str:
+        """Map a generated column name to help text without changing the column schema.
+
+        The caller supplies generated columns; unrecognized names are input fields
+        and receive the generic input help. Copy matches the Chinese field help
+        in ``web/i18n/locales/zh-Hans/evaluation.json``.
+        """
+        if column_name == "index":
+            return "填写不重复的整数作为本条测试的序号，方便定位评测结果。"
+
+        field_name = column_name.rsplit(":", 1)[-1].strip()
+        if field_name == "expected_output":
+            if column_name in retrieval_output_columns:
+                return "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。"
+            return "填写该节点对本条输入应给出的参考答案，用于对照实际输出。"
+        if field_name == "success_criteria":
+            return "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。"
+        if field_name == "expected_tool_calls":
+            return "以 JSON 数组填写 Agent 预期调用的工具和参数。"
+        return "填写本条测试的输入内容，例如用户问题、指令或该字段要求的值。"
+
     @classmethod
     def _generate_xlsx_template(
         cls,
         columns: Sequence[EvaluationTemplateColumn],
         target_name: str,
+        retrieval_output_columns: frozenset[str] = frozenset(),
     ) -> bytes:
         """
-        Generate XLSX template file content.
+        Generate XLSX bytes from ordered columns and known retrieval references.
 
-        Creates a workbook with:
-        - First row as header row with the provided template column names
-        - Styled header with background color and borders
-        - Empty data rows ready for user input
+        The first row remains the upload schema. The second row explains each
+        field and must be deleted before upload; its trailing, headerless notice
+        column makes an unchanged template invalid as a dataset.
 
-        :param columns: Ordered template column definitions
-        :param target_name: Name of the target (for sheet name)
-        :return: XLSX file content as bytes
+        :param columns: Nonempty ordered template columns, starting with ``index``.
+        :param target_name: Target name retained for the template call contract.
+        :param retrieval_output_columns: Output columns belonging to retrieval nodes.
+        :return: XLSX bytes with unchanged headers and one removable help row.
         """
         wb = Workbook()
         ws = wb.active
@@ -318,18 +347,33 @@ class EvaluationService:
             cell.alignment = header_alignment
             cell.border = thin_border
 
-        # Set column widths
-        ws.column_dimensions["A"].width = 10  # index column
-        for col_idx in range(2, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = 20
-
-        # Add one empty row with row number for user reference
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=2, column=col_idx, value="")
+        help_font = Font(color="7A5C00", italic=True)
+        help_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+        help_alignment = Alignment(vertical="top", wrap_text=True)
+        ws.row_dimensions[2].height = 90
+        for col_idx, header in enumerate(headers, start=1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = 32 if col_idx == 1 else 44
+            cell = ws.cell(
+                row=2,
+                column=col_idx,
+                value=cls._template_column_help(header, retrieval_output_columns),
+            )
+            cell.font = help_font
+            cell.fill = help_fill
+            cell.alignment = help_alignment
             cell.border = thin_border
-            if col_idx == 1:
-                cell.value = 1
-                cell.alignment = Alignment(horizontal="center")
+
+        notice_col_idx = len(headers) + 1
+        ws.column_dimensions[get_column_letter(notice_col_idx)].width = 48
+        notice_cell = ws.cell(
+            row=2,
+            column=notice_col_idx,
+            value="该行为示例说明请删除本行后进行上传评估。",
+        )
+        notice_cell.font = Font(bold=True, color="9C4D00")
+        notice_cell.fill = help_fill
+        notice_cell.alignment = help_alignment
+        notice_cell.border = thin_border
 
         # Save to bytes
         output = io.BytesIO()
@@ -342,52 +386,19 @@ class EvaluationService:
     def generate_retrieval_dataset_template(cls) -> tuple[bytes, str]:
         """Generate evaluation dataset XLSX template for knowledge base retrieval.
 
-        The template contains three columns: ``index``, ``query``, and
-        ``expected_output``.  Callers upload a filled copy and start an
-        evaluation run with ``target_type="knowledge_base"``.
+        The template contains ``index``, ``query``, and ``expected_output``
+        headers plus a removable help row. Callers delete that row, fill data,
+        and start a run with ``target_type="knowledge_base"``.
 
         :returns: (xlsx_content_bytes, filename)
         """
-        wb = Workbook()
-        ws = wb.active
-        if ws is None:
-            ws = wb.create_sheet("Evaluation Dataset")
-        ws.title = "Evaluation Dataset"
-
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_alignment = Alignment(horizontal="center", vertical="center")
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
-        )
-
-        headers = ["index", "query", "expected_output"]
-        for col_idx, header in enumerate(headers, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_alignment
-            cell.border = thin_border
-
-        ws.column_dimensions["A"].width = 10
-        ws.column_dimensions["B"].width = 30
-        ws.column_dimensions["C"].width = 30
-
-        # Add one sample row
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=2, column=col_idx, value="")
-            cell.border = thin_border
-            if col_idx == 1:
-                cell.value = 1
-                cell.alignment = Alignment(horizontal="center")
-
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-        return output.getvalue(), "retrieval-evaluation-dataset.xlsx"
+        columns: list[EvaluationTemplateColumn] = [
+            {"name": "index", "type": "number"},
+            {"name": "query", "type": "string"},
+            {"name": "expected_output", "type": "string"},
+        ]
+        content = cls._generate_xlsx_template(columns, "Knowledge base", frozenset({"expected_output"}))
+        return content, "retrieval-evaluation-dataset.xlsx"
 
     # ---- Evaluation Configuration CRUD ----
 
@@ -2814,8 +2825,21 @@ class EvaluationService:
         *,
         input_types: Mapping[str, str] | None = None,
     ) -> list[EvaluationDatasetInput]:
-        """Normalize spreadsheet rows into dataset items with index validation."""
+        """Normalize rows after the caller validates the ``index`` header.
+
+        Empty trailing columns left by deleting the help row are ignored. A
+        nonempty or interior headerless column still fails; accepted rows keep
+        unique indices and the original input/reference values.
+        """
         headers = [str(h).strip() if h is not None else "" for h in rows[0]]
+        last_header_index = max((index for index, header in enumerate(headers) if header), default=-1)
+        if any(
+            row[col_idx] is not None and str(row[col_idx]).strip()
+            for row in rows[1:]
+            for col_idx in range(last_header_index + 1, min(len(row), len(headers)))
+        ):
+            raise EvaluationDatasetInvalidError("Dataset headers must not be empty.")
+        headers = headers[: last_header_index + 1]
         input_headers = headers[1:]
         if any(not header for header in input_headers):
             raise EvaluationDatasetInvalidError("Dataset headers must not be empty.")
@@ -2825,7 +2849,7 @@ class EvaluationService:
         items: list[EvaluationDatasetInput] = []
         seen_indices: set[int] = set()
         for row_idx, row in enumerate(rows[1:], start=1):
-            values = list(row)
+            values = list(row[: len(headers)])
             if all(v is None or str(v).strip() == "" for v in values):
                 continue
 
