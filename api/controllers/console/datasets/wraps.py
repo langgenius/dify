@@ -119,4 +119,20 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     missing ``pipeline_id`` raises ``ValueError``. A pipeline outside the tenant
     raises ``PipelineNotFoundError``. Nothing is written.
     """
-    return get_rag_pipeline_with()(view)
+
+    @wraps(view)
+    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        if not kwargs.get("pipeline_id"):
+            raise ValueError("missing pipeline_id in path parameters")
+
+        pipeline_id = str(kwargs.get("pipeline_id"))
+        del kwargs["pipeline_id"]
+        kwargs["pipeline"] = _pipeline_for_call(
+            args,
+            pipeline_id,
+            session_factory=db.session,
+            resolve_tenant_id=_request_tenant_id,
+        )
+        return view(*args, **kwargs)
+
+    return document_errors(decorated_view, PipelineNotFoundError)
