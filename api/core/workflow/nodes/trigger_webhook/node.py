@@ -1,7 +1,8 @@
 import logging
-from collections.abc import Callable, Mapping
-from typing import Any, Final, NotRequired, override
+from collections.abc import Callable, Hashable, Mapping, Sequence
+from typing import Any, Final, NotRequired, TypeGuard, override
 
+from pydantic import JsonValue
 from typing_extensions import TypedDict
 
 from constants.trigger import TRIGGER_WEBHOOK_NODE_TYPE
@@ -69,7 +70,11 @@ class WebhookFileDict(TypedDict, extra_items=WebhookFileValue):
     size: NotRequired[int]
 
 
-def _is_webhook_file_value(field: str, value: object) -> bool:
+type WebhookFilePayload = Mapping[Hashable, JsonValue]
+"""The only shape :func:`parse_webhook_file` accepts as an already-mapping payload."""
+
+
+def _is_webhook_file_value(value: JsonValue, field: str) -> TypeGuard[WebhookFileValue]:
     """Return whether ``value`` matches the type :class:`WebhookFileDict` declares for ``field``.
 
     Declared fields only pass through in their declared type, which is what lets every consumer
@@ -82,23 +87,23 @@ def _is_webhook_file_value(field: str, value: object) -> bool:
     return _is_json_scalar(value)
 
 
-def _is_str(value: object) -> bool:
+def _is_str(value: JsonValue) -> TypeGuard[str]:
     return isinstance(value, str)
 
 
-def _is_optional_str(value: object) -> bool:
+def _is_optional_str(value: JsonValue) -> TypeGuard[str | None]:
     return value is None or isinstance(value, str)
 
 
-def _is_int(value: object) -> bool:
+def _is_int(value: JsonValue) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
-def _is_json_scalar(value: object) -> bool:
+def _is_json_scalar(value: JsonValue) -> TypeGuard[WebhookFileValue]:
     return value is None or _is_str(value) or _is_int(value)
 
 
-_WEBHOOK_FILE_FIELD_KINDS: Final[dict[str, Callable[[object], bool]]] = {
+_WEBHOOK_FILE_FIELD_KINDS: Final[dict[str, Callable[[JsonValue], TypeGuard[WebhookFileValue]]]] = {
     "id": _is_str,
     "type": _is_str,
     "transfer_method": _is_str,
@@ -115,32 +120,36 @@ _WEBHOOK_FILE_FIELD_KINDS: Final[dict[str, Callable[[object], bool]]] = {
 }
 
 
-def _parse_webhook_file_fields(raw: Mapping[str, object]) -> dict[str, Any]:
+def _parse_webhook_file_fields(raw: WebhookFilePayload) -> WebhookFileDict | None:
     """Parse the fields of one raw webhook file mapping into the declared :class:`WebhookFileDict` shape.
 
     Preconditions: ``raw`` is a mapping reached from the untrusted webhook inputs.
     Postconditions: returns every field whose value matches the type declared for that field,
-    plus any unknown string-keyed JSON scalar; every other entry is dropped. ``raw`` is never
-    mutated, so the parsed result is the only trusted view of the payload.
+    plus any unknown string-keyed JSON scalar, as a ``WebhookFileDict``; returns ``None`` when no
+    entry survives. ``raw`` is never mutated, so the parsed result is the only trusted view of the
+    payload.
     """
-    return {key: value for key, value in raw.items() if isinstance(key, str) and _is_webhook_file_value(key, value)}
+    parsed: WebhookFileDict = {}
+    kept: list[tuple[str, WebhookFileValue]] = []
+    for key, value in raw.items():
+        if isinstance(key, str) and _is_webhook_file_value(value, key):
+            kept.append((key, value))
+    parsed.update(kept)
+    return parsed or None
 
 
-def parse_webhook_file(raw: object) -> WebhookFileDict | None:
+def parse_webhook_file(raw: WebhookFilePayload | Sequence[JsonValue] | None) -> WebhookFileDict | None:
     """Parse one external webhook file entry into :class:`WebhookFileDict`.
 
     Preconditions: ``raw`` is any value reached from the untrusted webhook inputs. This is the only
-    place webhook file shapes are validated; callers consume the returned typed payload directly.
+    place webhook file shapes are parsed; callers consume the returned typed payload directly.
     Postconditions: returns the fields of ``raw`` that match their declared type (plus unknown
     JSON scalars) as a ``WebhookFileDict`` when at least one survives, and ``None`` otherwise.
     ``raw`` is never mutated.
     """
     if not isinstance(raw, Mapping):
         return None
-    values = _parse_webhook_file_fields(raw)
-    if not values:
-        return None
-    return WebhookFileDict(**values)
+    return _parse_webhook_file_fields(raw)
 
 
 def _webhook_file_record_id(file: WebhookFileDict) -> str | None:

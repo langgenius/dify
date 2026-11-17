@@ -14,6 +14,7 @@ from core.workflow.nodes.trigger_webhook.entities import (
 from core.workflow.nodes.trigger_webhook.node import (
     TriggerWebhookNode,
     WebhookFileDict,
+    WebhookFilePayload,
     _webhook_file_record_id,
     parse_webhook_file,
 )
@@ -914,7 +915,7 @@ def test_parse_webhook_file_rejects_non_mapping_and_empty_values() -> None:
 
 
 def test_parse_webhook_file_keeps_only_scalar_string_keyed_fields() -> None:
-    raw = {
+    raw: WebhookFilePayload = {
         "id": "file-123",
         "size": 1024,
         "used_at": None,
