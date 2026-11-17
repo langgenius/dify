@@ -34,6 +34,11 @@ class RetrieveResponseDict(TypedDict):
     records: list[dict[str, Any]]
 
 
+class ExternalRetrieveResponseDict(TypedDict):
+    query: QueryDict
+    records: list[ExternalRetrievalRecord]
+
+
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
@@ -208,7 +213,7 @@ class HitTestingService:
         metadata_filtering_conditions: dict[str, Any] | None = None,
         *,
         session: Session,
-    ) -> RetrieveResponseDict:
+    ) -> ExternalRetrieveResponseDict:
         """Run hit testing against an external knowledge provider.
 
         Postconditions: datasets that are not externally backed return an empty
@@ -265,7 +270,7 @@ class HitTestingService:
     @classmethod
     def compact_external_retrieve_response(
         cls, dataset: Dataset, query: str, documents: Sequence[ExternalRetrievalRecord]
-    ) -> RetrieveResponseDict:
+    ) -> ExternalRetrieveResponseDict:
         """Shape validated external records into a hit-testing response.
 
         Preconditions: ``documents`` already satisfies ``ExternalRetrievalRecord``
@@ -279,11 +284,11 @@ class HitTestingService:
         if dataset.provider != "external":
             return {"query": {"content": query}, "records": []}
 
-        records: list[dict[str, Any]] = []
+        records: list[ExternalRetrievalRecord] = []
         for document in documents:
             records.append(
                 {
-                    "content": document.get("content"),
+                    "content": document["content"],
                     "title": document.get("title"),
                     "score": document.get("score"),
                     "metadata": document.get("metadata"),
