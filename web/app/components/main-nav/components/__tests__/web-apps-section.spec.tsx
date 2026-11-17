@@ -1,22 +1,30 @@
-import { Suspense } from 'react'
 import { renderToReadableStream } from 'react-dom/server.node'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import WebAppsSection from '../web-apps-section'
 
-it('leaves only the published apps fallback on the server without running client providers', async () => {
+vi.mock('@/next/navigation', () => ({ usePathname: () => '/published-apps' }))
+
+it.each([
+  { permissions: ['app_library.access'], visible: true },
+  { permissions: [], visible: false },
+])('server-renders Published apps only with access: $visible', async ({ permissions, visible }) => {
+  const { wrapper: Wrapper } = createConsoleQueryWrapper({
+    workspacePermissionKeys: permissions,
+  })
   const onError = vi.fn()
-  const onBrowserBailout = vi.fn()
   const stream = await renderToReadableStream(
-    <>
-      <nav aria-label="Primary">Studio</nav>
-      <Suspense fallback={<span>Published apps fallback</span>}>
-        <WebAppsSection />
-      </Suspense>
-    </>,
-    { onError, onBrowserBailout },
+    <Wrapper>
+      <WebAppsSection />
+    </Wrapper>,
+    { onError },
   )
   const html = await new Response(stream).text()
-  expect(html).toContain('<nav aria-label="Primary">Studio</nav>')
-  expect(html).toContain('<span>Published apps fallback</span>')
+  if (visible) {
+    expect(html).toContain('href="/published-apps"')
+    expect(html).toContain('navigation.mainNav.publishedApps')
+    expect(html).toContain('aria-current="page"')
+  } else {
+    expect(html).not.toContain('href="/published-apps"')
+  }
   expect(onError).not.toHaveBeenCalled()
-  expect(onBrowserBailout).toHaveBeenCalledOnce()
 })

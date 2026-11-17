@@ -1,8 +1,6 @@
 'use client'
 
 import { useAtomValue } from 'jotai'
-import { use } from 'react'
-import { browser } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { isInstalledAppPath } from '@/app/components/explore/installed-app/routes'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -11,7 +9,6 @@ import { hasPermission } from '@/utils/permission'
 import MainNavLink from './nav-link'
 
 const WebAppsSection = () => {
-  use(browser('The installed apps navigation renders in the browser.'))
   const { t } = useTranslation(['navigation'])
   const pathname = usePathname()
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
