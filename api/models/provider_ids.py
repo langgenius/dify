@@ -1,9 +1,10 @@
 """Provider ID entities for plugin system."""
 
-import re
 from typing import override
 
 from werkzeug.exceptions import NotFound
+
+from domain.plugins.provider_id import normalize_provider_id, normalize_tool_provider_id
 
 
 class GenericProviderID:
@@ -20,17 +21,10 @@ class GenericProviderID:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
     def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        """Parse a provider ID; retain NotFound for missing IDs and ValueError for malformed IDs."""
         if not value:
             raise NotFound("plugin not found, please add plugin")
-        # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
-        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
-            # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
-            if re.match(r"^[a-z0-9_-]+$", value):
-                value = f"langgenius/{value}/{value}"
-            else:
-                raise ValueError(f"Invalid plugin id {value}")
-
-        self.organization, self.plugin_name, self.provider_name = value.split("/")
+        self.organization, self.plugin_name, self.provider_name = normalize_provider_id(value).split("/")
         self.is_hardcoded = is_hardcoded
 
     def is_langgenius(self) -> bool:
@@ -50,10 +44,9 @@ class ModelProviderID(GenericProviderID):
 
 class ToolProviderID(GenericProviderID):
     def __init__(self, value: str, is_hardcoded: bool = False) -> None:
+        """Normalize tool aliases while preserving the legacy NotFound error for missing IDs."""
         super().__init__(value, is_hardcoded)
-        if self.organization == "langgenius":
-            if self.provider_name in ["jina", "siliconflow", "stepfun", "gitee_ai"]:
-                self.plugin_name = f"{self.provider_name}_tool"
+        self.organization, self.plugin_name, self.provider_name = normalize_tool_provider_id(value).split("/")
 
 
 class DatasourceProviderID(GenericProviderID):
