@@ -261,13 +261,10 @@ def convert_legacy_human_input_node_data(
 
     if email_template is None:
         # Runtime requires a Request URL even for initiator-only forms.
-        subject = "Action required"
-        body = (
-            "A request is waiting for your review. Please review the details and submit your decision to continue. "
-            "Review and respond: {{#url#}}"
-        )
+        message_template = MessageTemplateConfig.default_template()
     else:
         subject, body = email_template
+        message_template = MessageTemplateConfig(subject=subject, body=body)
 
     node_data = HumanInputNodeData(
         type=HUMAN_INPUT_NODE_TYPE,
@@ -277,7 +274,7 @@ def convert_legacy_human_input_node_data(
         default_value=legacy_node_data.default_value,
         retry_config=legacy_node_data.retry_config,
         recipients_spec=recipients,
-        message_template=MessageTemplateConfig(subject=subject, body=body),
+        message_template=message_template,
         debug_mode=DebugModeConfig(
             enabled=email_debug_enabled,
             channels=(DebugChannel.EMAIL,) if email_debug_enabled else (),
