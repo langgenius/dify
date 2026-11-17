@@ -5,9 +5,9 @@ from typing import Protocol
 from machinery.context import RequestContext
 from services.entities.conversation_entities import (
     ConsoleConversationKind,
+    ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationRef,
-    ConversationWorkspaceRetirement,
 )
 
 
@@ -26,7 +26,9 @@ class ConversationCommandStore(Protocol):
         """Commit soft deletion and workspace retirement before returning cleanup data."""
         ...
 
-    def retire_console_debug_workspaces(self, context: RequestContext, app_id: str) -> ConversationWorkspaceRetirement:
+    def retire_console_debug_agent_workspaces(
+        self, context: RequestContext, app_id: str
+    ) -> ConversationAgentWorkspaceRetirement:
         """Commit retirement of the (app, account) pair's Chatflow debug Conversation workspaces.
 
         Enforced rules: ``app_id`` is an advanced-chat App of the admitted
@@ -46,8 +48,8 @@ class ConversationCleanup(Protocol):
     def __call__(self, *, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None: ...
 
 
-class WorkspaceCollection(Protocol):
-    def __call__(self, *, tenant_id: str, workspace_ids: tuple[str, ...]) -> None: ...
+class AgentWorkspaceCollection(Protocol):
+    def __call__(self, *, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None: ...
 
 
 class ConversationCommandService:
@@ -56,11 +58,11 @@ class ConversationCommandService:
         *,
         conversations: ConversationCommandStore,
         enqueue_delete_cleanup: ConversationCleanup,
-        collect_workspaces: WorkspaceCollection,
+        collect_agent_workspaces: AgentWorkspaceCollection,
     ) -> None:
         self._conversations: ConversationCommandStore = conversations
         self._enqueue_delete_cleanup: ConversationCleanup = enqueue_delete_cleanup
-        self._collect_workspaces: WorkspaceCollection = collect_workspaces
+        self._collect_agent_workspaces: AgentWorkspaceCollection = collect_agent_workspaces
 
     def mark_console_read(
         self, context: RequestContext, app_id: str, conversation_id: str, *, kind: ConsoleConversationKind
@@ -87,18 +89,20 @@ class ConversationCommandService:
             retired_workspace_ids=deleted.retired_workspace_ids,
         )
 
-    def retire_console_debug_workspaces(self, context: RequestContext, app_id: str) -> None:
+    def retire_console_debug_agent_workspaces(self, context: RequestContext, app_id: str) -> None:
         """Retire the editor's ended Chatflow debug sessions' workspaces, then request collection.
 
-        Preconditions: the store rules on ``retire_console_debug_workspaces``.
+        Preconditions: the store rules on ``retire_console_debug_agent_workspaces``.
         Postconditions: the retirement is committed before collection is
         requested, so a failed commit never destroys a live workspace; nothing
         is requested when no workspace was retired. Store errors propagate with
         no collection; a collection failure cannot undo the committed retirement.
         """
-        retired = self._conversations.retire_console_debug_workspaces(context, app_id)
-        if retired.retired_workspace_ids:
-            self._collect_workspaces(tenant_id=retired.tenant_id, workspace_ids=retired.retired_workspace_ids)
+        retired = self._conversations.retire_console_debug_agent_workspaces(context, app_id)
+        if retired.retired_agent_workspace_ids:
+            self._collect_agent_workspaces(
+                tenant_id=retired.tenant_id, agent_workspace_ids=retired.retired_agent_workspace_ids
+            )
 
     def set_pinned(self, *, ref: ConversationRef, is_pinned: bool) -> None:
         self._conversations.set_pinned(ref=ref, is_pinned=is_pinned)

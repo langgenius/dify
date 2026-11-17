@@ -304,7 +304,9 @@ class AdvancedChatDebugConversationWorkspacesRetireApi(Resource):
     )
     def post(self, request_context: RequestContext, app_id: UUID) -> tuple[str, HTTPStatus]:
         try:
-            application_services().conversation_commands.retire_console_debug_workspaces(request_context, str(app_id))
+            application_services().conversation_commands.retire_console_debug_agent_workspaces(
+                request_context, str(app_id)
+            )
         except ConsoleAppNotFoundError as exc:
             raise AppNotFoundError(str(exc)) from exc
         return "", HTTPStatus.NO_CONTENT

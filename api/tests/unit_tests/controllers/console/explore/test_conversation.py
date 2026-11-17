@@ -39,8 +39,8 @@ type _Operation = Literal["list", "delete", "rename", "pin", "unpin"]
 _OPERATIONS: tuple[_Operation, ...] = ("list", "delete", "rename", "pin", "unpin")
 
 
-def _unexpected_workspace_collection(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
-    raise AssertionError(f"No workspace collection expected: {tenant_id} {workspace_ids}")
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
 
 
 @dataclass(frozen=True)
@@ -137,7 +137,7 @@ def conversations(
                 commands=ConversationCommandService(
                     conversations=ConversationRepository(session_factory=factory),
                     enqueue_delete_cleanup=state.enqueue_cleanup,
-                    collect_workspaces=_unexpected_workspace_collection,
+                    collect_agent_workspaces=_unexpected_agent_workspace_collection,
                 ),
             )
         )

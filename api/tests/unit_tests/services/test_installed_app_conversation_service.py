@@ -32,8 +32,8 @@ from services.message_query_adapters import MessageFileResolver
 _TIME = datetime(2024, 1, 1)
 
 
-def _unexpected_workspace_collection(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
-    raise AssertionError(f"No workspace collection expected: {tenant_id} {workspace_ids}")
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
 
 
 @pytest.fixture
@@ -109,7 +109,7 @@ def _service(
         commands=ConversationCommandService(
             conversations=repository,
             enqueue_delete_cleanup=cleanup,
-            collect_workspaces=_unexpected_workspace_collection,
+            collect_agent_workspaces=_unexpected_agent_workspace_collection,
         ),
     )
 

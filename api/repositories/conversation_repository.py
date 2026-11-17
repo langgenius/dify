@@ -36,6 +36,7 @@ from services.entities.conversation_entities import (
     ConsoleConversationPage,
     ConsoleConversationRecord,
     ConsoleConversationScope,
+    ConversationAgentWorkspaceRetirement,
     ConversationDeletion,
     ConversationInputValue,
     ConversationListSource,
@@ -45,7 +46,6 @@ from services.entities.conversation_entities import (
     ConversationRef,
     ConversationScope,
     ConversationSort,
-    ConversationWorkspaceRetirement,
     InstalledAppConversationRef,
     InstalledAppConversationScope,
 )
@@ -479,20 +479,24 @@ class ConversationRepository:
                 retired_workspace_ids=retired_workspace_ids,
             )
 
-    def retire_console_debug_workspaces(self, context: RequestContext, app_id: str) -> ConversationWorkspaceRetirement:
+    def retire_console_debug_agent_workspaces(
+        self, context: RequestContext, app_id: str
+    ) -> ConversationAgentWorkspaceRetirement:
         with self._session_factory.begin() as session:
             app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
             if app is None:
                 raise ConsoleAppNotFoundError("App not found.")
             if app.mode != AppMode.ADVANCED_CHAT:
                 raise ConsoleAppNotFoundError(f"App mode is not in the supported list: {[AppMode.ADVANCED_CHAT.value]}")
-            retired_workspace_ids = retire_debug_conversation_workspaces(
+            retired_agent_workspace_ids = retire_debug_conversation_workspaces(
                 session=session,
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 account_id=context.account_id,
             )
-            return ConversationWorkspaceRetirement(tenant_id=app.tenant_id, retired_workspace_ids=retired_workspace_ids)
+            return ConversationAgentWorkspaceRetirement(
+                tenant_id=app.tenant_id, retired_agent_workspace_ids=retired_agent_workspace_ids
+            )
 
     def set_pinned(self, *, ref: ConversationRef, is_pinned: bool) -> None:
         with self._session_factory.begin() as session:

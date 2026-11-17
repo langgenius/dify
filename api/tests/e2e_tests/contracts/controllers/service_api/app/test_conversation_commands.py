@@ -27,8 +27,8 @@ from tests.helpers.unit.model_factories import make_app
 rename_harness = rename_tests.harness
 
 
-def _unexpected_workspace_collection(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
-    raise AssertionError(f"No workspace collection expected: {tenant_id} {workspace_ids}")
+def _unexpected_agent_workspace_collection(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No Agent workspace collection expected: {tenant_id} {agent_workspace_ids}")
 
 
 @dataclass(frozen=True)
@@ -88,7 +88,7 @@ def harness(rename_harness: RenameHarness) -> _Harness:
         conversation_commands=ConversationCommandService(
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             enqueue_delete_cleanup=enqueue_cleanup,
-            collect_workspaces=_unexpected_workspace_collection,
+            collect_agent_workspaces=_unexpected_agent_workspace_collection,
         ),
     )
     rename_harness.api.add_resource(ConversationDetailApi, "/conversations/<uuid:conversation_id>")

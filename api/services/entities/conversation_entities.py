@@ -80,11 +80,11 @@ class ConversationDeletion:
 
 
 @dataclass(frozen=True, slots=True)
-class ConversationWorkspaceRetirement:
+class ConversationAgentWorkspaceRetirement:
     """Committed workspace retirement of a Conversation that itself stays live."""
 
     tenant_id: str
-    retired_workspace_ids: tuple[str, ...]
+    retired_agent_workspace_ids: tuple[str, ...]
 
 
 type ConsoleConversationKind = Literal["completion", "chat"]

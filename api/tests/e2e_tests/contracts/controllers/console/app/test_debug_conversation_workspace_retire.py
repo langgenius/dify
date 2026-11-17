@@ -163,21 +163,21 @@ def harness(
         state.assert_closed()
         state.sessions.append(session)
 
-    def collect_workspaces(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
+    def collect_agent_workspaces(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
         # Collection destroys sandboxes, so it may only see committed retirement.
         state.assert_closed()
         with sqlite_session_factory() as session:
-            for workspace_id in workspace_ids:
+            for workspace_id in agent_workspace_ids:
                 stored = session.get_one(AgentWorkspace, workspace_id)
                 assert stored.status == AgentWorkingResourceStatus.RETIRED
                 assert stored.active_guard is None
-        state.collections.append((tenant_id, workspace_ids))
+        state.collections.append((tenant_id, agent_workspace_ids))
 
     app.extensions["application_services"] = _Services(
         ConversationCommandService(
             conversations=ConversationRepository(session_factory=factory),
             enqueue_delete_cleanup=_unexpected_delete_cleanup,
-            collect_workspaces=collect_workspaces,
+            collect_agent_workspaces=collect_agent_workspaces,
         )
     )
     api = ExternalApi(app)
@@ -230,9 +230,9 @@ def test_retire_covers_debug_sessions_the_client_lost_on_refresh(harness: _Harne
     assert harness.retire().status_code == HTTPStatus.NO_CONTENT
 
     assert len(harness.collections) == 1
-    tenant_id, workspace_ids = harness.collections[0]
+    tenant_id, agent_workspace_ids = harness.collections[0]
     assert tenant_id == harness.tenant.id
-    assert set(workspace_ids) == {harness.workspace_id, earlier_workspace.id}
+    assert set(agent_workspace_ids) == {harness.workspace_id, earlier_workspace.id}
 
 
 @pytest.mark.parametrize(
