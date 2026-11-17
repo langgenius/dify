@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 
 import pytest
+from celery.exceptions import Retry
 from sqlalchemy import event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -326,10 +327,9 @@ def test_delete_segment_preserves_attachment_shared_by_another_segment(
     assert sqlite_session.get(UploadFile, attachment_id) is not None
 
 
-def test_delete_segment_keeps_database_cleanup_when_attachment_storage_delete_fails(
+def test_delete_segment_retries_attachment_storage_delete_before_database_cleanup(
     indexed_segment: tuple[Dataset, Document, DocumentSegment],
     sqlite_session: Session,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     dataset, document, segment = indexed_segment
     dataset.is_multimodal = True
@@ -363,14 +363,20 @@ def test_delete_segment_keeps_database_cleanup_when_attachment_storage_delete_fa
         patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
         patch(
             "tasks.delete_segment_from_index_task.storage.delete",
-            side_effect=RuntimeError("storage unavailable"),
+            side_effect=[RuntimeError("storage unavailable"), None],
         ) as storage_delete,
-        caplog.at_level("ERROR", logger="tasks.delete_segment_from_index_task"),
+        patch.object(delete_segment_from_index_task, "retry", side_effect=Retry()) as retry_task,
     ):
+        with pytest.raises(Retry):
+            delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
+        retry_task.assert_called_once()
+        storage_delete.assert_called_once_with(attachment_key)
+        sqlite_session.expire_all()
+        assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is not None
+        assert sqlite_session.get(UploadFile, attachment_id) is not None
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
-    storage_delete.assert_called_once_with(attachment_key)
-    assert "Failed to delete segment attachment from storage" in caplog.text
+        assert storage_delete.call_count == 2
     sqlite_session.expire_all()
     assert sqlite_session.get(SegmentAttachmentBinding, binding_id) is None
     assert sqlite_session.get(UploadFile, attachment_id) is None

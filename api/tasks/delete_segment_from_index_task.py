@@ -3,6 +3,7 @@ import time
 
 import click
 from celery import shared_task
+from celery.exceptions import Retry
 from sqlalchemy import delete, select
 
 from core.db.session_factory import session_factory
@@ -14,15 +15,27 @@ from models.model import UploadFile
 logger = logging.getLogger(__name__)
 
 
-@shared_task(queue="dataset")
+class _AttachmentStorageDeleteError(Exception):
+    """Keep attachment references available when object-storage cleanup must be retried."""
+
+
+@shared_task(queue="dataset", bind=True, max_retries=3, default_retry_delay=30)
 def delete_segment_from_index_task(
-    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
+    self,
+    index_node_ids: list,
+    dataset_id: str,
+    document_id: str,
+    segment_ids: list,
+    child_node_ids: list | None = None,
 ):
     """
     Async remove a segment from indexes and clean up its attachment resources.
     :param index_node_ids:
     :param dataset_id:
     :param document_id:
+
+    Attachment rows and bindings remain available until their objects are deleted. A transient
+    storage failure retries the idempotent cleanup up to three times; an absent object succeeds.
 
     Usage: delete_segment_from_index_task.delay(index_node_ids, dataset_id, document_id)
     """
@@ -116,6 +129,16 @@ def delete_segment_from_index_task(
                         index_processor.clean(
                             session=session, dataset=dataset, node_ids=orphan_attachment_ids, with_keywords=False
                         )
+                        for storage_key in attachment_storage_keys:
+                            try:
+                                storage.delete(storage_key)
+                            except FileNotFoundError:
+                                logger.debug("Segment attachment object already absent: %s", storage_key)
+                            except Exception as exc:
+                                logger.exception(
+                                    "Failed to delete segment attachment from storage, key: %s", storage_key
+                                )
+                                raise _AttachmentStorageDeleteError(storage_key) from exc
                         session.execute(
                             delete(UploadFile).where(
                                 UploadFile.tenant_id == dataset.tenant_id,
@@ -127,14 +150,14 @@ def delete_segment_from_index_task(
 
                     session.commit()
 
-                    for storage_key in attachment_storage_keys:
-                        try:
-                            storage.delete(storage_key)
-                        except Exception:
-                            logger.exception("Failed to delete segment attachment from storage, key: %s", storage_key)
-
             end_at = time.perf_counter()
             logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))
+        except Retry:
+            session.rollback()
+            raise
+        except _AttachmentStorageDeleteError as exc:
+            session.rollback()
+            raise self.retry(exc=exc) from exc
         except Exception:
             session.rollback()
             logger.exception("delete segment from index failed")
