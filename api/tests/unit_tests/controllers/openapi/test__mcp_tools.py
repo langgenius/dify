@@ -501,6 +501,70 @@ def test_hints_the_token_cannot_call_are_dropped_from_an_error_body(
     assert json.loads(_text(result))["hints"] == [_CALLABLE_HINT]
 
 
+def _canned_with_headers(
+    status: int, body: dict[str, object], headers: Mapping[str, str]
+) -> Callable[[OpCall], OpResult]:
+    def answer(_call: OpCall) -> OpResult:
+        return OpResult(status=status, body=body, headers=headers, is_json=True)
+
+    return answer
+
+
+_RATE_LIMITED = {"code": "rate_limited", "message": "slow down", "status": 429, "hints": [_UNCALLABLE_HINT]}
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        _mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, {**_JSON_HEADERS, "Retry-After": "30"})
+    )
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert result.isError is True
+    assert [block.text for block in result.content][1:] == ["Retry after 30 seconds."]
+    assert json.loads(result.content[0].text) == {**_RATE_LIMITED, "hints": []}
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_a_429_without_retry_after_has_one_block(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, _JSON_HEADERS))
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert result.isError is True
+    assert len(result.content) == 1
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.parametrize("value", ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "1.5", "", "abc"])
+def test_a_429_with_a_retry_after_that_is_not_whole_seconds_has_one_block(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, value: str
+) -> None:
+    monkeypatch.setattr(
+        _mcp_tools, "call_op", _canned_with_headers(429, _RATE_LIMITED, {**_JSON_HEADERS, "Retry-After": value})
+    )
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert len(result.content) == 1
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_retry_after_on_another_status_adds_no_block(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        _mcp_tools,
+        "call_op",
+        _canned_with_headers(503, {"code": "x", "message": "m"}, {**_JSON_HEADERS, "Retry-After": "30"}),
+    )
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert len(result.content) == 1
+
+
 @pytest.mark.usefixtures("admitted_bearer")
 def test_a_403_is_a_tool_error_not_an_exception(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_mcp_tools, "call_op", _canned(403, {"code": "forbidden", "message": "no", "status": 403}))
