@@ -450,7 +450,9 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     return "Microsoft Teams cards cannot represent file inputs."
                 case ParagraphInput(output_variable_name=input_name):
                     pass
-                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                case SelectInput(
+                    output_variable_name=input_name, options=options, resolved_default_value=default_value
+                ):
                     if not options or any(not option for option in options):
                         return "Microsoft Teams cannot preserve one select input's options."
                     if len(options) != len(set(options)):
@@ -498,8 +500,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     "label": block.output_variable_name,
                     "isMultiline": True,
                 }
-                if block.default_value is not None:
-                    text_input["value"] = block.default_value
+                if block.resolved_default_value is not None:
+                    text_input["value"] = block.resolved_default_value
                 body.append(text_input)
                 continue
             if isinstance(block, SelectInput):
@@ -510,8 +512,8 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
                     "choices": [{"title": option, "value": option} for option in block.options],
                     "style": "compact",
                 }
-                if block.default_value is not None:
-                    choice_input["value"] = block.default_value
+                if block.resolved_default_value is not None:
+                    choice_input["value"] = block.resolved_default_value
                 body.append(choice_input)
                 continue
             raise DynamicCardMessagingError("Microsoft Teams cards cannot represent file inputs.")

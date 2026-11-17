@@ -384,7 +384,7 @@ def test_v2_history_restores_frozen_forms_and_only_waiting_initiator_tokens(
         title="Frozen approval",
         parts=(
             MarkdownFragment(text="Review: "),
-            ParagraphInput(output_variable_name="comment", default_value="Draft"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Draft"),
         ),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="Review: {{#$output.comment#}}",

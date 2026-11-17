@@ -274,9 +274,9 @@ def _form() -> ResolvedForm:
         title="Approval request",
         parts=(
             MarkdownFragment(text="Review the generated answer."),
-            ParagraphInput(output_variable_name="comment", default_value="Looks good"),
+            ParagraphInput(output_variable_name="comment", resolved_default_value="Looks good"),
             MarkdownFragment(text="Choose the release decision."),
-            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), resolved_default_value="hold"),
         ),
         actions=(
             UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),
@@ -474,7 +474,7 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
         (
             ResolvedForm(
                 title="",
-                parts=(SelectInput(output_variable_name="decision", options=(), default_value=None),),
+                parts=(SelectInput(output_variable_name="decision", options=(), resolved_default_value=None),),
                 actions=(),
                 legacy_form_content="unused",
             ),
@@ -483,7 +483,7 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
         (
             ResolvedForm(
                 title="",
-                parts=(SelectInput(output_variable_name="decision", options=("",), default_value=None),),
+                parts=(SelectInput(output_variable_name="decision", options=("",), resolved_default_value=None),),
                 actions=(),
                 legacy_form_content="unused",
             ),
@@ -492,7 +492,9 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
         (
             ResolvedForm(
                 title="",
-                parts=(SelectInput(output_variable_name="decision", options=("ship", "ship"), default_value=None),),
+                parts=(
+                    SelectInput(output_variable_name="decision", options=("ship", "ship"), resolved_default_value=None),
+                ),
                 actions=(),
                 legacy_form_content="unused",
             ),
@@ -502,8 +504,8 @@ def test_codec_rejects_oversized_cards_before_provider_io() -> None:
             ResolvedForm(
                 title="",
                 parts=(
-                    ParagraphInput(output_variable_name="decision", default_value=None),
-                    SelectInput(output_variable_name="decision", options=("ship",), default_value=None),
+                    ParagraphInput(output_variable_name="decision", resolved_default_value=None),
+                    SelectInput(output_variable_name="decision", options=("ship",), resolved_default_value=None),
                 ),
                 actions=(),
                 legacy_form_content="unused",
@@ -709,9 +711,9 @@ def test_encode_and_decode_preserve_exact_unicode_and_input_metadata_names() -> 
     intent = ResolvedForm(
         title="Approval 🌍",
         parts=(
-            ParagraphInput(output_variable_name="action_id", default_value=None),
-            ParagraphInput(output_variable_name="correlation_token", default_value=None),
-            ParagraphInput(output_variable_name="version", default_value=None),
+            ParagraphInput(output_variable_name="action_id", resolved_default_value=None),
+            ParagraphInput(output_variable_name="correlation_token", resolved_default_value=None),
+            ParagraphInput(output_variable_name="version", resolved_default_value=None),
         ),
         actions=(UserAction(id="approve✅", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
@@ -776,7 +778,7 @@ def test_exact_private_marker_input_name_remains_isolated_from_action_metadata(
     token = CorrelationToken("collision-correlation-token")
     intent = ResolvedForm(
         title="",
-        parts=(ParagraphInput(output_variable_name=_DIFY_ACTION_MARKER, default_value=None),),
+        parts=(ParagraphInput(output_variable_name=_DIFY_ACTION_MARKER, resolved_default_value=None),),
         actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",
     )

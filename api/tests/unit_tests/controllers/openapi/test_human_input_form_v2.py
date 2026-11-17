@@ -96,7 +96,7 @@ def approval(admitted_bearer: AdmittedWorld, sqlite_session_factory: sessionmake
                 global_timeout_deadline=now + timedelta(days=1),
                 resolved_form=ResolvedForm(
                     title="Approval",
-                    parts=(ParagraphInput(output_variable_name="note", default_value="Draft"),),
+                    parts=(ParagraphInput(output_variable_name="note", resolved_default_value="Draft"),),
                     actions=(UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),),
                     legacy_form_content="Review: {{#$output.note#}}",
                 ),

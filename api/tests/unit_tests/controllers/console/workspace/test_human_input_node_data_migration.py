@@ -17,10 +17,16 @@ from werkzeug.exceptions import Forbidden
 from werkzeug.local import LocalProxy
 
 from controllers.console.human_input_v2.contact import NodeDataMigrationAPI
-from core.human_input_v2.resolved_form import FileInput, FileListInput, ParagraphInput, SelectInput
+from core.human_input_v2.resolved_form import (
+    FileInput,
+    FileListInput,
+    ParagraphDefaultConfig,
+    ParagraphInput,
+    SelectInput,
+)
 from core.human_input_v2.shared.values import ContactId, TenantId
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
-from core.workflow.nodes.human_input.enums import FormInputType
+from core.workflow.nodes.human_input.enums import FormInputType, ValueSourceType
 from core.workflow.nodes.human_input_v2.entities import HumanInputNodeData
 from core.workflow.nodes.human_input_v2.form_compiler import compile_resolved_form
 from core.workflow.nodes.human_input_v2.migration import (
@@ -201,9 +207,15 @@ def test_migrated_current_v1_inputs_preserve_authoring_configuration_and_rendere
     pool.add(["start", "reviewers"], ArrayStringSegment(value=["Alice", "Bob"]))
     resolved = compile_resolved_form(HumanInputNodeData.model_validate_json(json.dumps(migrated)), pool)
     assert resolved.parts == (
-        ParagraphInput(output_variable_name="reason", default_value="Keep this reason"),
-        SelectInput(output_variable_name="decision", options=("Yes", "No"), default_value=None),
-        SelectInput(output_variable_name="reviewer", options=("Alice", "Bob"), default_value=None),
+        ParagraphInput(
+            output_variable_name="reason",
+            resolved_default_value="Keep this reason",
+            default_config=ParagraphDefaultConfig(
+                type=ValueSourceType.CONSTANT, selector=("start", "reason"), value="Keep this reason"
+            ),
+        ),
+        SelectInput(output_variable_name="decision", options=("Yes", "No"), resolved_default_value=None),
+        SelectInput(output_variable_name="reviewer", options=("Alice", "Bob"), resolved_default_value=None),
         FileInput(
             output_variable_name="attachment",
             allowed_file_types=(FileType.CUSTOM,),

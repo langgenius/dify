@@ -60,6 +60,7 @@ from libs.time_parser import get_time_threshold
 from models import Message
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_v2 import HumanInputForm as HumanInputV2Form
 from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
@@ -1423,7 +1424,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         task_id: str,
         owner: tuple[CreatorUserRole, str] | None,
     ) -> WorkflowRun | None:
-        """Terminate an admitted app's paused task and invalidate its pending forms.
+        """Terminate an admitted app's paused task and invalidate pending v1/v2 forms.
 
         ``owner=None`` preserves app-scoped Workflow API cancellation. Chat
         callers supply the initiating account or end user. The run lock is also
@@ -1480,6 +1481,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     HumanInputForm.status == HumanInputFormStatus.WAITING,
                 )
                 .values(status=HumanInputFormStatus.EXPIRED)
+            )
+            session.execute(
+                update(HumanInputV2Form)
+                .where(
+                    HumanInputV2Form.tenant_id == tenant_id,
+                    HumanInputV2Form.app_id == app_id,
+                    HumanInputV2Form.workflow_run_id == workflow_run.id,
+                    HumanInputV2Form.status == HumanInputFormStatus.WAITING,
+                )
+                .values(status=HumanInputFormStatus.EXPIRED, updated_at=finished_at)
             )
             unfinished_nodes = session.scalars(
                 select(WorkflowNodeExecutionModel).where(

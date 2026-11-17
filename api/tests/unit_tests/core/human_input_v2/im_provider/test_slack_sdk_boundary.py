@@ -78,10 +78,10 @@ class _RecordingConsumer:
 def _intent(*, input_type: str = "select") -> ResolvedForm:
     if input_type == "select":
         input_block = SelectInput(
-            output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"
+            output_variable_name="decision", options=("Approve", "Reject"), resolved_default_value="Approve"
         )
     else:
-        input_block = ParagraphInput(output_variable_name="decision", default_value="Sanitized initial value")
+        input_block = ParagraphInput(output_variable_name="decision", resolved_default_value="Sanitized initial value")
     return ResolvedForm(
         title="Sanitized title",
         parts=(
@@ -592,7 +592,8 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
         _custom_intent(title="x" * 151),
         _custom_intent(
             blocks=tuple(
-                ParagraphInput(output_variable_name=f"input_{index}", default_value=None) for index in range(49)
+                ParagraphInput(output_variable_name=f"input_{index}", resolved_default_value=None)
+                for index in range(49)
             )
         ),
         _custom_intent(
@@ -603,8 +604,8 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
         ),
         _custom_intent(
             blocks=(
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
             )
         ),
         _custom_intent(actions=(UserAction(id="x" * 256, title="Action", button_style=ButtonStyle.DEFAULT),)),
@@ -619,10 +620,10 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
                 ),
             )
         ),
-        _custom_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, default_value=None),)),
-        _custom_intent(blocks=(ParagraphInput(output_variable_name="input", default_value="x" * 3_001),)),
-        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=(), default_value=None),)),
-        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=("",), default_value=None),)),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, resolved_default_value=None),)),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="input", resolved_default_value="x" * 3_001),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=(), resolved_default_value=None),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=("",), resolved_default_value=None),)),
     ],
     ids=(
         "empty-card",
@@ -672,7 +673,7 @@ def test_real_paragraph_resolved_default_survives_sdk_serialization(
     )
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
     intent = _custom_intent(
-        blocks=(ParagraphInput(output_variable_name="comment", default_value="Sanitized preserved default"),),
+        blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value="Sanitized preserved default"),),
         actions=(),
         title="",
     )
@@ -709,7 +710,7 @@ def test_real_web_client_renders_optional_card_sections(
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000002"})
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     paragraph_intent = _custom_intent(
-        blocks=(ParagraphInput(output_variable_name="comment", default_value=None),),
+        blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value=None),),
         actions=(),
         title="",
     )

@@ -1374,6 +1374,38 @@ export const zHitTestingResponse = z.object({
 })
 
 /**
+ * HumanInputActionResponse
+ */
+export const zHumanInputActionResponse = z.object({
+  button_style: zButtonStyle,
+  id: z.string(),
+  title: z.string(),
+})
+
+/**
+ * HumanInputFileListResponse
+ */
+export const zHumanInputFileListResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  number_limits: z.int(),
+  output_variable_name: z.string(),
+  type: z.literal('file-list'),
+})
+
+/**
+ * HumanInputFileResponse
+ */
+export const zHumanInputFileResponse = z.object({
+  allowed_file_extensions: z.array(z.string()),
+  allowed_file_types: z.array(zFileType),
+  allowed_file_upload_methods: z.array(zFileTransferMethod),
+  output_variable_name: z.string(),
+  type: z.literal('file'),
+})
+
+/**
  * HumanInputFormExpiredError
  */
 export const zHumanInputFormExpiredError = zErrorResponse.and(
@@ -1386,7 +1418,7 @@ export const zHumanInputFormExpiredError = zErrorResponse.and(
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponse = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponse = z.record(z.string(), z.unknown())
 
 /**
  * HumanInputFormSubmittedError
@@ -5444,6 +5476,60 @@ export const zUserActionConfig = z.object({
 export const zValueSourceType = z.enum(['constant', 'variable'])
 
 /**
+ * HumanInputStringListSourceResponse
+ */
+export const zHumanInputStringListSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.array(z.string()),
+})
+
+/**
+ * HumanInputSelectResponse
+ */
+export const zHumanInputSelectResponse = z.object({
+  option_source: zHumanInputStringListSourceResponse,
+  output_variable_name: z.string(),
+  type: z.literal('select'),
+})
+
+/**
+ * HumanInputStringSourceResponse
+ */
+export const zHumanInputStringSourceResponse = z.object({
+  selector: z.array(z.string()),
+  type: zValueSourceType,
+  value: z.string(),
+})
+
+/**
+ * HumanInputParagraphResponse
+ */
+export const zHumanInputParagraphResponse = z.object({
+  default: zHumanInputStringSourceResponse.nullable(),
+  output_variable_name: z.string(),
+  type: z.literal('paragraph'),
+})
+
+export const zHumanInputResponse = z.discriminatedUnion('type', [
+  zHumanInputParagraphResponse,
+  zHumanInputSelectResponse,
+  zHumanInputFileResponse,
+  zHumanInputFileListResponse,
+])
+
+/**
+ * HumanInputFormDefinitionResponse
+ */
+export const zHumanInputFormDefinitionResponse = z.object({
+  expiration_time: z.int().nullish(),
+  form_content: z.string(),
+  inputs: z.array(zHumanInputResponse),
+  resolved_default_values: z.record(z.string(), z.string()),
+  user_actions: z.array(zHumanInputActionResponse),
+})
+
+/**
  * StringListSource
  */
 export const zStringListSource = z.object({
@@ -5516,17 +5602,6 @@ export const zHumanInputContent = z.object({
   submitted: z.boolean(),
   type: zExecutionContentType.optional().default('human_input'),
   workflow_run_id: z.string(),
-})
-
-/**
- * HumanInputFormDefinitionResponse
- */
-export const zHumanInputFormDefinitionResponse = z.object({
-  expiration_time: z.int().nullish(),
-  form_content: z.string(),
-  inputs: z.array(zFormInputConfig),
-  resolved_default_values: z.record(z.string(), z.string()),
-  user_actions: z.array(zUserActionConfig),
 })
 
 /**
@@ -6057,7 +6132,7 @@ export const zWorkspaceNotFoundError = zErrorResponse.and(
 /**
  * HumanInputFormSubmitResponse
  */
-export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.never())
+export const zHumanInputFormSubmitResponseWritable = z.record(z.string(), z.unknown())
 
 /**
  * MessageListItem

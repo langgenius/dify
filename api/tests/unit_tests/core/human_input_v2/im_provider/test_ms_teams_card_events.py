@@ -35,8 +35,8 @@ def _form(*, first_input_name: str = "comment-🧪") -> ResolvedForm:
         title="Approval request",
         parts=(
             MarkdownFragment(text="Review the generated answer."),
-            ParagraphInput(output_variable_name=first_input_name, default_value="Looks good"),
-            SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),
+            ParagraphInput(output_variable_name=first_input_name, resolved_default_value="Looks good"),
+            SelectInput(output_variable_name="decision", options=("ship", "hold"), resolved_default_value="hold"),
         ),
         actions=(
             UserAction(id="approve-✅", title="Approve", button_style=ButtonStyle.PRIMARY),
@@ -146,7 +146,7 @@ def test_class_level_codec_encodes_the_complete_collision_safe_adaptive_card() -
 def test_codec_renders_select_input_as_compact_choice_set() -> None:
     form = ResolvedForm(
         title="",
-        parts=(SelectInput(output_variable_name="decision", options=("ship", "hold"), default_value="hold"),),
+        parts=(SelectInput(output_variable_name="decision", options=("ship", "hold"), resolved_default_value="hold"),),
         actions=(),
         legacy_form_content="unused",
     )
