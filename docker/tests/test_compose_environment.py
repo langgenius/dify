@@ -1107,6 +1107,36 @@ class ComposeEnvironmentTests(unittest.TestCase):
         subprocess.run(command, check=True, capture_output=True)
         self.assertEqual((self.project / ".env").read_text(), "COMPOSE_PROFILES=custom\n")
 
+    def test_human_input_overrides_reach_their_services(self):
+        self.copy_template(
+            "envs/core-services/api-worker.defaults",
+            "envs/core-services/api-worker.env",
+            {"HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE": "STREAM", "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS": "3600"},
+        )
+        self.copy_template(
+            "envs/core-services/web.defaults",
+            "envs/core-services/web.env",
+            {"NEXT_PUBLIC_ENABLE_HITL_IM": "false"},
+        )
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_beat", "worker_knowledge_fs_upgrade"):
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"], "STREAM", name)
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS"], "3600", name)
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "false")
+
+        self.override_root(
+            {
+                "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE": "WEBHOOK",
+                "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS": "7200",
+                "NEXT_PUBLIC_ENABLE_HITL_IM": "true",
+            }
+        )
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_beat", "worker_knowledge_fs_upgrade"):
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"], "WEBHOOK", name)
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS"], "7200", name)
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "true")
+
     def test_runtime_secrets_stay_in_their_service(self):
         self.copy_template(
             "envs/core-services/api.defaults",
