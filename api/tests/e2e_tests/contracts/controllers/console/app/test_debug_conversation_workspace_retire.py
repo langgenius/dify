@@ -28,7 +28,7 @@ from repositories.conversation_repository import ConversationRepository
 from services.conversation_command_service import ConversationCommandService
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation
 
-_ROUTE = "/apps/<uuid:app_id>/advanced-chat/workflows/draft/conversations/<uuid:conversation_id>/workspaces/retire"
+_ROUTE = "/apps/<uuid:app_id>/advanced-chat/workflows/draft/conversations/workspaces/retire"
 
 
 def _unexpected_delete_cleanup(*, tenant_id: str, conversation_id: str, retired_workspace_ids: tuple[str, ...]) -> None:
@@ -56,7 +56,6 @@ class _Harness:
         self,
         *,
         app_id: str | None = None,
-        conversation_id: str | None = None,
         authenticated: bool = True,
         csrf: bool = True,
     ) -> TestResponse:
@@ -71,8 +70,7 @@ class _Harness:
                 client.set_cookie(COOKIE_NAME_CSRF_TOKEN, token)
                 headers[HEADER_NAME_CSRF_TOKEN] = token
         response = client.post(
-            f"/apps/{app_id or self.target.id}/advanced-chat/workflows/draft/conversations/"
-            f"{conversation_id or self.conversation.id}/workspaces/retire",
+            f"/apps/{app_id or self.target.id}/advanced-chat/workflows/draft/conversations/workspaces/retire",
             headers=headers,
         )
         self.assert_closed()
@@ -204,6 +202,39 @@ def test_retire_commits_before_collection_keeps_conversation_and_is_idempotent(h
     assert len(harness.collections) == 1
 
 
+def test_retire_covers_debug_sessions_the_client_lost_on_refresh(harness: _Harness) -> None:
+    earlier = make_conversation(
+        conversation_id=str(uuid4()),
+        app_id=harness.target.id,
+        mode=AppMode.ADVANCED_CHAT,
+        inputs={},
+        from_source=ConversationFromSource.CONSOLE,
+        from_account_id=harness.account.id,
+        invoke_from=InvokeFrom.DEBUGGER,
+        is_deleted=False,
+    )
+    earlier_workspace = AgentWorkspace(
+        id=str(uuid4()),
+        tenant_id=harness.tenant.id,
+        app_id=harness.target.id,
+        owner_type=AgentWorkspaceOwnerType.CONVERSATION,
+        owner_id=earlier.id,
+        owner_scope_key="chatflow-node",
+        backend_workspace_ref="earlier-backend-workspace",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    with harness.factory.begin() as session:
+        session.add_all([earlier, earlier_workspace])
+
+    assert harness.retire().status_code == HTTPStatus.NO_CONTENT
+
+    assert len(harness.collections) == 1
+    tenant_id, workspace_ids = harness.collections[0]
+    assert tenant_id == harness.tenant.id
+    assert set(workspace_ids) == {harness.workspace_id, earlier_workspace.id}
+
+
 @pytest.mark.parametrize(
     ("column", "value"),
     [
@@ -213,24 +244,16 @@ def test_retire_commits_before_collection_keeps_conversation_and_is_idempotent(h
         ("is_deleted", True),
     ],
 )
-def test_retire_rejects_conversations_that_are_not_the_callers_debug_session(
+def test_retire_leaves_conversations_that_are_not_the_callers_debug_sessions(
     harness: _Harness, column: str, value: object
 ) -> None:
     with harness.factory.begin() as session:
         session.execute(update(Conversation).where(Conversation.id == harness.conversation.id).values({column: value}))
     response = harness.retire()
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.get_json()["code"] == "conversation_not_found"
+    assert response.status_code == HTTPStatus.NO_CONTENT
     with harness.factory() as session:
         assert session.get_one(AgentWorkspace, harness.workspace_id).status == AgentWorkingResourceStatus.ACTIVE
     assert not harness.collections
-
-
-def test_retire_rejects_missing_conversation(harness: _Harness) -> None:
-    response = harness.retire(conversation_id=str(uuid4()))
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.get_json()["code"] == "conversation_not_found"
-    harness.assert_unchanged()
 
 
 @pytest.mark.parametrize("unavailable", ["missing", "other_tenant", "chat_mode"])

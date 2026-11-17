@@ -10,7 +10,6 @@ from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorksp
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, Conversation
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
-from services.errors.conversation import ConversationNotExistsError
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +69,45 @@ def retire_conversation(*, app_model: App, conversation: Conversation, session: 
     return tuple(retired_workspace_ids)
 
 
+def _retire_debug_workspaces(
+    *,
+    session: Session,
+    tenant_id: str,
+    app_id: str,
+    account_id: str,
+    extra_criteria: tuple[ColumnElement[bool], ...],
+) -> tuple[str, ...]:
+    """Retire ACTIVE workspaces of the editor's debug conversations matching ``extra_criteria``.
+
+    The candidate set is restricted to conversations still owning an ACTIVE
+    workspace so the id list stays bounded. Neither commits nor dispatches tasks.
+    """
+    conversation_ids = tuple(
+        session.scalars(
+            select(Conversation.id)
+            .join(
+                AgentWorkspace,
+                and_(
+                    AgentWorkspace.owner_id == Conversation.id,
+                    AgentWorkspace.tenant_id == tenant_id,
+                    AgentWorkspace.app_id == app_id,
+                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION,
+                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
+                ),
+            )
+            .where(*_debug_conversation_criteria(app_id=app_id, account_id=account_id), *extra_criteria)
+            .distinct()
+        ).all()
+    )
+    return tuple(
+        AgentWorkspaceRepository(session=session).retire_all_for_conversations(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            conversation_ids=conversation_ids,
+        )
+    )
+
+
 def retire_superseded_debug_conversations(
     *,
     session: Session,
@@ -86,36 +124,15 @@ def retire_superseded_debug_conversations(
     Preconditions: ``current_conversation_id`` is a freshly created debug
     ``Conversation`` of ``app_id`` for ``account_id``. Postconditions: every
     other non-deleted debug ``Conversation`` of that editor owns no ACTIVE
-    Workspace; the retired workspace ids are returned. The superseded set is
-    restricted to conversations still owning an ACTIVE workspace so the id list
-    stays bounded. Neither commits nor dispatches tasks.
+    Workspace; the retired workspace ids are returned. Neither commits nor
+    dispatches tasks.
     """
-    superseded_conversation_ids = tuple(
-        session.scalars(
-            select(Conversation.id)
-            .join(
-                AgentWorkspace,
-                and_(
-                    AgentWorkspace.owner_id == Conversation.id,
-                    AgentWorkspace.tenant_id == tenant_id,
-                    AgentWorkspace.app_id == app_id,
-                    AgentWorkspace.owner_type == AgentWorkspaceOwnerType.CONVERSATION,
-                    AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
-                ),
-            )
-            .where(
-                *_debug_conversation_criteria(app_id=app_id, account_id=account_id),
-                Conversation.id != current_conversation_id,
-            )
-            .distinct()
-        ).all()
-    )
-    return tuple(
-        AgentWorkspaceRepository(session=session).retire_all_for_conversations(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            conversation_ids=superseded_conversation_ids,
-        )
+    return _retire_debug_workspaces(
+        session=session,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        account_id=account_id,
+        extra_criteria=(Conversation.id != current_conversation_id,),
     )
 
 
@@ -125,32 +142,24 @@ def retire_debug_conversation_workspaces(
     tenant_id: str,
     app_id: str,
     account_id: str,
-    conversation_id: str,
 ) -> tuple[str, ...]:
-    """Retire the ACTIVE workspaces owned by one debug Conversation.
+    """Retire ACTIVE workspaces of every debug Conversation of one (app, account) pair.
 
-    Preconditions: ``conversation_id`` resolves to a non-deleted Console debug
-    ``Conversation`` of ``app_id`` owned by ``account_id``; another account's,
-    non-debug, deleted, other-app, or unknown conversation raises
-    ``ConversationNotExistsError``. Postconditions: the conversation's ACTIVE
-    workspaces are RETIRED and their ids returned; an already-retired
-    conversation returns ``()``. The Conversation row and its messages are
-    untouched. Neither commits nor dispatches tasks.
+    Called when the editor ends debugging (panel closed or restarted). The
+    frontend loses its Conversation id on page refresh, so the editor's whole
+    debug set on the app is retired rather than one id the client may no longer
+    know. Other accounts' debug sessions on the same app are never touched.
+
+    Preconditions: the caller has resolved ``app_id`` under ``tenant_id``.
+    Postconditions: no non-deleted debug ``Conversation`` of ``account_id`` on
+    ``app_id`` owns an ACTIVE Workspace; the retired ids are returned, ``()``
+    when nothing was active. Conversation rows and messages are untouched.
+    Neither commits nor dispatches tasks.
     """
-    conversation = session.scalar(
-        select(Conversation).where(
-            *_debug_conversation_criteria(app_id=app_id, account_id=account_id),
-            Conversation.id == conversation_id,
-        )
-    )
-    if conversation is None:
-        raise ConversationNotExistsError(
-            f"Conversation {conversation_id} is not a debug conversation of this app and account."
-        )
-    return tuple(
-        AgentWorkspaceRepository(session=session).retire_all_for_conversation(
-            tenant_id=tenant_id,
-            app_id=app_id,
-            conversation_id=conversation.id,
-        )
+    return _retire_debug_workspaces(
+        session=session,
+        tenant_id=tenant_id,
+        app_id=app_id,
+        account_id=account_id,
+        extra_criteria=(),
     )

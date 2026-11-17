@@ -487,7 +487,7 @@ export { post49Errors as 'POST /apps/{app_id}/workflows/draft/environment-variab
 export { post49Errors as 'POST /workspaces/current/plugin/tasks/{task_id}/delete/{identifier}' } from './workspaces/errors.gen.ts'
 export { post4Errors as 'POST /account/change-email' } from './account/errors.gen.ts'
 export { post4Errors as 'POST /agent/{agent_id}/build-chat/finalize' } from './agent/errors.gen.ts'
-export { post4Errors as 'POST /apps/{app_id}/advanced-chat/workflows/draft/conversations/{conversation_id}/workspaces/retire' } from './apps/errors.gen.ts'
+export { post4Errors as 'POST /apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire' } from './apps/errors.gen.ts'
 export { post4Errors as 'POST /datasets/indexing-estimate' } from './datasets/errors.gen.ts'
 export { post4Errors as 'POST /installed-apps/{installed_app_id}/completion-messages/{task_id}/stop' } from './installed-apps/errors.gen.ts'
 export { post4Errors as 'POST /knowledge-fs/spaces/{control_space_id}/background-tasks/{task_kind}/{task_id}/cancel' } from './knowledge-fs/errors.gen.ts'

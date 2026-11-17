@@ -479,9 +479,7 @@ class ConversationRepository:
                 retired_workspace_ids=retired_workspace_ids,
             )
 
-    def retire_console_debug_workspaces(
-        self, context: RequestContext, app_id: str, conversation_id: str
-    ) -> ConversationWorkspaceRetirement:
+    def retire_console_debug_workspaces(self, context: RequestContext, app_id: str) -> ConversationWorkspaceRetirement:
         with self._session_factory.begin() as session:
             app = find_console_app(session, workspace_id=context.active_workspace_id, app_id=app_id)
             if app is None:
@@ -493,7 +491,6 @@ class ConversationRepository:
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 account_id=context.account_id,
-                conversation_id=conversation_id,
             )
             return ConversationWorkspaceRetirement(tenant_id=app.tenant_id, retired_workspace_ids=retired_workspace_ids)
 

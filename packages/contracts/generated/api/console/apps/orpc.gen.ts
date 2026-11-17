@@ -348,8 +348,8 @@ import {
   zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdPath,
   zPatchAppsByAppIdWorkflowsDraftVariablesByVariableIdResponse,
   zPostAppsBody,
-  zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetirePath,
-  zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponse,
+  zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath,
+  zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse,
   zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody,
   zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewPath,
   zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewResponse,
@@ -755,32 +755,25 @@ export const workflowRuns = {
 }
 
 /**
- * Retire the Agent workspaces of the caller's closed Chatflow debug conversation
+ * Retire the Agent workspaces of the caller's ended Chatflow debug conversations
  */
 export const post4 = oc
   .route({
-    description: "Retire the Agent workspaces of the caller's closed Chatflow debug conversation",
+    description: "Retire the Agent workspaces of the caller's ended Chatflow debug conversations",
     inputStructure: 'detailed',
     method: 'POST',
-    operationId:
-      'postAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetire',
-    path: '/apps/{app_id}/advanced-chat/workflows/draft/conversations/{conversation_id}/workspaces/retire',
+    operationId: 'postAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetire',
+    path: '/apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire',
     successStatus: 204,
     tags: ['console'],
   })
   .input(
     z.object({
-      params:
-        zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetirePath,
+      params: zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath,
     }),
   )
-  .output(
-    zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponse,
-  )
-  .errors({
-    app_not_found: { status: 404, data: zAppNotFoundError },
-    conversation_not_found: { status: 404, data: zConversationNotFoundError },
-  })
+  .output(zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse)
+  .errors({ app_not_found: { status: 404, data: zAppNotFoundError } })
 
 export const retire = {
   post: post4,
@@ -790,12 +783,8 @@ export const workspaces = {
   retire,
 }
 
-export const byConversationId = {
-  workspaces,
-}
-
 export const conversations = {
-  byConversationId,
+  workspaces,
 }
 
 /**
@@ -1860,7 +1849,7 @@ export const get24 = oc
     conversation_not_found: { status: 404, data: zConversationNotFoundError },
   })
 
-export const byConversationId2 = {
+export const byConversationId = {
   delete: delete5,
   get: get24,
 }
@@ -1888,7 +1877,7 @@ export const get25 = oc
 
 export const chatConversations = {
   get: get25,
-  byConversationId: byConversationId2,
+  byConversationId,
 }
 
 /**
@@ -2017,7 +2006,7 @@ export const get28 = oc
     conversation_not_found: { status: 404, data: zConversationNotFoundError },
   })
 
-export const byConversationId3 = {
+export const byConversationId2 = {
   delete: delete6,
   get: get28,
 }
@@ -2045,7 +2034,7 @@ export const get29 = oc
 
 export const completionConversations = {
   get: get29,
-  byConversationId: byConversationId3,
+  byConversationId: byConversationId2,
 }
 
 /**

@@ -2,9 +2,7 @@
 
 from datetime import datetime
 
-import pytest
 from sqlalchemy.orm import Session
-from typing_extensions import TypedDict
 
 from models.agent import (
     AgentConfigVersionKind,
@@ -19,7 +17,6 @@ from repositories.conversation_lifecycle import (
     retire_debug_conversation_workspaces,
     retire_superseded_debug_conversations,
 )
-from services.errors.conversation import ConversationNotExistsError
 
 _TENANT_ID = "tenant-1"
 _APP_ID = "app-1"
@@ -27,14 +24,6 @@ _OTHER_APP_ID = "app-2"
 _ACCOUNT_ID = "account-1"
 _OTHER_ACCOUNT_ID = "account-2"
 _RETIRED_AT = datetime(2026, 9, 1)
-
-
-class _ConversationOverrides(TypedDict, total=False, closed=True):
-    app_id: str
-    account_id: str | None
-    invoke_from: InvokeFrom | None
-    from_source: ConversationFromSource
-    is_deleted: bool
 
 
 def _conversation(
@@ -192,27 +181,31 @@ def test_retire_superseded_debug_conversations_retires_only_superseded_debug_wor
     assert retired_workspace.retired_at == _RETIRED_AT
 
 
-def test_retire_debug_conversation_workspaces_retires_only_target_debug_workspaces(
+def test_retire_debug_conversation_workspaces_retires_every_debug_workspace_of_app_and_account(
     sqlite_session: Session,
 ) -> None:
-    target = _conversation(sqlite_session, "conv-target")
-    target_root = _conversation_workspace(sqlite_session, "ws-target-root", target)
-    target_node = _conversation_workspace(sqlite_session, "ws-target-node", target, owner_scope_key="node-1:binding-1")
-    target_binding = _conversation_binding("binding-target", target_root)
-
-    other_debug = _conversation(sqlite_session, "conv-other-debug")
-    other_debug_workspace = _conversation_workspace(sqlite_session, "ws-other-debug", other_debug)
+    # A page refresh loses the client's id, so earlier debug sessions must go too.
+    earlier = _conversation(sqlite_session, "conv-earlier")
+    earlier_root = _conversation_workspace(sqlite_session, "ws-earlier-root", earlier)
+    earlier_node = _conversation_workspace(
+        sqlite_session, "ws-earlier-node", earlier, owner_scope_key="node-1:binding-1"
+    )
+    earlier_binding = _conversation_binding("binding-earlier", earlier_root)
+    latest = _conversation(sqlite_session, "conv-latest")
+    latest_workspace = _conversation_workspace(sqlite_session, "ws-latest", latest)
 
     other_account = _conversation(sqlite_session, "conv-other-account", account_id=_OTHER_ACCOUNT_ID)
     other_account_workspace = _conversation_workspace(sqlite_session, "ws-other-account", other_account)
-
-    deleted = _conversation(sqlite_session, "conv-deleted", is_deleted=True)
-    deleted_workspace = _conversation_workspace(sqlite_session, "ws-deleted", deleted)
-
     other_app = _conversation(sqlite_session, "conv-other-app", app_id=_OTHER_APP_ID)
     other_app_workspace = _conversation_workspace(sqlite_session, "ws-other-app", other_app)
+    deleted = _conversation(sqlite_session, "conv-deleted", is_deleted=True)
+    deleted_workspace = _conversation_workspace(sqlite_session, "ws-deleted", deleted)
+    explore = _conversation(sqlite_session, "conv-explore", invoke_from=InvokeFrom.EXPLORE)
+    explore_workspace = _conversation_workspace(sqlite_session, "ws-explore", explore)
+    api_source = _conversation(sqlite_session, "conv-api", from_source=ConversationFromSource.API)
+    api_source_workspace = _conversation_workspace(sqlite_session, "ws-api", api_source)
 
-    sqlite_session.add(target_binding)
+    sqlite_session.add(earlier_binding)
     sqlite_session.commit()
 
     retired_workspace_ids = retire_debug_conversation_workspaces(
@@ -220,81 +213,37 @@ def test_retire_debug_conversation_workspaces_retires_only_target_debug_workspac
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
         account_id=_ACCOUNT_ID,
-        conversation_id=target.id,
     )
     sqlite_session.commit()
     sqlite_session.expire_all()
 
     assert isinstance(retired_workspace_ids, tuple)
-    assert set(retired_workspace_ids) == {target_root.id, target_node.id}
-    for workspace in (target_root, target_node):
+    assert set(retired_workspace_ids) == {earlier_root.id, earlier_node.id, latest_workspace.id}
+    for workspace in (earlier_root, earlier_node, latest_workspace):
         assert workspace.status is AgentWorkingResourceStatus.RETIRED
         assert workspace.active_guard is None
         assert workspace.retired_at is not None
-    assert target_binding.status is AgentWorkingResourceStatus.RETIRED
-    assert target_binding.retired_at == target_root.retired_at
+    assert earlier_binding.status is AgentWorkingResourceStatus.RETIRED
+    assert earlier_binding.retired_at == earlier_root.retired_at
 
     for workspace in (
-        other_debug_workspace,
         other_account_workspace,
-        deleted_workspace,
         other_app_workspace,
+        deleted_workspace,
+        explore_workspace,
+        api_source_workspace,
     ):
         assert workspace.status is AgentWorkingResourceStatus.ACTIVE
         assert workspace.active_guard == 1
         assert workspace.retired_at is None
 
-    persisted = sqlite_session.get(Conversation, target.id)
-    assert persisted is not None
-    assert persisted.is_deleted is False
+    for conversation_id in (earlier.id, latest.id):
+        persisted = sqlite_session.get(Conversation, conversation_id)
+        assert persisted is not None
+        assert persisted.is_deleted is False
 
 
-@pytest.mark.parametrize(
-    "overrides",
-    [
-        {"account_id": _OTHER_ACCOUNT_ID},
-        {"invoke_from": InvokeFrom.EXPLORE},
-        {"invoke_from": None},
-        {"from_source": ConversationFromSource.API},
-        {"is_deleted": True},
-        {"app_id": _OTHER_APP_ID},
-    ],
-    ids=["other-account", "explore-invoke", "legacy-invoke", "api-source", "deleted", "other-app"],
-)
-def test_retire_debug_conversation_workspaces_rejects_foreign_or_non_debug(
-    sqlite_session: Session, overrides: _ConversationOverrides
-) -> None:
-    conversation = _conversation(sqlite_session, "conv-reject", **overrides)
-    workspace = _conversation_workspace(sqlite_session, "ws-reject", conversation)
-    sqlite_session.commit()
-
-    with pytest.raises(ConversationNotExistsError):
-        retire_debug_conversation_workspaces(
-            session=sqlite_session,
-            tenant_id=_TENANT_ID,
-            app_id=_APP_ID,
-            account_id=_ACCOUNT_ID,
-            conversation_id=conversation.id,
-        )
-
-    sqlite_session.expire_all()
-    assert workspace.status is AgentWorkingResourceStatus.ACTIVE
-    assert workspace.active_guard == 1
-    assert workspace.retired_at is None
-
-
-def test_retire_debug_conversation_workspaces_rejects_unknown_conversation(sqlite_session: Session) -> None:
-    with pytest.raises(ConversationNotExistsError):
-        retire_debug_conversation_workspaces(
-            session=sqlite_session,
-            tenant_id=_TENANT_ID,
-            app_id=_APP_ID,
-            account_id=_ACCOUNT_ID,
-            conversation_id="conv-missing",
-        )
-
-
-def test_retire_debug_conversation_workspaces_returns_empty_when_already_retired(
+def test_retire_debug_conversation_workspaces_returns_empty_when_nothing_is_active(
     sqlite_session: Session,
 ) -> None:
     conversation = _conversation(sqlite_session, "conv-already-retired")
@@ -311,7 +260,6 @@ def test_retire_debug_conversation_workspaces_returns_empty_when_already_retired
         tenant_id=_TENANT_ID,
         app_id=_APP_ID,
         account_id=_ACCOUNT_ID,
-        conversation_id=conversation.id,
     )
     sqlite_session.expire_all()
 

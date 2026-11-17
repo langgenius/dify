@@ -68,11 +68,11 @@ const startConversationRun = () => {
   })
 }
 
-it('retires the debug conversation workspaces on restart', () => {
-  const retireConversation = vi.fn()
+it('retires the editor debug workspaces on restart after a conversation', () => {
+  const retireDebugWorkspaces = vi.fn()
   startConversationRun()
   const { result } = renderHook(
-    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
     { hooksStoreProps },
   )
   act(() => {
@@ -81,43 +81,46 @@ it('retires the debug conversation workspaces on restart', () => {
   act(() => {
     result.current.handleRestart()
   })
-  expect(retireConversation).toHaveBeenCalledExactlyOnceWith('conversation-1')
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
 })
 
-it('does not retire workspaces on restart before any conversation exists', () => {
-  const retireConversation = vi.fn()
+it('retires the editor debug workspaces on restart even before any conversation in this mount', () => {
+  const retireDebugWorkspaces = vi.fn()
   const { result } = renderHook(
-    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
     { hooksStoreProps },
   )
   act(() => {
     result.current.handleRestart()
   })
-  expect(retireConversation).not.toHaveBeenCalled()
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
 })
 
-it('retires the debug conversation workspaces once on unmount', () => {
-  const retireConversation = vi.fn()
+it('retires the editor debug workspaces once on unmount after a conversation', () => {
+  const retireDebugWorkspaces = vi.fn()
   startConversationRun()
   const { result, unmount } = renderHook(
-    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
     { hooksStoreProps },
   )
   act(() => {
     result.current.handleSend({ query: 'test' }, {})
   })
   unmount()
-  expect(retireConversation).toHaveBeenCalledExactlyOnceWith('conversation-1')
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
 })
 
-it('does not retire workspaces on unmount without a conversation', () => {
-  const retireConversation = vi.fn()
+// After a page refresh the panel no longer knows the earlier Conversation id,
+// yet closing it must still retire the sandbox that conversation left behind.
+it('retires the editor debug workspaces on unmount without a conversation in this mount', () => {
+  const retireDebugWorkspaces = vi.fn()
   const { unmount } = renderHook(
-    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    () => useChat({}, undefined, undefined, undefined, retireDebugWorkspaces),
     { hooksStoreProps },
   )
+  expect(retireDebugWorkspaces).not.toHaveBeenCalled()
   unmount()
-  expect(retireConversation).not.toHaveBeenCalled()
+  expect(retireDebugWorkspaces).toHaveBeenCalledOnce()
 })
 
 it('cancels suggested questions on stop and removes loaded suggestions on restart', async () => {

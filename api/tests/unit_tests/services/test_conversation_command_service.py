@@ -512,9 +512,9 @@ def test_retire_console_debug_workspaces_commits_before_collection_and_keeps_con
                 assert session.get_one(AgentWorkspace, workspace_id).status == AgentWorkingResourceStatus.RETIRED
 
     service = _service(sqlite_session_factory, collect=collect)
-    service.retire_console_debug_workspaces(data.context, data.app_id, data.conversation_id)
+    service.retire_console_debug_workspaces(data.context, data.app_id)
     # Idempotent: nothing left to retire, so no second collection is requested.
-    service.retire_console_debug_workspaces(data.context, data.app_id, data.conversation_id)
+    service.retire_console_debug_workspaces(data.context, data.app_id)
     assert events.count("collect") == 1
     with sqlite_session_factory() as session:
         assert session.get_one(Conversation, data.conversation_id).is_deleted is False
@@ -528,9 +528,7 @@ def test_retire_console_debug_workspaces_rejects_non_advanced_chat_app(
     data = console_deletion
     _make_debug_conversation(sqlite_session_factory, data, mode=AppMode.CHAT)
     with pytest.raises(ConsoleAppNotFoundError):
-        _service(sqlite_session_factory).retire_console_debug_workspaces(
-            data.context, data.app_id, data.conversation_id
-        )
+        _service(sqlite_session_factory).retire_console_debug_workspaces(data.context, data.app_id)
 
 
 def test_retire_console_debug_workspaces_rejects_app_outside_admitted_workspace(
@@ -545,10 +543,10 @@ def test_retire_console_debug_workspaces_rejects_app_outside_admitted_workspace(
         active_workspace_id=str(uuid4()),
     )
     with pytest.raises(ConsoleAppNotFoundError):
-        _service(sqlite_session_factory).retire_console_debug_workspaces(foreign, data.app_id, data.conversation_id)
+        _service(sqlite_session_factory).retire_console_debug_workspaces(foreign, data.app_id)
 
 
-def test_retire_console_debug_workspaces_rejects_other_accounts_and_non_debug_conversations(
+def test_retire_console_debug_workspaces_leaves_other_accounts_and_non_debug_sessions(
     sqlite_session_factory: sessionmaker[Session], console_deletion: ConsoleDeletionData
 ) -> None:
     data = console_deletion
@@ -559,18 +557,12 @@ def test_retire_console_debug_workspaces_rejects_other_accounts_and_non_debug_co
         account_id=str(uuid4()),
         active_workspace_id=data.context.active_workspace_id,
     )
-    with pytest.raises(ConversationNotExistsError):
-        _service(sqlite_session_factory).retire_console_debug_workspaces(
-            other_account, data.app_id, data.conversation_id
-        )
+    _service(sqlite_session_factory).retire_console_debug_workspaces(other_account, data.app_id)
     with sqlite_session_factory.begin() as session:
         session.execute(
             update(Conversation).where(Conversation.id == data.conversation_id).values(invoke_from=InvokeFrom.EXPLORE)
         )
-    with pytest.raises(ConversationNotExistsError):
-        _service(sqlite_session_factory).retire_console_debug_workspaces(
-            data.context, data.app_id, data.conversation_id
-        )
+    _service(sqlite_session_factory).retire_console_debug_workspaces(data.context, data.app_id)
     with sqlite_session_factory() as session:
         for workspace_id in data.workspace_ids:
             assert session.get_one(AgentWorkspace, workspace_id).status == AgentWorkingResourceStatus.ACTIVE
@@ -586,9 +578,7 @@ def test_retire_console_debug_workspaces_collection_failure_keeps_committed_reti
         raise RuntimeError(f"Collection transport unavailable for {tenant_id}: {len(workspace_ids)}")
 
     with pytest.raises(RuntimeError, match="Collection transport unavailable"):
-        _service(sqlite_session_factory, collect=collect).retire_console_debug_workspaces(
-            data.context, data.app_id, data.conversation_id
-        )
+        _service(sqlite_session_factory, collect=collect).retire_console_debug_workspaces(data.context, data.app_id)
     with sqlite_session_factory() as session:
         for workspace_id in data.workspace_ids:
             assert session.get_one(AgentWorkspace, workspace_id).status == AgentWorkingResourceStatus.RETIRED

@@ -103,14 +103,11 @@ const ChatWrapper = ({
     [appId, queryClient],
   )
 
-  const retireConversation = useCallback(
-    (conversationId: string) => {
-      void consoleClient.apps.byAppId.advancedChat.workflows.draft.conversations.byConversationId.workspaces.retire
-        .post({ params: { app_id: appId, conversation_id: conversationId } })
-        .catch(noop)
-    },
-    [appId],
-  )
+  const retireDebugWorkspaces = useCallback(() => {
+    void consoleClient.apps.byAppId.advancedChat.workflows.draft.conversations.workspaces.retire
+      .post({ params: { app_id: appId } })
+      .catch(noop)
+  }, [appId])
 
   const {
     conversationId,
@@ -134,7 +131,7 @@ const ChatWrapper = ({
       stopChat({
         params: { app_id: appId, task_id: taskId },
       }),
-    retireConversation,
+    retireDebugWorkspaces,
   )
 
   const handleRestartChat = useCallback(() => {

@@ -55,7 +55,7 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
-  retireConversation?: (conversationId: string) => void,
+  retireDebugWorkspaces?: () => void,
 ) => {
   const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
@@ -72,7 +72,7 @@ export const useChat = (
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
-  const retireConversationRef = useRef(retireConversation)
+  const retireDebugWorkspacesRef = useRef(retireDebugWorkspaces)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -153,15 +153,15 @@ export const useChat = (
   }, [])
 
   useEffect(() => {
-    retireConversationRef.current = retireConversation
-  }, [retireConversation])
+    retireDebugWorkspacesRef.current = retireDebugWorkspaces
+  }, [retireDebugWorkspaces])
 
-  // Closing the panel unmounts this hook; the debug Conversation itself stays,
-  // so only its Agent workspaces are retired, once, on the way out.
+  // Closing the panel unmounts this hook and ends the editor's debugging. A page
+  // refresh loses the Conversation id, so the server retires the editor's whole
+  // debug set on this app rather than only the id this mount knows about.
   useEffect(() => {
     return () => {
-      const conversationId = conversationIdRef.current
-      if (conversationId) retireConversationRef.current?.(conversationId)
+      retireDebugWorkspacesRef.current?.()
     }
   }, [])
 
@@ -217,7 +217,7 @@ export const useChat = (
 
   const handleRestart = useCallback(() => {
     handleStop()
-    if (conversationIdRef.current) retireConversationRef.current?.(conversationIdRef.current)
+    retireDebugWorkspacesRef.current?.()
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)

@@ -140,18 +140,6 @@ export const zWorkflowRunCountResponse = z.object({
 })
 
 /**
- * ConversationNotFoundError
- *
- * The conversation was not found for this user and app.
- */
-export const zConversationNotFoundError = zErrorResponse.and(
-  z.object({
-    code: z.literal('conversation_not_found'),
-    status: z.literal(404),
-  }),
-)
-
-/**
  * HumanInputFormPreviewPayload
  */
 export const zHumanInputFormPreviewPayload = z.object({
@@ -570,6 +558,18 @@ export const zUnsupportedAudioTypeError = zErrorResponse.and(
   z.object({
     code: z.literal('unsupported_audio_type'),
     status: z.literal(415),
+  }),
+)
+
+/**
+ * ConversationNotFoundError
+ *
+ * The conversation was not found for this user and app.
+ */
+export const zConversationNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_not_found'),
+    status: z.literal(404),
   }),
 )
 
@@ -6819,16 +6819,16 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
 
-export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetirePath =
-  z.object({
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
     app_id: z.uuid(),
-    conversation_id: z.uuid(),
-  })
+  },
+)
 
 /**
  * Workspaces retired
  */
-export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponse =
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
   z.void()
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
