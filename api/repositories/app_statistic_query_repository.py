@@ -280,16 +280,21 @@ ORDER BY
         end_date: datetime | None,
         timezone: str,
     ) -> tuple[UserSatisfactionRateStatisticRecord, ...]:
+        """Read liked-reply rates for an admitted App and valid UTC/timezone bounds.
+
+        Return daily rates in the existing per-mille scale, counting each reply
+        once. Reads use a short session; database errors propagate unchanged.
+        """
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
     {converted_created_at} AS date,
     COUNT(m.id) AS message_count,
-    COUNT(mf.id) AS feedback_count
+    COUNT(CASE WHEN EXISTS (
+        SELECT 1 FROM message_feedbacks mf
+        WHERE mf.message_id = m.id AND mf.rating = 'like'
+    ) THEN 1 END) AS feedback_count
 FROM
     messages m
-LEFT JOIN
-    message_feedbacks mf
-    ON mf.message_id=m.id AND mf.rating='like'
 WHERE
     m.app_id = :app_id
     AND m.invoke_from != :excluded_invoke_from"""

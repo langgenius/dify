@@ -7,6 +7,8 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.app_invoke_entities import InvokeFrom
+from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating, MessageStatus
+from models.model import MessageFeedback
 from repositories import app_statistic_query_repository as repository_module
 from repositories.app_statistic_query_repository import AppStatisticQueryRepository
 from services.app_statistic_query import (
@@ -19,6 +21,56 @@ from services.app_statistic_query import (
     TokensPerSecondStatisticRecord,
     UserSatisfactionRateStatisticRecord,
 )
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_message
+
+
+def test_satisfaction_counts_each_liked_reply_once(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    """Given two replies and two likes on one reply, preserve a one-half rate."""
+    app = make_app()
+    conversation = make_conversation(from_source=ConversationFromSource.API, from_end_user_id="end-user-1")
+    sqlite_session.add_all([app, conversation])
+    for message_id in ("liked-reply", "disliked-reply"):
+        sqlite_session.add(
+            make_message(
+                message_id=message_id,
+                inputs={},
+                query="hello",
+                message={},
+                answer="hi",
+                status=MessageStatus.NORMAL,
+                from_source=ConversationFromSource.API,
+                from_end_user_id="end-user-1",
+                invoke_from=InvokeFrom.WEB_APP,
+                created_at=datetime(2026, 7, 22, 8, 0),
+            )
+        )
+    for message_id, source_role, rating in (
+        ("liked-reply", FeedbackFromSource.USER, FeedbackRating.LIKE),
+        ("liked-reply", FeedbackFromSource.ADMIN, FeedbackRating.LIKE),
+        ("disliked-reply", FeedbackFromSource.USER, FeedbackRating.DISLIKE),
+    ):
+        sqlite_session.add(
+            MessageFeedback(
+                app_id=app.id,
+                conversation_id=conversation.id,
+                message_id=message_id,
+                rating=rating,
+                from_source=source_role,
+                from_end_user_id="end-user-1" if source_role == FeedbackFromSource.USER else None,
+                from_account_id="account-1" if source_role == FeedbackFromSource.ADMIN else None,
+            )
+        )
+    sqlite_session.commit()
+    monkeypatch.setattr(repository_module, "convert_datetime_to_date", lambda field: f"DATE({field})")
+    repository = AppStatisticQueryRepository(session_factory=sqlite_session_factory)
+
+    rates = repository.get_user_satisfaction_rates(app_id=app.id, start_date=None, end_date=None, timezone="UTC")
+
+    assert rates == (UserSatisfactionRateStatisticRecord(date="2026-07-22", rate=500.0),)
 
 
 class _RecordingRepository(AppStatisticQueryRepository):

@@ -963,6 +963,11 @@ class AgentObservabilityQueries:
     def _load_webapp_daily_statistics(
         self, *, app: App, params: AgentStatisticsQueryParams, source_filter: AgentSourceFilter
     ) -> list[dict[str, Any]]:
+        """Read daily metrics for an admitted App and resolved source/time bounds.
+
+        Each scoped message contributes once, regardless of feedback cardinality.
+        This is a read-only query; database errors propagate to the caller.
+        """
         converted_created_at = convert_datetime_to_date("m.created_at")
         message_scope = self._statistics_webapp_message_scope_sql(source_filter)
         sql_query = f"""SELECT
@@ -975,10 +980,11 @@ class AgentObservabilityQueries:
     COALESCE(AVG(m.provider_response_latency), 0) AS avg_latency,
     COALESCE(SUM(m.provider_response_latency), 0) AS latency_sum,
     COALESCE(SUM(m.answer_tokens), 0) AS answer_tokens,
-    COUNT(mf.id) AS like_count
+    COUNT(CASE WHEN EXISTS (
+        SELECT 1 FROM message_feedbacks mf
+        WHERE mf.message_id = m.id AND mf.rating = 'like'
+    ) THEN 1 END) AS like_count
 FROM messages m
-LEFT JOIN message_feedbacks mf
-    ON mf.message_id = m.id AND mf.rating = 'like'
 WHERE
     {message_scope}"""
         args: dict[str, Any] = {
@@ -1106,6 +1112,11 @@ ORDER BY date"""
         params: AgentStatisticsQueryParams,
         source_filter: AgentSourceFilter,
     ) -> list[dict[str, Any]]:
+        """Read Chatflow metrics within the admitted tenant, Agent and source bounds.
+
+        Each matching message contributes once, even when it has several likes.
+        This is a read-only query; database errors propagate to the caller.
+        """
         converted_created_at = convert_datetime_to_date("m.created_at")
         workflow_scope = self._statistics_workflow_message_scope_sql(source_filter)
         sql_query = f"""SELECT
@@ -1118,10 +1129,11 @@ ORDER BY date"""
     COALESCE(AVG(m.provider_response_latency), 0) AS avg_latency,
     COALESCE(SUM(m.provider_response_latency), 0) AS latency_sum,
     COALESCE(SUM(m.answer_tokens), 0) AS answer_tokens,
-    COUNT(mf.id) AS like_count
+    COUNT(CASE WHEN EXISTS (
+        SELECT 1 FROM message_feedbacks mf
+        WHERE mf.message_id = m.id AND mf.rating = 'like'
+    ) THEN 1 END) AS like_count
 FROM messages m
-LEFT JOIN message_feedbacks mf
-    ON mf.message_id = m.id AND mf.rating = 'like'
 WHERE
     {workflow_scope}"""
         args: dict[str, Any] = {

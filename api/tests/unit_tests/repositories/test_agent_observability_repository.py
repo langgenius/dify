@@ -1199,6 +1199,72 @@ class TestWorkflowToolAgentStatisticsCases:
         return AgentObservabilityQueries(sqlite_session)
 
     @staticmethod
+    @pytest.mark.parametrize("source", ["webapp", "workflow:source-app"])
+    def test_feedback_does_not_multiply_agent_message_statistics(
+        sqlite_session: Session, statistics_service: AgentObservabilityQueries, source: str
+    ) -> None:
+        """Given user and admin likes for one reply, aggregate each message once."""
+        app = _seed_nested_agent(sqlite_session, workflow_type=WorkflowType.CHAT)
+        if source == "webapp":
+            conversation = _workflow_tool_agent_statistics_conversation(
+                conversation_id="feedback-web-conversation", app_id=app.id
+            )
+            conversation.from_source = ConversationFromSource.API
+            conversation.from_account_id = None
+            first = _workflow_tool_agent_statistics_message(
+                message_id="feedback-web-first", app_id=app.id, created_at=datetime(2026, 7, 22, 8, 0)
+            )
+            first.conversation_id = conversation.id
+            first.from_source = ConversationFromSource.API
+            first.invoke_from = _workflow_tool_agent_statistics_InvokeFrom.WEB_APP
+            first.from_account_id = None
+            first.from_end_user_id = "end-user-1"
+            sqlite_session.add_all([conversation, first])
+        else:
+            seeded_message = sqlite_session.get(Message, "message-1")
+            assert seeded_message is not None
+            first = seeded_message
+        second = _workflow_tool_agent_statistics_message(
+            message_id="feedback-sibling-reply", app_id=first.app_id, created_at=first.created_at
+        )
+        second.conversation_id = first.conversation_id
+        second.workflow_run_id = first.workflow_run_id
+        second.from_source = first.from_source
+        second.invoke_from = first.invoke_from
+        second.from_account_id = first.from_account_id
+        second.from_end_user_id = first.from_end_user_id
+        second.provider_response_latency = 2.5
+        sqlite_session.add(second)
+        for message, source_role, rating in (
+            (first, FeedbackFromSource.USER, FeedbackRating.LIKE),
+            (first, FeedbackFromSource.ADMIN, FeedbackRating.LIKE),
+            (second, FeedbackFromSource.USER, FeedbackRating.DISLIKE),
+        ):
+            feedback = _feedback(
+                message_id=message.id, conversation_id=message.conversation_id, source=source_role, rating=rating
+            )
+            feedback.app_id = message.app_id
+            feedback.from_end_user_id = message.from_end_user_id if source_role == FeedbackFromSource.USER else None
+            feedback.from_account_id = "account-1" if source_role == FeedbackFromSource.ADMIN else None
+            sqlite_session.add(feedback)
+        sqlite_session.commit()
+
+        payload = statistics_service.get_statistics_summary(
+            app=app, agent_id="agent-1", params=AgentStatisticsQueryParams(source=source)
+        )
+
+        summary = payload["summary"]
+        assert summary["total_messages"] == 2
+        assert summary["total_conversations"] == 1
+        assert summary["total_tokens"] == 14
+        assert Decimal(summary["total_price"]) == Decimal("0.0002")
+        assert summary["average_session_interactions"] == 2
+        assert summary["average_response_time"] == 1875
+        assert summary["tokens_per_second"] == 2.1333
+        assert summary["user_satisfaction_rate"] == 50
+        assert payload["charts"]["daily_messages"] == [{"date": "2026-07-22", "message_count": 2}]
+
+    @staticmethod
     @pytest.mark.parametrize("workflow_type", [WorkflowType.WORKFLOW, WorkflowType.CHAT])
     def test_nested_agent_daily_statistics_preserve_source_usage_and_date(
         sqlite_session: Session, statistics_service: AgentObservabilityQueries, workflow_type: WorkflowType
