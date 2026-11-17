@@ -4,22 +4,13 @@ from types import SimpleNamespace
 import pandas as pd
 import pytest
 from openpyxl.worksheet.hyperlink import Hyperlink
-from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 import core.rag.extractor.excel_extractor as excel_module
 from core.rag.extractor.excel_extractor import ExcelExtractor
-from models.base import TypeBase
 from models.model import UploadFile
 from tests.helpers.unit.config_override import apply_config_overrides
-
-
-@pytest.fixture
-def database_session_maker(sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch) -> sessionmaker[Session]:
-    TypeBase.metadata.create_all(sqlite_engine, tables=[TypeBase.metadata.tables[UploadFile.__tablename__]])
-    session_maker = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(excel_module.session_factory, "create_session", session_maker)
-    return session_maker
 
 
 class _FakeCell:
@@ -97,9 +88,10 @@ def _patch_image_persistence(monkeypatch: pytest.MonkeyPatch) -> list[tuple[str,
     return saves
 
 
-def _get_upload_files(session_maker: sessionmaker[Session]) -> list[UploadFile]:
-    with session_maker() as session:
-        return list(session.scalars(select(UploadFile)).all())
+def _get_upload_files(session: Session) -> list[UploadFile]:
+    """Read the UploadFile rows the extractor committed through the shared factory."""
+
+    return list(session.scalars(select(UploadFile)).all())
 
 
 class TestExcelExtractor:
@@ -129,7 +121,7 @@ class TestExcelExtractor:
     def test_extract_xlsx_turns_embedded_images_into_markdown_links(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        database_session_maker: sessionmaker[Session],
+        sqlite_session: Session,
     ) -> None:
         image_bytes = b"\x89PNG\r\n\x1a\nexcel-image"
         sheet = _FakeSheet(
@@ -154,7 +146,7 @@ class TestExcelExtractor:
             source_file_id="source-file-1",
         )
         docs = extractor.extract()
-        upload_files = _get_upload_files(database_session_maker)
+        upload_files = _get_upload_files(sqlite_session)
 
         assert workbook.closed is True
         assert len(docs) == 2
@@ -176,7 +168,7 @@ class TestExcelExtractor:
     def test_extract_xlsx_keeps_rows_with_only_embedded_images(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        database_session_maker: sessionmaker[Session],
+        sqlite_session: Session,
     ) -> None:
         image_bytes = b"\x89PNG\r\n\x1a\nimage-only-row"
         sheet = _FakeSheet(
@@ -198,7 +190,7 @@ class TestExcelExtractor:
             source_file_id="source-file-1",
         )
         docs = extractor.extract()
-        upload_files = _get_upload_files(database_session_maker)
+        upload_files = _get_upload_files(sqlite_session)
 
         assert workbook.closed is True
         assert len(docs) == 1
@@ -211,7 +203,7 @@ class TestExcelExtractor:
     def test_extract_xlsx_reuses_existing_embedded_image_uploads_on_retry(
         self,
         monkeypatch: pytest.MonkeyPatch,
-        database_session_maker: sessionmaker[Session],
+        sqlite_session: Session,
     ) -> None:
         image_bytes = b"\x89PNG\r\n\x1a\nretry-safe-image"
         workbooks = [
@@ -245,7 +237,7 @@ class TestExcelExtractor:
         )
         first_docs = extractor.extract()
         second_docs = extractor.extract()
-        upload_files = _get_upload_files(database_session_maker)
+        upload_files = _get_upload_files(sqlite_session)
         assert len(upload_files) == 1
 
         expected_page_content = (
