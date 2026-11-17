@@ -52,7 +52,6 @@
     "@hono/node-server": "catalog:",
     "@types/lockfile": "catalog:",
     "@types/node": "catalog:",
-    "@typescript/native": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "hono": "catalog:",
     "tsrs": "catalog:",
