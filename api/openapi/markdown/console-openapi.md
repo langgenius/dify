@@ -15885,6 +15885,16 @@ Migrate node data from HITLv1 to HITLv2. A missing legacy version defaults to "1
 | 200 | Success | **application/json**: [ListOrganizationCandidatesResponse](#listorganizationcandidatesresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/current/human-input/v2/test-channels
+**List current Workspace test channels without granting channel management or app execution permissions**
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [HumanInputTestChannelsResponse](#humaninputtestchannelsresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /workspaces/current/members
 #### Parameters
 
@@ -28146,6 +28156,12 @@ Human Input node data.
 | form_id | string |  | Yes |
 | form_version | string, <br>**Available values:** "1", "2", <br>**Default:** 1 | *Enum:* `"1"`, `"2"` | No |
 | type | string |  | Yes |
+
+#### HumanInputTestChannelsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| channels | [ [DebugChannel](#debugchannel) ] |  | Yes |
 
 #### I18nObject
 
