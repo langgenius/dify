@@ -44,6 +44,7 @@ class InnerAppDSLImportPayload(BaseModel):
 class EnterpriseAppDSLExportQuery(BaseModel):
     include_secret: bool = Field(default=False, description="Whether to include secret values in the exported DSL")
     workflow_id: UUID | None = Field(default=None, description="Published workflow version ID to export")
+    keep_trigger_config: bool = Field(default=False, description="Retain trigger configuration for deployment")
 
     @field_validator("include_secret", mode="before")
     @classmethod
@@ -157,7 +158,12 @@ class EnterpriseAppDSLExport(Resource):
 
         try:
             data = application_services().apps.exports.export_for_inner(
-                app_id, AppExportOptions(include_secret=query.include_secret, workflow_id=workflow_id)
+                app_id,
+                AppExportOptions(
+                    include_secret=query.include_secret,
+                    workflow_id=workflow_id,
+                    keep_trigger_config=query.keep_trigger_config,
+                ),
             )
         except AppDiscoveryNotFoundError:
             return dump_response(SimpleMessageResponse, {"message": "app not found"}), HTTPStatus.NOT_FOUND

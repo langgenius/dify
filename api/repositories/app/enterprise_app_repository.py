@@ -35,7 +35,7 @@ from models.agent import (
 )
 from models.enums import ApiTokenType, AppStatus, AppTriggerType, InvokeFrom, MessageStatus
 from models.model import ApiToken, App, AppMCPServer, AppMode, Message, Site
-from models.trigger import AppTrigger, WorkflowWebhookTrigger
+from models.trigger import AppTrigger, TriggerSubscription, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.app.enterprise_app_service import (
     WORKFLOW_APP_MODES,
@@ -52,6 +52,7 @@ from services.app.enterprise_app_service import (
     EnterpriseAppSummary,
     EnterpriseAppTrigger,
 )
+from services.app.trigger_native import NativeTriggerNode, NativeTriggerState
 from services.entities.app_entities import RECENT_APP_MODES
 
 # App modes a Studio user can open from the app list.
@@ -137,6 +138,44 @@ def _summary(row: sa.Row[_SummaryRow]) -> EnterpriseAppSummary:
 
 
 class EnterpriseAppRepository(EnterpriseAppStore):
+    def native_trigger_states(
+        self, tenant_id: str, app_id: str, nodes: Sequence[NativeTriggerNode]
+    ) -> dict[str, NativeTriggerState]:
+        """Read scoped native states and deployed subscription references without writes; DB errors propagate."""
+        with self._session_factory() as session:
+            owned = session.scalar(sa.select(App.id).where(App.id == app_id, App.tenant_id == tenant_id))
+            if owned is None:
+                raise ValueError("app not found in tenant")
+            rows = session.execute(
+                sa.select(AppTrigger.node_id, AppTrigger.trigger_type, AppTrigger.status).where(
+                    AppTrigger.tenant_id == tenant_id,
+                    AppTrigger.app_id == app_id,
+                    AppTrigger.node_id.in_([node.node_id for node in nodes]),
+                )
+            ).all()
+            statuses = {(row.node_id, row.trigger_type): row.status for row in rows}
+            subscriptions = set(
+                session.execute(
+                    sa.select(TriggerSubscription.id, TriggerSubscription.provider_id).where(
+                        TriggerSubscription.tenant_id == tenant_id,
+                        TriggerSubscription.id.in_([node.subscription_id for node in nodes if node.subscription_id]),
+                    )
+                )
+                .tuples()
+                .all()
+            )
+            return {
+                node.node_id: NativeTriggerState(
+                    enabled={"enabled": True, "disabled": False, "unauthorized": False, "rate_limited": False}.get(
+                        statuses.get((node.node_id, node.trigger_type), "")
+                    ),
+                    authorized=(node.subscription_id, node.provider_id) in subscriptions
+                    if node.trigger_type == "trigger-plugin"
+                    else None,
+                )
+                for node in nodes
+            }
+
     def __init__(self, *, session_factory: sessionmaker[Session], app_web_url: str, service_api_url: str) -> None:
         self._session_factory = session_factory
         self._app_base_url = app_web_url.rstrip("/") or None

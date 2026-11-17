@@ -39,4 +39,5 @@ class AppExportRepository(AppExportStore):
                 include_secret=options.include_secret,
                 workflow_id=options.workflow_id,
                 version_id=options.version_id,
+                keep_trigger_config=tenant_id is None and options.keep_trigger_config,
             )

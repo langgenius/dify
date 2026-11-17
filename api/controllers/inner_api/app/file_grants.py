@@ -20,7 +20,12 @@ from fields.base import ResponseModel
 from fields.file_grant_fields import ResolvedFileResponse
 from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
-from services.entities.file_grant_entities import FileGrantMintRequest, FileGrantScope, FileKind, FileRef
+from services.entities.file_grant_entities import (
+    FileGrantMintRequest,
+    FileGrantScope,
+    FileKind,
+    FileRef,
+)
 from services.file_grant_service import (
     AppNotFoundError,
     EndUserNotFoundError,
