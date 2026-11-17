@@ -53,7 +53,8 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(confirmPassword).toHaveFocus()
-  expect(mocks.request).toHaveBeenCalledOnce()
+  // Pending UI can render before the async mutation reaches the request boundary.
+  await expect.poll(() => mocks.request.mock.calls.length).toBe(1)
 
   firstSave.reject(new Error('Password update failed'))
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
@@ -66,7 +67,7 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(save).toHaveFocus()
-  expect(mocks.request).toHaveBeenCalledTimes(2)
+  await expect.poll(() => mocks.request.mock.calls.length).toBe(2)
 
   retry.resolve(
     new Response(
