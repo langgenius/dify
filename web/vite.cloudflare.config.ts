@@ -16,6 +16,10 @@ export default defineConfig(async (env: ConfigEnv) => {
   const base: UserConfig =
     typeof baseConfig === 'function' ? await baseConfig(env) : await baseConfig
   return mergeConfig(base, {
+    // @cloudflare/vite-plugin emits Worker source maps unless build.sourcemap is set. `cf deploy`
+    // uploads them with the modules, and at about 66 MiB the upload fails with
+    // "[10021] multipart: message too large". The client build has none either.
+    build: { sourcemap: false },
     plugins: [
       cloudflareServerStubs({ projectRoot }),
       cloudflare({

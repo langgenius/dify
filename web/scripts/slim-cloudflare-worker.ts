@@ -96,18 +96,7 @@ if (!cssImported) {
   }
 }
 
-// `cf deploy` uploads the bundle's source maps in the same multipart request as the modules.
-// With them (about 66 MiB) the upload fails with "[10021] multipart: message too large".
-let mapCount = 0
-let mapBytes = 0
-for (const file of walk(bundleDir)) {
-  if (!file.endsWith('.map')) continue
-  mapBytes += fs.statSync(file).size
-  fs.rmSync(file)
-  mapCount++
-}
-
 const mib = (bytes: number) => (bytes / 1024 / 1024).toFixed(1)
 console.log(
-  `[slim-cloudflare-worker] shared ${sharedCount} ssr modules with rsc (${mib(sharedBytes)} MiB), removed ${cssCount} unimported CSS files (${mib(cssBytes)} MiB) and ${mapCount} source maps (${mib(mapBytes)} MiB)`,
+  `[slim-cloudflare-worker] shared ${sharedCount} ssr modules with rsc (${mib(sharedBytes)} MiB), removed ${cssCount} unimported CSS files (${mib(cssBytes)} MiB)`,
 )
