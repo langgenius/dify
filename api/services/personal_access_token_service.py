@@ -164,6 +164,9 @@ class PersonalAccessTokenRecord:
     creation_fingerprint: str | None = None
     scopes: PersonalAccessTokenScopes = PersonalAccessTokenScopes()
     validated_resources: tuple[PersonalAccessTokenResourceView, ...] = field(default=(), repr=False)
+    # Owner workspace of every persisted resource row; populated by store reads
+    # (`get`/`authenticate`) and empty on create inputs, which never authorize.
+    resource_workspace_ids: frozenset[str] = frozenset()
 
 
 @dataclass(frozen=True, slots=True)
@@ -375,20 +378,39 @@ class PersonalAccessTokenService:
         workspace_id: str | None,
         app_id: str | None,
     ) -> PersonalAccessTokenGrant:
+        """Return the live PAT's discovery grants for one admission policy.
+
+        Preconditions: ``account_id``/``token_id`` identify a live, unexpired PAT
+        owned by that account; the store raises ``PersonalAccessTokenNotFoundError``
+        otherwise and this method raises ``PersonalAccessTokenInvalidError`` for an
+        expired token. ``workspace_id``/``app_id`` are the route-resolved resource
+        context and are only consulted by resource and workspace operation policies.
+
+        Postconditions: the returned ``PersonalAccessTokenGrant`` carries
+        ``workspace_ids``/``app_ids`` where ``None`` leaves that domain
+        unrestricted, an empty set denies every object, and a nonempty set permits
+        only those IDs; current account permissions still apply downstream. No
+        state is mutated. ``WORKSPACE_DISCOVERY`` admits every workspace when the
+        resource scope is ``all``; otherwise it unions the workspace-scope IDs with
+        the owner workspaces of the selected resources so a resource-only PAT can
+        still discover a usable workspace. ``IDENTITY_DISCOVERY`` reports only the
+        workspace scope. ``WORKSPACE_OPERATIONS`` and the resource policies deny
+        out-of-scope requests with ``PersonalAccessTokenAccessDeniedError``.
+        """
         record = self._tokens.get(account_id, token_id)
         if record.summary.expires_at is not None and record.summary.expires_at <= naive_utc_now():
             raise PersonalAccessTokenInvalidError()
-        if policy in {PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY, PersonalAccessTokenPolicy.IDENTITY_DISCOVERY}:
-            mode = record.scopes.workspace_mode
+        if policy is PersonalAccessTokenPolicy.IDENTITY_DISCOVERY:
             return PersonalAccessTokenGrant(
-                workspace_ids=(
-                    None
-                    if mode == "all"
-                    else frozenset(record.scopes.workspace_ids)
-                    if mode == "selected"
-                    else frozenset()
-                )
+                workspace_ids=self._workspace_scope_ids(record.scopes.workspace_mode, record.scopes.workspace_ids)
             )
+        if policy is PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY:
+            scopes = record.scopes
+            scoped = self._workspace_scope_ids(scopes.workspace_mode, scopes.workspace_ids)
+            if scopes.resource_mode == "all" or scoped is None:
+                return PersonalAccessTokenGrant(workspace_ids=None)
+            resource_workspaces = record.resource_workspace_ids if scopes.resource_mode == "selected" else frozenset()
+            return PersonalAccessTokenGrant(workspace_ids=scoped | resource_workspaces)
         if policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS:
             scopes = record.scopes
             if scopes.workspace_mode == "none" or (
@@ -417,6 +439,17 @@ class PersonalAccessTokenService:
                 else frozenset()
             )
         raise PersonalAccessTokenAccessDeniedError("Unsupported PAT operation.")
+
+    @staticmethod
+    def _workspace_scope_ids(
+        mode: Literal["all", "selected", "none"], workspace_ids: tuple[str, ...]
+    ) -> frozenset[str] | None:
+        """Project a workspace scope mode to grant IDs; ``all`` leaves discovery unrestricted."""
+        if mode == "all":
+            return None
+        if mode == "selected":
+            return frozenset(workspace_ids)
+        return frozenset()
 
     def revoke(self, context: AccountRequestContext, *, token_id: str) -> None:
         self._tokens.revoke(context.account_id, token_id)
