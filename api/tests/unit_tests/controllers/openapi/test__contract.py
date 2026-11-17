@@ -67,11 +67,15 @@ def _register_contract_test_models() -> Iterator[None]:
     openapi_ns.models.pop(ContractResp.__name__, None)
 
 
-def _guard_like[**P](view: Callable[P, object]) -> Callable[P, object]:
-    """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer."""
+def _guard_like[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Stand-in for ``@subject_router.guard`` — an outermost @wraps layer.
+
+    The ``ParamSpec`` keeps the wrapped view's own parameters *and* its return type:
+    the guard layer only forwards, so it must not widen either.
+    """
 
     @wraps(view)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> object:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         return view(*args, **kwargs)
 
     return wrapper
@@ -228,10 +232,10 @@ def test_returns_serializes_model_in_tuple_and_keeps_trailing_parts(app: Flask, 
 
 
 def test_returns_passes_through_non_model(app: Flask) -> None:
-    sentinel = object()
+    sentinel = "not a model"
 
     @returns(200, ContractResp)
-    def view() -> object:
+    def view() -> str:
         return sentinel
 
     with app.test_request_context("/"):
