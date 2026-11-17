@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from typing import override
 
 import pytest
-from flask import Flask
+from flask import Flask, g
 
 from core.app.entities.task_entities import StreamEvent
 from models.enums import CreatorUserRole
@@ -320,6 +320,33 @@ def test_stop_of_a_paused_job_still_stops_the_run() -> None:
     harness.service.stop(OWNER, job.id)
 
     assert [stop.run_id for stop in harness.tasks.workflow_stops] == ["run-1"]
+
+
+@dataclass
+class ReaderAppContextProbe:
+    request_g_id: int | None = None
+    reader_g_id: int | None = None
+    reader_sees_request_marker: bool | None = None
+
+    def frames(self) -> Iterator[str]:
+        self.reader_g_id = id(g._get_current_object())
+        self.reader_sees_request_marker = hasattr(g, "request_marker")
+        yield f"data: {json.dumps({'event': StreamEvent.MESSAGE_END.value, 'task_id': 'task-1'})}\n\n"
+
+
+@pytest.mark.usefixtures("request_context")
+def test_start_reads_the_stream_in_its_own_app_context() -> None:
+    harness = _harness()
+    probe = ReaderAppContextProbe()
+    g.request_marker = True
+    probe.request_g_id = id(g._get_current_object())
+
+    harness.service.start(_opening(AppMode.CHAT), probe.frames)
+    _join_readers()
+
+    assert probe.reader_g_id is not None
+    assert probe.reader_g_id != probe.request_g_id
+    assert probe.reader_sees_request_marker is False
 
 
 def test_view_hides_a_job_from_another_owner() -> None:
@@ -945,6 +972,21 @@ def test_a_message_job_failed_as_interrupted_has_no_answer_even_when_a_message_r
     view = harness.service.view(OWNER, job.id)
 
     assert (view.status, view.error, view.answer) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message, None)
+
+
+@pytest.mark.parametrize("failure", list(JobFailure))
+def test_a_message_job_failed_by_the_service_has_no_answer_even_when_a_message_row_exists(
+    failure: JobFailure,
+) -> None:
+    harness = _harness()
+    job = _job(harness, AppMode.CHAT)
+    harness.store.record_ids(job.id, JobIds(message_id="m1"))
+    harness.store.settle(job.id, JobEnding(status=JobStatus.FAILED, failure=failure))
+    harness.results.messages[("a1", "m1")] = MessageResult(answer="", error=None)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert (view.status, view.error, view.answer) == (JobStatus.FAILED, failure.message, None)
 
 
 def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_nothing():

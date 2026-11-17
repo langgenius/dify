@@ -1,14 +1,16 @@
 import json
 import logging
-from collections.abc import Iterator, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from datetime import datetime
 from typing import override
+from urllib.parse import parse_qs, urlsplit
 from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
+from core.tools.signature import sign_tool_file_uri
 from extensions.ext_application_services import ApplicationServices
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
@@ -364,3 +366,23 @@ def test_message_of_another_app_is_not_found(
 
     assert reader.message(app_id=str(uuid4()), message_id=row.id) is None
     assert reader.message(app_id=row.app_id, message_id=str(uuid4())) is None
+
+
+def test_message_answer_file_links_are_re_signed(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(SECRET_KEY="unit-secret", FILES_URL="https://files.example.com")
+    tool_file_id = str(uuid4())
+    stored_url = sign_tool_file_uri(tool_file_id, ".png")
+    app_id = str(uuid4())
+    row = _add_message(sqlite_session, app_id=app_id, answer=f"see [file]({stored_url}) here")
+
+    result = SQLAlchemyRunResultReader(session_factory=sqlite_session_factory).message(app_id=app_id, message_id=row.id)
+
+    assert result is not None
+    assert stored_url not in result.answer
+    returned = urlsplit(result.answer.split("(")[1].split(")")[0])
+    assert returned.path == f"/files/tools/{tool_file_id}.png"
+    assert parse_qs(returned.query)["sign"] != parse_qs(urlsplit(stored_url).query)["sign"]
