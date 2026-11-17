@@ -7,7 +7,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
@@ -16,6 +16,10 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
+import {
+  collaborationUpgradeAvailableAtom,
+  collaborationUpgradeOpenAtom,
+} from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
@@ -50,18 +54,21 @@ const useAvatarUrls = (users: OnlineUser[]) => {
 }
 
 const OnlineUsers = () => {
-  const { t } = useTranslation(['workspaceMembers', 'workflowComments'])
+  const { t } = useTranslation(['billing', 'workspaceMembers', 'workflowComments'])
   const appId = useAtomValue(editorAppIdAtom)
+  const canShowCollaborationUpgrade = useAtomValue(collaborationUpgradeAvailableAtom)
+  const setCollaborationUpgradeOpen = useSetAtom(collaborationUpgradeOpenAtom)
   const canEdit = useHooksStore((s) => s.accessControl.canEdit)
   const {
     onlineUsers,
     cursors,
     isEnabled: isCollaborationEnabled,
   } = useCollaboration(appId, canEdit)
-  const { data: currentUserId } = useSuspenseQuery({
+  const { data: currentUser } = useSuspenseQuery({
     ...userProfileQueryOptions(),
-    select: (data) => data.profile.id,
+    select: (data) => data.profile,
   })
+  const currentUserId = currentUser.id
   const reactFlow = useReactFlow()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const avatarUrls = useAvatarUrls(onlineUsers || [])
@@ -90,6 +97,35 @@ const OnlineUsers = () => {
 
     // Convert world coordinates to center the view on the cursor
     reactFlow.setCenter(cursor.x, cursor.y, { zoom: 1, duration: 800 })
+  }
+
+  if (canShowCollaborationUpgrade) {
+    const collaborationLabel = t(($) => $['upgrade.workflowCollaboration.label'], { ns: 'billing' })
+
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type="button"
+              aria-label={collaborationLabel}
+              onClick={() => setCollaborationUpgradeOpen(true)}
+              className="flex h-8 cursor-pointer items-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg px-1.5 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px] hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+            >
+              <Avatar size="sm" aria-hidden="true" className="ring-1 ring-components-panel-bg">
+                <AvatarFallback>
+                  {getAvatarInitial(currentUser.name || fallbackUsername)}
+                </AvatarFallback>
+                <AvatarImage src={currentUser.avatar_url || undefined} alt="" />
+              </Avatar>
+            </button>
+          }
+        />
+        <TooltipContent side="bottom" sideOffset={4}>
+          {collaborationLabel}
+        </TooltipContent>
+      </Tooltip>
+    )
   }
 
   if (!isCollaborationEnabled || !onlineUsers || onlineUsers.length === 0) return null
