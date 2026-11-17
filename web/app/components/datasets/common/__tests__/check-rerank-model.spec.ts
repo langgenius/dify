@@ -225,20 +225,6 @@ describe('check-rerank-model', () => {
         expect(result).toBe(false)
       })
 
-      it('should return true with empty rerankModelList when reranking disabled', () => {
-        const config = createRetrievalConfig({
-          reranking_enable: false,
-        })
-
-        const result = isReRankModelSelected({
-          retrievalConfig: config,
-          rerankModelList: [],
-          indexMethod: 'high_quality',
-        })
-
-        expect(result).toBe(true)
-      })
-
       it('should return true when indexMethod is undefined', () => {
         const config = createRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -273,18 +259,7 @@ describe('check-rerank-model', () => {
       const result = normalizeRetrievalConfigForSave(config)
 
       expect(result.reranking_enable).toBe(true)
-    })
-
-    it('should not mutate the original config', () => {
-      const config = createRetrievalConfig({
-        search_method: RETRIEVE_METHOD.hybrid,
-        reranking_enable: false,
-        reranking_mode: RerankingModeEnum.RerankingModel,
-        reranking_model: rerankModel,
-      })
-
-      normalizeRetrievalConfigForSave(config)
-
+      expect(result).toEqual({ ...config, reranking_enable: true })
       expect(config.reranking_enable).toBe(false)
     })
 

@@ -15,7 +15,7 @@ type CalendarGridProps = {
     nextMonth: string
   }
   value: string | null
-  onSelect: (value: string) => void
+  onSelect: (value: string, event: React.MouseEvent<Element> | React.KeyboardEvent<Element>) => void
   displayMonth: string
   onDisplayMonthChange: (value: string) => void
   locale?: DayPickerProps['locale']
@@ -24,6 +24,7 @@ type CalendarGridProps = {
   minDate?: string
   maxDate?: string
   isDateUnavailable?: (date: string) => boolean
+  readOnly?: boolean
 }
 
 function toCalendarDate(value: string): Date {
@@ -36,9 +37,21 @@ function fromCalendarDate(date: Date): string {
   return formatDateValue(new TZDate(date.getTime(), 'UTC'))
 }
 
+function ReadOnlyMonthGrid(props: React.ComponentProps<'table'>) {
+  return <table {...props} aria-readonly />
+}
+
 function StyledDayButton(props: React.ComponentProps<typeof DayButton>) {
+  // Keep the visible numeral independently addressable (e.g. 15, not only 15th),
+  // while retaining DayPicker's localized full date, today and selected labels.
+  // DayPicker supplies formatDay's string as children and labelDayButton's label.
+  const visibleDay = String(props.children)
   return (
-    <DayButton {...props} aria-current={props.modifiers.today ? 'date' : undefined}>
+    <DayButton
+      {...props}
+      aria-label={`${visibleDay}: ${props['aria-label']}`}
+      aria-current={props.modifiers.today ? 'date' : undefined}
+    >
       {props.children}
       {props.modifiers.today && !props.modifiers.selected && (
         <span
@@ -126,6 +139,7 @@ function CalendarGrid({
   minDate,
   maxDate,
   isDateUnavailable,
+  readOnly,
 }: CalendarGridProps) {
   const [today] = React.useState(() =>
     toCalendarDate(formatDateValue(timeZone ? new TZDate(Date.now(), timeZone) : new Date())),
@@ -150,7 +164,7 @@ function CalendarGrid({
           required
           dir={direction}
           selected={selected}
-          onSelect={(date) => {
+          onSelect={(date, _selectedDay, _modifiers, event) => {
             if (!date) return
             const next = fromCalendarDate(date)
             const nextMonth = `${next.slice(0, 7)}-01`
@@ -158,7 +172,7 @@ function CalendarGrid({
               restoreSelectionFocusRef.current = true
               onDisplayMonthChange(nextMonth)
             }
-            onSelect(next)
+            onSelect(next, event)
           }}
           month={toCalendarDate(displayMonth)}
           onMonthChange={(month) =>
@@ -179,7 +193,11 @@ function CalendarGrid({
               (minDate && day < minDate) || (maxDate && day > maxDate) || isDateUnavailable?.(day),
             )
           }}
-          components={{ DayButton: StyledDayButton, Nav: CalendarNavigation }}
+          components={{
+            DayButton: StyledDayButton,
+            Nav: CalendarNavigation,
+            ...(readOnly && { MonthGrid: ReadOnlyMonthGrid }),
+          }}
           classNames={calendarClassNames}
         />
       </div>

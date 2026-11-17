@@ -1,12 +1,14 @@
 'use client'
 
+import type { UpdateAppPayload } from '@dify/contracts/api/console/apps/types.gen'
 import type { RecommendedAppResponse } from '@dify/contracts/api/console/explore/types.gen'
 import type { AppType } from '@/app/components/apps/app-type'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@langgenius/dify-ui/input-group'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useDebouncedValue } from 'foxact/use-debounced-value'
 import { useAtomValue } from 'jotai'
 import dynamic from 'next/dynamic'
@@ -14,10 +16,10 @@ import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { AppMetadataForm } from '@/app/components/app/app-metadata'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { getTemplateImportSource } from '@/app/components/explore/template-import'
 import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
@@ -25,6 +27,7 @@ import { useCanImportAgents } from '@/features/agent-v2/permissions'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import { consoleQuery } from '@/service/console'
 import { trackCreateApp } from '@/utils/create-app-tracking'
+import { getErrorMessage } from '@/utils/error-message'
 import { hasPermission } from '@/utils/permission'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
@@ -32,12 +35,13 @@ import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 const TryApp = dynamic(() => import('@/app/components/explore/try-app'), { ssr: false })
 
 type AppsProps = {
-  onClose: () => void
   onCreateFromBlank?: () => void
+  /** Called after a successful import, before the redirect. Without it the picker stays open. */
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
-const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
+const Apps = ({ onCreateFromBlank, onCreated, templateMode }: AppsProps) => {
   const { t } = useTranslation(['app', 'common'])
   const locale = useLocale()
   const queryClient = useQueryClient()
@@ -127,18 +131,20 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   const [currApp, setCurrApp] = React.useState<RecommendedAppResponse | null>(null)
   const [previewApp, setPreviewApp] = React.useState<RecommendedAppResponse | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const createNameRef = React.useRef<HTMLInputElement>(null)
   const [showDSLConfirmModal, setShowDSLConfirmModal] = React.useState(false)
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({
+  const onCreate = async ({
     name,
     icon_type,
     icon,
     icon_background,
     description,
-  }) => {
+  }: UpdateAppPayload) => {
     if (!currApp || !canCreateTemplate(currApp.app?.mode)) return
     try {
       const detail = await queryClient.query({
         ...consoleQuery.explore.apps.byAppId.get.queryOptions({
+          context: { silent: true },
           input: { params: { app_id: currApp.app_id } },
         }),
         staleTime: 0,
@@ -167,15 +173,21 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
               })
             }
             setIsShowCreateModal(false)
-            onClose()
+            onCreated?.()
           },
-          onPending: () => setShowDSLConfirmModal(true),
+          onPending: () => {
+            setIsShowCreateModal(false)
+            setShowDSLConfirmModal(true)
+          },
         },
       )
-    } catch {
-      toast.error(t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $['newApp.appCreateFailed'], { ns: 'app' }))
     }
   }
+  const submission = useMutation({ mutationFn: onCreate })
+  const isCreatePending = submission.isPending || isFetching
+
   const onConfirmDSL = async () => {
     await handleImportDSLConfirm({
       onSuccess: (response) => {
@@ -188,7 +200,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
         }
         setShowDSLConfirmModal(false)
         setIsShowCreateModal(false)
-        onClose()
+        onCreated?.()
       },
     })
   }
@@ -204,7 +216,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-divider-burn py-3">
-        <div className="min-w-45 pl-5">
+        <div className="min-w-45 ps-5">
           <span className="title-xl-semi-bold text-text-primary">
             {t(($) => $['newApp.startFromTemplate'], { ns: 'app' })}
           </span>
@@ -260,7 +272,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
             />
           </div>
         )}
-        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-s border-divider-burn p-6 pt-2">
           {searchFilteredList && searchFilteredList.length > 0 && (
             <>
               <div className="pt-4 pb-1">
@@ -294,6 +306,7 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
                     onPreview={() => setPreviewApp(app)}
                     onCreate={() => {
                       setCurrApp(app)
+
                       setIsShowCreateModal(true)
                     }}
                   />
@@ -304,24 +317,39 @@ const Apps = ({ onClose, onCreateFromBlank, templateMode }: AppsProps) => {
           {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
-      {isShowCreateModal && (
-        <CreateAppModal
-          appIconType={
-            currApp?.app?.icon_type === 'image' || currApp?.app?.icon_type === 'link'
-              ? currApp.app.icon_type
-              : 'emoji'
-          }
-          appIcon={currApp?.app?.icon ?? ''}
-          appIconBackground={currApp?.app?.icon_background ?? ''}
-          appIconUrl={currApp?.app?.icon_url}
-          appName={currApp?.app?.name ?? ''}
-          appDescription=""
-          show={isShowCreateModal}
-          onConfirm={onCreate}
-          confirmLoading={isFetching}
-          onHide={() => setIsShowCreateModal(false)}
-        />
-      )}
+      <Dialog
+        open={isShowCreateModal}
+        disablePointerDismissal
+        onOpenChange={(open, details) => {
+          if (!open && isCreatePending) details.cancel()
+          else setIsShowCreateModal(open)
+        }}
+        onOpenChangeComplete={(open) => {
+          if (!open && !submission.isPending) submission.reset()
+        }}
+      >
+        <DialogContent initialFocus={createNameRef}>
+          {currApp && (
+            <AppMetadataForm
+              operation="create"
+              appDetail={{
+                name: currApp.app?.name ?? '',
+                description: '',
+                icon_type: zIconType.safeParse(currApp.app?.icon_type).data ?? 'emoji',
+                icon: currApp.app?.icon ?? null,
+                icon_background: currApp.app?.icon_background,
+                icon_url: currApp.app?.icon_url ?? null,
+              }}
+              nameInputRef={createNameRef}
+              isPending={isCreatePending}
+              error={submission.error?.message}
+              onSubmit={(body) => {
+                if (!isCreatePending) submission.mutate(body)
+              }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
       {showDSLConfirmModal && (
         <DSLConfirmModal
           versions={versions}

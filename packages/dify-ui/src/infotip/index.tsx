@@ -1,12 +1,10 @@
 'use client'
 
 import type * as React from 'react'
-import type { Placement } from '../internal/placement'
 import { Popover as BasePopover } from '@base-ui/react/popover'
 import { cn } from '../cn'
 import { iconButtonVariants } from '../icon-button'
 import { hintPopupClassName, positionerClassName } from '../internal/overlay'
-import { parsePlacement } from '../internal/placement'
 import { resolveClassName } from '../internal/resolve-class-name'
 
 const iconClassNames = {
@@ -76,19 +74,18 @@ function InfotipTrigger<Payload = unknown>({
 }
 
 type InfotipContentProps = Omit<BasePopover.Popup.Props, 'children'> &
-  Pick<BasePopover.Positioner.Props, 'sideOffset' | 'alignOffset'> & {
+  Pick<BasePopover.Positioner.Props, 'side' | 'align' | 'sideOffset' | 'alignOffset'> & {
     children: React.ReactNode
-    placement?: Placement
   }
 
 function InfotipContent({
-  placement = 'top',
+  side = 'top',
+  align,
   sideOffset = 8,
-  alignOffset = 0,
+  alignOffset,
   className,
   ...props
 }: InfotipContentProps) {
-  const { side, align } = parsePlacement(placement)
   return (
     <BasePopover.Portal>
       <BasePopover.Positioner

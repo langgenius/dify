@@ -1,5 +1,5 @@
 import type { CustomRunFormProps, DataSourceNodeType } from '../types'
-import type { NodeRunResult } from '@/types/workflow'
+import type { NodeTracing } from '@/types/workflow'
 import { useMutation } from '@tanstack/react-query'
 import { useEffect, useMemo, useRef } from 'react'
 import { useStoreApi } from 'reactflow'
@@ -85,7 +85,7 @@ const useBeforeRunForm = ({
 
   const invalidLastRun = useInvalidateLastRun(resource, nodeId)
 
-  const updateRunResult = async (data: NodeRunResult | undefined) => {
+  const updateRunResult = async (data: NodeTracing | undefined) => {
     const isPaused = isPausedRef.current
 
     // The backend don't support pause the single run, so the frontend handle the pause state.
@@ -105,7 +105,7 @@ const useBeforeRunForm = ({
     if (data?.status === NodeRunningStatus.Succeeded) onSuccess()
   }
 
-  const { mutateAsync: handleDatasourceSingleRun, isPending } = useMutation(
+  const { mutate: handleDatasourceSingleRun, isPending } = useMutation(
     consoleQuery.rag.pipelines.byPipelineId.workflows.draft.datasource.variablesInspect.post.mutationOptions(),
   )
 

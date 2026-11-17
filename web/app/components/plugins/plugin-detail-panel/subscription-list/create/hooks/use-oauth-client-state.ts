@@ -18,13 +18,13 @@ import {
 } from '@/service/use-triggers'
 import { getErrorMessage } from '@/utils/error-message'
 
-export const AuthorizationStatusEnum = {
+const AuthorizationStatusEnum = {
   Pending: 'pending',
   Success: 'success',
   Failed: 'failed',
 } as const
 
-export type AuthorizationStatusEnum =
+type AuthorizationStatusEnum =
   (typeof AuthorizationStatusEnum)[keyof typeof AuthorizationStatusEnum]
 
 export const ClientTypeEnum = {
@@ -85,7 +85,7 @@ export const useOAuthClientState = ({
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
   const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
-  const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
+  const { mutate: deleteOAuth } = useDeleteTriggerOAuth({ silent: true })
 
   // Compute OAuth client schema with default values
   const oauthClientSchema = useMemo(() => {
@@ -123,9 +123,12 @@ export const useOAuthClientState = ({
           showOAuthCreateModal(response.subscription_builder)
         })
       },
-      onError: () => {
+      onError: (error) => {
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
-        toast.error(t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }))
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['modal.oauth.authorization.authFailed'], { ns: 'pluginTrigger' }),
+        )
       },
     })
   }, [providerName, initiateOAuth, onOpenChange, showOAuthCreateModal, t])

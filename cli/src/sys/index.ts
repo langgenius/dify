@@ -6,6 +6,18 @@ export function getEnv(name: string): string | undefined {
   return process.env[name]
 }
 
+export type EmbeddedFile = Blob & { readonly name: string }
+
+type BunGlobal = { embeddedFiles?: readonly EmbeddedFile[] }
+
+export function embeddedFiles(): readonly EmbeddedFile[] {
+  return (globalThis as { Bun?: BunGlobal }).Bun?.embeddedFiles ?? []
+}
+
+export function isCompiledBinary(): boolean {
+  return __DIFYCTL_COMPILED__
+}
+
 export function env(): NodeJS.ProcessEnv {
   return process.env
 }
@@ -51,16 +63,22 @@ export function pid(): number {
 export type Platform = {
   id: () => NodeJS.Platform
   configDir: () => string
-  cacheDir: () => string
   atomicReplace: (src: string, dst: string) => void
 }
 
 export const SUBDIR = 'difyctl'
 export const ENV_XDG_CONFIG_HOME = 'XDG_CONFIG_HOME'
-export const ENV_XDG_CACHE_HOME = 'XDG_CACHE_HOME'
 
-function appDataDir(): string | undefined {
-  return getEnv('APPDATA') ?? getEnv('LOCALAPPDATA')
+const APP_DATA_VARS = ['APPDATA', 'LOCALAPPDATA'] as const
+
+// The first of these that is set.
+function appDataDir(): string {
+  const dir = APP_DATA_VARS.map(getEnv).find((value) => value !== undefined && value !== '')
+  if (dir === undefined)
+    throw new Error(
+      `cannot resolve ${APP_DATA_VARS.map((name) => `%${name}%`).join(' or ')} on Windows`,
+    )
+  return join(dir, SUBDIR)
 }
 
 type PlatformFactory = () => Platform
@@ -82,32 +100,16 @@ const platformImpls: Partial<Record<NodeJS.Platform, PlatformFactory>> = {
         ? join(xdg, SUBDIR)
         : join(homedir(), '.config', SUBDIR)
     },
-    cacheDir: () => {
-      const xdg = getEnv(ENV_XDG_CACHE_HOME)
-      return xdg !== undefined && xdg !== '' ? join(xdg, SUBDIR) : join(homedir(), '.cache', SUBDIR)
-    },
     atomicReplace: posixAtomicReplace,
   }),
   darwin: () => ({
     id: () => 'darwin',
     configDir: () => join(homedir(), '.config', SUBDIR),
-    cacheDir: () => join(homedir(), 'Library', 'Caches', SUBDIR),
     atomicReplace: posixAtomicReplace,
   }),
   win32: () => ({
     id: () => 'win32',
-    configDir: () => {
-      const appData = appDataDir()
-      if (appData === undefined || appData === '')
-        throw new Error('cannot resolve %APPDATA% on Windows')
-      return join(appData, SUBDIR)
-    },
-    cacheDir: () => {
-      const appData = appDataDir()
-      if (appData === undefined || appData === '')
-        throw new Error('cannot resolve %LOCALAPPDATA% on Windows')
-      return join(appData, SUBDIR)
-    },
+    configDir: appDataDir,
     atomicReplace: win32AtomicReplace,
   }),
 }
@@ -115,7 +117,6 @@ const platformImpls: Partial<Record<NodeJS.Platform, PlatformFactory>> = {
 const defaultPlatformFactory: PlatformFactory = () => ({
   id: () => platform(),
   configDir: () => join(homedir(), '.config', SUBDIR),
-  cacheDir: () => join(homedir(), '.cache', SUBDIR),
   atomicReplace: posixAtomicReplace,
 })
 

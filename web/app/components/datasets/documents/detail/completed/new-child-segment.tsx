@@ -1,5 +1,6 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail, SegmentUpdater } from '@/models/datasets'
+import type { SegmentUpdater } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiCloseLine, RiExpandDiagonalLine } from '@remixicon/react'
@@ -22,7 +23,7 @@ import { useSegmentListContext } from './index'
 type NewChildSegmentModalProps = {
   chunkId: string
   onCancel: () => void
-  onSave: (ChildChunk?: ChildChunkDetail) => void
+  onSave: (ChildChunk?: ChildChunkResponse) => void
   viewNewlyAddedChildChunk?: () => void
 }
 

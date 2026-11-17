@@ -4,7 +4,7 @@ import type { InputFieldConfiguration } from '@/app/components/base/form/form-sc
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { getFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { PipelineInputVarType } from '@/models/pipeline'
@@ -220,7 +220,7 @@ export const useHiddenConfigurations = (props: { options: string[] | undefined }
 
   const { data: fileUploadConfigResponse } = useQuery(consoleQuery.files.upload.get.queryOptions())
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } =
-    useFileSizeLimit(fileUploadConfigResponse)
+    getFileSizeLimit(fileUploadConfigResponse)
 
   const defaultSelectOptions = useMemo(() => {
     if (options) {

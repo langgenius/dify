@@ -12,6 +12,8 @@
   "roster.createForm.rolePlaceholder": "p. ex. Assistant de recherche",
   "roster.dateTimeFormat": "DD/MM/YYYY HH:mm:ss",
   "roster.deleteDialog.description": "Cette action supprime définitivement {{name}}. Son application web, son accès à l’API et les workflows qui l’utilisent cesseront immédiatement de fonctionner.",
+  "roster.deleteDialog.inputLabel": "Saisissez <name>{{name}}</name> pour confirmer",
+  "roster.deleteDialog.inputPlaceholder": "Saisissez le nom de l’agent",
   "roster.deleteDialog.title": "Supprimer {{name}} ?",
   "roster.deleteFailed": "Échec de la suppression de l’agent.",
   "roster.duplicateDialog.description": "Créez une copie de {{name}} et personnalisez son identité Agent.",

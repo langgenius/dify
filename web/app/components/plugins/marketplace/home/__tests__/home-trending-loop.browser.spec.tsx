@@ -1,4 +1,5 @@
 import type { PluginBanner } from '@dify/contracts/marketplace'
+import { DirectionProvider } from '@langgenius/dify-ui/direction-provider'
 import { render } from 'vitest-browser-react'
 import HomeTrending from '../home-trending'
 
@@ -28,30 +29,51 @@ describe('Marketplace home trending loop', () => {
   // The unit spec stubs the autoplay animation and fires a synthetic
   // transitionend; only real rendering proves the track transition completes
   // and returns the carousel from the loop clone to the first slide.
-  it('wraps from the last banner back to the first visible slide', async () => {
-    const screen = await render(
-      <HomeTrending banners={carouselBanners} isMarketplacePlatform page="plugins" />,
-    )
-
-    await screen.getByRole('button', { name: 'Third banner' }).click()
-    expect(screen.getByRole('button', { name: 'Third banner' }).element()).toHaveAttribute(
-      'aria-current',
-      'true',
-    )
-
-    await expect
-      .poll(
-        () =>
-          screen
-            .getByRole('button', { name: 'First banner' })
-            .element()
-            .getAttribute('aria-current'),
-        { timeout: 8000 },
+  it.each(['ltr', 'rtl'] as const)(
+    'wraps from the last banner back to the first visible slide in %s',
+    async (direction) => {
+      const screen = await render(
+        <DirectionProvider direction={direction}>
+          <div dir={direction}>
+            <HomeTrending banners={carouselBanners} isMarketplacePlatform page="plugins" />
+          </div>
+        </DirectionProvider>,
       )
-      .toBe('true')
 
-    expect(screen.getByRole('group', { name: 'First banner' }).element()).not.toHaveAttribute(
-      'inert',
-    )
-  })
+      await screen.getByRole('button', { name: 'Third banner' }).click()
+      expect(screen.getByRole('button', { name: 'Third banner' }).element()).toHaveAttribute(
+        'aria-current',
+        'true',
+      )
+
+      const expectSlideInViewport = async (name: string) => {
+        await expect
+          .poll(() => {
+            const viewport = document
+              .querySelector('[data-home-trending-carousel-root]')!
+              .getBoundingClientRect()
+            const slide = screen.getByRole('group', { name }).element().getBoundingClientRect()
+            return slide.left >= viewport.left - 1 && slide.right <= viewport.right + 1
+          })
+          .toBe(true)
+      }
+      await expectSlideInViewport('Third banner')
+
+      await expect
+        .poll(
+          () =>
+            screen
+              .getByRole('button', { name: 'First banner' })
+              .element()
+              .getAttribute('aria-current'),
+          { timeout: 8000 },
+        )
+        .toBe('true')
+
+      await expectSlideInViewport('First banner')
+      expect(screen.getByRole('group', { name: 'First banner' }).element()).not.toHaveAttribute(
+        'inert',
+      )
+    },
+  )
 })

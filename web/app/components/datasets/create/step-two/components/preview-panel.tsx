@@ -1,8 +1,9 @@
 'use client'
 
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ComponentProps, FC } from 'react'
 import type { ParentChildConfig } from '../hooks'
-import type { DataSourceType, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { DataSourceType } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiSearchEyeLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -25,13 +26,13 @@ import PreviewContainer from '../../../preview/container'
 
 type PreviewPanelProps = {
   // State
-  isMobile: boolean
+  isBelowSm: boolean
   isOpen: boolean
   onClose: () => void
   finalFocus?: ComponentProps<typeof FloatRightContainer>['finalFocus']
   dataSourceType: DataSourceType
   currentDocForm: ChunkingMode
-  estimate?: FileIndexingEstimateResponse
+  estimate?: IndexingEstimateResponse
   parentChildConfig: ParentChildConfig
   isSetting?: boolean
   // Picker
@@ -45,7 +46,7 @@ type PreviewPanelProps = {
 }
 
 export const PreviewPanel: FC<PreviewPanelProps> = ({
-  isMobile,
+  isBelowSm,
   isOpen,
   onClose,
   finalFocus,
@@ -64,8 +65,8 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
 
   return (
     <FloatRightContainer
-      isMobile={isMobile}
-      isOpen={!isMobile || isOpen}
+      presentation={isBelowSm ? 'drawer' : 'inline'}
+      isOpen={!isBelowSm || isOpen}
       onClose={onClose}
       showClose
       title={t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}
@@ -84,7 +85,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
       <PreviewContainer
         header={
           <div>
-            {!isMobile && (
+            {!isBelowSm && (
               <h2 className="mb-1 px-1 system-2xs-semibold-uppercase text-text-accent uppercase">
                 {t(($) => $['stepTwo.preview'], { ns: 'datasetCreation' })}
               </h2>
@@ -110,7 +111,7 @@ export const PreviewPanel: FC<PreviewPanelProps> = ({
         }
         className={cn(
           'relative flex min-w-0 shrink-0 p-4',
-          isMobile ? 'min-h-0 w-full flex-1' : 'h-full w-1/2 pr-0',
+          isBelowSm ? 'min-h-0 w-full flex-1' : 'h-full w-1/2 pe-0',
         )}
         mainClassName="space-y-6 wrap-break-word"
       >

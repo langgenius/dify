@@ -10,6 +10,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -215,14 +216,12 @@ const MCPList = ({
       {deletingProvider && (
         <AlertDialog open onOpenChange={(open) => !open && setDeletingProviderID(undefined)}>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {t(($) => $['mcp.delete'], { ns: 'tools' })}
-              </AlertDialogTitle>
-              <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>{t(($) => $['mcp.delete'], { ns: 'tools' })}</AlertDialogTitle>
+              <AlertDialogDescription>
                 {t(($) => $['mcp.deleteConfirmTitle'], { ns: 'tools', mcp: deletingProvider.name })}
               </AlertDialogDescription>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

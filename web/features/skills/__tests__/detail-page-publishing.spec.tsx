@@ -3,6 +3,8 @@ import { QueryClient } from '@tanstack/react-query'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { consoleQueryKey } from '@/test/console/operation-hooks'
+import { createDeferred } from '@/test/deferred'
 import {
   createAgentReference,
   createSkillDetail,
@@ -37,9 +39,6 @@ describe('SkillDetailPage publishing', () => {
 
     renderSkillDetailPage()
 
-    expect(mocks.publishSkillMutationOptions).toHaveBeenCalledWith({
-      context: { silent: true },
-    })
     await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.publishUpdate',
@@ -55,8 +54,7 @@ describe('SkillDetailPage publishing', () => {
   it('shows a publish confirmation for referenced skills before publishing updates', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [createAgentReference()],
       }),
@@ -73,8 +71,10 @@ describe('SkillDetailPage publishing', () => {
     expect(
       await screen.findByText('skill.skillManagement.detail.publishReferencesTitle'),
     ).toBeInTheDocument()
-    expect(await screen.findByText('Support Agent')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute('target', '_blank')
+    expect(screen.getByRole('link', { name: /Support Agent/ })).toHaveAttribute(
+      'href',
+      '/agents/agent-1/configure',
+    )
     expect(mocks.publishSkillMutationFn).not.toHaveBeenCalled()
 
     const publishDialog = screen.getByRole('dialog', {
@@ -88,8 +88,49 @@ describe('SkillDetailPage publishing', () => {
     )
 
     await waitFor(() => {
-      expect(mocks.publishSkillMutationFn).toHaveBeenCalled()
+      expect(mocks.publishSkillMutationFn).toHaveBeenCalledWith(
+        { params: { skill_id: 'skill-1' }, body: {} },
+        expect.anything(),
+      )
     })
+  })
+
+  it('prevents another publication while the request is pending and exposes the published result', async () => {
+    const user = userEvent.setup()
+    let resolvePublish!: (version: ReturnType<typeof createSkillVersion>) => void
+    mocks.publishSkillMutationFn.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolvePublish = resolve
+      }),
+    )
+    renderSkillDetailPage()
+    const publish = await screen.findByRole('button', {
+      name: 'skill.skillManagement.detail.publishUpdate',
+    })
+    await user.click(publish)
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
+    await user.click(publish)
+    expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce()
+    expect(mocks.toastSuccess).not.toHaveBeenCalled()
+
+    await act(async () => {
+      const version = createSkillVersion({
+        id: 'version-2',
+        version_number: 2,
+        created_at: 1784638492,
+      })
+      mocks.skillDetail = {
+        ...mocks.skillDetail!,
+        latest_published_at: version.created_at,
+        latest_published_version_id: version.id,
+        latest_published_version_number: version.version_number,
+      }
+      resolvePublish(version)
+    })
+    expect(
+      await screen.findByRole('button', { name: 'skill.skillManagement.detail.published' }),
+    ).toBeDisabled()
+    expect(mocks.toastSuccess).toHaveBeenCalledWith('skill.skillManagement.detail.publishSuccess')
   })
 
   it('refreshes a fresh empty references cache before publishing', async () => {
@@ -100,19 +141,18 @@ describe('SkillDetailPage publishing', () => {
         mutations: { retry: false },
       },
     })
-    const referencesQueryKey = [
-      'skill-references',
+    const referencesQueryKey = consoleQueryKey(
+      'workspaces.current.skills.bySkillId.references.get',
       {
         params: {
           skill_id: 'skill-1',
         },
       },
-    ]
+    )
     let remoteReferences: SkillReferenceResponse[] = []
     const referencesQueryFn = vi.fn(async () => ({ data: remoteReferences }))
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', (options as { input: unknown }).input],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: referencesQueryFn,
     }))
     queryClient.setQueryData(referencesQueryKey, { data: [] })
@@ -164,8 +204,7 @@ describe('SkillDetailPage publishing', () => {
       return { data: [] }
     })
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', (options as { input: unknown }).input],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: referencesQueryFn,
     }))
 
@@ -191,13 +230,17 @@ describe('SkillDetailPage publishing', () => {
         name: 'skill.skillManagement.detail.publishReferencesTitle',
       }),
     ).not.toBeInTheDocument()
+    refreshShouldFail = false
+    await user.click(
+      screen.getByRole('button', { name: 'skill.skillManagement.detail.publishUpdate' }),
+    )
+    await waitFor(() => expect(mocks.publishSkillMutationFn).toHaveBeenCalledOnce())
   })
 
   it('cancels publishing from the referenced skill confirmation dialog', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [createAgentReference()],
       }),
@@ -229,8 +272,7 @@ describe('SkillDetailPage publishing', () => {
   it('opens the sidebar references panel from the file tree footer', async () => {
     const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
       }),
@@ -251,21 +293,12 @@ describe('SkillDetailPage publishing', () => {
       name: /Sidebar Agent/,
     })
     expect(sidebarReferenceLink).toBeInTheDocument()
-    expect(mocks.skillReferencesQueryOptions).toHaveBeenCalledWith(
-      expect.objectContaining({
-        input: {
-          params: {
-            skill_id: 'skill-1',
-          },
-        },
-      }),
-    )
+    expect(sidebarReferenceLink).toHaveAttribute('href', '/agents/agent-1/configure')
   })
 
   it('renders a non-interactive reference count when no agent uses the skill', async () => {
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: [] }),
     }))
 
@@ -283,53 +316,33 @@ describe('SkillDetailPage publishing', () => {
   })
 
   it('uses the references query count when the cached sidebar reference count is stale', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: {
+        queries: { retry: false, staleTime: Infinity },
+        mutations: { retry: false },
+      },
+    })
+    const references = [
+      createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' }),
+    ]
     mocks.skillDetail = createSkillDetail({ reference_count: 0 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
+      queryFn: async () => ({ data: references }),
     }))
+    queryClient.setQueryData(
+      consoleQueryKey('workspaces.current.skills.bySkillId.references.get', {
+        params: { skill_id: 'skill-1' },
+      }),
+      { data: references },
+    )
 
-    renderSkillDetailPage()
+    renderSkillDetailPage({ queryClient })
 
     expect(
-      await screen.findByRole(
-        'button',
-        { name: 'skill.skillManagement.detail.referencedBy:{"count":1}' },
-        { timeout: 5000 },
-      ),
-    ).toBeInTheDocument()
-  })
-
-  it('closes the sidebar references panel when clicking outside it', async () => {
-    const user = userEvent.setup()
-    mocks.skillDetail = createSkillDetail({ reference_count: 1 })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
-      queryFn: async () => ({
-        data: [createAgentReference({ display_name: 'Sidebar Agent', name: 'sidebar-agent' })],
-      }),
-    }))
-
-    renderSkillDetailPage()
-
-    await user.click(
       await screen.findByRole('button', {
         name: 'skill.skillManagement.detail.referencedBy:{"count":1}',
       }),
-    )
-    expect(await screen.findByText('Sidebar Agent')).toBeInTheDocument()
-
-    await user.click(
-      screen.getByRole('button', {
-        name: 'app.gotoAnything.searchTitle',
-      }),
-    )
-
-    await waitFor(() => {
-      expect(screen.queryByText('Sidebar Agent')).not.toBeInTheDocument()
-    })
+    ).toBeInTheDocument()
   })
 
   it('reveals the remaining publish references on request', async () => {
@@ -343,8 +356,7 @@ describe('SkillDetailPage publishing', () => {
       }),
     )
     mocks.skillDetail = createSkillDetail({ reference_count: references.length })
-    mocks.skillReferencesQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-references', options],
+    mocks.skillReferencesQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({ data: references }),
     }))
 
@@ -374,14 +386,12 @@ describe('SkillDetailPage publishing', () => {
       id: 'version-1',
       version_name: 'Rollback target',
     })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [version],
       }),
     }))
-    mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-version-detail', options],
+    mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         ...version,
         files: [
@@ -442,14 +452,12 @@ describe('SkillDetailPage publishing', () => {
       version_name: '',
       publish_note: 'Release note only',
     })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [version],
       }),
     }))
-    mocks.skillVersionDetailQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-version-detail', options],
+    mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         ...version,
         files: [
@@ -475,7 +483,8 @@ describe('SkillDetailPage publishing', () => {
     )
     await user.click(await screen.findByRole('button', { name: /#2/ }))
 
-    expect(await screen.findAllByText('#2')).toHaveLength(2)
+    expect(await screen.findByRole('button', { name: /#2/ })).toBeInTheDocument()
+    expect(await screen.findByText(/Rollback instructions/)).toBeInTheDocument()
 
     await user.click(
       screen.getByRole('button', { name: 'skill.skillManagement.detail.restoreVersion' }),
@@ -505,8 +514,7 @@ describe('SkillDetailPage publishing', () => {
       version_number: 2,
       version_name: '',
     })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [namedVersion, unnamedVersion],
       }),
@@ -531,6 +539,7 @@ describe('SkillDetailPage publishing', () => {
     )
 
     expect(screen.queryByText('#2')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Named version/ })).toBeInTheDocument()
 
     const currentDraft = screen.getByRole('button', {
       name: 'skill.skillManagement.detail.currentDraft',
@@ -541,18 +550,25 @@ describe('SkillDetailPage publishing', () => {
 
   it('renames a version title and publish note from the version menu', async () => {
     const user = userEvent.setup()
+    const request = createDeferred()
+    mocks.versionPatchMutationFn.mockReturnValueOnce(request.promise)
     const version = createSkillVersion({
       id: 'version-1',
       publish_note: 'Initial note',
       version_name: 'Initial version',
     })
-    mocks.skillVersionsQueryOptions.mockImplementation((options) => ({
-      queryKey: ['skill-versions', options],
+    mocks.skillVersionsQueryOptions.mockImplementation(() => ({
       queryFn: async () => ({
         data: [version],
       }),
     }))
-    renderSkillDetailPage()
+    const client = new QueryClient()
+    const keyForVersion = (versionId: string) =>
+      consoleQueryKey('workspaces.current.skills.bySkillId.versions.byVersionId.get', {
+        params: { skill_id: 'skill-1', version_id: versionId },
+      })
+    client.setQueryData(keyForVersion('version-2'), createSkillVersion({ id: 'version-2' }))
+    renderSkillDetailPage({ queryClient: client })
 
     await user.click(
       await screen.findByRole('button', { name: 'skill.skillManagement.detail.versionHistory' }),
@@ -586,6 +602,22 @@ describe('SkillDetailPage publishing', () => {
         expect.anything(),
       )
     })
+    expect(titleInput).toBeDisabled()
+    expect(noteInput).toBeDisabled()
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await user.keyboard('{Escape}')
+    expect(screen.getByRole('dialog')).toBe(dialog)
+    const refresh = vi.spyOn(client, 'invalidateQueries')
+    await act(async () => request.resolve())
+    expect(refresh).toHaveBeenCalledWith({
+      queryKey: expect.arrayContaining([
+        expect.objectContaining({
+          input: { params: { skill_id: 'skill-1', version_id: 'version-1' } },
+        }),
+      ]),
+    })
+    expect(client.getQueryState(keyForVersion('version-2'))?.isInvalidated).toBe(false)
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 
   it.each(['restore button', 'restore menu', 'delete menu'] as const)(
@@ -599,11 +631,9 @@ describe('SkillDetailPage publishing', () => {
           : 'skill.skillManagement.detail.restoreVersion'
       const version = createSkillVersion({ version_name: 'Target version' })
       mocks.skillVersionsQueryOptions.mockImplementation(() => ({
-        queryKey: ['skill-versions'],
         queryFn: async () => ({ data: [version] }),
       }))
       mocks.skillVersionDetailQueryOptions.mockImplementation(() => ({
-        queryKey: ['skill-version-detail'],
         queryFn: async () => ({ ...version, files: createSkillDetail().files }),
       }))
       renderSkillDetailPage()

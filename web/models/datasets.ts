@@ -1,36 +1,8 @@
-import type {
-  ChildChunkListResponse,
-  ChildChunkResponse,
-  ConsoleSegmentListResponse,
-  DocumentDetailResponse as ContractDocumentDetailResponse,
-  DocumentResponse as ContractDocumentResponse,
-  IndexingEstimateResponse as ContractIndexingEstimateResponse,
-  ProcessRuleResponse as ContractProcessRuleResponse,
-  RelatedAppResponse as ContractRelatedAppResponse,
-  DatasetAndDocumentResponse,
-  DatasetDetailWithPartialMembersResponse,
-  DatasetDocMetadataResponse,
-  DatasetListResponse,
-  DatasetQueryContentResponse,
-  DatasetQueryDetailResponse,
-  DocumentStatusResponse,
-  DocumentWithSegmentsResponse,
-  ExternalHitTestingRecordResponse,
-  ExternalHitTestingResponse,
-  ExternalKnowledgeApiResponse,
-  HitTestingChildChunk as GeneratedHitTestingChildChunk,
-  HitTestingResponse as GeneratedHitTestingResponse,
-  HitTestingRecord as HitTestingRecordResponse,
-  NotionInfo as NotionInfoPayload,
-  PreProcessingRule as PreProcessingRulePayload,
-  RelatedAppListResponse,
-  SegmentResponse,
-} from '@dify/contracts/api/console/datasets/types.gen'
+import type { NotionInfo, PreProcessingRule } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { AppIconType, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { I18nKeysByPrefix } from '@/types/i18n'
-import { PermissionLevel } from './permission'
 
 export const DataSourceType = {
   FILE: 'upload_file',
@@ -40,11 +12,6 @@ export const DataSourceType = {
 
 export type DataSourceType = (typeof DataSourceType)[keyof typeof DataSourceType]
 
-// Re-export PermissionLevel as DatasetPermission for backward compatibility
-export const DatasetPermission = PermissionLevel
-
-export type DatasetPermission = PermissionLevel
-
 export const ChunkingMode = {
   text: 'text_model', // General text
   qa: 'qa_model', // General QA
@@ -53,8 +20,6 @@ export const ChunkingMode = {
 } as const
 
 export type ChunkingMode = (typeof ChunkingMode)[keyof typeof ChunkingMode]
-
-export type MetadataInDoc = DatasetDocMetadataResponse
 
 export type IconInfo = {
   icon: string
@@ -69,10 +34,6 @@ export type SummaryIndexSetting = {
   model_provider_name?: string
   summary_prompt?: string
 }
-
-export type DataSet = DatasetDetailWithPartialMembersResponse
-
-export type ExternalAPIItem = ExternalKnowledgeApiResponse
 
 export type CustomFile = File & {
   id?: string
@@ -135,16 +96,10 @@ export type FetchDatasetsParams = {
   }
 }
 
-export type DataSetListResponse = DatasetListResponse
-
 export type QA = {
   question: string
   answer: string
 }
-
-export type FileIndexingEstimateResponse = ContractIndexingEstimateResponse
-
-export type IndexingStatusResponse = DocumentStatusResponse
 
 export const ProcessMode = {
   general: 'custom',
@@ -155,16 +110,12 @@ export type ProcessMode = (typeof ProcessMode)[keyof typeof ProcessMode]
 
 export type ParentMode = 'full-doc' | 'paragraph'
 
-export type ProcessRuleResponse = ContractProcessRuleResponse
-
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
   parent_mode?: ParentMode
   subchunk_segmentation?: Segmentation
 }
-
-export type PreProcessingRule = PreProcessingRulePayload
 
 type Segmentation = {
   separator: string
@@ -244,11 +195,6 @@ export type UploadFileIdInfo = {
   upload_file_id: string
 }
 
-export type InitialDocumentDetail = ContractDocumentResponse
-
-// A document in the dataset document list.
-export type SimpleDocumentDetail = DocumentWithSegmentsResponse
-
 type DocumentReq = {
   original_document_id?: string
   indexing_technique?: IndexingType
@@ -282,18 +228,11 @@ type DataSource = {
   }
 }
 
-export type NotionInfo = NotionInfoPayload
-
 export type ProcessRule = {
   mode: ProcessMode
   rules: Rules
   summary_index_setting?: SummaryIndexSetting
 }
-
-export type createDocumentResponse = DatasetAndDocumentResponse
-
-// A dataset document as the document detail query returns it.
-export type FullDocumentDetail = ContractDocumentDetailResponse
 
 type CustomizableDocType =
   | 'book'
@@ -314,18 +253,6 @@ export type Attachment = {
   mime_type: string
   source_url: string
 }
-
-export type SegmentDetailModel = SegmentResponse
-
-export type SegmentsResponse = ConsoleSegmentListResponse
-
-export type Query = DatasetQueryContentResponse
-
-export type HitTestingRecord = DatasetQueryDetailResponse
-
-export type RelatedApp = ContractRelatedAppResponse
-
-export type RelatedAppResponse = RelatedAppListResponse
 
 export type SegmentUpdater = {
   content: string
@@ -378,10 +305,6 @@ export const DEFAULT_WEIGHTED_SCORE = {
   },
 }
 
-export type ChildChunkDetail = ChildChunkResponse
-
-export type ChildSegmentsResponse = ChildChunkListResponse
-
 // Used in api url
 export const DocumentActionType = {
   enable: 'enable',
@@ -425,9 +348,3 @@ export type ExternalKnowledgeBaseHitTestingRequest = {
     score_threshold_enabled: boolean
   }
 }
-
-export type HitTestingChildChunk = GeneratedHitTestingChildChunk
-export type HitTesting = HitTestingRecordResponse
-export type HitTestingResponse = GeneratedHitTestingResponse
-export type ExternalKnowledgeBaseHitTesting = ExternalHitTestingRecordResponse
-export type ExternalKnowledgeBaseHitTestingResponse = ExternalHitTestingResponse

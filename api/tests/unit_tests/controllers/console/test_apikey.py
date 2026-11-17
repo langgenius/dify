@@ -1,7 +1,7 @@
 """API key admission, delegation, error and response contracts."""
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime
 from typing import cast
 from unittest.mock import Mock
@@ -98,8 +98,12 @@ class RecordingDatasetKeys:
     def list_workspace_keys(self, context: RequestContext) -> tuple[ApiKeyRecord, ...]:
         return (self.recorder._record("list", context, "dataset", "workspace"),)
 
-    def create_workspace_key(self, context: RequestContext, _dataset_ids: tuple[str, ...]) -> ApiKeyRecord:
-        return self.recorder._record("create", context, "dataset", "workspace")
+    def create_workspace_key(
+        self, context: RequestContext, _dataset_ids: tuple[str, ...], *, knowledge_space_ids: tuple[str, ...] = ()
+    ) -> ApiKeyRecord:
+        return replace(
+            self.recorder._record("create", context, "dataset", "workspace"), knowledge_space_ids=knowledge_space_ids
+        )
 
     def delete_workspace_key(self, context: RequestContext, key_id: str) -> None:
         self.recorder._record("delete", context, "dataset", "workspace", key_id)

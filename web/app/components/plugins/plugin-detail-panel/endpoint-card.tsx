@@ -6,7 +6,9 @@ import {
   AlertDialogCancelButton,
   AlertDialogConfirmButton,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -22,6 +24,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import EndpointModal from './endpoint-modal'
 
 type Props = Readonly<{
@@ -40,28 +43,34 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
     isShowEndpointModal,
     { setTrue: showEndpointModalConfirm, setFalse: hideEndpointModalConfirm },
   ] = useBoolean(false)
-  const showSaveError = () => {
-    toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+  const showSaveError = (error: unknown) => {
+    toast.error(
+      getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+    )
   }
   const { mutate: enableEndpoint, isPending: isEnabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.enable.post.mutationOptions({
+      context: { silent: true },
       onError: showSaveError,
     }),
   )
   const { mutate: disableEndpoint, isPending: isDisabling } = useMutation(
     consoleQuery.workspaces.current.endpoints.disable.post.mutationOptions({
+      context: { silent: true },
       onSuccess: hideDisableConfirm,
       onError: showSaveError,
     }),
   )
   const { mutate: deleteEndpoint, isPending: isDeleting } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.delete.mutationOptions({
+      context: { silent: true },
       onSuccess: () => deleteActionsRef.current?.close(),
       onError: showSaveError,
     }),
   )
   const { mutate: updateEndpoint, isPending: isUpdating } = useMutation(
     consoleQuery.workspaces.current.endpoints.byId.patch.mutationOptions({
+      context: { silent: true },
       onSuccess: hideEndpointModalConfirm,
       onError: showSaveError,
     }),
@@ -117,17 +126,17 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                 }
               />
               <AlertDialogContent backdropProps={{ forceRender: true }}>
-                <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                  <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
                     {t(($) => $['detailPanel.endpointDeleteTip'], { ns: 'plugin' })}
                   </AlertDialogTitle>
-                  <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                  <AlertDialogDescription>
                     {t(($) => $['detailPanel.endpointDeleteContent'], {
                       ns: 'plugin',
                       name: data.name,
                     })}
-                  </div>
-                </div>
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancelButton>
                     {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -174,7 +183,7 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
                       </IconButton>
                     }
                   />
-                  <TooltipContent placement="top">{copyLabel}</TooltipContent>
+                  <TooltipContent>{copyLabel}</TooltipContent>
                 </Tooltip>
               </div>
             </div>
@@ -207,14 +216,14 @@ const EndpointCard = ({ pluginDetail, data }: Props) => {
         onOpenChange={(open) => !open && hideDisableConfirm()}
       >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['detailPanel.endpointDisableTip'], { ns: 'plugin' })}
             </AlertDialogTitle>
-            <div className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+            <AlertDialogDescription>
               {t(($) => $['detailPanel.endpointDisableContent'], { ns: 'plugin', name: data.name })}
-            </div>
-          </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

@@ -4,6 +4,7 @@ import {
   OAUTH_REGISTRATION_GA_SENT_KEY,
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
+import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests the legacy request owner.
 import { request, ssePost, upload } from '../base'
 
@@ -34,7 +35,8 @@ vi.mock('../refresh-token', () => ({
   refreshAccessTokenOrReLogin: mocks.refreshAccessTokenOrReLogin,
 }))
 
-vi.mock('../webapp-address', () => ({
+vi.mock('../webapp-address', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../webapp-address')>()),
   getWebAppPublicApiPath: (_address: unknown, path: string) => path,
   resolveWebAppAddress: mocks.resolveWebAppAddress,
 }))
@@ -88,8 +90,6 @@ function arrangeClientRequest({ response, refreshError }: ClientRequestOptions) 
 }
 
 describe('request 401 handling', () => {
-  const originalLocation = globalThis.location
-
   beforeEach(() => {
     mocks.isClient = true
     mocks.baseFetch.mockReset()
@@ -100,29 +100,46 @@ describe('request 401 handling', () => {
     mocks.completeWebAppAuthorizationRecovery.mockReset()
     mocks.refreshAccessTokenOrReLogin.mockReset()
     mocks.resolveWebAppAddress.mockReset()
-    Object.defineProperty(globalThis, 'location', {
-      value: {
-        origin: 'https://example.com',
-        pathname: '/app/apps',
-        search: '?category=agent',
-        hash: '#recent',
-        href: 'https://example.com/app/apps?category=agent#recent',
-        reload: vi.fn(),
-      },
-      writable: true,
-      configurable: true,
+    vi.stubGlobal('location', {
+      origin: 'https://example.com',
+      pathname: '/app/apps',
+      search: '?category=agent',
+      hash: '#recent',
+      href: 'https://example.com/app/apps?category=agent#recent',
+      reload: vi.fn(),
     })
     window.sessionStorage.clear()
   })
 
   afterEach(() => {
     discardRegistrationSessionState()
-    Object.defineProperty(globalThis, 'location', {
-      value: originalLocation,
-      writable: true,
-      configurable: true,
-    })
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
   })
+
+  it.each([false, true])(
+    'keeps initialization password failures on the init page when silent is %s',
+    async (silent) => {
+      const message = 'Init validation failed. Please check the password and try again.'
+      const response = Response.json({ code: 'init_validate_failed', message }, { status: 401 })
+      arrangeClientRequest({ response, refreshError: new Error('No refresh token during setup') })
+      globalThis.location.pathname = '/app/init'
+      globalThis.location.href = 'https://example.com/app/init'
+      const toastError = vi.spyOn(toast, 'error').mockImplementation(() => '')
+
+      // oxlint-disable-next-line typescript/no-deprecated -- Exercise the request transport's initialization auth handling directly.
+      await expect(request('/init', { method: 'POST' }, { silent })).rejects.toMatchObject({
+        code: 'init_validate_failed',
+        status: 401,
+        message,
+      })
+
+      expect(mocks.refreshAccessTokenOrReLogin).not.toHaveBeenCalled()
+      expect(globalThis.location.href).toBe('https://example.com/app/init')
+      if (silent) expect(toastError).not.toHaveBeenCalled()
+      else expect(toastError).toHaveBeenCalledExactlyOnceWith(message, { timeout: 4000 })
+    },
+  )
 
   it('should not run browser auth recovery when handling 401 on the server', async () => {
     const response = createUnauthorizedResponse()
@@ -171,8 +188,6 @@ describe('request 401 handling', () => {
     })
 
     expect(reload).toHaveBeenCalledOnce()
-    window.sessionStorage.setItem(REGISTRATION_SUCCESS_STORAGE_KEY, 'account-b-marker')
-    expect(window.sessionStorage.getItem(REGISTRATION_SUCCESS_STORAGE_KEY)).toBe('account-b-marker')
   })
 
   it('should preserve the current URL when token refresh fails', async () => {

@@ -62,6 +62,15 @@ const OPENAPI_BASE_URL = (
   process.env.DOCS_OPENAPI_BASE_URL || new URL('.', DOCS_JSON_URL).toString()
 ).replace(/\/?$/, '/')
 const DOCS_PRODUCTS = ['cloud', 'self-host'] as const
+const WORKSPACE_CHANNEL_PAGES = [
+  'dingtalk',
+  'email',
+  'feishu-lark',
+  'ms-teams',
+  'overview',
+  'slack',
+  'wecom',
+] as const
 
 type DocsProduct = (typeof DOCS_PRODUCTS)[number]
 type ProductAvailability = Record<string, Set<DocsProduct>>
@@ -73,7 +82,7 @@ function isDocsProduct(segment: string): segment is DocsProduct {
 /**
  * Convert summary to URL slug
  * e.g., "Get Knowledge Base List" -> "get-knowledge-base-list"
- * e.g., "获取知识库列表" -> "获取知识库列表"
+ * Non-Latin summaries without spaces are preserved.
  */
 function summaryToSlug(summary: string): string {
   return summary.toLowerCase().replace(/\s+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '')
@@ -436,6 +445,11 @@ async function main(): Promise<void> {
 
   // Group by section
   const { groups, productAvailability } = groupPathsBySection(allPaths)
+  for (const page of WORKSPACE_CHANNEL_PAGES) {
+    const channelPath = `use-dify/workspace/channels/${page}`
+    addPathToGroup(groups, channelPath)
+    productAvailability[`/${channelPath}`] = new Set(DOCS_PRODUCTS)
+  }
 
   console.log(`Grouped into ${Object.keys(groups).length} sections:`, Object.keys(groups))
   console.log(`Found ${Object.keys(productAvailability).length} product-aware paths`)

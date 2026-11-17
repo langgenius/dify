@@ -1,13 +1,14 @@
 {
+  "activateFailed": "تعذر تفعيل الخصم التعليمي. قد تكون حالة التحقق التعليمي الحالية لا تزال سارية، أو لم يعد هذا البريد الإلكتروني مؤهلًا.",
   "applied.activeSubscription.description": "لديك اشتراك نشط. يمكنك استخدام الخصم التعليمي بعد انتهاء صلاحية اشتراكك. تأكيد اشتراكك في <stripeLink>Stripe</stripeLink>.",
   "applied.noPaymentPermission.description": "ليس لديك صلاحية الدفع في هذه مساحة العمل. يرجى التبديل إلى مساحة عمل حيث يمكنك إدارة الفوترة لاستخدام الخصم التعليمي.",
   "applied.noPaymentPermission.returnHome": "العودة إلى Dify",
   "applied.step1.description": "لقد قدمت بنجاح طلباً للحصول على الخصم التعليمي.",
   "applied.step2.description": "اختر مساحة العمل التي تريد استخدامها مع الخصم التعليمي.",
   "currentSigned": "تم تسجيل الدخول حاليًا باسم",
-  "educationPricingConfirm.cancel": "الاحتفاظ بالخطة الحالية",
+  "educationPricingConfirm.cancel": "المتابعة دون خصم",
   "educationPricingConfirm.continue": "التبديل إلى Professional السنوية",
-  "educationPricingConfirm.description": "ينطبق الخصم التعليمي على خطة Professional السنوية فقط. الاحتفاظ بخطتك الحالية لن يتضمن الخصم.",
+  "educationPricingConfirm.description": "اخترت {{selected_plan_name}} ({{selected_billing_cycle}}). اختر Professional السنوي للاستفادة من الخصم التعليمي أو تابع بالخطة المحددة دون خصم.",
   "educationPricingConfirm.title": "الخطة التي اخترتها لا تدعم الخصم التعليمي",
   "emailLabel": "بريدك الإلكتروني الحالي",
   "form.schoolName.noResults": "لم يتم العثور على مدارس مطابقة. لا يزال بإمكانك إدخال الاسم الرسمي للمدرسة.",
@@ -42,7 +43,7 @@
   "notice.stillInEducation.expired": "تحقق مرة أخرى الآن للحصول على كوبون جديد للعام الدراسي القادم. سنضيفه إلى حسابك ويمكنك استخدامه للترقية التالية.",
   "notice.stillInEducation.isAboutToExpire": "تحقق مرة أخرى الآن للحصول على كوبون جديد للعام الدراسي القادم. سيتم حفظه في حسابك وجاهز للاستخدام في تجديدك التالي.",
   "notice.stillInEducation.title": "هل ما زلت في التعليم؟",
-  "planNotSupportEducationDiscount": "غير مؤهل لأسعار التعليم",
+  "planNotSupportEducationDiscount": "لا يتوفر خصم تعليمي لهذه الخطة",
   "rejectContent": "لسوء الحظ، أنت غير مؤهل للحصول على حالة التحقق التعليمي وبالتالي لا يمكنك الحصول على كوبون حصري 100٪ لخطة Dify Professional إذا كنت تستخدم عنوان البريد الإلكتروني هذا.",
   "rejectTitle": "تم رفض التحقق التعليمي الخاص بك في Dify",
   "submit": "إرسال",
@@ -51,5 +52,7 @@
   "toVerifiedTip.coupon": "كوبون حصري 100٪",
   "toVerifiedTip.end": "لخطة Dify الاحترافية.",
   "toVerifiedTip.front": "أنت الآن مؤهل للحصول على حالة التحقق التعليمي. يرجى إدخال معلومات التعليم الخاصة بك أدناه لإكمال العملية والحصول على",
-  "useEducationDiscount": "استخدام الخصم التعليمي"
+  "tooManyAttempts": "محاولات كثيرة جدًا. يرجى المحاولة مرة أخرى لاحقًا.",
+  "useEducationDiscount": "استخدام الخصم التعليمي",
+  "verifyFailed": "تعذر التحقق من حالتك التعليمية. إذا أكملت التحقق مؤخرًا، فقد تكون حالة التحقق التعليمي الحالية لا تزال سارية. وإلا، يرجى المحاولة مرة أخرى لاحقًا."
 }

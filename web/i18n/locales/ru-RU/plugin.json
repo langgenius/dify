@@ -301,9 +301,7 @@
   "task.runningPlugins": "Installing Plugins",
   "task.successPlugins": "Successfully Installed Plugins",
   "templatePublishingGuide": "Руководство по публикации шаблонов",
-  "upgrade.close": "Закрывать",
   "upgrade.description": "О программе установки следующего плагина",
-  "upgrade.successfulTitle": "Установка успешна",
   "upgrade.title": "Установить плагин",
   "upgrade.upgrade": "Устанавливать",
   "upgrade.upgrading": "Установка..."

@@ -117,6 +117,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
           readOnly={readOnly}
           title={
             <TypeSelector
+              readonly={readOnly}
               options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
@@ -134,14 +135,16 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({ id, data }) => {
         <Field
           title={t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}
           operations={
-            <button
-              type="button"
-              aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
-              className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-              onClick={handleAddOutputVariable}
-            >
-              <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-            </button>
+            readOnly ? undefined : (
+              <button
+                type="button"
+                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $[`${i18nPrefix}.outputVars`], { ns: 'workflow' })}`}
+                className="cursor-pointer rounded-md border-none bg-transparent p-1 select-none hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+                onClick={handleAddOutputVariable}
+              >
+                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+              </button>
+            )
           }
           required
         >

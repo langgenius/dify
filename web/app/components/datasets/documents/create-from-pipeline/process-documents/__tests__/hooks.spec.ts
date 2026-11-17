@@ -1,62 +1,51 @@
-import { renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { act, waitFor } from '@testing-library/react'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
 import { useInputVariables } from '../hooks'
 
-const mockUseDatasetDetailContextWithSelector = vi.fn()
-const mockUsePublishedPipelineProcessingParams = vi.fn()
-
+const { getParams } = vi.hoisted(() => ({ getParams: vi.fn() }))
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (value: unknown) => unknown) =>
-    mockUseDatasetDetailContextWithSelector(selector),
+  useDatasetDetailContextWithSelector: (
+    selector: (state: { dataset: { pipeline_id: string } }) => unknown,
+  ) => selector({ dataset: { pipeline_id: 'pipeline-1' } }),
 }))
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': (o: {
-      input: { params: { pipeline_id: string }; query: { node_id: string } }
-      enabled?: boolean
-    }) =>
-      mockUsePublishedPipelineProcessingParams({
-        pipeline_id: o.input.params.pipeline_id,
-        node_id: o.input.query.node_id,
-      }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.processing.parameters.get': getParams,
+    }),
+  }
 })
 
+const response = {
+  variables: [
+    {
+      variable: 'chunkSize',
+      label: 'Chunk size',
+      type: 'number',
+      required: true,
+      default_value: 100,
+    },
+  ],
+}
+const renderVariables = () => renderHook(() => useInputVariables('node-1'))
+
 describe('useInputVariables', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockUseDatasetDetailContextWithSelector.mockReturnValue('pipeline-123')
-    mockUsePublishedPipelineProcessingParams.mockReturnValue({
-      data: { inputs: [{ name: 'query', type: 'string' }] },
-      isFetching: false,
-    })
-  })
-
-  it('should return paramsConfig and isFetchingParams', () => {
-    const { result } = renderHook(() => useInputVariables('node-1'))
-
-    expect(result.current.paramsConfig).toEqual({ inputs: [{ name: 'query', type: 'string' }] })
-    expect(result.current.isFetchingParams).toBe(false)
-  })
-
-  it('should call usePublishedPipelineProcessingParams with pipeline_id and node_id', () => {
-    renderHook(() => useInputVariables('node-1'))
-
-    expect(mockUsePublishedPipelineProcessingParams).toHaveBeenCalledWith({
-      pipeline_id: 'pipeline-123',
-      node_id: 'node-1',
-    })
-  })
-
-  it('should return isFetchingParams true when loading', () => {
-    mockUsePublishedPipelineProcessingParams.mockReturnValue({
-      data: undefined,
-      isFetching: true,
-    })
-
-    const { result } = renderHook(() => useInputVariables('node-1'))
+  it('loads the current pipeline and node parameters before exposing the configuration', async () => {
+    const pending = createDeferred<typeof response>()
+    getParams.mockReturnValue(pending.promise)
+    const { result } = renderVariables()
     expect(result.current.isFetchingParams).toBe(true)
     expect(result.current.paramsConfig).toBeUndefined()
+    await act(async () => pending.resolve(response))
+    await waitFor(() => expect(result.current.isFetchingParams).toBe(false))
+    expect(result.current.paramsConfig?.variables).toEqual(response.variables)
+    expect(getParams).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-1' },
+      query: { node_id: 'node-1' },
+    })
   })
 })

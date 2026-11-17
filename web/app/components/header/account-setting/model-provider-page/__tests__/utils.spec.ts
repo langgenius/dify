@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { createProviderResponseFixture } from '@/test/console/model-provider'
 import { FormTypeEnum, ModelTypeEnum } from '../declarations'
 import {
@@ -10,10 +10,6 @@ import {
 } from '../utils'
 
 describe('utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   describe('sizeFormat', () => {
     it('should format size less than 1000', () => {
       expect(sizeFormat(500)).toBe('500')

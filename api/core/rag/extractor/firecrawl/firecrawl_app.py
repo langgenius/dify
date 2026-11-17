@@ -111,7 +111,7 @@ class FirecrawlApp:
                             storage.delete(file_key)
                         storage.save(file_key, json.dumps(url_data_list).encode("utf-8"))
                     except Exception as e:
-                        raise Exception(f"Error saving crawl data: {e}")
+                        raise Exception(f"Error saving crawl data: {e}") from e
                 return self._format_crawl_status_response("completed", crawl_status_response, url_data_list)
             else:
                 return self._format_crawl_status_response(

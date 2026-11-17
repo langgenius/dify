@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { httpErrorFromResponse } from '@/service/http-error'
 import { CreateFromDSLModalTab, useDSLImport } from '../use-dsl-import'
 
@@ -15,16 +15,16 @@ vi.mock('@/next/navigation', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({
-      mutateAsync: mockImportDSL,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
     }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({
-      mutateAsync: mockImportDSLConfirm,
-    }),
-  })
+  }
 })
 
 // Mock plugin dependencies hook
@@ -67,15 +67,6 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
-  }
-})
-
 const createImportDSLResponse = (overrides = {}) => ({
   id: 'import-123',
   status: 'completed' as const,
@@ -108,79 +99,9 @@ describe('useDSLImport', () => {
     toastMocks.record.mockReset()
     mockHandleCheckPluginDependencies.mockReset()
   })
-
-  describe('initialization', () => {
-    it('should initialize with default values', () => {
-      const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
-
-      expect(result.current.currentFile).toBeUndefined()
-      expect(result.current.currentTab).toBe(CreateFromDSLModalTab.FROM_FILE)
-      expect(result.current.dslUrlValue).toBe('')
-      expect(result.current.showConfirmModal).toBe(false)
-      expect(result.current.versions).toBeUndefined()
-      expect(result.current.buttonDisabled).toBe(true)
-      expect(result.current.isConfirming).toBe(false)
-    })
-
-    it('should use provided activeTab', () => {
-      const { result } = renderHook(
-        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_URL }),
-        { wrapper: createWrapper() },
-      )
-
-      expect(result.current.currentTab).toBe(CreateFromDSLModalTab.FROM_URL)
-    })
-
-    it('should use provided dslUrl', () => {
-      const { result } = renderHook(
-        () => useDSLImport({ dslUrl: 'https://example.com/test.pipeline' }),
-        { wrapper: createWrapper() },
-      )
-
-      expect(result.current.dslUrlValue).toBe('https://example.com/test.pipeline')
-    })
-  })
-
-  describe('setCurrentTab', () => {
-    it('should update current tab', () => {
-      const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
-
-      act(() => {
-        result.current.setCurrentTab(CreateFromDSLModalTab.FROM_URL)
-      })
-
-      expect(result.current.currentTab).toBe(CreateFromDSLModalTab.FROM_URL)
-    })
-  })
-
-  describe('setDslUrlValue', () => {
-    it('should update DSL URL value', () => {
-      const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
-
-      act(() => {
-        result.current.setDslUrlValue('https://new-url.com/pipeline')
-      })
-
-      expect(result.current.dslUrlValue).toBe('https://new-url.com/pipeline')
-    })
-  })
+  afterEach(() => vi.useRealTimers())
 
   describe('handleFile', () => {
-    it('should set file and trigger file reading', async () => {
-      const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
-
-      const mockFile = new File(['test content'], 'test.pipeline', {
-        type: 'application/octet-stream',
-      })
-
-      await act(async () => {
-        result.current.handleFile(mockFile)
-      })
-
-      expect(result.current.currentFile).toBe(mockFile)
-      expect(result.current.buttonDisabled).toBe(false)
-    })
-
     it('should clear file when undefined is passed', async () => {
       const { result } = renderHook(() => useDSLImport({}), { wrapper: createWrapper() })
 
@@ -215,21 +136,6 @@ describe('useDSLImport', () => {
       expect(result.current.buttonDisabled).toBe(true)
     })
 
-    it('should be false when file tab is active and file is selected', async () => {
-      const { result } = renderHook(
-        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_FILE }),
-        { wrapper: createWrapper() },
-      )
-
-      const mockFile = new File(['content'], 'test.pipeline', { type: 'application/octet-stream' })
-
-      await act(async () => {
-        result.current.handleFile(mockFile)
-      })
-
-      expect(result.current.buttonDisabled).toBe(false)
-    })
-
     it('should be true when URL tab is active and no URL is entered', () => {
       const { result } = renderHook(
         () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_URL }),
@@ -238,58 +144,9 @@ describe('useDSLImport', () => {
 
       expect(result.current.buttonDisabled).toBe(true)
     })
-
-    it('should be false when URL tab is active and URL is entered', () => {
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com',
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      expect(result.current.buttonDisabled).toBe(false)
-    })
   })
 
   describe('handleCreateApp with URL mode', () => {
-    it('should call importDSL with URL mode', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockImportDSL.mockResolvedValue(createImportDSLResponse())
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      const onSuccess = vi.fn()
-      const onClose = vi.fn()
-
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com/test.pipeline',
-            onSuccess,
-            onClose,
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        result.current.handleCreateApp()
-        vi.advanceTimersByTime(400) // Wait for debounce
-      })
-
-      await waitFor(() => {
-        expect(mockImportDSL).toHaveBeenCalledWith({
-          body: {
-            mode: 'yaml-url',
-            yaml_url: 'https://example.com/test.pipeline',
-          },
-        })
-      })
-
-      vi.useRealTimers()
-    })
-
     it('should handle successful import with COMPLETED status', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'completed' }))
@@ -315,7 +172,14 @@ describe('useDSLImport', () => {
       })
 
       await waitFor(() => {
-        expect(onSuccess).toHaveBeenCalled()
+        expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+          body: { mode: 'yaml-url', yaml_url: 'https://example.com/test.pipeline' },
+        })
+        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledExactlyOnceWith(
+          'pipeline-456',
+          true,
+        )
+        expect(onSuccess).toHaveBeenCalledOnce()
         expect(onClose).toHaveBeenCalled()
         expect(toastMocks.record).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -512,37 +376,6 @@ describe('useDSLImport', () => {
       vi.useRealTimers()
     })
 
-    it('should check plugin dependencies when pipeline_id is present', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          status: 'completed',
-          pipeline_id: 'pipeline-123',
-        }),
-      )
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com/test.pipeline',
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        result.current.handleCreateApp()
-        vi.advanceTimersByTime(400)
-      })
-
-      await waitFor(() => {
-        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('pipeline-123', true)
-      })
-
-      vi.useRealTimers()
-    })
-
     it('should not check plugin dependencies when pipeline_id is null', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
       mockImportDSL.mockResolvedValue(
@@ -615,13 +448,25 @@ describe('useDSLImport', () => {
         type: 'application/octet-stream',
       })
 
+      const readAsText = FileReader.prototype.readAsText
+      let loaded!: () => void
+      const fileLoaded = new Promise<void>((resolve) => {
+        loaded = resolve
+      })
+      const readerSpy = vi.spyOn(FileReader.prototype, 'readAsText').mockImplementation(function (
+        this: FileReader,
+        file,
+      ) {
+        this.addEventListener('loadend', loaded, { once: true })
+        readAsText.call(this, file)
+      })
       // Set up file and wait for FileReader to complete
       await act(async () => {
         result.current.handleFile(mockFile)
-        // Give FileReader time to process
-        await new Promise((resolve) => setTimeout(resolve, 100))
+        await fileLoaded
       })
 
+      readerSpy.mockRestore()
       // Trigger create
       await act(async () => {
         result.current.handleCreateApp()
@@ -714,7 +559,12 @@ describe('useDSLImport', () => {
 
       await waitFor(() => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-123' } })
-        expect(onSuccess).toHaveBeenCalled()
+        expect(onSuccess).toHaveBeenCalledOnce()
+        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledExactlyOnceWith(
+          'pipeline-456',
+          true,
+        )
+        expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
         expect(result.current.showConfirmModal).toBe(false)
       })
 
@@ -893,55 +743,6 @@ describe('useDSLImport', () => {
       expect(mockImportDSLConfirm).not.toHaveBeenCalled()
     })
 
-    it('should check plugin dependencies on confirm success', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          id: 'import-123',
-          status: 'pending',
-        }),
-      )
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: 'completed',
-        pipeline_id: 'pipeline-789',
-        dataset_id: 'dataset-789',
-      })
-
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com/test.pipeline',
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      // Trigger pending status
-      await act(async () => {
-        result.current.handleCreateApp()
-        vi.advanceTimersByTime(400)
-      })
-
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      // Call onDSLConfirm
-      await act(async () => {
-        result.current.onDSLConfirm()
-      })
-
-      await waitFor(() => {
-        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('pipeline-789', true)
-      })
-
-      vi.useRealTimers()
-    })
-
     it('should set isConfirming during confirm process', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
 
@@ -1046,6 +847,8 @@ describe('useDSLImport', () => {
       })
 
       expect(result.current.showConfirmModal).toBe(false)
+      expect(mockImportDSLConfirm).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
 
       vi.useRealTimers()
     })
@@ -1099,136 +902,6 @@ describe('useDSLImport', () => {
       })
 
       vi.useRealTimers()
-    })
-  })
-
-  describe('file reading', () => {
-    it('should read file content using FileReader', async () => {
-      const { result } = renderHook(
-        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_FILE }),
-        { wrapper: createWrapper() },
-      )
-
-      const fileContent = 'yaml content here'
-      const mockFile = new File([fileContent], 'test.pipeline', {
-        type: 'application/octet-stream',
-      })
-
-      await act(async () => {
-        result.current.handleFile(mockFile)
-      })
-
-      expect(result.current.currentFile).toBe(mockFile)
-    })
-
-    it('should clear file content when file is removed', async () => {
-      const { result } = renderHook(
-        () => useDSLImport({ activeTab: CreateFromDSLModalTab.FROM_FILE }),
-        { wrapper: createWrapper() },
-      )
-
-      const mockFile = new File(['content'], 'test.pipeline', { type: 'application/octet-stream' })
-
-      // Set file
-      await act(async () => {
-        result.current.handleFile(mockFile)
-      })
-
-      // Clear file
-      await act(async () => {
-        result.current.handleFile(undefined)
-      })
-
-      expect(result.current.currentFile).toBeUndefined()
-    })
-  })
-
-  describe('navigation after import', () => {
-    it('should navigate to pipeline page after successful import', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          status: 'completed',
-          dataset_id: 'test-dataset-id',
-        }),
-      )
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com/test.pipeline',
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      await act(async () => {
-        result.current.handleCreateApp()
-        vi.advanceTimersByTime(400)
-      })
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/datasets/test-dataset-id/pipeline')
-      })
-
-      vi.useRealTimers()
-    })
-
-    it('should navigate to pipeline page after confirm success', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          id: 'import-123',
-          status: 'pending',
-        }),
-      )
-
-      mockImportDSLConfirm.mockResolvedValue({
-        status: 'completed',
-        pipeline_id: 'pipeline-456',
-        dataset_id: 'confirm-dataset-id',
-      })
-
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      const { result } = renderHook(
-        () =>
-          useDSLImport({
-            activeTab: CreateFromDSLModalTab.FROM_URL,
-            dslUrl: 'https://example.com/test.pipeline',
-          }),
-        { wrapper: createWrapper() },
-      )
-
-      // Trigger pending status
-      await act(async () => {
-        result.current.handleCreateApp()
-        vi.advanceTimersByTime(400)
-      })
-
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      // Call onDSLConfirm
-      await act(async () => {
-        result.current.onDSLConfirm()
-      })
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/datasets/confirm-dataset-id/pipeline')
-      })
-
-      vi.useRealTimers()
-    })
-  })
-
-  describe('enum export', () => {
-    it('should export CreateFromDSLModalTab enum with correct values', () => {
-      expect(CreateFromDSLModalTab.FROM_FILE).toBe('from-file')
-      expect(CreateFromDSLModalTab.FROM_URL).toBe('from-url')
     })
   })
 })

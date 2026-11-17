@@ -1,8 +1,9 @@
 import type {
   DocumentProcessRulesResponse,
+  PreProcessingRule,
   Rule,
 } from '@dify/contracts/api/console/datasets/types.gen'
-import type { PreProcessingRule, Rules } from '@/models/datasets'
+import type { Rules } from '@/models/datasets'
 import { ProcessMode } from '@/models/datasets'
 
 const PRE_PROCESSING_RULE_IDS = new Set<string>([

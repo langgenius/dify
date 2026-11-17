@@ -6,7 +6,7 @@ from machinery.context import RequestContext
 from services.account_avatar_file_gateway import SQLAlchemyAccountAvatarFileGateway
 from services.account_avatar_service import AccountAvatarService
 from services.account_errors import AvatarFileNotFoundError
-from tests.unit_tests.model_factories import make_upload_file
+from tests.helpers.unit.model_factories import make_upload_file
 
 
 def _context() -> RequestContext:

@@ -31,6 +31,11 @@ const asRecord = (value: unknown): Record<string, unknown> | undefined =>
 const nonEmptyString = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value : undefined
 
+export function getHttpErrorBodyMessage(body: unknown): string | undefined {
+  const data = asRecord(body)
+  return nonEmptyString(data?.message) ?? nonEmptyString(data?.error)
+}
+
 /** Decode the backend envelope without declaring it as a validated contract error. */
 export function createHttpError(
   response: Pick<Response, 'status' | 'statusText' | 'headers'>,
@@ -41,8 +46,7 @@ export function createHttpError(
     // The HTTP status is authoritative even when the response body disagrees.
     status: response.status,
     message:
-      nonEmptyString(data?.message) ??
-      nonEmptyString(data?.error) ??
+      getHttpErrorBodyMessage(data) ??
       nonEmptyString(response.statusText) ??
       `HTTP ${response.status}`,
     data,

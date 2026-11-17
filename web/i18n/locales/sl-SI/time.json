@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "DD.MM.YYYY hh:mm:ss A",
   "operation.cancel": "Prekliči",
+  "operation.close": "Zapri",
   "operation.now": "Zdaj",
   "operation.ok": "V redu",
   "operation.pickDate": "Izberi datum",

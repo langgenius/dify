@@ -1,10 +1,10 @@
 import type { AppModelConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { TFunction } from 'i18next'
 import type { ConfigurationPublishConfig } from './types'
 import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs, ModelConfig, PromptVariable } from '@/models/debug'
 import type { ConsoleClient } from '@/service/console'
 import {
@@ -49,7 +49,7 @@ export function buildPublishBody({
   completionParams: FormValue
   completionPromptConfig: ModelConfig['completion_prompt_config']
   contextVar?: string
-  dataSets: DataSet[]
+  dataSets: DatasetDetailWithPartialMembersResponse[]
   datasetConfigs: DatasetConfigs
   externalDataToolsConfig: ModelConfig['external_data_tools']
   features?: FeaturesData
@@ -147,7 +147,7 @@ export const createPublishHandler =
     completionPromptConfig: ModelConfig['completion_prompt_config']
     contextVar?: string
     contextVarEmpty: boolean
-    dataSets: DataSet[]
+    dataSets: DatasetDetailWithPartialMembersResponse[]
     datasetConfigs: DatasetConfigs
     externalDataToolsConfig: ModelConfig['external_data_tools']
     hasSetBlockStatus: { history: boolean; query: boolean }

@@ -1,7 +1,8 @@
 import type { Credential, ModelProvider } from '../../declarations'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
-import { render } from '@/test/console/render'
-import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
+import { renderWithConsoleQuery as render } from '@/test/console/query-data'
+import { ConfigurationMethodEnum } from '../../declarations'
 import ModelModal from '../index'
 
 let mockLanguage = 'en_US'
@@ -10,23 +11,6 @@ let mockDeleteCredentialId: string | null = null
 
 const mockCloseConfirmDelete = vi.fn()
 const mockHandleConfirmDelete = vi.fn()
-
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
-  return createWorkspaceStateModuleMock(() => ({
-    currentWorkspace: { id: 'workspace-1' },
-  }))
-})
-
-vi.mock('@/app/components/base/form/form-scenarios/auth', () => ({
-  default: () => <div data-testid="auth-form" />,
-}))
-
-vi.mock('../../model-auth', () => ({
-  CredentialSelector: ({ credentials }: { credentials: Credential[] }) => (
-    <div>{`credentials:${credentials.length}`}</div>
-  ),
-}))
 
 vi.mock('../../model-auth/hooks', () => ({
   useCredentialData: () => ({
@@ -43,13 +27,13 @@ vi.mock('../../model-auth/hooks', () => ({
     closeConfirmDelete: mockCloseConfirmDelete,
     openConfirmDelete: vi.fn(),
     doingAction: false,
+    doingActionRef: { current: false },
     handleActiveCredential: vi.fn(),
   }),
   useModelFormSchemas: () => ({
     formSchemas: [],
     formValues: {},
     modelNameAndTypeFormSchemas: [],
-    modelNameAndTypeFormValues: {},
   }),
 }))
 
@@ -95,14 +79,6 @@ const createProvider = (overrides: Partial<ModelProvider> = {}): ModelProvider =
     ...overrides,
   }) as unknown as ModelProvider
 
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    workspacePermissionKeys: [],
-  }))
-})
-
 describe('ModelModal dialog branches', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -111,32 +87,17 @@ describe('ModelModal dialog branches', () => {
     mockDeleteCredentialId = null
   })
 
-  it('should pass an empty credential list to the selector when no credentials are available', () => {
-    mockAvailableCredentials = undefined
-
-    render(
-      <ModelModal
-        provider={createProvider()}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        mode={ModelModalModeEnum.addCustomModelToModelList}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText('credentials:0')).toBeInTheDocument()
-  })
-
   it('should hide the help link when provider help is missing', () => {
     render(
-      <ModelModal
-        provider={createProvider({ help: undefined })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({ help: undefined })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     expect(screen.queryByRole('link', { name: 'Help' })).not.toBeInTheDocument()
@@ -146,18 +107,20 @@ describe('ModelModal dialog branches', () => {
     mockLanguage = 'zh_Hans'
 
     render(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            title: { en_US: 'English Help' },
-            url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                title: { en_US: 'English Help' },
+                url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     const link = screen.getByText('English Help').closest('a')
@@ -171,17 +134,19 @@ describe('ModelModal dialog branches', () => {
   it('should fall back to localized and english help urls when titles are missing', () => {
     mockLanguage = 'zh_Hans'
     const { rerender } = render(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            url: { zh_Hans: 'https://example.cn', en_US: 'https://example.com' },
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                url: { zh_Hans: 'https://example.cn', en_US: 'https://example.com' },
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     expect(screen.getByRole('link', { name: 'https://example.cn' })).toHaveAttribute(
@@ -190,17 +155,19 @@ describe('ModelModal dialog branches', () => {
     )
 
     rerender(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            url: { en_US: 'https://example.com' },
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                url: { en_US: 'https://example.com' },
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     const link = screen.getByRole('link', { name: 'https://example.com' })

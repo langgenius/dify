@@ -12,6 +12,11 @@ existing interaction variants when adding error styles so call-site overrides ke
 Disabled surfaces take precedence over invalid and read-only appearance. Keep invalid state and
 error associations intact while limiting error colors to enabled controls.
 
+Read-only locks the value, not the control. It stays focusable, keeps its indicators and drops
+hover feedback without looking disabled. Its popup opens for browsing; choosing a value and the
+parts that only commit or clear one are unavailable. Expose it with `aria-readonly`, never
+`aria-disabled`.
+
 Where supported by the upstream part, `className(state)` and `style(state)` read that part's state.
 At call sites, before using a callback or React state to calculate styles, check whether data attributes or CSS
 variables already express the requirement. When direct state access is needed, add a short comment
@@ -34,6 +39,9 @@ See Base UI's [styling] and [composition] guides for the upstream contracts.
 
 ## Tailwind CSS v4
 
+When merging default classes with an incoming `className`, use the local `cn(...)` helper and put
+defaults first so callers can override them. Resolve state callbacks before merging their classes.
+
 Import Tailwind from the consumer's root stylesheet as described in the [Tailwind CSS v4 upgrade
 guide], then import the Dify UI CSS entry:
 
@@ -52,6 +60,22 @@ stylesheet:
 @source not '../../../packages/dify-ui/src/**/*.{spec,test}.{ts,tsx}';
 @source not '../../../packages/dify-ui/src/**/*.stories.{ts,tsx}';
 ```
+
+## Theme
+
+Tokens and the `dark:` variant read the `data-theme` attribute that the consumer sets to `light` or
+`dark` on `<html>`; tokens have no values without it. Appearance follows the theme through semantic
+tokens first. When no token renders the same value, use `dark:`, which ignores the system color
+scheme. Do not choose classes from a theme value in JavaScript; read the theme there only when a
+value must leave CSS.
+
+## Writing direction
+
+Use logical inline-direction utilities for spacing, offsets, borders, corners, and alignment.
+Caller overrides must use the same family: `cn` does not merge `pl-*` with `ps-*`.
+
+Keep block-axis and sizing utilities unchanged. Preserve physical directions for swipe geometry
+and transform-based centering; explain deliberate physical exceptions with a scoped lint directive.
 
 ## Border radius
 
@@ -87,14 +111,14 @@ outline handling at their call sites. A package-wide interaction contract can ha
 owner; visual similarity alone is not a reason to share constants. Keep component-specific selectors local.
 
 Controls own their focus indicator, so callers never write one. That includes every trigger that
-opens a surface (Popover, DropdownMenu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
+opens a surface (Popover, Menu, Collapsible, Combobox, Dialog, AlertDialog, Drawer); they
 share one ring. Rows inside a composite defer to its highlight. Parts that only attach behavior
 (Tooltip, PreviewCard, and ContextMenu triggers, and Close parts) add no styles.
 
 Text controls (Input, Textarea, InputGroup, NumberField, and the Combobox and Autocomplete input
 groups) draw that ring on the visible field. It replaces the hover border, and an invalid field
 keeps its border and fill inside it. Switch, Checkbox, and Radio leave a gap between the control and
-the indicator, because their checked fill is the indicator color. `DropdownMenuInputGroup` is the
+the indicator, because their checked fill is the indicator color. `MenuInputGroup` is the
 exception: Base UI marks `Menu.Input` with `data-highlighted` while the input holds the keyboard
 highlight, so the group draws the ring on that state and drops it once the arrow keys move the
 highlight into the list.

@@ -1,4 +1,4 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { DatasetConfigs } from '@/models/debug'
 import { useCallback, useRef, useState } from 'react'
 import { DATASET_DEFAULT } from '@/config'
@@ -23,7 +23,7 @@ export function useDatasetConfigurationState() {
     setDatasetConfigs(nextDatasetConfigs)
     datasetConfigsRef.current = nextDatasetConfigs
   }, [])
-  const [dataSets, setDataSets] = useState<DataSet[]>([])
+  const [dataSets, setDataSets] = useState<DatasetDetailWithPartialMembersResponse[]>([])
 
   return {
     dataSets,

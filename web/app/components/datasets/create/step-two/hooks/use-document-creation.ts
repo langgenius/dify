@@ -1,3 +1,7 @@
+import type {
+  DatasetAndDocumentResponse,
+  DocumentDetailResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { StepTwoFile, StepTwoNotionPage } from '../types'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -6,8 +10,6 @@ import type {
   CrawlOptions,
   CrawlResultItem,
   CreateDocumentReq,
-  createDocumentResponse,
-  FullDocumentDetail,
   ProcessRule,
   SummaryIndexSetting as SummaryIndexSettingType,
 } from '@/models/datasets'
@@ -19,7 +21,7 @@ import { trackEvent } from '@/app/components/base/amplitude'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { toast } from '@/app/notifications'
 import { DataSourceProvider } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, ProcessMode } from '@/models/datasets'
 import { consoleQuery } from '@/service/console'
 import { getNotionInfo, getWebsiteInfo } from '../creation-params'
 import { IndexingType } from './use-indexing-config'
@@ -28,7 +30,7 @@ import { MAXIMUM_CHUNK_TOKEN_LENGTH } from './use-segmentation-state'
 type UseDocumentCreationOptions = {
   datasetId?: string
   isSetting?: boolean
-  documentDetail?: FullDocumentDetail
+  documentDetail?: DocumentDetailResponse
   dataSourceType: DataSourceType
   files: StepTwoFile[]
   notionPages: StepTwoNotionPage[]
@@ -41,13 +43,13 @@ type UseDocumentCreationOptions = {
   // Callbacks
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
-  updateResultCache?: (res: createDocumentResponse) => void
+  updateResultCache?: (res: DatasetAndDocumentResponse) => void
   updateRetrievalMethodCache?: (method: RETRIEVE_METHOD | '') => void
   onSave?: () => void
   mutateDatasetRes?: () => void
 }
 type ValidationParams = {
-  segmentationType: string
+  segmentationType: ProcessMode
   maxChunkLength: number
   limitMaxChunkLength: number
   overlap: number
@@ -102,11 +104,11 @@ export const useDocumentCreation = (options: UseDocumentCreationOptions) => {
         rerankModelList,
         retrievalConfig,
       } = params
-      if (segmentationType === 'general' && overlap > maxChunkLength) {
+      if (segmentationType === ProcessMode.general && overlap > maxChunkLength) {
         toast.error(t(($) => $['stepTwo.overlapCheck'], { ns: 'datasetCreation' }))
         return false
       }
-      if (segmentationType === 'general' && maxChunkLength > limitMaxChunkLength) {
+      if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
         toast.error(
           t(($) => $['stepTwo.maxLengthCheck'], {
             ns: 'datasetCreation',

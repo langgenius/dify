@@ -1,8 +1,8 @@
+import { renderHook } from '@testing-library/react'
+import { useTranslation } from 'react-i18next'
 import { DSLImportStatus } from '@/models/app'
-import { BlockEnum } from '../types'
 import {
   getImportNotificationPayload,
-  getInvalidNodeTypes,
   isImportCompleted,
   normalizeWorkflowFeatures,
   validateDSLContent,
@@ -78,13 +78,6 @@ workflow:
     it('should reject yaml streams with multiple documents', () => {
       expect(validateDSLContent('---\n{}\n---\n{}', 'chat')).toBe(false)
     })
-
-    it('should expose the invalid node sets per mode', () => {
-      expect(getInvalidNodeTypes('advanced-chat')).toEqual(
-        expect.arrayContaining([BlockEnum.End, BlockEnum.TriggerWebhook]),
-      )
-      expect(getInvalidNodeTypes('chat')).toEqual([BlockEnum.Answer])
-    })
   })
 
   describe('status and feature normalization', () => {
@@ -95,19 +88,17 @@ workflow:
     })
 
     it('should use the warning fallback in the import notification', () => {
-      const t = ((key: (selector: Record<string, string>) => string) =>
-        key({
-          'common.importSuccess': 'Import succeeded',
-          'common.importWarning': 'Caution',
-          'common.importWarningDetails': 'Some configuration may need attention',
-        })) as never
+      const { result } = renderHook(() => useTranslation(['workflow']))
 
-      const payload = getImportNotificationPayload(DSLImportStatus.COMPLETED_WITH_WARNINGS, t)
+      const payload = getImportNotificationPayload(
+        DSLImportStatus.COMPLETED_WITH_WARNINGS,
+        result.current.t,
+      )
 
       expect(payload).toEqual({
         type: 'warning',
-        message: 'Caution',
-        children: 'Some configuration may need attention',
+        message: 'workflow.common.importWarning',
+        children: 'workflow.common.importWarningDetails',
       })
     })
 

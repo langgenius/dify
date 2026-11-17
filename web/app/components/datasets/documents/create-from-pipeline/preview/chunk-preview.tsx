@@ -1,10 +1,6 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  CustomFile,
-  DocumentItem,
-  FileIndexingEstimateResponse,
-} from '@/models/datasets'
+import type { CrawlResultItem, CustomFile, DocumentItem } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { Button } from '@langgenius/dify-ui/button'
 import { RiSearchEyeLine } from '@remixicon/react'
@@ -38,7 +34,7 @@ type ChunkPreviewProps = {
   onlineDriveFiles: OnlineDriveFile[]
   isIdle: boolean
   isPending: boolean
-  estimateData: FileIndexingEstimateResponse | undefined
+  estimateData: IndexingEstimateResponse | undefined
   onPreview: () => void
   handlePreviewFileChange: (file: DocumentItem) => void
   handlePreviewOnlineDocumentChange: (page: NotionPage) => void

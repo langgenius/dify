@@ -291,7 +291,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
         if not isinstance(parsed, dict):
             raise OutputParserError(f"Failed to parse structured output: {result_text}")
         structured_output = parsed
-    except ValidationError:
+    except ValidationError as caught_error:
         # if the result_text is not a valid json, try to repair it
         temp_parsed = json_repair.loads(result_text)
         if isinstance(temp_parsed, list) and result_text.lstrip().lower().startswith("<think"):
@@ -320,7 +320,7 @@ def _parse_structured_output(result_text: str) -> Mapping[str, Any]:
                 # handle reasoning model like deepseek-r1 got '<think>\n\n</think>\n' prefix
                 temp_parsed = next((item for item in temp_parsed if isinstance(item, dict)), {})
             case _:
-                raise OutputParserError(f"Failed to parse structured output: {result_text}")
+                raise OutputParserError(f"Failed to parse structured output: {result_text}") from caught_error
         structured_output = cast(dict, temp_parsed)
     return structured_output
 
@@ -338,9 +338,6 @@ def _prepare_schema_for_model(provider: str, model_schema: AIModelEntity, schema
 
     # Deep copy to avoid modifying the original schema
     processed_schema = dict(deepcopy(schema))
-
-    # Convert boolean types to string types (common requirement)
-    convert_boolean_to_string(processed_schema)
 
     # Apply model-specific transformations
     if SpecialModelType.GEMINI in model_schema.model:
@@ -375,27 +372,3 @@ def remove_additional_properties(schema: dict[str, Any]) -> None:
                 for item in value:
                     if isinstance(item, dict):
                         remove_additional_properties(item)
-
-
-def convert_boolean_to_string(schema: dict[str, Any]) -> None:
-    """
-    Convert boolean type specifications to string in JSON schema.
-
-    :param schema: JSON schema to modify in-place
-    """
-    if not isinstance(schema, dict):
-        return
-
-    # Check for boolean type at current level
-    if schema.get("type") == "boolean":
-        schema["type"] = "string"
-
-    # Process nested dictionaries and lists recursively
-    for value in schema.values():
-        match value:
-            case dict():
-                convert_boolean_to_string(value)
-            case list():
-                for item in value:
-                    if isinstance(item, dict):
-                        convert_boolean_to_string(item)

@@ -51,11 +51,11 @@ const TryLabel: FC<{
   return (
     <button
       type="button"
-      className="mt-2 mr-1 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
+      className="me-1 mt-2 flex h-7 shrink-0 cursor-pointer items-center rounded-lg bg-components-button-secondary-bg px-2"
       onClick={onClick}
     >
       <span aria-hidden className={`${iconClassName} size-4 text-text-tertiary`} />
-      <div className="ml-1 text-xs font-medium text-text-secondary">{text}</div>
+      <div className="ms-1 text-xs font-medium text-text-secondary">{text}</div>
     </button>
   )
 }
@@ -268,11 +268,14 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         if (!open) onClose()
       }}
     >
-      <DialogContent className="max-h-[calc(100dvh-2rem)] w-285 overflow-y-auto border-none p-0! text-left align-middle xl:h-[min(680px,calc(100dvh-2rem))] xl:overflow-hidden">
+      <DialogContent className="w-285 xl:h-170 xl:overflow-hidden">
         <div className="flex min-h-0 flex-col xl:h-full xl:flex-row">
-          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-r">
+          <div className="min-w-0 border-divider-regular p-6 xl:h-full xl:flex-1 xl:overflow-y-auto xl:border-e">
             <div className="mb-5">
-              <DialogTitle className={`text-lg leading-7 font-bold ${s.textGradient}`}>
+              <DialogTitle
+                // oxlint-disable-next-line shadcn/no-restyle -- Gradient generator title keeps its own type; the module class paints the gradient.
+                className={`text-lg leading-7 font-bold ${s.textGradient}`}
+              >
                 {t(($) => $['generate.title'], { ns: 'appGeneration' })}
               </DialogTitle>
               <div className="mt-1 text-[13px] font-normal text-text-tertiary">
@@ -281,6 +284,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             </div>
             <div>
               <ModelParameterModal
+                triggerContainerClassName="min-w-0"
                 popupClassName="w-130! max-w-[calc(100vw-2rem)]"
                 isAdvancedMode={true}
                 provider={model.provider}
@@ -294,7 +298,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             {isBasicMode && (
               <div className="mt-4">
                 <div className="flex items-center">
-                  <div className="mr-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
+                  <div className="me-3 shrink-0 text-xs leading-4.5 font-semibold text-text-tertiary uppercase">
                     {t(($) => $['generate.tryIt'], { ns: 'appGeneration' })}
                   </div>
                   <div

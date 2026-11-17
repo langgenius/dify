@@ -37,7 +37,7 @@ from graphon.model_runtime.entities.message_entities import AssistantPromptMessa
 from graphon.model_runtime.entities.model_entities import ModelType
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from services.workflow_generator_service import WorkflowGeneratorService
-from tests.unit_tests.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_fixtures import make_model_config
 
 TENANT_ID = "t-1"
 PROVIDER = "langgenius/openai/openai"

@@ -1,7 +1,7 @@
 import type {
   FormType as ContractFormType,
-  QuotaConfiguration as ContractQuotaConfiguration,
   GetWorkspacesCurrentDefaultModelResponse,
+  QuotaConfiguration,
 } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Field } from '@/app/components/workflow/nodes/llm/types'
 
@@ -198,8 +198,6 @@ export const QuotaUnitEnum = {
 } as const
 
 export type QuotaUnitEnum = (typeof QuotaUnitEnum)[keyof typeof QuotaUnitEnum]
-
-type QuotaConfiguration = ContractQuotaConfiguration
 
 export type Credential = {
   credential_id: string

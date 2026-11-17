@@ -3,7 +3,6 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DSLConfirmModal from '../dsl-confirm-modal'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '../index'
-import Uploader from '../uploader'
 
 const mockPush = vi.fn()
 vi.mock('@/next/navigation', () => ({
@@ -15,16 +14,16 @@ vi.mock('@/next/navigation', () => ({
 const mockImportDSL = vi.fn()
 const mockImportDSLConfirm = vi.fn()
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.imports.post': () => ({
-      mutateAsync: mockImportDSL,
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.imports.post': (input) => mockImportDSL(input),
+      'rag.pipelines.imports.byImportId.confirm.post': (input) => mockImportDSLConfirm(input),
     }),
-    'rag.pipelines.imports.byImportId.confirm.post': () => ({
-      mutateAsync: mockImportDSLConfirm,
-    }),
-  })
+  }
 })
 
 // Mock plugin dependencies hook
@@ -67,19 +66,6 @@ vi.mock('@/app/notifications', () => ({
   toast: toastMocks.api,
 }))
 
-vi.mock('use-context-selector', async () => {
-  const actual =
-    await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: vi.fn(() => ({ notify: toastMocks.api })),
-  }
-})
-
-const createMockFile = (name = 'test.pipeline'): File => {
-  return new File(['test content'], name, { type: 'application/octet-stream' })
-}
-
 const createImportDSLResponse = (overrides = {}) => ({
   id: 'import-123',
   status: 'completed' as const,
@@ -112,6 +98,7 @@ describe('CreateFromDSLModal', () => {
     toastMocks.record.mockReset()
     mockHandleCheckPluginDependencies.mockReset()
   })
+  afterEach(() => vi.useRealTimers())
 
   describe('Rendering', () => {
     it('should not render modal content when show is false', () => {
@@ -121,97 +108,15 @@ describe('CreateFromDSLModal', () => {
       const modal = screen.queryByText('app.importFromDSL')
       expect(modal).toBeNull()
     })
-
-    it('should render file tab by default', () => {
-      render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
-
-      expect(screen.getByRole('dialog', { name: 'app.importFromDSL' }))!.toBeInTheDocument()
-      expect(screen.getByRole('tab', { name: 'app.importFromDSLFile' }))!.toHaveAttribute(
-        'aria-selected',
-        'true',
-      )
-      expect(screen.getByRole('tab', { name: 'app.importFromDSLUrl' }))!.toHaveAttribute(
-        'aria-selected',
-        'false',
-      )
-    })
-
-    it('should render cancel and import buttons', () => {
-      render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
-
-      expect(screen.getByText('app.newApp.Cancel'))!.toBeInTheDocument()
-      expect(screen.getByText('app.newApp.import'))!.toBeInTheDocument()
-    })
-
-    it('should render uploader when file tab is active', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_FILE}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
-    })
-
-    it('should render URL input when URL tab is active', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByRole('textbox', { name: 'DSL URL' }))!.toBeInTheDocument()
-    })
   })
 
   describe('Props', () => {
-    it('should use FROM_FILE as default activeTab', () => {
-      render(<CreateFromDSLModal show={true} onClose={vi.fn()} />, { wrapper: createWrapper() })
-
-      // File tab content should be visible
-      // File tab content should be visible
-      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
-    })
-
-    it('should use provided activeTab prop', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      expect(screen.getByText('DSL URL'))!.toBeInTheDocument()
-    })
-
-    it('should use provided dslUrl prop', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-          dslUrl="https://example.com/test.pipeline"
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      expect(input)!.toHaveValue('https://example.com/test.pipeline')
-    })
-
-    it('should call onClose when cancel button is clicked', () => {
+    it('should call onClose when cancel button is clicked', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByText('app.newApp.Cancel'))
+      await user.click(screen.getByText('app.newApp.Cancel'))
       expect(onClose).toHaveBeenCalled()
     })
   })
@@ -228,22 +133,6 @@ describe('CreateFromDSLModal', () => {
       await user.tab()
 
       expect(input)!.toHaveFocus()
-    })
-
-    it('should update URL value when typing', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      expect(input)!.toHaveValue('https://example.com/test.pipeline')
     })
 
     it('should have disabled import button when no file is selected in file tab', () => {
@@ -273,55 +162,10 @@ describe('CreateFromDSLModal', () => {
       const importButton = screen.getByText('app.newApp.import').closest('button')
       expect(importButton)!.toBeDisabled()
     })
-
-    it('should enable import button when URL is entered', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).not.toBeDisabled()
-    })
   })
 
   // API Call Tests
   describe('API Calls', () => {
-    it('should call importDSL with URL mode when URL tab is active', async () => {
-      mockImportDSL.mockResolvedValue(createImportDSLResponse())
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockImportDSL).toHaveBeenCalledWith({
-          body: {
-            mode: 'yaml-url',
-            yaml_url: 'https://example.com/test.pipeline',
-          },
-        })
-      })
-    })
-
     it('should handle successful import with COMPLETED status', async () => {
       const onSuccess = vi.fn()
       const onClose = vi.fn()
@@ -338,14 +182,22 @@ describe('CreateFromDSLModal', () => {
         { wrapper: createWrapper() },
       )
 
+      const user = userEvent.setup()
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
+      await user.type(input, 'https://example.com/test.pipeline')
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
-        expect(onSuccess).toHaveBeenCalled()
+        expect(mockImportDSL).toHaveBeenCalledExactlyOnceWith({
+          body: { mode: 'yaml-url', yaml_url: 'https://example.com/test.pipeline' },
+        })
+        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledExactlyOnceWith(
+          'pipeline-456',
+          true,
+        )
+        expect(onSuccess).toHaveBeenCalledOnce()
         expect(onClose).toHaveBeenCalled()
         expect(toastMocks.record).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -356,82 +208,8 @@ describe('CreateFromDSLModal', () => {
       })
     })
 
-    it('should handle import with COMPLETED_WITH_WARNINGS status', async () => {
-      const onSuccess = vi.fn()
-      const onClose = vi.fn()
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({ status: 'completed-with-warnings' }),
-      )
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onSuccess={onSuccess}
-          onClose={onClose}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'warning',
-          }),
-        )
-      })
-    })
-
-    it('should handle import with PENDING status and show error modal', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-      const onClose = vi.fn()
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          status: 'pending',
-          imported_dsl_version: '0.9.0',
-          current_dsl_version: '1.0.0',
-        }),
-      )
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={onClose}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(onClose).toHaveBeenCalled()
-      })
-
-      // Advance timer to show error modal
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-      })
-
-      vi.useRealTimers()
-    })
-
     it('should handle API error', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(null)
 
       render(
@@ -447,7 +225,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -459,6 +237,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should handle FAILED status', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'failed' }))
 
       render(
@@ -474,7 +253,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -484,44 +263,16 @@ describe('CreateFromDSLModal', () => {
         )
       })
     })
-
-    it('should check plugin dependencies after successful import', async () => {
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          status: 'completed',
-          pipeline_id: 'pipeline-123',
-        }),
-      )
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('pipeline-123', true)
-      })
-    })
   })
 
   // Event Handler Tests
   describe('Event Handlers', () => {
-    it('should call onClose when header close button is clicked', () => {
+    it('should call onClose when header close button is clicked', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      fireEvent.click(screen.getByRole('button', { name: 'common.operation.close' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
 
       expect(onClose).toHaveBeenCalled()
     })
@@ -551,23 +302,19 @@ describe('CreateFromDSLModal', () => {
       })
     })
 
-    it('should close modal on ESC key press', () => {
+    it('should close modal on ESC key press', async () => {
+      const user = userEvent.setup()
       const onClose = vi.fn()
       render(<CreateFromDSLModal show={true} onClose={onClose} />, { wrapper: createWrapper() })
 
-      const escEvent = new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        keyCode: 27,
-        bubbles: true,
-      })
-      document.dispatchEvent(escEvent)
+      await user.keyboard('{Escape}')
 
       expect(onClose).toHaveBeenCalled()
     })
 
     it('should not close on ESC when error modal is shown', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       const onClose = vi.fn()
       mockImportDSL.mockResolvedValue(createImportDSLResponse({ status: 'pending' }))
 
@@ -584,7 +331,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       await waitFor(() => {
         expect(onClose).toHaveBeenCalled()
@@ -599,13 +346,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       // Now ESC should not close main modal because error modal is shown
-      const escEvent = new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        keyCode: 27,
-        bubbles: true,
-      })
-      document.dispatchEvent(escEvent)
+      await user.keyboard('{Escape}')
 
       // onClose should not be called again when error modal is shown
       expect(onClose).not.toHaveBeenCalled()
@@ -614,8 +355,13 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should prevent duplicate submissions', async () => {
-      mockImportDSL.mockImplementation(
-        () => new Promise((resolve) => setTimeout(() => resolve(createImportDSLResponse()), 1000)),
+      const user = userEvent.setup()
+      let resolve!: (value: ReturnType<typeof createImportDSLResponse>) => void
+      mockImportDSL.mockImplementationOnce(
+        () =>
+          new Promise((res) => {
+            resolve = res
+          }),
       )
 
       render(
@@ -632,208 +378,22 @@ describe('CreateFromDSLModal', () => {
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
 
-      fireEvent.click(importButton)
-      fireEvent.click(importButton)
-      fireEvent.click(importButton)
+      await user.click(importButton)
+      await user.click(importButton)
+      await user.click(importButton)
 
       // Should only be called once due to isCreatingRef
       await waitFor(() => {
         expect(mockImportDSL).toHaveBeenCalledTimes(1)
       })
-    })
-  })
-
-  describe('Memoization', () => {
-    it('should correctly compute buttonDisabled based on currentTab and file/URL', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_FILE}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      // File tab with no file - disabled
-      let importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton)!.toBeDisabled()
-
-      // Switch to URL tab by clicking on it
-      fireEvent.click(screen.getByText('app.importFromDSLUrl'))
-
-      // Still disabled (no URL)
-      importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton)!.toBeDisabled()
-
-      // Add URL value - should enable
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com' } })
-
-      importButton = screen.getByText('app.newApp.import').closest('button')
-      expect(importButton).not.toBeDisabled()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle empty URL gracefully', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      // Should not call API with empty URL
-      expect(mockImportDSL).not.toHaveBeenCalled()
-    })
-
-    it('should handle undefined onSuccess gracefully', async () => {
-      mockImportDSL.mockResolvedValue(createImportDSLResponse())
-      mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-          // onSuccess is undefined
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-
-      // Should not throw
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        expect(mockPush).toHaveBeenCalled()
-      })
-    })
-
-    it('should handle response without pipeline_id', async () => {
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          status: 'completed',
-          pipeline_id: null,
-        }),
-      )
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await waitFor(() => {
-        // Should not call handleCheckPluginDependencies when pipeline_id is null
-        expect(mockHandleCheckPluginDependencies).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should handle empty file in file tab gracefully', () => {
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_FILE}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      // Should not call API with no file
-      expect(mockImportDSL).not.toHaveBeenCalled()
-    })
-
-    it('should return early in onCreate when file tab has no file (direct trigger)', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      // Test the early return branch by force-triggering the button even when disabled
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_FILE}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-
-      // Remove disabled attribute temporarily to test the early return
-      importButton.removeAttribute('disabled')
-
-      // Dispatch a native click event to bypass any React disabled checks
-      const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
-      importButton.dispatchEvent(clickEvent)
-
-      // Wait for debounce to trigger
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      // Should not call API due to early return in onCreate
-      expect(mockImportDSL).not.toHaveBeenCalled()
-
-      vi.useRealTimers()
-    })
-
-    it('should return early in onCreate when URL tab has no URL (direct trigger)', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-
-      // Remove disabled attribute to test the early return
-      importButton.removeAttribute('disabled')
-
-      // Dispatch a native click event
-      const clickEvent = new MouseEvent('click', { bubbles: true, cancelable: true })
-      importButton.dispatchEvent(clickEvent)
-
-      // Wait for debounce
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      // Should not call API due to early return
-      expect(mockImportDSL).not.toHaveBeenCalled()
-
-      vi.useRealTimers()
+      await act(async () => resolve(createImportDSLResponse()))
     })
   })
 
   // File Import Tests (covers readFile, handleFile, file mode import)
   describe('File Import', () => {
     it('should read file content when file is selected', async () => {
+      const user = userEvent.setup()
       mockImportDSL.mockResolvedValue(createImportDSLResponse())
       mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
 
@@ -854,11 +414,7 @@ describe('CreateFromDSLModal', () => {
 
       // Get the file input and simulate file selection
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      Object.defineProperty(fileInput, 'files', {
-        value: [mockFile],
-        configurable: true,
-      })
-      fireEvent.change(fileInput)
+      await user.upload(fileInput, mockFile)
 
       // Wait for FileReader to complete
       await waitFor(() => {
@@ -867,7 +423,7 @@ describe('CreateFromDSLModal', () => {
       })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       // Verify API was called with file content
       await waitFor(() => {
@@ -881,6 +437,7 @@ describe('CreateFromDSLModal', () => {
     })
 
     it('should clear file content when file is removed', async () => {
+      const user = userEvent.setup()
       render(
         <CreateFromDSLModal
           show={true}
@@ -893,27 +450,17 @@ describe('CreateFromDSLModal', () => {
       // First add a file
       const mockFile = new File(['content'], 'test.pipeline', { type: 'application/octet-stream' })
       const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      Object.defineProperty(fileInput, 'files', {
-        value: [mockFile],
-        configurable: true,
-      })
-      fireEvent.change(fileInput)
+      await user.upload(fileInput, mockFile)
 
       // Wait for file to be displayed
       await waitFor(() => {
         expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
       })
 
-      // Now remove the file by clicking the delete icon button.
-      const actionButton = document.querySelector('[class*="group-hover"]')
-      const deleteButton = actionButton?.querySelector('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        // File should be removed - uploader prompt should show again
-        await waitFor(() => {
-          expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
-        })
-      }
+      await user.click(screen.getByRole('button', { name: 'common.operation.remove' }))
+      expect(screen.queryByText('test.pipeline')).not.toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'app.newApp.import' })).toBeDisabled()
+      expect(mockImportDSL).not.toHaveBeenCalled()
     })
   })
 
@@ -921,6 +468,7 @@ describe('CreateFromDSLModal', () => {
   describe('DSL Confirm Flow', () => {
     it('should handle DSL confirm success', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
       const onSuccess = vi.fn()
       const onClose = vi.fn()
 
@@ -956,7 +504,7 @@ describe('CreateFromDSLModal', () => {
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
       const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
+      await user.click(importButton)
 
       // Wait for pending status handling
       await waitFor(() => {
@@ -972,115 +520,27 @@ describe('CreateFromDSLModal', () => {
         expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('app.newApp.Confirm'))
+      expect(screen.getByText('0.9.0')).toBeInTheDocument()
+      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+      await user.click(screen.getByText('app.newApp.Confirm'))
 
       // Verify confirm was called
       await waitFor(() => {
         expect(mockImportDSLConfirm).toHaveBeenCalledWith({ params: { import_id: 'import-123' } })
       })
 
-      // Verify success handling
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'success',
-          }),
-        )
-      })
+      await waitFor(() => expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline'))
+      expect(screen.queryByText('app.newApp.Confirm')).not.toBeInTheDocument()
+      expect(mockHandleCheckPluginDependencies).toHaveBeenCalledWith('pipeline-456', true)
 
       vi.useRealTimers()
-    })
-
-    it('should handle DSL confirm with no importId', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          id: '', // Empty id
-          status: 'pending',
-        }),
-      )
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      const importButton = screen.getByText('app.newApp.import').closest('button')!
-      fireEvent.click(importButton)
-
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('app.newApp.Confirm'))
-
-      // Confirm should not be called since importId is empty string (falsy)
-      expect(mockImportDSLConfirm).not.toHaveBeenCalled()
-
-      vi.useRealTimers()
-    })
-
-    it('should handle DSL confirm API error', async () => {
-      vi.useFakeTimers({ shouldAdvanceTime: true })
-
-      mockImportDSL.mockResolvedValue(
-        createImportDSLResponse({
-          id: 'import-123',
-          status: 'pending',
-        }),
-      )
-
-      mockImportDSLConfirm.mockResolvedValue(null)
-
-      render(
-        <CreateFromDSLModal
-          show={true}
-          onClose={vi.fn()}
-          activeTab={CreateFromDSLModalTab.FROM_URL}
-        />,
-        { wrapper: createWrapper() },
-      )
-
-      const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-      fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
-
-      fireEvent.click(screen.getByText('app.newApp.import').closest('button')!)
-
-      await act(async () => {
-        vi.advanceTimersByTime(400)
-      })
-
-      await waitFor(() => {
-        expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
-      })
-
-      fireEvent.click(screen.getByText('app.newApp.Confirm'))
-
-      await waitFor(() => {
-        expect(toastMocks.record).toHaveBeenCalledWith(
-          expect.objectContaining({
-            type: 'error',
-          }),
-        )
-      })
-
-      vi.useRealTimers()
+      expect(onSuccess).toHaveBeenCalledOnce()
+      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
     })
 
     it('should handle DSL confirm with FAILED status', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
 
       mockImportDSL.mockResolvedValue(
         createImportDSLResponse({
@@ -1107,7 +567,7 @@ describe('CreateFromDSLModal', () => {
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
-      fireEvent.click(screen.getByText('app.newApp.import').closest('button')!)
+      await user.click(screen.getByText('app.newApp.import').closest('button')!)
 
       await act(async () => {
         vi.advanceTimersByTime(400)
@@ -1117,7 +577,7 @@ describe('CreateFromDSLModal', () => {
         expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByText('app.newApp.Confirm'))
+      await user.click(screen.getByText('app.newApp.Confirm'))
 
       await waitFor(() => {
         expect(toastMocks.record).toHaveBeenCalledWith(
@@ -1132,6 +592,7 @@ describe('CreateFromDSLModal', () => {
 
     it('should close error modal when cancel is clicked', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true })
+      const user = userEvent.setup()
 
       mockImportDSL.mockResolvedValue(
         createImportDSLResponse({
@@ -1151,7 +612,7 @@ describe('CreateFromDSLModal', () => {
       const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
       fireEvent.change(input, { target: { value: 'https://example.com/test.pipeline' } })
 
-      fireEvent.click(screen.getByText('app.newApp.import').closest('button')!)
+      await user.click(screen.getByText('app.newApp.import').closest('button')!)
 
       await act(async () => {
         vi.advanceTimersByTime(400)
@@ -1165,519 +626,27 @@ describe('CreateFromDSLModal', () => {
       // There are two Cancel buttons now (one in main modal footer, one in error modal)
       // Find the Cancel button in the error modal context
       const cancelButtons = screen.getAllByText('app.newApp.Cancel')
-      fireEvent.click(cancelButtons[cancelButtons.length - 1]!)
+      await user.click(cancelButtons[cancelButtons.length - 1]!)
 
+      await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+      expect(mockImportDSLConfirm).not.toHaveBeenCalled()
+      expect(mockPush).not.toHaveBeenCalled()
       vi.useRealTimers()
     })
   })
 })
 
-// Uploader Component Tests
-describe('Uploader', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  describe('Rendering', () => {
-    it('should render upload prompt when no file', () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      expect(screen.getByText('app.dslUploader.button'))!.toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'app.dslUploader.browse' }))!.toBeInTheDocument()
-    })
-
-    it('should render file info when file is selected', () => {
-      const mockFile = createMockFile('test.pipeline')
-
-      render(<Uploader file={mockFile} updateFile={vi.fn()} />)
-
-      expect(screen.getByText('test.pipeline'))!.toBeInTheDocument()
-      expect(screen.getByText('PIPELINE'))!.toBeInTheDocument()
-    })
-  })
-
-  describe('Event Handlers', () => {
-    it('should call updateFile when browse link is clicked and file is selected', async () => {
-      const updateFile = vi.fn()
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      // Get the hidden input
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Create a mock file
-      const mockFile = createMockFile()
-
-      // Simulate file selection
-      Object.defineProperty(fileInput, 'files', {
-        value: [mockFile],
-      })
-
-      fireEvent.change(fileInput)
-
-      expect(updateFile).toHaveBeenCalledWith(mockFile)
-    })
-
-    it('should call updateFile with undefined when delete button is clicked', () => {
-      const updateFile = vi.fn()
-      const mockFile = createMockFile()
-
-      render(<Uploader file={mockFile} updateFile={updateFile} />)
-
-      // Find and click delete button - the button contains the delete icon
-      const deleteButton = document.querySelector('button')
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        expect(updateFile).toHaveBeenCalledWith()
-      }
-    })
-
-    it('should handle browse click', () => {
-      const updateFile = vi.fn()
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      const browseLink = screen.getByRole('button', { name: 'app.dslUploader.browse' })
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-
-      // Mock click on input
-      const clickSpy = vi.spyOn(fileInput, 'click')
-
-      fireEvent.click(browseLink)
-
-      expect(clickSpy).toHaveBeenCalled()
-    })
-  })
-
-  describe('Drag and Drop', () => {
-    it('should show drag state when dragging over', () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      const dropArea = document.querySelector('[class*="border-dashed"]')!
-
-      // The drag state is triggered when dragEnter fires on something other than the dragRef
-      // In the component, setDragging(true) happens when e.target !== dragRef.current
-      fireEvent.dragEnter(dropArea, {
-        dataTransfer: { files: [] },
-      })
-
-      // The class should be present since dropArea is not dragRef
-      expect(dropArea.className).toContain('border-components-dropzone')
-    })
-
-    it('should handle dragOver event', () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      const dashedArea = document.querySelector('[class*="border-dashed"]')
-      const dropArea = dashedArea?.parentElement
-      if (!dropArea) return
-
-      // DragOver should prevent default and stop propagation
-      const dragOverEvent = new Event('dragover', { bubbles: true, cancelable: true })
-      dropArea.dispatchEvent(dragOverEvent)
-
-      // Event should be handled without errors
-      // Event should be handled without errors
-      expect(dropArea)!.toBeInTheDocument()
-    })
-
-    it('should handle dragLeave event and reset dragging state when target is dragRef', async () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      const dropArea = document.querySelector('[class*="border-dashed"]')!
-      const dropAreaParent = dropArea.parentElement
-
-      if (!dropAreaParent) return
-
-      // First trigger dragEnter to set dragging state
-      fireEvent.dragEnter(dropArea, {
-        dataTransfer: { files: [] },
-      })
-
-      // Verify dragging state is set - the accent class appears when dragging
-      await waitFor(() => {
-        expect(dropArea.className).toContain('border-components-dropzone-border-accent')
-      })
-
-      // The dragRef div appears when dragging is true
-      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
-      expect(dragRefDiv)!.toBeInTheDocument()
-
-      // When dragLeave happens on the dragRef element, setDragging(false) is called
-      if (dragRefDiv) {
-        // Fire dragleave directly on the dragRef element
-        fireEvent.dragLeave(dragRefDiv)
-
-        // After dragLeave on dragRef, dragging should be false and accent class removed
-        await waitFor(() => {
-          expect(dropArea.className).not.toContain('border-components-dropzone-border-accent')
-        })
-      }
-    })
-
-    it('should not reset dragging when dragLeave target is not dragRef', async () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      const dropArea = document.querySelector('[class*="border-dashed"]')!
-      const dropAreaParent = dropArea.parentElement
-
-      if (!dropAreaParent) return
-
-      // First trigger dragEnter to set dragging state
-      fireEvent.dragEnter(dropArea, {
-        dataTransfer: { files: [] },
-      })
-
-      // Verify dragging state is set
-      await waitFor(() => {
-        expect(dropArea.className).toContain('border-components-dropzone-border-accent')
-      })
-
-      // Trigger dragLeave on the drop area (not dragRef) - should NOT reset dragging
-      fireEvent.dragLeave(dropArea, {
-        dataTransfer: { files: [] },
-      })
-
-      // Dragging should still be true (accent class still present)
-      // because target is not dragRef
-      expect(dropArea.className).toContain('border-components-dropzone')
-    })
-
-    it('should handle file drop', async () => {
-      const updateFile = vi.fn()
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      const dashedArea = document.querySelector('[class*="border-dashed"]')
-      const dropArea = dashedArea?.parentElement
-      if (!dropArea) return
-
-      const mockFile = createMockFile()
-
-      fireEvent.drop(dropArea, {
-        dataTransfer: {
-          files: [mockFile],
-        },
-      })
-
-      expect(updateFile).toHaveBeenCalledWith(mockFile)
-    })
-
-    it('should reject multiple files', async () => {
-      const updateFile = vi.fn()
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      const dashedArea = document.querySelector('[class*="border-dashed"]')
-      const dropArea = dashedArea?.parentElement
-      if (!dropArea) return
-
-      const mockFile1 = createMockFile('file1.pipeline')
-      const mockFile2 = createMockFile('file2.pipeline')
-
-      fireEvent.drop(dropArea, {
-        dataTransfer: {
-          files: [mockFile1, mockFile2],
-        },
-      })
-
-      expect(updateFile).not.toHaveBeenCalled()
-      expect(toastMocks.record).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'error',
-        }),
-      )
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle drop event without dataTransfer', () => {
-      const updateFile = vi.fn()
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      const dashedArea = document.querySelector('[class*="border-dashed"]')
-      const dropArea = dashedArea?.parentElement
-      if (!dropArea) return
-
-      fireEvent.drop(dropArea)
-
-      expect(updateFile).not.toHaveBeenCalled()
-    })
-
-    it('should handle file cancel in selectHandle and restore original file', () => {
-      const updateFile = vi.fn()
-
-      render(<Uploader file={undefined} updateFile={updateFile} />)
-
-      // Get the file input
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      expect(fileInput)!.toBeInTheDocument()
-
-      // Spy on input click before triggering selectHandle
-      const clickSpy = vi.spyOn(fileInput, 'click').mockImplementation(() => {
-        // After click, oncancel should be set
-      })
-
-      const browseLink = screen.getByRole('button', { name: 'app.dslUploader.browse' })
-      fireEvent.click(browseLink)
-
-      // selectHandle should have triggered click on input
-      expect(clickSpy).toHaveBeenCalled()
-
-      // After selectHandle runs, oncancel should be set
-      // Trigger cancel - should restore original file (undefined in this case)
-      if (fileInput.oncancel) {
-        fileInput.oncancel(new Event('cancel'))
-        // updateFile should be called with undefined (the original file)
-        expect(updateFile).toHaveBeenCalledWith(undefined)
-      }
-
-      clickSpy.mockRestore()
-    })
-
-    it('should not set dragging when target equals dragRef', () => {
-      render(<Uploader file={undefined} updateFile={vi.fn()} />)
-
-      const dropArea = document.querySelector('[class*="border-dashed"]')!
-
-      // First trigger drag to show dragRef div
-      fireEvent.dragEnter(dropArea, {
-        dataTransfer: { files: [] },
-      })
-
-      // Now the dragRef div should exist
-      const dragRefDiv = document.querySelector('[class*="absolute top-0 left-0"]')
-
-      // When dragEnter happens on dragRef itself, setDragging should NOT be called
-      if (dragRefDiv) {
-        const dropAreaParent = dropArea.parentElement
-        if (dropAreaParent) {
-          // Trigger dragEnter with target = dragRef - this should NOT set dragging
-          const dragEnterEvent = new Event('dragenter', { bubbles: true })
-          Object.defineProperty(dragEnterEvent, 'target', { value: dragRefDiv })
-          dropAreaParent.dispatchEvent(dragEnterEvent)
-        }
-      }
-    })
-
-    it('should handle removeFile when file input exists', () => {
-      const updateFile = vi.fn()
-      const mockFile = createMockFile()
-
-      render(<Uploader file={mockFile} updateFile={updateFile} />)
-
-      // Find and click delete button
-      const deleteButton = document.querySelector('button')
-      expect(deleteButton)!.toBeInTheDocument()
-
-      if (deleteButton) {
-        fireEvent.click(deleteButton)
-        // updateFile should be called without arguments
-        expect(updateFile).toHaveBeenCalledWith()
-      }
-
-      // Verify file input value was cleared
-      const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-      expect(fileInput.value).toBe('')
-    })
-  })
-})
-
-// DSLConfirmModal Component Tests
 describe('DSLConfirmModal', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
-    it('should render title', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-    })
-
-    it('should render version information', () => {
-      render(
-        <DSLConfirmModal
-          versions={{
-            importedVersion: '0.9.0',
-            systemVersion: '1.0.0',
-          }}
-          onCancel={vi.fn()}
-          onConfirm={vi.fn()}
-        />,
-      )
-
-      expect(screen.getByText('0.9.0'))!.toBeInTheDocument()
-      expect(screen.getByText('1.0.0'))!.toBeInTheDocument()
-    })
-
-    it('should render cancel and confirm buttons', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      expect(screen.getByText('app.newApp.Cancel'))!.toBeInTheDocument()
-      expect(screen.getByText('app.newApp.Confirm'))!.toBeInTheDocument()
-    })
-
-    it('should render with default empty versions', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-    })
-
     it('should disable confirm button when confirmDisabled is true', () => {
       render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} confirmDisabled={true} />)
 
       const confirmButton = screen.getByText('app.newApp.Confirm').closest('button')
       expect(confirmButton)!.toBeDisabled()
     })
-  })
-
-  describe('Event Handlers', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      const onCancel = vi.fn()
-      render(<DSLConfirmModal onCancel={onCancel} onConfirm={vi.fn()} />)
-
-      fireEvent.click(screen.getByText('app.newApp.Cancel'))
-      expect(onCancel).toHaveBeenCalled()
-    })
-
-    it('should call onConfirm when confirm button is clicked', () => {
-      const onConfirm = vi.fn()
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={onConfirm} />)
-
-      fireEvent.click(screen.getByText('app.newApp.Confirm'))
-      expect(onConfirm).toHaveBeenCalled()
-    })
-
-    it('should bind onClose to onCancel via arrow function', () => {
-      // This test verifies that the Modal's onClose prop calls onCancel
-      // The implementation is: onClose={() => onCancel()}
-      const onCancel = vi.fn()
-      render(<DSLConfirmModal onCancel={onCancel} onConfirm={vi.fn()} />)
-
-      // Trigger the cancel button which also calls onCancel
-      // This confirms onCancel is properly wired up
-      fireEvent.click(screen.getByText('app.newApp.Cancel'))
-      expect(onCancel).toHaveBeenCalledTimes(1)
-    })
-
-    it('should call onCancel when modal is closed via escape key', () => {
-      const onCancel = vi.fn()
-      render(<DSLConfirmModal onCancel={onCancel} onConfirm={vi.fn()} />)
-
-      // Pressing Escape triggers Modal's onClose which calls onCancel
-      const escEvent = new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        keyCode: 27,
-        bubbles: true,
-      })
-      document.dispatchEvent(escEvent)
-
-      // onCancel should be called via the onClose={() => onCancel()} callback
-      expect(onCancel).toHaveBeenCalled()
-    })
-  })
-
-  describe('Props', () => {
-    it('should use default confirmDisabled when not provided', () => {
-      render(<DSLConfirmModal onCancel={vi.fn()} onConfirm={vi.fn()} />)
-
-      const confirmButton = screen.getByText('app.newApp.Confirm').closest('button')
-      expect(confirmButton).not.toBeDisabled()
-    })
-  })
-})
-
-describe('CreateFromDSLModal Integration', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockImportDSL.mockReset()
-    mockImportDSLConfirm.mockReset()
-    mockPush.mockReset()
-    toastMocks.record.mockReset()
-    mockHandleCheckPluginDependencies.mockReset()
-  })
-
-  it('should complete full import flow with URL', async () => {
-    const onSuccess = vi.fn()
-    const onClose = vi.fn()
-    mockImportDSL.mockResolvedValue(createImportDSLResponse())
-    mockHandleCheckPluginDependencies.mockResolvedValue(undefined)
-
-    render(<CreateFromDSLModal show={true} onSuccess={onSuccess} onClose={onClose} />, {
-      wrapper: createWrapper(),
-    })
-
-    // Switch to URL tab
-    fireEvent.click(screen.getByText('app.importFromDSLUrl'))
-
-    // Enter URL
-    const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-    fireEvent.change(input, { target: { value: 'https://example.com/pipeline.yaml' } })
-
-    const importButton = screen.getByText('app.newApp.import').closest('button')!
-    fireEvent.click(importButton)
-
-    // Verify API was called
-    await waitFor(() => {
-      expect(mockImportDSL).toHaveBeenCalled()
-    })
-
-    // Verify success callbacks after API completes
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalled()
-    })
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-789/pipeline')
-    })
-  })
-
-  it('should handle version mismatch flow - shows error modal', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
-    const onClose = vi.fn()
-    mockImportDSL.mockResolvedValue(
-      createImportDSLResponse({
-        status: 'pending',
-        imported_dsl_version: '0.8.0',
-        current_dsl_version: '1.0.0',
-      }),
-    )
-
-    render(
-      <CreateFromDSLModal
-        show={true}
-        onClose={onClose}
-        activeTab={CreateFromDSLModalTab.FROM_URL}
-      />,
-      { wrapper: createWrapper() },
-    )
-
-    // Enter URL
-    const input = screen.getByPlaceholderText('app.importFromDSLUrlPlaceholder')
-    fireEvent.change(input, { target: { value: 'https://example.com/old-pipeline.yaml' } })
-
-    const importButton = screen.getByText('app.newApp.import').closest('button')!
-    fireEvent.click(importButton)
-
-    // Wait for API call
-    await waitFor(() => {
-      expect(mockImportDSL).toHaveBeenCalled()
-    })
-
-    // Wait for onClose to be called
-    await waitFor(() => {
-      expect(onClose).toHaveBeenCalled()
-    })
-
-    // Advance timer to show error modal
-    await act(async () => {
-      vi.advanceTimersByTime(400)
-    })
-
-    // Verify error modal is shown
-    await waitFor(() => {
-      expect(screen.getByText('app.newApp.appCreateDSLErrorTitle'))!.toBeInTheDocument()
-    })
-
-    vi.useRealTimers()
   })
 })

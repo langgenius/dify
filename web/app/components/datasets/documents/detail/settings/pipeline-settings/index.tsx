@@ -1,5 +1,6 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { CrawlResultItem, CustomFile } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
@@ -28,9 +29,7 @@ type PipelineSettingsProps = {
 const PipelineSettings = ({ datasetId, documentId }: PipelineSettingsProps) => {
   const { t } = useTranslation(['datasetCreation', 'datasetPipeline'])
   const { push } = useRouter()
-  const [estimateData, setEstimateData] = useState<FileIndexingEstimateResponse | undefined>(
-    undefined,
-  )
+  const [estimateData, setEstimateData] = useState<IndexingEstimateResponse | undefined>(undefined)
   const pipelineId = useDatasetDetailContextWithSelector((state) => state.dataset?.pipeline_id)
 
   const isPreview = useRef(false)

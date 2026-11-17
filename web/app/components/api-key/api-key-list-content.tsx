@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -86,17 +87,17 @@ export function ApiKeyListContent({
               backdropProps={{ forceRender: true }}
               finalFocus={() => (deleteSucceededRef.current ? finalFocus.current : true)}
             >
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {t(($) => $['actionMsg.deleteConfirmTitle'], { ns: 'appApi' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="system-md-regular wrap-break-word text-text-tertiary">
+                <AlertDialogDescription>
                   <span className="mb-2 block font-mono" translate="no">
                     {payload && maskApiKey(payload.token)}
                   </span>
                   {t(($) => $['actionMsg.deleteConfirmTips'], { ns: 'appApi' })}
                 </AlertDialogDescription>
-              </div>
+              </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancelButton disabled={isDeleting}>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}

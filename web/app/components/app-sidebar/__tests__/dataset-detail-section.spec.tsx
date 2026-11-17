@@ -1,13 +1,19 @@
-import type { DataSet, RelatedAppResponse } from '@/models/datasets'
+import type {
+  DatasetDetailWithPartialMembersResponse,
+  RelatedAppListResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { screen } from '@testing-library/react'
-import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { DatasetACLPermission } from '@/utils/permission'
 import DatasetDetailSection from '../dataset-detail-section'
 
 let mockPathname = '/datasets/dataset-1/documents'
-let mockDataset: DataSet | undefined
-let mockRelatedApps: RelatedAppResponse | undefined
+let mockDataset: DatasetDetailWithPartialMembersResponse | undefined
+let mockRelatedApps: RelatedAppListResponse | undefined
 let mockIsRbacEnabled = true
+let mockDeploymentEdition: DeploymentEdition = 'ENTERPRISE'
 const mockConsoleState = vi.hoisted(() => ({
   current: {
     userProfile: { id: 'user-1' },
@@ -15,15 +21,26 @@ const mockConsoleState = vi.hoisted(() => ({
   },
 }))
 
-const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) =>
-  renderWithConsoleQuery(ui, {
+const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
+  const queryClient = createConsoleQueryClient()
+  const input = { params: { dataset_id: 'dataset-1' } }
+  queryClient.setQueryData(consoleQuery.datasets.byDatasetId.get.queryKey({ input }), mockDataset)
+  queryClient.setQueryData(
+    consoleQuery.datasets.byDatasetId.relatedApps.get.queryKey({ input }),
+    mockRelatedApps,
+  )
+  return renderWithConsoleQuery(ui, {
+    queryClient,
     systemFeatures: {
+      deployment_edition: mockDeploymentEdition,
       rbac_enabled: mockIsRbacEnabled,
     },
   })
+}
 
 vi.mock('@/next/navigation', () => ({
   usePathname: () => mockPathname,
+  useSelectedLayoutSegment: () => null,
 }))
 
 vi.mock('@/context/permission-state', async () => {
@@ -31,31 +48,17 @@ vi.mock('@/context/permission-state', async () => {
   return createPermissionStateModuleMock(() => mockConsoleState.current)
 })
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'datasets.byDatasetId.get': () => ({ data: mockDataset, refetch: vi.fn() }),
-    'datasets.byDatasetId.relatedApps.get': () => ({ data: mockRelatedApps }),
-  })
-})
-
 vi.mock('../dataset-info', () => ({
   default: () => <div>dataset info</div>,
-}))
-
-vi.mock('../nav-link', () => ({
-  default: ({ name, href, disabled }: { name: string; href: string; disabled?: boolean }) => {
-    if (disabled) return <button disabled>{name}</button>
-
-    return <a href={href}>{name}</a>
-  },
 }))
 
 vi.mock('../../datasets/extra-info', () => ({
   default: () => <div>dataset extra info</div>,
 }))
 
-const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
+const createDataset = (
+  overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
+): DatasetDetailWithPartialMembersResponse =>
   ({
     id: 'dataset-1',
     name: 'Camera Technical Spec',
@@ -85,13 +88,14 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet =>
     enable_api: true,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
-  }) as DataSet
+  }) as DatasetDetailWithPartialMembersResponse
 
 describe('DatasetDetailSection', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockPathname = '/datasets/dataset-1/documents'
     mockIsRbacEnabled = true
+    mockDeploymentEdition = 'ENTERPRISE'
     mockDataset = createDataset()
     mockRelatedApps = {
       data: [],
@@ -99,7 +103,7 @@ describe('DatasetDetailSection', () => {
     }
   })
 
-  it('should hide dataset stats and API access when dataset edit permission is missing', () => {
+  it('hides dataset statistics without edit permission', () => {
     mockDataset = createDataset({
       permission_keys: [DatasetACLPermission.Readonly],
     })
@@ -162,5 +166,58 @@ describe('DatasetDetailSection', () => {
     expect(
       screen.queryByRole('link', { name: 'common.datasetMenus.hitTesting' }),
     ).not.toBeInTheDocument()
+  })
+
+  it('should render evaluation for an internal dataset with pipeline-test permission', () => {
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('link', { name: 'evaluation.title' })).toHaveAttribute(
+      'href',
+      '/datasets/dataset-1/evaluation',
+    )
+  })
+
+  it('should disable evaluation without pipeline-test permission', () => {
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+  })
+
+  it('should disable evaluation while a RAG pipeline is unpublished', () => {
+    mockDataset = createDataset({
+      runtime_mode: 'rag_pipeline',
+      is_published: false,
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.getByRole('button', { name: 'evaluation.title' })).toBeDisabled()
+  })
+
+  it('should hide evaluation for external datasets', () => {
+    mockDataset = createDataset({
+      provider: 'external',
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
+  })
+
+  it('should hide evaluation in the community edition', () => {
+    mockDeploymentEdition = 'COMMUNITY'
+    mockDataset = createDataset({
+      permission_keys: [DatasetACLPermission.PipelineTest],
+    })
+
+    render(<DatasetDetailSection expand />)
+
+    expect(screen.queryByText('evaluation.title')).not.toBeInTheDocument()
   })
 })

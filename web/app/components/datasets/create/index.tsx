@@ -1,12 +1,8 @@
 'use client'
 
+import type { DatasetAndDocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { NotionPage } from '@/models/common'
-import type {
-  CrawlOptions,
-  CrawlResultItem,
-  createDocumentResponse,
-  FileItem,
-} from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
@@ -80,7 +76,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [indexingTypeCache, setIndexTypeCache] = useState('')
   const [retrievalMethodCache, setRetrievalMethodCache] = useState<RETRIEVE_METHOD | ''>('')
   const [fileList, setFiles] = useState<FileItem[]>([])
-  const [result, setResult] = useState<createDocumentResponse | undefined>()
+  const [result, setResult] = useState<DatasetAndDocumentResponse | undefined>()
   const [notionPages, setNotionPages] = useState<NotionPage[]>([])
   const [notionCredentialId, setNotionCredentialId] = useState<string>('')
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
@@ -123,7 +119,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setIndexTypeCache(type)
   }, [])
 
-  const updateResultCache = useCallback((res?: createDocumentResponse) => {
+  const updateResultCache = useCallback((res?: DatasetAndDocumentResponse) => {
     setResult(res)
   }, [])
 

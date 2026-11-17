@@ -181,7 +181,8 @@ const WorkflowChildren = () => {
         <UpdateDSLModal
           appId={appId}
           appMode={isChatflow ? 'advanced-chat' : 'workflow'}
-          onCancel={() => setShowImportDSLModal(false)}
+          open
+          onOpenChange={(open) => setShowImportDSLModal(open)}
           onBackup={exportCheck!}
           onImport={handlePaneContextmenuCancel}
         />

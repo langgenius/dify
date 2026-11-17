@@ -5,6 +5,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -19,6 +20,7 @@ import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { getErrorMessage } from '@/utils/error-message'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import PipelineScreenShot from './screenshot'
 
@@ -32,8 +34,10 @@ const Conversion = () => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const { mutateAsync: convert, isPending } = useMutation(
-    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions(),
+  const { mutate: convert, isPending } = useMutation(
+    consoleQuery.rag.pipelines.transform.datasets.byDatasetId.post.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const queryClient = useQueryClient()
   const invalidDatasetDetail = React.useCallback(() => {
@@ -68,8 +72,11 @@ const Conversion = () => {
             toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
           }
         },
-        onError: () => {
-          toast.error(t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }))
+        onError: (error) => {
+          toast.error(
+            getErrorMessage(error) ??
+              t(($) => $['conversion.errorMessage'], { ns: 'datasetPipeline' }),
+          )
         },
       },
     )
@@ -128,17 +135,10 @@ const Conversion = () => {
         onOpenChange={(open) => !open && handleCancelConversion()}
       >
         <AlertDialogContent>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle
-              className="w-full truncate title-2xl-semi-bold text-text-primary"
-              title={confirmTitle}
-            >
-              {confirmTitle}
-            </AlertDialogTitle>
-            <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-              {confirmContent}
-            </AlertDialogDescription>
-          </div>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{confirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{confirmContent}</AlertDialogDescription>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

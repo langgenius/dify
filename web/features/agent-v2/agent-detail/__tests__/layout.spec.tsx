@@ -1,7 +1,6 @@
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { AgentPermission } from '@/features/agent-v2/acl'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { consoleQuery } from '@/service/console'
 import { createHttpError } from '@/service/http-error'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -14,7 +13,18 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => location.pathname,
   useRouter: () => router,
 }))
-vi.mock('@/hooks/use-document-title', () => ({ default: vi.fn() }))
+
+const detailRequest = vi.hoisted(() => vi.fn())
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.get': detailRequest,
+    }),
+  }
+})
 
 const detailKey = consoleQuery.agent.byAgentId.get.queryKey({
   input: { params: { agent_id: 'agent-1' } },
@@ -36,24 +46,21 @@ const content = (
 
 describe('AgentDetailLayout', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     location.pathname = '/agents/agent-1/configure'
   })
 
-  it.each(['configure', 'access', 'logs', 'monitoring', 'access-config'])(
+  it.each(['configure', 'evaluation', 'access', 'logs', 'monitoring', 'access-config'])(
     'renders the authorized %s page and its document title',
     (section) => {
       location.pathname = `/agents/agent-1/${section}`
       render(content, setup())
       expect(screen.getByText('Agent detail content')).toBeInTheDocument()
-      expect(useDocumentTitle).toHaveBeenLastCalledWith(
-        `agentV2.agentDetail.sections.${section} · Agent`,
-      )
-      expect(screen.queryByRole('complementary')).not.toBeInTheDocument()
+      expect(document.title).toContain(`agentV2.agentDetail.sections.${section} · Agent`)
     },
   )
 
-  it.each(['configure', 'logs', 'monitoring', 'access-config'])(
+  it.each(['configure', 'evaluation', 'logs', 'monitoring', 'access-config'])(
     'blocks direct navigation to %s for a viewer',
     async (section) => {
       location.pathname = `/agents/agent-1/${section}`
@@ -62,6 +69,16 @@ describe('AgentDetailLayout', () => {
       await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/access'))
     },
   )
+
+  it('redirects unpublished Agent evaluation back to configure', async () => {
+    location.pathname = '/agents/agent-1/evaluation'
+    const { wrapper, queryClient } = setup()
+    queryClient.setQueryData(detailKey, createAgentFixture({ access_ready: false }))
+    render(content, { wrapper })
+
+    expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents/agent-1/configure'))
+  })
 
   it('unmounts protected content when resource permissions are revoked', async () => {
     const { wrapper, queryClient } = setup()
@@ -84,43 +101,27 @@ describe('AgentDetailLayout', () => {
     const user = userEvent.setup()
     location.pathname = '/agents/agent-1/access'
     const { wrapper, queryClient } = setup()
-    queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
-    queryClient
-      .getQueryCache()
-      .find({ queryKey: detailKey })!
-      .setState({
-        data: undefined,
-        error: new Error('Unavailable'),
-        status: 'error',
-        fetchStatus: 'idle',
-      })
-    vi.mocked(fetch).mockResolvedValueOnce(Response.json(createAgentFixture()))
+    queryClient.removeQueries({ queryKey: detailKey })
+    queryClient.setDefaultOptions({ queries: { retryDelay: 0 } })
+    detailRequest.mockRejectedValue(new Error('Unavailable'))
     render(content, { wrapper })
     expect(await screen.findByRole('alert')).toHaveTextContent('agentRoster.roster.loadingError')
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
+    detailRequest.mockResolvedValue(createAgentFixture())
     await user.click(screen.getByRole('button', { name: 'common.operation.retry' }))
     expect(await screen.findByText('Agent detail content')).toBeVisible()
-    expect(fetch).toHaveBeenCalledTimes(1)
+    expect(detailRequest).toHaveBeenCalledTimes(5)
+    expect(detailRequest).toHaveBeenLastCalledWith({ params: { agent_id: 'agent-1' } })
     expect(router.replace).not.toHaveBeenCalled()
   })
 
-  it('redirects to the roster when the agent no longer exists', async () => {
+  it('redirects a missing agent to the roster', async () => {
     const { wrapper, queryClient } = setup()
-    queryClient.setDefaultOptions({ queries: { retry: false, retryOnMount: false } })
-    queryClient
-      .getQueryCache()
-      .find({ queryKey: detailKey })!
-      .setState({
-        data: undefined,
-        error: Object.assign(createHttpError(new Response(null, { status: 404 })), {
-          name: 'NotFound',
-          message: 'Not found',
-        }),
-        status: 'error',
-        fetchStatus: 'idle',
-      })
+    queryClient.removeQueries({ queryKey: detailKey })
+    detailRequest.mockRejectedValueOnce(createHttpError(new Response(null, { status: 404 })))
     render(content, { wrapper })
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/agents'))
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument()
     expect(screen.queryByText('Agent detail content')).not.toBeInTheDocument()
   })
 })

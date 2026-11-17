@@ -47,8 +47,7 @@ export function ChangeBlockPopup({
     resourceKind !== 'knowledge-pipeline' &&
     (!isChatflow || nodeData.type === BlockEnum.Start || !hasStartNode)
   const ignoreNodeIds = useMemo(() => {
-    if (isTriggerNode(nodeData.type as BlockEnum) || nodeData.type === BlockEnum.Start)
-      return [nodeId]
+    if (isTriggerNode(nodeData.type) || nodeData.type === BlockEnum.Start) return [nodeId]
     return undefined
   }, [nodeData.type, nodeId])
   const allowStartNodeSelection = !hasStartNode

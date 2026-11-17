@@ -307,7 +307,7 @@ class CouchbaseVector(BaseVector):
                 if score >= score_threshold:
                     docs.append(doc)
         except Exception as e:
-            raise ValueError(f"Search failed with error: {e}")
+            raise ValueError(f"Search failed with error: {e}") from e
 
         return docs
 
@@ -330,7 +330,7 @@ class CouchbaseVector(BaseVector):
                 docs.append(doc)
 
         except Exception as e:
-            raise ValueError(f"Search failed with error: {e}")
+            raise ValueError(f"Search failed with error: {e}") from e
 
         return docs
 

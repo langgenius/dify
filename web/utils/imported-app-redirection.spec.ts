@@ -14,7 +14,7 @@ vi.mock('@/service/console', () => ({
 
 describe('resolveImportedAppRedirectionTarget', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockFetchAppDetail.mockReset()
   })
 
   it('resolves the backing Agent ID for an imported Agent App', async () => {

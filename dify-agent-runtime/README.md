@@ -14,6 +14,26 @@ cmd/
 internal/            - internal implementations
 ```
 
+## Agent configuration prompt
+
+The sandbox's `dify-agent` CLI uses the authenticated Agent Stub connection:
+
+```bash
+dify-agent config prompt pull                      # Save ./.dify_conf/prompt.md; print its absolute path
+dify-agent config prompt pull --to ./prompt.txt
+dify-agent config prompt push                      # Read ./.dify_conf/prompt.md; print saved prompt JSON
+dify-agent config prompt push ./prompt.txt
+printf '%s' 'New instructions' | dify-agent config prompt push -
+```
+
+Pull and push preserve raw UTF-8 text, including mention markers, whitespace,
+and line endings. Empty input clears the prompt; a missing file is an error.
+Local edits must be pushed to persist. Only the current account's build draft
+is writable; snapshot and shared-draft configurations are read-only. Later
+requests built from the draft use the saved prompt; already-built requests
+retain their prompt. See the [runtime contract](../dify-agent/docs/dify-agent/index.md)
+for the Agent Stub and inner API endpoints.
+
 ## Job execution modes
 
 `POST /v1/jobs/run` accepts an optional `mode` field:
@@ -91,11 +111,16 @@ Each agent job runs inside a Landlock sandbox that restricts filesystem access:
 
 The runner sets `TMPDIR`, `TMP`, and `TEMP` directly to the job's `cwd`. It does not create a separate temp directory, so the active Workspace is both the working directory and temp space.
 
+`$HOME` and `cwd` allow cross-directory `rename` and `link` within their trees
+via `LANDLOCK_ACCESS_FS_REFER`. Extra `SHELLCTL_LANDLOCK_RW_PATHS` grant
+read-write access without `REFER`, so cross-directory renames and hard links
+within those extra paths or between them and `$HOME`/`cwd` remain denied.
+
 ### Environment Variables
 
 See [here](./internal/envvar/envvar.go)
 
-Requires Linux ≥ 5.13 with Landlock enabled. When path isolation is enabled,
+Requires Linux ≥ 5.19 (Landlock ABI v2) with Landlock enabled. When path isolation is enabled,
 any Landlock setup error aborts the job with exit code `125` before the user
 script executes. Deployments may explicitly set
 `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable this restriction.

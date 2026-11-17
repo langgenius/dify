@@ -30,22 +30,21 @@ const useConfig = (id: string, payload: StartNodeType) => {
   const handleVarListChange = useCallback(
     (newList: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => {
       if (moreInfo?.payload?.type === ChangeType.remove) {
+        if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
+          setIsShowRemoveVarConfirm(true)
+          setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
+          setRemoveIndex(moreInfo?.index)
+          return
+        }
         const varId = nodesWithInspectVars
           .find((node) => node.nodeId === id)
           ?.vars.find((varItem) => {
             return varItem.name === moreInfo?.payload?.payload?.beforeKey
           })?.id
         if (varId) deleteInspectVar(id, varId)
-
-        if (isVarUsedInNodes([id, moreInfo?.payload?.payload?.beforeKey || ''])) {
-          setIsShowRemoveVarConfirm(true)
-          setRemovedVar([id, moreInfo?.payload?.payload?.beforeKey || ''])
-          setRemoveIndex(moreInfo?.index as number)
-          return
-        }
       }
 
-      const newInputs = produce(inputs, (draft: any) => {
+      const newInputs = produce(inputs, (draft) => {
         draft.variables = newList
       })
       setInputs(newInputs)
@@ -79,10 +78,23 @@ const useConfig = (id: string, payload: StartNodeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.variables.splice(removedIndex, 1)
     })
+    const varId = nodesWithInspectVars
+      .find((node) => node.nodeId === id)
+      ?.vars.find((variable) => variable.name === removedVar[1])?.id
+    if (varId) deleteInspectVar(id, varId)
     setInputs(newInputs)
     removeUsedVarInNodes(removedVar)
     setIsShowRemoveVarConfirm(false)
-  }, [inputs, removeUsedVarInNodes, removedIndex, removedVar, setInputs])
+  }, [
+    deleteInspectVar,
+    id,
+    inputs,
+    nodesWithInspectVars,
+    removeUsedVarInNodes,
+    removedIndex,
+    removedVar,
+    setInputs,
+  ])
 
   const handleAddVariable = useCallback(
     (payload: InputVar) => {

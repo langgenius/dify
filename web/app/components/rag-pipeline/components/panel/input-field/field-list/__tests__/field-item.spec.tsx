@@ -26,16 +26,6 @@ describe('FieldItem', () => {
     vi.clearAllMocks()
   })
 
-  it('should render the variable, label, and required badge', () => {
-    render(
-      <FieldItem payload={createInputVar()} index={0} onClickEdit={vi.fn()} onRemove={vi.fn()} />,
-    )
-
-    expect(screen.getByText('field_name'))!.toBeInTheDocument()
-    expect(screen.getByText('Field Label'))!.toBeInTheDocument()
-    expect(screen.getByText('workflow.nodes.start.required'))!.toBeInTheDocument()
-  })
-
   it('supports editing and deleting using the keyboard without hovering the row', async () => {
     const user = userEvent.setup()
     const onClickEdit = vi.fn()
@@ -49,6 +39,9 @@ describe('FieldItem', () => {
       />,
     )
 
+    expect(screen.getByText('custom_field')).toBeInTheDocument()
+    expect(screen.getByText('Field Label')).toBeInTheDocument()
+    expect(screen.getByText('workflow.nodes.start.required')).toBeInTheDocument()
     await user.tab()
     expect(screen.getByRole('button', { name: 'common.operation.edit' })).toHaveFocus()
     await user.keyboard('{Enter}')
@@ -74,7 +67,5 @@ describe('FieldItem', () => {
     )
 
     expect(screen.queryAllByRole('button')).toHaveLength(0)
-    expect(onClickEdit).not.toHaveBeenCalled()
-    expect(onRemove).not.toHaveBeenCalled()
   })
 })

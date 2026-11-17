@@ -1,3 +1,5 @@
+import { Quality } from 'mediabunny'
+import { createDeferred } from '@/test/deferred'
 import { startVoiceRecorder } from '../recorder'
 
 const mediaMocks = vi.hoisted(() => ({
@@ -14,7 +16,8 @@ vi.mock('@mediabunny/mp3-encoder', () => ({
   registerMp3Encoder: mediaMocks.registerMp3Encoder,
 }))
 
-vi.mock('mediabunny', () => ({
+vi.mock('mediabunny', async (importOriginal) => ({
+  Quality: (await importOriginal<typeof import('mediabunny')>()).Quality,
   AudioBufferSource: class MockAudioBufferSource {
     constructor(config: unknown) {
       mediaMocks.audioSourceConfig = config
@@ -49,12 +52,18 @@ vi.mock('mediabunny', () => ({
   },
 }))
 
-const trackStop = vi.fn()
-const stream = {
+// Web Audio is unavailable in happy-dom; these adapters implement the browser
+// operations used by the recorder, without claiming to be complete native nodes.
+type CaptureStream = {
+  getAudioTracks: () => Array<Pick<MediaStreamTrack, 'stop'>>
+  getTracks: () => Array<Pick<MediaStreamTrack, 'stop'>>
+}
+const trackStop = vi.fn<MediaStreamTrack['stop']>()
+const stream: CaptureStream = {
   getAudioTracks: vi.fn(() => [{ stop: trackStop }]),
   getTracks: vi.fn(() => [{ stop: trackStop }]),
-} as unknown as MediaStream
-const getUserMedia = vi.fn<() => Promise<MediaStream>>()
+}
+const getUserMedia = vi.fn<() => Promise<CaptureStream>>()
 const addModule = vi.fn<() => Promise<void>>()
 const audioContextClose = vi.fn<() => Promise<void>>()
 const audioContextResume = vi.fn<() => Promise<void>>()
@@ -62,14 +71,14 @@ const analyserDisconnect = vi.fn()
 const analyser = {
   disconnect: analyserDisconnect,
   fftSize: 0,
-} as unknown as AnalyserNode
+}
 const streamSourceConnect = vi.fn()
 const streamSourceDisconnect = vi.fn()
 const streamSource = {
   connect: streamSourceConnect,
   disconnect: streamSourceDisconnect,
-} as unknown as MediaStreamAudioSourceNode
-const copyToChannel = vi.fn()
+}
+const copyToChannel = vi.fn<AudioBuffer['copyToChannel']>()
 let audioContextState: AudioContextState = 'running'
 
 class MockAudioContext {
@@ -90,7 +99,7 @@ class MockAudioContext {
   }
 
   createBuffer() {
-    return { copyToChannel } as unknown as AudioBuffer
+    return { copyToChannel }
   }
 
   close() {
@@ -120,10 +129,12 @@ class MockAudioWorkletNode {
       onmessage: null,
       postMessage: vi.fn((message: { type: string }) => {
         if (message.type !== 'stop' || !workletRespondsToStop) return
-        this.port.onmessage?.({
-          data: { type: 'data', buffer: new Float32Array([0.25, -0.25]).buffer },
-        } as MessageEvent<{ type: 'data'; buffer: ArrayBuffer }>)
-        this.port.onmessage?.({ data: { type: 'stopped' } } as MessageEvent<{ type: 'stopped' }>)
+        this.port.onmessage?.(
+          new MessageEvent('message', {
+            data: { type: 'data', buffer: new Float32Array([0.25, -0.25]).buffer },
+          }),
+        )
+        this.port.onmessage?.(new MessageEvent('message', { data: { type: 'stopped' } }))
       }),
     }
   }
@@ -133,6 +144,7 @@ class MockAudioWorkletNode {
 }
 
 describe('startVoiceRecorder', () => {
+  const originalMediaDevices = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
   beforeEach(() => {
     vi.clearAllMocks()
     mediaMocks.target = undefined
@@ -159,10 +171,17 @@ describe('startVoiceRecorder', () => {
     vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
   })
 
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    if (originalMediaDevices) Object.defineProperty(navigator, 'mediaDevices', originalMediaDevices)
+    else Reflect.deleteProperty(navigator, 'mediaDevices')
+  })
+
   // Recording setup uses one browser-native PCM path and one MP3 encoder configuration.
   describe('Setup', () => {
     it('should initialize mono microphone capture and the MP3 encoder', async () => {
-      await startVoiceRecorder()
+      const recorder = await startVoiceRecorder()
 
       expect(getUserMedia).toHaveBeenCalledWith({
         audio: {
@@ -173,7 +192,7 @@ describe('startVoiceRecorder', () => {
       })
       expect(mediaMocks.registerMp3Encoder).toHaveBeenCalledTimes(1)
       expect(mediaMocks.audioSourceConfig).toEqual({
-        bitrate: 128_000,
+        quality: new Quality({ bitrate: 128_000 }),
         codec: 'mp3',
         transform: {
           numberOfChannels: 1,
@@ -182,29 +201,27 @@ describe('startVoiceRecorder', () => {
       })
       expect(addModule).toHaveBeenCalledWith('blob:voice-worklet')
       expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:voice-worklet')
+      await recorder.cancel()
     })
 
     it('should resume a suspended audio context before recording', async () => {
       audioContextState = 'suspended'
 
-      await startVoiceRecorder()
+      const recorder = await startVoiceRecorder()
 
       expect(audioContextResume).toHaveBeenCalledTimes(1)
+      await recorder.cancel()
     })
 
     it('should release a microphone stream that resolves after setup is cancelled', async () => {
-      let resolveStream: (stream: MediaStream) => void = () => {}
-      getUserMedia.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveStream = resolve
-        }),
-      )
+      const pending = createDeferred<CaptureStream>()
+      getUserMedia.mockReturnValueOnce(pending.promise)
       const abortController = new AbortController()
       const recorderPromise = startVoiceRecorder(abortController.signal)
       await vi.waitFor(() => expect(getUserMedia).toHaveBeenCalledTimes(1))
 
       abortController.abort()
-      resolveStream(stream)
+      pending.resolve(stream)
 
       await expect(recorderPromise).rejects.toMatchObject({ name: 'AbortError' })
       expect(trackStop).toHaveBeenCalledTimes(1)
@@ -262,45 +279,40 @@ describe('startVoiceRecorder', () => {
 
       const result = await recorder.stop()
 
-      expect(copyToChannel).toHaveBeenCalledTimes(1)
+      expect(copyToChannel).toHaveBeenCalledExactlyOnceWith(new Float32Array([0.25, -0.25]), 0)
       expect(mediaMocks.audioSourceAdd).toHaveBeenCalledTimes(1)
       expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1)
       expect(result.type).toBe('audio/mp3')
-      expect(result.size).toBe(3)
+      expect(new Uint8Array(await result.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
       expect(trackStop).toHaveBeenCalled()
       expect(audioContextClose).toHaveBeenCalledTimes(1)
     })
 
     it('should release microphone resources before MP3 finalization completes', async () => {
-      let resolveFinalize: () => void = () => {}
-      mediaMocks.outputFinalize.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFinalize = () => {
-            if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
-            resolve()
-          }
-        }),
-      )
+      const pending = createDeferred()
+      mediaMocks.outputFinalize.mockImplementationOnce(async () => {
+        await pending.promise
+        if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+      })
       const recorder = await startVoiceRecorder()
 
       const stopPromise = recorder.stop()
       await vi.waitFor(() => expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1))
-      const trackStopCallsBeforeFinalize = trackStop.mock.calls.length
-      const audioContextCloseCallsBeforeFinalize = audioContextClose.mock.calls.length
-      resolveFinalize()
+      expect(trackStop).toHaveBeenCalledTimes(1)
+      expect(audioContextClose).toHaveBeenCalledTimes(1)
+      pending.resolve()
       await stopPromise
-
-      expect(trackStopCallsBeforeFinalize).toBe(1)
-      expect(audioContextCloseCallsBeforeFinalize).toBe(1)
     })
 
-    it('should reuse the in-flight stop operation', async () => {
+    it('should finalize once when stop is requested concurrently', async () => {
       const recorder = await startVoiceRecorder()
 
       const firstStop = recorder.stop()
       const secondStop = recorder.stop()
 
-      await expect(secondStop).resolves.toBe(await firstStop)
+      const results = await Promise.all([firstStop, secondStop])
+      for (const result of results)
+        expect(new Uint8Array(await result.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]))
       expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1)
     })
 
@@ -336,7 +348,7 @@ describe('startVoiceRecorder', () => {
       const emptyStream = {
         getAudioTracks: () => [],
         getTracks: () => [{ stop: trackStop }],
-      } as unknown as MediaStream
+      }
       getUserMedia.mockResolvedValueOnce(emptyStream)
 
       await expect(startVoiceRecorder()).rejects.toThrow('No audio track')
@@ -363,22 +375,18 @@ describe('startVoiceRecorder', () => {
     })
 
     it('should release capture while an in-flight stop finishes encoding', async () => {
-      let resolveFinalize: () => void = () => {}
-      mediaMocks.outputFinalize.mockReturnValueOnce(
-        new Promise((resolve) => {
-          resolveFinalize = () => {
-            if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
-            resolve()
-          }
-        }),
-      )
+      const pending = createDeferred()
+      mediaMocks.outputFinalize.mockImplementationOnce(async () => {
+        await pending.promise
+        if (mediaMocks.target) mediaMocks.target.buffer = new Uint8Array([1, 2, 3]).buffer
+      })
       const recorder = await startVoiceRecorder()
       const stopPromise = recorder.stop()
       await vi.waitFor(() => expect(mediaMocks.outputFinalize).toHaveBeenCalledTimes(1))
 
       const cancelPromise = recorder.cancel()
       await vi.waitFor(() => expect(trackStop).toHaveBeenCalledTimes(1))
-      resolveFinalize()
+      pending.resolve()
 
       await cancelPromise
       await expect(stopPromise).rejects.toMatchObject({ name: 'AbortError' })

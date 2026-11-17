@@ -1,70 +1,9 @@
 import type { LoopNodeType } from '../types'
-import { renderHook } from '@testing-library/react'
-import { BlockEnum, ErrorHandleMode, ValueType, VarType } from '@/app/components/workflow/types'
-import {
-  createNodeCrudModuleMock,
-  createUuidModuleMock,
-} from '../../__tests__/use-config-test-utils'
+import { act } from '@testing-library/react'
+import { BlockEnum, ErrorHandleMode, ValueType, VarType } from '../../../types'
+import { renderNodeConfig } from '../../__tests__/render-node-config'
 import { ComparisonOperator, LogicalOperator } from '../types'
 import useConfig from '../use-config'
-
-const mockSetInputs = vi.hoisted(() => vi.fn())
-const mockGetLoopNodeChildren = vi.hoisted(() => vi.fn())
-const mockGetIsVarFileAttribute = vi.hoisted(() => vi.fn())
-const mockUuid = vi.hoisted(() => vi.fn(() => 'generated-id'))
-
-vi.mock('uuid', () => ({
-  ...createUuidModuleMock(mockUuid),
-}))
-
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (
-    selector: (state: { conversationVariables: unknown[]; dataSourceList: unknown[] }) => unknown,
-  ) =>
-    selector({
-      conversationVariables: [],
-      dataSourceList: [],
-    }),
-}))
-
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: [] }),
-    'workspaces.current.tools.api.get': () => ({ data: [] }),
-    'workspaces.current.tools.workflow.get': () => ({ data: [] }),
-    'workspaces.current.tools.mcp.get': () => ({ data: [] }),
-  })
-})
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-    useNodesReadOnly: () => ({ nodesReadOnly: false }),
-
-    useWorkflow: () => ({
-      getLoopNodeChildren: (...args: unknown[]) => mockGetLoopNodeChildren(...args),
-    }),
-  }
-})
-
-vi.mock('@/app/components/workflow/nodes/_base/hooks/use-node-crud', () => ({
-  ...createNodeCrudModuleMock<LoopNodeType>(mockSetInputs),
-}))
-
-vi.mock('@/app/components/workflow/nodes/_base/components/variable/utils', () => ({
-  toNodeOutputVars: () => [{ nodeId: 'child-node', title: 'Child', vars: [] }],
-}))
-
-vi.mock('../use-is-var-file-attribute', () => ({
-  __esModule: true,
-  default: () => ({
-    getIsVarFileAttribute: (...args: unknown[]) => mockGetIsVarFileAttribute(...args),
-  }),
-}))
-
 const createPayload = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => ({
   title: 'Loop',
   desc: '',
@@ -94,174 +33,112 @@ const createPayload = (overrides: Partial<LoopNodeType> = {}): LoopNodeType => (
   ],
   ...overrides,
 })
-
-describe('useConfig', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockGetLoopNodeChildren.mockReturnValue([])
-    mockGetIsVarFileAttribute.mockReturnValue(false)
-  })
-
-  it('should expose derived outputs and input variable filtering', () => {
-    const { result } = renderHook(() => useConfig('loop-node', createPayload()))
-
-    expect(result.current.readOnly).toBe(false)
-    expect(result.current.childrenNodeVars).toEqual([
-      { nodeId: 'child-node', title: 'Child', vars: [] },
-    ])
-    expect(result.current.loopChildrenNodes).toHaveLength(1)
-    expect(result.current.filterInputVar({ type: VarType.arrayNumber } as never)).toBe(true)
-    expect(result.current.filterInputVar({ type: VarType.string } as never)).toBe(false)
-  })
-
-  it('should update error mode, break conditions and logical operators', () => {
-    const { result } = renderHook(() => useConfig('loop-node', createPayload()))
-
-    result.current.changeErrorResponseMode({ value: ErrorHandleMode.Terminated })
-    result.current.handleAddCondition(['node-1', 'score'], { type: VarType.number } as never)
-    result.current.handleUpdateCondition('condition-1', {
-      id: 'condition-1',
-      varType: VarType.number,
-      variable_selector: ['node-1', 'score'],
+const setup = (data = createPayload()) => renderNodeConfig(useConfig, data, { nodeId: 'loop-node' })
+it('derives loop variables from the actual loop node', () => {
+  const { result } = setup()
+  expect(result.current.config.childrenNodeVars).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        nodeId: 'loop-node',
+        vars: [
+          expect.objectContaining({ variable: 'item', type: VarType.string, isLoopVariable: true }),
+        ],
+      }),
+    ]),
+  )
+  expect(
+    result.current.config.filterInputVar({ variable: 'items', type: VarType.arrayNumber }),
+  ).toBe(true)
+  expect(result.current.config.filterInputVar({ variable: 'text', type: VarType.string })).toBe(
+    false,
+  )
+})
+it('persists condition and error policy edits without restoring removed conditions', () => {
+  const { result } = setup()
+  act(() => result.current.config.changeErrorResponseMode({ value: ErrorHandleMode.Terminated }))
+  act(() =>
+    result.current.config.handleAddCondition(['source', 'score'], {
+      variable: 'score',
+      type: VarType.number,
+    }),
+  )
+  const added = result.current.config.inputs.break_conditions!.find(
+    (condition) => condition.id !== 'condition-1',
+  )!
+  act(() =>
+    result.current.config.handleUpdateCondition(added.id, {
+      ...added,
       comparison_operator: ComparisonOperator.largerThan,
       value: '3',
-    })
-    result.current.handleRemoveCondition('condition-1')
-    result.current.handleToggleConditionLogicalOperator()
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error_handle_mode: ErrorHandleMode.Terminated,
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        break_conditions: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'generated-id',
-            variable_selector: ['node-1', 'score'],
-            varType: VarType.number,
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        break_conditions: expect.arrayContaining([
-          expect.objectContaining({
-            varType: VarType.number,
-            comparison_operator: ComparisonOperator.largerThan,
-            value: '3',
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        logical_operator: LogicalOperator.or,
-      }),
-    )
-  })
-
-  it('should manage sub-variable conditions and loop variables', () => {
-    const payload = createPayload({
+    }),
+  )
+  act(() => result.current.config.handleRemoveCondition('condition-1'))
+  act(() => result.current.config.handleToggleConditionLogicalOperator())
+  expect(result.current.flow.getNode('loop-node')?.data).toEqual(
+    expect.objectContaining({
+      error_handle_mode: ErrorHandleMode.Terminated,
+      logical_operator: LogicalOperator.or,
+      break_conditions: [
+        expect.objectContaining({
+          id: added.id,
+          value: '3',
+          comparison_operator: ComparisonOperator.largerThan,
+        }),
+      ],
+    }),
+  )
+})
+it('persists added, renamed and removed loop variables together with the loop count', () => {
+  const { result } = setup()
+  act(() => result.current.config.handleAddLoopVariable())
+  const added = result.current.config.inputs.loop_variables!.find(
+    (variable) => variable.id !== 'loop-var-1',
+  )!
+  act(() => result.current.config.handleUpdateLoopVariable(added.id, { label: 'updated' }))
+  act(() => result.current.config.handleRemoveLoopVariable('loop-var-1'))
+  act(() => result.current.config.handleUpdateLoopCount(5))
+  expect(result.current.flow.getNode('loop-node')?.data).toEqual(
+    expect.objectContaining({
+      loop_count: 5,
+      loop_variables: [
+        expect.objectContaining({ id: added.id, label: 'updated', value_type: ValueType.constant }),
+      ],
+    }),
+  )
+})
+it('updates file subconditions through the real condition helpers', () => {
+  const { result } = setup(
+    createPayload({
       break_conditions: [
         {
-          id: 'condition-1',
-          varType: VarType.file,
-          variable_selector: ['node-1', 'files'],
+          id: 'file',
+          varType: VarType.arrayFile,
+          variable_selector: ['source', 'files'],
           comparison_operator: ComparisonOperator.contains,
           value: '',
-          sub_variable_condition: {
-            logical_operator: LogicalOperator.and,
-            conditions: [
-              {
-                id: 'sub-1',
-                key: 'name',
-                varType: VarType.string,
-                comparison_operator: ComparisonOperator.contains,
-                value: '',
-              },
-            ],
-          },
+          sub_variable_condition: { logical_operator: LogicalOperator.and, conditions: [] },
         },
       ],
-    })
-    const { result } = renderHook(() => useConfig('loop-node', payload))
-
-    result.current.handleAddSubVariableCondition('condition-1', 'name')
-    result.current.handleUpdateSubVariableCondition('condition-1', 'sub-1', {
-      id: 'sub-1',
-      key: 'size',
-      varType: VarType.string,
-      comparison_operator: ComparisonOperator.contains,
-      value: '2',
-    })
-    result.current.handleRemoveSubVariableCondition('condition-1', 'sub-1')
-    result.current.handleToggleSubVariableConditionLogicalOperator('condition-1')
-    result.current.handleUpdateLoopCount(5)
-    result.current.handleAddLoopVariable()
-    result.current.handleRemoveLoopVariable('loop-var-1')
-    result.current.handleUpdateLoopVariable('loop-var-1', { label: 'updated' })
-
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        break_conditions: [
-          expect.objectContaining({
-            sub_variable_condition: expect.objectContaining({
-              conditions: expect.arrayContaining([
-                expect.objectContaining({
-                  id: 'generated-id',
-                  key: 'name',
-                }),
-              ]),
-            }),
-          }),
-        ],
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        break_conditions: [
-          expect.objectContaining({
-            sub_variable_condition: expect.objectContaining({
-              logical_operator: LogicalOperator.or,
-            }),
-          }),
-        ],
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        loop_count: 5,
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        loop_variables: expect.arrayContaining([
-          expect.objectContaining({
-            id: 'generated-id',
-            value_type: ValueType.constant,
-          }),
-        ]),
-      }),
-    )
-    expect(mockSetInputs).toHaveBeenCalledWith(
-      expect.objectContaining({
-        loop_variables: [
-          expect.objectContaining({
-            id: 'generated-id',
-            value_type: ValueType.constant,
-          }),
-        ],
-      }),
-    )
-  })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => false) }
+    }),
+  )
+  act(() => result.current.config.handleAddSubVariableCondition('file', 'name'))
+  const added =
+    result.current.config.inputs.break_conditions![0]!.sub_variable_condition!.conditions[0]!
+  act(() =>
+    result.current.config.handleUpdateSubVariableCondition('file', added.id, {
+      ...added,
+      value: 'report',
+    }),
+  )
+  act(() => result.current.config.handleToggleSubVariableConditionLogicalOperator('file'))
+  expect(result.current.config.inputs.break_conditions![0]!.sub_variable_condition).toEqual(
+    expect.objectContaining({
+      logical_operator: LogicalOperator.or,
+      conditions: [expect.objectContaining({ value: 'report' })],
+    }),
+  )
+  act(() => result.current.config.handleRemoveSubVariableCondition('file', added.id))
+  expect(
+    result.current.config.inputs.break_conditions![0]!.sub_variable_condition!.conditions,
+  ).toEqual([])
 })

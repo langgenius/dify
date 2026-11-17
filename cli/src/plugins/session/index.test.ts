@@ -1,10 +1,12 @@
 import type { Login } from './index'
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, expect, it } from 'vite-plus/test'
 import { Context } from '@/kernel/context'
-import { session } from './index'
+import { io, ioService } from '@/plugins/io'
+import { bufferStreams } from '@/sys/io/streams'
+import { LOGIN_FILE_NAME, session } from './index'
 
 const LOGIN: Login = {
   server: 'https://d.example',
@@ -64,4 +66,44 @@ it('DIFY_WORKSPACE_ID overrides the pin', async () => {
   await (await new Context().get(session)).save(LOGIN)
   process.env.DIFY_WORKSPACE_ID = 'ws-env'
   expect(await (await new Context().get(session)).workspaceId()).toBe('ws-env')
+})
+
+function withLoginFile(content: string) {
+  writeFileSync(join(dir, LOGIN_FILE_NAME), content)
+  const streams = bufferStreams()
+  return { streams, load: () => new Context([[io, ioService(streams)]]).get(session) }
+}
+
+it.each([
+  ['server', 'email: me@x\ntoken_storage: file\n'],
+  ['email', 'server: https://d.example\ntoken_storage: file\n'],
+])('reads a login.yml without %s as logged out, with one notice', async (key, content) => {
+  const { streams, load } = withLoginFile(content)
+  const s = await load()
+  expect(await s.current()).toBeNull()
+  expect(await s.current()).toBeNull()
+  expect(streams.errBuf()).toMatch(new RegExp(`has no valid ${key}; ignoring it\n$`))
+  await s.save(LOGIN)
+  expect(await s.current()).toEqual(LOGIN)
+})
+
+it('reads a login.yml with only its identity, defaulting the rest and ignoring unknown keys', async () => {
+  const { streams, load } = withLoginFile(
+    'schema_version: 99\nfuture_key: x\nserver: https://d.example\nemail: me@x\ntoken_storage: file\ninsecure: maybe\n',
+  )
+  expect(await (await load()).current()).toEqual({
+    server: 'https://d.example',
+    email: 'me@x',
+    account: null,
+    workspaceId: null,
+    tokenStorage: 'file',
+    insecure: false,
+  })
+  expect(streams.errBuf()).toMatch(/ignoring the invalid value of insecure\n$/)
+})
+
+it('saves only the current shape', async () => {
+  const { load } = withLoginFile('future_key: x\n')
+  await (await load()).save(LOGIN)
+  expect(readFileSync(join(dir, LOGIN_FILE_NAME), 'utf8')).not.toContain('future_key')
 })

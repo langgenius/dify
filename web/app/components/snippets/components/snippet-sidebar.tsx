@@ -1,13 +1,14 @@
 'use client'
 
 import type { InputVar } from '@/app/components/workflow/types'
-import type { SnippetDetail, SnippetInputField } from '@/models/snippet'
+import type { InputVar as PipelineInputVar } from '@/models/pipeline'
+import type { SnippetDetail, SnippetSection } from '@/models/snippet'
 import { cn } from '@langgenius/dify-ui/cn'
 import { isEqual } from 'es-toolkit/predicate'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
-import SnippetInfoDropdown from '@/app/components/app-sidebar/snippet-info/dropdown'
+import SnippetInfoMenu from '@/app/components/app-sidebar/snippet-info/actions-menu'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import VarList from '@/app/components/workflow/nodes/start/components/var-list'
@@ -17,34 +18,41 @@ import { SnippetPlaceholderIcon } from './snippet-placeholder-icon'
 
 type SnippetSidebarProps = {
   snippet: SnippetDetail
-  fields: SnippetInputField[]
+  section?: SnippetSection
+  fields: PipelineInputVar[]
   readonly: boolean
-  onFieldsChange: (fields: SnippetInputField[]) => void
+  evaluationEnabled: boolean
+  /** The plan excludes evaluation; the entry stays visible but says why it is disabled. */
+  evaluationRequiresUpgrade?: boolean
+  onFieldsChange?: (fields: PipelineInputVar[]) => void
 }
 
 type SnippetSidebarContentProps = SnippetSidebarProps & {
   className?: string
 }
 
-const toWorkflowInputVar = (field: SnippetInputField): InputVar => ({
+const toWorkflowInputVar = (field: PipelineInputVar): InputVar => ({
   ...field,
-  type: field.type as unknown as InputVar['type'],
+  type: field.type as InputVar['type'],
 })
 
-const toSnippetInputField = (field: InputVar): SnippetInputField => ({
+const toSnippetInputField = (field: InputVar): PipelineInputVar => ({
   ...field,
   label: typeof field.label === 'string' ? field.label : field.label.variable,
-  type: field.type as unknown as SnippetInputField['type'],
+  type: field.type as PipelineInputVar['type'],
 })
 
 export const SnippetSidebarContent = ({
   snippet,
+  section = 'orchestrate',
   fields,
   readonly,
+  evaluationEnabled,
+  evaluationRequiresUpgrade = false,
   onFieldsChange,
   className,
 }: SnippetSidebarContentProps) => {
-  const { t } = useTranslation(['appDebug', 'common', 'snippet'])
+  const { t } = useTranslation(['appDebug', 'common', 'snippet', 'evaluation'])
   const [isShowAddVarModal, setIsShowAddVarModal] = useState(false)
   const workflowInputVars = useMemo(() => fields.map(toWorkflowInputVar), [fields])
 
@@ -57,13 +65,13 @@ export const SnippetSidebarContent = ({
   }, [])
 
   const validateFields = useCallback(
-    (nextFields: SnippetInputField[]) => {
+    (nextFields: PipelineInputVar[]) => {
       let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
       let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
       if (hasDuplicateStr(nextFields.map((item) => item.variable))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.varName'
-      } else if (hasDuplicateStr(nextFields.map((item) => item.label as string))) {
+      } else if (hasDuplicateStr(nextFields.map((item) => item.label))) {
         errorMsgKey = 'varKeyError.keyAlreadyExists'
         typeName = 'variableConfig.labelName'
       }
@@ -88,7 +96,7 @@ export const SnippetSidebarContent = ({
       const nextFields = [...fields, toSnippetInputField(payload)]
       if (!validateFields(nextFields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
       hideAddVarModal()
     },
     [fields, hideAddVarModal, onFieldsChange, validateFields],
@@ -99,7 +107,7 @@ export const SnippetSidebarContent = ({
       const nextFields = list.map(toSnippetInputField)
       if (isEqual(nextFields, fields)) return
 
-      onFieldsChange(nextFields)
+      onFieldsChange?.(nextFields)
     },
     [fields, onFieldsChange],
   )
@@ -119,7 +127,7 @@ export const SnippetSidebarContent = ({
               {snippet.name}
             </div>
           </div>
-          <SnippetInfoDropdown snippet={snippet} />
+          <SnippetInfoMenu snippet={snippet} />
         </div>
         {!!snippet.description && (
           <div
@@ -136,35 +144,52 @@ export const SnippetSidebarContent = ({
           mode="expand"
           name={t(($) => $.sectionOrchestrate, { ns: 'snippet' })}
           href={`/snippets/${snippet.id}/orchestrate`}
-          active
+          active={section === 'orchestrate'}
           iconMap={{ selected: 'i-ri-node-tree', normal: 'i-ri-node-tree' }}
         />
+        {evaluationEnabled && (
+          <NavLink
+            mode="expand"
+            name={t(($) => $.title, { ns: 'evaluation' })}
+            href={`/snippets/${snippet.id}/evaluation`}
+            active={section === 'evaluation'}
+            disabled={evaluationRequiresUpgrade || !snippet.is_published}
+            disabledReason={
+              evaluationRequiresUpgrade
+                ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+                : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' })
+            }
+            iconMap={{ selected: 'i-ri-flask-fill', normal: 'i-ri-flask-line' }}
+          />
+        )}
       </nav>
 
-      <div className="flex min-h-0 grow flex-col px-3 pt-6">
-        <Field
-          title={t(($) => $.inputVariables, { ns: 'snippet' })}
-          operations={
-            !readonly ? (
-              <button
-                type="button"
-                aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
-                className={cn(
-                  'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
-                  'cursor-pointer hover:bg-state-base-hover',
-                )}
-                onClick={showAddVarModal}
-              >
-                <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
-              </button>
-            ) : undefined
-          }
-        >
-          <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
-        </Field>
-      </div>
+      {section === 'orchestrate' && (
+        <div className="flex min-h-0 grow flex-col px-3 pt-6">
+          <Field
+            title={t(($) => $.inputVariables, { ns: 'snippet' })}
+            operations={
+              !readonly ? (
+                <button
+                  type="button"
+                  aria-label={`${t(($) => $['operation.add'], { ns: 'common' })} ${t(($) => $.inputVariables, { ns: 'snippet' })}`}
+                  className={cn(
+                    'rounded-md border-none bg-transparent p-1 select-none focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden',
+                    'cursor-pointer hover:bg-state-base-hover',
+                  )}
+                  onClick={showAddVarModal}
+                >
+                  <span className="i-ri-add-line size-4 text-text-tertiary" aria-hidden="true" />
+                </button>
+              ) : undefined
+            }
+          >
+            <VarList readonly={readonly} list={workflowInputVars} onChange={handleVarListChange} />
+          </Field>
+        </div>
+      )}
 
-      {isShowAddVarModal && (
+      {section === 'orchestrate' && isShowAddVarModal && (
         <ConfigVarModal
           isCreate
           supportFile

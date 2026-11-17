@@ -1,250 +1,164 @@
+import type { WorkflowAppBlockingResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import type { DataSourceNotionPageMap, NotionPage } from '@/models/common'
-import type { CrawlResultItem, DocumentItem, FileItem } from '@/models/datasets'
-import type { OnlineDriveFile } from '@/models/pipeline'
-import { act, renderHook } from '@testing-library/react'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import type { NotionPage } from '@/models/common'
+import { act, waitFor } from '@testing-library/react'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { DatasourceType } from '@/models/pipeline'
+import { renderHookWithConsoleQuery as renderHook } from '@/test/console/query-data'
 import { createDataSourceStore } from '../../data-source/store'
 import { useDatasourceActions } from '../use-datasource-actions'
 
-const mockRunPublishedPipeline = vi.fn()
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'rag.pipelines.byPipelineId.workflows.published.run.post': () => ({
-      mutateAsync: mockRunPublishedPipeline,
-      isIdle: true,
-      isPending: false,
+const { runPipeline } = vi.hoisted(() => ({ runPipeline: vi.fn() }))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'rag.pipelines.byPipelineId.workflows.published.run.post': runPipeline,
     }),
-  })
+  }
 })
-vi.mock('@/app/components/base/amplitude', () => ({
-  trackEvent: vi.fn(),
-}))
+vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
 
-describe('useDatasourceActions', () => {
-  let store: ReturnType<typeof createDataSourceStore>
-  const defaultParams = (): Parameters<typeof useDatasourceActions>[0] & {
-    datasourceType: DatasourceType
-  } => ({
-    datasource: {
-      nodeId: 'node-1',
-      nodeData: { provider_type: DatasourceType.localFile },
-    } as unknown as Datasource,
-    datasourceType: DatasourceType.localFile,
+const datasource = (provider_type: DatasourceType, nodeId = 'node-1'): Datasource => ({
+  nodeId,
+  nodeData: {
+    type: BlockEnum.DataSource,
+    title: 'Documents',
+    desc: '',
+    provider_type,
+    plugin_id: 'datasource',
+    provider_name: 'source',
+    datasource_name: 'documents',
+    datasource_label: 'Documents',
+    datasource_parameters: {},
+    datasource_configurations: {},
+  },
+})
+const page = (page_id: string): NotionPage => ({
+  page_id,
+  page_name: page_id,
+  workspace_id: 'w1',
+  page_icon: null,
+  parent_id: '',
+  type: 'page',
+  is_bound: false,
+})
+const previewResponse: WorkflowAppBlockingResponse = {
+  task_id: 'task-1',
+  workflow_run_id: 'run-1',
+  data: {
+    id: 'run-1',
+    workflow_id: 'workflow-1',
+    status: 'succeeded',
+    created_at: 1700000000,
+    finished_at: 1700000001,
+    elapsed_time: 1,
+    total_steps: 1,
+    total_tokens: 100,
+    outputs: { total_segments: 1, preview: [] },
+  },
+}
+
+function setup(type: DatasourceType = DatasourceType.localFile, canProcess = true) {
+  const store = createDataSourceStore()
+  const params = {
+    datasource: datasource(type),
+    datasourceType: type,
     pipelineId: 'pipeline-1',
     dataSourceStore: store,
+    canProcess,
     setEstimateData: vi.fn(),
     setBatchId: vi.fn(),
     setDocuments: vi.fn(),
     handleNextStep: vi.fn(),
-    PagesMapAndSelectedPagesId: {},
-    currentWorkspacePages: undefined as { page_id: string }[] | undefined,
+    PagesMapAndSelectedPagesId: { p1: page('p1'), p2: page('p2') },
+    currentWorkspacePages: [{ page_id: 'p1' }, { page_id: 'p2' }],
     clearOnlineDocumentData: vi.fn(),
     clearWebsiteCrawlData: vi.fn(),
     clearOnlineDriveData: vi.fn(),
     setDatasource: vi.fn(),
-  })
+  }
+  const hook = renderHook(() => useDatasourceActions(params))
+  return { ...hook, params, store }
+}
 
-  beforeEach(() => {
-    vi.clearAllMocks()
-    store = createDataSourceStore()
-  })
+beforeEach(() => runPipeline.mockResolvedValue(previewResponse))
 
-  it('should return all action functions', () => {
-    const params = defaultParams()
-    const { result } = renderHook(() => useDatasourceActions(params))
+it('clears source data when credentials change and resets credentials when switching sources', () => {
+  const { result, params, store } = setup(DatasourceType.onlineDocument)
+  store.getState().setCurrentCredentialId('old')
+  act(() => result.current.handleCredentialChange('new'))
+  expect(store.getState().currentCredentialId).toBe('new')
+  expect(params.clearOnlineDocumentData).toHaveBeenCalledOnce()
 
-    expect(typeof result.current.onClickProcess).toBe('function')
-    expect(typeof result.current.onClickPreview).toBe('function')
-    expect(typeof result.current.handleSubmit).toBe('function')
-    expect(typeof result.current.handlePreviewFileChange).toBe('function')
-    expect(typeof result.current.handlePreviewOnlineDocumentChange).toBe('function')
-    expect(typeof result.current.handlePreviewWebsiteChange).toBe('function')
-    expect(typeof result.current.handlePreviewOnlineDriveFileChange).toBe('function')
-    expect(typeof result.current.handleSelectAll).toBe('function')
-    expect(typeof result.current.handleSwitchDataSource).toBe('function')
-    expect(typeof result.current.handleCredentialChange).toBe('function')
-    expect(result.current.isIdle).toBe(true)
-    expect(result.current.isPending).toBe(false)
-  })
+  const next = datasource(DatasourceType.onlineDrive, 'node-2')
+  act(() => result.current.handleSwitchDataSource(next))
+  expect(store.getState().currentCredentialId).toBe('')
+  expect(params.clearOnlineDriveData).toHaveBeenCalledOnce()
+  expect(params.setDatasource).toHaveBeenCalledWith(next)
+})
 
-  it('should handle credential change by clearing data and setting new credential', () => {
-    const params = defaultParams()
-    const { result } = renderHook(() => useDatasourceActions(params))
+it('selects all current workspace pages and clears their selection together', () => {
+  const { result, store, params } = setup(DatasourceType.onlineDocument)
+  act(() => result.current.handleSelectAll(true))
+  expect(store.getState().onlineDocuments).toEqual(Object.values(params.PagesMapAndSelectedPagesId))
+  expect(store.getState().selectedPagesId).toEqual(new Set(['p1', 'p2']))
+  act(() => result.current.handleSelectAll(false))
+  expect(store.getState().onlineDocuments).toEqual([])
+  expect(store.getState().selectedPagesId).toEqual(new Set())
+})
 
-    act(() => {
-      result.current.handleCredentialChange('cred-new')
-    })
+it('excludes buckets from the drive select-all action', () => {
+  const { result, store } = setup(DatasourceType.onlineDrive)
+  store.getState().setOnlineDriveFileList([
+    { id: 'f1', name: 'a.pdf', type: 'file' },
+    { id: 'f2', name: 'b.pdf', type: 'file' },
+    { id: 'b1', name: 'Bucket', type: 'bucket' },
+  ])
+  act(() => result.current.handleSelectAll(true))
+  expect(store.getState().selectedFileIds).toEqual(['f1', 'f2'])
+  act(() => result.current.handleSelectAll(false))
+  expect(store.getState().selectedFileIds).toEqual([])
+})
 
-    expect(store.getState().currentCredentialId).toBe('cred-new')
-  })
-
-  it('should handle switch data source', () => {
-    const params = defaultParams()
-    const newDatasource = {
-      nodeId: 'node-2',
-      nodeData: { provider_type: DatasourceType.onlineDocument },
-    } as unknown as Datasource
-
-    const { result } = renderHook(() => useDatasourceActions(params))
-    act(() => {
-      result.current.handleSwitchDataSource(newDatasource)
-    })
-
-    expect(store.getState().currentCredentialId).toBe('')
-    expect(store.getState().currentNodeIdRef.current).toBe('node-2')
-    expect(params.setDatasource).toHaveBeenCalledWith(newDatasource)
-  })
-
-  it('should handle preview file change by updating ref', () => {
-    const params = defaultParams()
-    params.dataSourceStore = store
-
-    const { result } = renderHook(() => useDatasourceActions(params))
-
-    // Set up formRef to prevent null error
-    result.current.formRef.current = { submit: vi.fn() }
-
-    const file = { id: 'f1', name: 'test.pdf' } as unknown as DocumentItem
-    act(() => {
-      result.current.handlePreviewFileChange(file)
-    })
-
-    expect(store.getState().previewLocalFileRef.current).toEqual(file)
-  })
-
-  it('should handle preview online document change', () => {
-    const params = defaultParams()
-    const { result } = renderHook(() => useDatasourceActions(params))
-    result.current.formRef.current = { submit: vi.fn() }
-
-    const page = { page_id: 'p1', page_name: 'My Page' } as unknown as NotionPage
-    act(() => {
-      result.current.handlePreviewOnlineDocumentChange(page)
-    })
-
-    expect(store.getState().previewOnlineDocumentRef.current).toEqual(page)
-  })
-
-  it('should handle preview website change', () => {
-    const params = defaultParams()
-    const { result } = renderHook(() => useDatasourceActions(params))
-    result.current.formRef.current = { submit: vi.fn() }
-
-    const website = {
-      title: 'Page',
-      source_url: 'https://example.com',
-    } as unknown as CrawlResultItem
-    act(() => {
-      result.current.handlePreviewWebsiteChange(website)
-    })
-
-    expect(store.getState().previewWebsitePageRef.current).toEqual(website)
-  })
-
-  it('should handle select all for online documents', () => {
-    const params = defaultParams()
-    params.datasourceType = DatasourceType.onlineDocument
-    params.currentWorkspacePages = [{ page_id: 'p1' }, { page_id: 'p2' }] as unknown as NotionPage[]
-    params.PagesMapAndSelectedPagesId = {
-      p1: { page_id: 'p1', page_name: 'A', workspace_id: 'w1' },
-      p2: { page_id: 'p2', page_name: 'B', workspace_id: 'w1' },
-    } as unknown as DataSourceNotionPageMap
-
-    const { result } = renderHook(() => useDatasourceActions(params))
-
-    // First call: select all
-    act(() => {
-      result.current.handleSelectAll(true)
-    })
-    expect(store.getState().onlineDocuments).toHaveLength(2)
-
-    // Second call: deselect all
-    act(() => {
-      result.current.handleSelectAll(false)
-    })
-    expect(store.getState().onlineDocuments).toEqual([])
-  })
-
-  it('should handle select all for online drive', () => {
-    const params = defaultParams()
-    params.datasourceType = DatasourceType.onlineDrive
-
-    store.getState().setOnlineDriveFileList([
-      { id: 'f1', type: 'file' },
-      { id: 'f2', type: 'file' },
-      { id: 'b1', type: 'bucket' },
-    ] as unknown as OnlineDriveFile[])
-
-    const { result } = renderHook(() => useDatasourceActions(params))
-
-    act(() => {
-      result.current.handleSelectAll(true)
-    })
-    // Should select f1, f2 but not b1 (bucket)
-    expect(store.getState().selectedFileIds).toEqual(['f1', 'f2'])
-  })
-
-  it('should handle submit with preview mode', async () => {
-    const params = defaultParams()
-    store
-      .getState()
-      .setLocalFileList([{ file: { id: 'f1', name: 'test.pdf' } }] as unknown as FileItem[])
-    store.getState().previewLocalFileRef.current = {
-      id: 'f1',
-      name: 'test.pdf',
-    } as unknown as DocumentItem
-
-    mockRunPublishedPipeline.mockResolvedValue({ data: { outputs: { tokens: 100 } } })
-
-    const { result } = renderHook(() => useDatasourceActions(params))
-
-    // Set preview mode
-    result.current.isPreview.current = true
-
-    await act(async () => {
-      await result.current.handleSubmit({ query: 'test' })
-    })
-
-    expect(mockRunPublishedPipeline).toHaveBeenCalledWith(
-      {
-        params: { pipeline_id: 'pipeline-1' },
-        body: expect.objectContaining({ is_preview: true, start_node_id: 'node-1' }),
+it('previews only the selected drive file with its credential and forwards the estimate', async () => {
+  const { result, store, params } = setup(DatasourceType.onlineDrive)
+  store.getState().setCurrentCredentialId('cred-1')
+  store.getState().setBucket('documents')
+  result.current.formRef.current = { submit: () => result.current.handleSubmit({ query: 'test' }) }
+  act(() =>
+    result.current.handlePreviewOnlineDriveFileChange({ id: 'f1', name: 'a.pdf', type: 'file' }),
+  )
+  await waitFor(() =>
+    expect(runPipeline).toHaveBeenCalledWith({
+      params: { pipeline_id: 'pipeline-1' },
+      body: {
+        inputs: { query: 'test' },
+        start_node_id: 'node-1',
+        datasource_type: DatasourceType.onlineDrive,
+        datasource_info_list: [
+          { bucket: 'documents', id: 'f1', name: 'a.pdf', type: 'file', credential_id: 'cred-1' },
+        ],
+        is_preview: true,
+        response_mode: 'blocking',
       },
-      expect.anything(),
-    )
-  })
+    }),
+  )
+  await waitFor(() =>
+    expect(params.setEstimateData).toHaveBeenCalledWith({ total_segments: 1, preview: [] }),
+  )
+  expect(params.handleNextStep).not.toHaveBeenCalled()
+})
 
-  it('should not submit process form when processing is not allowed', () => {
-    const params = {
-      ...defaultParams(),
-      canProcess: false,
-    }
-    const submit = vi.fn()
-    const { result } = renderHook(() => useDatasourceActions(params))
-    result.current.formRef.current = { submit }
-
-    act(() => {
-      result.current.onClickProcess()
-    })
-
-    expect(submit).not.toHaveBeenCalled()
-  })
-
-  it('should not run published pipeline when processing is not allowed', () => {
-    const params = {
-      ...defaultParams(),
-      canProcess: false,
-    }
-    const { result } = renderHook(() => useDatasourceActions(params))
-
-    act(() => {
-      result.current.handleSubmit({ query: 'test' })
-    })
-
-    expect(mockRunPublishedPipeline).not.toHaveBeenCalled()
-    expect(params.handleNextStep).not.toHaveBeenCalled()
-  })
+it('blocks both the process trigger and form submission without permission', () => {
+  const { result, params } = setup(DatasourceType.localFile, false)
+  const submit = vi.fn()
+  result.current.formRef.current = { submit }
+  act(() => result.current.onClickProcess())
+  expect(submit).not.toHaveBeenCalled()
+  act(() => result.current.handleSubmit({ query: 'test' }))
+  expect(runPipeline).not.toHaveBeenCalled()
+  expect(params.handleNextStep).not.toHaveBeenCalled()
 })

@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/client'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/app/notifications'
 // oxlint-disable-next-line no-restricted-imports -- Exercise the HTTP transport and auth recovery together.
 import { get, post, request, upload } from './base'
@@ -12,7 +12,10 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 beforeEach(() => {
   window.history.replaceState({}, '', '/')
   refresh.mockReset()
+  vi.mocked(toast.error).mockClear()
 })
+
+afterEach(() => vi.restoreAllMocks())
 
 describe('upload HTTP failure contract', () => {
   const createUpload = (status: number, response: unknown) => {
@@ -56,7 +59,7 @@ describe('upload HTTP failure contract', () => {
       status: 400,
       data,
     })
-    if (!(error instanceof ORPCError)) throw new Error('Expected an upload HTTP failure')
+    if (!(error instanceof ORPCError)) throw new TypeError('Expected an upload HTTP failure')
     expect(error.cause).toEqual({ headers: new Headers({ 'X-Request-Id': 'upload-123' }) })
   })
 
@@ -104,7 +107,7 @@ describe('HTTP failure contract', () => {
 
       expect(error).toBeInstanceOf(Error)
       expect(error).toBeInstanceOf(ORPCError)
-      if (!(error instanceof ORPCError)) throw new Error('Expected an HTTP failure')
+      if (!(error instanceof ORPCError)) throw new TypeError('Expected an HTTP failure')
       expect(error).toMatchObject({
         code: body.code,
         message: body.message,

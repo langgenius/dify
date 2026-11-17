@@ -1,5 +1,5 @@
+import type { ChildChunkResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { ChildChunkDetail } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
@@ -15,13 +15,13 @@ import { useSegmentListContext } from './index'
 import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
 
 type IChildSegmentCardProps = {
-  childChunks: ChildChunkDetail[]
+  childChunks: ChildChunkResponse[]
   parentChunkId: string
   handleInputChange?: (value: string) => void
   handleAddNewChildChunk?: (parentChunkId: string) => void
   enabled: boolean
   onDelete?: (segId: string, childChunkId: string) => Promise<void>
-  onClickSlice?: (childChunk: ChildChunkDetail) => void
+  onClickSlice?: (childChunk: ChildChunkResponse) => void
   total?: number
   inputValue?: string
   onClearFilter?: () => void
@@ -107,7 +107,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     return <Icon className={cn('mr-0.5 size-4 text-text-secondary', collapsed && 'opacity-50')} />
   }
 
-  const renderChildChunkItem = (childChunk: ChildChunkDetail) => {
+  const renderChildChunkItem = (childChunk: ChildChunkResponse) => {
     const isEdited = childChunk.updated_at !== childChunk.created_at
     const isFocused = currChildChunk?.childChunkInfo?.id === childChunk.id
     const label = isEdited

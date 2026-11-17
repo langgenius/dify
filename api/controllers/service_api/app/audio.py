@@ -129,32 +129,32 @@ class AudioApi(Resource):
             )
 
             return dump_response(AudioTranscriptResponse, response)
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
-        except NoAudioUploadedServiceError:
-            raise NoAudioUploadedError()
+            raise AppUnavailableError() from caught_error
+        except NoAudioUploadedServiceError as caught_error:
+            raise NoAudioUploadedError() from caught_error
         except AudioTooLargeServiceError as e:
-            raise AudioTooLargeError(str(e))
-        except UnsupportedAudioTypeServiceError:
-            raise UnsupportedAudioTypeError()
-        except ProviderNotSupportSpeechToTextServiceError:
-            raise ProviderNotSupportSpeechToTextError()
-        except SpeechToTextDisabledServiceError:
-            raise SpeechToTextDisabledError()
+            raise AudioTooLargeError(str(e)) from e
+        except UnsupportedAudioTypeServiceError as caught_error:
+            raise UnsupportedAudioTypeError() from caught_error
+        except ProviderNotSupportSpeechToTextServiceError as caught_error:
+            raise ProviderNotSupportSpeechToTextError() from caught_error
+        except SpeechToTextDisabledServiceError as caught_error:
+            raise SpeechToTextDisabledError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e
 
 
 register_schema_model(service_api_ns, TextToAudioPayload)
@@ -231,19 +231,19 @@ class TextApi(Resource):
                 end_user=end_user.external_user_id,
                 message_ref=message_ref,
             )
-        except services.errors.app_model_config.AppModelConfigBrokenError:
+        except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
             logger.exception("App model config broken.")
-            raise AppUnavailableError()
+            raise AppUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
+            raise ProviderNotInitializeError(ex.description) from ex
+        except QuotaExceededError as caught_error:
+            raise ProviderQuotaExceededError() from caught_error
+        except ModelCurrentlyNotSupportError as caught_error:
+            raise ProviderModelCurrentlyNotSupportError() from caught_error
         except InvokeError as e:
-            raise CompletionRequestError(e.description)
+            raise CompletionRequestError(e.description) from e
         except ValueError as e:
             raise e
         except Exception as e:
             logger.exception("internal server error.")
-            raise InternalServerError()
+            raise InternalServerError() from e

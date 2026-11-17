@@ -5,11 +5,11 @@ export type ClientOptions = {
 }
 
 export type SystemFeatureModel = {
+  agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
-  enable_collaboration_mode: boolean
   enable_creators_platform: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean

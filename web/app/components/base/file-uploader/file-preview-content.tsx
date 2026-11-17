@@ -51,7 +51,7 @@ function FilePreviewPopup({ file, kind }: FilePreviewContentProps) {
         ref={popupRef}
         initialFocus={closeRef}
         className={cn(
-          'fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden rounded-none border-none bg-black/80 p-8 shadow-none',
+          'fixed inset-0 flex h-dvh w-screen items-center justify-center overflow-hidden bg-black/80 p-8',
           kind === 'pdf' && 'max-sm:p-0',
         )}
       >

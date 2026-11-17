@@ -18,9 +18,11 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import IndexingStatus
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
 from services.feature_service import FeatureService
+from services.file_scan.admission import reject_dataset_upload_file
 from services.knowledge.indexing.adapters.execution import build_document_indexing_service
 from services.knowledge.resource_scope import DatasetRef
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -126,12 +128,14 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                                 document,
                                 user,
                                 generator=PipelineGenerator(
+                                    execution_driver=WorkflowRunAgg.run,
                                     documents=SQLAlchemyDocumentRepository(
                                         session_factory=session_factory.get_session_maker()
                                     ),
                                     datasource_providers=build_data_source_credentials(
                                         database_client=get_session_maker()
                                     ).providers,
+                                    file_admission=reject_dataset_upload_file,
                                 ),
                             )
                     else:

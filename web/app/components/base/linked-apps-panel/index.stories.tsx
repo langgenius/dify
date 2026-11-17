@@ -1,8 +1,8 @@
+import type { RelatedAppResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { Meta, StoryObj } from '@storybook/nextjs-vite'
-import type { RelatedApp } from '@/models/datasets'
 import LinkedAppsPanel from '.'
 
-const mockRelatedApps: RelatedApp[] = [
+const mockRelatedApps: RelatedAppResponse[] = [
   {
     id: 'app-cx',
     name: 'Customer Support Assistant',
@@ -49,10 +49,10 @@ const meta = {
   },
   args: {
     relatedApps: mockRelatedApps,
-    isMobile: false,
+    compact: false,
   },
   argTypes: {
-    isMobile: {
+    compact: {
       control: 'boolean',
     },
   },
@@ -62,11 +62,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-export const Desktop: Story = {}
+export const Default: Story = {}
 
-export const Mobile: Story = {
+export const Compact: Story = {
   args: {
-    isMobile: true,
+    compact: true,
   },
   parameters: {
     viewport: {

@@ -21,6 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -57,6 +58,7 @@ from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     MemberNotInTenantError,
     RoleAlreadyAssignedError,
+    WorkspaceNotLinkedError,
 )
 from services.workspace.contracts import WorkspaceInvitation, WorkspaceMemberRecord, WorkspaceSnapshot
 
@@ -76,6 +78,7 @@ def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
 class WorkspacesApi(Resource):
     @endpoint(
         op="get.workspace",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY,
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
@@ -89,6 +92,8 @@ class WorkspacesApi(Resource):
             item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
             return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
+        if ctx.personal_workspace_ids is not None:
+            rows = tuple(row for row in rows if row.id in ctx.personal_workspace_ids)
         return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
 
 
@@ -111,6 +116,38 @@ class WorkspaceByIdApi(Resource):
             raise NotFound("workspace not found")
 
         return _workspace_detail(row)
+
+
+@openapi_ns.route("/workspaces/<string:workspace_id>:switch")
+class WorkspaceSwitchApi(Resource):
+    """Server-side switch — equivalent to the console's POST /workspaces/switch.
+
+    CLI `difyctl use workspace <id>` calls this; it does NOT mutate
+    ``hosts.yml`` on its own. Failure here must abort the local write so
+    that ``hosts.yml`` never diverges from the server's ``current`` state.
+    """
+
+    @endpoint(
+        op="switch.workspace",
+        kind=Kind.OBJECT,
+        summary="Server-side current workspace switch (shared with the web console)",
+        examples=(Example(title="Make a workspace current on the server", input={"workspace_id": "<workspace_id>"}),),
+        internal=True,
+        requirements=(
+            CheckSubject(allowed=(AccountSubject,)),
+            CheckScope(Scope.WORKSPACE_READ),
+            CheckWorkspaceMember(),
+        ),
+        returns=(200, WorkspaceDetailResponse, "Workspace detail"),
+    )
+    def post(self, ctx: Context, workspace_id: str):
+        try:
+            workspace = application_services().workspaces.management.switch_membership(
+                str(ctx.subject.account_id), workspace_id
+            )
+        except WorkspaceNotLinkedError:
+            raise NotFound("workspace not found") from None
+        return _workspace_detail(workspace)
 
 
 @openapi_ns.route("/workspaces/<string:workspace_id>/members")
@@ -173,15 +210,15 @@ class WorkspaceMembersApi(Resource):
                 role=body.role,
             )
         except AccountAlreadyInTenantError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
-        except SeatsLimitExceededError:
-            raise BadRequest("licensed seats limit exceeded")
+            raise BadRequest(str(exc)) from exc
+        except SeatsLimitExceededError as caught_error:
+            raise BadRequest("licensed seats limit exceeded") from caught_error
         except AccountRegisterError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
 
         return _invitation_response(invitation)
 
@@ -217,11 +254,11 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
 
         return MemberActionResponse()
 
@@ -252,13 +289,13 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
         except RoleAlreadyAssignedError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
 

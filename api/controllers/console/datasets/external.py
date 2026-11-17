@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from typing import Any, Never
 from uuid import UUID
@@ -8,6 +9,7 @@ from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
+from configs import dify_config
 from controllers.common.fields import UsageCountResponse
 from controllers.common.rbac import DatasetId, RBACCheck, Workspace
 from controllers.common.schema import (
@@ -31,11 +33,14 @@ from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from models.account import TenantAccountRole
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalDatasetCreatePayload
+from services.entities.external_knowledge_entities.external_knowledge_entities import (
+    ExternalDatasetCreatePayload as ExternalDatasetCreateInput,
+)
 from services.errors.dataset import DatasetNameDuplicateError as DatasetNameDuplicateFailure
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
 from services.knowledge.external.application import ExternalHitTestingError, ExternalTemplateNotFoundError
 
+logger = logging.getLogger(__name__)
 _DATASET_EDIT_ROLES = frozenset(
     {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.DATASET_OPERATOR}
 )
@@ -50,8 +55,15 @@ def _raise_external_error(error: Exception) -> Never:
     if isinstance(error, DatasetNameDuplicateFailure):
         raise DatasetNameDuplicateError() from error
     if isinstance(error, ExternalHitTestingError):
-        raise InternalServerError(str(error)) from error
+        logger.exception("External hit testing failed")
+        raise InternalServerError() from error
     raise error
+
+
+class ExternalDatasetCreatePayload(ExternalDatasetCreateInput):
+    """Apply the deployment's description limit at the HTTP boundary."""
+
+    description: str | None = Field(None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
 
 
 class ExternalKnowledgeApiPayload(BaseModel):

@@ -16,6 +16,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -329,7 +330,7 @@ export const Workflow: FC<WorkflowProps> = memo(
 
         if (payload.viewport) reactflow.setViewport(payload.viewport)
 
-        if (payload.hash) setSyncWorkflowDraftHash(payload.hash)
+        if (payload.hash) setSyncWorkflowDraftHash(payload.hash, payload)
 
         onWorkflowDataUpdate?.(payload)
 
@@ -443,22 +444,6 @@ export const Workflow: FC<WorkflowProps> = memo(
         }
       },
       [showConfirm, setShowConfirm, handleCommentDelete, t],
-    )
-
-    const handleCommentReplyDeleteClick = useCallback(
-      (commentId: string, replyId: string) => {
-        if (!showConfirm) {
-          setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
-            onConfirm: async () => {
-              await handleCommentReplyDelete(commentId, replyId)
-              setShowConfirm(undefined)
-            },
-          })
-        }
-      },
-      [showConfirm, setShowConfirm, handleCommentReplyDelete, t],
     )
 
     useEffect(() => {
@@ -647,7 +632,7 @@ export const Workflow: FC<WorkflowProps> = memo(
         <CandidateNode />
         <CommentManager />
         <div
-          className="pointer-events-none absolute top-0 left-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
+          className="pointer-events-none absolute inset-s-0 top-0 z-10 flex w-12 items-center justify-center p-1 ps-2"
           style={{ height: controlHeight }}
         >
           <Control />
@@ -664,16 +649,12 @@ export const Workflow: FC<WorkflowProps> = memo(
           }}
         >
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
-                {showConfirm?.title}
-              </AlertDialogTitle>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{showConfirm?.title}</AlertDialogTitle>
               {showConfirm?.desc && (
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
-                  {showConfirm.desc}
-                </AlertDialogDescription>
+                <AlertDialogDescription>{showConfirm.desc}</AlertDialogDescription>
               )}
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}
@@ -733,8 +714,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                   onReplyEdit={(replyId, content, ids) =>
                     handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])
                   }
-                  onReplyDelete={(replyId) => handleCommentReplyDeleteClick(comment.id, replyId)}
-                  onReplyDeleteDirect={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
+                  onReplyDelete={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
                   canGoPrev={canGoPrev}
                   canGoNext={canGoNext}
                 />

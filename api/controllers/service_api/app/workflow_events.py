@@ -136,11 +136,11 @@ class WorkflowEventsApi(Resource):
             event_generator = _generate_finished_events
         else:
             msg_generator = MessageGenerator()
-            generator: BaseAppGenerator
+            generator: type[BaseAppGenerator]
             if app_mode == AppMode.ADVANCED_CHAT:
-                generator = AdvancedChatAppGenerator()
+                generator = AdvancedChatAppGenerator
             elif app_mode == AppMode.WORKFLOW:
-                generator = WorkflowAppGenerator()
+                generator = WorkflowAppGenerator
             else:
                 raise NotWorkflowAppError()
 

@@ -114,7 +114,7 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: ['END'],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
@@ -164,7 +164,7 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: [],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
@@ -207,7 +207,7 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: ['DONE'],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({
@@ -264,7 +264,7 @@ describe('useAdvancedPromptConfig', () => {
         },
       },
       stop: [],
-    } as any)
+    })
 
     const { result } = renderHook(() =>
       useAdvancedPromptConfig({

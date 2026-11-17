@@ -50,7 +50,7 @@ export const stopChatMessageResponding = async (appId: string, taskId: string) =
 
 export const sendCompletionMessage = async (
   appId: string,
-  body: Record<string, any>,
+  body: Record<string, unknown>,
   handlers: {
     onData: IOnData
     onCompleted: IOnCompleted

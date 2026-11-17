@@ -1,3 +1,4 @@
+import type { ConsoleClientContext } from '@/service/console'
 import type { PublishSnippetWorkflowResponse, SnippetWorkflow } from '@/types/snippet'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { consoleClient, consoleQuery } from '@/service/console'
@@ -103,18 +104,24 @@ export const useSnippetDefaultBlockConfigs = (
   })
 }
 
-export const usePublishSnippetWorkflowMutation = (snippetId: string) => {
+export const usePublishSnippetWorkflowMutation = (
+  snippetId: string,
+  context?: ConsoleClientContext,
+) => {
   const queryClient = useQueryClient()
 
   return useMutation<PublishSnippetWorkflowResponse, Error, { params: { snippetId: string } }>({
     mutationKey: snippetWorkflowContract.workflows.publish.post.mutationKey(),
     mutationFn: ({ params }) =>
-      snippetWorkflowClient.workflows.publish.post({
-        params: {
-          snippet_id: params.snippetId,
+      snippetWorkflowClient.workflows.publish.post(
+        {
+          params: {
+            snippet_id: params.snippetId,
+          },
+          body: {},
         },
-        body: {},
-      }),
+        { context },
+      ),
     onSuccess: async () => {
       await invalidateSnippetWorkflowQueries(queryClient, snippetId)
     },

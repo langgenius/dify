@@ -1,7 +1,7 @@
+import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineDocument } from '@dify/contracts/api/console/rag/types.gen'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { DataSourceNotionPage } from '@/models/common'
-import type { IndexingStatusResponse } from '@/models/datasets'
-import type { InitialDocumentDetail } from '@/models/pipeline'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -38,7 +38,7 @@ const isNotionPageIcon = (value: unknown): value is DataSourceNotionPage['page_i
 type EmbeddingProcessProps = {
   datasetId: string
   batchId: string
-  documents?: InitialDocumentDetail[]
+  documents?: PipelineDocument[]
   indexingType?: IndexingType
   retrievalMethod?: RETRIEVE_METHOD
 }
@@ -58,7 +58,7 @@ const EmbeddingProcess = ({
       select: (data) => data.billing.subscription.plan,
     }),
   )
-  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<IndexingStatusResponse[]>(
+  const [indexingStatusBatchDetail, setIndexingStatusDetail] = useState<DocumentStatusResponse[]>(
     [],
   )
   const [shouldPoll, setShouldPoll] = useState(true)
@@ -147,7 +147,7 @@ const EmbeddingProcess = ({
     return doc?.name
   }
   const getFileType = (name?: string) => name?.split('.').pop() || 'txt'
-  const getSourcePercent = (detail: IndexingStatusResponse) => {
+  const getSourcePercent = (detail: DocumentStatusResponse) => {
     const completedCount = detail.completed_segments || 0
     const totalCount = detail.total_segments || 0
     if (totalCount === 0) return 0
@@ -164,7 +164,7 @@ const EmbeddingProcess = ({
     const icon = doc?.data_source_info?.notion_page_icon
     return typeof icon === 'string' || isNotionPageIcon(icon) ? icon : undefined
   }
-  const isSourceEmbedding = (detail: IndexingStatusResponse) =>
+  const isSourceEmbedding = (detail: DocumentStatusResponse) =>
     ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(
       detail.indexing_status || '',
     )

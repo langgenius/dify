@@ -80,9 +80,7 @@ describe('use-credential hooks', () => {
   describe('useDeletePluginCredentialHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useDeletePluginCredentialHook(toolPayload))
-      expect(mockUseDeletePluginCredential).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/delete`,
-      )
+      expect(mockUseDeletePluginCredential).toHaveBeenCalledWith(toolPayload)
     })
   })
 
@@ -110,9 +108,7 @@ describe('use-credential hooks', () => {
   describe('useSetPluginDefaultCredentialHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useSetPluginDefaultCredentialHook(toolPayload))
-      expect(mockUseSetPluginDefaultCredential).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/default-credential`,
-      )
+      expect(mockUseSetPluginDefaultCredential).toHaveBeenCalledWith(toolPayload)
     })
   })
 
@@ -120,14 +116,16 @@ describe('use-credential hooks', () => {
     it('should call service with correct schema URL for API_KEY', () => {
       renderHook(() => useGetPluginCredentialSchemaHook(toolPayload, CredentialTypeEnum.API_KEY))
       expect(mockUseGetPluginCredentialSchema).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/credential/schema/${CredentialTypeEnum.API_KEY}`,
+        toolPayload,
+        CredentialTypeEnum.API_KEY,
       )
     })
 
     it('should call service with correct schema URL for OAUTH2', () => {
       renderHook(() => useGetPluginCredentialSchemaHook(toolPayload, CredentialTypeEnum.OAUTH2))
       expect(mockUseGetPluginCredentialSchema).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/credential/schema/${CredentialTypeEnum.OAUTH2}`,
+        toolPayload,
+        CredentialTypeEnum.OAUTH2,
       )
     })
   })
@@ -135,69 +133,55 @@ describe('use-credential hooks', () => {
   describe('useAddPluginCredentialHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useAddPluginCredentialHook(toolPayload))
-      expect(mockUseAddPluginCredential).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/add`,
-      )
+      expect(mockUseAddPluginCredential).toHaveBeenCalledWith(toolPayload)
     })
   })
 
   describe('useUpdatePluginCredentialHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useUpdatePluginCredentialHook(toolPayload))
-      expect(mockUseUpdatePluginCredential).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/update`,
-      )
+      expect(mockUseUpdatePluginCredential).toHaveBeenCalledWith(toolPayload)
     })
   })
 
   describe('useGetPluginOAuthUrlHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useGetPluginOAuthUrlHook(toolPayload))
-      expect(mockUseGetPluginOAuthUrl).toHaveBeenCalledWith(
-        `/oauth/plugin/${toolPayload.provider}/tool/authorization-url`,
-      )
+      expect(mockUseGetPluginOAuthUrl).toHaveBeenCalledWith(toolPayload)
     })
   })
 
   describe('useGetPluginOAuthClientSchemaHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload))
-      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/client-schema`,
-      )
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload, true)
     })
 
     it('should disable the service query when OAuth data is provided by the caller', () => {
       renderHook(() => useGetPluginOAuthClientSchemaHook(toolPayload, false))
 
-      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith('')
+      expect(mockUseGetPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload, false)
     })
   })
 
   describe('useInvalidPluginOAuthClientSchemaHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useInvalidPluginOAuthClientSchemaHook(toolPayload))
-      expect(mockUseInvalidPluginOAuthClientSchema).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/client-schema`,
-      )
+      expect(mockUseInvalidPluginOAuthClientSchema).toHaveBeenCalledWith(toolPayload)
     })
   })
 
   describe('useSetPluginOAuthCustomClientHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useSetPluginOAuthCustomClientHook(toolPayload))
-      expect(mockUseSetPluginOAuthCustomClient).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/custom-client`,
-      )
+      expect(mockUseSetPluginOAuthCustomClient).toHaveBeenCalledWith(toolPayload)
     })
   })
 
   describe('useDeletePluginOAuthCustomClientHook', () => {
     it('should call service with correct URL', () => {
       renderHook(() => useDeletePluginOAuthCustomClientHook(toolPayload))
-      expect(mockUseDeletePluginOAuthCustomClient).toHaveBeenCalledWith(
-        `/workspaces/current/tool-provider/builtin/${toolPayload.provider}/oauth/custom-client`,
-      )
+      expect(mockUseDeletePluginOAuthCustomClient).toHaveBeenCalledWith(toolPayload)
     })
   })
 })

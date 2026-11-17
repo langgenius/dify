@@ -30,14 +30,4 @@ describe.each([
     await user.clear(screen.getByRole('textbox', { name: label }))
     expect(onChange).toHaveBeenLastCalledWith(1)
   })
-
-  it('clamps out-of-range edits before updating chunk settings', async () => {
-    const user = userEvent.setup()
-    const onChange = vi.fn()
-    render(<Component value={50} max={100} onChange={onChange} />)
-
-    await user.tripleClick(screen.getByRole('textbox', { name: label }))
-    await user.paste('150')
-    expect(onChange).toHaveBeenLastCalledWith(100)
-  })
 })

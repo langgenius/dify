@@ -10,7 +10,7 @@ const detailOptions = () =>
 const retryDetail = (failureCount: number, error: Error) => {
   const options = detailOptions()
   const retry = 'retry' in options ? options.retry : undefined
-  if (typeof retry !== 'function') throw new Error('expected a retry policy')
+  if (typeof retry !== 'function') throw new TypeError('expected a retry policy')
   return retry(failureCount, error)
 }
 
@@ -26,7 +26,7 @@ describe('dataset query policies', () => {
     expect(retryDetail(3, error)).toBe(false)
   })
 
-  it('reads process rules once per import', () => {
+  it('does not refetch process rules on window focus', () => {
     const options = consoleQuery.datasets.processRule.get.queryOptions({ input: { query: {} } })
     expect('refetchOnWindowFocus' in options ? options.refetchOnWindowFocus : undefined).toBe(false)
   })

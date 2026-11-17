@@ -42,6 +42,7 @@ export const zApiBaseUrlResponse = z.object({
  */
 export const zDatasetApiKeyCreatePayload = z.object({
   dataset_ids: z.array(z.string()).optional(),
+  knowledge_space_ids: z.array(z.string()).optional(),
 })
 
 /**
@@ -51,6 +52,7 @@ export const zApiKeyItem = z.object({
   created_at: z.int().nullish(),
   dataset_ids: z.array(z.string()).optional().default([]),
   id: z.string(),
+  knowledge_space_ids: z.array(z.string()).optional().default([]),
   last_used_at: z.int().nullish(),
   token: z.string(),
   type: z.string(),
@@ -86,12 +88,7 @@ export const zSegmentBatchImportStatusResponse = z.object({
 /**
  * ExternalDatasetCreatePayload
  *
- * Validated fields required to create an external dataset binding.
- *
- * The console controller owns HTTP concerns, but the service also needs this
- * contract when creating the tenant-scoped dataset and external knowledge
- * binding. Keep it outside controllers so service imports do not depend on
- * Flask blueprint initialization.
+ * Apply the deployment's description limit at the HTTP boundary.
  */
 export const zExternalDatasetCreatePayload = z.object({
   description: z.string().max(400).nullish(),
@@ -439,12 +436,90 @@ export const zErrorDocsResponse = z.object({
 })
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
+ * EvaluationFileResponse
+ */
+export const zEvaluationFileResponse = z.object({
+  created_at: z.int().nullish(),
+  download_url: z.string(),
+  extension: z.string(),
+  id: z.string(),
+  mime_type: z.string(),
+  name: z.string(),
+  size: z.int(),
+})
+
+/**
+ * EvaluationMetricsResponse
+ */
+export const zEvaluationMetricsResponse = z.object({
+  metrics: z.union([z.record(z.string(), z.array(z.string())), z.array(z.string())]),
+})
+
+/**
+ * EvaluationRunResponse
+ */
+export const zEvaluationRunResponse = z.object({
+  completed_at: z.int().nullish(),
+  completed_items: z.int(),
+  created_at: z.int().nullish(),
+  created_by: z.string(),
+  dataset_file_id: z.string().nullish(),
+  error: z.string().nullish(),
+  evaluation_config_id: z.string(),
+  failed_items: z.int(),
+  id: z.string(),
+  metrics_summary: z.record(z.string(), z.unknown()).optional(),
+  progress: z.number(),
+  result_file_id: z.string().nullish(),
+  started_at: z.int().nullish(),
+  status: z.string(),
+  target_agent_config_snapshot_id: z.string().nullish(),
+  target_id: z.string(),
+  target_type: z.string(),
+  target_workflow_version_id: z.string().nullish(),
+  tenant_id: z.string(),
+  total_items: z.int(),
+})
+
+/**
+ * EvaluationRunPaginationResponse
+ */
+export const zEvaluationRunPaginationResponse = z.object({
+  data: z.array(zEvaluationRunResponse),
+  page: z.int(),
+  page_size: z.int(),
+  total: z.int(),
+})
+
+/**
  * ExternalHitTestingPayload
  */
 export const zExternalHitTestingPayload = z.object({
   external_retrieval_model: z.record(z.string(), z.unknown()).nullish(),
   metadata_filtering_conditions: z.record(z.string(), z.unknown()).nullish(),
   query: z.string(),
+})
+
+/**
+ * FileScanPolicyResponse
+ */
+export const zFileScanPolicyResponse = z.object({
+  enabled: z.boolean(),
+  on_unavailable: z.string(),
+  on_unscannable: z.string(),
+  provider_id: z.string().nullish(),
 })
 
 /**
@@ -458,6 +533,14 @@ export const zCompletionRequestError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * KnowledgeFSUpgradeRetryResponse
+ */
+export const zKnowledgeFsUpgradeRetryResponse = z.object({
+  id: z.string(),
+  status: z.literal('queued').optional().default('queued'),
+})
 
 /**
  * MetadataArgs
@@ -863,10 +946,77 @@ export const zExternalHitTestingResponse = z.object({
 })
 
 /**
+ * FileScanFallbackAction
+ */
+export const zFileScanFallbackAction = z.enum(['allow', 'block'])
+
+/**
+ * FileScanPolicyPayload
+ */
+export const zFileScanPolicyPayload = z.object({
+  enabled: z.boolean(),
+  on_unavailable: zFileScanFallbackAction.optional().default('block'),
+  on_unscannable: zFileScanFallbackAction.optional().default('block'),
+  provider_id: z.string().nullish(),
+})
+
+/**
  * HitTestingQuery
  */
 export const zHitTestingQuery = z.object({
   content: z.string(),
+})
+
+export const zKnowledgeFsUpgradeBlockReason = z.enum([
+  'already_upgraded',
+  'feature_disabled',
+  'retry_required',
+  'unsupported_dataset_provider',
+  'upgrade_in_progress',
+])
+
+/**
+ * KnowledgeFSUpgradeStage
+ */
+export const zKnowledgeFsUpgradeStage = z.enum([
+  'completed',
+  'creating_sources',
+  'finalizing',
+  'migrating_access',
+  'submitting_documents',
+  'validating',
+  'waiting_for_space',
+])
+
+/**
+ * KnowledgeFSUpgradeJobStatus
+ */
+export const zKnowledgeFsUpgradeJobStatus = z.enum(['failed', 'queued', 'running', 'succeeded'])
+
+/**
+ * KnowledgeFSUpgradeJobResponse
+ */
+export const zKnowledgeFsUpgradeJobResponse = z.object({
+  completed_at: z.iso.datetime().nullish(),
+  completed_documents: z.int().gte(0),
+  completed_sources: z.int().gte(0),
+  id: z.string(),
+  last_error_code: z.string().nullish(),
+  last_error_message: z.string().nullish(),
+  new_control_space_id: z.string().nullish(),
+  old_dataset_id: z.string(),
+  snapshot_at: z.iso.datetime(),
+  stage: zKnowledgeFsUpgradeStage,
+  status: zKnowledgeFsUpgradeJobStatus,
+  total_documents: z.int().gte(0),
+  total_sources: z.int().gte(0),
+})
+
+/**
+ * KnowledgeFSUpgradeJobListResponse
+ */
+export const zKnowledgeFsUpgradeJobListResponse = z.object({
+  data: z.array(zKnowledgeFsUpgradeJobResponse),
 })
 
 /**
@@ -885,6 +1035,16 @@ export const zDatasetMetadataListItemResponse = z.object({
 export const zDatasetMetadataListResponse = z.object({
   built_in_field_enabled: z.boolean(),
   doc_metadata: z.array(zDatasetMetadataListItemResponse),
+})
+
+/**
+ * KnowledgeFSUpgradeDiscoveryResponse
+ */
+export const zKnowledgeFsUpgradeDiscoveryResponse = z.object({
+  block_reason: zKnowledgeFsUpgradeBlockReason.nullish(),
+  can_retry: z.boolean(),
+  can_upgrade: z.boolean(),
+  job: zKnowledgeFsUpgradeJobResponse.nullish(),
 })
 
 /**
@@ -917,7 +1077,7 @@ export const zRerankingModel = z.object({
  * Segmentation
  */
 export const zSegmentation = z.object({
-  chunk_overlap: z.int().optional().default(0),
+  chunk_overlap: z.int().gte(0).optional().default(0),
   max_tokens: z.int(),
   separator: z.string().optional().default('\n'),
 })
@@ -1075,6 +1235,48 @@ export const zConsoleSegmentListResponse = z.object({
 })
 
 /**
+ * CustomizedMetricOutputField
+ */
+export const zCustomizedMetricOutputField = z.object({
+  value_type: z.string(),
+  variable: z.string(),
+})
+
+/**
+ * CustomizedMetrics
+ *
+ * Custom evaluator selection.
+ *
+ * ``evaluation_workflow_id`` is the evaluator App ID retained for API
+ * compatibility. ``evaluation_workflow_version_id`` is resolved at run
+ * creation so an in-flight or historical run never follows a later publish.
+ */
+export const zCustomizedMetrics = z.object({
+  evaluation_workflow_id: z.string(),
+  evaluation_workflow_version_id: z.string().nullish(),
+  input_fields: z.record(z.string(), z.unknown()),
+  output_fields: z.array(zCustomizedMetricOutputField),
+})
+
+/**
+ * NodeInfo
+ */
+export const zNodeInfo = z.object({
+  node_id: z.string(),
+  title: z.string(),
+  type: z.string(),
+})
+
+/**
+ * DefaultMetric
+ */
+export const zDefaultMetric = z.object({
+  metric: z.string(),
+  node_info_list: z.array(zNodeInfo),
+  value_type: z.string().optional().default(''),
+})
+
+/**
  * HitTestingChildChunk
  */
 export const zHitTestingChildChunk = z.object({
@@ -1097,9 +1299,113 @@ export const zHitTestingFile = z.object({
 })
 
 /**
+ * KnowledgeFSUpgradeModelChoice
+ */
+export const zKnowledgeFsUpgradeModelChoice = z.object({
+  model: z.string().min(1).max(255),
+  provider: z.string().min(1).max(255),
+})
+
+/**
+ * KnowledgeFSUpgradeModelsPayload
+ */
+export const zKnowledgeFsUpgradeModelsPayload = z.object({
+  embedding: zKnowledgeFsUpgradeModelChoice,
+  reasoning: zKnowledgeFsUpgradeModelChoice,
+  rerank: zKnowledgeFsUpgradeModelChoice,
+})
+
+/**
+ * KnowledgeFSUpgradeStartPayload
+ */
+export const zKnowledgeFsUpgradeStartPayload = z.object({
+  models: zKnowledgeFsUpgradeModelsPayload.nullish(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelRecommendationResponse
+ */
+export const zKnowledgeFsUpgradeModelRecommendationResponse = z.object({
+  available: z.boolean(),
+  source: z.enum(['legacy', 'workspace_default']).nullable(),
+  unavailable_reason: z
+    .enum([
+      'credential-removed',
+      'deprecated',
+      'disabled',
+      'missing',
+      'no-configure',
+      'no-permission',
+      'not_found',
+      'quota-exceeded',
+    ])
+    .nullish(),
+  value: zKnowledgeFsUpgradeModelChoice.nullable(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelRecommendationsResponse
+ */
+export const zKnowledgeFsUpgradeModelRecommendationsResponse = z.object({
+  embedding: zKnowledgeFsUpgradeModelRecommendationResponse,
+  reasoning: zKnowledgeFsUpgradeModelRecommendationResponse,
+  rerank: zKnowledgeFsUpgradeModelRecommendationResponse,
+})
+
+/**
+ * KnowledgeFSUpgradePreparationResponse
+ */
+export const zKnowledgeFsUpgradePreparationResponse = z.object({
+  block_reason: zKnowledgeFsUpgradeBlockReason.nullish(),
+  can_retry: z.boolean(),
+  can_upgrade: z.boolean(),
+  job: zKnowledgeFsUpgradeJobResponse.nullish(),
+  models: zKnowledgeFsUpgradeModelRecommendationsResponse.nullish(),
+})
+
+/**
+ * KnowledgeFSUpgradeModelIssueResponse
+ */
+export const zKnowledgeFsUpgradeModelIssueResponse = z.object({
+  field: z.enum(['embedding', 'reasoning', 'rerank']),
+  model: z.string().nullish(),
+  provider: z.string().nullish(),
+  reason: z.enum([
+    'credential-removed',
+    'deprecated',
+    'disabled',
+    'missing',
+    'no-configure',
+    'no-permission',
+    'not_found',
+    'quota-exceeded',
+  ]),
+})
+
+/**
+ * KnowledgeFSUpgradeModelErrorDetailsResponse
+ */
+export const zKnowledgeFsUpgradeModelErrorDetailsResponse = z.object({
+  issues: z.array(zKnowledgeFsUpgradeModelIssueResponse).min(1).max(3),
+})
+
+/**
+ * KnowledgeFsUpgradeModelsUnavailableError
+ *
+ * One or more selected upgrade models are unavailable.
+ */
+export const zKnowledgeFsUpgradeModelsUnavailableError = zErrorResponse.and(
+  z.object({
+    code: z.literal('knowledge_fs_upgrade_models_unavailable'),
+    details: zKnowledgeFsUpgradeModelErrorDetailsResponse.optional(),
+    status: z.literal(422),
+  }),
+)
+
+/**
  * CreatorUserRole
  */
-export const zCreatorUserRole = z.enum(['account', 'end_user'])
+export const zCreatorUserRole = z.enum(['account', 'dataset_api_key', 'end_user'])
 
 /**
  * DatasetQuerySource
@@ -1331,6 +1637,7 @@ export const zDatasetListItemResponse = z.object({
   is_multimodal: z.boolean(),
   is_published: z.boolean(),
   keyword_number: z.int().nullish(),
+  knowledge_fs_upgrade: zKnowledgeFsUpgradeDiscoveryResponse,
   maintainer: z.string().nullish(),
   name: z.string(),
   partial_member_list: z.array(z.string()),
@@ -1461,7 +1768,7 @@ export const zRetrievalModel = z.object({
  * HitTestingPayload
  */
 export const zHitTestingPayload = z.object({
-  attachment_ids: z.array(z.string()).nullish(),
+  attachment_ids: z.array(z.uuid()).nullish(),
   external_retrieval_model: z
     .object({
       score_threshold: z.number().optional(),
@@ -1662,6 +1969,147 @@ export const zDocumentWithSegmentsListResponse = z.object({
   total: z.int(),
 })
 
+export const zSupportedComparisonOperator = z.enum([
+  '<',
+  '=',
+  '>',
+  'all of',
+  'contains',
+  'empty',
+  'end with',
+  'exists',
+  'in',
+  'is',
+  'is not',
+  'not contains',
+  'not empty',
+  'not exists',
+  'not in',
+  'not null',
+  'null',
+  'start with',
+  '≠',
+  '≤',
+  '≥',
+])
+
+/**
+ * JudgmentCondition
+ *
+ * A single judgment condition that checks one metric value.
+ *
+ * Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+ * side being a metric selector instead of a workflow variable selector.
+ *
+ * Attributes:
+ * variable_selector: ``[node_id, metric_name]`` identifying the metric.
+ * comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+ * value: The comparison target (right side).  For unary operators such
+ * as ``empty`` or ``null`` this can be ``None``.
+ */
+export const zJudgmentCondition = z.object({
+  comparison_operator: zSupportedComparisonOperator,
+  value: z.union([z.string(), z.array(z.string()), z.boolean()]).nullish(),
+  variable_selector: z.array(z.string()),
+})
+
+/**
+ * JudgmentConfig
+ *
+ * A group of judgment conditions combined with a logical operator.
+ *
+ * Attributes:
+ * logical_operator: How to combine condition results — "and" requires
+ * all conditions to pass, "or" requires at least one.
+ * conditions: The list of individual conditions to evaluate.
+ */
+export const zJudgmentConfig = z.object({
+  conditions: z.array(zJudgmentCondition).optional(),
+  logical_operator: z.enum(['and', 'or']).optional().default('and'),
+})
+
+/**
+ * EvaluationConfigResponse
+ */
+export const zEvaluationConfigResponse = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).nullish(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+  evaluation_model: z.string().nullish(),
+  evaluation_model_provider: z.string().nullish(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationConfigPayload
+ */
+export const zEvaluationConfigPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationRunPayload
+ */
+export const zEvaluationRunPayload = z.object({
+  customized_metrics: zCustomizedMetrics.nullish(),
+  default_metrics: z.array(zDefaultMetric).optional(),
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+  evaluation_model: z.string().optional().default(''),
+  evaluation_model_provider: z.string().optional().default(''),
+  file_id: z.string(),
+  judgment_config: zJudgmentConfig.nullish(),
+})
+
+/**
+ * EvaluationMetric
+ */
+export const zEvaluationMetric = z.object({
+  details: z.record(z.string(), z.unknown()).optional(),
+  name: z.string(),
+  node_info: zNodeInfo.nullish(),
+  value: z.unknown(),
+})
+
+/**
+ * EvaluationRunItemResponse
+ */
+export const zEvaluationRunItemResponse = z.object({
+  actual_output: z.string().nullish(),
+  error: z.string().nullish(),
+  expected_output: z.string().nullish(),
+  id: z.string(),
+  inputs: z.record(z.string(), z.unknown()).optional(),
+  item_index: z.int(),
+  judgment: z.record(z.string(), z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+  metrics: z.array(zEvaluationMetric).optional(),
+  overall_score: z.number().nullish(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * EvaluationRunItemPaginationResponse
+ */
+export const zEvaluationRunItemPaginationResponse = z.object({
+  data: z.array(zEvaluationRunItemResponse),
+  page: z.int(),
+  page_size: z.int(),
+  total: z.int(),
+})
+
+/**
+ * EvaluationRunDetailResponse
+ */
+export const zEvaluationRunDetailResponse = z.object({
+  items: zEvaluationRunItemPaginationResponse,
+  run: zEvaluationRunResponse,
+})
+
 /**
  * HitTestingDocument
  */
@@ -1819,6 +2267,11 @@ export const zDataSource = z.object({
 
 /**
  * KnowledgeConfig
+ *
+ * Document ingestion configuration with a validated indexing technique.
+ *
+ * The indexing technique remains an IndexTechniqueType enum after validation.
+ * JSON serialization preserves its public economy or high_quality value.
  */
 export const zKnowledgeConfig = z.object({
   data_source: zDataSource.nullish(),
@@ -1830,7 +2283,7 @@ export const zKnowledgeConfig = z.object({
   duplicate: z.boolean().optional().default(true),
   embedding_model: z.string().nullish(),
   embedding_model_provider: z.string().nullish(),
-  indexing_technique: z.enum(['economy', 'high_quality']),
+  indexing_technique: zIndexTechniqueType,
   is_multimodal: z.boolean().optional().default(false),
   name: z.string().nullish(),
   original_document_id: z.string().nullish(),
@@ -1847,6 +2300,7 @@ export const zKnowledgeConfig = z.object({
 })
 
 export const zGetDatasetsQuery = z.object({
+  creator_ids: z.array(z.string().min(1).max(255)).max(100).optional(),
   ids: z.array(z.string()).optional(),
   include_all: z.boolean().optional().default(false),
   keyword: z.string().optional(),
@@ -1982,6 +2436,11 @@ export const zPostDatasetsInitBody = zKnowledgeConfig
  * Dataset initialized successfully
  */
 export const zPostDatasetsInitResponse = zDatasetAndDocumentResponse
+
+/**
+ * Recoverable upgrade jobs from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsKnowledgeFsUpgradeJobsResponse = zKnowledgeFsUpgradeJobListResponse
 
 /**
  * Built-in fields retrieved successfully
@@ -2528,6 +2987,120 @@ export const zGetDatasetsByDatasetIdErrorDocsPath = z.object({
  */
 export const zGetDatasetsByDatasetIdErrorDocsResponse = zErrorDocsResponse
 
+export const zGetDatasetsByDatasetIdEvaluationPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation configuration
+ */
+export const zGetDatasetsByDatasetIdEvaluationResponse = zEvaluationConfigResponse
+
+export const zPutDatasetsByDatasetIdEvaluationBody = zEvaluationConfigPayload
+
+export const zPutDatasetsByDatasetIdEvaluationPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation configuration saved
+ */
+export const zPutDatasetsByDatasetIdEvaluationResponse = zEvaluationConfigResponse
+
+export const zGetDatasetsByDatasetIdEvaluationFilesByFileIdPath = z.object({
+  dataset_id: z.uuid(),
+  file_id: z.uuid(),
+})
+
+/**
+ * Evaluation file
+ */
+export const zGetDatasetsByDatasetIdEvaluationFilesByFileIdResponse = zEvaluationFileResponse
+
+export const zGetDatasetsByDatasetIdEvaluationLogsPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationLogsQuery = z.object({
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  page_size: z.int().gte(1).lte(100).optional().default(20),
+})
+
+/**
+ * Evaluation runs
+ */
+export const zGetDatasetsByDatasetIdEvaluationLogsResponse = zEvaluationRunPaginationResponse
+
+export const zGetDatasetsByDatasetIdEvaluationMetricsPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationMetricsQuery = z.object({
+  evaluation_framework: z.enum(['deepeval', 'ragas']).optional().default('ragas'),
+})
+
+/**
+ * Retrieval evaluation metrics
+ */
+export const zGetDatasetsByDatasetIdEvaluationMetricsResponse = zEvaluationMetricsResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunBody = zEvaluationRunPayload
+
+export const zPostDatasetsByDatasetIdEvaluationRunPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Evaluation run started
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunResponse = zEvaluationRunResponse
+
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdQuery = z.object({
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  page_size: z.int().gte(1).lte(100).optional().default(50),
+})
+
+/**
+ * Evaluation run detail
+ */
+export const zGetDatasetsByDatasetIdEvaluationRunsByRunIdResponse = zEvaluationRunDetailResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+/**
+ * Evaluation run cancelled
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdCancelResponse = zEvaluationRunResponse
+
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryPath = z.object({
+  dataset_id: z.uuid(),
+  run_id: z.uuid(),
+})
+
+/**
+ * Evaluation run retry scheduled
+ */
+export const zPostDatasetsByDatasetIdEvaluationRunsByRunIdRetryResponse = zEvaluationRunResponse
+
+export const zPostDatasetsByDatasetIdEvaluationTemplateDownloadPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Knowledge base evaluation template
+ */
+export const zPostDatasetsByDatasetIdEvaluationTemplateDownloadResponse = z.custom<Blob | File>(
+  (value) => value instanceof Blob || value instanceof File,
+)
+
 export const zPostDatasetsByDatasetIdExternalHitTestingBody = zExternalHitTestingPayload
 
 export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
@@ -2538,6 +3111,26 @@ export const zPostDatasetsByDatasetIdExternalHitTestingPath = z.object({
  * External hit testing completed successfully
  */
 export const zPostDatasetsByDatasetIdExternalHitTestingResponse = zExternalHitTestingResponse
+
+export const zGetDatasetsByDatasetIdFileScanPolicyPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetDatasetsByDatasetIdFileScanPolicyResponse = zFileScanPolicyResponse
+
+export const zPutDatasetsByDatasetIdFileScanPolicyBody = zFileScanPolicyPayload
+
+export const zPutDatasetsByDatasetIdFileScanPolicyPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Policy saved
+ */
+export const zPutDatasetsByDatasetIdFileScanPolicyResponse = zFileScanPolicyResponse
 
 export const zPostDatasetsByDatasetIdHitTestingBody = zHitTestingPayload
 
@@ -2558,6 +3151,53 @@ export const zGetDatasetsByDatasetIdIndexingStatusPath = z.object({
  * Indexing status retrieved successfully
  */
 export const zGetDatasetsByDatasetIdIndexingStatusResponse = zDocumentStatusListResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Upgrade availability from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesResponse =
+  zKnowledgeFsUpgradePreparationResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesBody = zKnowledgeFsUpgradeStartPayload
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesHeaders = z.object({
+  'Idempotency-Key': z.string().min(8).max(255),
+})
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesPath = z.object({
+  dataset_id: z.uuid(),
+})
+
+/**
+ * Upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesResponse = zKnowledgeFsUpgradeJobResponse
+
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * Status of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base
+ */
+export const zGetDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeJobResponse
+
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdPath = z.object({
+  dataset_id: z.uuid(),
+  job_id: z.string(),
+})
+
+/**
+ * Retry of the upgrade from the Classic Knowledge Base to an Agent Knowledge Base accepted
+ */
+export const zPostDatasetsByDatasetIdKnowledgeFsUpgradesByJobIdResponse =
+  zKnowledgeFsUpgradeRetryResponse
 
 export const zGetDatasetsByDatasetIdMetadataPath = z.object({
   dataset_id: z.uuid(),

@@ -37,7 +37,7 @@ function render(ui: ReactElement) {
 describe('DuplicateAppModal', () => {
   const getIconButton = () =>
     screen.getByRole('button', {
-      name: /operation\.edit.*appCustomize\.subTitle/,
+      name: /iconPicker\.title/,
     })
 
   beforeEach(() => {
@@ -70,21 +70,6 @@ describe('DuplicateAppModal', () => {
     },
   )
 
-  it('should render a named dialog', () => {
-    render(
-      <DuplicateAppModal
-        appName="Demo App"
-        icon_type="emoji"
-        icon="🤖"
-        show
-        onConfirm={vi.fn()}
-        onHide={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
-  })
-
   it('should validate the name before duplicating and update the input value', async () => {
     const onConfirm = vi.fn()
     const onHide = vi.fn()
@@ -102,13 +87,17 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    const input = screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })
+    expect(screen.getByRole('dialog', { name: /duplicateTitle/ })).toBeInTheDocument()
+    const input = screen.getByRole('textbox', { name: /newApp\.name/ })
+    expect(screen.getByRole('group', { name: 'explore.appCustomize.subTitle' })).toContainElement(
+      input,
+    )
     await user.clear(input)
     await user.type(input, 'Updated App')
     expect(input).toHaveValue('Updated App')
 
     await user.clear(input)
-    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.click(screen.getByRole('textbox', { name: /newApp\.name/ }))
     await user.keyboard('{Enter}')
 
     expect(toastErrorMock).toHaveBeenCalledWith(
@@ -145,7 +134,7 @@ describe('DuplicateAppModal', () => {
       expect(screen.queryByPlaceholderText('app.iconPicker.search')).not.toBeInTheDocument()
     })
     expect(onConfirm).not.toHaveBeenCalled()
-    expect(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ })).toHaveValue('Demo App')
+    expect(screen.getByRole('textbox', { name: /newApp\.name/ })).toHaveValue('Demo App')
     await user.click(screen.getByRole('button', { name: /(?:^|\.)duplicate(?=$|:)/ }))
 
     expect(onConfirm).toHaveBeenCalledWith({
@@ -215,7 +204,7 @@ describe('DuplicateAppModal', () => {
       />,
     )
 
-    await user.click(screen.getByRole('textbox', { name: /appCustomize\.subTitle/ }))
+    await user.click(screen.getByRole('textbox', { name: /newApp\.name/ }))
     await user.keyboard('{Enter}')
 
     expect(onConfirm).not.toHaveBeenCalled()
@@ -255,6 +244,7 @@ describe('DuplicateAppModal', () => {
 })
 
 it('waits for the real Cloud quota and allows an unlimited quota without an upgrade notice', async () => {
+  const user = userEvent.setup()
   const queryClient = createConsoleQueryClient()
   void queryClient.query({
     ...consoleQuery.features.get.queryOptions(),
@@ -279,6 +269,6 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
     seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
   })
   await waitFor(() => expect(button).toBeEnabled())
-  await userEvent.setup().click(button)
+  await user.click(button)
   expect(onConfirm).toHaveBeenCalledOnce()
 })

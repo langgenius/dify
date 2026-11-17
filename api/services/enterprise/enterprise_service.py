@@ -309,6 +309,16 @@ class EnterpriseService:
             return ret
 
         @classmethod
+        def inherit_app_access_mode(cls, source_app_id: str, target_app_id: str) -> None:
+            """Inherit a source app's mode, preserving the copy path's legacy public fallback."""
+            try:
+                access_mode = cls.get_app_access_mode_by_id(source_app_id).access_mode
+            except Exception:
+                # Preserve the existing copy behavior, including read failures for old apps without settings.
+                access_mode = "public"
+            cls.update_app_access_mode(target_app_id, access_mode)
+
+        @classmethod
         def update_app_access_mode(cls, app_id: str, access_mode: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")

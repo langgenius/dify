@@ -3,11 +3,17 @@ import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
+import { createToolProviderFixture } from '@/test/console/tool-provider-fixture'
+import { createTestWorkflowStore } from '../../__tests__/workflow-test-env'
+import { WorkflowContext } from '../../context'
 import { BlockSelectorPanels } from '../tabs'
 import { TabType } from '../types'
 
 const render = (ui: React.ReactElement) =>
-  renderWithConsoleQuery(ui, { systemFeatures: { enable_marketplace: true } })
+  renderWithConsoleQuery(
+    <WorkflowContext.Provider value={createTestWorkflowStore()}>{ui}</WorkflowContext.Provider>,
+    { systemFeatures: { enable_marketplace: true } },
+  )
 
 const { mockToolsState } = vi.hoisted(() => ({
   mockToolsState: {
@@ -27,24 +33,23 @@ vi.mock('@/service/use-plugins', () => ({
   }),
 }))
 
-vi.mock('@tanstack/react-query', async (importOriginal) => {
-  const { mockConsoleOperationHooks } = await import('@/test/console/operation-hooks')
-  return mockConsoleOperationHooks(await importOriginal(), {
-    'workspaces.current.tools.builtin.get': () => ({ data: mockToolsState.buildInTools }),
-    'workspaces.current.tools.api.get': () => ({ data: mockToolsState.customTools }),
-    'workspaces.current.tools.workflow.get': () => ({ data: mockToolsState.workflowTools }),
-    'workspaces.current.tools.mcp.get': () => ({ data: mockToolsState.mcpTools }),
-  })
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.current.tools.builtin.get': async () => mockToolsState.buildInTools,
+      'workspaces.current.tools.api.get': async () => mockToolsState.customTools,
+      'workspaces.current.tools.workflow.get': async () => mockToolsState.workflowTools,
+      'workspaces.current.tools.mcp.get': async () => mockToolsState.mcpTools,
+    }),
+  }
 })
 
-vi.mock('@/utils/var', () => ({
+vi.mock('@/utils/var', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/utils/var')>()),
   basePath: '/console',
-}))
-
-vi.mock('../../store', () => ({
-  useWorkflowStore: () => ({
-    setState: vi.fn(),
-  }),
 }))
 
 vi.mock('../all-start-blocks', () => ({
@@ -81,7 +86,7 @@ vi.mock('../tool-browser', () => ({
 describe('Tabs', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockToolsState.buildInTools = [{ icon: '/tool.svg', name: 'tool' }]
+    mockToolsState.buildInTools = [createToolProviderFixture({ icon: '/tool.svg', name: 'tool' })]
     mockToolsState.customTools = []
     mockToolsState.workflowTools = []
     mockToolsState.mcpTools = []
@@ -227,10 +232,14 @@ describe('Tabs', () => {
     const builtInToolsKey = consoleQuery.workspaces.current.tools.builtin.get.queryKey()
     queryClient.setQueryData(builtInToolsKey, [])
 
+    mockToolsState.buildInTools = [
+      createToolProviderFixture({ name: 'installed-tool', icon: '/installed-tool.svg' }),
+    ]
     await user.click(screen.getByRole('button', { name: 'Install featured tool' }))
 
     expect(screen.getByText('tools-content'))!.toBeInTheDocument()
-    expect(queryClient.getQueryState(builtInToolsKey)?.isInvalidated).toBe(true)
+    expect(await screen.findByText('/console/installed-tool.svg')).toBeInTheDocument()
+    expect(queryClient.getQueryData(builtInToolsKey)).toEqual(mockToolsState.buildInTools)
   })
 
   it('should compose start content directly without tab semantics in standalone mode', () => {

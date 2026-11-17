@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react-vite'
-import type { DisplayHotkey, FormatDisplayOptions } from '@tanstack/react-hotkeys'
+import type { DisplayHotkeyChord, FormatDisplayOptions } from '@tanstack/react-hotkeys'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { Kbd, KbdGroup } from '.'
 import {
@@ -48,7 +48,7 @@ function HotkeyKbdGroup({
   color = 'gray',
   platform = 'mac',
 }: {
-  hotkey: DisplayHotkey
+  hotkey: DisplayHotkeyChord
   color?: 'gray' | 'white'
   platform?: FormatDisplayOptions['platform']
 }) {
@@ -161,7 +161,7 @@ export const InTooltip: Story = {
       <TooltipTrigger
         render={
           <IconButton aria-label="Collapse sidebar" size="lg" variant="secondary">
-            <span aria-hidden className="i-ri-sidebar-fold-line size-4" />
+            <span aria-hidden className="i-ri-sidebar-fold-line size-4 [&:dir(rtl)]:-scale-x-100" />
           </IconButton>
         }
       />

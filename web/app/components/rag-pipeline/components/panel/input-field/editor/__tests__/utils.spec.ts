@@ -5,10 +5,6 @@ import { TransferMethod } from '@/types/app'
 import { convertFormDataToINputField, convertToInputFieldFormData } from '../utils'
 
 describe('input-field editor utils', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should convert pipeline input vars into form data', () => {
     const result = convertToInputFieldFormData({
       type: PipelineInputVarType.multiFiles,

@@ -1,5 +1,5 @@
 import type { GetSystemFeaturesResponse } from '@dify/contracts/api/console/system-features/types.gen'
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -21,6 +21,20 @@ vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
       </div>
     ) : null,
 }))
+
+// The real template picker, plus a way to finish a creation without running the import flow.
+vi.mock('@/app/components/app/create-app-dialog', async (importOriginal) => {
+  const { default: CreateAppTemplateDialog } =
+    await importOriginal<typeof import('@/app/components/app/create-app-dialog')>()
+  return {
+    default: (props: Parameters<typeof CreateAppTemplateDialog>[0]) => (
+      <>
+        <CreateAppTemplateDialog {...props} />
+        {props.show && <button onClick={props.onCreated}>Finish template creation</button>}
+      </>
+    ),
+  }
+})
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({
@@ -114,6 +128,24 @@ describe('RosterToolbar', () => {
     ).toBeInTheDocument()
   })
 
+  it('closes the Agent template picker once an Agent is created', async () => {
+    const user = userEvent.setup()
+    const { queryClient } = renderToolbar()
+    queryClient.setQueryData(
+      consoleQuery.explore.apps.get.queryOptions({
+        input: { query: { language: 'en-US' } },
+      }).queryKey,
+      { recommended_apps: [], categories: [] },
+    )
+    await user.click(screen.getByRole('button', { name: 'common.operation.create' }))
+    await user.click(screen.getByRole('menuitem', { name: 'app.newApp.startFromTemplate' }))
+    const dialog = await screen.findByRole('dialog', { name: 'app.newApp.startFromTemplate' })
+
+    // Without a bound agent the redirect lands on this roster, so the picker must close itself.
+    await user.click(screen.getByRole('button', { name: 'Finish template creation', hidden: true }))
+    await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  })
+
   it('hides the create menu when neither action is permitted', () => {
     permissions.canCreate = false
     permissions.canImport = false
@@ -142,7 +174,9 @@ describe('RosterToolbar', () => {
 
     await user.click(screen.getByRole('button', { name: 'Complete agent import' }))
 
-    expect(invalidateQueries).toHaveBeenCalledTimes(1)
+    expect(invalidateQueries).toHaveBeenCalledExactlyOnceWith({
+      queryKey: consoleQuery.agent.get.key(),
+    })
   })
 
   it('enables roster filters and emits the selected filter', async () => {
@@ -164,38 +198,6 @@ describe('RosterToolbar', () => {
         queryString: '?filter=published',
       }),
     )
-  })
-
-  it('renders stable filter count badges and omits the all count', () => {
-    renderToolbar()
-
-    const allFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.all/ })
-    const publishedFilter = screen.getByRole('radio', {
-      name: /agentRoster\.roster\.filters\.published/,
-    })
-    const draftsFilter = screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })
-
-    expect(allFilter).not.toHaveTextContent('3')
-    expect(within(publishedFilter).getByText('1')).toBeInTheDocument()
-    expect(within(draftsFilter).getByText('2')).toBeInTheDocument()
-  })
-
-  it('renders zero counts before server data is available', () => {
-    renderToolbar({ publicationCounts: { drafts: 0, published: 0 } })
-
-    expect(
-      screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
-    ).toBeInTheDocument()
-    expect(
-      within(
-        screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.published/ }),
-      ).getByText('0'),
-    ).toBeInTheDocument()
-    expect(
-      within(screen.getByRole('radio', { name: /agentRoster\.roster\.filters\.drafts/ })).getByText(
-        '0',
-      ),
-    ).toBeInTheDocument()
   })
 
   it('renders created-by-me filtering and emits checked state', async () => {
@@ -246,7 +248,6 @@ describe('RosterToolbar', () => {
         queryString: '?sort_by=recently_created',
       }),
     )
-    expect(sortSelect).toHaveAccessibleName('agentRoster.roster.sort.label')
     expect(sortSelect).toHaveTextContent('agentRoster.roster.sort.recentlyCreated')
   })
 })

@@ -1,14 +1,11 @@
+import type { IndexingEstimateResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { PipelineGenerateResponse } from '@dify/contracts/api/console/rag/types.gen'
 import type { StoreApi } from 'zustand'
 import type { DataSourceShape } from '@/app/components/datasets/documents/create-from-pipeline/data-source/store'
 import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
 import type { DataSourceNotionPageMap, NotionPage } from '@/models/common'
-import type {
-  CrawlResultItem,
-  DocumentItem,
-  CustomFile as File,
-  FileIndexingEstimateResponse,
-} from '@/models/datasets'
-import type { OnlineDriveFile, PublishedPipelineRunResponse } from '@/models/pipeline'
+import type { CrawlResultItem, DocumentItem, CustomFile as File } from '@/models/datasets'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import { useMutation } from '@tanstack/react-query'
 import { useCallback, useRef } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -30,9 +27,9 @@ type DatasourceActionsParams = {
   datasourceType: string | undefined
   pipelineId: string | undefined
   dataSourceStore: StoreApi<DataSourceShape>
-  setEstimateData: (data: FileIndexingEstimateResponse | undefined) => void
+  setEstimateData: (data: IndexingEstimateResponse | undefined) => void
   setBatchId: (id: string) => void
-  setDocuments: (docs: PublishedPipelineRunResponse['documents']) => void
+  setDocuments: (docs: PipelineGenerateResponse['documents']) => void
   handleNextStep: () => void
   PagesMapAndSelectedPagesId: DataSourceNotionPageMap
   currentWorkspacePages: { page_id: string }[] | undefined

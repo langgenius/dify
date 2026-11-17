@@ -6,6 +6,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -69,11 +70,11 @@ const BatchAction: FC<IBatchActionProps> = ({
             <span>{t(($) => $['operation.delete'], { ns: 'common' })}</span>
           </AlertDialogTrigger>
           <AlertDialogContent>
-            <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-              <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+            <AlertDialogHeader>
+              <AlertDialogTitle>
                 {t(($) => $['list.delete.title'], { ns: 'appAnnotation' })}
               </AlertDialogTitle>
-            </div>
+            </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancelButton disabled={isDeleting}>
                 {t(($) => $['operation.cancel'], { ns: 'common' })}

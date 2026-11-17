@@ -1,5 +1,9 @@
+import type {
+  ConsoleSegmentListResponse,
+  SegmentResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import type { SegmentDetailModel, SegmentsResponse, SegmentUpdater } from '@/models/datasets'
+import type { SegmentUpdater } from '@/models/datasets'
 import type { SegmentImportStatus } from '@/types/dataset'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
@@ -10,6 +14,7 @@ import { ChunkingMode } from '@/models/datasets'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { segmentImportStatus } from '@/types/dataset'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../../context'
 
@@ -25,9 +30,9 @@ type UseSegmentListDataOptions = {
   clearSelection: () => void
 }
 type UseSegmentListDataReturn = {
-  segments: SegmentDetailModel[]
+  segments: SegmentResponse[]
   isLoadingSegmentList: boolean
-  segmentListData: SegmentsResponse | undefined
+  segmentListData: ConsoleSegmentListResponse | undefined
   totalText: string
   isFullDocMode: boolean
   segmentListRef: React.RefObject<HTMLDivElement | null>
@@ -50,7 +55,7 @@ type UseSegmentListDataReturn = {
   markOtherStatusListsStale: () => void
   updateSegmentInCache: (
     segmentId: string,
-    updater: (seg: SegmentDetailModel) => SegmentDetailModel,
+    updater: (seg: SegmentResponse) => SegmentResponse,
   ) => void
 }
 export const useSegmentListData = (
@@ -151,8 +156,8 @@ export const useSegmentListData = (
   }, [selectedStatus, markOtherStatusListsStale, invalidSegmentList])
   // Optimistic update helper using React Query's setQueryData
   const updateSegmentInCache = useCallback(
-    (segmentId: string, updater: (seg: SegmentDetailModel) => SegmentDetailModel) => {
-      queryClient.setQueryData<SegmentsResponse>(currentQueryKey, (old) => {
+    (segmentId: string, updater: (seg: SegmentResponse) => SegmentResponse) => {
+      queryClient.setQueryData<ConsoleSegmentListResponse>(currentQueryKey, (old) => {
         if (!old) return old
         return {
           ...old,
@@ -164,8 +169,8 @@ export const useSegmentListData = (
   )
   // Batch update helper
   const updateSegmentsInCache = useCallback(
-    (segmentIds: string[], updater: (seg: SegmentDetailModel) => SegmentDetailModel) => {
-      queryClient.setQueryData<SegmentsResponse>(currentQueryKey, (old) => {
+    (segmentIds: string[], updater: (seg: SegmentResponse) => SegmentResponse) => {
+      queryClient.setQueryData<ConsoleSegmentListResponse>(currentQueryKey, (old) => {
         if (!old) return old
         return {
           ...old,
@@ -177,10 +182,14 @@ export const useSegmentListData = (
   )
   // Mutations
   const { mutateAsync: switchSegments } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segment.byAction.patch.mutationOptions(
+      { context: { silent: true } },
+    ),
   )
   const { mutateAsync: deleteSegment } = useMutation(
-    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.delete.mutationOptions(),
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.delete.mutationOptions({
+      context: { silent: true },
+    }),
   )
   const { mutateAsync: updateSegment } = useMutation(
     consoleQuery.datasets.byDatasetId.documents.byDocumentId.segments.bySegmentId.patch.mutationOptions(),
@@ -205,8 +214,11 @@ export const useSegmentListData = (
             updateSegmentsInCache(targetIds, (seg) => ({ ...seg, enabled: enable }))
             refreshChunkListWithStatusChanged()
           },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )
@@ -235,8 +247,11 @@ export const useSegmentListData = (
             resetList()
             if (!segId) clearSelection()
           },
-          onError: () => {
-            toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+          onError: (error) => {
+            toast.error(
+              getErrorMessage(error) ??
+                t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+            )
           },
         },
       )

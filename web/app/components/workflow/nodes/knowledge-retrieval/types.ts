@@ -1,16 +1,15 @@
 import type {
+  DatasetDetailWithPartialMembersResponse,
+  DatasetDocMetadataResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import type {
   CommonNodeType,
   ModelConfig,
   Node,
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type {
-  DataSet,
-  MetadataInDoc,
-  RerankingModeEnum,
-  WeightedScoreEnum,
-} from '@/models/datasets'
+import type { RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
 import type { RETRIEVE_TYPE } from '@/types/app'
 
 export type MultipleRetrievalConfig = {
@@ -113,19 +112,19 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
   single_retrieval_config?: SingleRetrievalConfig
-  _datasets?: DataSet[]
+  _datasets?: DatasetDetailWithPartialMembersResponse[]
   metadata_filtering_mode?: MetadataFilteringModeEnum
   metadata_filtering_conditions?: MetadataFilteringConditions
   metadata_model_config?: ModelConfig
 }
 
-export type HandleAddCondition = (metadataItem: MetadataInDoc) => void
+export type HandleAddCondition = (metadataItem: DatasetDocMetadataResponse) => void
 export type HandleRemoveCondition = (id: string) => void
 export type HandleUpdateCondition = (id: string, newCondition: MetadataFilteringCondition) => void
 export type HandleToggleConditionLogicalOperator = () => void
 
 export type MetadataShape = {
-  metadataList?: MetadataInDoc[]
+  metadataList?: DatasetDocMetadataResponse[]
   selectedDatasetsLoaded?: boolean
   metadataFilteringConditions?: MetadataFilteringConditions
   handleAddCondition: HandleAddCondition

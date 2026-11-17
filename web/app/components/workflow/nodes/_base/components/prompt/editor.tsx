@@ -60,7 +60,7 @@ type Props = Readonly<{
   editionType?: EditionType
   onEditionTypeChange?: (editionType: EditionType) => void
   varList?: Variable[]
-  handleAddVariable?: (payload: any) => void
+  handleAddVariable?: (payload: Variable) => void
   containerBackgroundClassName?: string
   gradientBorder?: boolean
   titleTooltip?: ReactNode
@@ -131,7 +131,7 @@ const Editor: FC<Props> = ({
 
   const handleInsertVariable = () => {
     setFocus()
-    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId } as any)
+    eventEmitter?.emit({ type: PROMPT_EDITOR_INSERT_QUICKLY, instanceId })
   }
 
   const getVarType = useWorkflowVariableType()
@@ -351,7 +351,7 @@ const Editor: FC<Props> = ({
                   workflowVariableBlock={{
                     show: true,
                     variables: nodesOutputVars || [],
-                    getVarType: getVarType as any,
+                    getVarType,
                     workflowNodesMap: availableNodes.reduce((acc, node) => {
                       acc[node.id] = {
                         title: node.data.title,

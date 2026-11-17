@@ -1,5 +1,5 @@
 'use client'
-import type { DataSet } from '@/models/datasets'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import AppIcon from '../../base/app-icon'
-import Dropdown from './dropdown'
+import ActionsMenu from './actions-menu'
 
 type DatasetInfoProps = {
   expand: boolean
@@ -16,7 +16,9 @@ type DatasetInfoProps = {
 
 const DatasetInfo = ({ expand }: DatasetInfoProps) => {
   const { t } = useTranslation(['dataset'])
-  const dataset = useDatasetDetailContextWithSelector((state) => state.dataset) as DataSet
+  const dataset = useDatasetDetailContextWithSelector(
+    (state) => state.dataset,
+  ) as DatasetDetailWithPartialMembersResponse
   const iconInfo = dataset.icon_info || {
     icon: '📙',
     icon_type: 'emoji',
@@ -76,7 +78,7 @@ const DatasetInfo = ({ expand }: DatasetInfoProps) => {
               </div>
             </div>
             <div className="flex size-8 shrink-0 items-center justify-center">
-              <Dropdown expand />
+              <ActionsMenu expand />
             </div>
           </>
         )}

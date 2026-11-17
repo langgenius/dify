@@ -1,6 +1,6 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { FC } from 'react'
-import type { Member } from '@/models/common'
-import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -29,16 +29,17 @@ import {
   settingsQueryParser,
 } from '@/app/components/header/account-setting/query-params'
 import { useDocLink } from '@/context/i18n'
-import { DatasetPermission } from '@/models/datasets'
+import { PermissionLevel } from '@/models/permission'
 import { consoleQuery } from '@/service/console'
 import { updateDatasetSetting } from '@/service/datasets'
+import { getErrorMessage } from '@/utils/error-message'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
-  currentDataset: DataSet
+  currentDataset: DatasetDetailWithPartialMembersResponse
   height?: string
   onCancel: () => void
-  onSave: (newDataset: DataSet) => void
+  onSave: (newDataset: DatasetDetailWithPartialMembersResponse) => void
 }
 
 const rowClass = `
@@ -85,7 +86,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(
     currentDataset.partial_member_list || [],
   )
-  const [memberList, setMemberList] = useState<Member[]>([])
+  const [memberList, setMemberList] = useState<AccountWithRoleResponse[]>([])
   const { data: membersData } = useQuery(
     consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
   )
@@ -174,7 +175,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }),
         },
       } as any
-      if (permission === DatasetPermission.partialMembers) {
+      if (permission === PermissionLevel.partialMembers) {
         requestParams.body.partial_member_list = selectedMemberIDs.map((id) => {
           return {
             user_id: id,
@@ -182,15 +183,17 @@ const SettingsModal: FC<SettingsModalProps> = ({
           }
         })
       }
-      await updateDatasetSetting(requestParams)
+      await updateDatasetSetting(requestParams, { silent: true })
       toast.success(t(($) => $['actionMsg.modifiedSuccessfully'], { ns: 'common' }))
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod ?? null,
         retrieval_model_dict: retrievalConfig,
       })
-    } catch {
-      toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+    } catch (error) {
+      toast.error(
+        getErrorMessage(error) ?? t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+      )
     } finally {
       setLoading(false)
     }
@@ -260,7 +263,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             value={localeCurrentDataset.name}
             onValueChange={(value) => handleValueChange('name', value)}
             className="block h-9"
-            placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' }) || ''}
+            placeholder={t(($) => $['form.namePlaceholder'], { ns: 'datasetSettings' })}
           />
         </div>
         <div className={cn(rowClass)}>
@@ -275,7 +278,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               value={localeCurrentDataset.description || ''}
               onValueChange={(value) => handleValueChange('description', value)}
               className="resize-none"
-              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' }) || ''}
+              placeholder={t(($) => $['form.descPlaceholder'], { ns: 'datasetSettings' })}
             />
           </div>
         </div>

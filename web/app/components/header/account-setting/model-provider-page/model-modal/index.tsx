@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, Ref } from 'react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -12,20 +12,24 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
 import {
-  Dialog,
+  DialogBody,
   DialogClose,
-  DialogContent,
   DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogHeaderCloseButton,
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { memo, useCallback, useMemo, useRef, useState } from 'react'
+import { ORPCError } from '@orpc/client'
+import { memo, useCallback, useId, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import {
@@ -33,9 +37,12 @@ import {
   useCredentialData,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { toast } from '@/app/notifications'
 import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { getHttpErrorBodyMessage } from '@/service/http-error'
 import { ModelProviderQuotaGetPaid } from '@/types/model-provider'
+import { isAbortError } from '@/utils/is-abort-error'
 import { ConfigurationMethodEnum, FormTypeEnum, ModelModalModeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import { CredentialSelector } from '../model-auth'
@@ -45,9 +52,8 @@ type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
-  onCancel: () => void
-  onSave: (formValues?: Record<string, any>) => void
-  onRemove: (formValues?: Record<string, any>) => void
+  ref?: Ref<{ isPending: () => boolean }>
+  onSuccess: (savedValues?: Record<string, unknown>) => void
   model?: CustomModel
   credential?: Credential
   isModelCredential?: boolean
@@ -58,8 +64,8 @@ const ModelModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
   currentCustomConfigurationModelFixedFields,
-  onCancel,
-  onSave,
+  ref,
+  onSuccess,
   model,
   credential,
   isModelCredential,
@@ -81,6 +87,7 @@ const ModelModal: FC<ModelModalProps> = ({
     closeConfirmDelete,
     openConfirmDelete,
     doingAction,
+    doingActionRef,
     handleActiveCredential,
   } = useAuth(provider, configurateMethod, currentCustomConfigurationModelFixedFields, {
     isModelCredential,
@@ -91,13 +98,17 @@ const ModelModal: FC<ModelModalProps> = ({
   const { canUseCredential, canCreateCredential, canManageCredential } = useCredentialPermissions()
   const { t } = useTranslation(['common', 'modelProvider'])
   const language = useLanguage()
-  const { formSchemas, formValues, modelNameAndTypeFormSchemas, modelNameAndTypeFormValues } =
-    useModelFormSchemas(provider, providerFormSchemaPredefined, formSchemasValue, credential, model)
-  const formRef1 = useRef<FormRefObject>(null)
+  const { formSchemas, formValues, modelNameAndTypeFormSchemas } = useModelFormSchemas(
+    provider,
+    providerFormSchemaPredefined,
+    formSchemasValue,
+    credential,
+    model,
+  )
   const [selectedCredential, setSelectedCredential] = useState<
     (Credential & { addNewCredential?: boolean }) | undefined
   >()
-  const formRef2 = useRef<FormRefObject>(null)
+  const credentialFormRef = useRef<FormRefObject>(null)
   const isEditMode =
     !!credential &&
     !!Object.keys(formSchemasValue || {}).filter((key) => {
@@ -105,7 +116,30 @@ const ModelModal: FC<ModelModalProps> = ({
     }).length &&
     canManageCredential
 
-  const handleSave = useCallback(async () => {
+  const formId = useId()
+  useImperativeHandle(ref, () => ({ isPending: () => doingActionRef.current }), [doingActionRef])
+
+  const finish = useCallback(
+    async (request: Promise<void>, values?: Record<string, unknown>) => {
+      try {
+        await request
+      } catch (error) {
+        if (isAbortError(error)) return
+        if (
+          error instanceof ORPCError &&
+          (error.status === 401 || getHttpErrorBodyMessage(error.data))
+        )
+          return
+        toast.error(t(($) => $['api.actionFailed'], { ns: 'common' }))
+        return
+      }
+      onSuccess(values)
+    },
+    [onSuccess, t],
+  )
+
+  const handleSave = useCallback(() => {
+    if (doingActionRef.current) return
     if (
       mode === ModelModalModeEnum.addCustomModelToModelList &&
       selectedCredential &&
@@ -113,25 +147,20 @@ const ModelModal: FC<ModelModalProps> = ({
     ) {
       if (!canUseCredential) return
 
-      handleActiveCredential(selectedCredential, model)
-      onCancel()
+      void finish(handleActiveCredential(selectedCredential, model))
       return
     }
 
     const canSubmitCredentialForm = credential ? canManageCredential : canCreateCredential
     if (!canSubmitCredentialForm) return
 
-    let modelNameAndTypeIsCheckValidated = true
-    let modelNameAndTypeValues: Record<string, any> = {}
+    const { isCheckValidated, values } = credentialFormRef.current?.getFormValues({
+      needCheckValidatedValues: true,
+      needTransformWhenSecretFieldIsPristine: true,
+    }) || { isCheckValidated: false, values: {} }
+    if (!isCheckValidated) return
 
-    if (mode === ModelModalModeEnum.configCustomModel) {
-      const formResult = formRef1.current?.getFormValues({
-        needCheckValidatedValues: true,
-      }) || { isCheckValidated: false, values: {} }
-      modelNameAndTypeIsCheckValidated = formResult.isCheckValidated
-      modelNameAndTypeValues = formResult.values
-    }
-
+    let modelNameAndTypeValues = values
     if (
       mode === ModelModalModeEnum.configModelCredential ||
       (mode === ModelModalModeEnum.addCustomModelToModelList &&
@@ -152,12 +181,6 @@ const ModelModal: FC<ModelModalProps> = ({
         __model_type: modelContext.model_type,
       }
     }
-    const { isCheckValidated, values } = formRef2.current?.getFormValues({
-      needCheckValidatedValues: true,
-      needTransformWhenSecretFieldIsPristine: true,
-    }) || { isCheckValidated: false, values: {} }
-    if (!isCheckValidated || !modelNameAndTypeIsCheckValidated) return
-
     const { __model_name, __model_type } = modelNameAndTypeValues
     const { __authorization_name__, ...rest } = values
     const shouldSaveModelCredential =
@@ -165,24 +188,17 @@ const ModelModal: FC<ModelModalProps> = ({
       mode === ModelModalModeEnum.configModelCredential ||
       (mode === ModelModalModeEnum.addCustomModelToModelList &&
         selectedCredential?.addNewCredential)
-    if (shouldSaveModelCredential) {
-      if (!__model_name || !__model_type) return
+    if (shouldSaveModelCredential && (!__model_name || !__model_type)) return
 
-      await handleSaveCredential({
+    void finish(
+      handleSaveCredential({
         credential_id: credential?.credential_id,
         credentials: rest,
         name: __authorization_name__,
-        model: __model_name,
-        model_type: __model_type,
-      })
-    } else {
-      await handleSaveCredential({
-        credential_id: credential?.credential_id,
-        credentials: rest,
-        name: __authorization_name__,
-      })
-    }
-    onSave(values)
+        ...(shouldSaveModelCredential ? { model: __model_name, model_type: __model_type } : {}),
+      }),
+      values,
+    )
   }, [
     mode,
     selectedCredential,
@@ -191,9 +207,9 @@ const ModelModal: FC<ModelModalProps> = ({
     canUseCredential,
     canCreateCredential,
     canManageCredential,
-    onSave,
+    finish,
+    doingActionRef,
     handleActiveCredential,
-    onCancel,
     handleSaveCredential,
     credential,
   ])
@@ -212,13 +228,13 @@ const ModelModal: FC<ModelModalProps> = ({
       else label = t(($) => $['modelProvider.auth.addModelCredential'], { ns: 'modelProvider' })
     }
 
-    return <DialogTitle className="title-2xl-semi-bold text-text-primary">{label}</DialogTitle>
+    return <DialogTitle>{label}</DialogTitle>
   }, [t, mode, credential])
 
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <DialogDescription className="mt-1 system-xs-regular text-text-tertiary">
+        <DialogDescription>
           {t(($) => $['modelProvider.auth.apiKeyModal.desc'], { ns: 'modelProvider' })}
         </DialogDescription>
       )
@@ -231,8 +247,8 @@ const ModelModal: FC<ModelModalProps> = ({
     if (mode === ModelModalModeEnum.configCustomModel) {
       return (
         <div className="mt-2 flex items-center">
-          <ModelIcon className="mr-2 size-4 shrink-0" provider={provider} />
-          <div className="mr-1 system-md-regular text-text-secondary">
+          <ModelIcon className="me-2 size-4 shrink-0" provider={provider} />
+          <div className="me-1 system-md-regular text-text-secondary">
             {renderI18nObject(provider.label)}
           </div>
         </div>
@@ -245,8 +261,8 @@ const ModelModal: FC<ModelModalProps> = ({
     ) {
       return (
         <div className="mt-2 flex items-center">
-          <ModelIcon className="mr-2 size-4 shrink-0" provider={provider} modelName={model.model} />
-          <div className="mr-1 system-md-regular text-text-secondary">{model.model}</div>
+          <ModelIcon className="me-2 size-4 shrink-0" provider={provider} modelName={model.model} />
+          <div className="me-1 system-md-regular text-text-secondary">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -255,11 +271,6 @@ const ModelModal: FC<ModelModalProps> = ({
     return null
   }, [model, provider, mode, renderI18nObject])
 
-  const showCredentialLabel = useMemo(() => {
-    if (mode === ModelModalModeEnum.configCustomModel) return true
-    if (mode === ModelModalModeEnum.addCustomModelToModelList)
-      return selectedCredential?.addNewCredential
-  }, [mode, selectedCredential])
   const showCredentialForm = useMemo(() => {
     if (mode !== ModelModalModeEnum.addCustomModelToModelList) return true
     return selectedCredential?.addNewCredential
@@ -281,197 +292,154 @@ const ModelModal: FC<ModelModalProps> = ({
         ? canManageCredential
         : canCreateCredential
 
-  const handleDeleteCredential = useCallback(() => {
-    handleConfirmDelete()
-    onCancel()
-  }, [handleConfirmDelete, onCancel])
-
-  const handleModelNameAndTypeChange = useCallback((field: string, value: any) => {
-    const { getForm } = (formRef2.current as FormRefObject) || {}
-    if (getForm()) getForm()?.setFieldValue(field, value)
-  }, [])
+  const fields =
+    mode === ModelModalModeEnum.configCustomModel
+      ? [...modelNameAndTypeFormSchemas, ...formSchemas]
+      : formSchemas
   const notAllowCustomCredential = provider.allow_custom_token === false
   const isOfficialOpenAIProvider =
     provider.provider === ModelProviderQuotaGetPaid.OPENAI || provider.provider === 'openai'
 
-  const handleOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) onCancel()
-    },
-    [onCancel],
-  )
-
-  const handleConfirmOpenChange = useCallback(
-    (open: boolean) => {
-      if (!open) closeConfirmDelete()
-    },
-    [closeConfirmDelete],
-  )
-
   return (
-    <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent
-        backdropProps={{ forceRender: true }}
-        className="flex w-160 max-w-160 flex-col overflow-hidden p-0"
-      >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute top-5 right-5"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
+    <>
+      <DialogHeader>
+        {modalTitle}
+        {modalDesc}
+        {modalModel}
+        <DialogHeaderCloseButton
+          disabled={doingAction}
+          aria-label={t(($) => $['operation.close'], { ns: 'common' })}
         />
-        <div className="shrink-0 p-6 pb-3">
-          {modalTitle}
-          {modalDesc}
-          {modalModel}
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-3">
-          {mode === ModelModalModeEnum.configCustomModel && (
-            <AuthForm
-              formSchemas={
-                modelNameAndTypeFormSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={modelNameAndTypeFormValues}
-              inputClassName="justify-start"
-              ref={formRef1}
-              onChange={handleModelNameAndTypeChange}
-            />
-          )}
-          {mode === ModelModalModeEnum.addCustomModelToModelList && (
-            <CredentialSelector
-              credentials={available_credentials || []}
-              onSelect={setSelectedCredential}
-              selectedCredential={selectedCredential}
-              disabled={isLoading}
-              notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
-            />
-          )}
-          {showCredentialLabel && (
-            <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
-              <div className="ml-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent" />
-            </div>
-          )}
-          {isLoading && (
-            <div className="mt-3 flex items-center justify-center">
-              <LoadingPlaceholder />
-            </div>
-          )}
-          {!isLoading && showCredentialForm && (
-            <AuthForm
-              formSchemas={
-                formSchemas.map((formSchema) => {
-                  return {
-                    ...formSchema,
-                    name: formSchema.variable,
-                    showRadioUI: formSchema.type === FormTypeEnum.radio,
-                    ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
-                      ? {
-                          description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
-                            ns: 'modelProvider',
-                          }),
-                        }
-                      : {}),
-                  }
-                }) as FormSchema[]
-              }
-              defaultValues={formValues}
-              inputClassName="justify-start"
-              ref={formRef2}
-            />
-          )}
-        </div>
-        <div className="flex shrink-0 justify-between p-6 pt-5">
-          {provider.help && (provider.help.title || provider.help.url) ? (
-            <a
-              href={provider.help?.url[language] || provider.help?.url.en_US}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-2 inline-block align-middle system-xs-regular text-text-accent"
-              onClick={(e) => !provider.help?.url && e.preventDefault()}
-            >
-              {provider.help.title?.[language] ||
-                provider.help.url[language] ||
-                provider.help.title?.en_US ||
-                provider.help.url.en_US}
-              <span
-                aria-hidden
-                className="-mt-0.5 ml-1 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle"
-              />
-            </a>
-          ) : (
-            <div />
-          )}
-          <div className="ml-2 flex items-center justify-end space-x-2">
-            {isEditMode && (
-              <Button
-                variant="primary"
-                tone="destructive"
-                onClick={() => openConfirmDelete(credential, model)}
-              >
-                {t(($) => $['operation.remove'], { ns: 'common' })}
-              </Button>
-            )}
-            <Button onClick={onCancel}>{t(($) => $['operation.cancel'], { ns: 'common' })}</Button>
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              disabled={isLoading || doingAction || !canSaveCredentialChange}
-            >
-              {saveButtonText}
-            </Button>
-          </div>
-        </div>
-        {(mode === ModelModalModeEnum.configCustomModel ||
-          mode === ModelModalModeEnum.configProviderCredential) && (
-          <div className="shrink-0 border-t-[0.5px] border-t-divider-regular">
-            <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
-              <span
-                aria-hidden
-                className="mr-1 i-custom-vender-solid-security-lock-01 size-3 text-text-tertiary"
-              />
-              {t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
-              <a
-                className="mx-1 text-text-accent"
-                target="_blank"
-                rel="noopener noreferrer"
-                href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
-              >
-                PKCS1_OAEP
-              </a>
-              {t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
-            </div>
+      </DialogHeader>
+      <DialogBody>
+        {mode === ModelModalModeEnum.addCustomModelToModelList && (
+          <CredentialSelector
+            credentials={available_credentials || []}
+            onSelect={setSelectedCredential}
+            selectedCredential={selectedCredential}
+            disabled={isLoading || doingAction}
+            notAllowAddNewCredential={notAllowCustomCredential || !canCreateCredential}
+          />
+        )}
+        {mode === ModelModalModeEnum.addCustomModelToModelList && showCredentialForm && (
+          <div className="mt-6 mb-3 flex items-center system-xs-medium-uppercase text-text-tertiary">
+            {t(($) => $['modelProvider.auth.modelCredential'], { ns: 'modelProvider' })}
+            <div className="ms-2 h-px grow bg-linear-to-r from-divider-regular to-background-gradient-mask-transparent rtl:bg-linear-to-l" />
           </div>
         )}
-      </DialogContent>
-      <AlertDialog open={!!deleteCredentialId} onOpenChange={handleConfirmOpenChange}>
+        {isLoading && (
+          <div className="mt-3 flex items-center justify-center">
+            <LoadingPlaceholder />
+          </div>
+        )}
+        {!isLoading && showCredentialForm && (
+          <AuthForm
+            disabled={doingAction}
+            id={formId}
+            preventDefaultSubmit
+            onSubmit={handleSave}
+            formSchemas={
+              fields.map((formSchema) => {
+                return {
+                  ...formSchema,
+                  name: formSchema.variable,
+                  showRadioUI: formSchema.type === FormTypeEnum.radio,
+                  ...(isOfficialOpenAIProvider && formSchema.variable === 'api_protocol'
+                    ? {
+                        description: t(($) => $['modelProvider.auth.openAIResponsesAPITip'], {
+                          ns: 'modelProvider',
+                        }),
+                      }
+                    : {}),
+                }
+              }) as FormSchema[]
+            }
+            defaultValues={formValues}
+            inputClassName="justify-start"
+            ref={credentialFormRef}
+          />
+        )}
+      </DialogBody>
+      <DialogFooter>
+        {provider.help && (provider.help.title || provider.help.url) && (
+          <a
+            href={provider.help?.url[language] || provider.help?.url.en_US}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="me-auto inline-block align-middle system-xs-regular text-text-accent"
+            onClick={(e) => !provider.help?.url && e.preventDefault()}
+          >
+            {provider.help.title?.[language] ||
+              provider.help.url[language] ||
+              provider.help.title?.en_US ||
+              provider.help.url.en_US}
+            <span
+              aria-hidden
+              className="ms-1 -mt-0.5 i-custom-vender-line-general-link-external-02 inline-block h-3 w-3 align-middle rtl:-scale-x-100"
+            />
+          </a>
+        )}
+        {isEditMode && (
+          <Button
+            variant="primary"
+            tone="destructive"
+            disabled={doingAction}
+            onClick={() => openConfirmDelete(credential, model)}
+          >
+            {t(($) => $['operation.remove'], { ns: 'common' })}
+          </Button>
+        )}
+        <DialogClose render={<Button disabled={doingAction} />}>
+          {t(($) => $['operation.cancel'], { ns: 'common' })}
+        </DialogClose>
+        <Button
+          variant="primary"
+          type={showCredentialForm ? 'submit' : 'button'}
+          form={showCredentialForm ? formId : undefined}
+          onClick={showCredentialForm ? undefined : handleSave}
+          disabled={isLoading || doingAction || !canSaveCredentialChange}
+        >
+          {saveButtonText}
+        </Button>
+      </DialogFooter>
+      {(mode === ModelModalModeEnum.configCustomModel ||
+        mode === ModelModalModeEnum.configProviderCredential) && (
+        <EncryptedBottom
+          front={t(($) => $['modelProvider.encrypted.front'], { ns: 'modelProvider' })}
+          back={t(($) => $['modelProvider.encrypted.back'], { ns: 'modelProvider' })}
+        />
+      )}
+
+      <AlertDialog
+        open={!!deleteCredentialId}
+        onOpenChange={(open, details) => {
+          if (open) return
+          if (doingAction) details.cancel()
+          else closeConfirmDelete()
+        }}
+      >
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 p-6 pb-4">
-            <AlertDialogTitle className="title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['modelProvider.confirmDelete'], { ns: 'modelProvider' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancelButton>
+            <AlertDialogCancelButton disabled={doingAction}>
               {t(($) => $['operation.cancel'], { ns: 'common' })}
             </AlertDialogCancelButton>
-            <AlertDialogConfirmButton disabled={doingAction} onClick={handleDeleteCredential}>
+            <AlertDialogConfirmButton
+              disabled={doingAction}
+              onClick={() => {
+                if (!doingActionRef.current) void finish(handleConfirmDelete())
+              }}
+            >
               {t(($) => $['operation.confirm'], { ns: 'common' })}
             </AlertDialogConfirmButton>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Dialog>
+    </>
   )
 }
 

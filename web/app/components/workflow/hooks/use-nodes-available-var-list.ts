@@ -65,10 +65,10 @@ const useNodesAvailableVarList = (
 
   nodes.forEach((node) => {
     const nodeId = node.id
-    const availableNodes =
+    let availableNodes =
       passedInAvailableNodes ||
       (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranchIncludeParent(nodeId))
-    if (node.data.type === BlockEnum.Loop) availableNodes.push(node)
+    if (node.data.type === BlockEnum.Loop) availableNodes = [...availableNodes, node]
     const snippetInputFieldAvailability = appendSnippetInputFieldVars({
       isSnippetFlow,
       availableNodes,
@@ -123,12 +123,12 @@ export const useGetNodesAvailableVarList = () => {
 
       nodes.forEach((node) => {
         const nodeId = node.id
-        const availableNodes =
+        let availableNodes =
           passedInAvailableNodes ||
           (onlyLeafNodeVar
             ? getTreeLeafNodes(nodeId)
             : getBeforeNodesInSameBranchIncludeParent(nodeId))
-        if (node.data.type === BlockEnum.Loop) availableNodes.push(node)
+        if (node.data.type === BlockEnum.Loop) availableNodes = [...availableNodes, node]
         const snippetInputFieldAvailability = appendSnippetInputFieldVars({
           isSnippetFlow,
           availableNodes,

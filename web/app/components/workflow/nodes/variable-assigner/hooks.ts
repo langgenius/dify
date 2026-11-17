@@ -35,9 +35,7 @@ export const useVariableAssigner = () => {
               (group: VarGroupItem & { groupId: string }) => {
                 if (
                   group.groupId === groupId &&
-                  !group.variables.some(
-                    (item) => item.join('.') === (value as ValueSelector).join('.'),
-                  )
+                  !group.variables.some((item) => item.join('.') === value.join('.'))
                 ) {
                   return {
                     ...group,
@@ -51,10 +49,7 @@ export const useVariableAssigner = () => {
           },
         }
       } else {
-        if (
-          node.data.variables.some((item) => item.join('.') === (value as ValueSelector).join('.'))
-        )
-          return
+        if (node.data.variables.some((item) => item.join('.') === value.join('.'))) return
         payload = {
           variables: [...node.data.variables, value],
           output_type: varDetail.type,

@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url'
+import { openapi } from '@dify/openapi-content-mapper/vite'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 import { customI18nHmrPlugin } from './plugins/vite/custom-i18n-hmr.ts'
@@ -25,9 +26,9 @@ export default defineConfig(({ command, mode, isPreview }) => {
     plugins: lazyPlugins(async () => {
       const { default: react } = await import('@vitejs/plugin-react')
 
-      if (isTest) return [nextStaticImageTestPlugin({ projectRoot }), react()]
+      if (isTest) return [openapi(), nextStaticImageTestPlugin({ projectRoot }), react()]
 
-      if (isStorybook) return [react()]
+      if (isStorybook) return [openapi(), react()]
 
       const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
         await Promise.all([
@@ -40,10 +41,12 @@ export default defineConfig(({ command, mode, isPreview }) => {
         command === 'serve' && isPreview !== true
           ? (await import('code-inspector-plugin')).codeInspectorPlugin({
               bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
             })
           : undefined
 
       return [
+        openapi(),
         i18nAnalysisPlugin({
           adapters: [
             { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
@@ -76,7 +79,8 @@ export default defineConfig(({ command, mode, isPreview }) => {
     }),
     resolve: {
       tsconfigPaths: true,
-      alias: [{ find: '~@', replacement: projectRoot }],
+      // Storybook's Next.js preset merges aliases as an object.
+      alias: { '~@': projectRoot },
     },
     // vinext related config
     ...(!isTest && !isStorybook
@@ -97,8 +101,30 @@ export default defineConfig(({ command, mode, isPreview }) => {
       attachmentsDir: './.vitest-browser/attachments',
       coverage: {
         provider: 'v8',
-        reporter: isCI ? ['json', 'json-summary'] : ['text', 'json', 'json-summary'],
-        exclude: ['**/__mocks__/**'],
+        // Unit uploads establish the full source denominator; browser uploads add executed code.
+        include:
+          process.env.DIFY_TEST_COVERAGE_ONLY_EXECUTED === 'true'
+            ? undefined
+            : ['**/*.{js,jsx,ts,tsx,mjs,mts,cjs,cts}'],
+        reporter: isCI ? ['json', 'json-summary'] : ['text', 'html', 'json', 'json-summary'],
+        exclude: [
+          // Test infrastructure and examples do not belong in the source denominator.
+          '**/{__tests__,__mocks__}/**',
+          '**/*.{spec,test,stories}.*',
+          'test/**',
+          'vitest*.setup.ts',
+          // Declarations, generated sources, tool configuration, and build output.
+          '**/*.d.{ts,mts,cts}',
+          '**/*.{generated,gen}.*',
+          'types/doc-paths.ts',
+          '*.config.*',
+          '.*/**',
+          '**/dist/**',
+          '{coverage,build,out,storybook-static}/**',
+          // Keep public/embed.js, but omit its minified copy and vendored workers/editor.
+          'public/**/*.min.{js,mjs}',
+          'public/vs/**',
+        ],
       },
       projects: [
         {
@@ -123,11 +149,18 @@ export default defineConfig(({ command, mode, isPreview }) => {
           }),
           optimizeDeps: {
             include: [
+              '@base-ui/react/collapsible',
               '@base-ui/react/fieldset',
               '@base-ui/react/number-field',
+              '@base-ui/react/popover',
               '@base-ui/react/slider',
+              '@lexical/react/LexicalExtensionComposer',
               'vite-plus/test/browser',
               'dayjs/plugin/relativeTime',
+              'dayjs/plugin/timezone',
+              'dayjs/plugin/utc',
+              'es-toolkit/function',
+              'next/script',
               'react-textarea-autosize',
             ],
           },
@@ -141,9 +174,13 @@ export default defineConfig(({ command, mode, isPreview }) => {
               provider: playwright(),
               instances: [{ browser: 'chromium' }],
               headless: true,
+              // Keep application maps and mapped error stacks without sending dependency maps.
+              dependencySourcemaps: false,
               screenshotFailures: true,
               trace: {
-                mode: 'retain-on-failure',
+                mode: isCI ? 'retain-on-failure' : 'off',
+                // DOM snapshots and failure screenshots remain available without a filmstrip.
+                screenshots: false,
                 tracesDir: './.vitest-browser/traces',
               },
             },

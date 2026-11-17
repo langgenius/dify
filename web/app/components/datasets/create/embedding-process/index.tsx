@@ -1,5 +1,5 @@
+import type { DocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { InitialDocumentDetail } from '@/models/datasets'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { buttonVariants } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
@@ -23,7 +23,7 @@ import { createDocumentLookup } from './utils'
 type EmbeddingProcessProps = {
   datasetId: string
   batchId: string
-  documents?: InitialDocumentDetail[]
+  documents?: DocumentResponse[]
   indexingType?: string
   retrievalMethod?: RETRIEVE_METHOD
 }

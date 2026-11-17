@@ -67,34 +67,20 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   const closeModal = useCallback(() => setModalState(null), [])
 
   const handleSubmit = useCallback(
-    (data: submitRoleData) => {
+    async (data: submitRoleData) => {
       const { name, description, permissionKeys } = data
       const mode = modalState?.mode ?? ''
       const roleId = modalState?.role?.id ?? ''
       if (mode === 'create') {
-        createWorkspaceRole(
-          { body: { name, description, permission_keys: permissionKeys } },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await createWorkspaceRole({ body: { name, description, permission_keys: permissionKeys } })
       } else if (mode === 'edit') {
-        updateWorkspaceRole(
-          {
-            params: { role_id: roleId },
-            body: { name, description, permission_keys: permissionKeys },
-          },
-          {
-            onSuccess: () => {
-              closeModal()
-            },
-          },
-        )
+        await updateWorkspaceRole({
+          params: { role_id: roleId },
+          body: { name, description, permission_keys: permissionKeys },
+        })
       }
     },
-    [createWorkspaceRole, updateWorkspaceRole, closeModal, modalState],
+    [createWorkspaceRole, updateWorkspaceRole, modalState],
   )
 
   useEffect(() => {
@@ -130,7 +116,7 @@ const PermissionsPage = ({ containerRef }: PermissionsPageProps) => {
   return (
     <>
       <div className="flex min-w-0 flex-col gap-y-6">
-        <div className="flex min-h-16.75 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-t-[0.5px] border-l-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
+        <div className="flex min-h-16.75 min-w-0 items-center gap-3 overflow-hidden rounded-xl border-s-[0.5px] border-t-[0.5px] border-divider-regular bg-linear-to-b from-background-gradient-bg-fill-chat-bg-2 to-background-gradient-bg-fill-chat-bg-1 px-4 py-3">
           <div className="flex min-w-0 grow flex-col gap-y-1 overflow-hidden">
             <div className="truncate system-md-semibold text-text-secondary">
               {t(($) => $['role.workspaceRoles.title'], { ns: 'permission' })}

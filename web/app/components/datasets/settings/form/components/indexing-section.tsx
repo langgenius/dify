@@ -1,8 +1,10 @@
 'use client'
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { ProviderWithModelsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet, SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
+import type { SummaryIndexSetting as SummaryIndexSettingType } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
+import { Alert, AlertTitle } from '@langgenius/dify-ui/alert'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
@@ -27,7 +29,7 @@ const rowClass = 'flex min-w-0 flex-col gap-2 @3xl/settings:flex-row @3xl/settin
 const labelClass = 'flex shrink-0 flex-col pt-1 @3xl/settings:w-45'
 
 type IndexingSectionProps = {
-  currentDataset: DataSet | undefined
+  currentDataset: DatasetDetailWithPartialMembersResponse | undefined
   indexMethod: IndexingType | undefined
   setIndexMethod: (value: IndexingType | undefined) => void
   keywordNumber: number
@@ -142,18 +144,11 @@ const IndexingSection = ({
               onKeywordNumberChange={setKeywordNumber}
             />
             {showUpgradeWarning && (
-              <div className="relative mt-2 flex min-h-10 items-start gap-x-0.5 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-2 py-2 shadow-xs shadow-shadow-shadow-3">
-                <div className="pointer-events-none absolute inset-0 rounded-xl bg-toast-warning-bg opacity-40" />
-                <div className="relative shrink-0 p-1">
-                  <span
-                    aria-hidden
-                    className="i-ri-alert-fill size-4 text-text-warning-secondary"
-                  />
-                </div>
-                <span className="relative min-w-0 py-1 system-xs-medium wrap-anywhere text-text-primary">
+              <Alert type="warning" className="mt-2">
+                <AlertTitle>
                   {t(($) => $['form.upgradeHighQualityTip'], { ns: 'datasetSettings' })}
-                </span>
-              </div>
+                </AlertTitle>
+              </Alert>
             )}
           </div>
         </div>

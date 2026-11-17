@@ -11,7 +11,7 @@ import {
   markMarketplaceSiteSearch,
 } from '@/utils/marketplace-site-track'
 import { useSearchPluginText } from '../atoms'
-import SortDropdown from '../sort-dropdown'
+import SortMenu from '../sort-menu'
 import { useMarketplaceData } from '../state'
 import List from './index'
 
@@ -105,7 +105,7 @@ const ListWrapper = ({
               })}
             </div>
             <div className="mx-3 h-3.5 w-px bg-divider-regular"></div>
-            <SortDropdown />
+            <SortMenu />
           </div>
         )}
         {isError && !plugins?.length ? (

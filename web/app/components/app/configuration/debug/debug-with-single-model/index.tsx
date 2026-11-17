@@ -35,7 +35,7 @@ const DebugWithSingleModel = ({
   onOpenLog,
   chatContainerRef,
 }: DebugWithSingleModelProps & {
-  ref: React.RefObject<DebugWithSingleModelRefType>
+  ref: Ref<DebugWithSingleModelRefType>
 }) => {
   const { data: userProfile } = useSuspenseQuery({
     ...userProfileQueryOptions(),
@@ -166,7 +166,7 @@ const DebugWithSingleModel = ({
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
     modelConfig.agentConfig.tools?.forEach((item: any) => {
-      icons[item.tool_name] = collectionList.find((collection: any) =>
+      icons[item.tool_name] = collectionList.find((collection) =>
         matchesProviderReference(collection, item.provider_id),
       )?.icon
     })

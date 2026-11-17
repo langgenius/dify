@@ -151,7 +151,7 @@ export const useUpload = () => {
           onSuccessCallback: (res) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
-          onErrorCallback: (error?: any) => {
+          onErrorCallback: (error) => {
             const errorMessage = getFileUploadErrorMessage(
               error,
               t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -200,7 +200,7 @@ export const useUpload = () => {
                 progress: 100,
               })
             },
-            onErrorCallback: (error?: any) => {
+            onErrorCallback: (error) => {
               const errorMessage = getFileUploadErrorMessage(
                 error,
                 t(($) => $['fileUploader.uploadFromComputerUploadError'], { ns: 'common' }),
@@ -262,7 +262,7 @@ export const useUpload = () => {
       if (!e.dataTransfer) return
       const nested = await Promise.all(
         Array.from(e.dataTransfer.items).map((it) => {
-          const entry = (it as any).webkitGetAsEntry?.()
+          const entry = it.webkitGetAsEntry?.()
           if (entry) return traverseFileEntry(entry)
           const f = it.getAsFile?.()
           return f ? Promise.resolve([f]) : Promise.resolve([])

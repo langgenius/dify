@@ -4,8 +4,11 @@ import { act, waitFor } from '@testing-library/react'
 import { createElement } from 'react'
 import { DSL_EXPORT_CHECK } from '@/app/components/workflow/constants'
 import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
 import { consoleQuery } from '@/service/console'
 import { httpErrorFromResponse } from '@/service/http-error'
+import { createDeferred } from '@/test/deferred'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { useDSLByCanEdit } from '../use-DSL'
 
@@ -48,14 +51,6 @@ let appQueryFixture: {
   }
 }
 
-vi.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: () => ({
-    eventEmitter: {
-      emit: mockEmit,
-    },
-  }),
-}))
-
 vi.mock('@/service/base', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/service/base')>()),
   request: () => new Promise<Response>(() => {}),
@@ -69,34 +64,27 @@ vi.mock('../use-nodes-sync-draft', () => ({
   }),
 }))
 
-vi.mock('@/service/console', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/console')>()),
-  consoleClient: {
-    apps: {
-      byAppId: {
-        export: { get: (...args: unknown[]) => mockExportAppConfig(...args) },
-        workflows: {
-          draft: {
-            environmentVariables: {
-              get: (...args: unknown[]) => mockFetchEnvironmentVariables(...args),
-            },
-          },
-        },
-      },
-    },
-  },
-}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apps.byAppId.export.get': (...args: unknown[]) => mockExportAppConfig(...args),
+      'apps.byAppId.workflows.draft.environmentVariables.get': (...args: unknown[]) =>
+        mockFetchEnvironmentVariables(...args),
+    }),
+  }
+})
 
 vi.mock('@/utils/download', () => ({
   downloadBlob: (...args: unknown[]) => mockDownloadBlob(...args),
 }))
 
-const createDeferred = <T>() => {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
+function EventObserver({ children }: { children: ReactNode }) {
+  const { eventEmitter } = useEventEmitterContextContext()
+  eventEmitter?.useSubscription(mockEmit)
+  return children
 }
 
 let queryClient: QueryClient
@@ -106,7 +94,11 @@ const wrapper = ({ children }: { children: ReactNode }) => {
       consoleQuery.apps.byAppId.get.queryKey({ input: { params: { app_id: 'app-1' } } }),
       createAppDetailFixture(appQueryFixture.appDetail),
     )
-  return createElement(QueryClientProvider, { client: queryClient }, children)
+  return createElement(
+    QueryClientProvider,
+    { client: queryClient },
+    createElement(EventEmitterContextProvider, null, createElement(EventObserver, null, children)),
+  )
 }
 
 describe('useDSLByCanEdit', () => {
@@ -124,9 +116,9 @@ describe('useDSLByCanEdit', () => {
         name: 'Workflow App',
       },
     }
-    mockDoSyncWorkflowDraft.mockResolvedValue(undefined)
-    mockExportAppConfig.mockResolvedValue({ data: 'yaml-content' })
-    mockFetchEnvironmentVariables.mockResolvedValue({ items: [] })
+    mockDoSyncWorkflowDraft.mockReset().mockResolvedValue(undefined)
+    mockExportAppConfig.mockReset().mockResolvedValue({ data: 'yaml-content' })
+    mockFetchEnvironmentVariables.mockReset().mockResolvedValue({ items: [] })
   })
 
   it('exports with the latest name from the detail query', async () => {
@@ -166,7 +158,7 @@ describe('useDSLByCanEdit', () => {
     expect(mockExportAppConfig).not.toHaveBeenCalled()
     expect(mockDownloadBlob).not.toHaveBeenCalled()
     expect(toastMocks.call).toHaveBeenCalledTimes(1)
-    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportAppFailed' })
+    expect(toastMocks.call).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
   })
 
   it('allows export when draft synchronization is skipped for read-only access', async () => {
@@ -191,13 +183,10 @@ describe('useDSLByCanEdit', () => {
     await act(async () => {
       expect(await result.current.handleExportDSL(true, 'revision-1')).toBe(true)
     })
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: true, workflow_id: 'revision-1' },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: true, workflow_id: 'revision-1' },
+    })
     expect(mockDoSyncWorkflowDraft).not.toHaveBeenCalled()
     expect(mockDownloadBlob).toHaveBeenCalledWith({ data: file, fileName: 'workflow.ifpkg' })
   })
@@ -212,18 +201,12 @@ describe('useDSLByCanEdit', () => {
       await result.current.exportCheck()
     })
 
-    expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith(
-      { params: { app_id: 'app-1' } },
-      { context: { silent: true } },
-    )
+    expect(mockFetchEnvironmentVariables).toHaveBeenCalledWith({ params: { app_id: 'app-1' } })
     expect(mockDoSyncWorkflowDraft).toHaveBeenCalled()
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: false, workflow_id: undefined },
-      },
-      { context: { silent: true } },
-    )
+    expect(mockExportAppConfig).toHaveBeenCalledWith({
+      params: { app_id: 'app-1' },
+      query: { include_secret: false, workflow_id: undefined },
+    })
     expect(mockDownloadBlob).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.any(Blob),
@@ -247,7 +230,7 @@ workflow:
             binding_type: inline_agent
             package_ref: agent_1
 `
-    mockExportAppConfig.mockResolvedValue({ data: agentDSL })
+    mockExportAppConfig.mockReset().mockResolvedValue({ data: agentDSL })
     const { result } = renderHook(() => useDSLByCanEdit(true), {
       resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
       wrapper,
@@ -262,25 +245,6 @@ workflow:
     ]
     expect(await data.text()).toBe(agentDSL)
     expect(fileName).toBe('Workflow App.yml')
-  })
-
-  it('should forward include and workflow id arguments when exporting dsl directly', async () => {
-    const { result } = renderHook(() => useDSLByCanEdit(true), {
-      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
-      wrapper,
-    })
-
-    await act(async () => {
-      await result.current.handleExportDSL(true, 'workflow-1')
-    })
-
-    expect(mockExportAppConfig).toHaveBeenCalledWith(
-      {
-        params: { app_id: 'app-1' },
-        query: { include_secret: true, workflow_id: 'workflow-1' },
-      },
-      { context: { silent: true } },
-    )
   })
 
   it('should emit DSL_EXPORT_CHECK when secret environment variables exist', async () => {
@@ -326,7 +290,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'Package contains unusable Skill',
       })
     })
@@ -347,7 +311,7 @@ workflow:
     await waitFor(() => {
       expect(toastMocks.call).toHaveBeenCalledWith({
         type: 'error',
-        message: 'app.exportAppFailed',
+        message: 'app.exportFailed',
         description: 'draft fetch failed',
       })
     })

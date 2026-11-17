@@ -1,34 +1,26 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import DSLConfirmModal from '../dsl-confirm-modal'
 
 describe('DSLConfirmModal', () => {
-  it('should render the version details', () => {
-    render(
-      <DSLConfirmModal
-        versions={{
-          importedVersion: '1.0.0',
-          systemVersion: '2.0.0',
-        }}
-        onCancel={vi.fn()}
-        onConfirm={vi.fn()}
-      />,
-    )
-
-    expect(screen.getByText(/(?:^|\.)newApp\.appCreateDSLErrorTitle(?=$|:)/)).toBeInTheDocument()
-    expect(screen.getByText('1.0.0')).toBeInTheDocument()
-    expect(screen.getByText('2.0.0')).toBeInTheDocument()
-  })
-
-  it('should call the cancel and confirm handlers', () => {
-    const handleCancel = vi.fn()
-    const handleConfirm = vi.fn()
-
-    render(<DSLConfirmModal onCancel={handleCancel} onConfirm={handleConfirm} />)
-
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)newApp\.Cancel(?=$|:)/ }))
-    fireEvent.click(screen.getByRole('button', { name: /(?:^|\.)newApp\.Confirm(?=$|:)/ }))
-
-    expect(handleCancel).toHaveBeenCalledTimes(1)
-    expect(handleConfirm).toHaveBeenCalledTimes(1)
-  })
+  it.each(['Cancel', 'Confirm'])(
+    'shows the conflicting versions before choosing %s',
+    async (action) => {
+      const user = userEvent.setup()
+      const onCancel = vi.fn()
+      const onConfirm = vi.fn()
+      render(
+        <DSLConfirmModal
+          versions={{ importedVersion: '1.0.0', systemVersion: '2.0.0' }}
+          onCancel={onCancel}
+          onConfirm={onConfirm}
+        />,
+      )
+      expect(screen.getByText('1.0.0')).toBeInTheDocument()
+      expect(screen.getByText('2.0.0')).toBeInTheDocument()
+      await user.click(screen.getByRole('button', { name: `app.newApp.${action}` }))
+      expect(action === 'Cancel' ? onCancel : onConfirm).toHaveBeenCalledOnce()
+      expect(action === 'Cancel' ? onConfirm : onCancel).not.toHaveBeenCalled()
+    },
+  )
 })

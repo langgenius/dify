@@ -1,21 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { vi } from 'vite-plus/test'
 import PresetsParameter from '../presets-parameter'
 import { getSupportedPresetConfig } from '../presets-parameter-utils'
 
 describe('PresetsParameter', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
-  it('selects a preset', () => {
+  it('selects a preset', async () => {
+    const user = userEvent.setup()
     const onSelect = vi.fn()
     render(<PresetsParameter onSelect={onSelect} />)
 
-    fireEvent.click(
+    await user.click(
       screen.getByRole('button', { name: /modelProvider\.modelProvider\.loadPresets/i }),
     )
-    fireEvent.click(screen.getByText('common.model.tone.Creative'))
+    await user.click(await screen.findByRole('menuitem', { name: 'common.model.tone.Creative' }))
     expect(onSelect).toHaveBeenCalledWith(1)
   })
 

@@ -1,5 +1,5 @@
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import type { DataSet } from '@/models/datasets'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { useBoolean } from 'ahooks'
 import { useCallback, useEffect, useState } from 'react'
@@ -14,7 +14,7 @@ const useEditDatasetMetadata = ({
   onUpdateDocList,
 }: {
   datasetId: string
-  dataset?: DataSet
+  dataset?: DatasetDetailWithPartialMembersResponse
   onUpdateDocList: () => void
 }) => {
   const [isShowEditModal, { setTrue: showEditModal, setFalse: hideEditModal }] = useBoolean(false)

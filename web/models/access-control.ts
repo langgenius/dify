@@ -164,31 +164,17 @@ export type ResourceUserAccessSetting = {
   access_policies: Omit<AccessPolicy, 'created_at' | 'updated_at'>[]
 }
 
-type ResourceUserAccessSettingsResponse = {
+export type ResourceUserAccessSettingsResponse = {
   data: ResourceUserAccessSetting[]
   pagination: Pagination
 }
 
-export type GetAppUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
-
-export type GetDatasetUserAccessSettingsResponse = ResourceUserAccessSettingsResponse
-
-type UpdateResourceUserAccessSettingsRequest = {
+export type UpdateResourceUserAccessSettingsRequest = {
   accountId: string
   accessPolicyIds: string[]
 }
 
-export type UpdateAppUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
-
-export type UpdateDatasetUserAccessSettingsRequest = UpdateResourceUserAccessSettingsRequest
-
-type RemoveResourceAccessPolicyMemberBindingsRequest = {
+export type RemoveResourceAccessPolicyMemberBindingsRequest = {
   accessPolicyId: string
   accountIds: string[]
 }
-
-export type RemoveAppAccessPolicyMemberBindingsRequest =
-  RemoveResourceAccessPolicyMemberBindingsRequest
-
-export type RemoveDatasetAccessPolicyMemberBindingsRequest =
-  RemoveResourceAccessPolicyMemberBindingsRequest

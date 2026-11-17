@@ -40,6 +40,9 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       citation: {
         enabled: false,
       },
+      showThoughts: {
+        enabled: false,
+      },
       moderation: {
         enabled: false,
       },

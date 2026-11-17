@@ -10,7 +10,7 @@ vi.mock('@/service/console/browser', () => ({
 
 describe('updateEnvironmentVariables', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    mockRequest.mockReset()
   })
 
   it('sends per-ID upserts and deletions as a patch', async () => {

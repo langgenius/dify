@@ -1,7 +1,9 @@
 'use client'
 
-import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.gen'
-import type { AppTrigger } from '@/app/components/tools/types'
+import type {
+  AppDetailWithSite,
+  WorkflowTriggerResponse,
+} from '@dify/contracts/api/console/apps/types.gen'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
@@ -18,13 +20,14 @@ import Link from '@/next/link'
 import { consoleQuery } from '@/service/console'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
+import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
 
 function TriggerIcon({
   trigger,
   triggerPlugins,
 }: {
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const blockType =
@@ -59,13 +62,14 @@ function TriggerAccessPointItem({
 }: {
   appId: string
   canManageAccessPoint: boolean
-  trigger: AppTrigger
+  trigger: WorkflowTriggerResponse
   triggerPlugins: TriggerWithProvider[]
 }) {
   const { t } = useTranslation(['agentV2', 'appOverview', 'common'])
   const queryClient = useQueryClient()
   const updateTriggerMutation = useMutation(
     consoleQuery.apps.byAppId.triggerEnable.post.mutationOptions({
+      context: { silent: true },
       scope: {
         id: `app-trigger-toggle:${appId}:${trigger.id}`,
       },
@@ -75,8 +79,11 @@ function TriggerAccessPointItem({
             input: { params: { app_id: appId } },
           }),
         }),
-      onError: () => {
-        toast.error(t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }))
+      onError: (error) => {
+        toast.error(
+          getErrorMessage(error) ??
+            t(($) => $['actionMsg.modifiedUnsuccessfully'], { ns: 'common' }),
+        )
       },
     }),
   )
@@ -118,7 +125,7 @@ function TriggerAccessPointItem({
       </span>
       <span
         className={`flex shrink-0 items-center gap-1 system-xs-semibold-uppercase ${
-          enabled ? 'text-text-success' : 'text-text-tertiary'
+          enabled ? 'text-text-secondary' : 'text-text-tertiary'
         }`}
       >
         <StatusDot size="small" status={enabled ? 'success' : 'disabled'} />
@@ -207,7 +214,7 @@ export function TriggerAccessPointCard({
               href={docLink('/use-dify/nodes/trigger/overview')}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-text-accent hover:underline"
+              className="text-text-accent underline"
             >
               {t(($) => $['overview.triggerInfo.learnAboutTriggers'], {
                 ns: 'appOverview',

@@ -8,19 +8,12 @@ const updateAgent = vi.hoisted(() => vi.fn().mockResolvedValue({}))
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
-    consoleQuery: {
-      ...actual.consoleQuery,
-      files: actual.consoleQuery.files,
-      agent: {
-        ...actual.consoleQuery.agent,
-        byAgentId: {
-          ...actual.consoleQuery.agent.byAgentId,
-          put: { mutationOptions: () => ({ mutationFn: updateAgent }) },
-        },
-      },
-    },
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'agent.byAgentId.put': updateAgent,
+    }),
   }
 })
 
@@ -84,19 +77,16 @@ it('keeps icon drafts out of form dirty state and submits only the confirmed ico
   expect(updateAgent).not.toHaveBeenCalled()
   await user.click(save)
   await waitFor(() =>
-    expect(updateAgent).toHaveBeenCalledWith(
-      {
-        params: { agent_id: 'agent-1' },
-        body: {
-          name: 'Market Agent',
-          description: 'Find market materials.',
-          role: 'Research Assistant',
-          icon_type: 'emoji',
-          icon: '🧸',
-          icon_background: '#F3FEE7',
-        },
+    expect(updateAgent).toHaveBeenCalledWith({
+      params: { agent_id: 'agent-1' },
+      body: {
+        name: 'Market Agent',
+        description: 'Find market materials.',
+        role: 'Research Assistant',
+        icon_type: 'emoji',
+        icon: '🧸',
+        icon_background: '#F3FEE7',
       },
-      expect.anything(),
-    ),
+    }),
   )
 })

@@ -31,9 +31,37 @@ logger = logging.getLogger(__name__)
 type LoginUser = Account | EndUser
 type AccountLoader = Callable[[str], Account | None]
 
+ACCOUNT_ONLY_ADMISSION_ATTR = "__account_only_admission__"
+
 
 def bind_account_loader(app: Flask, loader: AccountLoader) -> None:
     app.extensions["account_identity_loader"] = loader
+
+
+def bind_account_only_loader(app: Flask, loader: AccountLoader) -> None:
+    """Bind identity lookup for explicitly account-scoped Console resources."""
+    app.extensions["account_only_identity_loader"] = loader
+
+
+def _console_account_loader() -> AccountLoader:
+    """Select the account loader from the registered view's admission metadata.
+
+    Requires a Flask request context. Only explicitly marked resource handlers
+    use account-only lookup; missing views or metadata retain workspace admission.
+    Inherited handlers follow the resource class's method resolution order.
+    """
+    view = current_app.view_functions.get(request.endpoint or "")
+    resource = view.__dict__.get("view_class") if view is not None else None
+    if not isinstance(resource, type):
+        return load_account
+    method = request.method.lower()
+    handler = next((base.__dict__[method] for base in resource.__mro__ if method in base.__dict__), None)
+    if handler is not None and handler.__dict__.get(ACCOUNT_ONLY_ADMISSION_ATTR, False):
+        loader = current_app.extensions["account_only_identity_loader"]
+        if not callable(loader):
+            raise TypeError("account_only_identity_loader must be callable")
+        return loader
+    return load_account
 
 
 def load_account(account_id: str) -> Account | None:
@@ -108,7 +136,7 @@ def _load_user_from_request(request_from_flask_login: Request, session: Session)
         if not user_id:
             raise Unauthorized("Invalid Authorization token.")
 
-        logged_in_account = load_account(user_id)
+        logged_in_account = _console_account_loader()(user_id)
         return logged_in_account
     elif request.blueprint == "openapi":
         # Account-branch device-flow approval routes (approve / deny /

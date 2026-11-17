@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Awaitable, Callable, Sequence
 import json
 import logging
 import re
@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict, Field, NonNegativeInt, field_validat
 from pydantic_ai import RunContext
 from pydantic_ai.capabilities import AbstractCapability, CapabilityOrdering
 from pydantic_ai.capabilities.abstract import WrapRunHandler
+from pydantic_ai.messages import ToolReturn
 from pydantic_ai.run import AgentRunResult
 from pydantic_ai.toolsets import FunctionToolset
 from typing_extensions import Self
@@ -31,7 +32,7 @@ from dify_agent.runtime.context import Deps
 from dify_agent.layers.shell.configs import DifyShellLayerConfig
 from dify_agent.layers.shell.output_text import normalized_output_text, utf8_prefix, utf8_suffix
 from dify_agent.runtime.command_runner import execute_complete_with_commands
-from dify_agent.runtime_backend import RuntimeLease
+from dify_agent.runtime_backend import BindingLostError, RuntimeLease
 
 
 logger = logging.getLogger(__name__)
@@ -165,7 +166,7 @@ class ShellToolErrorObservation(TypedDict):
     job_id: NotRequired[str]
 
 
-type ShellRunToolResult = str | ShellToolErrorObservation
+type ShellRunToolResult = str | ShellToolErrorObservation | ToolReturn
 type ShellInterruptToolResult = str | ShellToolErrorObservation
 
 
@@ -288,6 +289,13 @@ class ShellSession:
 
     name: str
     deps: Deps
+    # KnowledgeFS installs these hooks for the run so CLI results reach the
+    # model through a trusted side channel instead of untrusted shell output.
+    agent_stub_session_id: str | None = field(default=None, init=False, repr=False)
+    knowledge_observation: Callable[[str], Awaitable[str | ToolReturn]] | None = field(
+        default=None, init=False, repr=False
+    )
+    knowledge_lease_lost: Callable[[], Awaitable[None]] | None = field(default=None, init=False, repr=False)
     _job_agent_stub_tokens: dict[str, str] = field(default_factory=dict, init=False, repr=False)
 
     @property
@@ -340,18 +348,20 @@ class ShellSession:
                 self._job_agent_stub_tokens[result.job_id] = agent_stub_token
             else:
                 self._job_agent_stub_tokens.pop(result.job_id, None)
-            return _tagged_shell_observation(
-                _metadata_dict(
-                    job_id=result.job_id,
-                    status=result.status,
-                    done=result.done,
-                    exit_code=result.exit_code,
-                    output_path=observation.output_path,
-                ),
-                self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
+            return await self._observe_knowledge(
+                _tagged_shell_observation(
+                    _metadata_dict(
+                        job_id=result.job_id,
+                        status=result.status,
+                        done=result.done,
+                        exit_code=result.exit_code,
+                        output_path=observation.output_path,
+                    ),
+                    self._redact_output(observation.text, sensitive_values=(agent_stub_token,)),
+                )
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error_from_exception(exc)
+            return await self._known_tool_error(exc)
         except Exception as exc:
             return _tool_unexpected_error("shell_run", exc)
 
@@ -374,18 +384,20 @@ class ShellSession:
             )
             if result.done:
                 self._job_agent_stub_tokens.pop(job_id, None)
-            return _tagged_shell_observation(
-                _metadata_dict(
-                    job_id=result.job_id,
-                    status=result.status,
-                    done=result.done,
-                    exit_code=result.exit_code,
-                    output_path=observation.output_path,
-                ),
-                redacted_output,
+            return await self._observe_knowledge(
+                _tagged_shell_observation(
+                    _metadata_dict(
+                        job_id=result.job_id,
+                        status=result.status,
+                        done=result.done,
+                        exit_code=result.exit_code,
+                        output_path=observation.output_path,
+                    ),
+                    redacted_output,
+                )
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error_from_exception(exc, job_id=job_id)
+            return await self._known_tool_error(exc, job_id=job_id)
         except Exception as exc:
             return _tool_unexpected_error("shell_wait", exc, job_id=job_id)
 
@@ -408,18 +420,20 @@ class ShellSession:
             )
             if result.done:
                 self._job_agent_stub_tokens.pop(job_id, None)
-            return _tagged_shell_observation(
-                _metadata_dict(
-                    job_id=result.job_id,
-                    status=result.status,
-                    done=result.done,
-                    exit_code=result.exit_code,
-                    output_path=observation.output_path,
-                ),
-                redacted_output,
+            return await self._observe_knowledge(
+                _tagged_shell_observation(
+                    _metadata_dict(
+                        job_id=result.job_id,
+                        status=result.status,
+                        done=result.done,
+                        exit_code=result.exit_code,
+                        output_path=observation.output_path,
+                    ),
+                    redacted_output,
+                )
             )
         except (RuntimeError, ValueError) as exc:
-            return _tool_error_from_exception(exc, job_id=job_id)
+            return await self._known_tool_error(exc, job_id=job_id)
         except Exception as exc:
             return _tool_unexpected_error("shell_input", exc, job_id=job_id)
 
@@ -586,7 +600,7 @@ class ShellSession:
             agent_stub_api_base_url=self.deps.services.agent_stub_api_base_url,
             execution_context=execution_context,
             token_factory=self.deps.services.agent_stub_token_factory,
-            session_id=None,
+            session_id=self.agent_stub_session_id,
         )
         if agent_stub_env is None:
             if not require_agent_stub_env:
@@ -594,6 +608,14 @@ class ShellSession:
             raise RuntimeError("Agent Stub environment injection is not available for this shell session.")
         env.update(agent_stub_env)
         return env
+
+    async def _observe_knowledge(self, observation: str) -> str | ToolReturn:
+        return await self.knowledge_observation(observation) if self.knowledge_observation else observation
+
+    async def _known_tool_error(self, exc: Exception, *, job_id: str | None = None) -> ShellToolErrorObservation:
+        if isinstance(exc, BindingLostError) and self.knowledge_lease_lost:
+            await self.knowledge_lease_lost()
+        return _tool_error_from_exception(exc, job_id=job_id)
 
     def _redact_output(self, text: str, *, sensitive_values: Sequence[str | None] = ()) -> str:
         """Redact sensitive content from shell output before the model sees it.

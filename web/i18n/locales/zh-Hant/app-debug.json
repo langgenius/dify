@@ -95,6 +95,8 @@
   "feature.moreLikeThis.description": "一次生成多條文字，可在此基礎上編輯並繼續生成",
   "feature.moreLikeThis.tip": "使用此功能將會額外消耗 tokens",
   "feature.moreLikeThis.title": "更多類似的",
+  "feature.showThoughts.description": "在對話中展示模型的思考內容。",
+  "feature.showThoughts.title": "顯示思考過程",
   "feature.speechToText.description": "啟用後，您可以使用語音輸入。",
   "feature.speechToText.title": "語音轉文字",
   "feature.suggestedQuestionsAfterAnswer.description": "設定下一步問題建議可以讓使用者更好的對話。",

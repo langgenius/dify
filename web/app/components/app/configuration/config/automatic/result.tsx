@@ -9,6 +9,7 @@ import {
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@langgenius/dify-ui/alert-dialog'
@@ -81,18 +82,18 @@ const Result: FC<Props> = ({
               {t(($) => $['generate.apply'], { ns: 'appGeneration' })}
             </AlertDialogTrigger>
             <AlertDialogContent>
-              <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-                <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+              <AlertDialogHeader>
+                <AlertDialogTitle>
                   {isGeneratorPrompt
                     ? t(($) => $['generate.overwriteTitle'], { ns: 'appGeneration' })
                     : t(($) => $['codegen.overwriteConfirmTitle'], { ns: 'appGeneration' })}
                 </AlertDialogTitle>
-                <AlertDialogDescription className="w-full system-md-regular wrap-break-word whitespace-pre-wrap text-text-tertiary">
+                <AlertDialogDescription>
                   {isGeneratorPrompt
                     ? t(($) => $['generate.overwriteMessage'], { ns: 'appGeneration' })
                     : t(($) => $['codegen.overwriteConfirmMessage'], { ns: 'appGeneration' })}
                 </AlertDialogDescription>
-              </div>
+              </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancelButton>
                   {t(($) => $['operation.cancel'], { ns: 'common' })}

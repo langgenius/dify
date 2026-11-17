@@ -1,7 +1,6 @@
 import type { LLMNodeType } from '../types'
-import type { EditorResource } from '@/app/components/workflow/editor-resource/resource'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { renderEditorHook as renderHook } from '@/app/components/workflow/editor-resource/__tests__/render'
+import { renderWorkflowFlowHook as renderHook } from '@/app/components/workflow/__tests__/workflow-test-env'
 import {
   BlockEnum,
   EditionType,
@@ -11,7 +10,6 @@ import {
 } from '@/app/components/workflow/types'
 import useConfigVision from '../../../hooks/use-config-vision'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import useNodeCrud from '../../_base/hooks/use-node-crud'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
 vi.mock('../../../hooks/use-config-vision', () => ({
@@ -24,37 +22,8 @@ vi.mock('../../_base/hooks/use-available-var-list', () => ({
   default: vi.fn(),
 }))
 
-vi.mock('../../_base/hooks/use-node-crud', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-vi.mock('../../../hooks/use-workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../../hooks/use-workflow')>()
-
-  return {
-    ...actual,
-  }
-})
-
-const mockFlowType = vi.hoisted(() => ({
-  value: undefined as EditorResource['kind'] | undefined,
-}))
-
-vi.mock('@/app/components/workflow/hooks-store/store', () => ({
-  useHooksStore: (
-    selector: (state: { configsMap?: { resourceKind?: EditorResource['kind'] } }) => unknown,
-  ) =>
-    selector({
-      configsMap: {
-        resourceKind: mockFlowType.value,
-      },
-    }),
-}))
-
 const mockUseConfigVision = vi.mocked(useConfigVision)
 const mockUseAvailableVarList = vi.mocked(useAvailableVarList)
-const mockUseNodeCrud = vi.mocked(useNodeCrud)
 
 const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
   title: 'LLM',
@@ -65,7 +34,7 @@ const createData = (overrides: Partial<LLMNodeType> = {}): LLMNodeType => ({
     name: 'gpt-4o',
     mode: 'chat' as const,
     completion_params: {},
-  } as LLMNodeType['model'],
+  },
   prompt_template: [
     {
       edition_type: EditionType.basic,
@@ -100,20 +69,18 @@ const createInputVar = (variable: string): InputVar => ({
 describe('llm/use-single-run-form-params', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockFlowType.value = undefined
-    mockUseNodeCrud.mockImplementation(
-      (_id, payload) =>
-        ({
-          inputs: payload,
-          setInputs: vi.fn(),
-        }) as unknown as ReturnType<typeof useNodeCrud>,
-    )
+
     mockUseConfigVision.mockReturnValue({
       isVisionModel: false,
-    } as ReturnType<typeof useConfigVision>)
+      handleVisionResolutionEnabledChange: vi.fn(),
+      handleVisionResolutionChange: vi.fn(),
+      handleModelChanged: vi.fn(),
+    })
     mockUseAvailableVarList.mockReturnValue({
       availableVars: [],
-    } as unknown as ReturnType<typeof useAvailableVarList>)
+      availableNodes: [],
+      availableNodesWithParent: [],
+    })
   })
 
   it('filters system variables from single-run inputs in snippet flows', () => {
@@ -167,11 +134,4 @@ describe('llm/use-single-run-form-params', () => {
       }),
     ])
   })
-})
-
-vi.mock('@/app/components/workflow/editor-resource/state', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/app/components/workflow/editor-resource/state')>()
-  const { atom } = await import('jotai')
-  return { ...actual, isChatflowAtom: atom(() => true) }
 })

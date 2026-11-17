@@ -8,7 +8,7 @@ from flask import Flask, Response
 
 from extensions import ext_request_logging
 from extensions.ext_request_logging import _is_content_type_json, _log_request_finished, init_app
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def test_is_content_type_json() -> None:

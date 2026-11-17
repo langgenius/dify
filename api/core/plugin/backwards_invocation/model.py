@@ -1,24 +1,35 @@
 import tempfile
 from binascii import hexlify, unhexlify
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
+from enum import Enum
+from operator import itemgetter
 from typing import Any
+
+from pydantic import BaseModel
 
 from core.base.tts.audio_mime import get_model_audio_mime_type, inspect_audio_stream
 from core.credit_usage import CreditUsageCreatedBy
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.model_context import with_credit_usage_created_by
+from core.model_context import get_credit_usage_metadata, with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import (
+    InvokableModelCatalogItem,
+    InvokableModelCatalogPage,
+    InvokableModelTokenLimits,
     RequestInvokeLLM,
     RequestInvokeLLMWithStructuredOutput,
     RequestInvokeModeration,
+    RequestInvokeMultimodalEmbedding,
     RequestInvokeRerank,
     RequestInvokeSpeech2Text,
     RequestInvokeSummary,
     RequestInvokeTextEmbedding,
     RequestInvokeTTS,
+    RequestListModels,
 )
+from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.plugin_service import PluginService
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
 from graphon.model_runtime.entities.llm_entities import (
@@ -35,9 +46,62 @@ from graphon.model_runtime.entities.message_entities import (
 )
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.account import Tenant
+from models.provider_ids import ModelProviderID
+
+
+def _json_compatible(value: Any) -> Any:
+    """Convert model-runtime metadata into stable JSON-compatible values."""
+    if isinstance(value, BaseModel):
+        return value.model_dump(mode="json")
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, Mapping):
+        return {str(_json_compatible(key)): _json_compatible(child) for key, child in value.items()}
+    if isinstance(value, list | tuple | set):
+        return [_json_compatible(child) for child in value]
+    return value
 
 
 class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
+    @classmethod
+    def _model_token_limits(
+        cls, *, tenant_id: str, user_id: str, provider: str, model: str
+    ) -> InvokableModelTokenLimits | None:
+        """Resolve the selected model only; listing a catalog must not cause N schema RPCs.
+
+        Custom-model settings (including the configured max-token rule) are resolved by the same
+        tenant-bound runtime as invocation. Never infer an output maximum from a rule's default.
+        """
+        instance = cls._get_bound_model_instance(
+            tenant_id=tenant_id, user_id=user_id, provider=provider, model_type=ModelType.LLM, model=model
+        )
+        schema = instance.get_model_schema()
+        if schema is None:
+            return None
+
+        def positive_limit(value: Any) -> int | None:
+            if isinstance(value, bool) or not isinstance(value, int | float):
+                return None
+            if not 0 < value <= 1_000_000_000 or value != int(value):
+                return None
+            return int(value)
+
+        output_rules = [
+            rule
+            for rule in schema.parameter_rules
+            if rule.name in {"max_tokens", "max_output_tokens", "max_completion_tokens", "maxtoken"}
+            or rule.use_template == "max_tokens"
+        ]
+        bounded_rules = [(rule, positive_limit(rule.max)) for rule in output_rules]
+        bounded_rules = [(rule, limit) for rule, limit in bounded_rules if limit is not None]
+        # Multiple declared aliases must not let the caller bypass the tighter bound.
+        selected = min(bounded_rules, key=itemgetter(1)) if bounded_rules else None
+        return InvokableModelTokenLimits(
+            context_tokens=positive_limit(schema.model_properties.get("context_size")),
+            max_output_tokens=selected[1] if selected else None,
+            output_parameter=selected[0].name if selected else None,
+        )
+
     @staticmethod
     @with_credit_usage_created_by(CreditUsageCreatedBy.PLUGIN_API)
     def _get_bound_model_instance(
@@ -47,8 +111,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         provider: str,
         model_type: ModelType,
         model: str,
+        request_metadata: Mapping[str, object] | None = None,
     ):
-        return ModelManager.for_tenant(tenant_id=tenant_id, user_id=user_id).get_model_instance(
+        # Bind explicit caller attribution before the decorator exits. Streaming
+        # invocations settle quota later, outside this context manager's lifetime.
+        metadata = {**(get_credit_usage_metadata() or {}), **(request_metadata or {})}
+        return ModelManager.for_tenant(
+            tenant_id=tenant_id, user_id=user_id, request_metadata=metadata
+        ).get_model_instance(
             tenant_id=tenant_id,
             provider=provider,
             model_type=model_type,
@@ -68,6 +138,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -117,6 +188,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         model_schema = model_instance.model_type_instance.get_model_schema(payload.model, model_instance.credentials)
@@ -175,10 +247,35 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
-        response = model_instance.invoke_text_embedding(texts=payload.texts)
+        response = model_instance.invoke_text_embedding(texts=payload.texts, input_type=payload.input_type)
+
+        return response
+
+    @classmethod
+    def invoke_multimodal_embedding(
+        cls,
+        user_id: str,
+        tenant: Tenant,
+        payload: RequestInvokeMultimodalEmbedding,
+    ):
+        """Invoke multimodal embedding through the tenant-bound model instance."""
+        model_instance = cls._get_bound_model_instance(
+            tenant_id=tenant.id,
+            user_id=user_id,
+            provider=payload.provider,
+            model_type=payload.model_type,
+            model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
+        )
+
+        response = model_instance.invoke_multimodal_embedding(
+            multimodel_documents=[document.model_dump(exclude_none=True) for document in payload.documents],
+            input_type=payload.input_type,
+        )
 
         return response
 
@@ -193,6 +290,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -206,6 +304,75 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
         return response
 
     @classmethod
+    def list_models(
+        cls,
+        tenant_id: str,
+        user_id: str,
+        payload: RequestListModels,
+    ) -> InvokableModelCatalogPage:
+        """List only models that are active for the tenant's Dify configuration."""
+        provider_manager = create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id)
+        active_models = provider_manager.get_configurations(tenant_id).get_models(
+            model_type=payload.model_type,
+            only_active=True,
+        )
+
+        installed_identities: dict[str, str] = {}
+        for plugin in PluginService.list(tenant_id):
+            existing = installed_identities.get(plugin.plugin_id)
+            if existing is not None and existing != plugin.plugin_unique_identifier:
+                raise ValueError(f"Ambiguous installed identity for model plugin {plugin.plugin_id}")
+            installed_identities[plugin.plugin_id] = plugin.plugin_unique_identifier
+
+        requested_provider = str(ModelProviderID(payload.provider)) if payload.provider else None
+        matched_models = [
+            model
+            for model in active_models
+            if (requested_provider is None or model.provider.provider == requested_provider)
+            and (payload.model is None or model.model == payload.model)
+        ]
+        matched_models.sort(key=lambda model: (model.provider.provider, model.model))
+
+        page_models = matched_models[payload.offset : payload.offset + payload.limit]
+        items: list[InvokableModelCatalogItem] = []
+        for model in page_models:
+            provider_id = ModelProviderID(model.provider.provider)
+            unique_identifier = installed_identities.get(provider_id.plugin_id)
+            if unique_identifier is None:
+                raise ValueError(f"Installed identity not found for active model plugin {provider_id.plugin_id}")
+            items.append(
+                InvokableModelCatalogItem(
+                    plugin_id=provider_id.plugin_id,
+                    plugin_unique_identifier=unique_identifier,
+                    provider=provider_id.provider_name,
+                    model=model.model,
+                    model_type=model.model_type,
+                    capabilities={
+                        "deprecated": model.deprecated,
+                        "features": _json_compatible(model.features or []),
+                        "fetchFrom": _json_compatible(model.fetch_from),
+                        "modelProperties": _json_compatible(model.model_properties),
+                        "modelType": model.model_type.value,
+                        "status": _json_compatible(model.status),
+                    },
+                    token_limits=cls._model_token_limits(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        provider=model.provider.provider,
+                        model=model.model,
+                    )
+                    if payload.model and model.model_type == ModelType.LLM
+                    else None,
+                )
+            )
+
+        next_offset = payload.offset + len(page_models)
+        return InvokableModelCatalogPage(
+            items=items,
+            next_offset=next_offset if next_offset < len(matched_models) else None,
+        )
+
+    @classmethod
     def invoke_tts(cls, user_id: str, tenant: Tenant, payload: RequestInvokeTTS):
         """
         invoke tts
@@ -216,6 +383,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         def handle() -> Generator[dict[str, Any]]:
@@ -237,6 +405,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model
@@ -262,6 +431,7 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             provider=payload.provider,
             model_type=payload.model_type,
             model=payload.model,
+            request_metadata=payload.credit_usage_metadata,
         )
 
         # invoke model

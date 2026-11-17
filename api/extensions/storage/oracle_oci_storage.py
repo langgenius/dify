@@ -33,7 +33,7 @@ class OracleOCIStorage(BaseStorage):
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
         return data
@@ -45,7 +45,7 @@ class OracleOCIStorage(BaseStorage):
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
             if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
-                raise FileNotFoundError("File not found")
+                raise FileNotFoundError("File not found") from ex
             else:
                 raise
 

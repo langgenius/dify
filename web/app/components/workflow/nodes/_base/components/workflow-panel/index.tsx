@@ -38,7 +38,7 @@ import {
   editorResourceAtom,
 } from '@/app/components/workflow/editor-resource/state'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import { NodeActionsDropdown } from '@/app/components/workflow/node-actions-menu'
+import { NodeActionsMenu } from '@/app/components/workflow/node-actions-menu'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { useSetWorkflowNodePanelWidth } from '@/app/components/workflow/persistence/local-storage-options'
 import { useLogs } from '@/app/components/workflow/run/hooks'
@@ -269,10 +269,21 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   const [isPaused, setIsPaused] = useState(false)
 
   useEffect(() => {
+    hasClickRunning.current = false
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
+    setIsPaused(false)
+  }, [id])
+
+  useEffect(() => {
     if (data._singleRunningStatus === NodeRunningStatus.Running) {
       hasClickRunning.current = true
+      // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
       setIsPaused(false)
-    } else if (data._isSingleRun && data._singleRunningStatus === undefined && hasClickRunning) {
+    } else if (
+      data._isSingleRun &&
+      data._singleRunningStatus === undefined &&
+      hasClickRunning.current
+    ) {
       setIsPaused(true)
       hasClickRunning.current = false
     }
@@ -290,10 +301,6 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
     },
     [handleNodeDataUpdate, id, data],
   )
-
-  useEffect(() => {
-    hasClickRunning.current = false
-  }, [id])
 
   const { nodesMap } = useNodesMetaData()
 
@@ -331,6 +338,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
   })
 
   useEffect(() => {
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- Reset pause UI when the selected node, execution status, or panel tab changes outside this component.
     setIsPaused(false)
   }, [tabType])
 
@@ -677,7 +685,7 @@ const BasePanel: FC<BasePanelProps> = ({ id, data, children }) => {
                 </Tooltip>
               )}
               <HelpLink nodeType={nodeMetaType} />
-              <NodeActionsDropdown id={id} data={data} showHelpLink={false} />
+              <NodeActionsMenu id={id} data={data} showHelpLink={false} />
               <div className="mx-3 h-3.5 w-px bg-divider-regular" />
               <IconButton
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}

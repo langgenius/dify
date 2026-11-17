@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Recipient as RecipientItem } from '../../../types'
-import type { Member } from '@/models/common'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
 import { RiCloseCircleFill, RiErrorWarningFill } from '@remixicon/react'
@@ -9,7 +9,7 @@ import { getAvatarInitial } from '@/utils/avatar'
 
 type Props = Readonly<{
   email: string
-  data: Member
+  data: AccountWithRoleResponse
   disabled?: boolean
   onDelete: (recipient: RecipientItem) => void
   isError: boolean

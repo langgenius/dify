@@ -1,9 +1,9 @@
-import type { DataSet } from '@/models/datasets'
+import type { DatasetCardItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import * as React from 'react'
 
 type DescriptionProps = {
-  dataset: DataSet
+  dataset: DatasetCardItem
 }
 
 const Description = ({ dataset }: DescriptionProps) => (

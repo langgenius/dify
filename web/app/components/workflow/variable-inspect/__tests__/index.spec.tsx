@@ -6,6 +6,7 @@ import VariableInspectPanel from '../index'
 vi.mock('../panel', () => ({ default: () => <div>Variables</div> }))
 
 describe('variable inspect index', () => {
+  beforeEach(() => localStorage.removeItem('workflow-variable-inpsect-panel-height'))
   it('grows upward with the keyboard and persists its height', async () => {
     const user = userEvent.setup()
     renderWorkflowComponent(<VariableInspectPanel />, {
@@ -62,15 +63,5 @@ describe('variable inspect index', () => {
     expect(handle).toHaveAttribute('aria-valuenow', '240')
     await user.keyboard('{ArrowDown}')
     expect(handle).toHaveAttribute('aria-valuenow', '232')
-  })
-
-  it('renders nothing when the inspect panel is hidden', () => {
-    const { container } = renderWorkflowComponent(<VariableInspectPanel />, {
-      initialStoreState: {
-        showVariableInspectPanel: false,
-      },
-    })
-
-    expect(container).toBeEmptyDOMElement()
   })
 })

@@ -233,7 +233,10 @@ const CollectionSection = ({
                   </span>
                   <span
                     aria-hidden
-                    className={cn(styles.partnerActionIcon, 'i-ri-external-link-line size-3')}
+                    className={cn(
+                      styles.partnerActionIcon,
+                      'i-ri-external-link-line size-3 [&:dir(rtl)]:-scale-x-100',
+                    )}
                   />
                 </a>
               </>

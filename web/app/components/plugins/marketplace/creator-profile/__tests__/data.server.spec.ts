@@ -10,7 +10,16 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock('server-only', () => ({}))
-vi.mock('@/config', () => ({ MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1' }))
+vi.mock('@/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/env')>()
+  return {
+    ...actual,
+    env: {
+      ...actual.env,
+      NEXT_PUBLIC_MARKETPLACE_API_PREFIX: 'https://marketplace.example/api/v1',
+    },
+  }
+})
 vi.mock('@/service/marketplace', () => ({ marketplaceClient: mocks }))
 
 const plugin = {
@@ -53,16 +62,20 @@ describe('loadCreatorProfile', () => {
 
   it('loads individual data through all publisher contracts', async () => {
     const loaded = await loadCreatorProfile({
-      uniqueHandle: 'creator-one',
+      uniqueHandle: 'evanz',
       locale: 'en-US',
     })
 
     expect(mocks.creatorDetail).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'creator-one' },
+      params: { uniqueHandle: 'evanz' },
     })
     expect(mocks.publisherPlugins).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'creator-one' },
+      params: { uniqueHandle: 'evanz' },
       query: { page: 1, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
+    })
+    expect(mocks.publisherTemplates).toHaveBeenCalledWith({
+      params: { uniqueHandle: 'evanz' },
+      query: { page: 1, page_size: 40, sort_by: 'updated_at', sort_order: 'DESC' },
     })
     expect(loaded?.viewModel.creations).toHaveLength(2)
     expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
@@ -112,16 +125,6 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.viewModel.profile.avatarUrl).toBe(
       'https://marketplace.example/api/v1/creators/creator-with-avatar/avatar',
     )
-  })
-
-  it('loads evanz from the Marketplace API without a development fixture branch', async () => {
-    await loadCreatorProfile({ uniqueHandle: 'evanz', locale: 'en-US' })
-
-    expect(mocks.creatorDetail).toHaveBeenCalledWith({ params: { uniqueHandle: 'evanz' } })
-    expect(mocks.publisherTemplates).toHaveBeenCalledWith({
-      params: { uniqueHandle: 'evanz' },
-      query: { page: 1, page_size: 40, sort_by: 'updated_at', sort_order: 'DESC' },
-    })
   })
 
   it('forwards popularity sort to each publisher API column', async () => {

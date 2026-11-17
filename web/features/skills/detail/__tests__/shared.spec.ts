@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/react-query'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { describe, expect, it } from 'vite-plus/test'
 import { consoleQuery } from '@/service/console'
 import {
   createUploadItemId,
@@ -46,7 +46,7 @@ describe('skill detail shared utilities', () => {
     expect(isEditableKeyboardTarget(null)).toBe(false)
   })
 
-  it('falls back to a deterministic upload item id when randomUUID is unavailable', () => {
+  it('keeps simultaneous uploads distinct when randomUUID is unavailable', () => {
     const originalCrypto = globalThis.crypto
     Object.defineProperty(globalThis, 'crypto', {
       configurable: true,
@@ -54,9 +54,7 @@ describe('skill detail shared utilities', () => {
     })
     try {
       const file = new File(['guide'], 'guide.md', { type: 'text/markdown' })
-      vi.spyOn(file, 'lastModified', 'get').mockReturnValue(123)
-
-      expect(createUploadItemId(file, 2)).toBe('guide.md-5-123-2')
+      expect(new Set([createUploadItemId(file, 1), createUploadItemId(file, 2)]).size).toBe(2)
     } finally {
       Object.defineProperty(globalThis, 'crypto', {
         configurable: true,

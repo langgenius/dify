@@ -27,7 +27,7 @@ def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> l
             splits = re.split(separator, text)
     else:
         splits = list(text)
-    return [s for s in splits if (s not in {"", "\n"})]
+    return [s for s in splits if s != "" and (separator == "" or s != "\n")]
 
 
 class TextSplitter(BaseDocumentTransformer, ABC):
@@ -142,10 +142,10 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             def _huggingface_tokenizer_length(text: str) -> int:
                 return len(tokenizer.encode(text))
 
-        except ImportError:
+        except ImportError as caught_error:
             raise ValueError(
                 "Could not import transformers python package. Please install it with `pip install transformers`."
-            )
+            ) from caught_error
         return cls(length_function=lambda x: [_huggingface_tokenizer_length(text) for text in x], **kwargs)
 
     @override
@@ -198,12 +198,12 @@ class TokenTextSplitter(TextSplitter):
         super().__init__(**kwargs)
         try:
             import tiktoken
-        except ImportError:
+        except ImportError as caught_error:
             raise ImportError(
                 "Could not import tiktoken python package. "
                 "This is needed in order to for TokenTextSplitter. "
                 "Please install it with `pip install tiktoken`."
-            )
+            ) from caught_error
 
         if model_name is not None:
             enc = tiktoken.encoding_for_model(model_name)

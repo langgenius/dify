@@ -2,6 +2,7 @@
   "dateFormats.compact": "MM/DD/YYYY HH:mm",
   "dateFormats.withSeconds": "YYYY/MM/DD HH:mm:ss",
   "operation.cancel": "취소",
+  "operation.close": "닫기",
   "operation.now": "오늘",
   "operation.ok": "좋아요",
   "operation.pickDate": "날짜 선택",

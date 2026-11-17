@@ -1,5 +1,5 @@
 'use client'
-import type { createDocumentResponse } from '@/models/datasets'
+import type { DatasetAndDocumentResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { RiBookOpenLine } from '@remixicon/react'
@@ -14,7 +14,7 @@ type StepThreeProps = {
   datasetName?: string
   indexingType?: string
   retrievalMethod?: RETRIEVE_METHOD
-  creationCache?: createDocumentResponse
+  creationCache?: DatasetAndDocumentResponse
 }
 
 const StepThree = ({

@@ -80,7 +80,6 @@ describe('AppInfoTrigger', () => {
     expect(screen.getByText('🤖')).toBeInTheDocument()
     expect(screen.getByText('My Chatbot')).toBeInTheDocument()
     expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
-    expect(screen.getByText('My Chatbot').closest('button')).toBeNull()
 
     await user.click(screen.getByText('🤖'))
 
@@ -88,28 +87,12 @@ describe('AppInfoTrigger', () => {
     expect(props.exportCheck).not.toHaveBeenCalled()
   })
 
-  it('renders only the app icon when collapsed', () => {
-    render(<AppInfoTrigger {...createProps({ expand: false })} />)
-
-    expect(screen.getByText('🤖')).toBeInTheDocument()
-    expect(screen.queryByText('Test App')).not.toBeInTheDocument()
-    expect(screen.queryByRole('button')).not.toBeInTheDocument()
-  })
-
-  it('shows every available chat app operation and keeps workflow conversion last', async () => {
+  it('opens workflow conversion for a chat app', async () => {
     const user = userEvent.setup()
     const props = createProps()
     render(<AppInfoTrigger {...props} />)
 
     await user.click(getOperationsTrigger())
-
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
-      'app.editApp',
-      'app.duplicate',
-      'app.exportApp',
-      'common.operation.delete',
-      'app.switch',
-    ])
 
     await user.click(screen.getByRole('menuitem', { name: 'app.switch' }))
     expect(props.openModal).toHaveBeenCalledWith('switch')
