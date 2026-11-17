@@ -20,6 +20,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
+import BuildAppLink from '@/app/components/share/build-app-link'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import MyAppsLink from '@/app/components/share/my-apps-link'
 import SignIn from '@/app/components/share/sign-in'
@@ -56,6 +57,8 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
     isBelowSm,
     isResponding,
   } = useChatWithHistoryContext()
+  const showBuildAppLink =
+    !isInstalledApp && !!entry && 'account' in entry && entry.account === 'authenticated'
   const isSidebarCollapsed = sidebarCollapseState
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const [showConfirm, setShowConfirm] = useState<ConversationItem | null>(null)
@@ -172,6 +175,11 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           />
         )}
       </div>
+      {showBuildAppLink && (
+        <div className="shrink-0 px-3 pt-2">
+          <BuildAppLink />
+        </div>
+      )}
       <div className="flex shrink-0 items-center justify-between p-3">
         {!isInstalledApp && entry?.showSignIn ? (
           <SignIn />

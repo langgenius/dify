@@ -1,3 +1,4 @@
+import type { WebSystemFeatureResponse } from '@dify/contracts/api/web/types.gen'
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -5,6 +6,7 @@ import { ConnectionsContext } from '@/app/components/share/connections/use-conne
 import { WebAppEntryContext } from '@/app/components/share/webapp-entry'
 import { fetchChatList, fetchConversations } from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createWebAccountProfile } from '@/test/webapp-account-profile'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
@@ -32,6 +34,11 @@ beforeEach(() => {
     const url = input instanceof Request ? input.url : String(input)
     if (new URL(url).pathname.endsWith('/account/profile'))
       return Response.json(createWebAccountProfile({ name: 'Test Account' }))
+    if (new URL(url).pathname.endsWith('/system-features'))
+      return Response.json({
+        ...createSystemFeaturesFixture(),
+        account_login_url: 'https://console.example.com/dify/signin',
+      } satisfies WebSystemFeatureResponse)
     throw new Error(`Unexpected request: ${url}`)
   })
 })
