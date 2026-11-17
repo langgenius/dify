@@ -39,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -1583,6 +1584,15 @@ class WorkflowService:
                         "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
                     )
             raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_execution_id=started_event.id,
+                )
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
