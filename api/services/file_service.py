@@ -249,7 +249,13 @@ class FileService:
         return self._sign_file(upload_file_id=file_id)
 
     def delete_file(self, *, tenant_id: str, file_id: str) -> None:
-        """Delete a file only when the global liveness scan finds no owner."""
+        """Delete a file only when the global liveness scan finds no owner.
+
+        A referenced file is retained silently. Owner-lock contention during the
+        scan propagates as ``OperationalError`` instead of retaining the file, so
+        callers reconciling durable candidates can retry; best-effort cleanup
+        callers must catch and log it.
+        """
         self._reclaimer.delete_unreferenced_files(
             tenant_id=tenant_id,
             file_ids=(file_id,),

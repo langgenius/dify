@@ -117,7 +117,17 @@ def rag_pipeline_run_task(
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
         file_service = application_services().files
-        file_service.delete_file(tenant_id=tenant_id, file_id=rag_pipeline_invoke_entities_file_id)
+        try:
+            file_service.delete_file(tenant_id=tenant_id, file_id=rag_pipeline_invoke_entities_file_id)
+        except Exception:
+            # Best-effort: the run has already finished. Reference-check lock
+            # contention (or any storage error) must not fail the task or skip
+            # the session close; the retained file is reclaimed by a later pass.
+            logger.exception(
+                "Failed to delete rag pipeline invoke entities file, tenant_id=%s, file_id=%s",
+                tenant_id,
+                rag_pipeline_invoke_entities_file_id,
+            )
         db.session.close()
 
 

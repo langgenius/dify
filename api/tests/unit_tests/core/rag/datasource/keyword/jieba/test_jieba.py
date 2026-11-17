@@ -424,6 +424,25 @@ def test_read_uses_the_callers_checked_out_connection(
         engine.dispose()
 
 
+def test_reads_do_not_wait_for_the_keyword_writer_lock(runtime: KeywordRuntime) -> None:
+    runtime.session.add(segment("node-1"))
+    keyword = Jieba(runtime.dataset)
+    keyword.add_texts(
+        [Document(page_content="alpha", metadata={"doc_id": "node-1"})], runtime.session, keywords_list=[["alpha"]]
+    )
+    runtime.session.commit()
+    writer_locks = list(runtime.locks.acquired)
+
+    # A writer holds the dataset lock for a whole indexing batch; KeywordLocks
+    # rejects a second acquisition, as an exclusive Redis lock would block it.
+    with runtime.locks.lock("keyword_indexing_lock_dataset-1", timeout=600):
+        documents = keyword.search("alpha", session=runtime.session)
+        assert [document.metadata["doc_id"] for document in documents] == ["node-1"]
+        assert keyword.text_exists("node-1", session=runtime.session) is True
+
+    assert runtime.locks.acquired == [*writer_locks, "keyword_indexing_lock_dataset-1"]
+
+
 @pytest.mark.parametrize("storage_type", ["database", "file"])
 def test_caller_can_refresh_latest_table_before_reusing_a_session(
     sqlite_session_factory: sessionmaker[Session],

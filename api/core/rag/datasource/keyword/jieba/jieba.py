@@ -117,18 +117,35 @@ class Jieba(BaseKeyword):
         return state if state is not None else (dify_config.KEYWORD_DATA_SOURCE_TYPE, None)
 
     def _load_current_keyword_table(self, session: Session) -> dict[str, Any] | None:
-        """Read committed keyword state after all earlier dataset writers finish."""
+        """Read the latest committed keyword table without the writer lock.
 
-        with redis_client.lock(f"keyword_indexing_lock_{self.dataset.id}", timeout=600):
-            return load_dataset_keyword_table(
-                self.dataset,
-                session=session,
-                storage=storage,
-                current=True,
-            )
+        Readers never take ``keyword_indexing_lock_<dataset>``: that Redis lock
+        only serializes writers, which hold it for a whole ``update_texts`` call,
+        so taking it here would stall every search while a dataset is indexing.
+        The shared database locks of a current read are compatible with other
+        readers and wait only for a writer transaction that already holds the
+        keyword row, so the result is the last committed table, not a snapshot
+        older than the caller's transaction. A writer that has not committed yet
+        is not waited for. For object-storage tables the payload is replaced
+        outside any database lock; a read racing that replacement can see the
+        table missing and then reports no matches.
+        """
+
+        return load_dataset_keyword_table(
+            self.dataset,
+            session=session,
+            storage=storage,
+            current=True,
+        )
 
     @override
     def text_exists(self, id: str, *, session: Session) -> bool:
+        """Report whether the last committed keyword table indexes ``id``.
+
+        This is a lock-free read (see ``_load_current_keyword_table``) and must
+        not be used as a write guard; ``update_texts`` is idempotent per node id
+        and needs no prior existence check.
+        """
         keyword_table = None
         keyword_table_dict = self._load_current_keyword_table(session)
         if keyword_table_dict:
@@ -162,6 +179,8 @@ class Jieba(BaseKeyword):
         Apply the optional document filter before selecting the top k node IDs,
         then load full segment rows only for those IDs within the same scope.
         The caller retains session and transaction ownership; read failures propagate.
+        The keyword table is the last committed one; searches do not wait for the
+        dataset's keyword writer lock and run concurrently with each other.
         """
         keyword_table = None
         keyword_table_dict = self._load_current_keyword_table(session)

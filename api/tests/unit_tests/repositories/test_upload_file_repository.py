@@ -42,6 +42,7 @@ from repositories.workflow.upload_file_references import get_referenced_upload_f
 from services.entities.upload_file import UploadFileReferenceCandidate
 from services.errors.file import UploadFileReferenceNotFoundError
 from services.file_adapters import build_upload_file_reclaimer
+from services.file_reference_parser import TextLinkedUploadFileId, trusted_upload_file_ids
 from tests.helpers.unit.model_factories import make_app, make_upload_file
 
 
@@ -173,6 +174,55 @@ def test_reference_lock_rejects_an_empty_file_id(sqlite_session: Session) -> Non
         )
         == {}
     )
+
+
+def test_reference_lock_tolerates_missing_text_linked_files_only(sqlite_session: Session) -> None:
+    owned_id = "11111111-1111-4111-8111-111111111111"
+    foreign_id = "22222222-2222-4222-8222-222222222222"
+    deleted_id = "33333333-3333-4333-8333-333333333333"
+    sqlite_session.add_all(
+        [
+            make_upload_file(file_id=owned_id, key="uploads/owned.png"),
+            make_upload_file(file_id=foreign_id, tenant_id="tenant-2", key="uploads/foreign.png"),
+        ]
+    )
+    sqlite_session.flush()
+    answer = (
+        f"![own](/files/{owned_id}/file-preview) "
+        f"![other workspace](https://other.example/files/{foreign_id}/image-preview) "
+        f"![deleted](/files/{deleted_id}/file-preview) "
+        "![blog](https://blog.example/files/2024/image-preview)"
+    )
+
+    locked = lock_and_validate_owned_upload_files_in_session(
+        sqlite_session,
+        tenant_id="tenant-1",
+        upload_file_ids=tuple(sorted(trusted_upload_file_ids(answer))),
+    )
+
+    assert set(locked) == {owned_id}
+
+    # The same id supplied by an explicit file shape keeps its hard validation.
+    with pytest.raises(UploadFileReferenceNotFoundError) as error:
+        lock_and_validate_owned_upload_files_in_session(
+            sqlite_session,
+            tenant_id="tenant-1",
+            upload_file_ids=tuple(
+                sorted(
+                    trusted_upload_file_ids(
+                        {"answer": answer, "file": {"transfer_method": "local_file", "upload_file_id": deleted_id}}
+                    )
+                )
+            ),
+        )
+    assert error.value.missing_file_ids == (deleted_id,)
+
+    with pytest.raises(UploadFileReferenceNotFoundError):
+        lock_and_validate_owned_upload_files_in_session(
+            sqlite_session,
+            tenant_id="tenant-1",
+            upload_file_ids=(TextLinkedUploadFileId(foreign_id), foreign_id),
+        )
 
 
 def test_orphaned_offload_and_unbound_draft_file_do_not_retain_candidate(sqlite_session: Session) -> None:

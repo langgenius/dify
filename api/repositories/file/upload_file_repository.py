@@ -11,6 +11,7 @@ from extensions.storage.storage_type import StorageType
 from models.model import UploadFile
 from services.entities.upload_file import UploadFileRecord
 from services.errors.file import UploadFileReferenceNotFoundError
+from services.file_reference_parser import TextLinkedUploadFileId
 
 
 def _to_upload_file_record(file: UploadFile) -> UploadFileRecord:
@@ -40,12 +41,21 @@ def lock_and_validate_owned_upload_files_in_session(
     tenant_id: str,
     upload_file_ids: Sequence[str],
 ) -> dict[str, UploadFile]:
-    """Take shared locks before a business owner attaches tenant files."""
+    """Take shared locks before a business owner attaches tenant files.
+
+    Every plain id must be a file of ``tenant_id``; otherwise
+    ``UploadFileReferenceNotFoundError`` is raised. ``TextLinkedUploadFileId``
+    values come from links in free text, which may name another workspace's or
+    a deleted file: those are locked when the tenant owns them and are otherwise
+    ignored, so they are absent from the returned mapping. An id supplied both
+    ways keeps the hard validation.
+    """
 
     invalid_ids = {file_id for file_id in upload_file_ids if not file_id}
     if invalid_ids:
         raise UploadFileReferenceNotFoundError(invalid_ids)
-    ids = tuple(sorted(set(upload_file_ids)))
+    required_ids = {str(file_id) for file_id in upload_file_ids if not isinstance(file_id, TextLinkedUploadFileId)}
+    ids = tuple(sorted({str(file_id) for file_id in upload_file_ids}))
     if not ids:
         return {}
     files = session.scalars(
@@ -56,7 +66,7 @@ def lock_and_validate_owned_upload_files_in_session(
         .execution_options(populate_existing=True)
     ).all()
     files_by_id = {file.id: file for file in files}
-    missing_ids = set(ids) - files_by_id.keys()
+    missing_ids = required_ids - files_by_id.keys()
     if missing_ids:
         raise UploadFileReferenceNotFoundError(missing_ids)
     return files_by_id
