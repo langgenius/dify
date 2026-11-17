@@ -4180,6 +4180,27 @@ export type PostAppsByAppIdPublishResponses = {
 export type PostAppsByAppIdPublishResponse =
   PostAppsByAppIdPublishResponses[keyof PostAppsByAppIdPublishResponses]
 
+export type PostMcpData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/mcp'
+}
+
+export type PostMcpErrors = {
+  default: ErrorBody
+}
+
+export type PostMcpError = PostMcpErrors[keyof PostMcpErrors]
+
+export type PostMcpResponses = {
+  200: {
+    [key: string]: unknown
+  }
+}
+
+export type PostMcpResponse = PostMcpResponses[keyof PostMcpResponses]
+
 export type GetNodeTypesData = {
   body?: never
   path?: never

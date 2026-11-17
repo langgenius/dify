@@ -4123,6 +4123,11 @@ export const zPostAppsByAppIdPublishPath = z.object({
 export const zPostAppsByAppIdPublishResponse = zPublishResponse
 
 /**
+ * Success
+ */
+export const zPostMcpResponse = z.record(z.string(), z.unknown())
+
+/**
  * Node types
  */
 export const zGetNodeTypesResponse = zNodeTypeListResponse
