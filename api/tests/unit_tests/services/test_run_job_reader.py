@@ -1,4 +1,5 @@
 import json
+import time
 from collections.abc import Iterable, Iterator, Mapping
 
 import pytest
@@ -347,7 +348,23 @@ class TouchFailsOnceStore(RedisRunJobStore):
         super().touch(job_id)
 
 
-def test_a_store_error_on_one_frame_does_not_stop_the_read(
+class CountingTouchStore(RedisRunJobStore):
+    def __init__(self, redis: InMemoryRedis) -> None:
+        super().__init__(redis_client=redis)
+        self.touches = 0
+
+    def touch(self, job_id: str) -> None:
+        self.touches += 1
+        super().touch(job_id)
+
+
+def _silent_for(seconds: float) -> Iterator[str]:
+    """A stream that yields no frame for `seconds`, then ends - a run waiting in the worker queue."""
+    time.sleep(seconds)
+    yield from ()
+
+
+def test_a_failed_alive_refresh_is_logged_and_does_not_stop_the_read(
     redis: InMemoryRedis, stopper: RecordingJobStopper, caplog: pytest.LogCaptureFixture
 ) -> None:
     store = TouchFailsOnceStore(redis)
@@ -359,6 +376,27 @@ def test_a_store_error_on_one_frame_does_not_stop_the_read(
 
     assert record.status is JobStatus.SUCCEEDED
     assert any(r.exc_info for r in caplog.records)
+
+
+def test_the_alive_key_is_refreshed_while_no_frame_arrives(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
+    store = CountingTouchStore(redis)
+    _open(store, AppMode.WORKFLOW)
+    store.touches = 0
+
+    read_to_end(job_id=JOB_ID, frames=_silent_for(0.2), store=store, stopper=stopper, alive_refresh_seconds=0.02)
+
+    assert store.touches >= 5
+
+
+def test_the_alive_refresh_stops_when_the_reader_ends(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
+    store = CountingTouchStore(redis)
+    _open(store, AppMode.WORKFLOW)
+
+    read_to_end(job_id=JOB_ID, frames=_silent_for(0.05), store=store, stopper=stopper, alive_refresh_seconds=0.01)
+    after_end = store.touches
+    time.sleep(0.1)
+
+    assert store.touches == after_end
 
 
 class PatchFailsOnceStore(RedisRunJobStore):

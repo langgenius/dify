@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import threading
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
@@ -18,6 +19,10 @@ logger = logging.getLogger(__name__)
 DATA_PREFIX: Final = "data:"
 NO_RESULT_ERROR: Final = "run ended without a result"
 ID_FIELDS: Final = ("task_id", "workflow_run_id", "message_id", "conversation_id")
+# The alive key means "the reader thread is running". It is refreshed on a timer, not per frame: a graph run that
+# waits in the worker queue sends no frame until it starts (only one ping when the stream opens).
+ALIVE_REFRESH_SECONDS: Final = 10
+ALIVE_THREAD_NAME: Final = "run-job-alive"
 
 RUN_STATUS_TO_JOB_STATUS: Final[Mapping[WorkflowExecutionStatus, JobStatus]] = MappingProxyType(
     {
@@ -171,11 +176,10 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     """Apply one frame to the job.
 
     Precondition: the job exists.
-    Postcondition: the alive key is refreshed; ids, form and status from the frame are stored;
+    Postcondition: ids, form and status from the frame are stored;
     ids count as stored only after the store accepted them, so a failed save is retried by the next frame that
     carries them; a pending stop is sent once when the task id is first stored.
     """
-    store.touch(job_id)
     payload = decode_frame(frame)
     if payload is None:
         return
@@ -228,14 +232,45 @@ def _settle(job_id: str, store: RunJobStore) -> None:
     store.patch(job_id, JobPatch(status=JobStatus.FAILED, error=NO_RESULT_ERROR))
 
 
-def read_to_end(*, job_id: str, frames: Iterable[str], store: RunJobStore, stopper: JobStopper) -> None:
+def _keep_alive(*, job_id: str, store: RunJobStore, stop: threading.Event, interval: float) -> None:
+    """Refresh the alive key now and then every interval until stop is set.
+
+    Precondition: runs on its own thread while read_to_end runs.
+    Postcondition: returns soon after stop is set; a failed refresh is logged and retried at the next tick.
+    """
+    while True:
+        try:
+            store.touch(job_id)
+        except Exception:
+            logger.exception("Run job %s alive refresh failed", job_id)
+        if stop.wait(interval):
+            return
+
+
+def read_to_end(
+    *,
+    job_id: str,
+    frames: Iterable[str],
+    store: RunJobStore,
+    stopper: JobStopper,
+    alive_refresh_seconds: float = ALIVE_REFRESH_SECONDS,
+) -> None:
     """Consume a run's SSE frames and record them as job state.
 
     Precondition: the job exists.
-    Postcondition: every frame was consumed, ids and form details are stored, the alive key was refreshed on each
-    frame, a MESSAGE job has a final status, and frames is closed when it has a close method. A frame whose
-    handling raises is logged and skipped; a stream that raises is logged and treated as ended.
+    Postcondition: every frame was consumed, ids and form details are stored, a MESSAGE job has a final status, and
+    frames is closed when it has a close method. For as long as this call runs, whether or not frames arrive, the
+    alive key is refreshed every alive_refresh_seconds; the refresh stops before it returns. A frame whose handling
+    raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
+    stop = threading.Event()
+    alive = threading.Thread(
+        target=_keep_alive,
+        kwargs={"job_id": job_id, "store": store, "stop": stop, "interval": alive_refresh_seconds},
+        name=ALIVE_THREAD_NAME,
+        daemon=True,
+    )
+    alive.start()
     stored_ids: set[str] = set()
     try:
         for frame in frames:
@@ -243,6 +278,8 @@ def read_to_end(*, job_id: str, frames: Iterable[str], store: RunJobStore, stopp
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:
+        stop.set()
+        alive.join()
         if isinstance(frames, _Closable):
             frames.close()
     _settle(job_id, store)
