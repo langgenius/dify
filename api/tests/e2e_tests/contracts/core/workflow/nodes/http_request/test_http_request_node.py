@@ -1,35 +1,30 @@
 import time
-from collections.abc import Mapping
-from typing import Any
 
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.helper.ssrf_proxy import graphon_ssrf_proxy
-from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.node_runtime import DifyFileReferenceFactory
+from core.workflow.graph_config import WorkflowGraphConfigDict
+from core.workflow.http_request_default_config import HttpRequestDefaultBlockConfig
+from core.workflow.node_runtime import DifyFileReferenceFactory, DifyToolFileManager
 from core.workflow.system_variables import build_system_variables
-from graphon.enums import WorkflowNodeExecutionStatus
+from graphon.entities.graph_config import NodeConfigDict
+from graphon.enums import BuiltinNodeTypes, WorkflowNodeExecutionStatus
 from graphon.file.file_manager import file_manager
+from graphon.http import HttpClientProtocol
 from graphon.http.response import HttpResponse
 from graphon.nodes.http_request import HTTP_REQUEST_CONFIG_FILTER_KEY, HttpRequestNode, HttpRequestNodeConfig
-from graphon.nodes.http_request.entities import HttpRequestNodeData, HttpRequestNodeTimeout, Response
+from graphon.nodes.http_request.entities import (
+    HttpRequestNodeAuthorization,
+    HttpRequestNodeBody,
+    HttpRequestNodeData,
+    HttpRequestNodeTimeout,
+    Response,
+)
+from graphon.nodes.protocols import FileManagerProtocol, ToolFileManagerProtocol
+from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
 from tests.workflow_test_utils import build_test_graph_init_params
-
-
-def _mapping(value: object) -> Mapping[str, object]:
-    assert isinstance(value, Mapping)
-    return value
-
-
-def _config_dict(config: Mapping[str, object]) -> Mapping[str, object]:
-    return _mapping(_mapping(config["config"])["timeout"])
-
-
-def _retry_dict(config: Mapping[str, object]) -> Mapping[str, object]:
-    return _mapping(config["retry_config"])
-
 
 HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
     max_connect_timeout=10,
@@ -43,18 +38,17 @@ HTTP_REQUEST_CONFIG = HttpRequestNodeConfig(
 
 
 def test_get_default_config_without_filters_uses_literal_defaults() -> None:
-    default_config = HttpRequestNode.get_default_config()
-    timeout = _config_dict(default_config)
+    default_config = HttpRequestDefaultBlockConfig.model_validate(HttpRequestNode.get_default_config())
 
-    assert default_config["type"] == "http-request"
-    assert timeout["connect"] == 10
-    assert timeout["read"] == 600
-    assert timeout["write"] == 600
-    assert timeout["max_connect_timeout"] == 10
-    assert timeout["max_read_timeout"] == 600
-    assert timeout["max_write_timeout"] == 600
-    assert _mapping(default_config["config"])["ssl_verify"] is True
-    assert _retry_dict(default_config)["max_retries"] == 3
+    assert default_config.type == "http-request"
+    assert default_config.config.timeout.connect == 10
+    assert default_config.config.timeout.read == 600
+    assert default_config.config.timeout.write == 600
+    assert default_config.config.timeout.max_connect_timeout == 10
+    assert default_config.config.timeout.max_read_timeout == 600
+    assert default_config.config.timeout.max_write_timeout == 600
+    assert default_config.config.ssl_verify is True
+    assert default_config.retry_config.max_retries == 3
 
 
 def test_get_default_config_uses_injected_http_request_config() -> None:
@@ -68,17 +62,18 @@ def test_get_default_config_uses_injected_http_request_config() -> None:
         ssrf_default_max_retries=7,
     )
 
-    default_config = HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: custom_config})
-    timeout = _config_dict(default_config)
+    default_config = HttpRequestDefaultBlockConfig.model_validate(
+        HttpRequestNode.get_default_config(filters={HTTP_REQUEST_CONFIG_FILTER_KEY: custom_config})
+    )
 
-    assert timeout["connect"] == 3
-    assert timeout["read"] == 4
-    assert timeout["write"] == 5
-    assert timeout["max_connect_timeout"] == 3
-    assert timeout["max_read_timeout"] == 4
-    assert timeout["max_write_timeout"] == 5
-    assert _mapping(default_config["config"])["ssl_verify"] is False
-    assert _retry_dict(default_config)["max_retries"] == 7
+    assert default_config.config.timeout.connect == 3
+    assert default_config.config.timeout.read == 4
+    assert default_config.config.timeout.write == 5
+    assert default_config.config.timeout.max_connect_timeout == 3
+    assert default_config.config.timeout.max_read_timeout == 4
+    assert default_config.config.timeout.max_write_timeout == 5
+    assert default_config.config.ssl_verify is False
+    assert default_config.retry_config.max_retries == 7
 
 
 def test_get_default_config_with_malformed_http_request_config_raises_type_error() -> None:
@@ -87,33 +82,27 @@ def test_get_default_config_with_malformed_http_request_config_raises_type_error
 
 
 def _build_http_node(
-    *, timeout: dict[str, int | None] | None = None, ssl_verify: bool | None = None
+    *, timeout: HttpRequestNodeTimeout | None = None, ssl_verify: bool | None = None
 ) -> HttpRequestNode:
-    node_data: dict[str, Any] = {
-        "type": "http-request",
-        "title": "HTTP request",
-        "method": "get",
-        "url": "http://example.com",
-        "authorization": {"type": "no-auth"},
-        "headers": "",
-        "params": "",
-        "body": {"type": "none", "data": []},
-    }
-    if timeout is not None:
-        node_data["timeout"] = timeout
-    node_data["ssl_verify"] = ssl_verify
+    node_data = HttpRequestNodeData(
+        title="HTTP request",
+        method="get",
+        url="http://example.com",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="",
+        params="",
+        body=HttpRequestNodeBody(type="none", data=[]),
+        timeout=timeout,
+        ssl_verify=ssl_verify,
+    )
 
-    node_config: dict[str, Any] = {
-        "id": "http-node",
-        "data": node_data,
-    }
-    graph_config = {
-        "nodes": [
-            {"id": "start", "data": {"type": "start", "title": "Start"}},
-            node_config,
+    graph_config = WorkflowGraphConfigDict(
+        nodes=[
+            NodeConfigDict(id="start", data=StartNodeData(type=BuiltinNodeTypes.START, title="Start")),
+            NodeConfigDict(id="http-node", data=node_data),
         ],
-        "edges": list[object](),
-    }
+        edges=[],
+    )
     graph_init_params = build_test_graph_init_params(
         workflow_id="workflow",
         graph_config=graph_config,
@@ -124,9 +113,11 @@ def _build_http_node(
         invoke_from=InvokeFrom.DEBUGGER,
         call_depth=0,
     )
-    # Dify's ToolFileManager takes extra tenancy kwargs that the graphon protocol
-    # does not model; the node is only ever constructed here, never invoked.
-    tool_file_manager_factory: Any = ToolFileManager
+    # The node only stores this factory and calls it when it saves a downloaded file, which these tests never reach.
+
+    def tool_file_manager_factory() -> ToolFileManagerProtocol:
+        return DifyToolFileManager(graph_init_params.run_context)
+
     graph_runtime_state = RuntimeState(
         workflow_id="test-workflow",
         variable_pool=VariablePool.from_bootstrap(
@@ -137,7 +128,7 @@ def _build_http_node(
     )
     return HttpRequestNode(
         node_id="http-node",
-        data=HttpRequestNodeData.model_validate(node_data),
+        data=node_data,
         init_params=graph_init_params,
         runtime_state=graph_runtime_state,
         http_request_config=HTTP_REQUEST_CONFIG,
@@ -149,7 +140,7 @@ def _build_http_node(
 
 
 def test_get_request_timeout_returns_new_object_without_mutating_node_data() -> None:
-    node = _build_http_node(timeout={"connect": None, "read": 30, "write": None})
+    node = _build_http_node(timeout=HttpRequestNodeTimeout(connect=None, read=30, write=None))
     original_timeout = node.node_data.timeout
 
     assert original_timeout is not None
@@ -168,7 +159,19 @@ def test_run_passes_node_data_ssl_verify_to_executor(monkeypatch: pytest.MonkeyP
     captured: dict[str, bool | None] = {}
 
     class FakeExecutor:
-        def __init__(self, *, ssl_verify: bool | None, **kwargs: Any):
+        def __init__(
+            self,
+            *,
+            node_data: HttpRequestNodeData,
+            timeout: HttpRequestNodeTimeout,
+            variable_pool: VariablePool,
+            http_request_config: HttpRequestNodeConfig,
+            max_retries: int | None = None,
+            ssl_verify: bool | None = None,
+            http_client: HttpClientProtocol,
+            file_manager: FileManagerProtocol,
+        ) -> None:
+            del node_data, timeout, variable_pool, http_request_config, max_retries, http_client, file_manager
             captured["ssl_verify"] = ssl_verify
             self.url = "http://example.com"
 
