@@ -202,6 +202,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.async_workflow_tasks",  # trigger workers
         "tasks.collect_agent_resources_task",  # retired Agent resource collection
         "tasks.trigger_processing_tasks",  # async trigger processing
+        # Publishers import these lazily, so consumers must load them at startup.
         "tasks.trigger_subscription_refresh_tasks",
         "tasks.workflow_schedule_tasks",
         "tasks.generate_summary_index_task",  # summary index generation
