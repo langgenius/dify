@@ -26,7 +26,15 @@ from controllers.console.agent.build_session import (
     AgentBuildDraftCheckoutApi,
     AgentDebugConversationRefreshApi,
 )
-from controllers.console.agent.composer import AgentComposerApi, AgentComposerCandidatesApi, AgentComposerValidateApi
+from controllers.console.agent.composer import (
+    AgentComposerApi,
+    AgentComposerCandidatesApi,
+    AgentComposerValidateApi,
+    SnippetAgentComposerApi,
+    SnippetAgentComposerImpactApi,
+    WorkflowAgentComposerApi,
+    WorkflowAgentComposerImpactApi,
+)
 from controllers.console.agent.roster import (
     AgentAppApi,
     AgentAppCopyApi,
@@ -64,6 +72,7 @@ from models.agent import (
     AgentScope,
     AgentSource,
     AgentWorkingResourceStatus,
+    WorkflowAgentNodeBinding,
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.engine import db
@@ -82,6 +91,8 @@ from models.knowledge_fs_cutover import (
 )
 from models.model import ApiToken, App, AppMode, AppModelConfig
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
+from models.snippet import CustomizedSnippet, SnippetType
+from models.workflow import Workflow, WorkflowType
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.app_composer import AgentAppComposer
 from services.agent.composer_tools import list_workspace_dify_tools
@@ -182,6 +193,12 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         manager.init_app(app)
         blueprint = Blueprint("console", __name__, url_prefix="/console/api")
         api = ExternalApi(blueprint)
+        workflow_composer = "/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/agent-composer"
+        snippet_composer = "/snippets/<uuid:snippet_id>/workflows/draft/nodes/<string:node_id>/agent-composer"
+        api.add_resource(WorkflowAgentComposerApi, workflow_composer)
+        api.add_resource(WorkflowAgentComposerImpactApi, f"{workflow_composer}/impact")
+        api.add_resource(SnippetAgentComposerApi, snippet_composer)
+        api.add_resource(SnippetAgentComposerImpactApi, f"{snippet_composer}/impact")
         api.add_resource(AgentComposerApi, "/agent/<uuid:agent_id>/composer")
         api.add_resource(AgentComposerCandidatesApi, "/agent/<uuid:agent_id>/composer/candidates")
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
@@ -609,6 +626,117 @@ def test_publish_and_copy_keep_the_source_and_target_publication_histories_separ
             )
         )
         assert [binding.skill_id for binding in snapshot_bindings] == [skill_id]
+
+
+@pytest.mark.parametrize("surface", ["workflow", "snippet"])
+def test_node_composer_resolves_only_the_current_workspace(harness: Harness, surface: str) -> None:
+    """Read, save and calculate impact through the routes using tenant-scoped draft data."""
+    with harness.sessions.begin() as session:
+        if surface == "workflow":
+            app = App(
+                tenant_id=harness.tenant_id,
+                name="Workflow",
+                mode=AppMode.WORKFLOW,
+                created_by=harness.account_id,
+                enable_site=False,
+                enable_api=False,
+            )
+            session.add(app)
+            session.flush()
+            app_id, workflow_type = app.id, WorkflowType.WORKFLOW
+        else:
+            snippet = CustomizedSnippet(tenant_id=harness.tenant_id, name="Snippet", type=SnippetType.NODE)
+            session.add(snippet)
+            session.flush()
+            app_id, workflow_type = snippet.id, WorkflowType.SNIPPET
+        session.add(
+            Workflow.new(
+                tenant_id=harness.tenant_id,
+                app_id=app_id,
+                type=workflow_type,
+                version=Workflow.VERSION_DRAFT,
+                graph='{"nodes": [], "edges": []}',
+                features="{}",
+                created_by=harness.account_id,
+                environment_variables=[],
+                conversation_variables=[],
+                rag_pipeline_variables=[],
+            )
+        )
+    prefix = "apps" if surface == "workflow" else "snippets"
+    path = f"/console/api/{prefix}/{app_id}/workflows/draft/nodes/node-1/agent-composer"
+    state = harness.client.get(path, headers=harness.headers)
+    assert state.status_code == HTTPStatus.OK, state.get_json()
+    assert state.get_json()["variant"] == "workflow"
+    assert state.get_json()["binding"] is None
+    assert state.get_json()["app_id"] == app_id
+    impact = harness.client.post(
+        f"{path}/impact",
+        headers=harness.headers,
+        json={
+            "variant": "workflow",
+            "save_strategy": "node_job_only",
+        },
+    )
+    assert impact.status_code == HTTPStatus.OK
+    assert impact.get_json() == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
+    saved = harness.client.put(
+        path,
+        headers=harness.headers,
+        json={
+            "variant": "workflow",
+            "save_strategy": "node_job_only",
+            "node_job": {"workflow_prompt": "Run this step"},
+        },
+    )
+    assert saved.status_code == HTTPStatus.OK, saved.get_json()
+    saved_state = saved.get_json()
+    assert saved_state["node_job"]["workflow_prompt"] == "Run this step"
+    with harness.sessions.begin() as session:
+        binding = session.get_one(WorkflowAgentNodeBinding, saved_state["binding"]["id"])
+        assert binding.tenant_id == harness.tenant_id
+        assert binding.app_id == app_id
+        assert binding.node_id == "node-1"
+        snapshot_id = binding.current_snapshot_id
+        assert snapshot_id is not None
+        expected_impact = {
+            "current_snapshot_id": snapshot_id,
+            "workflow_node_count": 1,
+            "bindings": [{"app_id": app_id, "workflow_id": binding.workflow_id, "node_id": "node-1"}],
+        }
+        session.add(
+            WorkflowAgentNodeBinding(
+                tenant_id=str(uuid4()),
+                app_id=str(uuid4()),
+                workflow_id=str(uuid4()),
+                workflow_version=Workflow.VERSION_DRAFT,
+                node_id="foreign-node",
+                binding_type=binding.binding_type,
+                current_snapshot_id=snapshot_id,
+                node_job_config=binding.node_job_config,
+            )
+        )
+    assert saved_state["impact_summary"] == expected_impact
+    impact = harness.client.post(
+        f"{path}/impact",
+        headers=harness.headers,
+        json={
+            "variant": "workflow",
+            "save_strategy": "node_job_only",
+            "binding": {"binding_type": "inline_agent", "current_snapshot_id": snapshot_id},
+        },
+    )
+    assert impact.status_code == HTTPStatus.OK, impact.get_json()
+    assert impact.get_json() == expected_impact
+
+    with harness.sessions.begin() as session:
+        if surface == "workflow":
+            session.get_one(App, app_id).tenant_id = str(uuid4())
+        else:
+            session.get_one(CustomizedSnippet, app_id).tenant_id = str(uuid4())
+    unavailable = harness.client.get(path, headers=harness.headers)
+    assert unavailable.status_code == HTTPStatus.NOT_FOUND
+    assert unavailable.get_json()["code"] == ("app_not_found" if surface == "workflow" else "not_found")
 
 
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:
