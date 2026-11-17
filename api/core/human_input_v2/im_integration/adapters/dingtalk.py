@@ -75,7 +75,6 @@ _HTTP_TIMEOUT_SECONDS = 5.0
 _SDK_TIMEOUT_MILLISECONDS = 5000
 _HTTP_SUCCESS_STATUS_MIN = 200
 _HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300
-_PROVIDER_REQUEST_ID_MAX_LENGTH = 256
 
 _CREDENTIAL_REJECTED = "DingTalk rejected the credential test."
 _AUTHORIZATION_SCOPE_UNVERIFIED = "DingTalk could not verify complete member authorization."
@@ -175,15 +174,12 @@ class _ProviderRequestMetadata(BaseModel):
     request_id: str | None = Field(
         default=None,
         validation_alias=AliasChoices("requestid", "RequestId", "requestId", "request_id"),
-        min_length=1,
-        max_length=_PROVIDER_REQUEST_ID_MAX_LENGTH,
-        pattern=r"^[^\s\x00-\x1f\x7f]+$",
     )
 
     @field_validator("request_id", mode="wrap")
     @classmethod
     def _parse_optional_request_id(cls, value: object, handler: ValidatorFunctionWrapHandler) -> str | None:
-        """Retain valid IDs verbatim; ignore malformed optional diagnostic fields."""
+        """Preserve string IDs verbatim; non-string optional metadata remains unavailable."""
         try:
             return handler(value)
         except ValidationError:
@@ -480,7 +476,7 @@ class DingTalkIMProviderAdapter:
                 raise
             logger.warning(
                 "DingTalk credential test token request failed: operation=get_token "
-                "http_status=%s provider_error_code=%r request_id=%s",
+                "http_status=%s provider_error_code=%r request_id=%r",
                 status_code,
                 provider_error_code,
                 provider_request_id,
