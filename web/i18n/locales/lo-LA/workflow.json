@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "ຄຳຂໍ Webhook debug ບໍ່ສຳເລັດ",
   "common.workflowAsToolDescription": "ໃຊ້ເປັນເຄື່ອງມືໃນແອັບອື່ນ",
   "common.workflowAsToolDisabledHint": "ກະລຸນາເຜີຍແຜ່ Workflow ຫຼ້າສຸດ ແລະ ກວດສອບໃຫ້ແນ່ໃຈວ່າໄດ້ເຊື່ອມຕໍ່ໂນດ User Input ກ່ອນທີ່ຈະຕັ້ງຄ່າເປັນເຄື່ອງມື.",
+  "common.workflowAsToolEndUserAuth": "ບໍ່ສາມາດເຜີຍແຜ່ເວີກໂຟລທີ່ມີເຄື່ອງມືທີ່ໃຊ້ການອະນຸຍາດຂອງຜູ້ໃຊ້ແອັບເປັນເຄື່ອງມືໄດ້.",
   "common.workflowAsToolReady": "ພ້ອມໃຊ້ງານ",
   "common.workflowAsToolReconfigure": "ຕັ້ງຄ່າໃໝ່",
   "common.workflowAsToolTip": "Workflow ມີການປ່ຽນແປງ. ຕັ້ງຄ່າໃໝ່ເພື່ອນຳໃຊ້ການອັບເດດ.",

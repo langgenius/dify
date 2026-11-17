@@ -188,8 +188,10 @@ describe('AppUserAuth', () => {
     const region = within(
       screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
-    const trigger = region.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ })
-    expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnection')
+    const trigger = region.getByRole('button', {
+      name: /^plugin.auth.appUser.testConnectionPlaceholder/,
+    })
+    expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnectionPlaceholder')
     expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
     expect(onChange).not.toHaveBeenCalled()
     await user.click(trigger)
@@ -223,7 +225,9 @@ describe('AppUserAuth', () => {
     const region = within(
       screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
     )
-    const trigger = region.getByRole('button', { name: 'plugin.auth.appUser.testConnection' })
+    const trigger = region.getByRole('button', {
+      name: 'plugin.auth.appUser.testConnectionPlaceholder',
+    })
     expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
     expect(trigger).toBeEnabled()
     await user.click(trigger)
@@ -261,8 +265,10 @@ describe('AppUserAuth', () => {
         screen.getByRole('region', { name: 'plugin.auth.appUser.testConnection' }),
       )
       await user.click(screen.getByRole('checkbox', { name: checkbox }))
-      const trigger = region.getByRole('button', { name: /^plugin.auth.appUser.testConnection/ })
-      expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnection')
+      const trigger = region.getByRole('button', {
+        name: /^plugin.auth.appUser.testConnectionPlaceholder/,
+      })
+      expect(trigger).toHaveAccessibleName('plugin.auth.appUser.testConnectionPlaceholder')
       expect(trigger).not.toHaveTextContent('plugin.auth.unavailable')
       expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ testCredentialId: id }))
       await user.click(trigger)
@@ -420,11 +426,7 @@ describe('AppUserAuth', () => {
     await waitFor(() => expect(dialog).not.toBeInTheDocument())
 
     expect(screen.getByRole('button', { name: 'plugin.auth.appUser.customClient' })).toBeVisible()
-    expect(
-      screen.getByText(
-        'plugin.auth.appUser.oauthDescriptionWithProvider:{"provider":"Google Drive"}',
-      ),
-    ).toBeVisible()
+    expect(screen.getByText('plugin.auth.appUser.oauthDescription')).toBeVisible()
     expect(document.body).not.toHaveTextContent('client-secret')
     const oauth = screen.getByRole('checkbox', { name: 'plugin.auth.appUser.oauth' })
     await user.click(oauth)

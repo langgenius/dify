@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhookデバッグリクエストに失敗しました",
   "common.workflowAsToolDescription": "他のアプリでツールとして利用",
   "common.workflowAsToolDisabledHint": "最新のワークフローを公開し、接続済みの User Input ノードを用意してからツールとして設定してください。",
+  "common.workflowAsToolEndUserAuth": "アプリユーザー認証を使用するツールを含むワークフローは、ツールとして公開できません。",
   "common.workflowAsToolReady": "準備完了",
   "common.workflowAsToolReconfigure": "再設定",
   "common.workflowAsToolTip": "ワークフロー更新後はツールの再設定が必要です",

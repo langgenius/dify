@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhook 除錯請求失敗",
   "common.workflowAsToolDescription": "在其他應用中作為工具使用",
   "common.workflowAsToolDisabledHint": "發布最新的工作流程，並確保在將其配置為工具之前有一個已連接的使用者輸入節點。",
+  "common.workflowAsToolEndUserAuth": "包含使用應用程式使用者授權工具的工作流程，無法發佈為工具。",
   "common.workflowAsToolReady": "已就緒",
   "common.workflowAsToolReconfigure": "重新設定",
   "common.workflowAsToolTip": "工作流更新後需要重新配置工具參數",

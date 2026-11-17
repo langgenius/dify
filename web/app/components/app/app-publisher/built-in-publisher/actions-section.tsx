@@ -34,6 +34,7 @@ type PublisherActionsSectionProps = Pick<
   showWorkflowTool: boolean
   workflowToolIsLoading: boolean
   workflowToolMessage?: string
+  workflowToolTooltipMessage?: string
   workflowToolOutdated?: boolean
   onConfigureWorkflowTool: () => void
   onPublishToMarketplace?: () => void
@@ -64,6 +65,7 @@ export function PublisherActionsSection({
   workflowToolAvailable = true,
   workflowToolIsLoading,
   workflowToolMessage,
+  workflowToolTooltipMessage,
   workflowToolOutdated = false,
   workflowKindChangePending = false,
   onConfigureWorkflowTool,
@@ -226,6 +228,7 @@ export function PublisherActionsSection({
             disabled={workflowToolDisabled}
             isLoading={workflowToolIsLoading}
             message={workflowToolMessage}
+            tooltipMessage={workflowToolTooltipMessage}
             outdated={workflowToolOutdated}
             published={toolPublished}
             onConfigure={onConfigureWorkflowTool}

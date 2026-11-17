@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhook-Debugging-Anfrage fehlgeschlagen",
   "common.workflowAsToolDescription": "Als Tool in anderen Apps verwenden",
   "common.workflowAsToolDisabledHint": "Veröffentlichen Sie den neuesten Workflow und stellen Sie sicher, dass ein verbundener User-Input-Knoten vorhanden ist, bevor Sie ihn als Werkzeug konfigurieren.",
+  "common.workflowAsToolEndUserAuth": "Workflows mit Tools, die eine App-Benutzer-Autorisierung verwenden, können nicht als Tools veröffentlicht werden.",
   "common.workflowAsToolReady": "Bereit",
   "common.workflowAsToolReconfigure": "Neu konfigurieren",
   "common.workflowAsToolTip": "Nach dem Workflow-Update ist eine Neukonfiguration des Tools erforderlich.",

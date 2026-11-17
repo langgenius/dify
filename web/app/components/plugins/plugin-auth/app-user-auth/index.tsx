@@ -264,12 +264,7 @@ const AppUserAuth = ({
               </FieldLabel>
               <div className="space-y-2 ps-7">
                 <p id={oauthDescriptionId} className="body-xs-regular text-text-tertiary">
-                  {client && providerName
-                    ? t(($) => $['auth.appUser.oauthDescriptionWithProvider'], {
-                        ns: 'plugin',
-                        provider: providerName,
-                      })
-                    : t(($) => $['auth.appUser.oauthDescription'], { ns: 'plugin' })}
+                  {t(($) => $['auth.appUser.oauthDescription'], { ns: 'plugin' })}
                 </p>
                 {oauthClientControl}
                 {oauthClientError}
@@ -313,9 +308,12 @@ const AppUserAuth = ({
         <div className="space-y-1">
           <h4
             id={testConnectionLabelId}
-            className="flex min-h-6 items-center system-xs-medium-uppercase text-text-secondary"
+            className="flex min-h-6 items-center gap-1 system-xs-medium-uppercase text-text-secondary"
           >
             {t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
+            <span aria-hidden className="text-text-destructive-secondary">
+              *
+            </span>
           </h4>
           <p className="body-xs-regular text-text-tertiary">
             {oauthOnly
@@ -341,7 +339,8 @@ const AppUserAuth = ({
           active={active}
           disabled={!oauthEnabled && !apiKeyEnabled}
           useWorkspaceDefault={false}
-          placeholder={t(($) => $['auth.appUser.testConnection'], { ns: 'plugin' })}
+          placeholder={t(($) => $['auth.appUser.testConnectionPlaceholder'], { ns: 'plugin' })}
+          removedPlaceholder={t(($) => $['auth.appUser.testConnectionRemoved'], { ns: 'plugin' })}
           credentialId={
             testCredentialUsesDisabledMethod ? undefined : (draft.testCredentialId ?? undefined)
           }

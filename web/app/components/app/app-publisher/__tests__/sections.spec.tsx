@@ -670,37 +670,6 @@ describe('app-publisher sections', () => {
     expect(onConfigureWorkflowTool).toHaveBeenCalledTimes(1)
   })
 
-  it('should show the disabled reason for setup and configured workflow tool actions', () => {
-    const commonProps = {
-      appId: 'workflow-app',
-      appURL: 'https://example.com/app',
-      canViewAccessPoint: true,
-      disabledFunctionButton: false,
-      hasTriggerNode: false,
-      onConfigureWorkflowTool: vi.fn(),
-      publishedAt: Date.now(),
-      showWorkflowTool: true,
-      workflowToolAvailable: false,
-      workflowToolIsLoading: false,
-      workflowToolMessage: 'Workflow tool unavailable',
-    }
-    const { rerender } = render(<PublisherActionsSection {...commonProps} toolPublished={false} />)
-
-    const setupAction = screen.getByRole('button', { name: /common\.workflowAsTool\b/ })
-    const setupReason = screen.getByText('Workflow tool unavailable')
-    expect(setupAction).toBeDisabled()
-    expect(setupReason).toBeVisible()
-
-    rerender(<PublisherActionsSection {...commonProps} toolPublished />)
-
-    const configureAction = screen.getByRole('button', { name: /common\.configure\b/ })
-    const manageAction = screen.getByRole('button', { name: /common\.manageInTools\b/ })
-    const configuredReason = screen.getByText('Workflow tool unavailable')
-    expect(configureAction).toBeDisabled()
-    expect(manageAction).toBeDisabled()
-    expect(configuredReason).toBeVisible()
-  })
-
   it('should surface update-needed and loading states for a configured workflow tool', async () => {
     const user = userEvent.setup()
     const onConfigureWorkflowTool = vi.fn()

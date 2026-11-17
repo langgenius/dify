@@ -247,16 +247,6 @@
       "count": 2
     }
   },
-  "web/app/components/app/app-publisher/suggested-action.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
-  "web/app/components/app/app-publisher/workflow-tool-action/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
   "web/app/components/app/configuration/__tests__/configuration-flow.spec.tsx": {
     "typescript/no-deprecated": {
       "count": 2

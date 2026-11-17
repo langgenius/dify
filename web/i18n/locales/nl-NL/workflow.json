@@ -237,6 +237,7 @@
   "common.webhookDebugRequestFailed": "Webhook-debugverzoek mislukt",
   "common.workflowAsToolDescription": "Als tool in andere apps gebruiken",
   "common.workflowAsToolDisabledHint": "Publish the latest workflow and ensure a connected User Input node before configuring it as a tool.",
+  "common.workflowAsToolEndUserAuth": "Workflows met tools die autorisatie van app-gebruikers gebruiken, kunnen niet als tools worden gepubliceerd.",
   "common.workflowAsToolReady": "Gereed",
   "common.workflowAsToolReconfigure": "Opnieuw configureren",
   "common.workflowAsToolTip": "Tool reconfiguration is required after the workflow update.",

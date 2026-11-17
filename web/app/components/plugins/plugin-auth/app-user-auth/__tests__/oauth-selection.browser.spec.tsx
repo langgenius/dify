@@ -167,7 +167,11 @@ it('selects the completed OAuth account after refreshing and preserves edits mad
   try {
     await expect.poll(() => mocks.refresh.mock.calls.length).toBeGreaterThan(0)
     await expect
-      .element(testConnection.getByRole('button', { name: 'plugin.auth.appUser.testConnection' }))
+      .element(
+        testConnection.getByRole('button', {
+          name: 'plugin.auth.appUser.testConnectionPlaceholder',
+        }),
+      )
       .toBeVisible()
     expect(
       mocks.draftChanged.mock.calls.some(([draft]) => draft.testCredentialId === createdOAuth.id),
@@ -198,7 +202,7 @@ it('leaves the test connection unselected when the OAuth popup closes without a 
     .element(
       screen
         .getByRole('region', { name: 'plugin.auth.appUser.testConnection' })
-        .getByRole('button', { name: 'plugin.auth.appUser.testConnection' }),
+        .getByRole('button', { name: 'plugin.auth.appUser.testConnectionPlaceholder' }),
     )
     .toBeVisible()
   expect(
