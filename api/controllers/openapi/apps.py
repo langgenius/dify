@@ -36,19 +36,21 @@ from controllers.openapi.app_webapp import (
     WebAppAccessApi,
     WorkflowWebAppApi,
 )
+from controllers.openapi.auth.context import Context
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
+    CheckNamedWorkspaceMember,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWebAppAuthEnterprise,
     CheckWorkspaceMember,
 )
-from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
+from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, ResourceAccessSubject
 from extensions.ext_application_services import application_services
-from machinery.context import AppRequestContext, RequestContext
+from machinery.context import AppRequestContext
 from models.model import AppMode
-from services.app.query_service import AppDiscoveryQuery
+from services.app.query_service import AppDiscoveryQuery, AppListLogin
 from services.errors.app import AppDiscoveryNotFoundError
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
@@ -122,29 +124,36 @@ class AppDescribeApi(Resource):
 @openapi_ns.route("/apps")
 class AppListApi(Resource):
     @endpoint(
-        context="workspace",
+        context="orm",
         op="get.console_app",
         pat_policy=PersonalAccessTokenPolicy.RESOURCE_DISCOVERY,
         kind=Kind.LIST,
-        summary="List apps in a workspace",
+        summary="List the apps this login may use, in one workspace or in all of them",
         examples=(
-            Example(title="List apps in the pinned workspace, first page", input={"page": 1, "limit": 20}),
+            Example(
+                title="List the apps this login may use in every workspace, first page", input={"page": 1, "limit": 20}
+            ),
+            Example(
+                title="List the apps of one workspace, first page",
+                input={"workspace_id": "<workspace_id>", "page": 1, "limit": 20},
+            ),
             Example(
                 title="Find workflow apps whose name contains a word",
                 input={"mode": "workflow", "name": "summary"},
             ),
         ),
         requirements=(
-            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
+            CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
             CheckScope(Scope.APPS_READ),
-            CheckWorkspaceMember(),
+            CheckNamedWorkspaceMember(),
         ),
         query=AppListQuery,
         returns=(HTTPStatus.OK, AppListResponse, "App list"),
     )
-    def get(self, ctx: RequestContext, *, query: AppListQuery):
-        result = application_services().apps.discovery.list_apps(
-            ctx, AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name)
+    def get(self, ctx: Context, *, query: AppListQuery):
+        result = application_services().apps.discovery.list_apps_for(
+            _app_list_login(ctx),
+            AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name),
         )
         return AppListResponse.build(
             page=result.page,
@@ -152,3 +161,16 @@ class AppListApi(Resource):
             total=result.total,
             items=[app_list_row(entry) for entry in result.items],
         )
+
+
+def _app_list_login(ctx: Context) -> AppListLogin:
+    """The caller's identity as `Context.request_context` builds it, with the workspace optional."""
+    return AppListLogin(
+        kind=ctx.subject.subject_type,
+        request_id=ctx.request_id,
+        trace_id=ctx.trace_id,
+        account_id=str(ctx.subject.account_id or ctx.subject.token_id),
+        workspace_id=ctx.loaded_workspace_id,
+        resource_app_ids=ctx.resource_app_ids,
+        personal_app_ids=ctx.personal_app_ids,
+    )

@@ -5,27 +5,42 @@ from typing import Protocol, cast
 
 import pytest
 from flask import Flask
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, ServiceUnavailable
 
+from constants.oauth_bearer import SubjectType, TokenType
 from controllers.openapi._models import (
     MAX_PAGE_LIMIT,
     AppDescribeResponse,
+    AppListResponse,
     PermittedExternalAppsListQuery,
     PermittedExternalAppsListResponse,
 )
 from controllers.openapi._models import (
     AppDescribeQuery as _app_discovery_AppDescribeQuery,
 )
-from controllers.openapi.apps import AppDescribeApi, AppListQuery
+from controllers.openapi.apps import AppDescribeApi, AppListApi, AppListQuery
 from controllers.openapi.apps import AppDescribeQuery as _app_describe_query_AppDescribeQuery
 from controllers.openapi.apps_permitted_external import PermittedExternalAppDescribeApi, PermittedExternalAppsListApi
+from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject
+from libs.helper import UUIDStr
+from libs.pagination import PaginatedResult
 from machinery.context import AppRequestContext
 from models.model import AppMode
-from services.app.query_service import AppDescription
+from services.app.query_service import AppDescription, AppDiscoveryEntry, AppDiscoveryQuery, AppListLogin
 from services.entities.app_entities import AppListParams, AppSummary
 from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsUnavailableError
 from tests.helpers.unit.controllers.openapi._mode_constants import LISTABLE_MODES, NON_LISTABLE_MODES
+from tests.helpers.unit.controllers.openapi.auth._world import (
+    ACCOUNT_ID,
+    TENANT_ID,
+    TOKEN_ID,
+    make_auth,
+    make_tenant,
+    sso_subject,
+)
 from tests.unit_tests.controllers.conftest import ControllerTestServices
 
 """Unit tests for AppDescribeQuery (`?fields=` allow-list)."""
@@ -163,9 +178,26 @@ def test_defaults() -> None:
     assert q.name is None
 
 
-def test_workspace_id_required() -> None:
-    with pytest.raises(ValidationError):
-        AppListQuery.model_validate({})
+def test_workspace_id_is_optional() -> None:
+    assert AppListQuery.model_validate({}).workspace_id is None
+
+
+class _RequiredWorkspaceQuery(BaseModel):
+    """The field as it was when every call had to name a workspace."""
+
+    workspace_id: UUIDStr
+
+
+@pytest.mark.parametrize("value", ["", "not-a-uuid", "  "])
+def test_a_named_workspace_that_is_not_an_id_is_refused_as_before(value: str) -> None:
+    with pytest.raises(ValidationError) as now:
+        AppListQuery.model_validate({"workspace_id": value})
+    with pytest.raises(ValidationError) as before:
+        _RequiredWorkspaceQuery.model_validate({"workspace_id": value})
+    # The 422 body is built from these, without context (see `_contract`).
+    assert now.value.errors(include_url=False, include_context=False) == before.value.errors(
+        include_url=False, include_context=False
+    )
 
 
 def test_page_rejects_non_integer_string() -> None:
@@ -228,3 +260,86 @@ def test_all_fields_accept_valid_values() -> None:
 def test_max_page_limit_is_accepted_by_the_app_service() -> None:
     # The catalog advertises MAX_PAGE_LIMIT; the service model must not reject it.
     assert AppListParams(limit=MAX_PAGE_LIMIT).limit == MAX_PAGE_LIMIT
+
+
+"""The handler hands the login, as admission resolved it, to the one app-list rule."""
+
+
+def _list_with(
+    app: Flask, services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, ctx: Context
+) -> tuple[list[AppListLogin], AppListResponse]:
+    logins: list[AppListLogin] = []
+
+    def list_apps_for(login: AppListLogin, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
+        logins.append(login)
+        entry = AppDiscoveryEntry(
+            AppSummary("app-id", "workspace-id", "App", "", AppMode.CHAT, "normal", None, None), "Workspace"
+        )
+        return PaginatedResult(items=[entry], total=7, page=query.page, per_page=query.limit)
+
+    monkeypatch.setattr(services.apps.discovery, "list_apps_for", list_apps_for)
+    api = AppListApi()
+    with app.test_request_context("/openapi/v1/apps?page=2&limit=3"):
+        response = cast(Endpoint[AppListResponse], api.get).__handler__(
+            api, ctx, query=AppListQuery.model_validate({"page": 2, "limit": 3})
+        )
+    return logins, response
+
+
+@pytest.mark.parametrize("named", [False, True])
+@pytest.mark.parametrize("token_type", [TokenType.OAUTH_ACCOUNT, TokenType.PERSONAL_ACCESS])
+def test_an_account_login_is_passed_with_the_workspace_it_named(
+    app: Flask,
+    app_query_services: ControllerTestServices,
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    token_type: TokenType,
+    named: bool,
+) -> None:
+    ctx = Context(AccountSubject(make_auth(token_type)), sqlite_session, {})
+    ctx.personal_app_ids = frozenset({"app-id"}) if token_type is TokenType.PERSONAL_ACCESS else None
+    if named:
+        ctx._workspace = make_tenant()
+    logins, response = _list_with(app, app_query_services, monkeypatch, ctx)
+    assert logins == [
+        AppListLogin(
+            kind=SubjectType.ACCOUNT,
+            request_id=ctx.request_id,
+            trace_id=ctx.trace_id,
+            account_id=ACCOUNT_ID,
+            workspace_id=TENANT_ID if named else None,
+            resource_app_ids=None,
+            personal_app_ids=ctx.personal_app_ids,
+        )
+    ]
+    assert (response.page, response.limit, response.total) == (2, 3, 7)
+    assert [(row.id, row.workspace_name) for row in response.data] == [("app-id", "Workspace")]
+
+
+def test_a_workspace_token_is_passed_with_its_workspace(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    ctx = Context(ResourceAccessSubject(make_auth(TokenType.RESOURCE_ACCESS, account_id=None)), sqlite_session, {})
+    ctx._workspace = make_tenant()
+    ctx.resource_app_ids = frozenset({"app-id"})
+    logins, _ = _list_with(app, app_query_services, monkeypatch, ctx)
+    assert [(login.kind, login.account_id, login.workspace_id, login.resource_app_ids) for login in logins] == [
+        (SubjectType.RESOURCE_ACCESS, TOKEN_ID, TENANT_ID, frozenset({"app-id"}))
+    ]
+
+
+def test_an_external_sso_login_is_passed_without_a_workspace(
+    app: Flask, app_query_services: ControllerTestServices, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    ctx = Context(sso_subject(), sqlite_session, {})
+    logins, _ = _list_with(app, app_query_services, monkeypatch, ctx)
+    assert [(login.kind, login.account_id, login.workspace_id) for login in logins] == [
+        (SubjectType.EXTERNAL_SSO, TOKEN_ID, None)
+    ]
+
+
+def test_the_catalog_lists_apps_without_a_workspace() -> None:
+    spec = cast(Endpoint[AppListResponse], AppListApi.get)
+    assert spec.__spec__.catalog.summary == "List the apps this login may use, in one workspace or in all of them"
+    assert {"page": 1, "limit": 20} in [example.input for example in spec.__spec__.catalog.examples]
+    assert "workspace_id" not in AppListQuery.model_json_schema().get("required", [])

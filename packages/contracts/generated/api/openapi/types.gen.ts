@@ -238,7 +238,7 @@ export type AppListQuery = {
   mode?: SupportedAppType | null
   name?: string | null
   page?: number
-  workspace_id: string
+  workspace_id?: string | null
 }
 
 export type AppListResponse = {
@@ -2138,12 +2138,12 @@ export type DeleteAccountSessionsBySessionIdResponse =
 export type GetAppsData = {
   body?: never
   path?: never
-  query: {
+  query?: {
     limit?: number
     mode?: 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
     name?: string
     page?: number
-    workspace_id: string
+    workspace_id?: string
   }
   url: '/apps'
 }
