@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from clients.agent_backend.errors import AgentBackendError
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
-from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import (
     AppGenerateEntity,
     ChatAppGenerateEntity,
@@ -21,7 +20,7 @@ from core.app.entities.task_entities import (
     PingStreamResponse,
 )
 from core.errors.error import QuotaExceededError
-from core.moderation.input_moderation import get_app_moderation
+from core.moderation.factory import get_app_moderation
 from core.moderation.output_moderation import ModerationRule, OutputModeration
 from graphon.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from models.enums import MessageStatus
@@ -154,6 +153,9 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         if sensitive_word_avoidance is not None and sensitive_word_avoidance.type == "openai_moderation":
             return None
         if sensitive_word_avoidance:
+            outputs_config = sensitive_word_avoidance.config.get("outputs_config")
+            if isinstance(outputs_config, dict) and outputs_config.get("enabled") is False:
+                return None
             return OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
@@ -173,10 +175,6 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         if replacement is not None and self.output_moderation_handler is not None:
             self.output_moderation_handler = None
         return replacement
-
-    def workflow_moderation_error(self, error_type: str) -> AppGenerateError | None:
-        """Restore classification from an internal node error type using the startup-injected policy port."""
-        return self._moderation.workflow_error(error_type) if self._moderation is not None else None
 
     def handle_output_moderation_when_task_finished(self, completion: str) -> str | None:
         """

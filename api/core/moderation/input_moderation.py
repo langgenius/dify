@@ -1,48 +1,18 @@
 import logging
-from collections.abc import Callable, Mapping
-from typing import Any, Protocol, runtime_checkable
+from collections.abc import Mapping
+from typing import Any
 
 from dify_trace_sdk.emitter import TraceScope
 from dify_trace_sdk.events import ModerationChecked, json_safe
-from flask import current_app, has_app_context
 
 from core.app.app_config.entities import AppConfig
-from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import get_credit_usage_app_type
 from core.model_context import use_credit_usage_metadata
-from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult, ModerationOutputsResult
-from core.moderation.factory import ModerationFactory
+from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
+from core.moderation.factory import ModerationFactory, get_app_moderation
 from libs.datetime_utils import measure_time
 
 logger = logging.getLogger(__name__)
-
-
-@runtime_checkable
-class AppModeration(Protocol):
-    """Stateless app policy port injected once at startup, never bound to an invocation or tenant."""
-
-    def evaluate_input(
-        self, app_config: AppConfig, inputs: Mapping[str, object], query: str
-    ) -> ModerationInputsResult | None: ...
-
-    def output_evaluator(self, app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None: ...
-
-    def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None: ...
-
-    def workflow_error(self, error_type: str) -> AppGenerateError | None: ...
-
-
-def get_app_moderation() -> AppModeration | None:
-    """Return the injected port or None outside app execution.
-
-    Malformed registrations raise TypeError rather than bypassing checks.
-    """
-    if not has_app_context():
-        return None
-    moderation = current_app.extensions.get("app_moderation")
-    if moderation is not None and not isinstance(moderation, AppModeration):
-        raise TypeError("Invalid app moderation policy registration.")
-    return moderation
 
 
 def evaluate_app_input(

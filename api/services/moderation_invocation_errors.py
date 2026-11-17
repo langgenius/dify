@@ -27,19 +27,3 @@ class ModerationUnavailableInvocationError(ModerationError, ModerationInvocation
 
 class PlatformModerationRejectedInvocationError(ModerationRejectedInvocationError):
     """Identify platform verdicts that apps may render with a configured preset or the chat default reply."""
-
-
-class PlatformModerationInputRejectedInvocationError(PlatformModerationRejectedInvocationError):
-    """Preserve the input phase when workflow nodes retain only the exception type name."""
-
-    def __init__(self, message: str) -> None:
-        """Create an input rejection without inferring its phase from display text."""
-        super().__init__("input", message)
-
-
-class PlatformModerationOutputRejectedInvocationError(PlatformModerationRejectedInvocationError):
-    """Preserve the output phase when workflow nodes retain only the exception type name."""
-
-    def __init__(self, message: str) -> None:
-        """Create an output rejection without inferring its phase from display text."""
-        super().__init__("output", message)

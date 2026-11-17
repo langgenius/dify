@@ -474,6 +474,30 @@ def test_guard_maps_checker_failures_without_delivering_content(mode: str, failu
     assert events == (["closed"] if mode == "segmented_stream" else [])
 
 
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize("arguments", ["", "{}"])
+def test_tool_names_are_checked_for_both_streaming_and_blocking_results(
+    keyword_guard: LLMModerationGuard, stream: bool, arguments: str
+) -> None:
+    message = AssistantPromptMessage(
+        content="",
+        tool_calls=[
+            AssistantPromptMessage.ToolCall(
+                id="tool-1", type="function", function={"name": "blocked_tool", "arguments": arguments}
+            )
+        ],
+    )
+    if stream:
+        chunk = LLMResultChunk(model="model", delta=LLMResultChunkDelta(index=0, message=message))
+        response = keyword_guard.check_output(item for item in [chunk])
+        assert isinstance(response, Generator)
+        with pytest.raises(ModerationRejectedError, match="Output blocked"):
+            next(response)
+    else:
+        with pytest.raises(ModerationRejectedError, match="Output blocked"):
+            keyword_guard.check_result(LLMResult(model="model", message=message, usage=LLMUsage.empty_usage()))
+
+
 def test_tool_argument_fragments_are_reassembled_before_moderation(keyword_guard: LLMModerationGuard) -> None:
     chunks = [_chunk(""), _chunk("")]
     for chunk, arguments in zip(chunks, ["blo", "cked"], strict=True):

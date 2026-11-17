@@ -114,7 +114,7 @@ def build_llm_moderation_guard(
     """
     rule = rule.model_copy(deep=True)
     if platform and rule.type != "openai_moderation":
-        raise ValueError("Platform moderation sharing requires an OpenAI rule.")
+        raise ValueError("Platform moderation requires an OpenAI rule.")
     inputs = rule.config.get("inputs_config")
     if not isinstance(inputs, dict) or not isinstance(inputs.get("enabled"), bool):
         raise ValueError("inputs_config.enabled must be a bool")

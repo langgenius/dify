@@ -29,8 +29,7 @@ from services.api_based_extension_application_service import APIBasedExtensionSe
 from services.moderation_invocation_errors import (
     ModerationRejectedInvocationError,
     ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
+    PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import (
     ModerationPhase,
@@ -467,11 +466,7 @@ class LLMModerationGuard:
             self._check(text, phase)
         except ModerationRejectedError as error:
             rejection = (
-                (
-                    PlatformModerationInputRejectedInvocationError(str(error))
-                    if error.phase == "input"
-                    else PlatformModerationOutputRejectedInvocationError(str(error))
-                )
+                PlatformModerationRejectedInvocationError(error.phase, str(error))
                 if self._platform
                 else ModerationRejectedInvocationError(error.phase, str(error))
             )
@@ -516,10 +511,16 @@ class LLMModerationGuard:
         return "".join(parts)
 
     def _check_stream_segments(self, response: Generator[LLMResultChunk]) -> Generator[LLMResultChunk]:
-        """Check each independent segment before releasing its chunks; close the stream even on failure."""
+        """Check each independent segment before release and close the stream on every exit.
+
+        Tool names are inspected alongside content and arguments, but collected
+        separately so repeated name fields do not interrupt argument fragments
+        within the same segment.
+        """
         segment_size = self._stream_segment_size
         chunks: list[LLMResultChunk] = []
         fragment_parts: list[str] = []
+        tool_names: list[str] = []
         fragment_length = 0
         try:
             for chunk in response:
@@ -527,16 +528,21 @@ class LLMModerationGuard:
                 fragment = self._stream_fragment(chunk)
                 fragment_parts.append(fragment)
                 fragment_length += len(fragment)
+                for tool in chunk.delta.message.tool_calls:
+                    if tool.function.name:
+                        tool_names.append(tool.function.name)
+                        fragment_length += len(tool.function.name)
                 if fragment_length >= segment_size:
-                    text = "".join(fragment_parts)
+                    text = "\n".join(["".join(fragment_parts), *tool_names])
                     self._check_segment(text, "output")
                     yield from chunks
                     chunks = []
                     fragment_parts = []
+                    tool_names = []
                     fragment_length = 0
 
             if chunks:
-                text = "".join(fragment_parts)
+                text = "\n".join(["".join(fragment_parts), *tool_names])
                 if text:
                     self._check_segment(text, "output")
                 yield from chunks

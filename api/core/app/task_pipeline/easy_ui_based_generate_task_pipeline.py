@@ -29,6 +29,7 @@ from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueRetrieverResourcesEvent,
     QueueStopEvent,
+    QueueTextChunkEvent,
 )
 from core.app.entities.task_entities import (
     AgentMessageStreamResponse,
@@ -42,6 +43,7 @@ from core.app.entities.task_entities import (
     MessageAudioEndStreamResponse,
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
+    MessageStreamResponse,
     StreamEvent,
     StreamResponse,
 )
@@ -295,7 +297,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         require token estimation or rebuilding already settled model usage.
         """
         for message in self.queue_manager.listen():
-            if publisher:
+            moderated = self.output_moderation_handler is not None
+            if publisher and not (moderated and isinstance(message.event, QueueLLMChunkEvent)):
                 publisher.publish(message)
             event = message.event
             moderation_reply = False
@@ -324,8 +327,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     yield from self._handle_error_event(event)
                     break
                 case QueueStopEvent() | QueueMessageEndEvent():
+                    delivered_answer = self._task_state.llm_result.message.get_text_content()
                     if isinstance(event, QueueMessageEndEvent):
-                        if event.llm_result:
+                        if event.llm_result is not None:
                             self._task_state.llm_result = event.llm_result
                     elif not moderation_reply:
                         self._handle_stop(event)
@@ -336,9 +340,17 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     )
                     if output_moderation_answer is not None:
                         self._task_state.llm_result.message.content = output_moderation_answer
-                        yield self._message_cycle_manager.message_replace_to_stream_response(
-                            answer=output_moderation_answer
-                        )
+                    final_answer = self._task_state.llm_result.message.get_text_content()
+                    if (moderated or output_moderation_answer is not None) and final_answer != delivered_answer:
+                        if final_answer.startswith(delivered_answer):
+                            tail = final_answer[len(delivered_answer) :]
+                            if publisher:
+                                publisher.publish(message.model_copy(update={"event": QueueTextChunkEvent(text=tail)}))
+                            yield self._message_cycle_manager.message_to_stream_response(
+                                answer=tail, message_id=self._message_id
+                            )
+                        else:
+                            yield self._message_cycle_manager.message_replace_to_stream_response(answer=final_answer)
 
                     stopped_agent_message: Message | None = None
                     completed_chat_message: Message | None = None
@@ -407,7 +419,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
                     if not self._task_state.llm_result.prompt_messages:
                         self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
-                    yield from self._handle_output_moderation_chunk(delta_text)
+                    for response in self._handle_output_moderation_chunk(delta_text):
+                        if publisher and moderated and isinstance(response, MessageStreamResponse):
+                            publisher.publish(
+                                message.model_copy(update={"event": QueueTextChunkEvent(text=response.answer)})
+                            )
+                        yield response
                 case QueueMessageReplaceEvent():
                     yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text)
                 case QueuePingEvent():
@@ -650,15 +667,23 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline[EasyUIAppGenerat
         if handler is not None and handler.should_direct_output():
             return
         current_content = self._task_state.llm_result.message.get_text_content()
-        replacement = handler.append_new_token(text, prefix=current_content) if handler is not None else None
+        text, replacement = (
+            handler.append_new_token(text, prefix=current_content) if handler is not None else (text, None)
+        )
         if replacement is None:
-            self._task_state.llm_result.message.content = current_content + text
-            yield self._message_cycle_manager.message_to_stream_response(
-                answer=text, message_id=self._message_id, event_type=StreamEvent.MESSAGE
-            )
+            if text:
+                self._task_state.llm_result.message.content = current_content + text
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=text, message_id=self._message_id, event_type=StreamEvent.MESSAGE
+                )
         else:
             self._task_state.llm_result.message.content = replacement
-            yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement)
+            if current_content:
+                yield self._message_cycle_manager.message_replace_to_stream_response(answer=replacement)
+            else:
+                yield self._message_cycle_manager.message_to_stream_response(
+                    answer=replacement, message_id=self._message_id
+                )
             if handler is not None and handler.should_direct_output():
                 self.queue_manager.publish(
                     QueueStopEvent(stopped_by=QueueStopEvent.StopBy.OUTPUT_MODERATION), PublishFrom.TASK_PIPELINE

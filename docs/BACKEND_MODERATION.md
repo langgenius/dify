@@ -92,27 +92,22 @@ for a real platform rejection. Disabling an app phase does not disable mandatory
 platform checks. Different model invocations remain independent even when their
 text is identical.
 
-App checks and reply selection are stateless functions of the admitted app
-configuration. There is no moderation scope, context variable, failure queue,
-observer, or cross-thread model-to-response side channel. Parallel workflow model
-calls do not serialize their moderation requests.
-Startup injects one stateless policy port into the application container; response
-pipelines retain that port, not an invocation-scoped session. The kernel does not
-import service implementations or require a moderation wrapper around each entry.
+App checks and reply selection are stateless functions of admitted app
+configuration. Startup injects a stateless policy port. There is no execution
+record, context variable, failure queue, or model-to-response side channel.
+Every model invocation still performs its own checks.
 
-Graphon node results retain exception type names, but terminal graph events only
-carry display text. The Dify workflow runner propagates the failing node's type
-through an internal field on its terminal queue event. Container failures inherit
-their failed child's type; handled failures and retries do not classify a later
-terminal failure. Platform input and output rejections have distinct exception
-types so phase-specific presets survive this boundary without parsing messages.
-Because Graphon has no terminal failure source ID, container error text correlates
-its selected failure with typed child events. Text never supplies a type or phase;
-conflicting child types retain the generic error instead of inventing a verdict.
-The internal field is excluded from serialization and does not change public SSE.
-The parameter-extraction node has a small compatibility adapter because Graphon
-currently drops even the exception type when catching model invocation failures.
-It retains only that type during one node run and clears it on every exit.
+App input verdicts are handled before generation: direct-output rejection returns
+the preset as a normal reply, while overrides continue with rewritten inputs.
+App output verdicts are handled by the response consumer, not as node failures.
+They replace the answer through normal message events and persist the replacement.
+
+Internal model failures remain Graphon's responsibility. Retries, default values,
+error branches, node events, and terminal status are not changed. A handled model
+rejection or unavailable check never overrides a recovered answer. A later failure
+is not reclassified using an earlier moderation outcome. Failed workflows retain
+Graphon's native error contract; no exception type is reconstructed from text or
+historical node events. This does not require changing Graphon or its dependency.
 
 Keyword and API app rules still use `ModerationService.evaluate` and retain their
 direct-reply and text-override semantics. They are independent policies, not
@@ -122,8 +117,12 @@ Streaming checks inspect only new segments; completion checks only an unchecked
 tail, never the whole stream again. Direct replies replace the whole answer;
 API overrides replace the flagged segment while retaining preceding output and
 later deltas. Blocking output uses the non-stream segment size. Segments have no
-overlap or cross-boundary context. The existing app-level display-then-replace
-behavior remains distinct from the platform guard's check-before-delivery guarantee.
+overlap or cross-boundary context. Unchecked stream text is buffered rather than
+displayed or sent to speech synthesis. A final short segment is checked before
+delivery. Only already approved prefixes may be visible before a later replacement.
+Before a Chatflow pauses for human input, its pending output tail is checked and
+delivered before `workflow_paused`. The pause snapshot stores the approved or
+replaced answer, so resumption does not lose buffered text or recheck the prefix.
 
 Application entry points call the same stateless app adapters; no request wrapper
 is required to enable the correct behavior. Standalone kernel callers without an
@@ -134,18 +133,18 @@ and failure behavior. It is an explicit independent
 operation, not an execution path selected by the App Model Moderation toggle.
 
 The plugin `/invoke/app` entry uses the same app generator behavior. Invocation
-validates tenant ownership before model work. Each workflow runner owns its
-event state, so nested or subsequent requests cannot inherit another run's failures.
+validates tenant ownership before model work. Nested or subsequent requests have
+no accumulated moderation state to inherit.
 
 Remote Agent LLM gateway calls do not transport local workflow node error types.
 Local App Model Moderation never issues hosted or tenant
 checks and cannot infer a typed remote verdict from text. Other configured app
 rules remain independent. A client-provided approval flag must never skip platform checks.
 
-An enabled app OpenAI rule uses its nonblank phase-specific preset when the
-platform rejects content. Chatbot, Chatflow, and legacy Agent Chat use the
-English default `This message can’t be processed.` when no matching
-preset is configured, including when app moderation or its phase is disabled.
+For direct Chatbot and legacy Agent Chat generation, an enabled app OpenAI rule
+uses its nonblank phase-specific preset when the platform rejects the invocation.
+These chat modes use the English default `This message can’t be processed.` when
+no matching preset is configured, including when app moderation or its phase is disabled.
 The default is resolved at runtime, not written into the app configuration.
 Other app moderation backends retain their own verdict and replacement rules;
 their presets are not reused for a separate platform rejection.
@@ -154,18 +153,16 @@ Chat replies use the existing `message` or `message_replace` event followed by
 `message_end`, without exposing the rejected segment. A replacement covers the
 entire answer, including any previously delivered prefix, and the stored answer
 matches the replacement. Rendering it does not invoke a model or estimate token
-usage again. A failed chatflow retains its failed workflow status while rendering
-the failing node's platform rejection with its preset or default reply.
-The reply and `message_end` precede the failed `workflow_finished` event because
-the Redis/SSE subscriber stops reading at that terminal event; sending the reply
-afterwards would persist it without ever delivering it to the WebApp client.
+usage again. Chatflow has no platform-exception-to-preset branch: model-node
+rejections follow their configured node error strategy. Its own keyword/API
+input and output verdicts still use normal App replacement handling, without
+forcing an internal node failure over the workflow's own result.
 
 Unavailable checks are errors, not content verdicts, and never become replies.
-Chatflow restores the typed `moderation_unavailable` error from the failing node's
-error type. Error text alone cannot classify an unrelated failure, and no request
-state is shared between invocations.
-The error event precedes `workflow_finished` so public subscribers receive its
-503 payload, while blocking requests raise the typed error for HTTP mapping.
+Direct App check failures and unhandled typed model failures produce a safe
+`moderation_unavailable` error. Internal workflow errors keep Graphon's native
+projection. Historical unavailability cannot change a successful response or
+reclassify an unrelated terminal failure.
 No unavailable check becomes a preset or default chat reply.
 Explicit non-platform model policy failures are also preserved. Completion,
 Workflow, RAG, and other non-chat paths retain the normal moderation error when
@@ -185,7 +182,9 @@ the usual SSE `error` event. Console clients use their existing error toast:
 
 Application errors carry stable moderation identifiers and safe messages, not
 HTTP status codes or response payloads. HTTP handlers and the SSE response
-converter own status mapping. Keyword/API input and output backend failures are
+converter convert them to dedicated HTTP exceptions only after reply replacement
+has been considered. Those HTTP exceptions own the status, public error code,
+and description, keeping HTTP and SSE mappings consistent. Keyword/API input and output backend failures are
 adapted to the same unavailable error; private diagnostics remain in the cause
 and server logs, never in the client-facing response.
 
@@ -284,6 +283,9 @@ whole-stream buffering mode selected by an omitted limit.
 - Output checks inspect completion text, tool arguments, and native structured
   payloads even when their message text is empty. Binary image, audio,
   video, and document content is not inspected by these text moderation backends.
+- Tool names are checked in both streaming and non-streaming output, including
+  name-only deltas. Streaming name fields are collected separately so repeated
+  tool metadata cannot split the argument text being checked.
 - Non-stream output is checked in independent segments of
   `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
   the original result is returned.

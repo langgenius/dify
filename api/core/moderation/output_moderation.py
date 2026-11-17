@@ -19,8 +19,9 @@ class ModerationRule(BaseModel):
 class OutputModeration(BaseModel):
     """Own sequential app output checks on the response consumer, without a worker or locks.
 
-    Stream checks inspect only new segments; completion checks only an unchecked
-    tail. Keyword/API replacement behavior remains independent of platform model
+    The buffer holds raw text, while the answer contains only checked text or
+    replacement output. Stream checks inspect only new segments; completion checks
+    only an unchecked tail. Keyword/API replacement behavior remains independent of platform model
     moderation. Evaluation failures are terminal and never retried by completion.
     """
 
@@ -46,12 +47,8 @@ class OutputModeration(BaseModel):
         """Return whether a checked segment replaced the entire answer and stopped further evaluation."""
         return self.final_output is not None
 
-    def get_final_output(self) -> str:
-        """Return the direct reply, or an empty string before any direct replacement."""
-        return self.final_output or ""
-
-    def append_new_token(self, token: str, *, prefix: str = "") -> str | None:
-        """Inspect new stream text at the threshold and return a full replacement only when flagged.
+    def append_new_token(self, token: str, *, prefix: str = "") -> tuple[str, str | None]:
+        """Buffer unchecked text and return approved text or a full-answer replacement after a segment check.
 
         The response consumer is the sole caller. A prefix seeds an existing
         response after resumption. Stopped output is ignored; failed checks raise
@@ -60,30 +57,31 @@ class OutputModeration(BaseModel):
         if self._error is not None:
             raise self._error
         if self._finished or self.should_direct_output():
-            return None
+            return "", None
         if not self._streamed:
             self._streamed = True
             self.buffer = prefix
             self._answer = prefix
             self._checked_length = len(prefix)
         self.buffer += token
-        self._answer += token
         pending = self.buffer[self._checked_length :]
         if len(pending) >= dify_config.MODERATION_BUFFER_SIZE:
-            return self._check_pending(pending)
-        return None
+            replacement = self._check_pending(pending)
+            return (pending, None) if replacement is None else ("", replacement)
+        return "", None
 
     def _check_pending(self, text: str) -> str | None:
         """Check one nonempty new segment, retaining its replacement and advancing only after success."""
         result = self.moderation(self.tenant_id, self.app_id, text)
         self._checked_length += len(text)
         if result is None or not result.flagged:
+            self._answer += text
             return None
         if result.action == ModerationAction.DIRECT_OUTPUT:
             self.final_output = result.preset_response
             self._answer = result.preset_response
         else:
-            self._answer = self._answer[: -len(text)] + result.text
+            self._answer += result.text
         return self._answer
 
     def moderation_completion(self, completion: str) -> tuple[str, bool]:
@@ -95,15 +93,14 @@ class OutputModeration(BaseModel):
         """
         if self._error is not None:
             raise self._error
-        if self.should_direct_output():
-            return self.get_final_output(), True
+        if self.final_output is not None:
+            return self.final_output, True
         if self._finished:
             return self._answer, self._answer != completion
         if self._streamed and completion not in {self.buffer, self._answer}:
             if completion.startswith(self.buffer):
                 suffix = completion[len(self.buffer) :]
                 self.buffer += suffix
-                self._answer += suffix
             else:
                 self._streamed = False
         if self._streamed:
@@ -118,7 +115,6 @@ class OutputModeration(BaseModel):
             flagged = False
             while self._checked_length < len(completion) and not self.should_direct_output():
                 segment = completion[self._checked_length : self._checked_length + size]
-                self._answer += segment
                 replacement = self._check_pending(segment)
                 flagged = flagged or replacement is not None
         self._finished = True

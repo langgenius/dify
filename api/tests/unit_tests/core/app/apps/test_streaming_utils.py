@@ -26,7 +26,9 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
     QueueWorkflowStartedEvent,
+    QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
     ChatbotAppBlockingResponse,
@@ -36,7 +38,7 @@ from core.app.entities.task_entities import (
     StreamEvent,
 )
 from core.workflow.system_variables import build_system_variables
-from extensions.application_services.app_moderation import DEFAULT_CHAT_MODERATION_REPLY, AppModeration
+from extensions.application_services.app_moderation import AppModeration
 from extensions.application_services.moderation import build_llm_moderation_guard
 from graphon.entities import WorkflowStartReason
 from graphon.enums import WorkflowType
@@ -474,20 +476,20 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
 
 
 @pytest.mark.parametrize(
-    ("phase", "previous_answer", "configured", "invoke_from", "unavailable", "stream"),
+    ("phase", "previous_answer", "configured", "invoke_from", "unavailable", "stream", "terminal_status"),
     [
-        ("input", "", True, InvokeFrom.WEB_APP, False, True),
-        ("input", "approved prefix", False, InvokeFrom.WEB_APP, False, True),
-        ("output", "approved prefix", True, InvokeFrom.WEB_APP, False, True),
-        ("output", "", False, InvokeFrom.SERVICE_API, False, True),
-        ("input", "", True, InvokeFrom.WEB_APP, True, True),
-        ("output", "approved prefix", False, InvokeFrom.WEB_APP, True, True),
-        ("input", "", True, InvokeFrom.SERVICE_API, False, False),
-        ("output", "approved prefix", False, InvokeFrom.SERVICE_API, False, False),
-        ("output", "approved prefix", True, InvokeFrom.SERVICE_API, True, False),
+        ("input", "", True, InvokeFrom.WEB_APP, False, True, "failed"),
+        ("output", "approved prefix", True, InvokeFrom.WEB_APP, False, True, "failed"),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True, "failed"),
+        ("input", "", True, InvokeFrom.SERVICE_API, False, False, "failed"),
+        ("output", "approved prefix", True, InvokeFrom.SERVICE_API, True, False, "failed"),
+        ("input", "", True, InvokeFrom.WEB_APP, False, True, "succeeded"),
+        ("output", "approved prefix", False, InvokeFrom.WEB_APP, False, True, "partial-succeeded"),
+        ("input", "", True, InvokeFrom.WEB_APP, True, True, "succeeded"),
+        ("output", "", True, InvokeFrom.WEB_APP, True, True, "partial-succeeded"),
     ],
 )
-def test_chatflow_moderation_result_survives_workflow_terminal(
+def test_chatflow_model_failures_do_not_override_graphon_results(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
     phase: ModerationPhase,
@@ -496,6 +498,7 @@ def test_chatflow_moderation_result_survives_workflow_terminal(
     invoke_from: InvokeFrom,
     unavailable: bool,
     stream: bool,
+    terminal_status: str,
 ) -> None:
     monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", AppModeration)
     app = make_app(tenant_id="test-tenant-id", mode=AppMode.ADVANCED_CHAT)
@@ -601,70 +604,49 @@ def test_chatflow_moderation_result_survives_workflow_terminal(
         list(model.invoke_llm([UserPromptMessage(content=entity.query)], stream=True))
 
     error_type = ModerationUnavailableInvocationError if unavailable else PlatformModerationRejectedInvocationError
-    with pytest.raises(error_type) as rejected:
+    with pytest.raises(error_type):
         invoke()
     queue_manager.publish(QueueWorkflowStartedEvent(), PublishFrom.APPLICATION_MANAGER)
     pipeline._task_state.answer = previous_answer
     queue_manager.publish(
-        QueueWorkflowFailedEvent(
-            error=str(rejected.value), error_type=type(rejected.value).__name__, exceptions_count=1
-        ),
-        PublishFrom.APPLICATION_MANAGER,
+        QueueTextChunkEvent(text="recovered", from_variable_selector=[]), PublishFrom.APPLICATION_MANAGER
     )
-    expected_reply = f"App {phase} refusal" if configured else DEFAULT_CHAT_MODERATION_REPLY
+    terminals = {
+        "succeeded": QueueWorkflowSucceededEvent(outputs={}),
+        "partial-succeeded": QueueWorkflowPartialSuccessEvent(outputs={}, exceptions_count=1),
+        "failed": QueueWorkflowFailedEvent(error="Unrelated terminal failure", exceptions_count=1),
+    }
+    terminal = terminals[terminal_status]
+    queue_manager.publish(terminal, PublishFrom.APPLICATION_MANAGER)
+    failed = terminal_status == "failed"
+    expected_answer = previous_answer + "recovered"
     if not stream:
-        if unavailable:
-            with pytest.raises(ModerationUnavailableInvocationError) as failure:
+        if failed:
+            with pytest.raises(ValueError, match="Run failed: Unrelated terminal failure") as failure:
                 pipeline.process()
-            assert failure.value.error_code == "moderation_unavailable"
+            assert type(failure.value) is ValueError
         else:
             response = pipeline.process()
             assert isinstance(response, ChatbotAppBlockingResponse)
-            assert response.data.answer == expected_reply
-        sqlite_session.refresh(message)
-        assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
-        assert message.error == (str(rejected.value) if unavailable else None)
-        assert message.answer == ("" if unavailable else expected_reply)
-        assert provider.invocations == (0 if phase == "input" else 1)
-        return
-    runtime_responses = pipeline.process()
-    assert isinstance(runtime_responses, Generator)
-    converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, invoke_from)
-    assert isinstance(converted, Generator)
-    topic = FakeTopic()
-    monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", lambda *_args, **_kwargs: topic)
-    _publish_streaming_response(
-        converted,
-        entity.workflow_run_id,
-        app_mode=AppMode.ADVANCED_CHAT,
-        workflow_id=workflow.id,
-        inputs={},
-        started_reason=WorkflowStartReason.INITIAL,
-    )
-    assert topic._queue.qsize() == (3 if unavailable else 4)
-    subscription = topic.subscribe()
-    events = list(stream_topic_events(subscription=subscription, idle_timeout=0.1))
-    public_events = [event for event in events if isinstance(event, dict)]
-    if unavailable:
-        assert [event["event"] for event in public_events] == ["workflow_started", "error", "workflow_finished"]
-        assert public_events[1]["code"] == "moderation_unavailable"
-        assert public_events[1]["status"] == 503
-        assert public_events[1]["message"] == str(ModerationUnavailableInvocationError())
-        assert "Private" not in json.dumps(public_events)
+            assert response.data.answer == expected_answer
     else:
-        assert [event["event"] for event in public_events] == [
-            "workflow_started",
-            "message_replace" if previous_answer else "message",
-            "message_end",
-            "workflow_finished",
-        ]
-        assert public_events[1]["answer"] == expected_reply
-    assert public_events[-1]["data"]["status"] == "failed"
-    assert public_events[-1]["data"]["error"] == str(rejected.value)
-    assert subscription.closed
-    assert topic._queue.empty()
+        runtime_responses = pipeline.process()
+        assert isinstance(runtime_responses, Generator)
+        converted = AdvancedChatAppGenerateResponseConverter.convert(runtime_responses, invoke_from)
+        assert isinstance(converted, Generator)
+        public_events = [event for event in converted if isinstance(event, dict)]
+        assert not any(event["event"] == "message_replace" for event in public_events)
+        assert [event["answer"] for event in public_events if event["event"] == "message"] == ["recovered"]
+        [finished] = [event for event in public_events if event["event"] == "workflow_finished"]
+        assert finished["data"]["status"] == terminal_status
+        assert finished["data"]["error"] == ("Unrelated terminal failure" if failed else None)
+        errors = [event for event in public_events if event["event"] == "error"]
+        assert len(errors) == int(failed)
+        if failed:
+            assert errors[0]["code"] == "invalid_param"
+        assert "Private" not in json.dumps(public_events)
     assert provider.invocations == (0 if phase == "input" else 1)
     sqlite_session.refresh(message)
-    assert message.answer == ("" if unavailable else expected_reply)
-    assert message.status == (MessageStatus.ERROR if unavailable else MessageStatus.NORMAL)
-    assert message.error == (str(rejected.value) if unavailable else None)
+    assert message.answer == ("" if failed else expected_answer)
+    assert message.status == (MessageStatus.ERROR if failed else MessageStatus.NORMAL)
+    assert message.error == ("Run failed: Unrelated terminal failure" if failed else None)

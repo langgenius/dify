@@ -9,7 +9,8 @@ from flask import Flask
 
 from core.app.app_config.entities import AppConfig, SensitiveWordAvoidanceEntity
 from core.moderation.base import ModerationAction, ModerationError, ModerationInputsResult
-from core.moderation.input_moderation import InputModeration, get_app_moderation
+from core.moderation.factory import get_app_moderation
+from core.moderation.input_moderation import InputModeration
 from extensions.application_services.app_moderation import AppModeration
 from models.model import AppMode
 

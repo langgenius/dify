@@ -29,7 +29,7 @@ from core.workflow.llm_environment_variable import (
     resolve_llm_model_config,
     should_resolve_llm_model_selector,
 )
-from core.workflow.llm_node import DifyLLMNode, DifyParameterExtractorNode
+from core.workflow.llm_node import DifyLLMNode
 from core.workflow.node_runtime import (
     DifyFileReferenceFactory,
     DifyHumanInputNodeRuntime,
@@ -634,8 +634,6 @@ class DifyNodeFactory(NodeFactory):
     ) -> type[Node]:
         if node_type == BuiltinNodeTypes.LLM:
             return DifyLLMNode
-        if node_type == BuiltinNodeTypes.PARAMETER_EXTRACTOR:
-            return DifyParameterExtractorNode
         return resolve_workflow_node_class(
             node_type=node_type,
             node_version=node_version,

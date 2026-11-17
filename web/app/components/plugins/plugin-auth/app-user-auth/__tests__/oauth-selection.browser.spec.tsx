@@ -42,7 +42,7 @@ const createdOAuth: Credential = {
 }
 let serverClient: OAuthClientSchema
 let serverCredentials: Credential[]
-let refreshRequest: ReturnType<typeof createDeferred> | undefined
+let refreshRequest: ReturnType<typeof createDeferred<void>> | undefined
 
 async function showAppUserAuth() {
   const { queryClient, wrapper: Providers } = createConsoleQueryWrapper({
@@ -100,19 +100,28 @@ async function startAuthorization(screen: Awaited<ReturnType<typeof showAppUserA
   await permissions.getByRole('button', { name: 'plugin.auth.authorize' }).click()
   await expect.poll(() => mocks.openOAuthPopup.mock.calls.length).toBe(1)
   await expect.element(permissions).not.toBeInTheDocument()
-  return mocks.openOAuthPopup.mock.calls[0][1]
+  const authorization = mocks.openOAuthPopup.mock.calls[0]
+  if (!authorization) throw new Error('OAuth authorization did not open')
+  return authorization[1]
 }
 
 beforeEach(() => {
   onTestFinished(guardUnexpectedFetch())
   serverClient = {
     schema: [
-      { name: 'client_id', label: { en_US: 'Client ID' }, type: 'text-input', required: true },
+      {
+        name: 'client_id',
+        label: { en_US: 'Client ID' },
+        type: 'text-input',
+        required: true,
+        multiple: false,
+      },
       {
         name: 'client_secret',
         label: { en_US: 'Client Secret' },
         type: 'secret-input',
         required: true,
+        multiple: false,
       },
     ],
     is_oauth_custom_client_enabled: false,

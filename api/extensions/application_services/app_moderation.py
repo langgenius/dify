@@ -1,4 +1,4 @@
-"""Evaluate app rules and render structured model failures without invocation-local state."""
+"""Evaluate app rules and render direct-generation model failures without invocation-local state."""
 
 import logging
 from collections.abc import Callable, Mapping
@@ -9,8 +9,6 @@ from machinery.context import AppRequestContext
 from models.model import AppMode
 from services.moderation_invocation_errors import (
     ModerationUnavailableInvocationError,
-    PlatformModerationInputRejectedInvocationError,
-    PlatformModerationOutputRejectedInvocationError,
     PlatformModerationRejectedInvocationError,
 )
 from services.moderation_service import (
@@ -26,29 +24,11 @@ logger = logging.getLogger(__name__)
 DEFAULT_CHAT_MODERATION_REPLY = "This message can’t be processed."
 
 
-def workflow_moderation_error(
-    error_type: str,
-) -> PlatformModerationRejectedInvocationError | ModerationUnavailableInvocationError | None:
-    """Restore public classification from trusted node error types, never from error message text."""
-    if error_type == PlatformModerationInputRejectedInvocationError.__name__:
-        return PlatformModerationInputRejectedInvocationError("Model input was rejected by moderation.")
-    if error_type == PlatformModerationOutputRejectedInvocationError.__name__:
-        return PlatformModerationOutputRejectedInvocationError("Model output was rejected by moderation.")
-    if error_type == ModerationUnavailableInvocationError.__name__:
-        return ModerationUnavailableInvocationError()
-    return None
-
-
 def _app_service() -> ModerationService:
     """Resolve the shared use case only when a keyword or API app check actually runs."""
     from extensions.ext_application_services import application_services
 
     return application_services().moderation
-
-
-def _input_text(inputs: Mapping[str, object], query: str) -> str:
-    """Provide a textual representation without dropping the app-shaped fields used by backends."""
-    return "\n".join([*(str(value) for value in inputs.values()), *([query] if query else [])])
 
 
 def _inputs_result_from_verdict(
@@ -113,11 +93,7 @@ def evaluate_app_input(
     rule = app_config.sensitive_word_avoidance
     if rule is None:
         return None
-    if not _phase_enabled(rule, "input"):
-        return ModerationInputsResult(
-            flagged=False, action=ModerationAction.DIRECT_OUTPUT, inputs=dict(inputs), query=query
-        )
-    if rule.type == "openai_moderation":
+    if not _phase_enabled(rule, "input") or rule.type == "openai_moderation":
         return ModerationInputsResult(
             flagged=False,
             action=ModerationAction.DIRECT_OUTPUT,
@@ -128,7 +104,7 @@ def evaluate_app_input(
         verdict = _app_service().evaluate(
             AppRequestContext(tenant_id=app_config.tenant_id, app_id=app_config.app_id),
             rule=_app_rule(rule),
-            request=ModerationRequest(text=_input_text(inputs, query), inputs=dict(inputs), query=query),
+            request=ModerationRequest(text="", inputs=dict(inputs), query=query),
             phase="input",
         )
     except ModerationUnavailableInvocationError:
@@ -137,28 +113,6 @@ def evaluate_app_input(
         logger.exception("App input moderation failed. tenant_id=%s app_id=%s", app_config.tenant_id, app_config.app_id)
         raise ModerationUnavailableInvocationError() from error
     return _inputs_result_from_verdict(verdict, inputs, query)
-
-
-def evaluate_app_output(app_config: AppConfig, text: str) -> ModerationOutputsResult | None:
-    """Evaluate keyword/API output without scheduling an independent OpenAI request."""
-    rule = app_config.sensitive_word_avoidance
-    if rule is None:
-        return None
-    if not _phase_enabled(rule, "output"):
-        return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
-    if rule.type == "openai_moderation":
-        return ModerationOutputsResult(
-            flagged=False,
-            action=ModerationAction.DIRECT_OUTPUT,
-            text=text,
-        )
-    verdict = _app_service().evaluate(
-        AppRequestContext(tenant_id=app_config.tenant_id, app_id=app_config.app_id),
-        rule=_app_rule(rule),
-        request=ModerationRequest(text=text),
-        phase="output",
-    )
-    return _outputs_result_from_verdict(verdict)
 
 
 def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None:
@@ -174,7 +128,15 @@ def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOut
     def evaluate(text: str) -> ModerationOutputsResult | None:
         """Evaluate the captured app rule and preserve its verdict or safe failure classification."""
         try:
-            return evaluate_app_output(app_config, text)
+            if not _phase_enabled(rule, "output"):
+                return ModerationOutputsResult(flagged=False, action=ModerationAction.DIRECT_OUTPUT)
+            verdict = _app_service().evaluate(
+                AppRequestContext(tenant_id=app_config.tenant_id, app_id=app_config.app_id),
+                rule=_app_rule(rule),
+                request=ModerationRequest(text=text),
+                phase="output",
+            )
+            return _outputs_result_from_verdict(verdict)
         except ModerationUnavailableInvocationError:
             raise
         except Exception as error:
@@ -189,7 +151,7 @@ def app_output_evaluator(app_config: AppConfig) -> Callable[[str], ModerationOut
 def app_rejection_replacement(app_config: AppConfig, error: Exception) -> tuple[str, str] | None:
     """Prefer an enabled OpenAI preset; use an English chat default for other platform rejections.
 
-    Defaults apply only to Chatbot, Chatflow and legacy Agent Chat. Non-chat
+    Defaults apply only to Chatbot and legacy Agent Chat. Other modes
     invocations retain their error unless they already have a matching preset.
     Unavailable services and explicit non-platform policy errors never become replies.
     """
@@ -208,7 +170,7 @@ def _platform_rejection_response(app_config: AppConfig, phase: ModerationPhase) 
             response = config.get("preset_response")
             if isinstance(response, str) and response.strip():
                 return response
-    if app_config.app_mode in {AppMode.CHAT, AppMode.ADVANCED_CHAT, AppMode.AGENT_CHAT}:
+    if app_config.app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT}:
         return DEFAULT_CHAT_MODERATION_REPLY
     return None
 
@@ -219,4 +181,3 @@ class AppModeration:
     evaluate_input = staticmethod(evaluate_app_input)
     output_evaluator = staticmethod(app_output_evaluator)
     replacement = staticmethod(app_rejection_replacement)
-    workflow_error = staticmethod(workflow_moderation_error)

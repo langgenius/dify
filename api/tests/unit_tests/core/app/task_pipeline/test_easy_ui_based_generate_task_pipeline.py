@@ -2252,7 +2252,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -2267,7 +2267,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
             )
             pipeline.output_moderation_handler = handler
             result = list(pipeline._handle_output_moderation_chunk("next-token"))
-            assert len(result) == 1
+            assert result == []
             assert handler.buffer == "next-token"
 
 
