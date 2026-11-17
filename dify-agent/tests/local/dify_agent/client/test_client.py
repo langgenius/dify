@@ -136,6 +136,11 @@ class DisconnectingAsyncStream(httpx.AsyncByteStream):
 
     def __init__(self, *chunks: str) -> None:
         self.chunks = [chunk.encode() for chunk in chunks]
+        self.closed = False
+
+    @override
+    async def aclose(self) -> None:
+        self.closed = True
 
     @override
     async def __aiter__(self) -> AsyncIterator[bytes]:
@@ -357,19 +362,22 @@ def test_cancel_run_and_wait_sync_replays_when_cursor_already_points_to_cancelle
 
 
 def test_cancel_run_and_wait_async_returns_cancelled_terminal() -> None:
+    stream = DisconnectingAsyncStream(_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+
     def handler(request: httpx.Request) -> httpx.Response:
         if request.method == "POST":
             return httpx.Response(202, json={"run_id": "run-1", "status": "cancelled"})
         if request.url.path == "/runs/run-1":
             return httpx.Response(200, json=_run_status_json("running"))
         assert request.url.params["after"] == "1-0"
-        return httpx.Response(200, content=_event_frame(RunCancelledEvent(id="2-0", run_id="run-1")))
+        return httpx.Response(200, stream=stream)
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
         event = await client.cancel_run_and_wait("run-1", after="1-0")
         assert event.type == "run_cancelled"
+        assert stream.closed
         await http_client.aclose()
 
     asyncio.run(scenario())
@@ -1002,19 +1010,40 @@ def test_malformed_sse_frame_does_not_reconnect() -> None:
 
 
 def test_async_stream_events_yields_terminal_event() -> None:
-    body = _event_frame(_run_succeeded_event())
+    stream = DisconnectingAsyncStream(_event_frame(_run_succeeded_event()))
 
     def handler(_request: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, content=body)
+        return httpx.Response(200, stream=stream)
 
     async def scenario() -> None:
         http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
         client = Client(base_url="http://testserver", async_http_client=http_client)
 
-        events = [event async for event in client.stream_events("run-1")]
-
-        assert [event.type for event in events] == ["run_succeeded"]
+        events = client.stream_events("run-1")
+        try:
+            assert (await anext(events)).type == "run_succeeded"
+            assert stream.closed
+            with pytest.raises(StopAsyncIteration):
+                _ = await anext(events)
+        finally:
+            await events.aclose()
         await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_closes_response_when_the_iterator_is_closed() -> None:
+    stream = DisconnectingAsyncStream(_event_frame(RunStartedEvent(id="1-0", run_id="run-1")))
+    transport = httpx.MockTransport(lambda _request: httpx.Response(200, stream=stream))
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            events = client.stream_events("run-1")
+            assert (await anext(events)).type == "run_started"
+            assert not stream.closed
+            await events.aclose()
+            assert stream.closed
 
     asyncio.run(scenario())
 

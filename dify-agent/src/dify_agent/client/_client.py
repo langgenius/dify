@@ -15,7 +15,8 @@ import asyncio
 import inspect
 import json
 import time
-from collections.abc import AsyncIterator, Callable, Iterator
+from collections.abc import AsyncGenerator, Callable, Iterator
+from contextlib import aclosing
 from json import JSONDecodeError
 from types import TracebackType
 from typing import Any, Self, TypeVar, cast
@@ -645,7 +646,7 @@ class Client:
         until_terminal: bool = True,
         timeout_seconds: float | None = None,
         should_stop: Callable[[], bool] | None = None,
-    ) -> AsyncIterator[RunEvent]:
+    ) -> AsyncGenerator[RunEvent]:
         """Yield typed events from SSE with cursor-based reconnect.
 
         The initial cursor is ``after`` or ``"0-0"``. After every yielded event
@@ -655,7 +656,7 @@ class Client:
         ``max_reconnects`` limits consecutive reconnects that deliver no event; the
         count resets whenever an event arrives, so a run that keeps progressing is
         not failed by periodic disconnects (for example proxy connection limits). By
-        default, ``until_terminal=True`` returns immediately after yielding a
+        default, ``until_terminal=True`` closes the response before yielding a
         succeeded, failed, or cancelled terminal event. With
         ``until_terminal=False``, iteration may consume the remainder of the current
         response, but after observing a terminal event it will not reconnect when that
@@ -668,36 +669,36 @@ class Client:
         deadline = time.monotonic() + timeout_seconds if timeout_seconds is not None else None
         while True:
             _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+            terminal_event: RunEvent | None = None
             try:
-                async for event in self._stream_events_once(
-                    run_id,
-                    after=cursor,
-                    deadline=deadline,
-                    should_stop=should_stop,
-                ):
-                    if event.id is not None:
-                        cursor = event.id
-                    # The budget bounds consecutive failed connections; a delivered event proves the
-                    # stream is resuming from its cursor, so a long run may outlive many disconnects.
-                    reconnect_attempts = 0
-                    if event.type in _TERMINAL_EVENT_TYPES:
-                        terminal_event_seen = True
-                    yield event
-                    if until_terminal and terminal_event_seen:
-                        return
+                async with aclosing(
+                    self._stream_events_once(run_id, after=cursor, deadline=deadline, should_stop=should_stop)
+                ) as connection:
+                    async for event in connection:
+                        if event.id is not None:
+                            cursor = event.id
+                        # A delivered event proves that the reconnect made progress.
+                        reconnect_attempts = 0
+                        if event.type in _TERMINAL_EVENT_TYPES:
+                            terminal_event_seen = True
+                            if until_terminal:
+                                terminal_event = event
+                                break
+                        yield event
             except _ReconnectableStreamError as exc:
-                if terminal_event_seen:
-                    return
-                if not reconnect:
-                    raise exc.error from exc
-                reconnect_attempts = _next_reconnect_attempt(
-                    reconnect_attempts,
-                    max_reconnects=max_reconnects,
-                    error=exc.error,
-                )
-                _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
-                continue
+                if not terminal_event_seen:
+                    if not reconnect:
+                        raise exc.error from exc
+                    reconnect_attempts = _next_reconnect_attempt(
+                        reconnect_attempts,
+                        max_reconnects=max_reconnects,
+                        error=exc.error,
+                    )
+                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                    await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
+                    continue
+            if terminal_event is not None:
+                yield terminal_event
             if terminal_event_seen:
                 return
             if not reconnect:
@@ -823,7 +824,7 @@ class Client:
         after: str,
         deadline: float | None,
         should_stop: Callable[[], bool] | None,
-    ) -> AsyncIterator[RunEvent]:
+    ) -> AsyncGenerator[RunEvent]:
         """Open one SSE connection and yield events until it ends or fails."""
         try:
             async with self._get_async_http_client().stream(
