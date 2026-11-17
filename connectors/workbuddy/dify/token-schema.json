@@ -1,0 +1,31 @@
+{
+  "title": "连接 Dify",
+  "title_en": "Connect Dify",
+  "description": "填写你的 Dify 地址和访问令牌。凭证仅保存在本机的 WorkBuddy 中。",
+  "description_en": "Enter your Dify host and an access token. They are stored only on this computer, in WorkBuddy.",
+  "docUrl": "https://docs.dify.ai",
+  "docLabel": "Dify 文档",
+  "docLabel_en": "Dify documentation",
+  "fields": [
+    {
+      "key": "DIFY_HOST",
+      "label": "Dify 地址",
+      "label_en": "Dify host",
+      "type": "text",
+      "required": true,
+      "placeholder": "dify.example.com",
+      "description": "只填域名，不要带 https:// 和路径。",
+      "description_en": "The host name only, without https:// or a path."
+    },
+    {
+      "key": "DIFY_TOKEN",
+      "label": "访问令牌",
+      "label_en": "Access token",
+      "type": "password",
+      "required": true,
+      "placeholder": "dpat_...",
+      "description": "建议使用个人访问令牌。工作区访问令牌只能查找和运行应用，不能管理插件、模型和工具凭据，也不能回复运行中的人工输入表单。",
+      "description_en": "A personal access token is recommended. A workspace access token can only find and run apps: it cannot manage plugins, models or tool credentials, or answer a human-input form in a paused run."
+    }
+  ]
+}
