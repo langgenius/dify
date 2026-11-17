@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from types import SimpleNamespace
-from typing import Any, TypedDict, Unpack
+from typing import TypedDict, Unpack
 
 from pytest_mock import MockerFixture
 
@@ -10,19 +10,23 @@ from core.datasource.entities.datasource_entities import (
     OnlineDriveDownloadFileRequest,
     OnlineDriveDownloadMessage,
 )
-from core.plugin.impl.datasource import PluginDatasourceManager
+from core.plugin.impl.datasource import (
+    PluginDatasourceListPayload,
+    PluginDatasourceManager,
+    PluginDatasourceSinglePayload,
+)
 
 
 class PluginDatasourceListRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when listing providers."""
 
-    transformer: Callable[[dict[str, Any]], dict[str, Any]]
+    transformer: Callable[[PluginDatasourceListPayload], PluginDatasourceListPayload]
 
 
 class PluginDatasourceSingleRequestKwargs(TypedDict):
     """Keyword arguments the manager passes when resolving one provider."""
 
-    transformer: Callable[[dict[str, Any]], dict[str, Any]]
+    transformer: Callable[[PluginDatasourceSinglePayload], PluginDatasourceSinglePayload]
 
 
 def _datasource_provider(name: str = "provider") -> SimpleNamespace:
@@ -46,18 +50,25 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: dict[str, Any] = {
-                "data": [
-                    {
-                        "declaration": {
-                            "identity": {"name": "remote"},
-                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
+            payload = PluginDatasourceListPayload.model_validate(
+                {
+                    "data": [
+                        {
+                            "declaration": {
+                                "identity": {"name": "remote"},
+                                "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
+                            }
                         }
-                    }
-                ]
-            }
+                    ]
+                }
+            )
             transformed = transformer(payload)
-            assert transformed["data"][0]["declaration"]["datasources"][0]["output_schema"] == {"resolved": True}
+            assert transformed.data is not None
+            declaration = transformed.data[0].declaration
+            assert declaration is not None
+            datasources = declaration.datasources
+            assert datasources is not None
+            assert datasources[0].output_schema == {"resolved": True}
             return [provider]
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -81,16 +92,18 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: dict[str, Any] = {
-                "data": [
-                    {
-                        "declaration": {
-                            "identity": {"name": "remote"},
-                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
+            payload = PluginDatasourceListPayload.model_validate(
+                {
+                    "data": [
+                        {
+                            "declaration": {
+                                "identity": {"name": "remote"},
+                                "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/doc"}}],
+                            }
                         }
-                    }
-                ]
-            }
+                    ]
+                }
+            )
             transformer(payload)
             return [provider]
 
@@ -117,15 +130,22 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            payload: dict[str, Any] = {
-                "data": {
-                    "declaration": {
-                        "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
+            payload = PluginDatasourceSinglePayload.model_validate(
+                {
+                    "data": {
+                        "declaration": {
+                            "datasources": [{"identity": {"provider": "old"}, "output_schema": {"$ref": "#/x"}}]
+                        }
                     }
                 }
-            }
+            )
             transformed = transformer(payload)
-            assert transformed["data"]["declaration"]["datasources"][0]["output_schema"] == {"resolved": True}
+            assert transformed.data is not None
+            declaration = transformed.data.declaration
+            assert declaration is not None
+            datasources = declaration.datasources
+            assert datasources is not None
+            assert datasources[0].output_schema == {"resolved": True}
             return remote
 
         request_mock = mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -146,26 +166,37 @@ class TestPluginDatasourceManager:
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceListRequestKwargs]
         ) -> list[SimpleNamespace]:
             transformer = kwargs["transformer"]
-            payload: dict[str, Any] = {
-                "data": [
-                    {},
-                    {"declaration": {}},
-                    {"declaration": {"identity": {}, "datasources": [{"identity": {"provider": "old"}}]}},
-                    {
-                        "declaration": {
-                            "identity": {"name": "remote"},
-                            "datasources": [{"identity": {"provider": "old"}}],
-                        }
-                    },
-                ]
-            }
+            payload = PluginDatasourceListPayload.model_validate(
+                {
+                    "data": [
+                        {},
+                        {"declaration": {}},
+                        {"declaration": {"identity": {}, "datasources": [{"identity": {"provider": "old"}}]}},
+                        {
+                            "declaration": {
+                                "identity": {"name": "remote"},
+                                "datasources": [{"identity": {"provider": "old"}}],
+                            }
+                        },
+                    ]
+                }
+            )
             transformed = transformer(payload)
-            data = transformed["data"]
-            assert "declaration" not in data[0]
-            assert "datasources" not in data[1]["declaration"]
-            assert data[2]["declaration"]["datasources"][0]["identity"]["provider"] is None
-            assert data[3]["declaration"]["datasources"][0]["identity"]["provider"] == "remote"
-            assert "output_schema" not in data[3]["declaration"]["datasources"][0]
+            data = transformed.data
+            assert data is not None
+            assert data[0].declaration is None
+            declaration = data[1].declaration
+            assert declaration is not None
+            assert declaration.datasources is None
+            unnamed = data[2].declaration
+            assert unnamed is not None
+            assert unnamed.datasources is not None
+            assert unnamed.datasources[0].identity.provider is None
+            named = data[3].declaration
+            assert named is not None
+            assert named.datasources is not None
+            assert named.datasources[0].identity.provider == "remote"
+            assert "output_schema" not in named.datasources[0].model_fields_set
             return [provider]
 
         mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
@@ -180,17 +211,19 @@ class TestPluginDatasourceManager:
         manager = PluginDatasourceManager()
         resolver = mocker.patch("core.plugin.impl.datasource.resolve_dify_schema_refs")
         remote = _datasource_provider("provider")
-        seen: list[dict[str, Any]] = []
+        seen: list[PluginDatasourceSinglePayload] = []
 
         def fake_request(
             method: str, path: str, type_: object, **kwargs: Unpack[PluginDatasourceSingleRequestKwargs]
         ) -> SimpleNamespace:
             transformer = kwargs["transformer"]
-            empty: dict[str, Any] = {}
+            empty = PluginDatasourceSinglePayload.model_validate({})
             seen.append(transformer(empty))
-            no_declaration: dict[str, Any] = {"data": {}}
+            no_declaration = PluginDatasourceSinglePayload.model_validate({"data": {}})
             seen.append(transformer(no_declaration))
-            no_schema: dict[str, Any] = {"data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}}
+            no_schema = PluginDatasourceSinglePayload.model_validate(
+                {"data": {"declaration": {"datasources": [{"identity": {"provider": "old"}}]}}}
+            )
             seen.append(transformer(no_schema))
             return remote
 
@@ -198,9 +231,15 @@ class TestPluginDatasourceManager:
 
         manager.fetch_datasource_provider("tenant-1", "org/plugin/provider")
 
-        assert "data" not in seen[0]
-        assert "declaration" not in seen[1]["data"]
-        assert seen[2]["data"]["declaration"]["datasources"][0]["identity"]["provider"] == "provider"
+        assert seen[0].data is None
+        assert seen[1].data is not None
+        assert seen[1].data.declaration is None
+        populated = seen[2].data
+        assert populated is not None
+        declaration = populated.declaration
+        assert declaration is not None
+        assert declaration.datasources is not None
+        assert declaration.datasources[0].identity.provider == "provider"
         resolver.assert_not_called()
 
     def test_get_website_crawl_streaming(self, mocker: MockerFixture) -> None:

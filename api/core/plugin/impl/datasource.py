@@ -84,7 +84,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
             payload = PluginDatasourceListPayload.model_validate(json_response)
             for provider in payload.data or []:
                 declaration = provider.declaration
@@ -96,7 +96,7 @@ class PluginDatasourceManager(BasePluginClient):
                         # resolve refs
                         if output_schema := datasource.output_schema:
                             datasource.output_schema = resolve_dify_schema_refs(output_schema)
-            return payload.model_dump(exclude_unset=True)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -127,7 +127,7 @@ class PluginDatasourceManager(BasePluginClient):
         Fetch datasource providers for the given tenant.
         """
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceListPayload:
             payload = PluginDatasourceListPayload.model_validate(json_response)
             for provider in payload.data or []:
                 declaration = provider.declaration
@@ -139,7 +139,7 @@ class PluginDatasourceManager(BasePluginClient):
                         # resolve refs
                         if output_schema := datasource.output_schema:
                             datasource.output_schema = resolve_dify_schema_refs(output_schema)
-            return payload.model_dump(exclude_unset=True)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",
@@ -170,7 +170,7 @@ class PluginDatasourceManager(BasePluginClient):
 
         tool_provider_id = DatasourceProviderID(provider_id)
 
-        def transformer(json_response: dict[str, Any]) -> dict[str, Any]:
+        def transformer(json_response: dict[str, Any]) -> PluginDatasourceSinglePayload:
             payload = PluginDatasourceSinglePayload.model_validate(json_response)
             data = payload.data
             declaration = data.declaration if data is not None else None
@@ -180,7 +180,7 @@ class PluginDatasourceManager(BasePluginClient):
                     # resolve refs
                     if output_schema := datasource.output_schema:
                         datasource.output_schema = resolve_dify_schema_refs(output_schema)
-            return payload.model_dump(exclude_unset=True)
+            return payload
 
         response = self._request_with_plugin_daemon_response(
             "GET",
