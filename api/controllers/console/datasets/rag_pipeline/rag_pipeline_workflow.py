@@ -88,7 +88,7 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 logger = logging.getLogger(__name__)
 
-type PipelineGenerateResult = Mapping[str, Any] | Generator[str, None, None]
+type PipelineGenerateResult = Mapping[str, Any] | Generator[str]
 
 
 def _generate_pipeline(
