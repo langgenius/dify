@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url'
-import { cloudflare } from '@cloudflare/vite-plugin'
 import { openapi } from '@dify/openapi-content-mapper/vite'
 import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
@@ -10,15 +9,6 @@ import { nextStaticImageTestPlugin } from './plugins/vite/next-static-image-test
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
-// POC: opt into the Cloudflare Workers target without changing the default Node vinext build.
-const isCloudflare = process.env.VINEXT_PLATFORM === 'cloudflare'
-// vinext detects this plugin from the raw config, and `vinext-cloudflare deploy` scans this file's
-// source for a static `cloudflare(` call, so it must not live inside lazyPlugins() or a dynamic import.
-const cloudflarePlugin = isCloudflare
-  ? cloudflare({
-      viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
-    })
-  : undefined
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 
@@ -33,63 +23,60 @@ export default defineConfig(({ command, mode, isPreview }) => {
       // Match package.json's browserslist; these targets support native top-level await.
       target: ['chrome111', 'edge111', 'firefox128', 'safari16.4', 'ios16.4'],
     },
-    plugins: [
-      lazyPlugins(async () => {
-        const { default: react } = await import('@vitejs/plugin-react')
+    plugins: lazyPlugins(async () => {
+      const { default: react } = await import('@vitejs/plugin-react')
 
-        if (isTest) return [openapi(), nextStaticImageTestPlugin({ projectRoot }), react()]
+      if (isTest) return [openapi(), nextStaticImageTestPlugin({ projectRoot }), react()]
 
-        if (isStorybook) return [openapi(), react()]
+      if (isStorybook) return [openapi(), react()]
 
-        const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
-          await Promise.all([
-            import('@tailwindcss/vite'),
-            import('vinext'),
-            import('vite-plugin-inspect'),
-          ])
+      const [{ default: tailwindcss }, { default: vinext }, { default: Inspect }] =
+        await Promise.all([
+          import('@tailwindcss/vite'),
+          import('vinext'),
+          import('vite-plugin-inspect'),
+        ])
 
-        const inspector =
-          command === 'serve' && isPreview !== true
-            ? (await import('code-inspector-plugin')).codeInspectorPlugin({
-                bundler: 'vite',
-                behavior: { locate: true, defaultAction: 'locate' },
-              })
-            : undefined
+      const inspector =
+        command === 'serve' && isPreview !== true
+          ? (await import('code-inspector-plugin')).codeInspectorPlugin({
+              bundler: 'vite',
+              behavior: { locate: true, defaultAction: 'locate' },
+            })
+          : undefined
 
-        return [
-          openapi(),
-          i18nAnalysisPlugin({
-            adapters: [
-              { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
-              {
-                module: 'i18n/lib.server.ts',
-                exportName: 'useTranslation',
-                namespaceArgument: 0,
-                implementationFunctions: ['getI18nConfig'],
-              },
-              { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
-              {
-                module: 'app/route-metadata.ts',
-                exportName: 'getRouteMetadata',
-                namespaceArgument: 0,
-                selectorArgument: 1,
-              },
-            ],
-          }),
-          Inspect(),
-          inspector,
-          tailwindcss(),
-          react(),
-          vinext({ react: false }),
-          customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
-          // reactGrabOpenFilePlugin({
-          //   injectTarget: rootClientInjectTarget,
-          //   projectRoot,
-          // }),
-        ]
-      }),
-      isTest || isStorybook ? undefined : cloudflarePlugin,
-    ],
+      return [
+        openapi(),
+        i18nAnalysisPlugin({
+          adapters: [
+            { module: 'i18n/lib.client.ts', exportName: 'useTranslation', namespaceArgument: 0 },
+            {
+              module: 'i18n/lib.server.ts',
+              exportName: 'useTranslation',
+              namespaceArgument: 0,
+              implementationFunctions: ['getI18nConfig'],
+            },
+            { module: 'i18n/server.ts', exportName: 'getTranslation', namespaceArgument: 1 },
+            {
+              module: 'app/route-metadata.ts',
+              exportName: 'getRouteMetadata',
+              namespaceArgument: 0,
+              selectorArgument: 1,
+            },
+          ],
+        }),
+        Inspect(),
+        inspector,
+        tailwindcss(),
+        react(),
+        vinext({ react: false }),
+        customI18nHmrPlugin({ injectTarget: rootClientInjectTarget }),
+        // reactGrabOpenFilePlugin({
+        //   injectTarget: rootClientInjectTarget,
+        //   projectRoot,
+        // }),
+      ]
+    }),
     resolve: {
       tsconfigPaths: true,
       // Storybook's Next.js preset merges aliases as an object.
