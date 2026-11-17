@@ -5,6 +5,39 @@ default-model identities are not rewritten. Only a server-resolved SYSTEM
 shared-credit-pool invocation redirects; BYOK, provider-owned FREE and unmetered
 invocations retain their previous execution and settlement owners.
 
+## Regression samples are not a runtime version policy
+
+Freeze an official Source package UID and archive digest to make each regression
+reproducible. This does not introduce a global latest-version allowlist, require
+a tenant to upgrade before migration, or disable previously supported versions.
+Historical-version-specific regression work may be deferred without deleting
+its compatibility implementation or past evidence.
+
+Compatibility still needs proof of the actual installed identity, operation,
+schema, protocol/parameter behavior and credential owner. An immutable migration
+snapshot and route epoch protect a particular prepared operation; they are not a
+permanent/global requirement to equal a latest test UID. Unknown changed behavior
+is not proved compatible merely by sharing a model name or version family.
+
+The additive Anthropic0.3.41 and Tongyi0.2.27 profiles extend the existing reviewed
+families. Older profiles, their DTOs and published revision hashes are retained;
+the target entrypoints delegate existing/native calls to their prior owners.
+The four Anthropic0341 profiles cover Haiku4.5, Opus4.6/4.7 and Sonnet4.6. The
+fourteen Tongyi027 profiles cover the same eleven LLM, two embedding and one
+rerank identities listed in the historical V7 section below, with independent
+027 behavior/provenance evidence. TTS uses the existing reviewed generic identity
+capability rather than a new provider-version table. These code declarations
+neither publish a target package nor establish live audio/usage/billing parity.
+
+For an independent test tenant that has not been prepared, claimed, funded or
+migrated, perform any planned normal Source upgrade before adding it to a
+frozen migration cohort. Pre-admission intentionally freezes Source bindings.
+If such an unprepared fixture was enrolled prematurely, withdraw only that
+fixture through the normal Core/Billing configuration workflow, verify the
+unchanged legacy state, upgrade normally, then review and re-admit it. Never
+bypass admission inside a process, rewrite a prepared snapshot, silently change
+an App/provider/model, or count a native Tokener request as a forwarded regression.
+
 ## Versioned saved-model access policy
 
 A new reviewed mapping revision may declare `inventory_policy:

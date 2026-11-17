@@ -57,7 +57,7 @@ from services.entities.model_billing_mapping import SourceParameterContract as S
 from services.entities.model_billing_mapping import model_schema_digest as model_schema_digest  # noqa: PLC0414
 from services.entities.model_billing_migration import StableMigrationSourceProviderOwnership
 from services.entities.model_billing_tongyi_mapping import (
-    TONGYI_SOURCE_UID,
+    TONGYI_SOURCE_UIDS,
     SourceTongyiVariantMapping,
     TongyiSourceSettings,
     tongyi_source_operations,
@@ -1169,7 +1169,7 @@ def hosted_tongyi_source_fact(
     """
     if (
         str(ModelProviderID(provider)) != "langgenius/tongyi/tongyi"
-        or source_uid != TONGYI_SOURCE_UID
+        or source_uid not in TONGYI_SOURCE_UIDS
         or type(credentials) is not dict
     ):
         return None
@@ -1206,7 +1206,7 @@ def tongyi_source_variant_context(
         type(fact) is not HostedTongyiSourceFact
         or fact.provider != str(ModelProviderID(provider))
         or fact.plugin_unique_identifier != source_uid
-        or source_uid != TONGYI_SOURCE_UID
+        or source_uid not in TONGYI_SOURCE_UIDS
         or fact.endpoint_selector != "string_true"
         or fact.api_host_policy != "actual_absent_or_blank"
         or model_type not in {ModelType.LLM, ModelType.TEXT_EMBEDDING, ModelType.RERANK}

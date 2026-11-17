@@ -332,7 +332,51 @@ _REVIEWED_RUNTIME_CONTRACTS = (
         source_runtime_schema_digest="sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
     ),
 )
-_ALL_REVIEWED_CONTRACTS = _REVIEWED_CONTRACTS + _REVIEWED_RUNTIME_CONTRACTS
+# Actual 0.3.41 SDK metadata and reviewed new codec; live RPC is separately admitted.
+_REVIEWED_LATEST_CONTRACTS = (
+    AnthropicSourceContract(
+        "anthropic-0341-runtime-v2:claude-haiku-4-5-20251001",
+        "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+        "claude-haiku-4-5-20251001",
+        "sha256:c7e5b0f9602431161db734959e149350afb0090ade9897c09528033aea7b5815",
+        "claude-haiku-4-5-20251001",
+        "sha256:3482cf04a9dd2ea511588e8d6b592e25e445cde09c01c53a212cfe12bcbab5cf",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:f769655ca3d7838c4f4f7fd66c81a7473001cea03f9154393041160127efc4df",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0341-runtime-v2:claude-opus-4-6",
+        "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+        "claude-opus-4-6",
+        "sha256:e2fda6b4a05d8df82fe295b51837ef605647e573c87d7a8e9f618fd7e1d41dd1",
+        "claude-opus-4-6",
+        "sha256:71e4c0285fda6d7301e02452aa890eb300624c53a3e320c0723c24fb3bcb3d2f",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:bf40780b013430cb096cd3ad9cf5f28948f51fd142765a0b644161a842497da6",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0341-runtime-v2:claude-opus-4-7",
+        "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+        "claude-opus-4-7",
+        "sha256:5a65c61e12cd10e7e834200930f46795f5b22bf2022f2927366b2b9c787bd1c5",
+        "claude-opus-4-7",
+        "sha256:98917179f8ad6852b68500a5eeea8f1c13466e29bef9d5cf4d88e962c8e7e0b7",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:278d50b9b3ff92540ad5e32fcfec9423fd20b3746a8081bba7f9019a30a74965",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0341-runtime-v2:claude-sonnet-4-6",
+        "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+        "claude-sonnet-4-6",
+        "sha256:36e251b82da35664ba5e90fbf9e4738f7a15a2dd1158a36bbfccc287d3167fd4",
+        "claude-sonnet-4-6",
+        "sha256:a7352e9631c9b21e92305a8e60aff8c601bdb15701f552848f827946d44787a3",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+    ),
+)
+
+_ALL_REVIEWED_CONTRACTS = _REVIEWED_CONTRACTS + _REVIEWED_RUNTIME_CONTRACTS + _REVIEWED_LATEST_CONTRACTS
 
 
 def anthropic_source_marker(

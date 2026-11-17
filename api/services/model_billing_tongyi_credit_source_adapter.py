@@ -1,7 +1,8 @@
-"""Pure exact Tongyi0226 source factory, never runtime/release authority.
+"""Pure reviewed Tongyi source capability factory, not runtime authority.
 
-Pins bind the frozen dev15 STAGING_PACKAGE_CANDIDATE complete profile rows.
-Any candidate implementation/status change invalidates these pins and requires review.
+Old026 rows stay unchanged; new027 conformance rows bind the actual source and
+its separately derived codec. Neither sample means callers must be on latest.
+Any candidate implementation/status change invalidates only its own pins.
 Catalog and runtime pins are actual ee396 -> Core hashes, not SDK raw hashes.
 No registry, credential, configuration, network, money or storage I/O occurs.
 """
@@ -16,7 +17,7 @@ from typing import Never
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from services.entities.model_billing_mapping import SourceParameterContract, model_schema_digest
 from services.entities.model_billing_tongyi_mapping import (
-    TONGYI_SOURCE_UID,
+    TONGYI_SOURCE_UIDS,
     TongyiSourceSettings,
     tongyi_source_model_type,
 )
@@ -191,6 +192,164 @@ _REVIEWED_CONTRACTS = (
         algorithm_revision="1",
     ),
 )
+_REVIEWED_0227_CONTRACTS = (
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen-flash",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen-flash",
+        source_schema_digest="sha256:01076eeb97441093f831aeda1ae9d9e061af17c41d56f685245b606254055728",
+        source_runtime_schema_digest="sha256:01076eeb97441093f831aeda1ae9d9e061af17c41d56f685245b606254055728",
+        target_model="qwen-flash",
+        rules_digest="sha256:5643b7ab465f2073fab02004e52b653711c76b15d6b55be6e5abb56c53217c67",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen-max",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen-max",
+        source_schema_digest="sha256:b9f7f7ca313d9f569d67dfd533d87a96c27a9a6883428e7feb737fdd21a1685e",
+        source_runtime_schema_digest="sha256:b9f7f7ca313d9f569d67dfd533d87a96c27a9a6883428e7feb737fdd21a1685e",
+        target_model="qwen-max",
+        rules_digest="sha256:a97cde3cbb1f95bde9f7c19d1ad642549cfbfd9a546714a3927bf400b2bde906",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen-plus",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen-plus",
+        source_schema_digest="sha256:1af549f6d4494307b6a649e8f158b7b3eccc8b577646ca30eff2b4ffb3cf341e",
+        source_runtime_schema_digest="sha256:1af549f6d4494307b6a649e8f158b7b3eccc8b577646ca30eff2b4ffb3cf341e",
+        target_model="qwen-plus",
+        rules_digest="sha256:d2210b20db601b935b8a45061521f0407b73c6a63550f62a3f43e2f133b2b050",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen-plus-latest",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen-plus-latest",
+        source_schema_digest="sha256:3023532c5ded50d6390b98662440ff9c24d18db8dac913ed9733643d545eef40",
+        source_runtime_schema_digest="sha256:3023532c5ded50d6390b98662440ff9c24d18db8dac913ed9733643d545eef40",
+        target_model="qwen-plus-latest",
+        rules_digest="sha256:8867e7c2a4291ae60203343eec7de8bf8bfaf1b4f8692e504fc33a87eb864983",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3-vl-plus",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3-vl-plus",
+        source_schema_digest="sha256:73a4db323175d4dd5eaf798001e58747026758c7290a78b064ff159af9c2df9e",
+        source_runtime_schema_digest="sha256:73a4db323175d4dd5eaf798001e58747026758c7290a78b064ff159af9c2df9e",
+        target_model="qwen3-vl-plus",
+        rules_digest="sha256:1b8f5d556035bd2451fde41eda20410641815f742f314a048359c24389d83ca6",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.5-flash",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.5-flash",
+        source_schema_digest="sha256:302cd5c06134f726337a8556ce3801d130253369df0a3f52675d1a1481657c91",
+        source_runtime_schema_digest="sha256:302cd5c06134f726337a8556ce3801d130253369df0a3f52675d1a1481657c91",
+        target_model="qwen3.5-flash",
+        rules_digest="sha256:367d476337a1553aa8bcdec9571a181b38e2257bb5b831d69e87bcaddaf20d13",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.5-plus",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.5-plus",
+        source_schema_digest="sha256:cac46022dd48f0038e3ba70a19074c68798af9f8e93750612334cf8c294eaf29",
+        source_runtime_schema_digest="sha256:cac46022dd48f0038e3ba70a19074c68798af9f8e93750612334cf8c294eaf29",
+        target_model="qwen3.5-plus",
+        rules_digest="sha256:ccc21b5b5b6d4f1b7b09772ad7dbb6074a28d4c5ff89ea59d8dce405bd4a0477",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.6-flash",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.6-flash",
+        source_schema_digest="sha256:31fef27ab30db92f83d1c13b2dbf0673127bd791d5ac1d578043ea9287198a3f",
+        source_runtime_schema_digest="sha256:31fef27ab30db92f83d1c13b2dbf0673127bd791d5ac1d578043ea9287198a3f",
+        target_model="qwen3.6-flash",
+        rules_digest="sha256:ca3d18675969d99619c85d7b7d83adb887a067147012d4422cbaedda926bf877",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.6-plus",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.6-plus",
+        source_schema_digest="sha256:d741072e0bb712faf4bbe5dea17e2d2ae14aa90a99fc9b31802f246b95c5d376",
+        source_runtime_schema_digest="sha256:d741072e0bb712faf4bbe5dea17e2d2ae14aa90a99fc9b31802f246b95c5d376",
+        target_model="qwen3.6-plus",
+        rules_digest="sha256:db5d8bf8f1ae77023207ff601e806012c19dbbd1ef8d2dc8ebb8489e40f3a8a1",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.7-max",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.7-max",
+        source_schema_digest="sha256:57d0599fffbea60e082a200cb1e6ddfaa55faf600caadfae9ee60a943a46d22b",
+        source_runtime_schema_digest="sha256:57d0599fffbea60e082a200cb1e6ddfaa55faf600caadfae9ee60a943a46d22b",
+        target_model="qwen3.7-max",
+        rules_digest="sha256:14d3d298fa82554e02288eaef93559a7192bc300f12b0c8e6517cd2b6218b8cd",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3.7-plus",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3.7-plus",
+        source_schema_digest="sha256:218b2d7e7cde9b20bad802f1974f78373d999fc87606f72e8ac81ba994ab5755",
+        source_runtime_schema_digest="sha256:218b2d7e7cde9b20bad802f1974f78373d999fc87606f72e8ac81ba994ab5755",
+        target_model="qwen3.7-plus",
+        rules_digest="sha256:af0d8e40c2e5b078b05912c36a79addce6fca356882ed52c963d2acd1cc04bc4",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:text-embedding-v3",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="text-embedding-v3",
+        source_schema_digest="sha256:da344ffe6edb654b34668c14fd1bb7508d5e5309515cf235fd57c3a29fc6d4c3",
+        source_runtime_schema_digest="sha256:da344ffe6edb654b34668c14fd1bb7508d5e5309515cf235fd57c3a29fc6d4c3",
+        target_model="text-embedding-v3",
+        rules_digest="sha256:ed137e61c681472f5795e310762cbb02efc0d40c224079b6d6c4e9bcd85435da",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:text-embedding-v4",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="text-embedding-v4",
+        source_schema_digest="sha256:db2f60c67e60505860f6677f14c9c4cc5511be58a3fb8d4ecb8389edbd794452",
+        source_runtime_schema_digest="sha256:db2f60c67e60505860f6677f14c9c4cc5511be58a3fb8d4ecb8389edbd794452",
+        target_model="text-embedding-v4",
+        rules_digest="sha256:6a3f3178b2f159c8cb5cdc701b4edf38018b33ac249b811f94993302830c19cd",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+    TongyiCreditSourceContract(
+        profile_id="tongyi0227-native-v1:qwen3-rerank",
+        source_plugin_unique_identifier="langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
+        source_model="qwen3-rerank",
+        source_schema_digest="sha256:1b52444e737290163e2d7efc367c6883527205a21c28eefcff604dee17c10b68",
+        source_runtime_schema_digest="sha256:1b52444e737290163e2d7efc367c6883527205a21c28eefcff604dee17c10b68",
+        target_model="qwen3-rerank",
+        rules_digest="sha256:e6989a6775de1ae4612d452f9f3697e1cf0a08f4fbef57bf49cdf7acb1d351dd",
+        adapter_id="tongyi_credit_source_v1",
+        algorithm_revision="1",
+    ),
+)
+_ALL_REVIEWED_CONTRACTS = _REVIEWED_CONTRACTS + _REVIEWED_0227_CONTRACTS
+
 _MARKER_FIELDS = frozenset(
     {
         "schema_version",
@@ -223,7 +382,7 @@ def validate_tongyi_credit_source_identity(
         type(source_provider) is not str
         or source_provider != TONGYI_CREDIT_SOURCE_PROVIDER
         or type(source_plugin_unique_identifier) is not str
-        or source_plugin_unique_identifier != TONGYI_SOURCE_UID
+        or source_plugin_unique_identifier not in TONGYI_SOURCE_UIDS
         or type(source_model) is not str
         or type(target_model) is not str
         or source_model != target_model
@@ -271,7 +430,7 @@ def tongyi_credit_source_marker(
     model_type: ModelType,
     target_model: str,
 ) -> dict[str, object]:
-    if type(contract) is not TongyiCreditSourceContract or contract not in _REVIEWED_CONTRACTS:
+    if type(contract) is not TongyiCreditSourceContract or contract not in _ALL_REVIEWED_CONTRACTS:
         _deny()
     validate_tongyi_credit_source_identity(
         source_provider=source_provider,
@@ -318,7 +477,15 @@ def build_tongyi_credit_source_contract(
     )
     _settings(source_settings, source_model)
     actual = _schema_digest(source_schema, source_model)
-    contract = next((row for row in _REVIEWED_CONTRACTS if row.source_model == source_model), None)
+    contract = next(
+        (
+            row
+            for row in _ALL_REVIEWED_CONTRACTS
+            if row.source_model == source_model
+            and row.source_plugin_unique_identifier == source_plugin_unique_identifier
+        ),
+        None,
+    )
     if (
         contract is None
         or type(adapter_id) is not str
@@ -355,7 +522,7 @@ def restore_tongyi_credit_source_contract(
         or any(type(value) is not str for key, value in marker.items() if key != "schema_version")
     ):
         _deny()
-    contract = next((row for row in _REVIEWED_CONTRACTS if row.profile_id == marker["profile_id"]), None)
+    contract = next((row for row in _ALL_REVIEWED_CONTRACTS if row.profile_id == marker["profile_id"]), None)
     if contract is None:
         _deny()
     expected = tongyi_credit_source_marker(

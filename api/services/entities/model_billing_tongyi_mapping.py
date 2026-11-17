@@ -1,7 +1,8 @@
-"""Closed V7 Tongyi0226 local capability, separate from immutable V1–V6.
+"""Closed V7 Tongyi native capabilities, separate from immutable V1–V6.
 
-These values prove only a reviewed dev15 staging candidate contract. They authorize
-no installation, runtime route, credentials, registry publication or funding.
+Known026 and new027 samples preserve separate immutable behavior/provenance
+contracts. This is not a business requirement to install the current latest.
+They authorize no installation, runtime route, credentials or funding alone.
 """
 
 from dataclasses import dataclass
@@ -13,6 +14,23 @@ from graphon.model_runtime.entities.model_entities import ModelType
 from services.entities.model_billing_mapping import MappingSource, MappingTarget, _StrictModel
 
 TONGYI_SOURCE_UID = "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64"
+TONGYI_0227_SOURCE_UID = "langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6"
+TONGYI_SOURCE_UIDS = frozenset({TONGYI_SOURCE_UID, TONGYI_0227_SOURCE_UID})
+
+
+def tongyi_source_profile_prefix(source_uid: str) -> str:
+    """Resolve known contract provenance without I/O or a must-be-latest rule.
+
+    A supported sample returns its immutable profile namespace; unknown
+    capability evidence raises ValueError and does not mutate prior records.
+    """
+    if source_uid == TONGYI_SOURCE_UID:
+        return "tongyi0226-native-v1:"
+    if source_uid == TONGYI_0227_SOURCE_UID:
+        return "tongyi0227-native-v1:"
+    raise ValueError("Unreviewed Tongyi source capability")
+
+
 TONGYI_SOURCE_LLM_MODELS = frozenset(
     {
         "qwen-flash",
@@ -99,7 +117,8 @@ class TongyiSourceAdapter(_StrictModel):
 class TongyiSourceVariant(_StrictModel):
     variant_id: str = Field(min_length=1)
     source_plugin_uid: Literal[
-        "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64"
+        "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64",
+        "langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
     ]
     source_settings: TongyiSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
@@ -117,7 +136,7 @@ class TongyiSourceVariant(_StrictModel):
             or set(self.operations) != tongyi_source_operations(self.target.model)
             or len(set(self.operations)) != len(self.operations)
             or len(set(self.conformance_fixture_ids)) != len(self.conformance_fixture_ids)
-            or self.source_profile_id != "tongyi0226-native-v1:" + self.target.model
+            or self.source_profile_id != tongyi_source_profile_prefix(self.source_plugin_uid) + self.target.model
         ):
             raise ValueError("Invalid bounded Tongyi source capability")
         return self
@@ -152,7 +171,8 @@ class SourceTongyiVariantSelection(_StrictModel):
     schema_version: Literal[7]
     variant_id: str = Field(min_length=1)
     source_plugin_uid: Literal[
-        "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64"
+        "langgenius/tongyi:0.2.26@6c75a6b95954ef3c97f0d3225bad7cbfbff7cdbc82d9425074aae121cc056a64",
+        "langgenius/tongyi:0.2.27@d9409c7d4e1ab9358330ee1c9897c29060f739657ec11e4aaab92f4265b376b6",
     ]
     source_settings: TongyiSourceSettings
     source_schema_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
