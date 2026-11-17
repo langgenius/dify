@@ -658,10 +658,10 @@ class AgentComposerService:
         return binding.agent_id if binding else None
 
     @classmethod
-    def get_workflow_candidates(
+    def prepare_workflow_candidates(
         cls, *, session: Session, tenant_id: str, app_id: str, node_id: str, user_id: str
-    ) -> dict[str, Any]:
-        """Slash-menu data source for the workflow Agent node composer (ENG-615)."""
+    ) -> ComposerCandidatesResponse:
+        """Prepare all SQL-backed slash-menu candidates before workspace tool discovery."""
         from services.agent.composer_candidates import previous_node_output_candidates, soul_candidates
 
         try:
@@ -702,11 +702,11 @@ class AgentComposerService:
             dataset_lookup=lambda ids: get_tenant_knowledge_dataset_rows(
                 session=session, tenant_id=tenant_id, dataset_ids=ids
             ),
-            workspace_tools_loader=lambda: cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id),
+            workspace_tools_loader=list,
         )
         truncated = truncated or soul_truncated
 
-        response = ComposerCandidatesResponse(
+        return ComposerCandidatesResponse(
             variant=ComposerVariant.WORKFLOW,
             allowed_node_job_candidates={
                 "previous_node_outputs": previous_outputs,
@@ -718,7 +718,28 @@ class AgentComposerService:
             allowed_soul_candidates=soul_lists,
             truncated=truncated,
         )
-        return response.model_dump(mode="json")
+
+    @staticmethod
+    def attach_workflow_candidate_tools(
+        response: ComposerCandidatesResponse, tools: list[dict[str, object]]
+    ) -> ComposerCandidatesResponse:
+        """Append the provider candidates after applying the shared per-list cap."""
+        from services.agent.composer_candidates import MAX_CANDIDATES_PER_LIST
+
+        response.allowed_soul_candidates["dify_tools"] = tools[:MAX_CANDIDATES_PER_LIST]
+        response.truncated = response.truncated or len(tools) > MAX_CANDIDATES_PER_LIST
+        return response
+
+    @classmethod
+    def get_workflow_candidates(
+        cls, *, session: Session, tenant_id: str, app_id: str, node_id: str, user_id: str
+    ) -> dict[str, Any]:
+        """Keep the legacy candidate entry point available to existing callers."""
+        response = cls.prepare_workflow_candidates(
+            session=session, tenant_id=tenant_id, app_id=app_id, node_id=node_id, user_id=user_id
+        )
+        tools = cls._workspace_dify_tools(tenant_id=tenant_id, user_id=user_id)
+        return cls.attach_workflow_candidate_tools(response, tools).model_dump(mode="json")
 
     # ── candidates IO helpers (ENG-615) ──────────────────────────────────────
 

@@ -5053,6 +5053,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5070,6 +5072,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5094,6 +5098,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5110,6 +5116,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5134,6 +5142,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5156,6 +5166,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -5180,6 +5192,8 @@ Submit human input form preview for workflow
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13223,6 +13237,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Return the Composer state for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13240,6 +13256,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13264,6 +13282,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/candidates
+**Return candidates for the admitted workflow or snippet node**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13279,6 +13299,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/copy-from-roster
+**Copy the admitted node’s roster Agent into an inline Agent**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13303,6 +13325,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/impact
+**Return the number of workflow nodes using the selected snapshot**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13324,6 +13348,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/save-to-roster
+**Save the admitted workflow or snippet node’s configuration**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -13348,6 +13374,8 @@ Returns an SSE event stream with loop progress and results.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /snippets/{snippet_id}/workflows/draft/nodes/{node_id}/agent-composer/validate
+**Validate the configuration for the admitted workflow or snippet**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
