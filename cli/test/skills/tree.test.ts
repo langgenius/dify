@@ -200,3 +200,12 @@ describe('skills/difyctl tree', async () => {
     }
   })
 })
+
+describe('skill MCP page', () => {
+  it('says what an empty workspace list means and not to guess an id', async () => {
+    const page = await readFile(join(SKILL_DIR, 'references/mcp.md'), 'utf8')
+    const reach = page.split('\n').find((line) => line.startsWith('- **Reach.**')) ?? ''
+    expect(reach).toMatch(/empty workspace list/)
+    expect(reach).toMatch(/do not guess/i)
+  })
+})
