@@ -14,7 +14,7 @@ from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_manager import ToolManager
 from models.provider_ids import ToolProviderID
 from services.credentials.query import CredentialQuery, ToolCredentialRecord
-from services.workflow.tool_credentials import resolve_tool_credential_root
+from services.workflow.tool_credential_validation import resolve_tool_credential_root
 from services.workflow_test_credentials import (
     BuilderScope,
     BuilderTestMembershipQuery,

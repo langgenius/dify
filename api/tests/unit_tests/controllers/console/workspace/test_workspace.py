@@ -202,9 +202,13 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
     effects.prepare.return_value = WorkspaceCreation("workspace", "My workspace", "key", 123, 0, {})
     monkeypatch.setattr(account_domain.provisioning, "_effects", effects)
     services = SimpleNamespace(
-        workspaces=SimpleNamespace(provisioning=account_domain.provisioning),
+        workspaces=SimpleNamespace(
+            provisioning=account_domain.provisioning,
+            queries=create_autospec(WorkspaceQueryService, instance=True),
+        ),
         accounts=SimpleNamespace(profile=AccountProfileService(accounts=account_domain.repository)),
     )
+    services.workspaces.queries.list_for_account.return_value = ()
     monkeypatch.setattr(controller, "application_services", lambda: services)
     monkeypatch.setattr(account_controller, "application_services", lambda: services)
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
@@ -255,12 +259,19 @@ def test_cloud_workspace_activation_accepts_workspace_less_accounts_with_csrf(
         assert profile_data["first_workspace_created_at"] == activation_data["first_workspace_created_at"]
         assert profile_data["has_owned_tenant"] is True
         assert profile_data["has_tenant"] is True
+        admitted = client.get("/console/api/workspaces", base_url="https://console.example.com", headers=headers)
+        assert admitted.status_code == 200
     else:
         effects.prepare.assert_not_called()
     persisted = account_domain.repository.get(account.id)
     assert persisted is not None
-    assert persisted.initialized_at is None
-    if scenario != "success":
+    if scenario == "success":
+        assert persisted.status == AccountStatus.ACTIVE
+        assert persisted.initialized_at is not None
+        assert persisted.initialized_at == persisted.first_workspace_created_at
+    else:
+        assert persisted.status == (AccountStatus.BANNED if scenario == "banned" else AccountStatus.UNINITIALIZED)
+        assert persisted.initialized_at is None
         assert persisted.first_workspace_created_at is None
 
 

@@ -728,6 +728,7 @@ export function resetDetailPageFixture() {
     if (url.endsWith('/features'))
       return Response.json(
         zGetFeaturesResponse.parse({
+          end_user_auth_enabled: false,
           billing: { subscription: { plan: mocks.supportPlan } },
         }),
       )

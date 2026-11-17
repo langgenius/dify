@@ -1481,6 +1481,7 @@ class Message(TypeBase):
         Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        Index("message_app_workflow_run_idx", "app_id", "workflow_run_id", "conversation_id"),
         Index("message_app_mode_idx", "app_mode"),
         Index("message_created_at_id_idx", "created_at", "id"),
     )
@@ -2309,7 +2310,7 @@ class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
-        sa.Index("upload_file_tenant_idx", "tenant_id"),
+        sa.Index("upload_file_owner_idx", "tenant_id", "created_by_role", "created_by"),
     )
 
     # NOTE: The `id` field is generated within the application to minimize extra roundtrips

@@ -58,9 +58,10 @@ export const organizationContact = {
   im_providers: [],
 }
 export function resetContactApi() {
-  contactApi.features
-    .mockReset()
-    .mockResolvedValue({ ...zGetFeaturesResponse.parse({}), im_centrally_managed: true })
+  contactApi.features.mockReset().mockResolvedValue({
+    ...zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
+    im_centrally_managed: true,
+  })
   contactApi.contacts.mockReset().mockResolvedValue({ data: [], total: 7, page: 1, limit: 1 })
   contactApi.options
     .mockReset()

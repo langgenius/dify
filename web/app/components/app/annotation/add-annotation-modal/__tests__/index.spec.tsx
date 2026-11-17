@@ -177,7 +177,10 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   expect(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   expect(submit()).toBeDisabled()
   api.features.mockResolvedValue(
-    zGetFeaturesResponse.parse({ annotation_quota_limit: { size: 0, limit: 10 } }),
+    zGetFeaturesResponse.parse({
+      end_user_auth_enabled: false,
+      annotation_quota_limit: { size: 0, limit: 10 },
+    }),
   )
   await user.click(retry)
   await waitFor(() => expect(submit()).toBeEnabled())

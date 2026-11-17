@@ -36,6 +36,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': async () =>
         (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
+          end_user_auth_enabled: false,
           is_allow_transfer_workspace: true,
         }),
       'workspaces.current.members.get': membersRequest,

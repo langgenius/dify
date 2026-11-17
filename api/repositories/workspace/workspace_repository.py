@@ -155,6 +155,15 @@ class WorkspaceRepository(
                     .where(Account.id == owner_id, Account.first_workspace_created_at.is_(None))
                     .values(first_workspace_created_at=tenant.created_at)
                 )
+                # The first workspace completes onboarding: a Cloud Account that
+                # registration left uninitialized becomes usable in this same commit.
+                # Other statuses keep their existing lifecycle owners, and retries
+                # (which skip creation) never rewrite an initialized Account.
+                session.execute(
+                    update(Account)
+                    .where(Account.id == owner_id, Account.status == AccountStatus.UNINITIALIZED)
+                    .values(status=AccountStatus.ACTIVE, initialized_at=tenant.created_at)
+                )
             return CreatedWorkspace(
                 tenant.id,
                 tenant.name,

@@ -230,7 +230,7 @@ class ConsoleAppRepository(ConsoleApps, DiscoveryApps, RelatedApps):
                 else:
                     moment = datetime.fromisoformat(time_value)
                     stmt = stmt.where(sa.or_(timestamp < moment, sa.and_(timestamp == moment, App.id > app_id)))
-            except (ValueError, TypeError, UnicodeError):
+            except (ValueError, TypeError):
                 raise ValueError("Invalid consumer App cursor.") from None
         if timestamp is not None:
             stmt = stmt.order_by(timestamp.desc())

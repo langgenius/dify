@@ -5,6 +5,7 @@ from contextlib import contextmanager
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
+from core.app.file_access import get_current_file_access_scope
 from core.db.session_factory import session_factory
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
@@ -49,15 +50,20 @@ def web_workflow_launch(
 
     The entity must retain its original EndUser identity and server-selected
     Workflow. Register or resume the Run atomically against current resource
-    ownership, then release admission locks before yielding. Admission failures
-    never start the worker; failed launches settle their unfinished Run. Other
-    invocation surfaces and disabled Account Passport deployments pass through.
+    ownership, then release admission locks before yielding. Upload grants come
+    only from the execution-local file scope bound by the caller that supplies
+    this EndUser; request inputs never grant access and Tenant scoping remains
+    mandatory. Admission failures never start the worker; failed launches settle
+    their unfinished Run. Other invocation surfaces and disabled Account Passport
+    deployments pass through.
     """
     if entity.invoke_from != InvokeFrom.WEB_APP or not dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED:
         yield
         return
     if not isinstance(user, EndUser) or user.id != entity.user_id:
         raise ValueError("Web execution requires its original EndUser identity.")
+    file_scope = get_current_file_access_scope()
+    granted_uploads = frozenset() if file_scope is None else file_scope.granted_upload_file_ids
     uploads, tools = execution_file_references((entity.inputs, entity.files))
     run = WorkflowRun(
         id=_run_id(entity),
@@ -91,6 +97,7 @@ def web_workflow_launch(
             account_id=user.account_id,
             conversation_id=conversation_id,
             upload_ids=uploads,
+            granted_upload_ids=granted_uploads,
             tool_ids=tools,
             resume=resume,
         )

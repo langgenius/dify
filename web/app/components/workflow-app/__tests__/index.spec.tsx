@@ -230,7 +230,12 @@ describe('WorkflowApp', () => {
     expect(fetchDraft).not.toHaveBeenCalled()
 
     await act(async () =>
-      resolveFeatures(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: false })),
+      resolveFeatures(
+        zGetFeaturesResponse.parse({
+          end_user_auth_enabled: false,
+          workflow_collaboration_enabled: false,
+        }),
+      ),
     )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('false')
@@ -256,7 +261,12 @@ describe('WorkflowApp', () => {
     expect(screen.getByLabelText('common.loading')).toBeInTheDocument()
     expect(screen.queryByRole('region', { name: 'Workflow canvas' })).not.toBeInTheDocument()
     await act(async () =>
-      resolveRetry(zGetFeaturesResponse.parse({ workflow_collaboration_enabled: true })),
+      resolveRetry(
+        zGetFeaturesResponse.parse({
+          end_user_auth_enabled: false,
+          workflow_collaboration_enabled: true,
+        }),
+      ),
     )
     expect(await screen.findByRole('region', { name: 'Workflow canvas' })).toBeInTheDocument()
     expect(screen.getByLabelText('Collaboration enabled')).toHaveTextContent('true')
