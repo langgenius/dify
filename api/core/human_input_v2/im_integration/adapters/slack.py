@@ -108,7 +108,7 @@ def _log_safe_error(message: str, *, extra: Mapping[str, JsonValue] | None = Non
 
 
 class _SlackLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
     _TIMESTAMP_PATTERN: ClassVar[re.Pattern[str]] = re.compile(r"^[0-9]+\.[0-9]+$")
 
@@ -197,7 +197,7 @@ class _SlackCardCodec(IMCardEventDecoder):
         id: str = Field(min_length=1)
 
     class _ButtonMetadata(BaseModel):
-        model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+        model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
         version: Literal[1]
         action_id: str = Field(min_length=1)

@@ -9,6 +9,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pytest
+from pydantic import JsonValue
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -362,12 +363,6 @@ def test_recognized_callback_rejects_missing_or_invalid_actor(invalid_actor: obj
         {"version": 1, "action_id": "approve"},
         {"version": 1, "action_id": "approve", "correlation_token": None},
         {"version": 1, "action_id": "approve", "correlation_token": 7},
-        {
-            "version": 1,
-            "action_id": "approve",
-            "correlation_token": "correlation",
-            "foreign": "member",
-        },
     ],
     ids=(
         "null",
@@ -381,7 +376,6 @@ def test_recognized_callback_rejects_missing_or_invalid_actor(invalid_actor: obj
         "missing-token",
         "null-token",
         "typed-token",
-        "extra-member",
     ),
 )
 def test_recognized_callback_rejects_invalid_metadata(invalid_metadata: object) -> None:
@@ -395,6 +389,23 @@ def test_recognized_callback_rejects_invalid_metadata(invalid_metadata: object) 
         match=r"^Microsoft Teams card event schema is invalid\.$",
     ):
         ms_teams.MSTeamsIMProviderAdapter.card_event_decoder().decode(_event(callback))
+
+
+def test_callback_reads_additive_metadata_without_changing_the_event() -> None:
+    callback = _callback_fixture()
+    decoder = ms_teams.MSTeamsIMProviderAdapter.card_event_decoder()
+    expected = decoder.decode(_event(callback))
+    value = callback["value"]
+    assert isinstance(value, dict)
+    metadata = value["__dify.human_input"]
+    assert isinstance(metadata, dict)
+    metadata["future_optional"] = None
+    extension: JsonValue = {"nested": {"optional": None}}
+    metadata["future_extension"] = extension
+    event = _event(callback)
+    original = event.payload
+    assert decoder.decode(event) == expected
+    assert event.payload == original
 
 
 def test_decoding_error_does_not_retain_callback_secrets_or_validation_exceptions() -> None:

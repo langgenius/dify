@@ -15,6 +15,7 @@ from lark_oapi.event.callback.model.p2_card_action_trigger import (
     P2CardActionTrigger,
     P2CardActionTriggerResponse,
 )
+from pydantic import JsonValue
 
 from core.human_input import ButtonStyle
 from core.human_input_v2.entities import IMProvider
@@ -1236,3 +1237,28 @@ def test_open_id_is_never_used_when_union_id_is_unavailable(
 
     with pytest.raises(IMCardEventDecodingError, match="schema is invalid"):
         feishu_lark._MSFeishuLarkCardCodec().decode(_event(callback, provider=provider, ingress_kind=ingress_kind))
+
+
+@pytest.mark.parametrize(
+    ("provider", "ingress_kind"),
+    [(IMProvider.FEISHU, IMEventIngressKind.WEBHOOK), (IMProvider.LARK, IMEventIngressKind.STREAM)],
+)
+def test_callback_reads_additive_metadata_without_changing_the_event(
+    provider: IMProvider, ingress_kind: IMEventIngressKind
+) -> None:
+    callback = _synthetic_marked_callback()
+    decoder = feishu_lark.FeishuIMProviderAdapter.card_event_decoder()
+    expected = decoder.decode(_event(callback, provider=provider, ingress_kind=ingress_kind))
+    value = _callback_action(callback)["value"]
+    assert isinstance(value, dict)
+    metadata = value[_DIFY_ACTION_MARKER]
+    assert isinstance(metadata, dict)
+    extension: JsonValue = {"nested": {"optional": None}}
+    value["future_optional"] = None
+    value["future_value"] = extension
+    metadata["future_optional"] = None
+    metadata["future_metadata"] = extension
+    event = _event(callback, provider=provider, ingress_kind=ingress_kind)
+    original = event.payload
+    assert decoder.decode(event) == expected
+    assert event.payload == original

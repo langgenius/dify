@@ -253,7 +253,7 @@ class _UserListResponse(_ProviderResponse):
 
 
 class _DingTalkLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
     # version of the locator
     v: Literal[1]
