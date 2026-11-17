@@ -19,9 +19,14 @@ type AppListSortBy = NonNullable<AppListQuery['sort_by']>
 type AppSortFilterProps = {
   value: AppListSortBy
   onChange: (value: AppListSortBy) => void
+  excludeLastModified?: boolean
 }
 
-export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
+export function AppSortFilter({
+  value,
+  onChange,
+  excludeLastModified = false,
+}: AppSortFilterProps) {
   const { t } = useTranslation(['app'])
   const sortLabelId = useId()
 
@@ -36,12 +41,15 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
       label: t(($) => $['studio.sort.earliestCreated'], { ns: 'app' }),
     },
   ] satisfies Array<{ value: AppListSortBy; label: string }>
+  const items = excludeLastModified
+    ? options.filter((option) => option.value !== 'last_modified')
+    : options
 
   const sortByLabel = t(($) => $['studio.sort.sortBy'], { ns: 'app' })
 
   return (
     <Select<AppListSortBy>
-      items={options}
+      items={items}
       value={value}
       onValueChange={(nextValue) => {
         if (nextValue !== null) onChange(nextValue)
@@ -61,7 +69,7 @@ export function AppSortFilter({ value, onChange }: AppSortFilterProps) {
         </span>
       </SelectTrigger>
       <SelectContent>
-        {options.map((option) => (
+        {items.map((option) => (
           <SelectItem<AppListSortBy> key={option.value} value={option.value}>
             <SelectItemText>{option.label}</SelectItemText>
             <SelectItemIndicator />

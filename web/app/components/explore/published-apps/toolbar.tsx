@@ -40,7 +40,7 @@ export default function PublishedAppsToolbar({
         </SegmentedControlItem>
       </SegmentedControl>
       <AppTypeFilter value={category} onValueChange={onCategoryChange} />
-      <AppSortFilter value={sortBy} onChange={onSortChange} />
+      <AppSortFilter value={sortBy} onChange={onSortChange} excludeLastModified />
     </div>
   )
 }
