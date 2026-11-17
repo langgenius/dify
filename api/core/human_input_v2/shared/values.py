@@ -45,18 +45,12 @@ class NormalizedEmail:
 class DeploymentScope:
     """Deployment-wide owner scope used by EE Organization contacts."""
 
-    def to_primitive(self) -> dict[str, str]:
-        return {"kind": "deployment"}
-
 
 @dataclass(frozen=True, slots=True)
 class WorkspaceScope:
     """Workspace scope whose id is the corresponding Dify Tenant.id."""
 
     id: TenantId
-
-    def to_primitive(self) -> dict[str, str]:
-        return {"kind": "workspace", "id": self.id}
 
 
 type DirectoryScope = DeploymentScope | WorkspaceScope

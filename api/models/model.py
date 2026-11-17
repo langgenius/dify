@@ -378,6 +378,11 @@ class DifySetup(TypeBase):
 
     version: Mapped[str] = mapped_column(String(255), nullable=False)
     instance_id: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
+    # Provider-specific reference to the provisioned deployment credential key:
+    # local stores the RSA public-key PEM used to verify the stored private key;
+    # Azure Key Vault stores the logical key name (versions live in ciphertext envelopes).
+    # None means provisioning has not persisted a reference yet.
+    credential_encryption_key_ref: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
     install_reported_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     last_heartbeat_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
     setup_at: Mapped[datetime] = mapped_column(

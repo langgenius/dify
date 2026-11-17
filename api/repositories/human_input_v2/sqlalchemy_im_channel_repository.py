@@ -303,6 +303,15 @@ class DeploymentIMChannelReader(_OwnerBoundIMChannelReader):
     def __init__(self, session: Session) -> None:
         super().__init__(session, _DEPLOYMENT_OWNER_KEY)
 
+    def get_for_update(self) -> IMChannel | None:
+        """Lock the current deployment Channel before binding mutation; replacement/deletion serialize here."""
+        record = self._session.scalar(
+            sa.select(HumanInputIMChannel)
+            .where(HumanInputIMChannel.owner_key == _DEPLOYMENT_OWNER_KEY)
+            .with_for_update()
+        )
+        return _channel_from_record(record) if record is not None else None
+
 
 class DeploymentIMChannelWriter(_OwnerBoundIMChannelWriter):
     """Write the single deployment-owned IM Channel without actor metadata."""

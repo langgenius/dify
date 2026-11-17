@@ -59,7 +59,7 @@ from models.account import Account, TenantAccountJoin, TenantAccountRole
 from models.enums import CreatorUserRole
 from models.human_input_v2 import HumanInputIMBinding, HumanInputIMChannel, HumanInputIMSyncRun
 from models.model import UploadFile
-from repositories.human_input_v2.contact import Contact, ContactType
+from repositories.human_input_v2.contact import Contact, ContactType, OrganizationContact
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId
 from repositories.human_input_v2.im_identity_repository import IMIdentity, IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.mappers import (
@@ -102,9 +102,9 @@ class _ReconciliationAlreadyTerminalError(Exception):
 class BoundContactReader(Protocol):
     """Contact reads whose owner was selected before reconciliation composition."""
 
-    def list_contacts(self, page: int, limit: int) -> Sequence[Contact]: ...
+    def list_contacts(self, page: int, limit: int) -> Sequence[Contact | OrganizationContact]: ...
 
-    def get_contact(self, contact_id: ContactId) -> Contact | None: ...
+    def get_contact(self, contact_id: ContactId) -> Contact | OrganizationContact | None: ...
 
 
 type BoundContactReaderFactory = Callable[[Session], BoundContactReader]
@@ -285,7 +285,7 @@ class IMChannelReconciliationService:
         session: Session,
         run_record: HumanInputIMSyncRun,
         plan: ReconciliationPlan,
-        contacts: tuple[Contact, ...],
+        contacts: tuple[Contact | OrganizationContact, ...],
         identities: SQLAlchemyIMIdentityRepository,
         avatar_files: dict[ProviderUserId, UploadFile],
     ) -> None:
@@ -514,7 +514,7 @@ class IMChannelReconciliationService:
     def _materialize_results(
         self,
         plan: ReconciliationPlan,
-        contacts: tuple[Contact, ...],
+        contacts: tuple[Contact | OrganizationContact, ...],
         identities: SQLAlchemyIMIdentityRepository,
         initial_identities: dict[IMIdentityId, IMIdentity],
         new_identity_ids: dict[NewIMIdentityRef, IMIdentityId],
@@ -780,8 +780,8 @@ class IMChannelReconciliationService:
         )
 
     @staticmethod
-    def _load_contacts(reader: BoundContactReader) -> tuple[Contact, ...]:
-        contacts: list[Contact] = []
+    def _load_contacts(reader: BoundContactReader) -> tuple[Contact | OrganizationContact, ...]:
+        contacts: list[Contact | OrganizationContact] = []
         page = 1
         while True:
             current_page = tuple(reader.list_contacts(page, _CONTACT_PAGE_LIMIT))
@@ -791,7 +791,7 @@ class IMChannelReconciliationService:
             page += 1
 
     @staticmethod
-    def _contact_states(contacts: tuple[Contact, ...]) -> tuple[ContactEmailMatchState, ...]:
+    def _contact_states(contacts: tuple[Contact | OrganizationContact, ...]) -> tuple[ContactEmailMatchState, ...]:
         return tuple(
             ContactEmailMatchState(
                 contact.id,
@@ -801,18 +801,19 @@ class IMChannelReconciliationService:
                 contact.avatar_file_id,
             )
             for contact in contacts
-            if contact.type is not ContactType.EXTERNAL and contact.email is not None
+            if (not isinstance(contact, Contact) or contact.type is not ContactType.EXTERNAL)
+            and contact.email is not None
         )
 
     @staticmethod
     def _require_contact_precondition(
-        contacts_by_id: dict[ContactId, Contact],
+        contacts_by_id: dict[ContactId, Contact | OrganizationContact],
         expected: ContactEmailMatchState,
     ) -> None:
         contact = contacts_by_id.get(expected.contact_id)
         if (
             contact is None
-            or contact.type is ContactType.EXTERNAL
+            or (isinstance(contact, Contact) and contact.type is ContactType.EXTERNAL)
             or contact.name != expected.display_name
             or contact.email != expected.email
             or contact.avatar_file_id != expected.avatar_file_id
