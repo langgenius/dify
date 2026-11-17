@@ -522,14 +522,17 @@ def test_account_login_urls_are_web_bootstrap_only(generated_specs: list[Path]):
         system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
 
         if spec_name == "web-openapi.json":
+            assert "account_login_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["account_login_url"]["anyOf"] == [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+            assert "console_web_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["console_web_url"]["type"] == "string"
             for field_name in ("account_login_url", "console_web_url"):
-                assert field_name in system_features_schema["required"]
-                assert system_features_schema["properties"][field_name]["anyOf"] == [
-                    {"type": "string"},
-                    {"type": "null"},
-                ]
                 assert field_name in schemas["WebAppParametersResponse"]["properties"]
                 assert field_name not in schemas["WebAccountProfileResponse"]["properties"]
+            assert schemas["WebAppParametersResponse"]["properties"]["console_web_url"]["type"] == "string"
         else:
             for field_name in ("account_login_url", "console_web_url"):
                 assert field_name not in system_features_schema["properties"]

@@ -44,7 +44,7 @@ def test_public_system_features_exposes_web_account_login_urls(
     assert payload == {
         **console_payload,
         "account_login_url": f"{console_url.rstrip('/')}/signin" if login_enabled else None,
-        "console_web_url": console_url.rstrip("/") if login_enabled else None,
+        "console_web_url": console_url.rstrip("/"),
     }
     assert "account_login_url" not in console_response.get_json()
     assert "console_web_url" not in console_response.get_json()
@@ -58,24 +58,30 @@ def test_web_system_features_preserves_shared_bootstrap(deployment_edition: Depl
     features = SystemFeatureModel(agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition)
 
     response = WebSystemFeatureResponse(
-        **features.model_dump(mode="json"), account_login_url=None, console_web_url=None
+        **features.model_dump(mode="json"),
+        account_login_url=None,
+        console_web_url="https://console.example.com",
     )
 
     assert response.model_dump(mode="json") == {
         **features.model_dump(mode="json"),
         "account_login_url": None,
-        "console_web_url": None,
+        "console_web_url": "https://console.example.com",
     }
 
 
-def test_web_system_features_schema_requires_nullable_login_urls() -> None:
+def test_web_system_features_schema_requires_login_urls() -> None:
     schema = WebSystemFeatureResponse.model_json_schema(mode="serialization")
     shared_properties = SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
 
+    assert "account_login_url" in schema["required"]
+    assert schema["properties"]["account_login_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "default" not in schema["properties"]["account_login_url"]
+    assert "console_web_url" in schema["required"]
+    assert schema["properties"]["console_web_url"]["type"] == "string"
+    assert "anyOf" not in schema["properties"]["console_web_url"]
+    assert "default" not in schema["properties"]["console_web_url"]
     for field_name in ("account_login_url", "console_web_url"):
-        assert field_name in schema["required"]
-        assert schema["properties"][field_name]["anyOf"] == [{"type": "string"}, {"type": "null"}]
-        assert "default" not in schema["properties"][field_name]
         assert field_name not in shared_properties
 
 

@@ -18,10 +18,10 @@ class WebSystemFeatureResponse(SystemFeatureModel):
         ),
     )
 
-    console_web_url: str | None = Field(
+    console_web_url: str = Field(
         description=(
-            "Web console base URL that hosts the Account login flow, preserving its deployment base path; "
-            "an empty string means the same-origin root. Null when Account login is disabled."
+            "Web console base URL, preserving its deployment base path; independent of whether Account login "
+            "is enabled. An empty string means the same-origin root."
         ),
     )
 
@@ -50,8 +50,8 @@ class SystemFeatureApi(Resource):
 
         Authentication configuration must be available before the authentication flow can be selected.
         No Account, App Passport, or app code is required. Return the configured
-        Account sign-in page and Web console endpoint URL, preserving their base path,
-        or null when disabled.
+        Account sign-in page, null when disabled, and the Web console endpoint URL,
+        independent of login enablement. Preserve deployment base paths.
         Read deployment settings without issuing credentials or changing state;
         feature-query failures propagate unchanged.
         """
@@ -62,8 +62,6 @@ class SystemFeatureApi(Resource):
                 "account_login_url": f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
                 if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
                 else None,
-                "console_web_url": dify_config.CONSOLE_WEB_URL.rstrip("/")
-                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-                else None,
+                "console_web_url": dify_config.CONSOLE_WEB_URL.rstrip("/"),
             },
         )

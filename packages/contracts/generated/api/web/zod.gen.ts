@@ -2527,7 +2527,7 @@ export const zWebAppParametersResponse = z.object({
   }),
   connection_requirements: z.array(zWebAppConnectionRequirement),
   connection_revision: z.string().nullable(),
-  console_web_url: z.string().nullable(),
+  console_web_url: z.string(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -2991,7 +2991,7 @@ export const zWebSystemFeatureResponse = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
-  console_web_url: z.string().nullable(),
+  console_web_url: z.string(),
   deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),

@@ -141,7 +141,7 @@ class TestAppParameterApi:
         assert result["allow_anonymous_end_user_auth"] is allow_anonymous
         assert result["account_login_enabled"] is login_enabled
         assert result["account_login_url"] == ("https://console.example.com/base/signin" if login_enabled else None)
-        assert result["console_web_url"] == ("https://console.example.com/base" if login_enabled else None)
+        assert result["console_web_url"] == "https://console.example.com/base"
         schema = WebAppParametersResponse.model_json_schema(mode="serialization")
         assert "account_login_url" in schema["required"]
         assert "console_web_url" in schema["required"]

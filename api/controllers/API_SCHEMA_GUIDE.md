@@ -66,15 +66,13 @@ Route excluded values to their actual owner:
 The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
 `WebSystemFeatureResponse`. Its required nullable `account_login_url` lets anonymous
 WebApp clients discover the Account-origin sign-in page even when `/account/profile`
-returns 401. Its required nullable `console_web_url` also exposes the Web console base
-endpoint that hosts that login flow, so existing WebApp clients can keep using the
-ready-to-use `account_login_url` while clients that own the login route consume the
-console base directly. Both are derived only from `CONSOLE_WEB_URL`
-and `WEBAPP_ACCOUNT_PASSPORT_ENABLED`; null means Account login is disabled.
-`account_login_url` appends the `/signin` route, while `console_web_url` is the
-console base URL with deployment base paths preserved and trailing slashes removed.
-An empty `console_web_url` means the same-origin root. The Console endpoint and
-shared `SystemFeatureModel` remain unchanged.
+returns 401; it is null when Account login is disabled. Its required `console_web_url`
+also exposes the Web console base endpoint that hosts that login flow. It comes from
+`CONSOLE_WEB_URL` regardless of `WEBAPP_ACCOUNT_PASSPORT_ENABLED`, preserves deployment
+base paths, removes trailing slashes, and uses an empty string for the same-origin root.
+Existing WebApp clients can keep using the ready-to-use `account_login_url`, while
+clients that own the login route consume the console base directly. The Console endpoint
+and shared `SystemFeatureModel` remain unchanged.
 
 This extension adds two scalars to the existing Web bootstrap request, no extra I/O,
 and no credentials. Existing SSR timing, caching ownership, and query failure behavior

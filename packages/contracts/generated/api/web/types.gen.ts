@@ -1504,7 +1504,7 @@ export type WebAppParametersResponse = {
   }
   connection_requirements: Array<WebAppConnectionRequirement>
   connection_revision: string | null
-  console_web_url: string | null
+  console_web_url: string
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1916,7 +1916,7 @@ export type WebSystemFeatureResponse = {
   account_login_url: string | null
   agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
-  console_web_url: string | null
+  console_web_url: string
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean
