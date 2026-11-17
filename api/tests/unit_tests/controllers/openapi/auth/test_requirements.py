@@ -44,6 +44,7 @@ from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
     CheckAppMode,
     CheckAppQuota,
+    CheckNamedWorkspaceMember,
     CheckPluginInstallSetting,
     CheckRBACPermission,
     CheckScope,
@@ -603,6 +604,7 @@ ROUTES: tuple[Route, ...] = (
         frozenset({Trait.ACCOUNT_PRIMARY, Trait.APP_SCOPED}),
     ),
     Route("apps.list", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY}), query="workspace_id={workspace_id}"),
+    Route("apps.list.everywhere", "GET", "/apps", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.list", "GET", "/workspaces", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.describe", "GET", "/workspaces/{workspace_id}", frozenset({Trait.ACCOUNT_PRIMARY})),
     Route("workspaces.switch", "POST", "/workspaces/{workspace_id}:switch", frozenset({Trait.ACCOUNT_PRIMARY})),
@@ -1515,7 +1517,18 @@ exception is the router's own answer: an external-SSO bearer is refused outside 
 MATRIX: dict[str, dict[Case, Expect]] = {
     "describe.account": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
     "workspaces.list": dict(_ACCOUNT_ONLY_NO_WORKSPACE),
-    "apps.list": dict(_ACCOUNT_MEMBER_NO_ROLE),
+    "apps.list": {
+        **_ACCOUNT_MEMBER_NO_ROLE,
+        # The one app list admits external SSO logins; outside enterprise their pipeline refuses them.
+        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+    },
+    # No workspace named: no membership check, so a non-member is admitted and lists only its own workspaces' apps.
+    "apps.list.everywhere": {
+        **_ACCOUNT_MEMBER_NO_ROLE,
+        Case.WRONG_SUBJECT: DENY_SSO_NEEDS_EE,
+        Case.NON_MEMBER: ADMIT,
+        Case.NON_MEMBER_AND_INSUFFICIENT_SCOPE: DENY_SCOPE,
+    },
     "workspaces.switch": dict(_ACCOUNT_MEMBER_NO_ROLE),
     # invite/remove check WORKSPACE_MEMBER_MANAGE; update_role checks WORKSPACE_ROLE_MANAGE
     # (matches check_member_permission's own add/remove vs update split)
@@ -1901,7 +1914,16 @@ DECLARED: dict[str, tuple[Requirement, ...]] = {
         ),
         CheckWorkspaceRole(_OWNER_ADMIN),
     ),
-    "apps.list": (CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)), *_REQ_ACCOUNT_APPS_READ_MEMBER[1:]),
+    "apps.list": (
+        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
+        CheckScope(Scope.APPS_READ),
+        CheckNamedWorkspaceMember(),
+    ),
+    "apps.list.everywhere": (
+        CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
+        CheckScope(Scope.APPS_READ),
+        CheckNamedWorkspaceMember(),
+    ),
     "workspaces.list": (
         CheckSubject(allowed=(AccountSubject, ResourceAccessSubject)),
         *_REQ_ACCOUNT_WORKSPACE_READ[1:],

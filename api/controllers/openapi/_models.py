@@ -339,7 +339,9 @@ class AppDescribeQuery(BaseModel):
 class AppListQuery(PageQuery):
     """mode is a closed enum of listable app types."""
 
-    workspace_id: UUIDStr
+    workspace_id: UUIDStr | None = Field(
+        None, description="Only the apps of this workspace; leave it out to list the apps of every workspace"
+    )
     mode: SupportedAppType | None = None
     name: str | None = Field(
         None,
