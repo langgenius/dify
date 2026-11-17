@@ -122,6 +122,7 @@ detect_differences() {
     FNR==NR {
         if (!/^[[:space:]]*#/ && !/^[[:space:]]*$/ && /=/) {
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
+            sub(/^export[[:space:]]+/, "", $1)
             key = $1
             value = substr($0, index($0,"=")+1)
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
@@ -132,6 +133,7 @@ detect_differences() {
     {
         if (!/^[[:space:]]*#/ && !/^[[:space:]]*$/ && /=/) {
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
+            sub(/^export[[:space:]]+/, "", $1)
             key = $1
             example_value = substr($0, index($0,"=")+1)
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", example_value)
@@ -272,16 +274,18 @@ sync_env_file() {
     cp .env "$new_env_file"
     awk -F= '
     FILENAME == ARGV[1] {
-        if (/^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/) {
+        if (/^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/) {
             key = $1
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+            sub(/^export[[:space:]]+/, "", key)
             existing[key] = 1
         }
         next
     }
-    /^[[:space:]]*[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/ {
+    /^[[:space:]]*(export[[:space:]]+)?[A-Za-z_][A-Za-z0-9_]*[[:space:]]*=/ {
         key = $1
         gsub(/^[[:space:]]+|[[:space:]]+$/, "", key)
+        sub(/^export[[:space:]]+/, "", key)
         if (!(key in existing)) {
             if (!added++) print "\n# New deployment inputs from .env.example"
             print $0
@@ -325,8 +329,8 @@ detect_removed_variables() {
     fi
 
     # Get keys from .env.example and .env, sorted for comm
-    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' .env.example | sort > "$temp_example_keys"
-    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' .env | sort > "$temp_current_keys"
+    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); sub(/^export[[:space:]]+/, "", $1); print $1}' .env.example | sort > "$temp_example_keys"
+    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); sub(/^export[[:space:]]+/, "", $1); print $1}' .env | sort > "$temp_current_keys"
 
     # Get keys from existing .env and check for removals
     local removed_vars=()

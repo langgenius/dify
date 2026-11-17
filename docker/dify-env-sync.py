@@ -86,7 +86,7 @@ def parse_env_file(path: Path) -> dict[str, str]:
             if "=" not in line:
                 continue
             key, _, value = line.partition("=")
-            key = key.strip()
+            key = re.sub(r"^export\s+", "", key.strip())
             if key:
                 variables[key] = value.strip()
     return variables
@@ -299,7 +299,7 @@ def sync_env_file(work_dir: Path, env_vars: dict[str, str]) -> None:
     shutil.copy2(work_dir / ".env", new_env_file)
     existing_keys = set(env_vars)
     added_count = 0
-    env_var_pattern = re.compile(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=")
+    env_var_pattern = re.compile(r"^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=")
 
     with (
         example_file.open(encoding="utf-8") as src,

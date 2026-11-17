@@ -1161,6 +1161,28 @@ class ComposeEnvironmentTests(unittest.TestCase):
         subprocess.run(command, check=True, capture_output=True)
         self.assertEqual((self.project / ".env").read_text(), "COMPOSE_PROFILES=custom\n")
 
+    def test_env_sync_preserves_exported_settings(self):
+        self.copy_template(".env.example", ".env.example")
+        env_file = self.project / ".env"
+        exported = "export COMPOSE_PROFILES=qdrant,postgresql,collaboration\n"
+        self.copy_template("dify-env-sync.sh", "dify-env-sync.sh")
+        commands = {
+            "shell": ["bash", "dify-env-sync.sh"],
+            "python": [sys.executable, str(DOCKER_DIR / "dify-env-sync.py")],
+        }
+        for name, command in commands.items():
+            with self.subTest(script=name):
+                env_file.write_text(exported)
+                subprocess.run(command, cwd=self.project, check=True, capture_output=True)
+                result = env_file.read_text()
+                self.assertTrue(result.startswith(exported))
+                self.assertEqual(result.count("COMPOSE_PROFILES="), 1)
+                self.assertIn("\nDIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=", result)
+
+                after_first_sync = env_file.read_bytes()
+                subprocess.run(command, cwd=self.project, check=True, capture_output=True)
+                self.assertEqual(env_file.read_bytes(), after_first_sync)
+
     def test_runtime_secrets_stay_in_their_service(self):
         self.copy_template(
             "envs/core-services/api.defaults",
