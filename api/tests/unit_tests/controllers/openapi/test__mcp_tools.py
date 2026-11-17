@@ -36,6 +36,7 @@ from controllers.openapi._mcp_tools import (
 )
 from controllers.openapi.auth.spec import Effect
 from extensions.ext_application_services import ApplicationServices
+from libs.oauth_bearer import extract_bearer
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -206,6 +207,15 @@ _PAUSED_FORM = {
 }
 
 
+@dataclasses.dataclass(frozen=True)
+class _Carrier:
+    headers: Mapping[str, str]
+
+
+def _authorization_headers(authorization: str | None) -> dict[str, str]:
+    return {} if authorization is None else {"Authorization": authorization}
+
+
 def _run(
     name: str,
     arguments: Mapping[str, object],
@@ -213,7 +223,14 @@ def _run(
     authorization: str | None = _BEARER,
     protocol_version: str = _LATEST,
 ):
-    return run_tool(name, arguments, authorization=authorization, trace_id="t1", protocol_version=protocol_version)
+    return run_tool(
+        name,
+        arguments,
+        authorization=authorization,
+        token=extract_bearer(_Carrier(headers=_authorization_headers(authorization))),
+        trace_id="t1",
+        protocol_version=protocol_version,
+    )
 
 
 def _text(result) -> str:
@@ -366,7 +383,7 @@ def test_wrong_argument_types_are_a_tool_error(openapi_app: Flask, arguments: di
 
 
 @pytest.mark.usefixtures("admitted_bearer")
-@pytest.mark.parametrize("arguments", [{"query": 3}, {"op": 3}, {"op": ""}])
+@pytest.mark.parametrize("arguments", [{"query": 3}, {"op": 3}])
 def test_find_with_wrong_argument_types_is_a_tool_error(openapi_app: Flask, arguments: dict[str, object]) -> None:
     with openapi_app.test_request_context():
         result = _run(FIND_TOOL, arguments)
@@ -540,3 +557,23 @@ def test_a_refused_lookup_runs_nothing(openapi_app: Flask, op_calls: list[OpCall
 
     assert result.isError is True
     assert op_calls == []
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.parametrize("arguments", [{"op": "", "query": "workspace"}, {"op": None, "query": "workspace"}])
+def test_find_with_an_empty_op_searches_by_query(openapi_app: Flask, arguments: dict[str, object]) -> None:
+    with openapi_app.test_request_context():
+        result = _run(FIND_TOOL, arguments)
+
+    assert result.isError is False
+    assert "get.workspace" in [item["op"] for item in json.loads(_text(result))["ops"]]
+
+
+def test_every_tool_has_a_description_and_the_call_tools_name_their_effect() -> None:
+    tools = {tool.name: tool for tool in tool_list()}
+
+    assert all(tool.description for tool in tools.values())
+    for call_tool in CallTool:
+        assert call_tool.effect.value in tools[call_tool].description
+    assert "cannot be undone" in tools[CallTool.DESTRUCTIVE].description
+    assert "cannot be undone" not in tools[CallTool.WRITE].description

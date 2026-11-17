@@ -16,6 +16,7 @@ from typing import Any, Final
 
 from flask import Response, request
 from flask_restx import Resource
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from controllers.openapi import openapi_ns
 from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER, OpCall, OpResult, call_op
@@ -23,10 +24,16 @@ from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, 
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, Unauthenticated, run_tool, tool_list
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_initialize, handle_ping, negotiate_protocol_version
+from libs.oauth_bearer import extract_bearer
+from services.dsl_content import DSL_MAX_SIZE
 
 PROTOCOL_VERSION_HEADER: Final = "MCP-Protocol-Version"
 JSON_MIMETYPE: Final = "application/json"
 ACCOUNT_OP: Final = "describe.account"
+_BODY_ENVELOPE_BYTES: Final = 1024 * 1024
+# The largest JSON op input is a DSL import (DSL_MAX_SIZE) wrapped in a tool call.
+MCP_MAX_BODY_BYTES: Final = DSL_MAX_SIZE + _BODY_ENVELOPE_BYTES
+_BODY_TOO_LARGE_MESSAGE: Final = "Request body too large"
 UNAUTHORIZED_BODY: Final = {"code": "unauthorized", "message": "invalid bearer", "status": HTTPStatus.UNAUTHORIZED}
 _PASSED_UPSTREAM_HEADERS: Final = ("Retry-After",)
 
@@ -35,15 +42,19 @@ class _LoginCheckFailed(Exception):  # noqa: N818
     """The login check hit a server error: the request answers with the operation's own status and body."""
 
     def __init__(self, result: OpResult) -> None:
+        """Postcondition: keeps the failed login check's ``result`` so the route can answer with it."""
         super().__init__("login check failed")
         self.result = result
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _Call:
+    """One parsed MCP request: its id, the request model, the caller's headers, and the negotiated protocol version."""
+
     request_id: int | str
     message: Any  # the concrete request model, e.g. ``mcp_types.ListToolsRequest``
     authorization: str | None
+    token: str | None
     trace_id: str | None
     protocol_version: str
 
@@ -54,10 +65,12 @@ type _Handler = Callable[[_Call], dict[str, Any]]
 def _json_response(
     body: Mapping[str, Any], status: int = HTTPStatus.OK, headers: Mapping[str, str] | None = None
 ) -> Response:
+    """Postcondition: a JSON response with ``body``, the given status and extra ``headers``."""
     return Response(json.dumps(body), status=status, mimetype=JSON_MIMETYPE, headers=dict(headers or {}))
 
 
 def _accepted() -> Response:
+    """Postcondition: a 202 response with no body."""
     return Response("", status=HTTPStatus.ACCEPTED)
 
 
@@ -76,16 +89,30 @@ def _check_login(call: _Call) -> None:
 
 
 def _initialize(call: _Call) -> dict[str, Any]:
+    """Precondition: ``call`` holds an ``initialize`` request, inside a Flask request.
+
+    Postcondition: the login check passed and the reply carries the negotiated version and the
+    instructions; raises ``Unauthenticated`` or ``_LoginCheckFailed`` from the check.
+    """
     _check_login(call)
     return success(call.request_id, handle_initialize(MCP_INSTRUCTIONS, call.message.params.protocolVersion))
 
 
 def _list_tools(call: _Call) -> dict[str, Any]:
+    """Precondition: ``call`` holds a ``tools/list`` request, inside a Flask request.
+
+    Postcondition: the login check passed and the reply lists the four tools; raises as ``_initialize`` does.
+    """
     _check_login(call)
     return success(call.request_id, mcp_types.ListToolsResult(tools=tool_list()))
 
 
 def _call_tool(call: _Call) -> dict[str, Any]:
+    """Precondition: ``call`` holds a ``tools/call`` request, inside a Flask request.
+
+    Postcondition: an INVALID_PARAMS error for a name that is not one of the four tools, else
+    the tool's result; raises ``Unauthenticated`` when the operation answers 401.
+    """
     params = call.message.params
     if params.name not in {tool.name for tool in tool_list()}:
         return failure(call.request_id, mcp_types.INVALID_PARAMS, f"Unknown tool: {params.name}")
@@ -93,6 +120,7 @@ def _call_tool(call: _Call) -> dict[str, Any]:
         params.name,
         params.arguments or {},
         authorization=call.authorization,
+        token=call.token,
         trace_id=call.trace_id,
         protocol_version=call.protocol_version,
     )
@@ -100,10 +128,12 @@ def _call_tool(call: _Call) -> dict[str, Any]:
 
 
 def _ping(call: _Call) -> dict[str, Any]:
+    """Postcondition: the empty ping result; no login check."""
     return success(call.request_id, handle_ping())
 
 
 def _method_not_found(call: _Call) -> dict[str, Any]:
+    """Postcondition: a METHOD_NOT_FOUND error for a method the route knows of but does not serve."""
     return failure(call.request_id, mcp_types.METHOD_NOT_FOUND, "Method not found")
 
 
@@ -116,10 +146,13 @@ _HANDLERS: Final[Mapping[type, _Handler]] = {
 
 
 def _unauthorized(error: Unauthenticated) -> Response:
+    """Postcondition: the 401 response with the fixed body and the challenge headers ``error`` carries."""
     return _json_response(UNAUTHORIZED_BODY, HTTPStatus.UNAUTHORIZED, error.headers)
 
 
 def _upstream_failure(error: _LoginCheckFailed) -> Response:
+    """Postcondition: the failed login check's status and JSON body (or an empty body when it had none),
+    with the ``Retry-After`` header when it sent one."""
     result = error.result
     headers = {name: result.headers[name] for name in _PASSED_UPSTREAM_HEADERS if name in result.headers}
     if not result.is_json:
@@ -129,17 +162,27 @@ def _upstream_failure(error: _LoginCheckFailed) -> Response:
 
 @openapi_ns.route("/mcp")
 class OpenApiMcpApi(Resource):
+    """The MCP endpoint: one JSON-RPC message per POST; it is not an operation and is not in the catalog."""
+
     def post(self):
         """Serve one MCP JSON-RPC message.
 
         Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
         (result, or error for an unsupported protocol version or tool name); 202 with no body for
         a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
-        any other unparsable message; 401 when the token is not real; the login check's own status
+        any other unparsable message; 413 with a JSON-RPC error when the body is above
+        ``MCP_MAX_BODY_BYTES`` (checked before the body is read and before any login check);
+        401 when the token is not real; the login check's own status
         when it answers a server error.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
-        body = request.get_json(silent=True)
+        request.max_content_length = MCP_MAX_BODY_BYTES
+        try:
+            body = request.get_json(silent=True)
+        except RequestEntityTooLarge:
+            return _json_response(
+                failure(None, mcp_types.INVALID_REQUEST, _BODY_TOO_LARGE_MESSAGE), HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+            )
         try:
             message = parse_message(body)
         except McpRequestError as error:
@@ -164,6 +207,7 @@ class OpenApiMcpApi(Resource):
             request_id=request_id,
             message=message.root,
             authorization=request.headers.get(AUTHORIZATION_HEADER),
+            token=extract_bearer(request),
             trace_id=request.headers.get(TRACE_ID_HEADER),
             protocol_version=protocol_version,
         )

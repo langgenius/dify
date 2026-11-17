@@ -16,6 +16,8 @@ JSONRPC_VERSION: Final = "2.0"
 _JSONRPC_KEY: Final = "jsonrpc"
 _METHOD_KEY: Final = "method"
 _ID_KEY: Final = "id"
+_RESULT_KEY: Final = "result"
+_ERROR_KEY: Final = "error"
 _DUMP_OPTIONS: Final = {"mode": "json", "by_alias": True, "exclude_none": True}
 
 _MCP_METHODS: Final = frozenset(
@@ -30,12 +32,14 @@ class McpRequestError(Exception):
     """A message that cannot be served, with the JSON-RPC error code that names why."""
 
     def __init__(self, code: int, message: str) -> None:
+        """Postcondition: ``code`` is the JSON-RPC error code and ``message`` its text, both kept."""
         super().__init__(message)
         self.code = code
         self.message = message
 
 
 def _is_request_id(value: Any) -> bool:
+    """Postcondition: True for an integer or a string (a bool is not an id), the types JSON-RPC allows here."""
     if isinstance(value, bool):
         return False
     return isinstance(value, int | str)
@@ -84,11 +88,17 @@ def parse_message(body: Any) -> mcp_types.ClientRequest | mcp_types.ClientNotifi
 
 
 def _require_request_id(value: Any) -> None:
+    """Postcondition: returns for a valid request id; raises ``McpRequestError`` with INVALID_REQUEST otherwise."""
     if not _is_request_id(value):
         raise McpRequestError(mcp_types.INVALID_REQUEST, "id must be an integer or a string")
 
 
 def _read_message(body: dict[str, Any]) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
+    """Precondition: ``body`` has a known MCP method and a valid id when it has one.
+
+    Postcondition: the body as a request model, else as a notification model; raises
+    ``McpRequestError`` with INVALID_PARAMS when neither fits.
+    """
     try:
         return mcp_types.ClientRequest.model_validate(body)
     except ValidationError:
@@ -104,7 +114,7 @@ def success(request_id: int | str, result: mcp_types.Result) -> dict[str, Any]:
     return {
         _JSONRPC_KEY: JSONRPC_VERSION,
         _ID_KEY: request_id,
-        "result": result.model_dump(**_DUMP_OPTIONS),
+        _RESULT_KEY: result.model_dump(**_DUMP_OPTIONS),
     }
 
 
@@ -114,7 +124,7 @@ def failure(request_id: int | str | None, code: int, message: str) -> dict[str, 
     return {
         _JSONRPC_KEY: JSONRPC_VERSION,
         _ID_KEY: request_id,
-        "error": error.model_dump(**_DUMP_OPTIONS),
+        _ERROR_KEY: error.model_dump(**_DUMP_OPTIONS),
     }
 
 

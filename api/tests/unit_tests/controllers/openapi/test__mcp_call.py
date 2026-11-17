@@ -31,6 +31,7 @@ _BEARER = "Bearer dfoa_admitted"
 _TRACE_ID = "trace-mcp-call"
 _OUTER = "outer"
 _CALLER_ADDR = "203.0.113.7"
+_OUTER_HOST_URL = "https://dify.example.com:8443/"
 _LONE_SURROGATE = "\ud800"
 _INNER = "inner"
 
@@ -43,6 +44,7 @@ class _SeenRequest:
     query: dict[str, list[str]]
     headers: dict[str, str]
     remote_addr: str | None
+    host_url: str
 
 
 @pytest.fixture
@@ -59,6 +61,7 @@ def inner_requests(openapi_app: Flask) -> list[_SeenRequest]:
                 query={key: request.args.getlist(key) for key in request.args},
                 headers=dict(request.headers),
                 remote_addr=request.remote_addr,
+                host_url=request.host_url,
             )
         )
         g.mcp_call_marker = _INNER
@@ -266,3 +269,15 @@ def test_the_inner_request_keeps_the_callers_address(openapi_app: Flask, inner_r
     assert result.status == 200
     assert inner_requests[0].remote_addr == _CALLER_ADDR
     assert "X-Forwarded-For" not in inner_requests[0].headers
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_the_inner_request_keeps_the_callers_scheme_and_host(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+    with openapi_app.test_request_context(base_url=_OUTER_HOST_URL):
+        outer_host_url = request.host_url
+        result = _call("get.workspace", {})
+
+    assert result.status == 200
+    assert outer_host_url == _OUTER_HOST_URL
+    assert inner_requests[0].host_url == outer_host_url
+    assert inner_requests[0].path == "/openapi/v1/workspaces"
