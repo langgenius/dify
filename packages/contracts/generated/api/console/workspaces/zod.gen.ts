@@ -1887,6 +1887,28 @@ export const zListOrganizationCandidatesResponse = z.object({
 })
 
 /**
+ * DebugChannel
+ *
+ * Delivery selection for editor debugging, resolved to current channel configuration.
+ */
+export const zDebugChannel = z.enum([
+  'ding_talk',
+  'email',
+  'feishu',
+  'lark',
+  'ms_teams',
+  'slack',
+  'we_com',
+])
+
+/**
+ * HumanInputTestChannelsResponse
+ */
+export const zHumanInputTestChannelsResponse = z.object({
+  channels: z.array(zDebugChannel),
+})
+
+/**
  * MemberInviteSuccessResponse
  */
 export const zMemberInviteSuccessResponse = z.object({
@@ -4603,6 +4625,14 @@ export const zTimeoutUnit = z.enum(['day', 'hour'])
 export const zNodeType = z.string()
 
 /**
+ * DebugModeConfig
+ */
+export const zDebugModeConfig = z.object({
+  channels: z.array(zDebugChannel),
+  enabled: z.boolean().optional().default(false),
+})
+
+/**
  * MessageTemplateConfig
  */
 export const zMessageTemplateConfig = z.object({
@@ -5112,29 +5142,6 @@ export const zUserActionConfig = z.object({
     .max(20)
     .regex(/^[A-Za-z_][A-Za-z0-9_]*$/),
   title: z.string().max(100),
-})
-
-/**
- * DebugChannel
- *
- * Delivery selection for editor debugging, resolved to current channel configuration.
- */
-export const zDebugChannel = z.enum([
-  'ding_talk',
-  'email',
-  'feishu',
-  'lark',
-  'ms_teams',
-  'slack',
-  'we_com',
-])
-
-/**
- * DebugModeConfig
- */
-export const zDebugModeConfig = z.object({
-  channels: z.array(zDebugChannel),
-  enabled: z.boolean().optional().default(false),
 })
 
 /**
@@ -7059,6 +7066,11 @@ export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesQuery = z.ob
  */
 export const zGetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
   zListOrganizationCandidatesResponse
+
+/**
+ * Success
+ */
+export const zGetWorkspacesCurrentHumanInputV2TestChannelsResponse = zHumanInputTestChannelsResponse
 
 export const zGetWorkspacesCurrentMembersQuery = z.object({
   language: z.enum(['en', 'ja', 'zh']).optional(),

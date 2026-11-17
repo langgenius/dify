@@ -417,6 +417,10 @@ export type ListOrganizationCandidatesResponse = {
   total: number
 }
 
+export type HumanInputTestChannelsResponse = {
+  channels: Array<DebugChannel>
+}
+
 export type MemberInvitePayload = {
   emails: Array<string>
   language?: string | null
@@ -2164,6 +2168,15 @@ export type OrganizationCandidate = {
   id: string
   name: string
 }
+
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type MemberInviteSuccessResponse = {
   email: string
@@ -4019,15 +4032,6 @@ export type FileListInputConfig = {
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type DebugChannel =
-  | 'ding_talk'
-  | 'email'
-  | 'feishu'
-  | 'lark'
-  | 'ms_teams'
-  | 'slack'
-  | 'we_com'
-
 export type FormOption = {
   label: ModelRuntimeI18nObject
   show_on?: Array<FormShowOnObject>
@@ -5852,6 +5856,27 @@ export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses = {
 
 export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
   GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses[keyof GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/v2/test-channels'
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsError =
+  GetWorkspacesCurrentHumanInputV2TestChannelsErrors[keyof GetWorkspacesCurrentHumanInputV2TestChannelsErrors]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponses = {
+  200: HumanInputTestChannelsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponse =
+  GetWorkspacesCurrentHumanInputV2TestChannelsResponses[keyof GetWorkspacesCurrentHumanInputV2TestChannelsResponses]
 
 export type GetWorkspacesCurrentMembersData = {
   body?: never
