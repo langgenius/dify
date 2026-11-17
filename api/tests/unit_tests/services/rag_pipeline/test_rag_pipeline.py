@@ -53,7 +53,7 @@ from services.data_source.credential_gateway import DatasourceProviderCredential
 from services.entities.knowledge_entities.rag_pipeline_entities import IconInfo, PipelineTemplateInfoEntity
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.rag_pipeline import rag_pipeline as rag_pipeline_module
-from services.rag_pipeline.rag_pipeline import RagPipelineService
+from services.rag_pipeline.rag_pipeline import DefaultBlockConfigDict, RagPipelineService
 from services.workflow_ref_service import WorkflowRef
 from tests.helpers.unit.credential_refresh import build_datasource_provider_service
 
@@ -528,7 +528,7 @@ class TestRagPipelineServiceCases:
         mocker: MockerFixture, rag_pipeline_service: RagPipelineServiceTestContext
     ) -> None:
         fake_node_class = mocker.Mock()
-        fake_node_class.get_default_config.return_value = {"type": "start", "config": dict[str, object]()}
+        fake_node_class.get_default_config.return_value = DefaultBlockConfigDict(type="start", config={})
 
         # Use a simpler approach: test with a known valid node type
 

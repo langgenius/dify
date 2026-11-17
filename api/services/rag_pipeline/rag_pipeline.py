@@ -5,7 +5,7 @@ import threading
 import time
 from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, cast
+from typing import Any, TypedDict, cast
 from uuid import uuid4
 
 from sqlalchemy import func, select
@@ -105,6 +105,29 @@ def _build_seeded_variable_pool(variables: Sequence[Variable]) -> VariablePool:
     variable_pool = VariablePool()
     add_variables_to_pool(variable_pool, variables)
     return variable_pool
+
+
+class DefaultBlockConfigDict(TypedDict, total=False):
+    """Default config the workflow editor opens a node with.
+
+    Node classes fill only the keys their own node type needs, so every key is optional:
+    most return ``{"type", "config"}``, the parameter extractor returns ``{"model"}``,
+    and a node class without defaults returns ``{}``.
+    """
+
+    type: str
+    config: dict[str, Any]
+    model: dict[str, Any]
+
+
+def parse_default_block_config(raw: Mapping[str, object]) -> DefaultBlockConfigDict:
+    """Model a node class's default config as a typed ``DefaultBlockConfigDict``.
+
+    Node classes type their return as ``Mapping[str, object]``, so values are narrowed here,
+    once, at the boundary, instead of at every call site that reads ``type`` or ``config``.
+    """
+    values: dict[str, Any] = dict(raw)
+    return DefaultBlockConfigDict(**values)
 
 
 class RagPipelineService:
@@ -517,12 +540,12 @@ class RagPipelineService:
         # return new workflow
         return workflow
 
-    def get_default_block_configs(self) -> list[dict]:
+    def get_default_block_configs(self) -> list[DefaultBlockConfigDict]:
         """
         Get default block configs
         """
         # return default block config
-        default_block_configs: list[dict[str, Any]] = []
+        default_block_configs: list[DefaultBlockConfigDict] = []
         for node_type, node_class_mapping in get_node_type_classes_mapping().items():
             node_class = node_class_mapping[LATEST_VERSION]
             filters = None
@@ -540,13 +563,13 @@ class RagPipelineService:
                 }
             default_config = node_class.get_default_config(filters=filters)
             if default_config:
-                default_block_configs.append(dict(default_config))
+                default_block_configs.append(parse_default_block_config(default_config))
 
         return default_block_configs
 
     def get_default_block_config(
         self, node_type: str, filters: dict[str, Any] | None = None
-    ) -> Mapping[str, object] | None:
+    ) -> DefaultBlockConfigDict | None:
         """
         Get default config of node.
         :param node_type: node type
@@ -576,7 +599,7 @@ class RagPipelineService:
         if not default_config:
             return None
 
-        return default_config
+        return parse_default_block_config(default_config)
 
     def run_draft_workflow_node(
         self, pipeline: Pipeline, node_id: str, user_inputs: dict[str, Any], account: Account
