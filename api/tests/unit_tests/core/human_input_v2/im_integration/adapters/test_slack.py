@@ -19,12 +19,13 @@ pytest_plugins = ("tests.unit_tests.core.human_input_v2.im_provider.test_slack_s
 
 
 @pytest.mark.parametrize(
-    ("lengths", "representable"),
+    ("lengths", "representable", "expected_total_length"),
     [
-        ((12_000,), True),
-        ((6_000, 6_000), True),
-        ((6_000, 6_001), False),
-        ((7_000, 7_000), False),
+        ((12_000,), True, 12_000),
+        ((6_000, 6_000), True, 12_000),
+        ((6_000, 6_001), False, 12_001),
+        ((7_000, 7_000), False, 14_000),
+        ((7_000, 7_000, 7_000), False, 21_000),
     ],
 )
 def test_card_markdown_limit_applies_to_all_fragments(
@@ -32,6 +33,7 @@ def test_card_markdown_limit_applies_to_all_fragments(
     slack_api_server: _SlackApiServer,
     lengths: tuple[int, ...],
     representable: bool,
+    expected_total_length: int,
 ) -> None:
     """Assess without I/O; preserve accepted content and reject oversized sends before I/O."""
     adapter, _client = _adapter(monkeypatch, slack_api_server)
@@ -40,7 +42,8 @@ def test_card_markdown_limit_applies_to_all_fragments(
         blocks=(paragraphs[0], ParagraphInput(output_variable_name="note", default_value="Approved"), *paragraphs[1:])
     )
 
-    assert adapter.dynamic_card_messaging.assess(intent).representable is representable
+    assessment = adapter.dynamic_card_messaging.assess(intent)
+    assert assessment.representable is representable
     assert slack_api_server.state.requests == []
 
     if representable:
@@ -59,7 +62,10 @@ def test_card_markdown_limit_applies_to_all_fragments(
             paragraph.text for paragraph in paragraphs
         ]
     else:
-        with pytest.raises(DynamicCardMessagingError):
+        assert assessment.reason is not None
+        assert f"total text length of {expected_total_length} characters" in assessment.reason
+        assert "maximum: 12000 characters" in assessment.reason
+        with pytest.raises(DynamicCardMessagingError, match=rf"{expected_total_length}.*12000"):
             adapter.dynamic_card_messaging.send_card(
                 ProviderUserId("sanitized-user"), intent, CorrelationToken("sanitized-token")
             )
