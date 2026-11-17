@@ -22,12 +22,11 @@ function* inspectOperationConfig(
     if (dependencies.has(path)) return
     dependencies.add(path)
     const source = stripTypeScriptTypes(readFileSync(path, 'utf8'))
-    const [imports, exports] = parse(source)
-    for (const entry of exports) names.add(entry.n)
-    for (const entry of imports) {
-      if (entry.d !== -1 || !entry.n) continue
-      if (/^export\s*\*\s*from\b/.test(source.slice(entry.ss, entry.se)))
-        yield* collect(yield { specifier: entry.n, importer: path })
+    const [, exports] = parse(source)
+    for (const entry of exports) {
+      if (entry.type === 'reexport-all')
+        yield* collect(yield { specifier: entry.from, importer: path })
+      else names.add(entry.name)
     }
   }
   if (file) yield* collect(file)

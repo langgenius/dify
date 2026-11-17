@@ -34,10 +34,7 @@ it('reflows a narrow diagram without resize errors and preserves its theme in th
       </div>,
     )
     await expect
-      .poll(
-        () =>
-          view.getByText('Generate answer').element().closest('svg')!.getBoundingClientRect().width,
-      )
+      .poll(() => view.getByRole('img').element().getBoundingClientRect().width)
       .toBeLessThanOrEqual(320)
     document.documentElement.dataset.theme = 'dark'
     await expect
@@ -48,8 +45,6 @@ it('reflows a narrow diagram without resize errors and preserves its theme in th
     const dialog = page.getByRole('dialog', { name: 'Mermaid' })
     await expect.element(dialog.getByText('Generate answer')).toBeVisible()
     expect(getComputedStyle(dialog.getByText('Generate answer').element()).fill).toBe(darkColor)
-    const diagram = dialog.getByText('Generate answer').element().closest('svg')!
-    const fittedViewBox = diagram.getAttribute('viewBox')
     const fittedLabelWidth = dialog
       .getByText('Generate answer')
       .element()
@@ -59,7 +54,10 @@ it('reflows a narrow diagram without resize errors and preserves its theme in th
       dialog.getByText('Generate answer').element().getBoundingClientRect().width,
     ).toBeGreaterThan(fittedLabelWidth)
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.reset' }))
-    expect(diagram.getAttribute('viewBox')).toBe(fittedViewBox)
+    expect(dialog.getByText('Generate answer').element().getBoundingClientRect().width).toBeCloseTo(
+      fittedLabelWidth,
+      1,
+    )
     expect(errors).toEqual([])
     await userEvent.click(dialog.getByRole('button', { name: 'common.operation.close' }))
     await expect.element(dialog).not.toBeInTheDocument()
@@ -78,7 +76,7 @@ it('contains diagrams even when source configuration requests a fixed width', as
     </div>,
   )
   await expect.element(view.getByText('Browse catalog')).toBeVisible()
-  const diagram = view.getByText('Browse catalog').element().closest('svg')!
+  const diagram = view.getByRole('img').element()
   expect(diagram.getBoundingClientRect().width).toBeLessThanOrEqual(320)
   const controls = view.getByRole('button', { name: 'app.mermaid.preview' }).element()
   expect(controls.getBoundingClientRect().bottom).toBeLessThanOrEqual(
@@ -100,12 +98,13 @@ it('supports keyboard zoom and preserves descriptive SVG names', async () => {
     .element(diagram)
     .toHaveAccessibleDescription('An order is validated before shipping.')
   const svg = diagram.element()
-  const initial = svg.getAttribute('viewBox')
+  const label = view.getByText('Order', { exact: true })
+  const initial = label.element().getBoundingClientRect().width
   ;(svg as SVGSVGElement).focus()
   await userEvent.keyboard('+')
-  expect(svg.getAttribute('viewBox')).not.toBe(initial)
+  expect(label.element().getBoundingClientRect().width).toBeGreaterThan(initial)
   await userEvent.keyboard('0')
-  expect(svg.getAttribute('viewBox')).toBe(initial)
+  expect(label.element().getBoundingClientRect().width).toBeCloseTo(initial, 1)
 })
 
 it('keeps zoom independent between instances and preserves it across parent and theme updates', async () => {
@@ -117,15 +116,13 @@ it('keeps zoom independent between instances and preserves it across parent and 
     </div>,
   )
   await expect.element(view.getByText('Stable').nth(1)).toBeVisible()
-  const diagrams = view
-    .getByText('Stable')
-    .elements()
-    .map((label) => label.closest('svg')!)
-  const initial = diagrams[1]!.getAttribute('viewBox')
+  const labels = view.getByText('Stable')
+  const lightColor = getComputedStyle(labels.first().element()).fill
+  const initial = labels.nth(1).element().getBoundingClientRect().width
   await userEvent.click(view.getByRole('button', { name: 'common.operation.zoomIn' }).first())
-  expect(diagrams[1]!.getAttribute('viewBox')).toBe(initial)
-  const zoomed = diagrams[0]!.getAttribute('viewBox')
-  expect(zoomed).not.toBe(initial)
+  expect(labels.nth(1).element().getBoundingClientRect().width).toBeCloseTo(initial, 1)
+  const zoomed = labels.first().element().getBoundingClientRect().width
+  expect(zoomed).toBeGreaterThan(initial)
   await view.rerender(
     <div>
       <MermaidDiagram source={source} />
@@ -133,44 +130,49 @@ it('keeps zoom independent between instances and preserves it across parent and 
     </div>,
   )
   document.documentElement.dataset.theme = 'dark'
-  await new Promise(requestAnimationFrame)
-  expect(view.getByText('Stable').first().element().closest('svg')!.getAttribute('viewBox')).toBe(
-    zoomed,
-  )
+  await expect.poll(() => getComputedStyle(labels.first().element()).fill).not.toBe(lightColor)
+  expect(labels.first().element().getBoundingClientRect().width).toBeCloseTo(zoomed, 1)
   document.documentElement.dataset.theme = 'light'
 })
 
 it('preserves keyboard focus when a streaming update replaces the focused drawing', async () => {
   const view = await render(<MermaidDiagram source={'flowchart LR\n A[Before] --> B'} />)
   await expect.element(view.getByText('Before')).toBeVisible()
-  const svg = view.getByText('Before').element().closest('svg')!
-  svg.focus()
+  const drawing = view.getByRole('img')
+  const svg = drawing.element()
+  ;(svg as SVGSVGElement).focus()
   await view.rerender(<MermaidDiagram source={'flowchart LR\n A[After] --> B'} />)
   await expect.element(view.getByText('After')).toBeVisible()
-  expect(document.activeElement).toBe(view.getByText('After').element().closest('svg'))
+  await expect.element(drawing).toHaveFocus()
 })
 
 it('keeps the preview snapshot through streaming updates and reads the latest source on reopen', async () => {
-  const view = await render(<MermaidDiagram source={'flowchart TD\n A[Initial] --> B'} />)
+  const inlineDiagram = (source: string) => (
+    <section aria-label="Streaming diagram">
+      <MermaidDiagram source={source} />
+    </section>
+  )
+  const view = await render(inlineDiagram('flowchart TD\n A[Initial] --> B'))
+  const inline = view.getByRole('region', { name: 'Streaming diagram', includeHidden: true })
   const trigger = view.getByRole('button', { name: 'app.mermaid.preview' })
   await expect.element(trigger).toBeEnabled()
   await userEvent.click(trigger)
   const dialog = page.getByRole('dialog', { name: 'Mermaid' })
   await expect.element(dialog.getByText('Initial')).toBeVisible()
-  await view.rerender(<MermaidDiagram source={'flowchart TD\n A['} />)
-  await expect.poll(() => view.container.querySelector('[role="status"]')).not.toBeNull()
+  await view.rerender(inlineDiagram('flowchart TD\n A['))
+  await expect.element(inline.getByRole('status', { includeHidden: true })).toBeInTheDocument()
   await expect.element(dialog.getByText('Initial')).toBeVisible()
-  await view.rerender(<MermaidDiagram source={'flowchart TD\n A[Recovered] --> B'} />)
+  await view.rerender(inlineDiagram('flowchart TD\n A[Recovered] --> B'))
   await expect.element(dialog.getByText('Initial')).toBeVisible()
-  await expect.poll(() => view.container.querySelector('[role="status"]')).toBeNull()
+  await expect.element(inline.getByRole('status', { includeHidden: true })).not.toBeInTheDocument()
   await userEvent.click(dialog.getByRole('button', { name: 'common.operation.zoomIn' }))
   await userEvent.click(dialog.getByRole('button', { name: 'common.operation.close' }))
   await userEvent.click(trigger)
   await expect.element(dialog.getByText('Recovered')).toBeVisible()
-  const reopened = dialog.getByText('Recovered').element().closest('svg')!
-  expect(reopened.getAttribute('viewBox')).toBe(
-    `0 0 ${reopened.getAttribute('width')} ${reopened.getAttribute('height')}`,
-  )
+  const recovered = dialog.getByText('Recovered')
+  const reopenedWidth = recovered.element().getBoundingClientRect().width
+  await dialog.getByRole('button', { name: 'common.operation.reset' }).click()
+  expect(recovered.element().getBoundingClientRect().width).toBeCloseTo(reopenedWidth, 1)
 })
 
 it('keeps a tall preview and its close button inside a narrow viewport', async () => {
@@ -209,7 +211,7 @@ it('keeps the preview canvas fixed while the first zoom step enlarges the drawin
   const dialog = page.getByRole('dialog', { name: 'Mermaid' })
   const label = dialog.getByText('Start')
   await expect.element(label).toBeVisible()
-  const svg = label.element().closest('svg')!
+  const svg = dialog.getByRole('img').element()
   await Promise.all(
     dialog
       .element()
@@ -376,7 +378,7 @@ it('focuses the drawing on open and reaches the first action in one Tab', async 
   await userEvent.keyboard('{Enter}')
   const dialog = page.getByRole('dialog', { name: 'Mermaid' })
   await expect.element(dialog.getByText('Start')).toBeVisible()
-  const svg = dialog.getByText('Start').element().closest('svg')!
+  const svg = dialog.getByRole('img').element()
   await expect.element(svg).toHaveFocus()
   await expect.element(page.getByText('common.operation.close')).not.toBeInTheDocument()
   await userEvent.keyboard('{Tab}')
@@ -385,10 +387,11 @@ it('focuses the drawing on open and reaches the first action in one Tab', async 
     .toHaveFocus()
   await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
   await expect.element(svg).toHaveFocus()
-  const initialViewBox = svg.getAttribute('viewBox')
+  const label = dialog.getByText('Start')
+  const initialWidth = label.element().getBoundingClientRect().width
   await expect.element(page.getByText('common.operation.zoomIn')).not.toBeInTheDocument()
   await userEvent.keyboard('+++')
-  expect(svg.getAttribute('viewBox')).not.toBe(initialViewBox)
+  expect(label.element().getBoundingClientRect().width).toBeGreaterThan(initialWidth)
   await expect.element(svg).toHaveFocus()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).not.toBeInTheDocument()

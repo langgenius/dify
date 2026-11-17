@@ -323,7 +323,11 @@ class TestBillingServiceAccountAndEducation:
     def test_education_reads_return_the_generated_replies(self):
         verify = billing.VerifyEducationIdentityReply(token="token", status="eligible")
         status = billing.GetEducationIdentityStatusReply(
-            result=True, is_student=True, expire_at="2027-01-01T00:00:00+00:00", allow_refresh=False
+            result=True,
+            is_student=True,
+            expire_at="2027-01-01T00:00:00+00:00",
+            allow_refresh=False,
+            can_redeem_discount=False,
         )
         autocomplete = billing.AutocompleteEducationInstitutionReply(
             data=["Dify University"], curr_page=0, has_next=False

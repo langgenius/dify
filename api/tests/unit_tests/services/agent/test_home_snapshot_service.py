@@ -48,7 +48,7 @@ def _build_draft(*, home_snapshot_id: str | None = "home-old") -> AgentConfigDra
     )
 
 
-def _client(*, snapshot_ref: str = "snapshot-ref-1") -> MagicMock:
+def _client(*, snapshot_ref: str | None = "snapshot-ref-1") -> MagicMock:
     client = MagicMock()
     client.create_home_snapshot_from_binding_sync.return_value = SimpleNamespace(snapshot_ref=snapshot_ref)
     return client
@@ -143,6 +143,7 @@ def test_build_apply_checkpoints_exact_active_binding(
         session=sqlite_session,
         build_draft=_build_draft(),
     )
+    assert snapshot is not None
     sqlite_session.flush()
 
     stored = sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.id == snapshot.id))
@@ -166,10 +167,29 @@ def test_build_apply_forwards_default_home_generation(monkeypatch: pytest.Monkey
         session=sqlite_session,
         build_draft=_build_draft(home_snapshot_id=None),
     )
+    assert snapshot is not None
     sqlite_session.flush()
 
     assert snapshot.snapshot_ref == "snapshot-ref-2"
     assert sqlite_session.get(AgentHomeSnapshot, snapshot.id) is snapshot
+
+
+def test_build_apply_returns_none_when_backend_cannot_snapshot(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    _persist_build_binding(sqlite_session, app_id="app-1", backing_app_id=None)
+    client = _client(snapshot_ref=None)
+    monkeypatch.setattr(AgentHomeSnapshotService, "_client", lambda: nullcontext(client))
+
+    snapshot = AgentHomeSnapshotService.create_for_build_apply(
+        session=sqlite_session,
+        build_draft=_build_draft(),
+    )
+    sqlite_session.flush()
+
+    assert snapshot is None
+    # No phantom ledger row: there is no snapshot to track.
+    assert sqlite_session.scalar(select(AgentHomeSnapshot).where(AgentHomeSnapshot.agent_id == "agent-1")) is None
 
 
 @pytest.mark.parametrize(

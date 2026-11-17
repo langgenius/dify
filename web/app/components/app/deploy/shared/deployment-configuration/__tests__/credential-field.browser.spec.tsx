@@ -4,24 +4,32 @@ import type {
   WorkflowReference,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import { PluginCategory } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { page } from 'vite-plus/test/browser'
 import { render as renderBrowser } from 'vitest-browser-react'
+import deployments from '@/i18n/locales/en-US/deployments.json'
+import plugin from '@/i18n/locales/en-US/plugin.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { CredentialField } from '../credential-field'
 
 async function renderWithConsoleQueryBrowser(ui: React.ReactElement) {
   const { wrapper: Wrapper } = createConsoleQueryWrapper()
-  return renderBrowser(<Wrapper>{ui}</Wrapper>)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { deployments, plugin } },
+    keySeparator: false,
+  })
+  return renderBrowser(
+    <Wrapper>
+      <I18nextProvider i18n={i18n}>{ui}</I18nextProvider>
+    </Wrapper>,
+  )
 }
 
-vi.mock('react-i18next', async () => {
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  return createReactI18nextMock({
-    'deployments.studio.precheck.from': 'From',
-    'deployments.studio.precheck.nodeCount': '{{count}} nodes',
-  })
-})
+vi.unmock('react-i18next')
 
 const credentialSlot: CredentialSlot = {
   candidates: [
@@ -68,11 +76,9 @@ describe('CredentialField', () => {
     await trigger.click()
 
     const listbox = page.getByRole('listbox')
+    await expect.element(listbox.getByText('No credentials yet')).toBeInTheDocument()
     await expect
-      .element(listbox.getByText('deployments.studio.noCredentialsYet'))
-      .toBeInTheDocument()
-    await expect
-      .element(listbox.getByText('deployments.studio.noCredentialsYetDescription'))
+      .element(listbox.getByText('Add credentials in Integrations or node settings'))
       .toBeInTheDocument()
     await expect.element(listbox.getByRole('option')).not.toBeInTheDocument()
   })

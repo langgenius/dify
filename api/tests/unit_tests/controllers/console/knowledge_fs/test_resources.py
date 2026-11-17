@@ -2980,6 +2980,60 @@ class TestKnowledgeFsResourceDelegationCases:
             assert result == ("", HTTPStatus.NO_CONTENT)
 
     @staticmethod
+    def test_console_source_pages_pass_tree_branch_query(monkeypatch: pytest.MonkeyPatch) -> None:
+        list_source_pages = Recorder(_RAW_RESULT)
+        monkeypatch.setattr(console_resources, "_actor", lambda: ("account-1", "tenant-1"))
+        monkeypatch.setattr(
+            console_resources,
+            "_console_services",
+            lambda: FakeRuntime(facade=FakeComponent(list_source_pages=list_source_pages)),
+        )
+        monkeypatch.setattr(console_resources, "dump_response", lambda _schema, raw: raw)
+        app = Flask(__name__)
+
+        with app.test_request_context("/?view=tree&parentId=repo:FFXN/dify&cursor=next&limit=10"):
+            result = _invoke(
+                console_resources.KnowledgeFSSpaceSourcePagesApi,
+                console_resources.KnowledgeFSSpaceSourcePagesApi.get,
+                "space-1",
+                "source-1",
+            )
+
+        assert result is _RAW_RESULT
+        assert list_source_pages.last_call.kwargs == {
+            "tenant_id": "tenant-1",
+            "account_id": "account-1",
+            "control_space_id": "space-1",
+            "source_id": "source-1",
+            "cursor": "next",
+            "limit": 10,
+            "parent_id": "repo:FFXN/dify",
+            "view": "tree",
+        }
+
+    @staticmethod
+    def test_service_source_pages_pass_tree_branch_query(monkeypatch: pytest.MonkeyPatch) -> None:
+        execute = Recorder(_RAW_RESULT)
+        monkeypatch.setattr(service_resources, "_execute_service_operation", execute)
+        monkeypatch.setattr(service_resources, "_dump_response", lambda _schema, raw: raw)
+        app = Flask(__name__)
+
+        with app.test_request_context("/?view=tree&parentId=repo:FFXN/dify&limit=10"):
+            result = _invoke(
+                service_resources.KnowledgeFSServiceSourcePagesApi,
+                service_resources.KnowledgeFSServiceSourcePagesApi.get,
+                "space-1",
+                "source-1",
+            )
+
+        assert result is _RAW_RESULT
+        assert execute.last_call.kwargs["query"] == (
+            ("limit", "10"),
+            ("parentId", "repo:FFXN/dify"),
+            ("view", "tree"),
+        )
+
+    @staticmethod
     def test_console_document_reference_delegates_exact_asset_identity(monkeypatch: pytest.MonkeyPatch) -> None:
         facade = FakeComponent(resolve_document_reference=Recorder(_RAW_RESULT))
         runtime = FakeRuntime(facade=facade)

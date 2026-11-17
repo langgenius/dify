@@ -20,6 +20,7 @@ from core.errors.error import (
     QuotaExceededError,
 )
 from graphon.model_runtime.errors.invoke import InvokeError
+from libs.helper import UUIDStr
 from libs.login import resolve_account_fallback
 from models.account import Account
 from models.dataset import Dataset
@@ -43,9 +44,12 @@ class HitTestingPayload(BaseModel):
         default=None,
         description="Retrieval settings for external knowledge bases.",
     )
-    attachment_ids: list[str] | None = Field(
+    attachment_ids: list[UUIDStr] | None = Field(
         default=None,
-        description="List of attachment IDs to include in the retrieval context.",
+        description=(
+            "Upload file UUIDs to include in the retrieval context. "
+            "Omit or use an empty list when there are no attachments."
+        ),
     )
 
 

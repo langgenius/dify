@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -14,8 +14,9 @@ from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
 from configs import dify_config
+from constants.trigger import is_trigger_node_type
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.apps.base_app_generator import BaseAppGenerator, noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -40,7 +41,6 @@ from core.helper.trace_id_helper import (
 )
 from core.repositories import DifyCoreRepositoryFactory
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
-from core.trigger.constants import is_trigger_node_type
 from core.workflow.node_factory import get_default_root_node_id
 from extensions.ext_database import db
 from extensions.tracing import create_trace_scope
@@ -108,11 +108,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[True],
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Generator[Mapping[str, Any] | str]: ...
 
     @overload
@@ -128,11 +130,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: Literal[False],
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -148,11 +152,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool,
         call_depth: int,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]: ...
 
     def generate(
@@ -167,11 +173,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         streaming: bool = True,
         call_depth: int = 0,
         workflow_run_id: str | uuid.UUID | None = None,
+        task_id: str | None = None,
         triggered_from: WorkflowRunTriggeredFrom | None = None,
         root_node_id: str | None = None,
         graph_engine_layers: Sequence[Layer] = (),
         allow_human_input: bool = True,
         pause_state_config: PauseStateLayerConfig | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any] | Generator[Mapping[str, Any] | str]:
         with self._bind_file_access_scope(tenant_id=app_model.tenant_id, user=user, invoke_from=invoke_from):
             files: Sequence[Mapping[str, Any]] = args.get("files") or []
@@ -203,6 +211,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 **extract_external_trace_id_from_args(args),
                 **extract_parent_trace_context_from_args(args),
                 **extract_trace_session_id_from_args(args),
+                "capture_agent_evaluation_trace": capture_agent_evaluation_trace,
             }
             trace_scope = create_trace_scope(
                 tenant_id=app_model.tenant_id,
@@ -225,7 +234,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
             # init application generate entity
             application_generate_entity = WorkflowAppGenerateEntity(
-                task_id=str(uuid.uuid4()),
+                task_id=task_id or str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,
                 inputs=inputs,
@@ -300,9 +309,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Resume a paused workflow execution using the persisted runtime state.
+
+        ``restore_file_access`` restores host-owned grants inside the new
+        execution scope before worker contexts are copied. The default callback
+        leaves existing access rules unchanged.
 
         ``trace_scope`` is transient and excluded from generate-entity serialization,
         so resumed executions create it again before persistence layers receive the entity.
@@ -334,6 +348,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             graph_runtime_state=graph_runtime_state,
             pause_state_config=pause_state_config,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
         )
 
     def _generate(
@@ -353,9 +368,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         graph_runtime_state: RuntimeState | None = None,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        On resume, HITL submissions must already be committed. Restore their
+        EndUser file grants before capturing worker and response contexts.
 
         :param app_model: App
         :param workflow: Workflow
@@ -372,6 +391,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            # Restore grants before copying contexts for both workers and responses.
+            restore_file_access()
             # init queue manager
             queue_manager = WorkflowAppQueueManager(
                 task_id=application_generate_entity.task_id,
@@ -648,49 +669,56 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :return:
         """
         with preserve_flask_contexts(flask_app, context_vars=context):
-            with session_factory.create_session() as session:
-                workflow = session.scalar(
-                    select(Workflow).where(
-                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
-                        Workflow.app_id == application_generate_entity.app_config.app_id,
-                        Workflow.id == application_generate_entity.app_config.workflow_id,
-                    )
-                )
-                if workflow is None:
-                    raise ValueError("Workflow not found")
-
-                workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
-                if graph_runtime_state is not None:
-                    self._restore_workflow_run_graph(
-                        session=session,
-                        workflow=workflow,
-                        workflow_run_id=application_generate_entity.workflow_execution_id,
-                    )
-
-                user_from = application_generate_entity.user_from
-                if user_from == UserFrom.END_USER:
-                    end_user = session.scalar(
-                        select(EndUser).where(
-                            EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
-                            EndUser.id == application_generate_entity.user_id,
+            # The caller blocks on the queue until this worker publishes an event, so a
+            # failure while preparing the run must be published like a failure during it.
+            try:
+                with session_factory.create_session() as session:
+                    workflow = session.scalar(
+                        select(Workflow).where(
+                            Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                            Workflow.app_id == application_generate_entity.app_config.app_id,
+                            Workflow.id == application_generate_entity.app_config.workflow_id,
                         )
                     )
-                    system_user_id = end_user.session_id if end_user else ""
-                else:
-                    system_user_id = application_generate_entity.user_id
+                    if workflow is None:
+                        raise ValueError("Workflow not found")
 
-            runner = WorkflowAppRunner(
-                application_generate_entity=application_generate_entity,
-                execution_driver=self._execution_driver,
-                queue_manager=queue_manager,
-                variable_loader=variable_loader,
-                workflow=workflow,
-                system_user_id=system_user_id,
-                root_node_id=root_node_id,
-                graph_engine_layers=graph_engine_layers,
-                graph_runtime_state=graph_runtime_state,
-                response_stream_filter=response_stream_filter,
-            )
+                    workflow = self._ensure_snippet_start_node_in_worker(session=session, workflow=workflow)
+                    if graph_runtime_state is not None:
+                        self._restore_workflow_run_graph(
+                            session=session,
+                            workflow=workflow,
+                            workflow_run_id=application_generate_entity.workflow_execution_id,
+                        )
+
+                    user_from = application_generate_entity.user_from
+                    if user_from == UserFrom.END_USER:
+                        end_user = session.scalar(
+                            select(EndUser).where(
+                                EndUser.tenant_id == application_generate_entity.app_config.tenant_id,
+                                EndUser.id == application_generate_entity.user_id,
+                            )
+                        )
+                        system_user_id = end_user.session_id if end_user else ""
+                    else:
+                        system_user_id = application_generate_entity.user_id
+
+                runner = WorkflowAppRunner(
+                    application_generate_entity=application_generate_entity,
+                    execution_driver=self._execution_driver,
+                    queue_manager=queue_manager,
+                    variable_loader=variable_loader,
+                    workflow=workflow,
+                    system_user_id=system_user_id,
+                    root_node_id=root_node_id,
+                    graph_engine_layers=graph_engine_layers,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
+                )
+            except Exception as e:
+                logger.exception("Failed to prepare the workflow run")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                return
 
             try:
                 with active_workflow_task(application_generate_entity.task_id):

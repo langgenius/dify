@@ -67,12 +67,11 @@ def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context
 
 
 def _mock_service(monkeypatch: pytest.MonkeyPatch, form) -> Mock:
-    """Bind a mocked `HumanInputService` (and the engine it is built from) into the module."""
+    """Bind a mocked `HumanInputService` into the module."""
     service_mock = Mock()
     service_mock.get_form_by_token.return_value = form
     module = sys.modules[_MODULE]
     monkeypatch.setattr(module, "HumanInputService", lambda _engine: service_mock)
-    monkeypatch.setattr(module, "db", SimpleNamespace(engine=object()))
     return service_mock
 
 

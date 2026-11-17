@@ -1,7 +1,10 @@
 import type { ComponentProps } from 'react'
+import { createInstance } from 'i18next'
+import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { IpPolicyDialog } from '@/features/network-access/policy-editor'
+import common from '@/i18n/locales/en-US/common.json'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 
@@ -9,6 +12,7 @@ const requests = vi.hoisted(() => ({
   currentIp: vi.fn<() => Promise<{ client_ip: string }>>(),
 }))
 
+// boundary: the Browser Console transport is the current-IP server edge.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (path: readonly string[]) => {
@@ -19,22 +23,26 @@ vi.mock('@/service/console/browser', () => ({
   },
 }))
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const { default: translations } = await import('@/i18n/locales/en-US/common.json')
-  return { ...actual, ...createReactI18nextMock(translations) }
-})
+vi.unmock('react-i18next')
 
 beforeEach(() => {
   requests.currentIp.mockReset()
 })
 
 async function renderEditor(props: Partial<ComponentProps<typeof IpPolicyDialog>> = {}) {
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    resources: { 'en-US': { common } },
+    keySeparator: false,
+    interpolation: { escapeValue: false },
+  })
   const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   const screen = await render(
     <ConsoleProvider>
-      <IpPolicyDialog open mode="edit" initialName="Office" onOpenChange={vi.fn()} {...props} />
+      <I18nextProvider i18n={i18n}>
+        <IpPolicyDialog open mode="edit" initialName="Office" onOpenChange={vi.fn()} {...props} />
+      </I18nextProvider>
     </ConsoleProvider>,
   )
   return { screen, queryClient }

@@ -25,6 +25,9 @@ class ToolFileRebacker(Protocol):
     def __call__(self, *, tenant_id: str, tool_file_id: str) -> File | None: ...
 
 
+STREAM_EXHAUSTED_ERROR = "Agent backend stream ended before a terminal event."
+
+
 class WorkflowAgentOutputAdapter:
     """Convert terminal Agent backend events into workflow node run results.
 
@@ -134,7 +137,7 @@ class WorkflowAgentOutputAdapter:
             process_data=process_data,
             metadata=self._build_node_metadata(metadata=metadata, usage=usage),
             llm_usage=usage or LLMUsage.empty_usage(),
-            error="Agent backend stream ended before a terminal event.",
+            error=STREAM_EXHAUSTED_ERROR,
             error_type="agent_backend_stream_error",
         )
 
