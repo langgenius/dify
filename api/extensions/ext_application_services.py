@@ -273,6 +273,7 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -481,6 +482,11 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session], files: 
     )
 
 
+def _collect_agent_workspaces(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    """Enqueue physical collection of committed RETIRED Agent workspaces of a tenant."""
+    enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=agent_workspace_ids)
+
+
 def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return None
@@ -675,7 +681,9 @@ def build_application_services(
         generate_name=DefaultModelConversationNameGenerator(trace_scopes=tracing.scopes),
     )
     conversation_commands = ConversationCommandService(
-        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+        conversations=conversations,
+        enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        collect_agent_workspaces=_collect_agent_workspaces,
     )
     message_files = MessageFileResolver()
     conversation_queries = ConversationQueryService(

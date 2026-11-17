@@ -11,7 +11,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 @dataclass(frozen=True)
 class _ObsResponse:
     status: int
-    errorCode: str
+    errorCode: str  # noqa: N815  # Mirrors the OBS SDK response attribute.
 
 
 class _HuaweiClient:

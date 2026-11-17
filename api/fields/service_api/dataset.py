@@ -13,6 +13,7 @@ from pydantic import (
     model_validator,
 )
 
+from configs import dify_config
 from fields.base import ResponseModel
 from fields.dataset_fields import DatasetDetailResponse as BaseDatasetDetailResponse
 from models.dataset import DatasetPermissionEnum
@@ -55,7 +56,11 @@ class DatasetDetailResponse(BaseDatasetDetailResponse):
 
 class DatasetCreatePayload(BaseModel):
     name: str = Field(..., min_length=1, max_length=40, description="Name of the knowledge base.")
-    description: str = Field(default="", description="Description of the knowledge base.", max_length=400)
+    description: str = Field(
+        default="",
+        description="Description of the knowledge base.",
+        max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH,
+    )
     indexing_technique: Literal["high_quality", "economy"] | None = Field(
         default=None,
         description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",
@@ -103,7 +108,11 @@ class DatasetCreatePayload(BaseModel):
 
 class DatasetUpdatePayload(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=40, description="Name of the knowledge base.")
-    description: str | None = Field(default=None, description="Description of the knowledge base.", max_length=400)
+    description: str | None = Field(
+        default=None,
+        description="Description of the knowledge base.",
+        max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH,
+    )
     indexing_technique: Literal["high_quality", "economy"] | None = Field(
         default=None,
         description="`high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing.",

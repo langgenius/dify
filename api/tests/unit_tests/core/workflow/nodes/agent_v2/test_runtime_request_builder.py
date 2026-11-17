@@ -22,6 +22,7 @@ from clients.agent_backend import (
 )
 from clients.agent_backend.request_builder import DIFY_SHELL_LAYER_ID
 from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent.agent_node import AgentNode as LegacyAgentNode
 from core.workflow.nodes.agent_v2.dify_tools_builder import WorkflowAgentDifyToolsBuilder
@@ -83,12 +84,12 @@ class FakeCredentialsProvider:
 def model_context_window_calls(monkeypatch: pytest.MonkeyPatch) -> list[tuple[object, str, str]]:
     calls: list[tuple[object, str, str]] = []
 
-    def resolve(*, run_context: object, provider_name: str, model_name: str) -> int:
+    def resolve(*, run_context: object, provider_name: str, model_name: str) -> ModelRuntimeProfile:
         calls.append((run_context, provider_name, model_name))
-        return 32_768
+        return ModelRuntimeProfile(32_768, ["vision", "audio", "video", "document"])
 
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
+        "core.app.llm.model_access.resolve_model_runtime_profile",
         resolve,
     )
     return calls
@@ -553,6 +554,13 @@ def test_builds_create_run_request_from_agent_soul_and_node_job(
     assert DIFY_AGENT_HISTORY_LAYER_ID in layers
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["model_provider"] == "openai"
     assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["context_window_tokens"] == 32_768
+    assert layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]["supported_modalities"] == [
+        "vision",
+        "audio",
+        "video",
+        "document",
+    ]
+    assert layers["read_media"]["config"]["shell"] == "shell"
     assert model_context_window_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-test")]
     redacted_layers = {layer["name"]: layer for layer in result.redacted_request["composition"]["layers"]}
     assert "credentials" not in redacted_layers[DIFY_AGENT_MODEL_LAYER_ID]["config"]
@@ -1758,11 +1766,13 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
         def get_by_prefix(self, prefix: str) -> Mapping[str, object]:
             return FakeVariablePool().get_by_prefix(prefix)
 
-    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
+    profile_calls: list[tuple[DifyRunContext, str, str]] = []
 
-    monkeypatch.setattr(
-        runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: supports_vision, raising=False
-    )
+    def resolve_profile(*, run_context: DifyRunContext, provider_name: str, model_name: str) -> ModelRuntimeProfile:
+        profile_calls.append((run_context, provider_name, model_name))
+        return ModelRuntimeProfile(32_768, ["vision"] if supports_vision else [])
+
+    monkeypatch.setattr("core.app.llm.model_access.resolve_model_runtime_profile", resolve_profile)
     converted = []
 
     def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
@@ -1772,6 +1782,7 @@ def test_workflow_mixed_uploads_keep_references_and_only_send_images_to_vision_m
     monkeypatch.setattr(file_manager, "to_prompt_message_content", convert)
     context = replace(_context(), variable_pool=UploadedFilesVariablePool())
     result = WorkflowAgentRuntimeRequestBuilder().build(context)
+    assert profile_calls == [(context.dify_context, "langgenius/openai/openai", "gpt-test")]
     layers = _request_layers(result)
     assert converted == (["image.png"] if supports_vision else [])
     config = layers["user_prompt" if supports_vision else "workflow_user_prompt"]["config"]
@@ -1802,11 +1813,14 @@ def test_workflow_image_conversion_rejects_non_image_content(monkeypatch: pytest
         size=5,
     )
     monkeypatch.setattr(runtime_builder, "get_system_value", lambda *_args: [image])
-    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"]),
+    )
     monkeypatch.setattr(file_manager, "to_prompt_message_content", lambda *_args, **_kwargs: None)
 
     with pytest.raises(WorkflowAgentRuntimeRequestBuildError, match="cannot send file 'image.png'") as exc_info:
-        WorkflowAgentRuntimeRequestBuilder._build_user_images(_context(), "provider", "model", [])
+        WorkflowAgentRuntimeRequestBuilder().build(_context())
 
     assert exc_info.value.error_code == "agent_user_file_unsupported"
 
@@ -2178,7 +2192,6 @@ def test_runtime_request_adds_required_route_selection_with_resolved_conditions(
 def test_referenced_workflow_images_reach_vision_models(
     monkeypatch: pytest.MonkeyPatch, source: str, is_array: bool, supports_vision: bool
 ) -> None:
-    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
 
     image = File(
         type=FileType.IMAGE,
@@ -2200,7 +2213,10 @@ def test_referenced_workflow_images_reach_vision_models(
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {"workflow_prompt": f"Describe {{{{#{source}.attachment#}}}}"}
     )
-    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: supports_vision)
+    monkeypatch.setattr(
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"] if supports_vision else []),
+    )
     converted: list[str | None] = []
 
     def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
@@ -2230,7 +2246,6 @@ def test_referenced_workflow_images_reach_vision_models(
 
 
 def test_workflow_images_deduplicate_uploads_and_referenced_files(monkeypatch: pytest.MonkeyPatch) -> None:
-    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
 
     image = File(
         type=FileType.IMAGE,
@@ -2254,7 +2269,10 @@ def test_workflow_images_deduplicate_uploads_and_referenced_files(monkeypatch: p
     context.binding.node_job_config = WorkflowNodeJobConfig.model_validate(
         {"workflow_prompt": "Describe {{#start.image#}} and {{#upstream.images#}}"}
     )
-    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"]),
+    )
     converted: list[str | None] = []
 
     def convert(file: File, **_kwargs: object) -> ImagePromptMessageContent:
@@ -2273,7 +2291,6 @@ def test_workflow_images_deduplicate_uploads_and_referenced_files(monkeypatch: p
 
 
 def test_unreferenced_workflow_image_is_not_attached(monkeypatch: pytest.MonkeyPatch) -> None:
-    import core.workflow.nodes.agent_v2.runtime_request_builder as runtime_builder
 
     pool = VariablePool()
     pool.add(["sys", "query"], "Describe the current request")
@@ -2294,7 +2311,10 @@ def test_unreferenced_workflow_image_is_not_attached(monkeypatch: pytest.MonkeyP
             "previous_node_output_refs": [{"selector": ["start", "image"]}],
         }
     )
-    monkeypatch.setattr(runtime_builder, "resolve_model_supports_vision", lambda **_kwargs: True)
+    monkeypatch.setattr(
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(32_768, ["vision"]),
+    )
 
     def unexpected_conversion(*_args: object, **_kwargs: object) -> None:
         raise AssertionError("Unreferenced image must not be converted")

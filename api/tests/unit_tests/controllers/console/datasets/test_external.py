@@ -9,7 +9,9 @@ from flask import Flask
 from flask.testing import FlaskClient
 from flask_restx import Resource
 from flask_restx.swagger import Swagger
+from pydantic import ValidationError
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from controllers.common.errors import ConflictError, InternalServerError, NotFoundError
 from controllers.common.rbac import RBACPermission
@@ -69,6 +71,28 @@ class _KnowledgeServices:
 @dataclass(frozen=True)
 class _ApplicationServices:
     knowledge: _KnowledgeServices
+
+
+def test_external_dataset_description_respects_configured_limit() -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    payload = {
+        "name": "Dataset",
+        "external_knowledge_api_id": "api",
+        "external_knowledge_id": "knowledge",
+        "description": description,
+    }
+    assert controller.ExternalDatasetCreatePayload.model_validate(payload).description == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        controller.ExternalDatasetCreatePayload.model_validate({**payload, "description": description + "识"})
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = controller.ExternalDatasetCreatePayload.model_json_schema()["properties"]["description"]
+    assert schema["anyOf"][0]["maxLength"] == limit
 
 
 @pytest.fixture

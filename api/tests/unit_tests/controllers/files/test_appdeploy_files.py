@@ -104,7 +104,7 @@ def granted_config(config_overrides: Callable[..., None]) -> None:
         FILES_URL="https://files.example.com",
         INTERNAL_FILES_URL="http://dify-api.dify.svc:5001",
         FILES_ACCESS_TIMEOUT=300,
-        inner_UPLOAD_FILE_EXTENSION_BLACKLIST="exe",
+        inner_upload_file_extension_blacklist="exe",
     )
 
 

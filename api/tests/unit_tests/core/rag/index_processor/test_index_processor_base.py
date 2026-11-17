@@ -1,3 +1,4 @@
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
 from typing import override
 from unittest.mock import Mock, create_autospec, patch
@@ -8,12 +9,14 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.entities.knowledge_entities import PreviewDetail
+from core.model_manager import ModelInstance
 from core.rag.index_processor.constant.doc_type import DocType
-from core.rag.index_processor.index_processor_base import BaseIndexProcessor
+from core.rag.index_processor.index_processor_base import BaseIndexProcessor, SummaryIndexSettingDict
 from core.rag.models.document import AttachmentDocument, Document
 from extensions.storage.storage_type import StorageType
 from models.account import Account
 from models.dataset import Dataset
+from models.dataset import Document as DatasetDocument
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 from models.tools import ToolFile
@@ -59,13 +62,51 @@ def _account() -> Account:
 
 
 class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
-    @override
-    def transform(self, documents, current_user=None, *, session, **kwargs):
-        return super().transform(documents, current_user=current_user, session=session, **kwargs)
+    """Call the abstract base implementations so their NotImplementedError can be asserted.
+
+    The base methods are abstract, so they are called through the class explicitly;
+    pyrefly rejects `super()` calls to abstract methods without an implementation.
+    """
 
     @override
-    def generate_summary_preview(self, tenant_id, preview_texts, summary_index_setting, doc_language=None, *, session):
-        return super().generate_summary_preview(
+    def transform(
+        self,
+        documents: list[Document],
+        current_user: Account | None = None,
+        *,
+        process_rule: Mapping[str, object],
+        tenant_id: str,
+        on_upload_file_created: Callable[[str], None],
+        session: Session,
+        embedding_model_instance: ModelInstance | None = None,
+        doc_language: str = "English",
+        preview: bool = False,
+    ) -> list[Document]:
+        return BaseIndexProcessor.transform(
+            self,
+            documents,
+            current_user=current_user,
+            process_rule=process_rule,
+            tenant_id=tenant_id,
+            on_upload_file_created=on_upload_file_created,
+            session=session,
+            embedding_model_instance=embedding_model_instance,
+            doc_language=doc_language,
+            preview=preview,
+        )
+
+    @override
+    def generate_summary_preview(
+        self,
+        tenant_id: str,
+        preview_texts: list[PreviewDetail],
+        summary_index_setting: SummaryIndexSettingDict,
+        doc_language: str | None = None,
+        *,
+        session: Session,
+    ) -> list[PreviewDetail]:
+        return BaseIndexProcessor.generate_summary_preview(
+            self,
             tenant_id=tenant_id,
             preview_texts=preview_texts,
             summary_index_setting=summary_index_setting,
@@ -76,34 +117,52 @@ class _ForwardingBaseIndexProcessor(BaseIndexProcessor):
     @override
     def load(
         self,
-        dataset,
-        documents,
-        multimodal_documents=None,
-        with_keywords=True,
+        dataset: Dataset,
+        documents: list[Document],
+        multimodal_documents: list[AttachmentDocument] | None = None,
+        with_keywords: bool = True,
         *,
-        session,
-        **kwargs,
-    ):
-        return super().load(
+        session: Session,
+    ) -> None:
+        return BaseIndexProcessor.load(
+            self,
             dataset=dataset,
             documents=documents,
             multimodal_documents=multimodal_documents,
             with_keywords=with_keywords,
             session=session,
-            **kwargs,
         )
 
     @override
-    def clean(self, dataset, node_ids, with_keywords=True, *, session, **kwargs):
-        return super().clean(dataset=dataset, node_ids=node_ids, with_keywords=with_keywords, session=session, **kwargs)
+    def clean(
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        delete_summaries: bool = False,
+        delete_child_chunks: bool = False,
+        precomputed_child_node_ids: list[str] | None = None,
+    ) -> None:
+        return BaseIndexProcessor.clean(
+            self,
+            dataset=dataset,
+            node_ids=node_ids,
+            with_keywords=with_keywords,
+            session=session,
+            delete_summaries=delete_summaries,
+            delete_child_chunks=delete_child_chunks,
+            precomputed_child_node_ids=precomputed_child_node_ids,
+        )
 
     @override
-    def index(self, dataset, document, chunks, session):
-        return super().index(dataset=dataset, document=document, chunks=chunks, session=session)
+    def index(self, dataset: Dataset, document: DatasetDocument, chunks: object, session: Session) -> None:
+        return BaseIndexProcessor.index(self, dataset=dataset, document=document, chunks=chunks, session=session)
 
     @override
-    def format_preview(self, chunks):
-        return super().format_preview(chunks)
+    def format_preview(self, chunks: object) -> Mapping[str, object]:
+        return BaseIndexProcessor.format_preview(self, chunks)
 
 
 class TestBaseIndexProcessor:
@@ -317,8 +376,8 @@ class TestBaseIndexProcessor:
 
         with (
             patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=response),
+            patch.object(processor.files, "upload_file", return_value=upload_result) as upload_file,
         ):
-            processor.files.upload_file.return_value = upload_result
             result = processor._download_image(
                 "https://example.com/test.png",
                 current_user=current_user,
@@ -326,7 +385,7 @@ class TestBaseIndexProcessor:
             )
 
         assert result == upload_result
-        processor.files.upload_file.assert_called_once_with(
+        upload_file.assert_called_once_with(
             actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
             tenant_id="tenant-1",
             filename=expected_filename,
@@ -335,9 +394,11 @@ class TestBaseIndexProcessor:
         )
 
     def test_download_image_validates_size_and_empty_content(self, processor: _ForwardingBaseIndexProcessor) -> None:
-        too_large = Mock()
-        too_large.headers = {"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"}
-        too_large.raise_for_status.return_value = None
+        too_large = httpx.Response(
+            200,
+            headers={"Content-Length": str(3 * 1024 * 1024), "content-type": "image/png"},
+            content=b"",
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=too_large):
             assert (
@@ -347,10 +408,11 @@ class TestBaseIndexProcessor:
                 is None
             )
 
-        empty = Mock()
-        empty.headers = {"Content-Length": "0", "content-type": "image/png"}
-        empty.raise_for_status.return_value = None
-        empty.iter_bytes.return_value = []
+        empty = httpx.Response(
+            200,
+            headers={"Content-Length": "0", "content-type": "image/png"},
+            content=b"",
+        )
 
         with patch("core.rag.index_processor.index_processor_base.remote_fetcher.make_request", return_value=empty):
             assert (
@@ -451,8 +513,8 @@ class TestBaseIndexProcessor:
 
         with (
             patch("core.rag.index_processor.index_processor_base.storage.load_once", return_value=b"blob") as mock_load,
+            patch.object(processor.files, "upload_file", return_value=upload_result) as upload_file,
         ):
-            processor.files.upload_file.return_value = upload_result
             current_user = _account()
             result = processor._download_tool_file(
                 tool_file.id,
@@ -463,7 +525,7 @@ class TestBaseIndexProcessor:
 
         assert result == upload_result
         mock_load.assert_called_once_with("k1")
-        processor.files.upload_file.assert_called_once_with(
+        upload_file.assert_called_once_with(
             actor=FileUploadActor(id=current_user.id, creator_role=CreatorUserRole.ACCOUNT),
             tenant_id=tool_file.tenant_id,
             filename="tool.png",

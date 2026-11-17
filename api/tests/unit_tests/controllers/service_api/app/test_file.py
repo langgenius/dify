@@ -35,7 +35,6 @@ from controllers.common.errors import (
     TooManyFilesError,
     UnsupportedFileTypeError,
 )
-from enums.creator import CreatorUserRole
 from fields.file_fields import FileResponse
 from models import App, EndUser
 from models.enums import CreatorUserRole

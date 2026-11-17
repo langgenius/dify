@@ -9,7 +9,9 @@ from uuid import UUID
 import pytest
 from flask import Flask
 from flask_restx import Api, Resource
+from pydantic import BaseModel, ValidationError
 
+from configs import dify_config
 from controllers.common.errors import ForbiddenError, NotFoundError
 from controllers.service_api.dataset.error import (
     DatasetConcurrentUpdateError,
@@ -239,6 +241,24 @@ def application_service_boundary(
 
     services = ApplicationServicesFake(KnowledgeFake(datasets=datasets, documents=documents))
     monkeypatch.setattr(controller, "application_services", lambda: services)
+
+
+@pytest.mark.parametrize("payload_model", [DatasetCreatePayload, DatasetUpdatePayload])
+def test_dataset_description_respects_configured_limit(payload_model: type[BaseModel]) -> None:
+    limit = dify_config.DATASET_DESCRIPTION_MAX_LENGTH
+    description = "知" * limit
+    assert payload_model(name="Dataset", description=description).model_dump()["description"] == description
+
+    with pytest.raises(ValidationError) as exc_info:
+        payload_model(name="Dataset", description=description + "识")
+
+    error = exc_info.value.errors()[0]
+    assert error["loc"] == ("description",)
+    assert error["type"] == "string_too_long"
+    assert error["ctx"]["max_length"] == limit
+    schema = payload_model.model_json_schema()["properties"]["description"]
+    alternatives = schema.get("anyOf", [schema])
+    assert next(item for item in alternatives if item.get("type") == "string")["maxLength"] == limit
 
 
 def test_list_delegates_normalized_repeated_tag_ids(app: Flask, datasets: DatasetServiceFake) -> None:

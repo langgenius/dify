@@ -71,38 +71,14 @@ def _text_embedding_payload() -> RequestInvokeTextEmbedding:
     return RequestInvokeTextEmbedding(provider="openai", model="text-embedding-3-small", texts=["hello"])
 
 
-def _extract_raw_post(cls):
-    """Extract the raw post() method from a plugin endpoint class.
-
-    Plugin endpoint methods are wrapped by several decorators (get_user_tenant,
-    setup_required, plugin_inner_api_only, plugin_data). These decorators
-    use @wraps where possible. This helper ensures we retrieve the original
-    post(self, user_model, tenant_model, payload) function by unwrapping
-    and, if necessary, walking the closure of the innermost wrapper.
-    """
-    bottom = inspect.unwrap(cls.post)
-
-    # If unwrap() didn't get us to the raw function (e.g. if a decorator
-    # missed @wraps), try to extract it from the closure if it looks like
-    # a plugin_data or similar wrapper that closes over 'view_func'.
-    if hasattr(bottom, "__code__") and "view_func" in bottom.__code__.co_freevars:
-        try:
-            idx = bottom.__code__.co_freevars.index("view_func")
-            return bottom.__closure__[idx].cell_contents
-        except (AttributeError, TypeError, IndexError):
-            pass
-
-    return bottom
-
-
 class TestPluginInvokeLLMApi:
     """Test PluginInvokeLLMApi endpoint structure"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeLLMApi:
         return PluginInvokeLLMApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeLLMApi) -> None:
         """Test that endpoint has post method"""
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
@@ -112,10 +88,10 @@ class TestPluginInvokeLLMWithStructuredOutputApi:
     """Test PluginInvokeLLMWithStructuredOutputApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeLLMWithStructuredOutputApi:
         return PluginInvokeLLMWithStructuredOutputApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeLLMWithStructuredOutputApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -124,19 +100,21 @@ class TestPluginInvokeTextEmbeddingApi:
     """Test PluginInvokeTextEmbeddingApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeTextEmbeddingApi:
         return PluginInvokeTextEmbeddingApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeTextEmbeddingApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
     @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
-    def test_post_classifies_rate_limit_for_internal_consumers(self, mock_invocation, api_instance):
+    def test_post_classifies_rate_limit_for_internal_consumers(
+        self, mock_invocation: MagicMock, api_instance: PluginInvokeTextEmbeddingApi
+    ) -> None:
         mock_invocation.invoke_text_embedding.side_effect = RuntimeError(
             "Connection Error, 429 RESOURCE_EXHAUSTED. Please try again later."
         )
-        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+        raw_post = inspect.unwrap(PluginInvokeTextEmbeddingApi.post)
 
         result = raw_post(
             api_instance,
@@ -154,9 +132,11 @@ class TestPluginInvokeTextEmbeddingApi:
         }
 
     @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
-    def test_post_keeps_unknown_failures_non_retryable(self, mock_invocation, api_instance):
+    def test_post_keeps_unknown_failures_non_retryable(
+        self, mock_invocation: MagicMock, api_instance: PluginInvokeTextEmbeddingApi
+    ) -> None:
         mock_invocation.invoke_text_embedding.side_effect = ValueError("invalid model input")
-        raw_post = _extract_raw_post(PluginInvokeTextEmbeddingApi)
+        raw_post = inspect.unwrap(PluginInvokeTextEmbeddingApi.post)
 
         result = raw_post(
             api_instance,
@@ -175,10 +155,10 @@ class TestPluginInvokeTextEmbeddingApi:
 
 class TestPluginInvokeMultimodalEmbeddingApi:
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeMultimodalEmbeddingApi:
         return PluginInvokeMultimodalEmbeddingApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeMultimodalEmbeddingApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -187,27 +167,29 @@ class TestPluginInvokeRerankApi:
     """Test PluginInvokeRerankApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeRerankApi:
         return PluginInvokeRerankApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeRerankApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
 
 class TestPluginModelCatalogApi:
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginModelCatalogApi:
         return PluginModelCatalogApi()
 
     @patch("controllers.inner_api.plugin.plugin.PluginModelBackwardsInvocation")
-    def test_post_lists_models_in_the_resolved_tenant_scope(self, mock_invocation, api_instance, app: Flask):
-        mock_invocation.list_models.return_value = {"items": [], "next_offset": None}
+    def test_post_lists_models_in_the_resolved_tenant_scope(
+        self, mock_invocation: MagicMock, api_instance: PluginModelCatalogApi, app: Flask
+    ) -> None:
+        mock_invocation.list_models.return_value = {"items": list[object](), "next_offset": None}
         mock_tenant = _tenant()
         mock_user = _user()
         mock_payload = RequestListModels(model_type=ModelType.LLM)
 
-        raw_post = _extract_raw_post(PluginModelCatalogApi)
+        raw_post = inspect.unwrap(PluginModelCatalogApi.post)
         result = raw_post(
             api_instance,
             user_model=mock_user,
@@ -225,18 +207,18 @@ class TestPluginModelCatalogApi:
 
 class TestPluginInvokeDatasourceApi:
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeDatasourceApi:
         return PluginInvokeDatasourceApi()
 
     @patch("controllers.inner_api.plugin.plugin.length_prefixed_response")
     @patch("controllers.inner_api.plugin.plugin.PluginDatasourceBackwardsInvocation")
     def test_post_delegates_to_dify_datasource_runtime(
         self,
-        mock_invocation,
-        mock_length_prefixed_response,
-        api_instance,
+        mock_invocation: MagicMock,
+        mock_length_prefixed_response: MagicMock,
+        api_instance: PluginInvokeDatasourceApi,
         app: Flask,
-    ):
+    ) -> None:
         mock_tenant = _tenant()
         mock_user = _user()
         mock_payload = RequestInvokeDatasource(
@@ -254,7 +236,7 @@ class TestPluginInvokeDatasourceApi:
         mock_invocation.convert_to_event_stream.return_value = stream
         mock_length_prefixed_response.return_value = "response"
 
-        raw_post = _extract_raw_post(PluginInvokeDatasourceApi)
+        raw_post = inspect.unwrap(PluginInvokeDatasourceApi.post)
         result = raw_post(
             api_instance,
             user_model=mock_user,
@@ -276,10 +258,10 @@ class TestPluginInvokeTTSApi:
     """Test PluginInvokeTTSApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeTTSApi:
         return PluginInvokeTTSApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeTTSApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -288,10 +270,10 @@ class TestPluginInvokeSpeech2TextApi:
     """Test PluginInvokeSpeech2TextApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeSpeech2TextApi:
         return PluginInvokeSpeech2TextApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeSpeech2TextApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -300,10 +282,10 @@ class TestPluginInvokeModerationApi:
     """Test PluginInvokeModerationApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeModerationApi:
         return PluginInvokeModerationApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeModerationApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -312,10 +294,10 @@ class TestPluginInvokeToolApi:
     """Test PluginInvokeToolApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeToolApi:
         return PluginInvokeToolApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeToolApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -324,10 +306,10 @@ class TestPluginInvokeParameterExtractorNodeApi:
     """Test PluginInvokeParameterExtractorNodeApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeParameterExtractorNodeApi:
         return PluginInvokeParameterExtractorNodeApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeParameterExtractorNodeApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -336,10 +318,10 @@ class TestPluginInvokeQuestionClassifierNodeApi:
     """Test PluginInvokeQuestionClassifierNodeApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeQuestionClassifierNodeApi:
         return PluginInvokeQuestionClassifierNodeApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeQuestionClassifierNodeApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -348,10 +330,10 @@ class TestPluginInvokeAppApi:
     """Test PluginInvokeAppApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeAppApi:
         return PluginInvokeAppApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeAppApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -389,7 +371,7 @@ class TestPluginInvokeAppApi:
             ) as convert_to_event_stream,
             patch.object(plugin_module, "length_prefixed_response", return_value=encoded_response) as encode,
         ):
-            raw_post = _extract_raw_post(PluginInvokeAppApi)
+            raw_post = inspect.unwrap(PluginInvokeAppApi.post)
             result = raw_post(
                 api_instance,
                 session=session,
@@ -410,15 +392,17 @@ class TestPluginInvokeEncryptApi:
     """Test PluginInvokeEncryptApi endpoint structure and handler logic"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeEncryptApi:
         return PluginInvokeEncryptApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeEncryptApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
     @patch("controllers.inner_api.plugin.plugin.PluginEncrypter")
-    def test_post_returns_encrypted_data(self, mock_encrypter, api_instance, app: Flask):
+    def test_post_returns_encrypted_data(
+        self, mock_encrypter: MagicMock, api_instance: PluginInvokeEncryptApi, app: Flask
+    ) -> None:
         """Test that post() delegates to PluginEncrypter and returns model_dump output"""
         # Arrange
         mock_encrypter.invoke_encrypt.return_value = {"encrypted": "data"}
@@ -427,7 +411,7 @@ class TestPluginInvokeEncryptApi:
         mock_payload = MagicMock()
 
         # Act — extract raw post() bypassing all decorators including plugin_data
-        raw_post = _extract_raw_post(PluginInvokeEncryptApi)
+        raw_post = inspect.unwrap(PluginInvokeEncryptApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -436,7 +420,9 @@ class TestPluginInvokeEncryptApi:
         assert result.get("error") == ""
 
     @patch("controllers.inner_api.plugin.plugin.PluginEncrypter")
-    def test_post_returns_error_on_exception(self, mock_encrypter, api_instance, app: Flask):
+    def test_post_returns_error_on_exception(
+        self, mock_encrypter: MagicMock, api_instance: PluginInvokeEncryptApi, app: Flask
+    ) -> None:
         """Test that post() catches exceptions and returns error response"""
         # Arrange
         mock_encrypter.invoke_encrypt.side_effect = RuntimeError("encrypt failed")
@@ -445,7 +431,7 @@ class TestPluginInvokeEncryptApi:
         mock_payload = MagicMock()
 
         # Act
-        raw_post = _extract_raw_post(PluginInvokeEncryptApi)
+        raw_post = inspect.unwrap(PluginInvokeEncryptApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -456,10 +442,10 @@ class TestPluginInvokeSummaryApi:
     """Test PluginInvokeSummaryApi endpoint"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginInvokeSummaryApi:
         return PluginInvokeSummaryApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginInvokeSummaryApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -468,15 +454,21 @@ class TestPluginUploadFileRequestApi:
     """Test PluginUploadFileRequestApi endpoint structure and handler logic"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginUploadFileRequestApi:
         return PluginUploadFileRequestApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginUploadFileRequestApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
     @patch("controllers.inner_api.plugin.plugin.get_signed_file_uri_for_plugin")
-    def test_post_returns_signed_url(self, mock_get_uri, api_instance, app: Flask, monkeypatch: pytest.MonkeyPatch):
+    def test_post_returns_signed_url(
+        self,
+        mock_get_uri: MagicMock,
+        api_instance: PluginUploadFileRequestApi,
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
         """Test that post() generates a signed URL and returns it"""
         # Arrange
         mock_get_uri.return_value = "/files/upload/for-plugin?sign=1"
@@ -489,7 +481,7 @@ class TestPluginUploadFileRequestApi:
         mock_payload.conversation_id = "conversation-id"
 
         # Act
-        raw_post = _extract_raw_post(PluginUploadFileRequestApi)
+        raw_post = inspect.unwrap(PluginUploadFileRequestApi.post)
         result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert
@@ -507,10 +499,10 @@ class TestPluginDownloadFileRequestApi:
     """Test PluginDownloadFileRequestApi endpoint structure and handler logic"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginDownloadFileRequestApi:
         return PluginDownloadFileRequestApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginDownloadFileRequestApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
@@ -525,14 +517,14 @@ class TestPluginDownloadFileRequestApi:
     @patch("controllers.inner_api.plugin.plugin.FileRequestService")
     def test_post_returns_signed_download_url(
         self,
-        mock_service_cls,
-        api_instance,
+        mock_service_cls: MagicMock,
+        api_instance: PluginDownloadFileRequestApi,
         app: Flask,
         monkeypatch: pytest.MonkeyPatch,
         sqlite_session: Session,
         for_external: bool,
         expected_url: str,
-    ):
+    ) -> None:
         tenant = Tenant(
             name="Plugin Tenant",
             encrypt_public_key=None,
@@ -567,7 +559,7 @@ class TestPluginDownloadFileRequestApi:
             "reference": reference,
         }
 
-        raw_post = _extract_raw_post(PluginDownloadFileRequestApi)
+        raw_post = inspect.unwrap(PluginDownloadFileRequestApi.post)
         result = raw_post(api_instance, payload=mock_payload)
 
         mock_service.request_download.assert_called_once_with(
@@ -589,14 +581,14 @@ class TestPluginFetchAppInfoApi:
     """Test PluginFetchAppInfoApi endpoint structure and handler logic"""
 
     @pytest.fixture
-    def api_instance(self):
+    def api_instance(self) -> PluginFetchAppInfoApi:
         return PluginFetchAppInfoApi()
 
-    def test_has_post_method(self, api_instance):
+    def test_has_post_method(self, api_instance: PluginFetchAppInfoApi) -> None:
         assert hasattr(api_instance, "post")
         assert callable(api_instance.post)
 
-    def test_post_returns_app_info(self, api_instance, app: Flask):
+    def test_post_returns_app_info(self, api_instance: PluginFetchAppInfoApi, app: Flask) -> None:
         """Test that post() fetches app info and returns it"""
         # Arrange
         plugin_apps = create_autospec(PluginAppInvocationService, instance=True, spec_set=True)
@@ -615,7 +607,7 @@ class TestPluginFetchAppInfoApi:
                 return_value={"app_name": "My App", "mode": "chat"},
             ) as fetch_app_info,
         ):
-            raw_post = _extract_raw_post(PluginFetchAppInfoApi)
+            raw_post = inspect.unwrap(PluginFetchAppInfoApi.post)
             result = raw_post(api_instance, user_model=user, tenant_model=tenant, payload=mock_payload)
 
         # Assert

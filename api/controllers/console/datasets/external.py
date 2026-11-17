@@ -8,6 +8,7 @@ from uuid import UUID
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_serializer, field_validator
 
+from configs import dify_config
 from constants import HIDDEN_VALUE
 from controllers.common.errors import ConflictError, InternalServerError, NotFoundError
 from controllers.common.fields import UsageCountResponse
@@ -45,7 +46,7 @@ from services.errors.knowledge_retrieval import (
     ExternalTemplateNotFoundError,
 )
 from services.knowledge.dataset_access import DatasetAccessDeniedError, DatasetNotFoundError
-from services.knowledge.entities.external import ExternalDatasetCreatePayload
+from services.knowledge.entities.external import ExternalDatasetCreatePayload as ExternalDatasetCreateInput
 from services.knowledge.external.application import ExternalHitTestingError
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,12 @@ def _raise_external_error(error: Exception) -> Never:
         logger.exception("External hit testing failed")
         raise InternalServerError() from error
     raise error
+
+
+class ExternalDatasetCreatePayload(ExternalDatasetCreateInput):
+    """Apply the deployment's description limit at the HTTP boundary."""
+
+    description: str | None = Field(None, max_length=dify_config.DATASET_DESCRIPTION_MAX_LENGTH)
 
 
 class ExternalKnowledgeApiPayload(BaseModel):

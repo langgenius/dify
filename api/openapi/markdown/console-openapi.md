@@ -2186,6 +2186,25 @@ Get advanced chat workflow run list
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire
+Retire the Agent workspaces of the caller's ended Chatflow debug conversations
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workspaces retired |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
 
@@ -27362,12 +27381,7 @@ Request body for creating or updating one external contact.
 
 #### ExternalDatasetCreatePayload
 
-Validated fields required to create an external dataset binding.
-
-The console controller owns HTTP concerns, but the service also needs this
-contract when creating the tenant-scoped dataset and external knowledge
-binding. Keep it outside controllers so service imports do not depend on
-Flask blueprint initialization.
+Apply the deployment's description limit at the HTTP boundary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27661,7 +27675,7 @@ Resolved multi-file input constraints and effective number limit.
 | config | object | Non-secret settings | No |
 | credentials | object | Secret settings; write-only | No |
 | name | string | Display name | Yes |
-| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+| provider_type | string | cloudmersive, scanii, metadefender or api | Yes |
 
 #### FileScanProviderListResponse
 
