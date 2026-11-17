@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Literal
 
 import pytest
 
@@ -92,7 +93,7 @@ class TestAdvancedChatGenerateResponseConverter:
             assert chunk["data"] == original["data"]
         assert retry.model_dump(mode="json") == original
 
-    def test_blocking_simple_response_metadata(self):
+    def test_blocking_simple_response_metadata(self) -> None:
         data = ChatbotAppBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -106,7 +107,7 @@ class TestAdvancedChatGenerateResponseConverter:
         response = AdvancedChatAppGenerateResponseConverter.convert_blocking_simple_response(blocking)
         assert "usage" not in response["metadata"]
 
-    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch):
+    def test_blocking_full_response_derives_pause_data_from_model_dump(self, monkeypatch: pytest.MonkeyPatch) -> None:
         data = AdvancedChatPausedBlockingResponse.Data(
             id="msg-1",
             mode="chat",
@@ -125,8 +126,10 @@ class TestAdvancedChatGenerateResponseConverter:
         )
         original_model_dump = type(data).model_dump
 
-        def _model_dump_with_future_field(self, *args, **kwargs):
-            payload = original_model_dump(self, *args, **kwargs)
+        def _model_dump_with_future_field(
+            self: AdvancedChatPausedBlockingResponse.Data, *, mode: Literal["json", "python"] = "python"
+        ) -> dict[str, object]:
+            payload = original_model_dump(self, mode=mode)
             payload["future_field"] = "future-value"
             return payload
 
@@ -137,7 +140,7 @@ class TestAdvancedChatGenerateResponseConverter:
 
         assert response["data"]["future_field"] == "future-value"
 
-    def test_stream_simple_response_includes_node_events(self):
+    def test_stream_simple_response_includes_node_events(self) -> None:
         node_start = NodeStartStreamResponse(
             task_id="t1",
             workflow_run_id="r1",
@@ -200,6 +203,9 @@ class TestAdvancedChatGenerateResponseConverter:
 
         converted = list(AdvancedChatAppGenerateResponseConverter.convert_stream_simple_response(stream()))
         assert converted[0] == "ping"
+        assert isinstance(converted[1], dict)
+        assert isinstance(converted[2], dict)
+        assert isinstance(converted[3], dict)
         assert converted[1]["event"] == "node_started"
         assert converted[2]["event"] == "node_finished"
         assert converted[3]["event"] == "error"
