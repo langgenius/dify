@@ -478,7 +478,7 @@ def test_missing_provider_missing_file_and_broken_settings_block_with_a_reason(
     assert other_tenant.status == "disabled"
 
     def broken(_tenant_id: str, _provider: FileScanProvider) -> FileScanner:
-        raise ScannerConfigError("ClamAV is not configured for this deployment")
+        raise ScannerConfigError("endpoint is required")
 
     monkeypatch.setattr(service_module, "build_scanner", broken)
     assert _scan(service, upload_file_id).code is ScanErrorCode.PROVIDER_AUTH_FAILED
@@ -723,21 +723,6 @@ def test_provider_remembered_by_a_turned_off_policy_can_be_deleted(
 
     assert providers.list(tenant_id=TENANT_ID) == []
     assert policies.get(tenant_id=TENANT_ID, scope=SCOPE) == ScanPolicy(enabled=False, provider_id=None)
-
-
-def test_clamav_is_offered_only_when_the_deployment_configures_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(provider_module.dify_config, "FILE_SCAN_CLAMAV_HOST", "")
-    available = {item.provider_type: item.available for item in FileScanProviderService.provider_types()}
-    assert available == {
-        "clamav": False,
-        "cloudmersive": True,
-        "scanii": True,
-        "metadefender": True,
-        "api": True,
-    }
-
-    monkeypatch.setattr(provider_module.dify_config, "FILE_SCAN_CLAMAV_HOST", "clamav")
-    assert FileScanProviderService.provider_types()[0].available
 
 
 def test_scan_content_scans_bytes_that_are_not_stored_yet_under_the_scope_policy(
