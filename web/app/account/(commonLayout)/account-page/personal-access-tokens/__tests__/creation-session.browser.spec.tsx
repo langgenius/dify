@@ -44,7 +44,7 @@ it('clears the one-time secret and name after closing and reopening creation', a
   const docs = dialog.getByRole('link', { name: 'How to use it' })
   await expect
     .element(docs)
-    .toHaveAttribute('href', expect.stringContaining('/api-reference/guides/get-started'))
+    .toHaveAttribute('href', expect.stringContaining('/cli/personal-access-tokens'))
   await expect.element(docs).toHaveAttribute('rel', 'noopener noreferrer')
   expect(api.create).toHaveBeenCalledWith(
     expect.objectContaining({
