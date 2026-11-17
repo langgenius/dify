@@ -82,6 +82,14 @@ class WorkflowRunCleanupRef:
 
 
 @dataclass(frozen=True)
+class WorkflowResumeDispatch:
+    """Claimed delivery of a durable request to resume one workflow pause."""
+
+    pause_id: str
+    workflow_run_id: str
+
+
+@dataclass(frozen=True)
 class AppWorkflowRunStats:
     """Runs of one app, limited to the requested trigger sources."""
 
@@ -186,6 +194,20 @@ class APIWorkflowRunRepository(Protocol):
         The caller owns the transaction, has locked the owner-scoped run in
         this Session, and has decided that execution must stop.
         """
+        ...
+
+    def request_workflow_pause_resume(self, session: Session, *, workflow_run_id: str) -> bool:
+        """Record a retryable resume intent on the run's active pause in this transaction."""
+        ...
+
+    def claim_pending_workflow_resume_dispatches(
+        self, *, now: datetime, lease_expires_at: datetime, limit: int, workflow_run_id: str | None = None
+    ) -> Sequence[WorkflowResumeDispatch]:
+        """Claim due resume intents in a short transaction before publishing them."""
+        ...
+
+    def release_workflow_resume_dispatch_claim(self, *, pause_id: str, lease_expires_at: datetime) -> None:
+        """Release a still-current dispatch claim after broker publication fails."""
         ...
 
     def get_workflow_run_by_id_without_tenant(

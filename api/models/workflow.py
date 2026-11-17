@@ -2162,6 +2162,12 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
         # on a potentially large table—we reference `WorkflowRun` from `WorkflowPause` and enforce a unique
         # constraint on `workflow_run_id` to guarantee a one-to-one relationship.
         UniqueConstraint("workflow_run_id"),
+        sa.Index(
+            "workflow_pause_resume_dispatch_idx",
+            "resumed_at",
+            "resume_requested_at",
+            "resume_dispatch_lease_expires_at",
+        ),
     )
 
     # `workflow_id` represents the unique identifier of the workflow associated with this pause.
@@ -2197,6 +2203,11 @@ class WorkflowPause(DefaultFieldsDCMixin, TypeBase):
         nullable=True,
         default=None,
     )
+
+    # A timeout may commit before its resume task reaches the broker. Keep the
+    # delivery intent on this pause so the periodic dispatcher can retry it.
+    resume_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    resume_dispatch_lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     # Relationship to WorkflowRun (uses lambda to resolve across Base/TypeBase registries)
     workflow_run: Mapped["WorkflowRun"] = orm.relationship(

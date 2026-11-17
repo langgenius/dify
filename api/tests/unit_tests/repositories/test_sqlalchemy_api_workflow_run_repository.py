@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 from uuid import uuid4
@@ -9,6 +9,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.workflow.nodes.human_input.entities import FormDefinition, ParagraphInputConfig, UserActionConfig
 from core.workflow.nodes.human_input.enums import FormInputType, HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import HumanInputRequired
@@ -20,6 +21,7 @@ from models.human_input import HumanInputForm, HumanInputFormRecipient, Recipien
 from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from models.workflow import WorkflowType as ModelWorkflowType
 from repositories.api_workflow_run_repository import AppWorkflowRunStats
+from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     WorkflowRunMessageRef,
@@ -142,6 +144,55 @@ def test_active_workflow_pause_requires_unresumed_pause_in_complete_owner_scope(
             app_id=workflow_run.app_id,
             run_id=workflow_run.id,
         )
+
+
+def test_resume_request_requires_an_active_pause_and_dispatch_claim_requires_positive_limit(
+    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun
+) -> None:
+    repository = DifyAPISQLAlchemyWorkflowRunRepository(sqlite_session_factory)
+    with sqlite_session_factory.begin() as session:
+        assert not repository.request_workflow_pause_resume(session, workflow_run_id=workflow_run.id)
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    assert (
+        repository.claim_pending_workflow_resume_dispatches(
+            now=now, lease_expires_at=now, limit=0, workflow_run_id=workflow_run.id
+        )
+        == ()
+    )
+
+
+def test_logstore_workflow_repository_delegates_resume_dispatch_to_sql_control_repository(
+    sqlite_session_factory: sessionmaker[Session], workflow_run: WorkflowRun, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    with patch("extensions.logstore.repositories.logstore_api_workflow_run_repository.AliyunLogStore"):
+        monkeypatch.setattr(
+            dify_config,
+            "API_WORKFLOW_RUN_REPOSITORY",
+            "extensions.logstore.repositories.logstore_api_workflow_run_repository.LogstoreAPIWorkflowRunRepository",
+        )
+        repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(sqlite_session_factory)
+    pause = WorkflowPause(
+        workflow_id=workflow_run.workflow_id,
+        workflow_run_id=workflow_run.id,
+        state_object_key="checkpoint.json",
+    )
+    with sqlite_session_factory.begin() as session:
+        session.add(pause)
+        assert repository.request_workflow_pause_resume(session, workflow_run_id=workflow_run.id)
+
+    now = datetime.now(UTC).replace(tzinfo=None)
+    lease_expires_at = now + timedelta(minutes=5)
+    first = repository.claim_pending_workflow_resume_dispatches(
+        now=now, lease_expires_at=lease_expires_at, limit=1, workflow_run_id=workflow_run.id
+    )
+    assert [dispatch.pause_id for dispatch in first] == [pause.id]
+
+    repository.release_workflow_resume_dispatch_claim(pause_id=pause.id, lease_expires_at=lease_expires_at)
+    retried = repository.claim_pending_workflow_resume_dispatches(
+        now=now, lease_expires_at=lease_expires_at, limit=1, workflow_run_id=workflow_run.id
+    )
+    assert [dispatch.pause_id for dispatch in retried] == [pause.id]
 
 
 def _build_form_model() -> HumanInputForm:

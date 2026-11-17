@@ -40,6 +40,7 @@ from models.human_input import (
     RecipientType,
     StandaloneWebAppRecipientPayload,
 )
+from models.workflow import WorkflowPause
 from repositories.human_input_errors import FormAlreadyHandledError
 
 
@@ -735,6 +736,7 @@ class HumanInputFormSubmissionRepository:
         form_id: str,
         timeout_status: HumanInputFormStatus,
         reason: str | None = None,
+        request_resume: bool = False,
     ) -> HumanInputFormRecord:
         with session_factory.create_session() as session, session.begin():
             form_model = session.get(HumanInputForm, form_id)
@@ -752,6 +754,22 @@ class HumanInputFormSubmissionRepository:
                 raise FormNotFoundError(f"form already submitted, id={form_id}")
 
             form_model.status = timeout_status
+            if (
+                request_resume
+                and timeout_status == HumanInputFormStatus.TIMEOUT
+                and form_model.workflow_run_id is not None
+            ):
+                pause = session.scalar(
+                    select(WorkflowPause)
+                    .where(
+                        WorkflowPause.workflow_run_id == form_model.workflow_run_id,
+                        WorkflowPause.resumed_at.is_(None),
+                    )
+                    .with_for_update()
+                )
+                if pause is not None:
+                    pause.resume_requested_at = pause.resume_requested_at or naive_utc_now()
+                    session.add(pause)
             form_model.selected_action_id = None
             form_model.submitted_data = None
             form_model.submission_user_id = None

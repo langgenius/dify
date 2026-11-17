@@ -20,7 +20,7 @@ from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, cast, override
 
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.nodes.human_input.pause_reason import PauseReason as DifyPauseReason
 from extensions.logstore.aliyun_logstore import AliyunLogStore
@@ -32,7 +32,11 @@ from libs.datetime_utils import ensure_naive_utc, naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowRun, WorkflowType
-from repositories.api_workflow_run_repository import APIWorkflowRunRepository, AppWorkflowRunStats
+from repositories.api_workflow_run_repository import (
+    APIWorkflowRunRepository,
+    AppWorkflowRunStats,
+    WorkflowResumeDispatch,
+)
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import DifyAPISQLAlchemyWorkflowRunRepository
 from repositories.types import (
@@ -227,6 +231,28 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     @override
     def delete_workflow_pause(self, pause_entity: WorkflowPauseEntity) -> None:
         self._control_repository.delete_workflow_pause(pause_entity)
+
+    @override
+    def request_workflow_pause_resume(self, session: Session, *, workflow_run_id: str) -> bool:
+        return self._control_repository.request_workflow_pause_resume(session, workflow_run_id=workflow_run_id)
+
+    @override
+    def claim_pending_workflow_resume_dispatches(
+        self, *, now: datetime, lease_expires_at: datetime, limit: int, workflow_run_id: str | None = None
+    ) -> Sequence[WorkflowResumeDispatch]:
+        return self._control_repository.claim_pending_workflow_resume_dispatches(
+            now=now,
+            lease_expires_at=lease_expires_at,
+            limit=limit,
+            workflow_run_id=workflow_run_id,
+        )
+
+    @override
+    def release_workflow_resume_dispatch_claim(self, *, pause_id: str, lease_expires_at: datetime) -> None:
+        self._control_repository.release_workflow_resume_dispatch_claim(
+            pause_id=pause_id,
+            lease_expires_at=lease_expires_at,
+        )
 
     @override
     def prune_pauses(
