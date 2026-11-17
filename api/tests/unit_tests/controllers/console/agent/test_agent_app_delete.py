@@ -25,7 +25,8 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
-from models.model import App, AppMode
+from models.enums import TagType
+from models.model import App, AppMode, Tag, TagBinding
 from models.resource_access_token import ResourceAccessToken, ResourceAccessTokenRelation
 from services.app.agent_app_service import AgentAppDeletionService
 from services.app.console_gateway import AppLifecycleGateway
@@ -114,6 +115,29 @@ def test_delete_archives_agent_and_removes_access_grants_before_cleanup(
     assert published.app.id == app_id
     assert published.app.tenant_id == harness.tenant_id
     assert published.backing_agent_id == agent_id
+
+
+@pytest.mark.usefixtures("cleanup")
+def test_delete_removes_only_the_archived_agents_tag_bindings(harness: Harness) -> None:
+    agent_id, _ = harness.create_agent()
+    with harness.sessions.begin() as session:
+        session.get_one(Agent, agent_id).name = "Archived Agent"
+    other_id, _ = harness.create_agent()
+    with harness.sessions.begin() as session:
+        tag = Tag(tenant_id=harness.tenant_id, type=TagType.AGENT, name="Research", created_by=harness.account_id)
+        session.add(tag)
+        session.flush()
+        tag_id = tag.id
+        session.add_all(
+            TagBinding(tenant_id=harness.tenant_id, tag_id=tag_id, target_id=target_id, created_by=harness.account_id)
+            for target_id in (agent_id, other_id)
+        )
+
+    response = harness.client.delete(f"/console/api/agent/{agent_id}", headers=harness.headers)
+    assert response.status_code == HTTPStatus.NO_CONTENT
+    with harness.sessions() as session:
+        assert session.get(Tag, tag_id) is not None
+        assert session.scalars(select(TagBinding.target_id).where(TagBinding.tag_id == tag_id)).all() == [other_id]
 
 
 def test_delete_retires_resources_and_preserves_shared_tokens(harness: Harness, cleanup: RecordedCleanup) -> None:
