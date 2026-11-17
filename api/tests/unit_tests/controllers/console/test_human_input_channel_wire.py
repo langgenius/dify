@@ -663,7 +663,7 @@ def test_saved_im_test_rejects_provider_mismatch_as_bad_request(
 
 @pytest.mark.parametrize("kind", ["im", "email"])
 @pytest.mark.parametrize("saved", [False, True])
-@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", None])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", "  vendor\nrequest\x00  ", None])
 def test_provider_diagnostics_are_structured_test_results(
     wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str, saved: bool, request_id: str | None
 ) -> None:
@@ -714,7 +714,7 @@ def test_provider_diagnostics_are_structured_test_results(
 
 
 @pytest.mark.parametrize("operation", ["create", "update", "replace"])
-@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", None])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", "  vendor\nrequest\x00  ", None])
 def test_im_mutation_errors_expose_original_provider_diagnostics(
     wire_app: Flask, monkeypatch: pytest.MonkeyPatch, operation: str, request_id: str | None
 ) -> None:

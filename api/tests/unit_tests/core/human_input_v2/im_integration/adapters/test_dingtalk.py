@@ -25,7 +25,19 @@ from core.human_input_v2.im_integration.adapters.entities import CredentialTestF
 )
 @pytest.mark.parametrize("request_id_key", ["requestid", "RequestId"])
 @pytest.mark.parametrize(
-    "request_id", ["01A1E70F-03B7-77BB-8BD8-8B4AE00F565E", "dt:req-17.abc", None, 123, "", "bad\nrequest"]
+    "request_id",
+    [
+        pytest.param("01A1E70F-03B7-77BB-8BD8-8B4AE00F565E", id="uuid"),
+        pytest.param("dt:req-17.abc", id="opaque"),
+        pytest.param(None, id="absent"),
+        pytest.param(123, id="non-string"),
+        pytest.param("", id="empty"),
+        pytest.param("vendor\nrequest", id="newline"),
+        pytest.param("  vendor request  ", id="whitespace"),
+        pytest.param("vendor\x00\t\r\x7frequest", id="control-characters"),
+        pytest.param("请求标识", id="unicode"),
+        pytest.param("x" * 1024, id="long"),
+    ],
 )
 def test_token_rejection_logs_safe_diagnostics_without_changing_failure(
     monkeypatch: pytest.MonkeyPatch,
@@ -74,10 +86,10 @@ def test_token_rejection_logs_safe_diagnostics_without_changing_failure(
     assert result.provider_error_code == code
     assert f"http_status={status}" in caplog.text
     assert code in caplog.text
-    expected_request_id = request_id if isinstance(request_id, str) and request_id and "\n" not in request_id else None
+    expected_request_id = request_id if isinstance(request_id, str) else None
     assert result.provider_request_id == expected_request_id
     if expected_request_id is not None:
-        assert expected_request_id in caplog.text
+        assert expected_request_id in caplog.text or repr(expected_request_id) in caplog.text
     else:
         assert "request_id=None" in caplog.text
     for sensitive_value in (
