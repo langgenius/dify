@@ -1,3 +1,4 @@
+import json
 from typing import Literal
 from unittest.mock import MagicMock
 
@@ -79,14 +80,19 @@ def test_moderation_gateway_translates_point_and_validated_parameters(direction:
     if direction == "inputs":
         params = ModerationInputParams(app_id="app", inputs={"field": [1, True]}, query="hello")
         assert gateway.inputs("https://extension.example.test", "plaintext-key", params) is response
-        point = APIBasedExtensionPoint.APP_MODERATION_INPUT
+        expected_point = APIBasedExtensionPoint.APP_MODERATION_INPUT
         expected = {"app_id": "app", "inputs": {"field": [1, True]}, "query": "hello"}
     else:
         output_params = ModerationOutputParams(app_id="app", text="hello")
         assert gateway.outputs("https://extension.example.test", "plaintext-key", output_params) is response
-        point = APIBasedExtensionPoint.APP_MODERATION_OUTPUT
+        expected_point = APIBasedExtensionPoint.APP_MODERATION_OUTPUT
         expected = {"app_id": "app", "text": "hello"}
-    assert calls == [("https://extension.example.test", "plaintext-key", point, expected)]
+    assert len(calls) == 1
+    endpoint, key, point, payload = calls[0]
+    assert (endpoint, key, point) == ("https://extension.example.test", "plaintext-key", expected_point)
+    assert json.dumps(payload, sort_keys=True, ensure_ascii=False) == json.dumps(
+        expected, sort_keys=True, ensure_ascii=False
+    )
 
 
 def test_input_domain_serialization_preserves_files_and_json() -> None:
@@ -131,12 +137,6 @@ def test_input_domain_serialization_preserves_files_and_json() -> None:
 
     def request(endpoint: str, key: str, point: APIBasedExtensionPoint, payload: dict[str, JsonValue]) -> JsonValue:
         calls.append((endpoint, key, point, payload))
-        wire_inputs = payload["inputs"]
-        assert isinstance(wire_inputs, dict)
-        wire_mixed = wire_inputs["mixed"]
-        assert isinstance(wire_mixed, list)
-        assert type(wire_mixed[0]) is int
-        assert type(wire_mixed[1]) is bool
         return response
 
     assert APIModerationGateway(request=request).inputs("https://extension.example.test", "plaintext-key", params) is (
@@ -154,9 +154,16 @@ def test_input_domain_serialization_preserves_files_and_json() -> None:
         "inputs": {**values, "file": attachment.model_dump(), "files": [attachment.model_dump()]},
         "query": "",
     }
-    assert calls == [
-        ("https://extension.example.test", "plaintext-key", APIBasedExtensionPoint.APP_MODERATION_INPUT, expected)
-    ]
+    assert len(calls) == 1
+    endpoint, key, point, payload = calls[0]
+    assert (endpoint, key, point) == (
+        "https://extension.example.test",
+        "plaintext-key",
+        APIBasedExtensionPoint.APP_MODERATION_INPUT,
+    )
+    assert json.dumps(payload, sort_keys=True, ensure_ascii=False) == json.dumps(
+        expected, sort_keys=True, ensure_ascii=False
+    )
 
 
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])

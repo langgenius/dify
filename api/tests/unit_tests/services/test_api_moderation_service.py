@@ -1,25 +1,26 @@
+import json
 import re
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Literal
 
 import pytest
+from flask import Flask
 from pydantic import JsonValue, ValidationError
 from sqlalchemy import Engine, create_engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
+from domain.moderation.api_config import APIModerationConfig, DisabledDirection, EnabledDirection, parse_direction
 from graphon.file import File, FileTransferMethod, FileType
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_adapters import APIModerationGateway
 from services.api_moderation_service import (
-    APIModerationConfig,
     APIModerationService,
-    DisabledDirection,
-    EnabledDirection,
     ModerationInputParams,
     ModerationOutputParams,
-    parse_direction,
 )
 from services.entities.message_entities import MessageInputValue
 
@@ -150,18 +151,44 @@ def service(sqlite_session_factory: sessionmaker[Session], outbound: _Outbound) 
     )
 
 
+@pytest.fixture
+def moderation_app(service: APIModerationService) -> Flask:
+    """Bind the observed real repository and outbound service without entering app context."""
+    app = Flask(__name__)
+    app.extensions[API_MODERATION_EXTENSION_KEY] = APIModerationCallbacks(
+        service.validate_config, service.moderate_inputs, service.moderate_outputs
+    )
+    return app
+
+
 def _moderate(
-    service: APIModerationService, config: APIModerationConfig | None, direction: Literal["inputs", "outputs"]
+    service: APIModerationService,
+    selection: DisabledDirection | EnabledDirection,
+    direction: Literal["inputs", "outputs"],
 ) -> JsonValue:
-    """Exercise either runtime operation with complete authored settings or no config."""
+    """Pass an admitted selection directly to either service operation and preserve its response."""
     if direction == "inputs":
-        return service.moderate_inputs(_TENANT_ID, "test-app-id", config, {"q": "a"}, "hello")
-    return service.moderate_outputs(_TENANT_ID, "test-app-id", config, "hello world")
+        return service.moderate_inputs(_TENANT_ID, "test-app-id", selection, {"q": "a"}, "hello")
+    return service.moderate_outputs(_TENANT_ID, "test-app-id", selection, "hello world")
+
+
+def _factory_moderate(
+    app: Flask,
+    config: Mapping[str, object] | None,
+    direction: Literal["inputs", "outputs"],
+    inputs: dict[str, object] | None = None,
+) -> ModerationInputsResult | ModerationOutputsResult:
+    """Admit raw settings through the real factory and its app-bound service, propagating failures."""
+    factory = ModerationFactory("api", "app", _TENANT_ID, dict(config) if config is not None else None)
+    with app.app_context():
+        if direction == "inputs":
+            return factory.moderation_for_inputs({} if inputs is None else inputs)
+        return factory.moderation_for_outputs("answer")
 
 
 @pytest.mark.parametrize(("inputs_enabled", "outputs_enabled"), [(True, True), (True, False), (False, True)])
 def test_validate_config_success(
-    service: APIModerationService,
+    moderation_app: Flask,
     api_config: APIModerationConfig,
     lookup_events: list[str],
     inputs_enabled: bool,
@@ -170,31 +197,31 @@ def test_validate_config_success(
     """Each valid combination permits one scoped read and no outbound work."""
     api_config["inputs_config"]["enabled"] = inputs_enabled
     api_config["outputs_config"]["enabled"] = outputs_enabled
-    service.validate_config(_TENANT_ID, api_config)
+    with moderation_app.app_context():
+        ModerationFactory.validate_config("api", _TENANT_ID, dict(api_config))
     assert lookup_events == ["checkout", "checkin"]
 
 
 @pytest.mark.parametrize("config", [{}, {"inputs_config": [], "outputs_config": []}, {"inputs_config": {}}])
 def test_validate_config_rejects_invalid_config_before_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     config: dict[str, JsonValue],
     lookup_events: list[str],
     lookup_queries: list[str],
 ) -> None:
     """Raw malformed forms fail validation before acquiring or querying a connection."""
-    with pytest.raises(ValidationError):
-        service.validate_config(_TENANT_ID, config)
+    with moderation_app.app_context(), pytest.raises(ValidationError):
+        ModerationFactory.validate_config("api", _TENANT_ID, config)
     assert lookup_events == []
     assert lookup_queries == []
 
 
 @pytest.mark.parametrize("extension_id", [_MISSING_EXTENSION_ID, _FOREIGN_EXTENSION_ID])
 def test_validate_config_extension_not_found(
-    service: APIModerationService, extension_id: str, api_config: APIModerationConfig, lookup_events: list[str]
+    service: APIModerationService, extension_id: str, lookup_events: list[str]
 ) -> None:
-    api_config["api_based_extension_id"] = extension_id
     with pytest.raises(ValueError, match=_EXTENSION_NOT_FOUND):
-        service.validate_config(_TENANT_ID, api_config)
+        service.validate_config(_TENANT_ID, EnabledDirection(extension_id))
     assert lookup_events == ["checkout", "checkin"]
 
 
@@ -202,7 +229,6 @@ def test_validate_config_extension_not_found(
 def test_enabled_moderation_releases_connection_before_external_io(
     service: APIModerationService,
     direction: Literal["inputs", "outputs"],
-    api_config: APIModerationConfig,
     lookup_events: list[str],
     outbound: _Outbound,
 ) -> None:
@@ -212,7 +238,7 @@ def test_enabled_moderation_releases_connection_before_external_io(
         expected = {"app_id": "test-app-id", "inputs": {"q": "a"}, "query": "hello"}
     else:
         expected = {"app_id": "test-app-id", "text": "hello world"}
-    assert _moderate(service, api_config, direction) is outbound.response
+    assert _moderate(service, EnabledDirection(_EXTENSION_ID), direction) is outbound.response
     assert outbound.params is not None
     assert outbound.params.model_dump() == expected
     assert lookup_events == ["checkout", "checkin", "decrypt", "request"]
@@ -224,19 +250,17 @@ def test_enabled_moderation_extension_not_found(
     service: APIModerationService,
     direction: Literal["inputs", "outputs"],
     extension_id: str,
-    api_config: APIModerationConfig,
     lookup_events: list[str],
 ) -> None:
     """Missing and foreign valid string IDs retain the scoped not-found failure."""
-    api_config["api_based_extension_id"] = extension_id
     with pytest.raises(ValueError, match=_EXTENSION_NOT_FOUND):
-        _moderate(service, api_config, direction)
+        _moderate(service, EnabledDirection(extension_id), direction)
     assert lookup_events == ["checkout", "checkin"]
 
 
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 def test_disabled_moderation_skips_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     api_config: APIModerationConfig,
     lookup_events: list[str],
@@ -246,22 +270,26 @@ def test_disabled_moderation_skips_lookup(
         api_config["inputs_config"] = {"enabled": False}
     else:
         api_config["outputs_config"] = {"enabled": False}
-    assert _moderate(service, api_config, direction) == {
-        "flagged": False,
-        "action": "direct_output",
-        "preset_response": "",
-    }
+    result = _factory_moderate(moderation_app, api_config, direction)
+    if direction == "inputs":
+        assert result == ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
+    else:
+        assert result == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
     assert lookup_events == []
 
 
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 def test_moderation_without_config_skips_lookup(
-    service: APIModerationService, direction: Literal["inputs", "outputs"], lookup_events: list[str]
+    moderation_app: Flask,
+    direction: Literal["inputs", "outputs"],
+    lookup_events: list[str],
+    lookup_queries: list[str],
 ) -> None:
     """Absent runtime config retains its explicit error before persistence access."""
     with pytest.raises(ValueError, match=r"^The config is not set\.$"):
-        _moderate(service, None, direction)
+        _factory_moderate(moderation_app, None, direction)
     assert lookup_events == []
+    assert lookup_queries == []
 
 
 def test_parse_direction_no_config(lookup_events: list[str]) -> None:
@@ -271,7 +299,7 @@ def test_parse_direction_no_config(lookup_events: list[str]) -> None:
 
 
 def test_lookup_failure_releases_connection(
-    service: APIModerationService, api_config: APIModerationConfig, lookup_events: list[str], sqlite_engine: Engine
+    service: APIModerationService, lookup_events: list[str], sqlite_engine: Engine
 ) -> None:
     failure = RuntimeError("lookup failed")
 
@@ -281,7 +309,7 @@ def test_lookup_failure_releases_connection(
     event.listen(sqlite_engine, "before_cursor_execute", fail_query)
     try:
         with pytest.raises(RuntimeError) as exc_info:
-            service.moderate_outputs(_TENANT_ID, "test-app-id", api_config, "test")
+            service.moderate_outputs(_TENANT_ID, "test-app-id", EnabledDirection(_EXTENSION_ID), "test")
     finally:
         event.remove(sqlite_engine, "before_cursor_execute", fail_query)
     assert exc_info.value is failure
@@ -292,7 +320,6 @@ def test_lookup_failure_releases_connection(
 @pytest.mark.parametrize("stage", ["decrypt", "request"])
 def test_external_failure_preserves_identity_after_checkin(
     service: APIModerationService,
-    api_config: APIModerationConfig,
     outbound: _Outbound,
     lookup_events: list[str],
     direction: Literal["inputs", "outputs"],
@@ -302,7 +329,7 @@ def test_external_failure_preserves_identity_after_checkin(
     failure = RuntimeError(f"{stage} failed")
     outbound.failure = (stage, failure)
     with pytest.raises(RuntimeError) as exc_info:
-        _moderate(service, api_config, direction)
+        _moderate(service, EnabledDirection(_EXTENSION_ID), direction)
     assert exc_info.value is failure
     expected = ["checkout", "checkin", "decrypt"]
     if stage == "request":
@@ -314,7 +341,7 @@ def test_external_failure_preserves_identity_after_checkin(
 @pytest.mark.parametrize("validation", ["runtime", "form"])
 @pytest.mark.parametrize("value", ["yes", "false", "", 0, 1, [], [False], {}, {"enabled": True}, None])
 def test_non_boolean_flags_are_rejected_before_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     validation: Literal["runtime", "form"],
     value: JsonValue,
@@ -329,14 +356,11 @@ def test_non_boolean_flags_are_rejected_before_lookup(
     }
     raw[f"{direction}_config"] = {"enabled": value}
     if validation == "form":
-        with pytest.raises(ValidationError):
-            service.validate_config(_TENANT_ID, raw)
-    elif direction == "inputs":
-        with pytest.raises(ValidationError):
-            service.moderate_inputs(_TENANT_ID, "app", raw, {})
+        with moderation_app.app_context(), pytest.raises(ValidationError):
+            ModerationFactory.validate_config("api", _TENANT_ID, raw)
     else:
         with pytest.raises(ValidationError):
-            service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
+            _factory_moderate(moderation_app, raw, direction)
     assert lookup_events == []
     assert lookup_queries == []
 
@@ -345,7 +369,7 @@ def test_non_boolean_flags_are_rejected_before_lookup(
 @pytest.mark.parametrize("validation", ["runtime", "form"])
 @pytest.mark.parametrize("selected", [None, [], "invalid", 1, {}])
 def test_malformed_direction_is_rejected_before_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     validation: Literal["runtime", "form"],
     selected: JsonValue,
@@ -360,14 +384,11 @@ def test_malformed_direction_is_rejected_before_lookup(
     }
     raw[f"{direction}_config"] = selected
     if validation == "form":
-        with pytest.raises(ValidationError):
-            service.validate_config(_TENANT_ID, raw)
-    elif direction == "inputs":
-        with pytest.raises(ValidationError):
-            service.moderate_inputs(_TENANT_ID, "app", raw, {})
+        with moderation_app.app_context(), pytest.raises(ValidationError):
+            ModerationFactory.validate_config("api", _TENANT_ID, raw)
     else:
         with pytest.raises(ValidationError):
-            service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
+            _factory_moderate(moderation_app, raw, direction)
     assert lookup_events == []
     assert lookup_queries == []
 
@@ -375,7 +396,7 @@ def test_malformed_direction_is_rejected_before_lookup(
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 @pytest.mark.parametrize("validation", ["runtime", "form"])
 def test_missing_direction_is_rejected_before_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     validation: Literal["runtime", "form"],
     lookup_events: list[str],
@@ -385,14 +406,11 @@ def test_missing_direction_is_rejected_before_lookup(
     opposite = "outputs_config" if direction == "inputs" else "inputs_config"
     raw: dict[str, JsonValue] = {opposite: {"enabled": True}, "api_based_extension_id": _EXTENSION_ID}
     if validation == "form":
-        with pytest.raises(ValidationError):
-            service.validate_config(_TENANT_ID, raw)
-    elif direction == "inputs":
-        with pytest.raises(ValidationError):
-            service.moderate_inputs(_TENANT_ID, "app", raw, {})
+        with moderation_app.app_context(), pytest.raises(ValidationError):
+            ModerationFactory.validate_config("api", _TENANT_ID, raw)
     else:
         with pytest.raises(ValidationError):
-            service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
+            _factory_moderate(moderation_app, raw, direction)
     assert lookup_events == []
     assert lookup_queries == []
 
@@ -400,7 +418,7 @@ def test_missing_direction_is_rejected_before_lookup(
 @pytest.mark.parametrize("operation", ["inputs", "outputs", "form"])
 @pytest.mark.parametrize("extension_config", _INVALID_EXTENSION_CONFIGS)
 def test_invalid_extension_id_is_rejected_before_lookup(
-    service: APIModerationService,
+    moderation_app: Flask,
     operation: Literal["inputs", "outputs", "form"],
     extension_config: dict[str, JsonValue],
     lookup_events: list[str],
@@ -413,21 +431,18 @@ def test_invalid_extension_id_is_rejected_before_lookup(
         **extension_config,
     }
     if operation == "form":
-        with pytest.raises(ValidationError):
-            service.validate_config(_TENANT_ID, raw)
-    elif operation == "inputs":
-        with pytest.raises(ValidationError):
-            service.moderate_inputs(_TENANT_ID, "app", raw, {})
+        with moderation_app.app_context(), pytest.raises(ValidationError):
+            ModerationFactory.validate_config("api", _TENANT_ID, raw)
     else:
         with pytest.raises(ValidationError):
-            service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
+            _factory_moderate(moderation_app, raw, operation)
     assert lookup_events == []
     assert lookup_queries == []
 
 
 @pytest.mark.parametrize("extension_config", _INVALID_EXTENSION_CONFIGS)
 def test_both_disabled_form_precedes_extension_id_validation(
-    service: APIModerationService,
+    moderation_app: Flask,
     extension_config: dict[str, JsonValue],
     lookup_events: list[str],
     lookup_queries: list[str],
@@ -439,19 +454,19 @@ def test_both_disabled_form_precedes_extension_id_validation(
         **extension_config,
     }
     message = "At least one of inputs_config or outputs_config must be enabled"
-    with pytest.raises(ValueError, match=f"^{re.escape(message)}$"):
-        service.validate_config(_TENANT_ID, raw)
+    with moderation_app.app_context(), pytest.raises(ValueError, match=f"^{re.escape(message)}$"):
+        ModerationFactory.validate_config("api", _TENANT_ID, raw)
     assert lookup_events == []
     assert lookup_queries == []
 
 
 def test_form_parses_inputs_direction_before_outputs_direction(
-    service: APIModerationService, lookup_events: list[str], lookup_queries: list[str]
+    moderation_app: Flask, lookup_events: list[str], lookup_queries: list[str]
 ) -> None:
     """The input direction's missing flag wins over malformed output settings."""
     raw: dict[str, JsonValue] = {"inputs_config": {}, "outputs_config": None}
-    with pytest.raises(ValidationError) as raised:
-        service.validate_config(_TENANT_ID, raw)
+    with moderation_app.app_context(), pytest.raises(ValidationError) as raised:
+        ModerationFactory.validate_config("api", _TENANT_ID, raw)
     assert [(error["loc"], error["type"]) for error in raised.value.errors()] == [(("enabled",), "missing")]
     assert lookup_events == []
     assert lookup_queries == []
@@ -460,24 +475,21 @@ def test_form_parses_inputs_direction_before_outputs_direction(
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 @pytest.mark.parametrize("extension_config", _INVALID_EXTENSION_CONFIGS)
 def test_disabled_direction_ignores_invalid_id_opposite_settings_and_payload(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     extension_config: dict[str, JsonValue],
     lookup_events: list[str],
     lookup_queries: list[str],
 ) -> None:
     """A false selected flag skips invalid ID, opposite settings and input values."""
-    selected: Literal["inputs_config", "outputs_config"] = (
-        "inputs_config" if direction == "inputs" else "outputs_config"
-    )
+    selected = "inputs_config" if direction == "inputs" else "outputs_config"
     opposite = "outputs_config" if direction == "inputs" else "inputs_config"
     raw: dict[str, JsonValue] = {selected: {"enabled": False}, opposite: None, **extension_config}
-    assert parse_direction(raw, selected) == DisabledDirection()
+    result = _factory_moderate(moderation_app, raw, direction, {"unsupported": object()})
     if direction == "inputs":
-        result = service.moderate_inputs(_TENANT_ID, "app", raw, {"unsupported": object()})
+        assert result == ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
     else:
-        result = service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
-    assert result == {"flagged": False, "action": "direct_output", "preset_response": ""}
+        assert result == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
     assert lookup_events == []
     assert lookup_queries == []
 
@@ -485,11 +497,10 @@ def test_disabled_direction_ignores_invalid_id_opposite_settings_and_payload(
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
 @pytest.mark.parametrize("opposite_value", [None, [], "invalid", 1, {}, {"enabled": "yes"}])
 def test_enabled_direction_ignores_malformed_opposite_settings(
-    service: APIModerationService,
+    moderation_app: Flask,
     direction: Literal["inputs", "outputs"],
     opposite_value: JsonValue,
     lookup_events: list[str],
-    outbound: _Outbound,
 ) -> None:
     """An enabled runtime selection reads only its own direction settings."""
     selected = "inputs_config" if direction == "inputs" else "outputs_config"
@@ -499,11 +510,11 @@ def test_enabled_direction_ignores_malformed_opposite_settings(
         opposite: opposite_value,
         "api_based_extension_id": _EXTENSION_ID,
     }
+    result = _factory_moderate(moderation_app, raw, direction)
     if direction == "inputs":
-        result = service.moderate_inputs(_TENANT_ID, "app", raw, {})
+        assert result == ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
     else:
-        result = service.moderate_outputs(_TENANT_ID, "app", raw, "answer")
-    assert result is outbound.response
+        assert result == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
     assert lookup_events == ["checkout", "checkin", "decrypt", "request"]
 
 
@@ -521,20 +532,33 @@ def test_direction_selection_preserves_string_ids_and_ignores_unknown_keys(exten
 @pytest.mark.parametrize("inputs", [{"invalid": object()}, {"invalid": [object()]}, {"invalid": {"nested": object()}}])
 def test_enabled_input_payload_rejects_unsupported_values_before_lookup(
     service: APIModerationService,
-    api_config: APIModerationConfig,
     inputs: dict[str, object],
     lookup_events: list[str],
     lookup_queries: list[str],
 ) -> None:
     """Arbitrary objects, including nested ones, fail admission before any I/O."""
     with pytest.raises(ValidationError):
-        service.moderate_inputs(_TENANT_ID, "app", api_config, inputs)
+        service.moderate_inputs(_TENANT_ID, "app", EnabledDirection(_EXTENSION_ID), inputs)
+    assert lookup_events == []
+    assert lookup_queries == []
+
+
+@pytest.mark.parametrize("inputs", [{"invalid": object()}, {"invalid": [object()]}, {"invalid": {"nested": object()}}])
+def test_factory_enabled_input_payload_rejects_unsupported_values_before_lookup(
+    moderation_app: Flask,
+    api_config: APIModerationConfig,
+    inputs: dict[str, object],
+    lookup_events: list[str],
+    lookup_queries: list[str],
+) -> None:
+    """Raw factory admission keeps enabled payload failures ahead of persistence and outbound work."""
+    with pytest.raises(ValidationError):
+        _factory_moderate(moderation_app, api_config, "inputs", inputs)
     assert lookup_events == []
     assert lookup_queries == []
 
 
 def test_input_domain_survives_sqlite_and_gateway_serialization(
-    api_config: APIModerationConfig,
     sqlite_session_factory: sessionmaker[Session],
     outbound: _Outbound,
     lookup_events: list[str],
@@ -602,7 +626,9 @@ def test_input_domain_survives_sqlite_and_gateway_serialization(
         request_inputs=request_inputs,
         request_outputs=gateway.outputs,
     )
-    assert service.moderate_inputs(_TENANT_ID, "test-app-id", api_config, values, "hello") is response
+    assert (
+        service.moderate_inputs(_TENANT_ID, "test-app-id", EnabledDirection(_EXTENSION_ID), values, "hello") is response
+    )
     assert len(admitted) == 1
     params = admitted[0]
     assert params.inputs == values
@@ -611,24 +637,24 @@ def test_input_domain_survives_sqlite_and_gateway_serialization(
     assert isinstance(files, list)
     assert len(files) == 1
     assert files[0] is attachment
-    assert isinstance(params.inputs["file_json"], dict)
     assert params.inputs["file_json"] == file_shaped_json
-    mixed = params.inputs["mixed"]
-    assert isinstance(mixed, list)
-    assert type(mixed[0]) is int
-    assert type(mixed[1]) is bool
     expected = {
         "app_id": "test-app-id",
         "inputs": {**values, "file": attachment.model_dump(), "files": [attachment.model_dump()]},
         "query": "hello",
     }
-    assert calls == [(_ENDPOINT, "decrypted-key", APIBasedExtensionPoint.APP_MODERATION_INPUT, expected)]
+    assert len(calls) == 1
+    endpoint, key, point, payload = calls[0]
+    assert (endpoint, key, point) == (_ENDPOINT, "decrypted-key", APIBasedExtensionPoint.APP_MODERATION_INPUT)
+    assert json.dumps(payload, sort_keys=True, ensure_ascii=False) == json.dumps(
+        expected, sort_keys=True, ensure_ascii=False
+    )
     assert lookup_events == ["checkout", "checkin", "decrypt", "request"]
     assert lookup_queries == ["query"]
 
 
 def test_service_uses_explicit_database_instead_of_global(
-    sqlite_session_factory: sessionmaker[Session], api_config: APIModerationConfig
+    sqlite_session_factory: sessionmaker[Session],
 ) -> None:
     """The autouse global DB is empty; only the independently supplied DB owns this ID."""
     assert (
@@ -653,7 +679,7 @@ def test_service_uses_explicit_database_instead_of_global(
             request_inputs=outbound.inputs,
             request_outputs=outbound.outputs,
         )
-        explicit_service.validate_config(_TENANT_ID, api_config)
+        explicit_service.validate_config(_TENANT_ID, EnabledDirection(_EXTENSION_ID))
         assert (
             APIBasedExtensionRepository(session_factory=sqlite_session_factory).find_extension(
                 _TENANT_ID, _EXTENSION_ID

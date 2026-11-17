@@ -1,35 +1,16 @@
 """API moderation with explicit, workspace-scoped persistence and outbound capabilities.
 
-Complete form settings require both directions and a string extension ID. Runtime
-selection validates only its direction, and enabled requests are validated before I/O.
+Operations receive parsed direction selections. Enabled requests validate their
+payloads before I/O; disabled selections perform no lookup or outbound work.
 """
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
-from typing import Annotated, Literal, TypedDict
 
-from pydantic import BaseModel, Field, InstanceOf, JsonValue, TypeAdapter
+from pydantic import BaseModel, Field, InstanceOf, JsonValue
 
+from domain.moderation.api_config import DisabledDirection, EnabledDirection
 from graphon.file import File
 from services.api_based_extension_application_service import APIBasedExtensionRecord
-
-
-class APIModerationDirectionConfig(TypedDict):
-    """A configured direction explicitly chooses a boolean enable state."""
-
-    enabled: bool
-
-
-class APIModerationConfig(TypedDict):
-    """Complete authored settings; partial runtime values enter through raw mappings."""
-
-    inputs_config: APIModerationDirectionConfig
-    outputs_config: APIModerationDirectionConfig
-    api_based_extension_id: str
-
-
-_direction_adapter = TypeAdapter(APIModerationDirectionConfig)
-_extension_id_adapter = TypeAdapter(Annotated[str, Field(strict=True, min_length=1)])
 
 
 class ModerationInputParams(BaseModel):
@@ -43,47 +24,6 @@ class ModerationInputParams(BaseModel):
 class ModerationOutputParams(BaseModel):
     app_id: str = ""
     text: str
-
-
-@dataclass(frozen=True, slots=True)
-class DisabledDirection:
-    """The selected direction requires no lookup or outbound work."""
-
-
-@dataclass(frozen=True, slots=True)
-class EnabledDirection:
-    """The selected enabled direction has a validated, nonempty string lookup key."""
-
-    extension_id: str
-
-
-def parse_direction(
-    raw: Mapping[str, object] | None, direction: Literal["inputs_config", "outputs_config"]
-) -> DisabledDirection | EnabledDirection:
-    """Parse one runtime direction without inspecting the opposite direction.
-
-    Missing config raises ValueError; malformed selected settings raise
-    ValidationError. Disabled settings return before ID validation. No I/O occurs.
-    """
-    if raw is None:
-        raise ValueError("The config is not set.")
-    selected = _direction_adapter.validate_python(raw.get(direction), strict=True)
-    if not selected["enabled"]:
-        return DisabledDirection()
-    return EnabledDirection(_extension_id_adapter.validate_python(raw.get("api_based_extension_id")))
-
-
-def _parse_form(raw: Mapping[str, object]) -> EnabledDirection:
-    """Validate both directions, require one enabled, then parse the ID without I/O.
-
-    Malformed settings raise ValidationError. Two disabled directions retain their
-    business error before ID validation, including when the ID is absent or invalid.
-    """
-    inputs_config = _direction_adapter.validate_python(raw.get("inputs_config"), strict=True)
-    outputs_config = _direction_adapter.validate_python(raw.get("outputs_config"), strict=True)
-    if not inputs_config["enabled"] and not outputs_config["enabled"]:
-        raise ValueError("At least one of inputs_config or outputs_config must be enabled")
-    return EnabledDirection(_extension_id_adapter.validate_python(raw.get("api_based_extension_id")))
 
 
 class APIModerationService:
@@ -107,30 +47,28 @@ class APIModerationService:
         self._request_inputs = request_inputs
         self._request_outputs = request_outputs
 
-    def validate_config(self, tenant_id: str, raw: Mapping[str, object]) -> None:
-        """Require valid form settings and an owned extension without outbound I/O.
+    def validate_config(self, tenant_id: str, selection: EnabledDirection) -> None:
+        """Require an owned extension for admitted form settings without outbound I/O.
 
-        Malformed settings raise ValidationError; both-disabled settings or an
-        absent owned row raise ValueError. Lookup failures propagate after session
-        cleanup. Successful validation changes no state.
+        An absent owned row raises ValueError. Lookup failures propagate after
+        session cleanup. Successful validation changes no state.
         """
-        self._require_extension(tenant_id, _parse_form(raw).extension_id)
+        self._require_extension(tenant_id, selection.extension_id)
 
     def moderate_inputs(
         self,
         tenant_id: str,
         app_id: str,
-        raw: Mapping[str, object] | None,
+        selection: DisabledDirection | EnabledDirection,
         inputs: Mapping[str, object],
         query: str = "",
     ) -> JsonValue:
         """Return the disabled result or raw input response for facade validation.
 
-        Raw mappings admit dynamic variable names with JSON, File or list[File]
-        values. Enabled settings and payloads must validate before lookup. Disabled
-        settings skip payload validation and all I/O. Dependency failures propagate.
+        The selection is already admitted. Input mappings admit dynamic variable
+        names with JSON, File or list[File] values. Enabled payloads validate before
+        lookup; disabled selections skip validation and I/O. Dependency errors propagate.
         """
-        selection = parse_direction(raw, "inputs_config")
         if isinstance(selection, DisabledDirection):
             return {"flagged": False, "action": "direct_output", "preset_response": ""}
         params = ModerationInputParams.model_validate({"app_id": app_id, "inputs": inputs, "query": query})
@@ -138,14 +76,15 @@ class APIModerationService:
         key = self._decrypt_key(tenant_id, extension.api_key)
         return self._request_inputs(extension.api_endpoint, key, params)
 
-    def moderate_outputs(self, tenant_id: str, app_id: str, raw: Mapping[str, object] | None, text: str) -> JsonValue:
+    def moderate_outputs(
+        self, tenant_id: str, app_id: str, selection: DisabledDirection | EnabledDirection, text: str
+    ) -> JsonValue:
         """Return the disabled result or raw output response for facade validation.
 
-        Enabled settings and request parameters validate before lookup. Disabled
-        settings skip payload validation and all I/O. Lookup, decrypt and request
+        The selection is already admitted. Enabled request parameters validate before
+        lookup; disabled selections skip validation and I/O. Lookup, decrypt and request
         failures propagate unchanged in that order.
         """
-        selection = parse_direction(raw, "outputs_config")
         if isinstance(selection, DisabledDirection):
             return {"flagged": False, "action": "direct_output", "preset_response": ""}
         params = ModerationOutputParams(app_id=app_id, text=text)

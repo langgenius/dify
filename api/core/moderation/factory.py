@@ -7,6 +7,7 @@ from pydantic import JsonValue
 
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult
+from domain.moderation.api_config import DisabledDirection, EnabledDirection, parse_direction, parse_form
 from extensions.ext_code_based_extension import code_based_extension
 
 API_MODERATION_EXTENSION_KEY = "api_moderation"
@@ -14,17 +15,15 @@ API_MODERATION_EXTENSION_KEY = "api_moderation"
 
 @dataclass(frozen=True, slots=True)
 class APIModerationCallbacks:
-    """Service admission methods bound by the composition root to one Flask app.
+    """Application operations bound by the composition root to one Flask app.
 
-    Config mappings contain unparsed persisted or form data. The bound methods
-    parse the selected operation into typed settings before lookup or outbound I/O.
-    Runtime admission inspects only its direction; disabled settings skip ID and
-    payload validation. Complete authored settings are not required at this boundary.
+    Configuration is parsed before dispatch. Operations receive an admitted
+    selection, never raw settings, and preserve disabled payload bypass and I/O order.
     """
 
-    validate_config: Callable[[str, Mapping[str, object]], None]
-    moderate_inputs: Callable[[str, str, Mapping[str, object] | None, dict[str, object], str], JsonValue]
-    moderate_outputs: Callable[[str, str, Mapping[str, object] | None, str], JsonValue]
+    validate_config: Callable[[str, EnabledDirection], None]
+    moderate_inputs: Callable[[str, str, DisabledDirection | EnabledDirection, dict[str, object], str], JsonValue]
+    moderate_outputs: Callable[[str, str, DisabledDirection | EnabledDirection, str], JsonValue]
 
 
 @dataclass(slots=True)
@@ -80,7 +79,8 @@ class ModerationFactory:
         :return:
         """
         if name == "api":
-            _api_callbacks().validate_config(tenant_id, config)
+            callbacks = _api_callbacks()
+            callbacks.validate_config(tenant_id, parse_form(config))
         else:
             _moderation_class(name).validate_config(tenant_id, config)
 
@@ -102,7 +102,7 @@ class ModerationFactory:
             if provider.callbacks is None:
                 provider.callbacks = _api_callbacks()
             result = provider.callbacks.moderate_inputs(
-                provider.tenant_id, provider.app_id, provider.config, inputs, query
+                provider.tenant_id, provider.app_id, parse_direction(provider.config, "inputs_config"), inputs, query
             )
             return ModerationInputsResult.model_validate(result)
         return provider.moderation_for_inputs(inputs, query)
@@ -123,6 +123,8 @@ class ModerationFactory:
         if isinstance(provider, _APIModeration):
             if provider.callbacks is None:
                 provider.callbacks = _api_callbacks()
-            result = provider.callbacks.moderate_outputs(provider.tenant_id, provider.app_id, provider.config, text)
+            result = provider.callbacks.moderate_outputs(
+                provider.tenant_id, provider.app_id, parse_direction(provider.config, "outputs_config"), text
+            )
             return ModerationOutputsResult.model_validate(result)
         return provider.moderation_for_outputs(text)

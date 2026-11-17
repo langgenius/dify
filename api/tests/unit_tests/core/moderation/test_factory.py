@@ -9,12 +9,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.extension.extensible import ExtensionModule
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
+from domain.moderation.api_config import APIModerationConfig
 from extensions.ext_code_based_extension import code_based_extension
 from models.agent_config_entities import AgentModerationIOConfig, AgentModerationProviderConfig
 from models.api_based_extension import APIBasedExtension
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_moderation_service import (
-    APIModerationConfig,
     APIModerationService,
     ModerationInputParams,
     ModerationOutputParams,
@@ -172,6 +172,35 @@ def test_api_factory_requires_root_bundle(moderation_app: Flask) -> None:
     moderation_app.extensions[API_MODERATION_EXTENSION_KEY] = object()
     with moderation_app.app_context(), pytest.raises(TypeError, match="API moderation callbacks are not configured"):
         ModerationFactory("api", "app", _TENANT_ID, {}).moderation_for_inputs({})
+
+
+def test_api_factory_reparses_settings_after_binding(moderation_app: Flask, requests: _Requests) -> None:
+    """Reusing callbacks must still admit the current settings for each operation."""
+    config: APIModerationConfig = {
+        "inputs_config": {"enabled": False},
+        "outputs_config": {"enabled": True},
+        "api_based_extension_id": _EXTENSION_ID,
+    }
+    factory = ModerationFactory("api", "app", _TENANT_ID, dict(config))
+    with moderation_app.app_context():
+        assert factory.moderation_for_outputs("first") == ModerationOutputsResult(
+            flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked by API"
+        )
+    assert len(requests.calls) == 2
+    config["outputs_config"]["enabled"] = False
+    assert factory.moderation_for_outputs("second") == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
+    assert len(requests.calls) == 2
+
+
+def test_api_factory_keeps_binding_after_failed_admission(moderation_app: Flask, requests: _Requests) -> None:
+    """A failed first parse keeps the resolved app callbacks for later operations."""
+    raw: dict[str, JsonValue] = {"outputs_config": {"enabled": "yes"}}
+    factory = ModerationFactory("api", "app", _TENANT_ID, raw)
+    with moderation_app.app_context(), pytest.raises(ValidationError):
+        factory.moderation_for_outputs("first")
+    raw["outputs_config"] = {"enabled": False}
+    assert factory.moderation_for_outputs("second") == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
+    assert requests.calls == []
 
 
 def test_api_factory_validation_uses_injected_real_repository(moderation_app: Flask, requests: _Requests) -> None:
