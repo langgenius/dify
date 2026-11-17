@@ -27660,7 +27660,7 @@ Resolved multi-file input constraints and effective number limit.
 | config | object | Non-secret settings | No |
 | credentials | object | Secret settings; write-only | No |
 | name | string | Display name | Yes |
-| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+| provider_type | string | cloudmersive, scanii, metadefender or api | Yes |
 
 #### FileScanProviderListResponse
 
