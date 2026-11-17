@@ -11,11 +11,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
-from models.model import AppMode
+from models.model import AppMode, ConversationFromSource, Message
 from models.workflow import WorkflowPause, WorkflowRun, WorkflowRunTriggeredFrom, WorkflowType
 from repositories import run_job_result_repository
 from repositories.run_job_result_repository import SQLAlchemyRunResultReader
 from services.run_job_contracts import JobStatus
+from services.run_job_service import MessageResult
 from tests.unit_tests.services.run_job_fakes import human_input_form
 
 
@@ -320,3 +321,39 @@ def test_pending_form_is_none_once_the_run_has_resumed(
 
     assert form is None
     assert calls == []
+
+
+def _add_message(session: Session, *, app_id: str, answer: str, error: str | None = None) -> Message:
+    message = Message(
+        app_id=app_id,
+        conversation_id=str(uuid4()),
+        query="q",
+        message={},
+        answer=answer,
+        from_source=ConversationFromSource.API,
+        error=error,
+    )
+    session.add(message)
+    session.commit()
+    return message
+
+
+def test_message_reads_answer_and_error_by_id_and_app(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    app_id = str(uuid4())
+    row = _add_message(sqlite_session, app_id=app_id, answer="hello", error="late failure")
+
+    result = SQLAlchemyRunResultReader(session_factory=sqlite_session_factory).message(app_id=app_id, message_id=row.id)
+
+    assert result == MessageResult(answer="hello", error="late failure")
+
+
+def test_message_of_another_app_is_not_found(
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    row = _add_message(sqlite_session, app_id=str(uuid4()), answer="hello")
+    reader = SQLAlchemyRunResultReader(session_factory=sqlite_session_factory)
+
+    assert reader.message(app_id=str(uuid4()), message_id=row.id) is None
+    assert reader.message(app_id=row.app_id, message_id=str(uuid4())) is None
