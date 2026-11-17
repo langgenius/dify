@@ -359,3 +359,42 @@ def test_a_store_error_on_one_frame_does_not_stop_the_read(
 
     assert record.status is JobStatus.SUCCEEDED
     assert any(r.exc_info for r in caplog.records)
+
+
+class PatchFailsOnceStore(RedisRunJobStore):
+    def __init__(self, redis: InMemoryRedis) -> None:
+        super().__init__(redis_client=redis)
+        self.failures_left = 0
+
+    def patch(self, job_id: str, patch: JobPatch) -> None:
+        if self.failures_left > 0:
+            self.failures_left -= 1
+            raise ConnectionError("redis blip")
+        super().patch(job_id, patch)
+
+
+def test_ids_whose_save_failed_are_saved_by_the_next_frame(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
+    store = PatchFailsOnceStore(redis)
+    _open(store, AppMode.WORKFLOW)
+    store.failures_left = 1
+    frames = [_frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}), _frame(StreamEvent.NODE_STARTED, **IDS, data={})]
+
+    record = _read(store, stopper, frames)
+
+    assert (record.task_id, record.run_id) == ("task-1", "run-1")
+
+
+def test_a_pending_stop_is_sent_once_after_a_failed_id_save(redis: InMemoryRedis, stopper: RecordingJobStopper) -> None:
+    store = PatchFailsOnceStore(redis)
+    _open(store, AppMode.WORKFLOW)
+    store.patch(JOB_ID, JobPatch(stop_requested=True))
+    store.failures_left = 1
+    frames = [
+        _frame(StreamEvent.WORKFLOW_STARTED, **IDS, data={}),
+        _frame(StreamEvent.NODE_STARTED, **IDS, data={}),
+        _frame(StreamEvent.NODE_FINISHED, **IDS, data={}),
+    ]
+
+    _read(store, stopper, frames)
+
+    assert [(record.task_id, record.run_id) for record in stopper.stopped] == [("task-1", "run-1")]

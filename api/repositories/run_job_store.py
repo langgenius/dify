@@ -24,7 +24,7 @@ from services.run_job_contracts import (
 
 _JOB_KEY = "openapi:job:{job_id}"
 _ALIVE_KEY = "openapi:job:{job_id}:alive"
-_IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{caller_role}:{caller_id}:{key}"
+_IDEMPOTENCY_KEY = "openapi:job:idem:{tenant_id}:{app_id}:{caller_role}:{caller_id}:{key}"
 _ALIVE_VALUE = "1"
 _RECORD_FIELDS = frozenset(field.name for field in dataclass_fields(JobRecord))
 _DELETE_IF_EQUAL = """
@@ -232,7 +232,11 @@ class RedisRunJobStore:
 
     @staticmethod
     def _idempotency_name(owner: JobOwner, key: str) -> str:
-        """Idempotency key. Precondition: none. Postcondition: scoped to tenant, role and caller."""
+        """Idempotency key. Precondition: none. Postcondition: scoped to tenant, app, role and caller."""
         return _IDEMPOTENCY_KEY.format(
-            tenant_id=owner.tenant_id, caller_role=owner.caller_role.value, caller_id=owner.caller_id, key=key
+            tenant_id=owner.tenant_id,
+            app_id=owner.app_id,
+            caller_role=owner.caller_role.value,
+            caller_id=owner.caller_id,
+            key=key,
         )

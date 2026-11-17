@@ -1,4 +1,5 @@
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 
 import pytest
 
@@ -16,7 +17,7 @@ from services.run_job_contracts import (
 )
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis
 
-IDEM_NAME = "openapi:job:idem:t1:account:acct-1:k"
+IDEM_NAME = "openapi:job:idem:t1:app-1:account:acct-1:k"
 
 
 @pytest.fixture
@@ -67,7 +68,7 @@ def test_open_with_a_used_idempotency_key_returns_the_first_job(store: RedisRunJ
     assert second.record.id == first.record.id
     assert store.get("job-2") is None
     assert "openapi:job:job-2" not in redis.hashes
-    assert redis.ttls["openapi:job:idem:t1:account:acct-1:k"] == JOB_TTL_SECONDS
+    assert redis.ttls["openapi:job:idem:t1:app-1:account:acct-1:k"] == JOB_TTL_SECONDS
 
 
 def test_the_same_key_from_another_caller_opens_a_new_job(store: RedisRunJobStore) -> None:
@@ -77,6 +78,16 @@ def test_the_same_key_from_another_caller_opens_a_new_job(store: RedisRunJobStor
 
     assert other.created is True
     assert other.record.id == "job-2"
+
+
+def test_the_same_key_on_another_app_opens_a_new_job(store: RedisRunJobStore) -> None:
+    first = store.open(_record("job-1"), idempotency_key="k")
+    other_app = JobOwner(tenant_id="t1", app_id="app-2", caller_role=CreatorUserRole.ACCOUNT, caller_id="acct-1")
+
+    other = store.open(replace(_record("job-2"), owner=other_app), idempotency_key="k")
+
+    assert other.created is True
+    assert other.record.id != first.record.id
 
 
 def test_patch_changes_only_the_given_fields(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
@@ -156,12 +167,12 @@ def test_only_three_statuses_are_final() -> None:
 
 
 def test_stale_idempotency_key_is_replaced_once(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    redis.set("openapi:job:idem:t1:account:acct-1:k", "vanished", ex=JOB_TTL_SECONDS)
+    redis.set("openapi:job:idem:t1:app-1:account:acct-1:k", "vanished", ex=JOB_TTL_SECONDS)
 
     opened = store.open(_record("job-2"), idempotency_key="k")
 
     assert opened.created is True
-    assert redis.values["openapi:job:idem:t1:account:acct-1:k"] == "job-2"
+    assert redis.values["openapi:job:idem:t1:app-1:account:acct-1:k"] == "job-2"
 
 
 class RetakingRedis(InMemoryRedis):
@@ -198,7 +209,7 @@ def test_discard_leaves_a_key_bound_to_another_job(store: RedisRunJobStore, redi
 
     store.discard("job-2", idempotency_key="k")
 
-    assert redis.values["openapi:job:idem:t1:account:acct-1:k"] == "job-1"
+    assert redis.values["openapi:job:idem:t1:app-1:account:acct-1:k"] == "job-1"
 
 
 def test_empty_patch_is_a_no_op(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
