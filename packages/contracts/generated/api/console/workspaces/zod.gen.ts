@@ -124,6 +124,19 @@ export const zEndpointUpdatePayload = z.object({
 })
 
 /**
+ * ChannelProviderBadRequestResponse
+ *
+ * HTTP failure with only provider-supplied diagnostic identifiers.
+ */
+export const zChannelProviderBadRequestResponse = z.object({
+  code: z.string(),
+  message: z.string(),
+  provider_error_code: z.string().nullish(),
+  provider_request_id: z.string().nullish(),
+  status: z.int(),
+})
+
+/**
  * ChannelConflictResponse
  */
 export const zChannelConflictResponse = z.object({
@@ -1752,16 +1765,6 @@ export const zEvaluationAssociatedTargetListResponse = z.object({
 export const zSenderName = z.string().min(1).max(255)
 
 /**
- * ChannelProviderFailureDetails
- */
-export const zChannelProviderFailureDetails = z.object({
-  http_status: z.int().nullish(),
-  missing_permissions: z.array(z.string()).optional().default([]),
-  provider_error_code: z.string().nullish(),
-  provider_request_id: z.string().nullish(),
-})
-
-/**
  * ChannelStatus
  */
 export const zChannelStatus = z.enum([
@@ -1775,7 +1778,8 @@ export const zChannelStatus = z.enum([
  * ChannelTestResponse
  */
 export const zChannelTestResponse = z.object({
-  details: zChannelProviderFailureDetails.nullish(),
+  provider_error_code: z.string().nullish(),
+  provider_request_id: z.string().nullish(),
   status: zChannelStatus,
   status_description: z.string(),
 })

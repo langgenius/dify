@@ -272,6 +272,8 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
     assert response.get_json() == {
         "status": failure_kind.value,
         "status_description": f"Safe {failure_kind.value} description.",
+        "provider_error_code": None,
+        "provider_request_id": None,
     }
 
 
@@ -316,16 +318,14 @@ def test_adapter_error_diagnostics_reach_the_final_api_response(
     testing = operation in {"test", "saved_test"}
     assert response.status_code == (200 if testing else 400)
     body = response.get_json()
-    expected_details = {"provider_error_code": "AADSTS90002", "http_status": 400}
-    if request_id is not None:
-        expected_details["provider_request_id"] = request_id
-    assert body["details"] == expected_details
+    assert body["provider_error_code"] == "AADSTS90002"
+    assert body["provider_request_id"] == request_id
     description = body["status_description"] if testing else body["message"]
     assert description.startswith("Check the configured Tenant ID.")
     assert "AADSTS90002" in description
     if request_id is None:
         assert "Request ID:" not in description
-        assert "provider_request_id" not in body["details"]
+        assert body["provider_request_id"] is None
     else:
         assert request_id in description
 
@@ -513,7 +513,12 @@ def test_saved_connection_test_accepts_retention_without_saving(
     )
 
     assert response.status_code == 200
-    assert response.get_json() == {"status": "connected", "status_description": ""}
+    assert response.get_json() == {
+        "status": "connected",
+        "status_description": "",
+        "provider_error_code": None,
+        "provider_request_id": None,
+    }
     assert len(tested) == 1
 
 
@@ -569,7 +574,12 @@ def test_saved_connection_test_translates_failures_safely(
     if expected_code is not None:
         assert response.get_json()["code"] == expected_code
     else:
-        assert response.get_json() == {"status": "invalid_credentials", "status_description": "Invalid credentials."}
+        assert response.get_json() == {
+            "status": "invalid_credentials",
+            "status_description": "Invalid credentials.",
+            "provider_error_code": None,
+            "provider_request_id": None,
+        }
     assert "private-" not in response.get_data(as_text=True)
 
 
@@ -649,3 +659,97 @@ def test_saved_im_test_rejects_provider_mismatch_as_bad_request(
     assert response.status_code == 400
     assert response.get_json()["code"] == "bad_request"
     assert "private-provider-mismatch" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("kind", ["im", "email"])
+@pytest.mark.parametrize("saved", [False, True])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", None])
+def test_provider_diagnostics_are_structured_test_results(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str, saved: bool, request_id: str | None
+) -> None:
+    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from core.human_input_v2.shared import EmailProviderId
+    from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
+
+    failure = ChannelProviderError(
+        ProviderFailureKind.CONNECTION_FAILURE,
+        "Provider rejected the request.",
+        provider_error_code="40013",
+        provider_request_id=request_id,
+        http_status=500,
+    )
+
+    class Owner:
+        def test(self, *_args: object) -> Never:
+            raise failure
+
+        def test_saved(self, *_args: object) -> Never:
+            raise failure
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", Owner)
+    credentials = _SLACK_CREDENTIALS if kind == "im" else {"provider": "resend", "api_key": "fake-secret"}
+    body: dict[str, object] = {"credentials": credentials}
+    if kind == "email":
+        body.update({"sender_email": "sender@example.com", "sender_name": "Dify"})
+    if saved:
+        body["expected_config_version"] = (
+            encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+            if kind == "im"
+            else encode_email_config_version(EmailConfigurationSnapshot(EmailProviderId(_CHANNEL_ID), 1))
+        )
+    suffix = f"/{_CHANNEL_ID}/test" if saved else "/test"
+    response = wire_app.test_client().post(
+        f"{_BASE_PATH}/channels/{kind}{suffix}", json=body, headers={"X-Request-Id": "dify-local-request"}
+    )
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "status": "connection_failure",
+        "status_description": failure.status_description,
+        "provider_error_code": "40013",
+        "provider_request_id": request_id,
+    }
+    assert "dify-local-request" not in response.get_data(as_text=True)
+
+
+@pytest.mark.parametrize("operation", ["create", "update", "replace"])
+@pytest.mark.parametrize("request_id", ["DT-Request:ABC/42", None])
+def test_im_mutation_errors_expose_original_provider_diagnostics(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, operation: str, request_id: str | None
+) -> None:
+    failure = ChannelProviderError(
+        ProviderFailureKind.CONNECTION_FAILURE,
+        "Provider rejected the request.",
+        provider_error_code="40013",
+        provider_request_id=request_id,
+    )
+
+    class Owner:
+        def create(self, *_args: object) -> Never:
+            raise failure
+
+        def update(self, *_args: object) -> Never:
+            raise failure
+
+        def replace(self, *_args: object) -> Never:
+            raise failure
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: Owner())
+    body: dict[str, object] = {"credentials": _SLACK_CREDENTIALS}
+    path = f"{_BASE_PATH}/channels/im"
+    if operation != "create":
+        body["expected_config_version"] = encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+        path += f"/{_CHANNEL_ID}"
+    if operation == "replace":
+        path += "/replacement"
+    response = wire_app.test_client().open(path, method="PUT" if operation == "update" else "POST", json=body)
+
+    assert response.status_code == 400
+    assert response.get_json() == {
+        "code": "bad_request",
+        "message": failure.status_description,
+        "status": 400,
+        "provider_error_code": "40013",
+        "provider_request_id": request_id,
+    }

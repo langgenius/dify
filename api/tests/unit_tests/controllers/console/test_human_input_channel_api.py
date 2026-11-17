@@ -97,7 +97,12 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
         "invalid_credentials",
         "connection_failure",
     }
-    assert set(module.ChannelTestResponse.model_fields) == {"status", "status_description", "details"}
+    assert set(module.ChannelTestResponse.model_fields) == {
+        "status",
+        "status_description",
+        "provider_error_code",
+        "provider_request_id",
+    }
     assert set(module.ListChannelProvidersResponse.model_fields) == {"email_providers", "im_providers"}
     assert set(module.ChannelProvider.model_fields) == {"provider", "connection_mode"}
     assert set(module.ChannelDeleteResponse.model_fields) == {"channel_id"}
@@ -258,11 +263,14 @@ def test_email_create_translates_expected_errors_with_cause(
 
     assert error_info.value.code == expected_status
     assert error_info.value.description == expected_description
-    assert error_info.value.data == {
+    expected_body: dict[str, object] = {
         "code": expected_error_code,
         "message": expected_description,
         "status": expected_status,
     }
+    if isinstance(service_error, ChannelProviderError):
+        expected_body.update({"provider_error_code": None, "provider_request_id": None})
+    assert error_info.value.data == expected_body
     assert error_info.value.__cause__ is service_error
 
 
@@ -508,7 +516,12 @@ def test_email_candidate_test_delegates_the_submitted_candidate_without_a_recipi
             "workspace-1",
         )
 
-    assert response == {"status": "connected", "status_description": ""}
+    assert response == {
+        "status": "connected",
+        "status_description": "",
+        "provider_error_code": None,
+        "provider_request_id": None,
+    }
 
 
 def test_channel_collection_aggregates_configured_owner_snapshots(
