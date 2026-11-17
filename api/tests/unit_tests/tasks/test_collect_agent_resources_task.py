@@ -227,9 +227,7 @@ def test_retired_workspace_survives_publish_failure_and_is_retried(
     )
     sqlite_session.add(workspace)
     sqlite_session.flush()
-    retired_ids = AgentWorkspaceRepository(
-        session=sqlite_session
-    ).retire_all_for_conversation(
+    retired_ids = AgentWorkspaceRepository(session=sqlite_session).retire_all_for_conversation(
         tenant_id="tenant-1",
         app_id="app-1",
         conversation_id="conversation-deleted",
@@ -253,9 +251,7 @@ def test_retired_workspace_survives_publish_failure_and_is_retried(
     monkeypatch.setattr(collect_agent_resources, "delay", delay)
 
     with pytest.raises(RuntimeError, match="broker unavailable"):
-        enqueue_agent_resource_collection(
-            tenant_id="tenant-1", workspace_ids=retired_ids
-        )
+        enqueue_agent_resource_collection(tenant_id="tenant-1", workspace_ids=retired_ids)
     assert delivered == []
     assert sqlite_session.get(AgentWorkspace, "workspace-1") is not None
 
