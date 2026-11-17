@@ -208,6 +208,14 @@ export type EmailChannelMutationResponse = {
   summary: ChannelSummary
 }
 
+export type ChannelProviderBadRequestResponse = {
+  code: string
+  message: string
+  provider_error_code?: string | null
+  provider_request_id?: string | null
+  status: number
+}
+
 export type EmailChannelTestPayload = {
   credentials: EmailProviderCredentials
   sender_email: string
@@ -215,6 +223,8 @@ export type EmailChannelTestPayload = {
 }
 
 export type ChannelTestResponse = {
+  provider_error_code?: string | null
+  provider_request_id?: string | null
   status: ChannelStatus
   status_description: string
 }
@@ -5083,6 +5093,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsEmailData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsEmailErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5176,6 +5187,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5222,6 +5234,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5315,6 +5328,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5339,6 +5353,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementDat
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5363,7 +5378,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestErrors = {
-  400: ErrorResponse
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
