@@ -89,6 +89,20 @@ def test_parse_row() -> None:
         assert extractor._parse_row(row, {}, 3) == gt[idx]
 
 
+@dataclass(frozen=True)
+class _RemoteFetchCall:
+    """A dispatched ``remote_fetcher.make_request`` call, parsed once at the boundary.
+
+    The ParamSpec stub receives opaque ``P.args``/``P.kwargs``; the positional
+    ``method``/``url`` are narrowed to ``str`` here so the assertions consume typed
+    fields instead of re-unpacking an ad hoc ``tuple``/``dict[str, object]`` record.
+    """
+
+    method: str
+    url: str
+    kwargs: dict[str, object]
+
+
 def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     doc = Document()
     doc.add_paragraph("hello")
@@ -96,12 +110,17 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
+    calls: list[_RemoteFetchCall] = []
 
     response = Response(200, content=docx_bytes)
 
     def fake_make_request[**P](*args: P.args, **kwargs: P.kwargs) -> Response:
-        calls.append((args, kwargs))
+        # Parse the opaque ParamSpec boundary once: narrow the positional method/url
+        # to str so the recorded call is a typed value, not an ad hoc tuple/dict.
+        method, url, *_rest = args
+        if not isinstance(method, str) or not isinstance(url, str):
+            raise TypeError(f"expected str method and url, got {method!r}, {url!r}")
+        calls.append(_RemoteFetchCall(method=method, url=url, kwargs=kwargs))
         return response
 
     monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
@@ -111,10 +130,10 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
         extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
         try:
             assert calls
-            (method, url), kwargs = calls[0]
-            assert method == "GET"
-            assert url == "https://example.com/test.docx"
-            assert "timeout" not in kwargs
+            call = calls[0]
+            assert call.method == "GET"
+            assert call.url == "https://example.com/test.docx"
+            assert "timeout" not in call.kwargs
             assert extractor.web_path == "https://example.com/test.docx"
             assert extractor.file_path != extractor.web_path
             assert temp_file.closed
