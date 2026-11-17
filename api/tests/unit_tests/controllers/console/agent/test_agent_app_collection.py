@@ -155,7 +155,7 @@ def test_list_resolves_rbac_visibility_through_enterprise_gateway(harness: Harne
     requests: list[tuple[str, str | None, str | None]] = []
 
     class Handler(BaseHTTPRequestHandler):
-        def do_GET(self) -> None:  # noqa: N802 -- HTTP method dispatch requires this name.
+        def do_GET(self) -> None:
             path = self.path.split("?", 1)[0]
             requests.append((path, self.headers.get("X-Inner-Tenant-Id"), self.headers.get("X-Inner-Account-Id")))
             if path == "/rbac/my-permissions":
