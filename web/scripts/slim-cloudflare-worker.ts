@@ -16,10 +16,15 @@ import fs from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 
-const bundleDir = path.resolve(
-  import.meta.dirname,
-  '../.cloudflare/output/v0/workers/default/bundle',
-)
+// The Build Output version directory (v0, v1, ...) changes with @cloudflare/vite-plugin.
+const outputDir = path.resolve(import.meta.dirname, '../.cloudflare/output')
+const outputVersion = fs.existsSync(outputDir)
+  ? fs
+      .readdirSync(outputDir)
+      .filter((name) => /^v\d+$/.test(name))
+      .sort((a, b) => Number(b.slice(1)) - Number(a.slice(1)))[0]
+  : undefined
+const bundleDir = path.join(outputDir, outputVersion ?? 'v0', 'workers/default/bundle')
 const ssrDir = path.join(bundleDir, 'ssr')
 
 const MODULE_IMPORT =
