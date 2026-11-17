@@ -7,7 +7,6 @@ from copy import deepcopy
 from typing import Any, Protocol
 
 import httpx
-from pydantic import ValidationError
 
 from clients.plugin.auth import PluginCredentialAuthClient
 from clients.plugin.auth_entities import CredentialCheckResult
@@ -34,7 +33,8 @@ from services.end_user_connections.errors import (
     ConnectionSecretUnavailableError,
 )
 from services.end_user_connections.revision import ConnectionProviderMetadata, ConnectionRevisionSnapshots
-from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credential_validation import check_tool_credentials
+from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig
 
 
 def validate_provider_authentication(provider: PluginToolProviderController, auth: EndUserAuthConfig) -> None:
@@ -237,7 +237,7 @@ class PublishedConnectionTargetResolver:
             provider = self._providers.provider(context.tenant_id, data["provider_id"])
             provider.get_tool(data["tool_name"])
             validate_provider_authentication(provider, config.end_user_auth)
-        except (KeyError, ValueError, ValidationError, TypeError):
+        except (KeyError, ValueError, TypeError):
             raise ConnectionConfigurationError() from None
         canonical = str(ToolProviderID(provider.entity.identity.name))
         return ToolConnectionTarget(

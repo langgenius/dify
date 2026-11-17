@@ -116,10 +116,10 @@ from services.errors.billing import BillingError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
+from services.workflow.tool_credential_validation import check_tool_credentials
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
     WorkflowToolEndUserAuthError,
-    check_tool_credentials,
     first_end_user_tool_node,
 )
 from services.workflow.workflow_converter import WorkflowConverter
