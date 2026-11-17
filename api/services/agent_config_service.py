@@ -48,15 +48,10 @@ from models.agent_config_entities import (
 )
 from models.model import UploadFile
 from models.tools import ToolFile
+from services.agent.config_inspector_store import AgentConfigVersionKind
 from services.agent.config_skill_normalize_service import ConfigSkillNormalizeService
 from services.agent.skill_package_service import SkillPackageError
 from services.skill_management_service import SkillManagementService, SkillManagementServiceError
-
-
-class AgentConfigVersionKind(StrEnum):
-    SNAPSHOT = "snapshot"
-    DRAFT = "draft"
-    BUILD_DRAFT = "build_draft"
 
 
 class AgentConfigMutationSurface(StrEnum):

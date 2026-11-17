@@ -59,6 +59,13 @@ from controllers.console.agent.roster import (
     AgentRosterVersionsApi,
     AgentStatisticsSummaryApi,
 )
+from controllers.console.app.agent_config_inspector import (
+    AgentConfigFilesUploadApi,
+    AgentConfigFilesUploadByAgentApi,
+    AgentConfigManifestApi,
+    AgentConfigManifestByAgentApi,
+    AgentConfigSkillFileDownloadByAgentApi,
+)
 from controllers.console.wraps import _is_setup_completed
 from core.plugin.impl import base as plugin_http
 from enums import DeploymentEdition
@@ -66,6 +73,7 @@ from events.app_event import app_was_updated
 from extensions.ext_application_services import application_services, build_application_services
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
+from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
 from libs.external_api import ExternalApi
 from libs.passport import PassportService
@@ -89,7 +97,7 @@ from models.agent import (
 )
 from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig, WorkflowNodeJobConfig
 from models.engine import db
-from models.enums import ApiTokenType
+from models.enums import ApiTokenType, CreatorUserRole
 from models.knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSAppSpaceJoinType,
@@ -102,7 +110,7 @@ from models.knowledge_fs_cutover import (
     KnowledgeFSWorkspaceCutoverLedger,
     KnowledgeFSWorkspaceCutoverPhase,
 )
-from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation
+from models.model import ApiToken, App, AppMode, AppModelConfig, Conversation, UploadFile
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from models.snippet import CustomizedSnippet, SnippetType
 from models.workflow import Workflow, WorkflowType
@@ -220,6 +228,13 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(SnippetAgentComposerValidateApi, f"{snippet_composer}/validate")
         api.add_resource(SnippetAgentComposerCandidatesApi, f"{snippet_composer}/candidates")
         api.add_resource(SnippetAgentComposerSaveToRosterApi, f"{snippet_composer}/save-to-roster")
+        api.add_resource(AgentConfigManifestApi, "/apps/<uuid:app_id>/agent/config/manifest")
+        api.add_resource(AgentConfigFilesUploadApi, "/apps/<uuid:app_id>/agent/config/files/batch")
+        api.add_resource(AgentConfigManifestByAgentApi, "/agent/<uuid:agent_id>/config/manifest")
+        api.add_resource(AgentConfigFilesUploadByAgentApi, "/agent/<uuid:agent_id>/config/files/batch")
+        api.add_resource(
+            AgentConfigSkillFileDownloadByAgentApi, "/agent/<uuid:agent_id>/config/skills/<string:name>/files/download"
+        )
         api.add_resource(AgentComposerApi, "/agent/<uuid:agent_id>/composer")
         api.add_resource(AgentComposerCandidatesApi, "/agent/<uuid:agent_id>/composer/candidates")
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
@@ -1033,6 +1048,61 @@ def test_workflow_composer_validates_payload_before_resolving_unavailable_app(
     assert valid.get_json()["code"] == "app_not_found"
 
 
+def test_agent_config_selects_personal_build_draft_and_persists_shared_file_upload(harness: Harness) -> None:
+    """Exercise the real Agent asset routes with distinct shared and owner-scoped Build drafts."""
+    agent_id, _ = harness.create_agent()
+    with harness.sessions.begin() as session:
+        shared = AgentConfigDraft(
+            tenant_id=harness.tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            config_snapshot=AgentSoulConfig(),
+        )
+        build = AgentConfigDraft(
+            tenant_id=harness.tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DEBUG_BUILD,
+            account_id=harness.account_id,
+            draft_owner_key=harness.account_id,
+            config_snapshot=AgentSoulConfig(),
+        )
+        upload = UploadFile(
+            tenant_id=harness.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="uploads/review.txt",
+            name="review.txt",
+            size=5,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=harness.account_id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        session.add_all([shared, build, upload])
+        session.flush()
+        shared_id, build_id, upload_id = shared.id, build.id, upload.id
+    path = f"/console/api/agent/{agent_id}/config"
+    manifest = harness.client.get(f"{path}/manifest?draft_type=debug_build", headers=harness.headers)
+    assert manifest.status_code == HTTPStatus.OK, manifest.get_json()
+    assert manifest.get_json()["config_version"]["id"] == build_id
+    missing = harness.client.get(f"{path}/skills/missing/files/download?path=README.md", headers=harness.headers)
+    assert missing.status_code == HTTPStatus.NOT_FOUND, missing.get_json()
+    response = harness.client.post(
+        f"{path}/files/batch", headers=harness.headers, json={"upload_file_ids": [upload_id]}
+    )
+    assert response.status_code == HTTPStatus.CREATED, response.get_json()
+    assert response.get_json()["config_version"]["id"] == shared_id
+    with harness.sessions() as session:
+        draft = session.get_one(AgentConfigDraft, shared_id)
+        assert [ref.file_id for ref in AgentSoulConfig.model_validate(draft.config_snapshot_dict).config_files] == [
+            upload_id
+        ]
+        assert not AgentSoulConfig.model_validate(
+            session.get_one(AgentConfigDraft, build_id).config_snapshot_dict
+        ).config_files
+
+
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:
     """Reject an unpublishable Soul before making any publication writes."""
     agent_id, app_id = harness.create_agent()
@@ -1191,6 +1261,72 @@ def test_publication_commits_knowledge_binding_with_the_snapshot(harness: Harnes
             assert skill_snapshot.config_snapshot_id == published_snapshot.id
             assert draft is not None
             assert draft.base_snapshot_id == published_snapshot.id
+
+
+def test_workflow_inspector_reads_snapshot_and_prepares_draft_only_for_asset_write(harness: Harness) -> None:
+    """Exercise the real workflow binding lookup, snapshot fallback, and commit before file mutation."""
+    with harness.sessions.begin() as session:
+        app = App(
+            tenant_id=harness.tenant_id,
+            name="Workflow",
+            mode=AppMode.WORKFLOW,
+            created_by=harness.account_id,
+            enable_site=False,
+            enable_api=False,
+        )
+        session.add(app)
+        session.flush()
+        app_id = app.id
+        session.add(
+            Workflow.new(
+                tenant_id=harness.tenant_id,
+                app_id=app_id,
+                type=WorkflowType.WORKFLOW,
+                version=Workflow.VERSION_DRAFT,
+                graph='{"nodes": [], "edges": []}',
+                features="{}",
+                created_by=harness.account_id,
+                environment_variables=[],
+                conversation_variables=[],
+                rag_pipeline_variables=[],
+            )
+        )
+        upload = UploadFile(
+            tenant_id=harness.tenant_id,
+            storage_type=StorageType.LOCAL,
+            key="uploads/asset.txt",
+            name="asset.txt",
+            size=5,
+            extension="txt",
+            mime_type="text/plain",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=harness.account_id,
+            created_at=naive_utc_now(),
+            used=False,
+        )
+        session.add(upload)
+        session.flush()
+        upload_id = upload.id
+    node_path = f"/console/api/apps/{app_id}/workflows/draft/nodes/node-1/agent-composer"
+    node = harness.client.put(
+        node_path, headers=harness.headers, json={"variant": "workflow", "save_strategy": "node_job_only"}
+    )
+    assert node.status_code == HTTPStatus.OK, node.get_json()
+    agent_id = node.get_json()["agent"]["id"]
+
+    path = f"/console/api/apps/{app_id}/agent/config"
+    manifest = harness.client.get(f"{path}/manifest?node_id=node-1", headers=harness.headers)
+    assert manifest.status_code == HTTPStatus.OK, manifest.get_json()
+    assert manifest.get_json()["config_version"]["kind"] == "snapshot"
+    with harness.sessions() as session:
+        assert session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)) is None
+
+    uploaded = harness.client.post(
+        f"{path}/files/batch?node_id=node-1", headers=harness.headers, json={"upload_file_ids": [upload_id]}
+    )
+    assert uploaded.status_code == HTTPStatus.CREATED, uploaded.get_json()
+    assert uploaded.get_json()["config_version"]["kind"] == "draft"
+    assert uploaded.get_json()["files"][0]["file_id"] == upload_id
 
 
 def test_publication_rejects_a_draft_changed_after_preparation(harness: Harness) -> None:
