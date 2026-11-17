@@ -16,11 +16,13 @@ class RecordingModerationGateway:
     def __init__(self, verdict: ModerationVerdict) -> None:
         self.verdict = verdict
         self.calls: list[tuple[AppRequestContext, ModerationRule, str, ModerationPhase]] = []
+        self.requests: list[ModerationRequest] = []
 
     def check(
         self, context: AppRequestContext, *, rule: ModerationRule, request: ModerationRequest, phase: ModerationPhase
     ) -> ModerationVerdict:
         self.calls.append((context, rule, request.text, phase))
+        self.requests.append(request)
         return self.verdict
 
 
@@ -92,3 +94,41 @@ def test_evaluate_preserves_app_replacement_data() -> None:
     )
 
     assert verdict == ModerationVerdict(flagged=True, message="Blocked", replacement=replacement)
+
+
+def test_input_evaluation_checks_only_strings_and_preserves_non_text_values_on_override() -> None:
+    """Admitted app values stay unchanged while only strings reach the backend and accept overrides."""
+    metadata = {"title": "private metadata"}
+    inputs = {"text": "original", "empty": "", "count": 3, "enabled": True, "metadata": metadata, "unset": None}
+    replacement = ModerationReplacement(
+        action="overridden", inputs={"text": "rewritten", "count": 0, "metadata": "removed"}, query="safe query"
+    )
+    gateway = RecordingModerationGateway(ModerationVerdict(flagged=True, message="Blocked", replacement=replacement))
+    service = ModerationService(gateway=gateway)
+    request = ModerationRequest(text="", inputs=inputs, query="original query")
+
+    verdict = service.evaluate(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+        rule=ModerationRule(type="api", config={"inputs_config": {"enabled": True}}),
+        request=request,
+        phase="input",
+    )
+
+    assert gateway.requests == [
+        ModerationRequest(text="", inputs={"text": "original", "empty": ""}, query="original query")
+    ]
+    assert verdict.flagged is True
+    assert verdict.replacement is not None
+    assert verdict.replacement.inputs == {
+        "text": "rewritten",
+        "count": 3,
+        "enabled": True,
+        "metadata": metadata,
+        "unset": None,
+    }
+    assert verdict.replacement.inputs["metadata"] is metadata
+    assert verdict.replacement.query == "safe query"
+    assert request.inputs is inputs
+    assert inputs == {"text": "original", "empty": "", "count": 3, "enabled": True, "metadata": metadata, "unset": None}
+    assert gateway.verdict.replacement is replacement
+    assert replacement.inputs == {"text": "rewritten", "count": 0, "metadata": "removed"}

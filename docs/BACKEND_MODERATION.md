@@ -111,7 +111,12 @@ historical node events. This does not require changing Graphon or its dependency
 
 Keyword and API app rules still use `ModerationService.evaluate` and retain their
 direct-reply and text-override semantics. They are independent policies, not
-duplicate OpenAI checks, and cannot bypass platform moderation. Output checks run
+duplicate OpenAI checks, and cannot bypass platform moderation. Input backends
+receive only string-valued variables and the query. Files, file lists, and other
+non-text values are neither inspected nor sent to API extensions; they remain
+unchanged for generation, including when an API overrides textual inputs.
+File names, URLs, metadata, and binary contents are not moderation text.
+Output checks run
 sequentially on the response consumer without a worker or evaluation lock.
 Streaming checks inspect only new segments; completion checks only an unchecked
 tail, never the whole stream again. Direct replies replace the whole answer;

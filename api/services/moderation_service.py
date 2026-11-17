@@ -8,7 +8,7 @@ unavailable moderation must never imply approval.
 """
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict
@@ -34,6 +34,8 @@ class ModerationRequest:
 
     ``inputs=None`` identifies a generic text request. An app request supplies
     a mapping (possibly empty) and a query, preserving the legacy input contract.
+    The service projects app inputs to string values before backend evaluation;
+    non-text values remain private to the caller and survive input overrides.
     """
 
     text: str
@@ -131,7 +133,9 @@ class ModerationService:
 
         The gateway is called only for enabled phases. Missing tenant scope and
         invalid enablement fail closed. A flagged verdict remains flagged even
-        when its backend requests overriding content.
+        when its backend requests overriding content. Input backends receive only
+        string variables and the query, never files or other non-text values.
+        Input overrides preserve the original non-text values without mutation.
         """
         if not context.tenant_id:
             raise ValueError("Moderation requires a tenant scope.")
@@ -140,4 +144,22 @@ class ModerationService:
             raise ValueError(f"{phase}s_config.enabled must be a bool")
         if not phase_config["enabled"]:
             return ModerationVerdict(flagged=False, message="")
-        return self._gateway.check(context, rule=rule, request=request, phase=phase)
+        backend_request = request
+        if phase == "input" and request.inputs is not None:
+            backend_request = replace(
+                request, inputs={key: value for key, value in request.inputs.items() if isinstance(value, str)}
+            )
+        verdict = self._gateway.check(context, rule=rule, request=backend_request, phase=phase)
+        replacement = verdict.replacement
+        if (
+            phase == "input"
+            and request.inputs is not None
+            and replacement is not None
+            and replacement.action == "overridden"
+        ):
+            retained_inputs = {key: value for key, value in request.inputs.items() if not isinstance(value, str)}
+            return replace(
+                verdict,
+                replacement=replace(replacement, inputs={**replacement.inputs, **retained_inputs}),
+            )
+        return verdict
