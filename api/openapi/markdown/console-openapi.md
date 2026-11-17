@@ -2186,6 +2186,25 @@ Get advanced chat workflow run list
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire
+Retire the Agent workspaces of the caller's ended Chatflow debug conversations
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Workspaces retired |  |
+| 401 | Authentication required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 403 | Insufficient permissions | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 404 | App not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /apps/{app_id}/advanced-chat/workflows/draft/human-input/nodes/{node_id}/form/preview
 **Preview human input form content and placeholders**
 
