@@ -141,6 +141,8 @@ Use the behavior owner and nearby tests to identify a realistic regression and t
 
 Run the focused spec and the affected suite when it adds coverage beyond that spec, plus the required [static checks]. Once these pass, broaden or repeat verification only for new changes, failures, or unresolved concerns. Diagnose CI-only failures from the failing job and reproduce them locally when possible; reruns do not replace diagnosis or reporting.
 
+Use `it.skip` only for a case that fails intermittently in CI and cannot be made deterministic. Add a comment immediately above it that states the observed failure, how often it occurred, and the condition for re-enabling it. Keep known product bugs as `it.fails` with a tracking issue link; switch to `it.skip` only when the bug reproduces inconsistently in CI and the expected failure therefore passes intermittently.
+
 ## Commands
 
 Run from `web/`:
