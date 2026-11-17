@@ -15310,6 +15310,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
+**List supported providers for the admitted administrator without accessing disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15318,6 +15320,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channels
+**List supported configured channels for the admitted administrator without reading disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
