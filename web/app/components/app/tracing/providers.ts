@@ -1,17 +1,19 @@
 import type { TraceConfigPayload } from '@dify/contracts/api/console/apps/types.gen'
 
-type FieldLabelKey = `tracing.configProvider.${
-  | 'clientId'
-  | 'clientSecret'
-  | 'databricksHost'
-  | 'experimentId'
-  | 'password'
-  | 'personalAccessToken'
-  | 'project'
-  | 'publicKey'
-  | 'secretKey'
-  | 'trackingUri'
-  | 'username'}`
+type FieldLabelKey =
+  | `tracing.configProvider.${
+      | 'clientId'
+      | 'clientSecret'
+      | 'databricksHost'
+      | 'experimentId'
+      | 'password'
+      | 'personalAccessToken'
+      | 'project'
+      | 'publicKey'
+      | 'secretKey'
+      | 'trackingUri'
+      | 'username'}`
+  | `tracing.otel.${'headers' | 'resourceAttributes' | 'serviceName'}`
 
 /** One input of a provider form; it submits the `tracing_config` entry named `name`. */
 export type TracingProviderField = {
@@ -31,7 +33,13 @@ export type TracingProviderField = {
   destination: boolean
   /** An example value; without one, the placeholder asks for the label. */
   placeholder?: string
-  description?: 'tracing.tencent.endpointHelp' | 'tracing.tencent.serviceNameHelp'
+  /** The initial value for a new configuration, when the API has no saved value. */
+  defaultValue?: string
+  description?:
+    | 'tracing.tencent.endpointHelp'
+    | 'tracing.tencent.serviceNameHelp'
+    | 'tracing.otel.endpointHelp'
+    | 'tracing.otel.headersHelp'
   type?: 'url'
   inputMode?: 'numeric'
   pattern?: string
@@ -369,6 +377,50 @@ export const tracingProviders = {
       },
     ],
   },
+  otel: {
+    docUrl: 'https://opentelemetry.io/docs/collector/',
+    icon: 'i-custom-public-tracing-otel-icon w-[108.53px]',
+    panelIcon: 'i-custom-public-tracing-otel-icon-big w-[162.79px]',
+    fields: [
+      {
+        name: 'endpoint',
+        label: 'Endpoint',
+        required: true,
+        secret: false,
+        destination: true,
+        type: 'url',
+        pattern: httpUrlPattern,
+        placeholder: 'https://collector.example.com:4318/v1/traces',
+        description: 'tracing.otel.endpointHelp',
+      },
+      {
+        name: 'headers',
+        label: { key: 'tracing.otel.headers' },
+        required: false,
+        secret: true,
+        destination: false,
+        placeholder: '{"Authorization":"Bearer token"}',
+        description: 'tracing.otel.headersHelp',
+      },
+      {
+        name: 'service_name',
+        label: { key: 'tracing.otel.serviceName' },
+        required: false,
+        secret: false,
+        destination: false,
+        defaultValue: 'dify',
+      },
+      {
+        name: 'resource_attributes',
+        label: { key: 'tracing.otel.resourceAttributes' },
+        required: false,
+        secret: false,
+        destination: false,
+        defaultValue: '{}',
+        placeholder: '{"deployment.environment.name":"production"}',
+      },
+    ],
+  },
 } as const satisfies Partial<
   Record<
     TraceConfigPayload['tracing_provider'],
@@ -382,6 +434,19 @@ export const tracingProviders = {
 >
 
 export type ConfigurableTracingProvider = keyof typeof tracingProviders
+
+/** Normalize destinations for credential hints; the API decides whether saved secrets can be reused. */
+export function normalizeDestination(provider: ConfigurableTracingProvider, value: string | null) {
+  if (value === null) return null
+  if (provider !== 'otel') return value.trim().replace(/\/+$/, '')
+  try {
+    const url = new URL(value.trim())
+    if (url.pathname === '/') url.pathname = '/v1/traces'
+    return url.href
+  } catch {
+    return value.trim()
+  }
+}
 
 export function hasProviderForm(
   provider: TraceConfigPayload['tracing_provider'] | null | undefined,

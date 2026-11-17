@@ -14,7 +14,6 @@ export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
   const appId = appDetail.id
   const queryClient = useQueryClient()
   const [activeModal, setActiveModal] = useState<AppInfoOperation | null>(null)
-  const [exportOpen, setExportOpen] = useState(false)
   const { exportAppDsl, isExporting } = useExportAppDsl()
   useEffect(() => {
     let unsubscribe: (() => void) | null = null
@@ -59,18 +58,14 @@ export function AppInfoView({ appDetail, expand }: AppInfoViewProps) {
         isExporting={isExporting}
         exportCheck={() => {
           if (appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat')
-            setExportOpen(true)
+            setActiveModal('export')
           else if (!isExporting) void exportAppDsl({ appId, appName: appDetail.name })
         }}
       />
       <AppInfoModals
         appDetail={appDetail}
         activeModal={activeModal}
-        onOpenChange={(open) => {
-          if (!open) setActiveModal(null)
-        }}
-        exportOpen={exportOpen}
-        onExportOpenChange={setExportOpen}
+        onClose={() => setActiveModal(null)}
       />
     </>
   )
