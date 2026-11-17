@@ -13,6 +13,11 @@ from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
 from controllers.console.human_input_v2.config_version import encode_im_config_version
 from controllers.console.wraps import _is_setup_completed
+from core.human_input_v2.im_integration.adapters.entities import (
+    CredentialTestFailure,
+    CredentialTestFailureKind,
+    CredentialTestRejectedError,
+)
 from enums import DeploymentEdition
 from libs.login import AccountWithTenant
 from models.account import Account, AccountStatus, TenantAccountRole
@@ -270,6 +275,59 @@ def test_candidate_provider_failures_are_credential_free_test_outcomes(
         "provider_error_code": None,
         "provider_request_id": None,
     }
+
+
+@pytest.mark.parametrize("operation", ["test", "saved_test", "create", "update", "replacement"])
+@pytest.mark.parametrize("request_id", [None, "9592fb05-8aaa-4210-a062-a51cb6198185"])
+def test_adapter_error_diagnostics_reach_the_final_api_response(
+    wire_app: Flask, monkeypatch: pytest.MonkeyPatch, operation: str, request_id: str | None
+) -> None:
+    error = CredentialTestRejectedError(
+        CredentialTestFailure(
+            CredentialTestFailureKind.AUTHENTICATION_REJECTED,
+            "Check the configured Tenant ID.",
+            provider_error_code="AADSTS90002",
+            http_status=400,
+            provider_request_id=request_id,
+        )
+    )
+
+    class IMOwner:
+        def test(self, *_args: object) -> Never:
+            raise error
+
+        test_saved = test
+        create = test
+        update = test
+        replace = test
+
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: IMOwner())
+    paths = {
+        "test": ("POST", "/test"),
+        "saved_test": ("POST", f"/{_CHANNEL_ID}/test"),
+        "create": ("POST", ""),
+        "update": ("PUT", f"/{_CHANNEL_ID}"),
+        "replacement": ("POST", f"/{_CHANNEL_ID}/replacement"),
+    }
+    method, suffix = paths[operation]
+    payload: dict[str, object] = {"credentials": _SLACK_CREDENTIALS}
+    if operation in {"saved_test", "update", "replacement"}:
+        payload["expected_config_version"] = encode_im_config_version(IMChannelId(_CHANNEL_ID), 1)
+    response = wire_app.test_client().open(f"{_BASE_PATH}/channels/im{suffix}", method=method, json=payload)
+
+    testing = operation in {"test", "saved_test"}
+    assert response.status_code == (200 if testing else 400)
+    body = response.get_json()
+    assert body["provider_error_code"] == "AADSTS90002"
+    assert body["provider_request_id"] == request_id
+    description = body["status_description"] if testing else body["message"]
+    assert description.startswith("Check the configured Tenant ID.")
+    assert "AADSTS90002" in description
+    if request_id is None:
+        assert "Request ID:" not in description
+        assert body["provider_request_id"] is None
+    else:
+        assert request_id in description
 
 
 _CANONICAL_REQUESTS = (

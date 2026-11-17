@@ -6,7 +6,6 @@ import asyncio
 import binascii
 import json
 import logging
-import re
 from collections.abc import Mapping
 from contextlib import closing
 from dataclasses import dataclass
@@ -20,6 +19,10 @@ from uuid import UUID
 
 import httpx
 from azure.core.exceptions import ClientAuthenticationError, ServiceRequestTimeoutError, ServiceResponseTimeoutError
+from azure.core.pipeline import PipelineResponse
+from azure.core.pipeline.transport import HttpResponse as AzureLegacyHttpResponse
+from azure.core.rest import HttpRequest as AzureHttpRequest
+from azure.core.rest import HttpResponse as AzureHttpResponse
 from azure.identity import ClientSecretCredential
 from botbuilder.schema import (
     Activity,
@@ -49,6 +52,7 @@ from core.human_input_v2.im_integration.adapters.entities import (
     CorrelationToken,
     CredentialTestFailure,
     CredentialTestFailureKind,
+    CredentialTestRejectedError,
     CredentialTestSuccess,
     CredentialTestTimeoutError,
     Directory,
@@ -104,6 +108,30 @@ _EXTENDED_MARKDOWN_TEXT_FORMAT = "extendedmarkdown"
 _TEAMS_BOT_CHANNEL_ID_PREFIX = "28:"
 _BOT_TOKEN_REJECTION_PREFIX = "Failed to get access token with error: "
 _OAUTH_CREDENTIAL_REJECTION_CODES = frozenset(("invalid_client", "invalid_grant", "unauthorized_client"))
+_INVALID_TENANT_DESCRIPTION = (
+    "The Microsoft Teams Tenant ID is invalid. In Azure Bot Configuration, copy App Tenant ID into Tenant ID "
+    "and Microsoft App ID into Client ID."
+)
+
+
+class _OAuthErrorResponse(BaseModel):
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
+
+    error: str
+    error_codes: tuple[int, ...] = ()
+
+
+def _preserve_authentication_response(response: PipelineResponse[AzureHttpRequest, AzureHttpResponse]) -> None:
+    """Preserve a rejected authentication response before MSAL discards its structure."""
+    if response.http_response.status_code == HTTPStatus.BAD_REQUEST:
+        raise ClientAuthenticationError(
+            "Microsoft rejected the authentication request.", response=response.http_response
+        )
+
+
+def _microsoft_request_id(headers: Mapping[str, str]) -> str | None:
+    """Return only an identifier present in Microsoft's response headers."""
+    return headers.get("request-id") or headers.get("x-ms-request-id")
 
 
 class _GraphError(BaseModel):
@@ -229,20 +257,7 @@ def _permission_error_is_credential_rejection(error: PermissionError) -> bool:
     return error_code in _OAUTH_CREDENTIAL_REJECTION_CODES
 
 
-def _microsoft_error_code(error: ClientAuthenticationError | PermissionError) -> str | None:
-    """Read a safe provider code from an SDK failure without exposing its descriptions."""
-    # Azure Identity and Bot Framework expose OAuth failures as text. Extract
-    # only the provider's identifier; descriptions may echo submitted secrets.
-    # MSAL's authority wrapper omits the discovery response from its message,
-    # retaining the tenant rejection only in the chained exception.
-    current: BaseException | None = error
-    visited: set[int] = set()
-    while current is not None and id(current) not in visited:
-        visited.add(id(current))
-        aadsts_code = re.search(r"\bAADSTS[0-9]+\b", str(current))
-        if aadsts_code is not None:
-            return aadsts_code.group()
-        current = current.__cause__ or (None if current.__suppress_context__ else current.__context__)
+def _bot_error_code(error: PermissionError) -> str | None:
     error_text = str(error)
     if error_text.startswith(_BOT_TOKEN_REJECTION_PREFIX):
         oauth_code = error_text.removeprefix(_BOT_TOKEN_REJECTION_PREFIX).split(", error_description:", maxsplit=1)[0]
@@ -877,6 +892,7 @@ class MSTeamsIMProviderAdapter:
         return IMProvider.MS_TEAMS
 
     def test_credentials(self) -> CredentialTestSuccess | CredentialTestFailure:
+        """Authenticate bound credentials; expose safe rejections and actual diagnostics without saving state."""
         try:
             return self._test_credentials()
         except (
@@ -896,6 +912,7 @@ class MSTeamsIMProviderAdapter:
                 self._credentials.tenant_id,
                 self._credentials.client_id,
                 self._credentials.client_secret,
+                raw_response_hook=_preserve_authentication_response,
             )
         ) as graph_credential:
             return self._verify_credentials(graph_credential)
@@ -906,15 +923,41 @@ class MSTeamsIMProviderAdapter:
         try:
             graph_token = graph_credential.get_token(_GRAPH_SCOPE).token
         except ClientAuthenticationError as error:
-            provider_error_code = _microsoft_error_code(error)
-            if provider_error_code is None and error.response is None:
+            provider_response = error.response
+            if not isinstance(provider_response, (AzureHttpResponse, AzureLegacyHttpResponse)):
                 raise
-            return CredentialTestFailure(
-                CredentialTestFailureKind.AUTHENTICATION_REJECTED,
-                "Microsoft rejected the Graph credentials.",
-                provider_error_code=provider_error_code,
-                http_status=error.status_code,
+            request_id = _microsoft_request_id(provider_response.headers)
+            try:
+                rejection = _OAuthErrorResponse.model_validate_json(provider_response.text())
+            except ValidationError:
+                raise CredentialTestRejectedError(
+                    CredentialTestFailure(
+                        CredentialTestFailureKind.UNKNOWN,
+                        "Microsoft returned an unrecognized authentication response.",
+                        http_status=error.status_code,
+                        provider_request_id=request_id,
+                    )
+                ) from error
+            provider_error_code = f"AADSTS{rejection.error_codes[0]}" if rejection.error_codes else rejection.error
+            kind = (
+                CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                if rejection.error in _OAUTH_CREDENTIAL_REJECTION_CODES or rejection.error == "invalid_tenant"
+                else CredentialTestFailureKind.UNKNOWN
             )
+            reason = (
+                _INVALID_TENANT_DESCRIPTION
+                if rejection.error == "invalid_tenant"
+                else "Microsoft rejected the Graph credentials."
+            )
+            raise CredentialTestRejectedError(
+                CredentialTestFailure(
+                    kind,
+                    reason,
+                    provider_error_code=provider_error_code,
+                    http_status=error.status_code,
+                    provider_request_id=request_id,
+                )
+            ) from error
 
         graph_response = self._graph_client.get(
             _GRAPH_USERS_URL,
@@ -938,6 +981,7 @@ class MSTeamsIMProviderAdapter:
                 "Microsoft Graph rejected the directory access test.",
                 provider_error_code=provider_error_code,
                 http_status=graph_response.status_code,
+                provider_request_id=_microsoft_request_id(graph_response.headers),
             )
         _GraphUsersPage.model_validate(graph_response.json())
         # Teams has no conversation-free Connector read probe. Test its tenant-scoped
@@ -960,7 +1004,7 @@ class MSTeamsIMProviderAdapter:
             return CredentialTestFailure(
                 kind,
                 "Microsoft rejected the Bot Framework credentials.",
-                provider_error_code=_microsoft_error_code(error),
+                provider_error_code=_bot_error_code(error),
             )
 
         if not bot_token:

@@ -29,6 +29,7 @@ from core.human_input_v2.im_integration.adapters.credentials import (
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
     CredentialTestFailureKind,
+    CredentialTestRejectedError,
     CredentialTestSuccess,
 )
 from core.human_input_v2.shared import AccountId, TenantId
@@ -46,9 +47,7 @@ from services.human_input_v2.credential_update import FeishuCredentialsUpdate, S
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
-    ChannelProviderError,
     ProviderConfigurationUpdatedError,
-    ProviderFailureKind,
     ReplacementRequiredError,
 )
 from services.human_input_v2.im_channel_service import (
@@ -379,157 +378,55 @@ def test_candidate_test_uses_no_session_reader_writer_or_cipher(monkeypatch: pyt
     assert service.cipher.plaintexts == []
 
 
-@pytest.mark.parametrize(
-    ("failure_kind", "expected_kind", "expected_description"),
-    [
-        (
-            CredentialTestFailureKind.AUTHENTICATION_REJECTED,
-            ProviderFailureKind.INVALID_CREDENTIALS,
-            "The submitted credentials are invalid.",
-        ),
-        (
-            CredentialTestFailureKind.TENANT_ID_UNAVAILABLE,
-            ProviderFailureKind.CONNECTION_FAILURE,
-            "The provider connection could not be established.",
-        ),
-        (
-            CredentialTestFailureKind.UNKNOWN,
-            ProviderFailureKind.CONNECTION_FAILURE,
-            "The provider connection could not be established.",
-        ),
-    ],
-)
-def test_classified_provider_failures_map_to_safe_stable_errors(
-    monkeypatch: pytest.MonkeyPatch,
-    failure_kind: CredentialTestFailureKind,
-    expected_kind: ProviderFailureKind,
-    expected_description: str,
+@pytest.mark.parametrize("failure_kind", list(CredentialTestFailureKind))
+def test_adapter_rejection_propagates_unchanged_to_the_api(
+    monkeypatch: pytest.MonkeyPatch, failure_kind: CredentialTestFailureKind
 ) -> None:
     state = _State()
     service = _TestService(state)
-    _install_adapter(
-        monkeypatch,
-        state,
-        result=CredentialTestFailure(failure_kind, "provider-secret-diagnostic"),
-    )
+    error = CredentialTestRejectedError(CredentialTestFailure(failure_kind, "Check the provider configuration."))
+    _install_adapter(monkeypatch, state, result=error)
 
-    with pytest.raises(ChannelProviderError) as captured:
+    with pytest.raises(CredentialTestRejectedError) as captured:
         service.test(_SLACK)
 
-    assert captured.value.kind is expected_kind
-    assert captured.value.status_description == expected_description
-    assert "provider-secret-diagnostic" not in repr(captured.value)
+    assert captured.value is error
     assert state.events == ["build_adapter", "test_credentials", "adapter_close"]
 
 
 @pytest.mark.parametrize("operation", ["test", "create"])
-@pytest.mark.parametrize("provider_code", ["AADSTS90002", "AADSTS900021"])
-def test_teams_tenant_rejections_explain_azure_fields_without_saving(
-    monkeypatch: pytest.MonkeyPatch, operation: str, provider_code: str
-) -> None:
-    state = _State()
-    service = _TestService(state)
-    credentials = _CASES[4].credentials
-    _install_adapter(
-        monkeypatch,
-        state,
-        provider=IMProvider.MS_TEAMS,
-        result=CredentialTestFailure(
-            CredentialTestFailureKind.AUTHENTICATION_REJECTED,
-            "raw provider-secret-diagnostic",
-            provider_error_code=provider_code,
-        ),
-    )
-
-    command = service.test if operation == "test" else service.create
-    with pytest.raises(ChannelProviderError) as captured:
-        command(credentials)
-
-    assert captured.value.kind is ProviderFailureKind.INVALID_CREDENTIALS
-    assert captured.value.status_description == (
-        "The Microsoft Teams Tenant ID is invalid. In Azure Bot Configuration, copy App Tenant ID into Tenant ID "
-        f"and Microsoft App ID into Client ID. API error code: {provider_code}."
-    )
-    assert "provider-secret-diagnostic" not in str(captured.value)
-    assert state.current is None
-    assert service.cipher.plaintexts == []
-
-
-@pytest.mark.parametrize("operation", ["test", "create"])
-def test_provider_diagnostics_reach_channel_errors_without_raw_provider_reason(
-    monkeypatch: pytest.MonkeyPatch, operation: str
+@pytest.mark.parametrize("case", _CASES, ids=lambda case: case.credentials.provider.value)
+@pytest.mark.parametrize("request_id", [None, "9592fb05-8aaa-4210-a062-a51cb6198185"])
+def test_provider_guidance_and_diagnostics_reach_callers_without_saving(
+    monkeypatch: pytest.MonkeyPatch, operation: str, case: _CredentialCase, request_id: str | None
 ) -> None:
     state = _State()
     service = _TestService(state)
     _install_adapter(
         monkeypatch,
         state,
+        provider=case.credentials.provider,
         result=CredentialTestFailure(
             CredentialTestFailureKind.UNKNOWN,
-            "raw provider-secret-diagnostic",
-            "missing_scope",
-            ("users:read.email",),
-        ),
-    )
-
-    command = service.test if operation == "test" else service.create
-    with pytest.raises(ChannelProviderError) as captured:
-        command(_SLACK)
-
-    assert captured.value.status_description == (
-        "The provider connection could not be established. API error code: missing_scope. "
-        "Missing permissions: users:read.email."
-    )
-    assert "provider-secret-diagnostic" not in str(captured.value)
-    assert state.current is None
-
-
-@pytest.mark.parametrize("operation", ["test", "create"])
-@pytest.mark.parametrize(
-    ("failure_kind", "expected_kind"),
-    [
-        (CredentialTestFailureKind.UNKNOWN, ProviderFailureKind.CONNECTION_FAILURE),
-        (CredentialTestFailureKind.AUTHENTICATION_REJECTED, ProviderFailureKind.INVALID_CREDENTIALS),
-    ],
-)
-@pytest.mark.parametrize("provider_error_code", ["unknownError", "40013"])
-def test_dingtalk_provider_diagnostics_reach_configuration_callers(
-    monkeypatch: pytest.MonkeyPatch,
-    operation: str,
-    failure_kind: CredentialTestFailureKind,
-    expected_kind: ProviderFailureKind,
-    provider_error_code: str,
-) -> None:
-    state = _State()
-    service = _TestService(state)
-    credentials = _CASES[3].credentials
-    request_id = "01A1E70F-03B7-77BB-8BD8-8B4AE00F565E"
-    _install_adapter(
-        monkeypatch,
-        state,
-        provider=credentials.provider,
-        result=CredentialTestFailure(
-            failure_kind,
-            "raw provider-secret-diagnostic",
-            provider_error_code,
-            http_status=500,
+            "Check the provider application configuration.",
+            provider_error_code="provider_rejected",
+            missing_permissions=("users:read",),
+            http_status=400,
             provider_request_id=request_id,
         ),
     )
 
     command = service.test if operation == "test" else service.create
-    with pytest.raises(ChannelProviderError) as captured:
-        command(credentials)
+    with pytest.raises(CredentialTestRejectedError) as captured:
+        command(case.credentials)
 
-    description = captured.value.status_description
-    assert captured.value.kind is expected_kind
-    assert captured.value.http_status == 500
-    assert captured.value.provider_error_code == provider_error_code
-    assert captured.value.provider_request_id == request_id
-    assert f"API error code: {provider_error_code}." in description
-    assert f"Request ID: {request_id}." in description
-    assert "Corp ID" not in description
-    assert "provider-secret-diagnostic" not in description
+    failure = captured.value.failure
+    assert failure.kind is CredentialTestFailureKind.UNKNOWN
+    assert failure.provider_error_code == "provider_rejected"
+    assert failure.provider_request_id == request_id
+    assert failure.http_status == 400
+    assert failure.missing_permissions == ("users:read",)
+    assert str(captured.value) == "Check the provider application configuration."
     assert state.current is None
     assert service.cipher.plaintexts == []
 

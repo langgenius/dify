@@ -6,7 +6,7 @@ import secrets
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Never, override
+from typing import override
 from urllib.parse import quote
 
 from pydantic import NaiveDatetime
@@ -27,9 +27,8 @@ from core.human_input_v2.im_integration.adapters.credentials import (
 )
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
-    CredentialTestFailureKind,
+    CredentialTestRejectedError,
     CredentialTestSuccess,
-    IMProviderError,
 )
 from core.human_input_v2.im_integration.adapters.factory import build_im_provider_adapter
 from core.human_input_v2.shared import AccountId, TenantId
@@ -58,9 +57,7 @@ from services.human_input_v2.credential_update import (
 from services.human_input_v2.errors import (
     ChannelAlreadyConfiguredError,
     ChannelNotFoundError,
-    ChannelProviderError,
     ProviderConfigurationUpdatedError,
-    ProviderFailureKind,
     ReplacementRequiredError,
 )
 from services.human_input_v2.im_credential_codec import IMCredentialCodec
@@ -75,13 +72,6 @@ _AVAILABLE_PROVIDERS = (
     IMProvider.WE_COM,
 )
 _INITIAL_CONFIG_VERSION = 1
-_INVALID_CREDENTIALS_DESCRIPTION = "The submitted credentials are invalid."
-_MS_TEAMS_INVALID_TENANT_CODES = frozenset(("AADSTS90002", "AADSTS900021"))
-_MS_TEAMS_INVALID_TENANT_DESCRIPTION = (
-    "The Microsoft Teams Tenant ID is invalid. In Azure Bot Configuration, copy App Tenant ID into Tenant ID "
-    "and Microsoft App ID into Client ID."
-)
-_CONNECTION_FAILURE_DESCRIPTION = "The provider connection could not be established."
 _IM_CALLBACK_PATH = "/callbacks/human-input/v2/im"
 
 
@@ -330,47 +320,18 @@ class IMChannelService(ABC):
         self,
         credentials: IMProviderCredentials,
     ) -> CredentialTestSuccess:
+        """Test resolved credentials and close the adapter; provider errors propagate unchanged to the API."""
         adapter = build_im_provider_adapter(credentials)
         try:
             tested = adapter.test_credentials()
-        except IMProviderError as error:
-            raise ChannelProviderError(ProviderFailureKind.CONNECTION_FAILURE, str(error)) from error
         finally:
             adapter.close()
 
         if isinstance(tested, CredentialTestFailure):
-            self._raise_provider_failure(credentials.provider, tested)
+            raise CredentialTestRejectedError(tested)
         if tested.provider is not credentials.provider:
             raise AssertionError("provider adapter returned a mismatched provider")
         return tested
-
-    @staticmethod
-    def _raise_provider_failure(provider: IMProvider, failure: CredentialTestFailure) -> Never:
-        """Map a provider rejection to a safe failure without persisting configuration.
-
-        Preserve upstream error codes and request IDs for provider support.
-        Raw reasons stay private; diagnostic codes do not imply a root cause.
-        """
-        if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED:
-            description = _INVALID_CREDENTIALS_DESCRIPTION
-            if provider is IMProvider.MS_TEAMS and failure.provider_error_code in _MS_TEAMS_INVALID_TENANT_CODES:
-                description = _MS_TEAMS_INVALID_TENANT_DESCRIPTION
-            raise ChannelProviderError(
-                ProviderFailureKind.INVALID_CREDENTIALS,
-                description,
-                provider_error_code=failure.provider_error_code,
-                missing_permissions=failure.missing_permissions,
-                http_status=failure.http_status,
-                provider_request_id=failure.provider_request_id,
-            )
-        raise ChannelProviderError(
-            ProviderFailureKind.CONNECTION_FAILURE,
-            _CONNECTION_FAILURE_DESCRIPTION,
-            provider_error_code=failure.provider_error_code,
-            missing_permissions=failure.missing_permissions,
-            http_status=failure.http_status,
-            provider_request_id=failure.provider_request_id,
-        )
 
     @staticmethod
     def _app_identifier(credentials: IMProviderCredentials) -> str:
