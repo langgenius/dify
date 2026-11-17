@@ -113,7 +113,7 @@ class _VectorFactory:
     def __init__(self, backend: _VectorBackend) -> None:
         self._backend = backend
 
-    def init_vector(self, *_args, **_kwargs):
+    def init_vector(self, *_args: object, **_kwargs: object) -> _VectorBackend:
         return self._backend
 
 

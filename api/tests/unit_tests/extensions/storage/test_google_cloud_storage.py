@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from unittest.mock import patch
 
 import pytest
@@ -7,7 +8,7 @@ from extensions.storage.google_cloud_storage import GoogleCloudStorage
 
 
 class _Bucket:
-    def __init__(self, delete_blob):
+    def __init__(self, delete_blob: Callable[[str], None]) -> None:
         self._delete_blob = delete_blob
 
     def delete_blob(self, key: str) -> None:
@@ -22,7 +23,7 @@ class _Client:
         return self._bucket
 
 
-def _storage(delete_blob) -> GoogleCloudStorage:
+def _storage(delete_blob: Callable[[str], None]) -> GoogleCloudStorage:
     bucket = _Bucket(delete_blob)
     with patch(
         "extensions.storage.google_cloud_storage.google_cloud_storage.Client",
