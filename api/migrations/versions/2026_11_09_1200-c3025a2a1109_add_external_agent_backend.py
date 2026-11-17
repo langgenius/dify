@@ -444,11 +444,22 @@ def upgrade():
     # Nullable-add/backfill/not-null is portable for existing PostgreSQL, MySQL and SQLite rows.
     with op.batch_alter_table("workflow_agent_node_bindings") as batch:
         batch.add_column(sa.Column("binding_epoch", sa.String(64), nullable=True))
-        batch.add_column(sa.Column("external_job_config", AdjustedJSON(), nullable=True))
+        # Old Native writers omit this new field during rolling updates and
+        # binary rollback. Keep their INSERTs valid from the initial ADD onward.
+        batch.add_column(
+            sa.Column("external_job_config", AdjustedJSON(), nullable=True, server_default=sa.text("('{}')"))
+        )
         batch.add_column(sa.Column("original_reference", AdjustedJSON(), nullable=True))
     op.execute("UPDATE workflow_agent_node_bindings SET external_job_config = '{}' WHERE external_job_config IS NULL")
     with op.batch_alter_table("workflow_agent_node_bindings") as batch:
-        batch.alter_column("external_job_config", existing_type=AdjustedJSON(), nullable=False)
+        # MySQL renders nullability as a full-column MODIFY; explicitly retain
+        # the default instead of silently dropping it at the final NOT NULL step.
+        batch.alter_column(
+            "external_job_config",
+            existing_type=AdjustedJSON(),
+            nullable=False,
+            server_default=sa.text("('{}')"),
+        )
 
 
 def downgrade():

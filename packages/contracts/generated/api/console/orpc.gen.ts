@@ -44,6 +44,7 @@ export const contractLoaders = {
   externalAgents: () =>
     import('./external-agents/orpc.gen.ts').then(({ externalAgents }) => ({ externalAgents })),
   features: () => import('./features/orpc.gen.ts').then(({ features }) => ({ features })),
+  fileScan: () => import('./file-scan/orpc.gen.ts').then(({ fileScan }) => ({ fileScan })),
   files: () => import('./files/orpc.gen.ts').then(({ files }) => ({ files })),
   forgotPassword: () =>
     import('./forgot-password/orpc.gen.ts').then(({ forgotPassword }) => ({ forgotPassword })),

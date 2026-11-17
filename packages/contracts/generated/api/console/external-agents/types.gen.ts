@@ -5,6 +5,8 @@ export type ClientOptions = {
 }
 
 export type ExternalAgentListResponse = {
+  disabled_count: number
+  enabled_count: number
   items: Array<ExternalAgentAssetResponse>
   limit: number
   page: number
@@ -42,6 +44,7 @@ export type ExternalAgentCapabilitiesResponse = {
   authentication: Array<string>
   enabled: boolean
   input_file_modes: Array<string>
+  input_file_types: Array<ExternalInputFileTypeResponse>
   limits: {
     [key: string]: unknown
   }
@@ -72,6 +75,12 @@ export type ExternalAgentVerificationResponse = {
   warnings: ExternalAgentConnectionWarningsResponse
 }
 
+export type VerificationFailedError = ErrorResponse & {
+  code: 'verification_failed'
+  details?: ExternalAgentVerificationFailureDetailsResponse
+  status: 400
+}
+
 export type ExternalAgentDetailResponse = {
   asset: ExternalAgentAssetResponse
   connection: {
@@ -99,10 +108,12 @@ export type ExternalAgentAssetResponse = {
   icon: string | null
   icon_background: string | null
   icon_type: string | null
+  icon_url: string | null
   id: string
   metadata_revision: number
   name: string
   overrides: Array<string>
+  reference_count: number | null
   role: string
   row_version: number
   tenant_id: string
@@ -138,13 +149,21 @@ export type ExternalTestFileResponse = {
   lease_id: string
   media_type: string
   size: number
+  url: string
+  url_expires_at: string
 }
 
 export type ExternalPasteLinkPayload = {
-  filename: string
-  media_type: string
+  filename?: string | null
+  media_type?: string | null
   page_session_id: string
   url: string
+}
+
+export type ExternalTestFileAccessResponse = {
+  file_id: string
+  url: string
+  url_expires_at: string
 }
 
 export type ExternalTestPayload = {
@@ -168,10 +187,16 @@ export type ExternalTestStatusResponse = {
     [key: string]: unknown
   } | null
   state: string
+  statistics: ExternalTestStatisticsResponse
 }
 
 export type ExternalTestCancelResponse = {
   result: 'requested'
+}
+
+export type ExternalTracingProviderOverviewResponse = {
+  enabled_provider: string | null
+  providers: Array<ExternalTracingProviderStateResponse>
 }
 
 export type ExternalTracingConfigEnvelopeResponse = {
@@ -198,9 +223,18 @@ export type ExternalTracingConfigurationResponse = {
   }
 }
 
+export type ExternalInputFileTypeResponse = {
+  extensions: Array<string>
+  media_type: string
+}
+
 export type ExternalAgentConnectionWarningsResponse = {
   business: Array<string>
   technical: Array<string>
+}
+
+export type ExternalAgentVerificationFailureDetailsResponse = {
+  reason: VerificationFailureReason
 }
 
 export type ExternalMetricDayResponse = {
@@ -241,6 +275,27 @@ export type ExternalAgentWaitPolicy = {
   wait_seconds?: number | null
 }
 
+export type ExternalTestStatisticsResponse = {
+  attempt_count: number
+  elapsed_time: number | null
+  token_reporting_denominator: number
+  token_reporting_numerator: number
+  total_tokens: number | null
+}
+
+export type ExternalTracingProviderStateResponse = {
+  capture_content: boolean
+  enabled: boolean
+  provider: string
+  revision: number
+}
+
+export type VerificationFailureReason =
+  | 'authentication_failed'
+  | 'connection_failed'
+  | 'invalid_agent_card'
+  | 'unsupported_protocol'
+
 export type ExternalAgentJsonValue =
   | boolean
   | number
@@ -263,6 +318,8 @@ export type GetExternalAgentsData = {
     keyword?: string
     limit?: number
     page?: number
+    sort_by?: 'created_at' | 'updated_at'
+    sort_order?: 'asc' | 'desc'
   }
   url: '/external-agents'
 }
@@ -302,7 +359,9 @@ export type PostExternalAgentsResponse =
 export type GetExternalAgentsCapabilitiesData = {
   body?: never
   path?: never
-  query?: never
+  query?: {
+    agent_id?: string
+  }
   url: '/external-agents/capabilities'
 }
 
@@ -328,6 +387,7 @@ export type PostExternalAgentsVerifyData = {
 }
 
 export type PostExternalAgentsVerifyErrors = {
+  400: VerificationFailedError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -508,7 +568,10 @@ export type GetExternalAgentsByAgentIdReferencesResponse =
   GetExternalAgentsByAgentIdReferencesResponses[keyof GetExternalAgentsByAgentIdReferencesResponses]
 
 export type PostExternalAgentsByAgentIdTestFilesData = {
-  body?: never
+  body: {
+    file: Blob | File
+    page_session_id: string
+  }
   path: {
     agent_id: string
   }
@@ -576,6 +639,33 @@ export type DeleteExternalAgentsByAgentIdTestFilesByLeaseIdResponses = {
 
 export type DeleteExternalAgentsByAgentIdTestFilesByLeaseIdResponse =
   DeleteExternalAgentsByAgentIdTestFilesByLeaseIdResponses[keyof DeleteExternalAgentsByAgentIdTestFilesByLeaseIdResponses]
+
+export type GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessData = {
+  body?: never
+  path: {
+    agent_id: string
+    lease_id: string
+  }
+  query: {
+    expected_generation: number
+    page_session_id: string
+  }
+  url: '/external-agents/{agent_id}/test-files/{lease_id}/access'
+}
+
+export type GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessErrors = {
+  default: ErrorResponse
+}
+
+export type GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessError =
+  GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessErrors[keyof GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessErrors]
+
+export type GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponses = {
+  200: ExternalTestFileAccessResponse
+}
+
+export type GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponse =
+  GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponses[keyof GetExternalAgentsByAgentIdTestFilesByLeaseIdAccessResponses]
 
 export type PostExternalAgentsByAgentIdTestsData = {
   body: ExternalTestPayload
@@ -648,6 +738,34 @@ export type PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponses = {
 export type PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponse =
   PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponses[keyof PostExternalAgentsByAgentIdTestsByInvocationIdCancelResponses]
 
+export type GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessData = {
+  body?: never
+  path: {
+    agent_id: string
+    file_id: string
+    invocation_id: string
+  }
+  query: {
+    expected_generation: number
+    page_session_id: string
+  }
+  url: '/external-agents/{agent_id}/tests/{invocation_id}/files/{file_id}/access'
+}
+
+export type GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessErrors = {
+  default: ErrorResponse
+}
+
+export type GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessError =
+  GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessErrors[keyof GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessErrors]
+
+export type GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponses = {
+  200: ExternalTestFileAccessResponse
+}
+
+export type GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponse =
+  GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponses[keyof GetExternalAgentsByAgentIdTestsByInvocationIdFilesByFileIdAccessResponses]
+
 export type PutExternalAgentsByAgentIdTracingData = {
   body: ExternalAgentSwitchPayload
   path: {
@@ -670,6 +788,29 @@ export type PutExternalAgentsByAgentIdTracingResponses = {
 
 export type PutExternalAgentsByAgentIdTracingResponse =
   PutExternalAgentsByAgentIdTracingResponses[keyof PutExternalAgentsByAgentIdTracingResponses]
+
+export type GetExternalAgentsByAgentIdTracingConfigData = {
+  body?: never
+  path: {
+    agent_id: string
+  }
+  query?: never
+  url: '/external-agents/{agent_id}/tracing-config'
+}
+
+export type GetExternalAgentsByAgentIdTracingConfigErrors = {
+  default: ErrorResponse
+}
+
+export type GetExternalAgentsByAgentIdTracingConfigError =
+  GetExternalAgentsByAgentIdTracingConfigErrors[keyof GetExternalAgentsByAgentIdTracingConfigErrors]
+
+export type GetExternalAgentsByAgentIdTracingConfigResponses = {
+  200: ExternalTracingProviderOverviewResponse
+}
+
+export type GetExternalAgentsByAgentIdTracingConfigResponse =
+  GetExternalAgentsByAgentIdTracingConfigResponses[keyof GetExternalAgentsByAgentIdTracingConfigResponses]
 
 export type DeleteExternalAgentsByAgentIdTracingConfigByProviderData = {
   body?: never

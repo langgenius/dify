@@ -13,9 +13,11 @@ from werkzeug.exceptions import BadRequest, Conflict, Forbidden, NotFound, Servi
 
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
+from controllers.console.agent.external_errors import ExternalAgentVerificationHTTPError
 from controllers.console.flask_admission import console_account_admission
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
+from libs.external_api import error_responses
 from libs.helper import dump_response
 from machinery.context import RequestContext
 from services.external_agents.contracts import (
@@ -23,6 +25,7 @@ from services.external_agents.contracts import (
     ExternalAgentError,
     ExternalAgentForbiddenError,
     ExternalAgentNotFoundError,
+    ExternalAgentVerificationFailedError,
 )
 
 
@@ -36,6 +39,8 @@ class ExternalAgentListQuery(_Payload):
     keyword: str | None = Field(default=None, max_length=255)
     enabled: bool | None = None
     connected_by_me: bool = False
+    sort_by: Literal["created_at", "updated_at"] = "updated_at"
+    sort_order: Literal["asc", "desc"] = "desc"
 
 
 class ExternalAgentVerifyPayload(_Payload):
@@ -88,6 +93,10 @@ class ExternalAgentAssetResponse(ResponseModel):
     created_at: datetime
     updated_at: datetime
     deleted_at: datetime | None
+    icon_url: str | None
+    reference_count: int | None = Field(
+        description="Distinct readable current App references on list rows; null withholds details."
+    )
 
 
 class ExternalAgentListResponse(ResponseModel):
@@ -95,6 +104,8 @@ class ExternalAgentListResponse(ResponseModel):
     total: int
     page: int
     limit: int
+    enabled_count: int
+    disabled_count: int
 
 
 class ExternalAgentDetailResponse(ResponseModel):
@@ -167,6 +178,8 @@ def external_call[T](operation: Callable[[], T]) -> T:
         raise NotFound(str(error)) from error
     except ExternalAgentConflictError as error:
         raise Conflict(str(error)) from error
+    except ExternalAgentVerificationFailedError as error:
+        raise ExternalAgentVerificationHTTPError(str(error), reason=error.reason) from error
     except ExternalAgentError as error:
         raise BadRequest(str(error)) from error
 
@@ -212,6 +225,7 @@ class ExternalAgentVerifyApi(Resource):
         200, "Read-only verification scope", console_ns.models[ExternalAgentVerificationResponse.__name__]
     )
     @console_account_admission()
+    @error_responses(ExternalAgentVerificationHTTPError)
     def post(self, context: RequestContext):
         require_external_execution()
         payload = ExternalAgentVerifyPayload.model_validate(request.get_json())

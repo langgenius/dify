@@ -12,10 +12,16 @@ from extensions.application_services.rbac import RBACServices
 from extensions.application_services.tracing import TracingServices
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
-from providers.a2a.control_adapters import WorkspaceExternalAssetAccess, WorkspaceExternalSecretCodec
+from machinery.context import RequestContext
+from providers.a2a.control_adapters import (
+    DifyExternalIconURLs,
+    WorkspaceExternalAssetAccess,
+    WorkspaceExternalSecretCodec,
+)
 from providers.a2a.files import DifyFileAdapter, RemoteFileRequester
 from providers.a2a.gateway import A2AGateway
 from providers.a2a.runtime_io import ExternalOutputNormalizer, ExternalRequestPartsBuilder
+from providers.a2a.test_file_urls import DifyTestFileURLSigner
 from providers.a2a.test_files import ExternalTestFileUpload
 from providers.a2a.transport import BoundedTransport, SSRFRequester
 from providers.a2a.workflow_access import ExternalWorkflowBindingAccess
@@ -30,16 +36,18 @@ from repositories.external_agents.observability_repository import (
     ExternalObservabilityRepository,
 )
 from repositories.external_agents.runtime_repository import ExternalRuntimeRepository
+from repositories.external_agents.test_file_access_repository import ExternalTestFileAccessRepository
 from repositories.external_agents.test_file_repository import ExternalTestFileRepository
 from repositories.external_agents.workflow_bindings import ExternalWorkflowBindingRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.external_agents.asset_service import ExternalAssetService
 from services.external_agents.contracts import ExternalAgentLimits
-from services.external_agents.file_profile import FILE_MODES, FileLimits
+from services.external_agents.file_profile import FILE_MODES, FileLimits, supported_input_file_types
 from services.external_agents.invocation_service import ExternalInvocationService
 from services.external_agents.observability import ExternalObservabilityService
 from services.external_agents.retention import ExternalRetentionService
 from services.external_agents.runtime_contracts import RuntimeSettings
+from services.external_agents.test_file_access import ExternalTestFileAccessService
 from services.external_agents.test_service import ExternalTestService
 from services.external_agents.traceability import TraceabilityNormalizer, TraceLimits
 from services.external_agents.tracing_config import ExternalTraceDeliveryService, ExternalTracingConfigService
@@ -74,6 +82,7 @@ class ExternalAgentServices:
     enabled: bool
     assets: ExternalAssetService
     tests: ExternalTestService
+    test_file_access: ExternalTestFileAccessService
     bindings: ExternalWorkflowBindingService
     runtime: ExternalInvocationService
     repository: ExternalRuntimeRepository
@@ -93,12 +102,35 @@ class ExternalAgentServices:
             "transport": "HTTP+JSON",
             "authentication": ("none", "bearer"),
             "input_file_modes": tuple(sorted(FILE_MODES)),
+            "input_file_types": tuple(asdict(value) for value in supported_input_file_types(tuple(FILE_MODES))),
             "limits": {**asdict(self.limits), "files": asdict(self.file_limits)},
         }
 
+    def capabilities_for(self, context: RequestContext, *, agent_id: str | None) -> dict:
+        """Present the deployment profile or an admitted Agent's effective file subset.
+
+        The no-Agent response retains its existing MIME modes. Supplying an
+        Agent invokes the same detail permission/visibility gate and only
+        intersects its saved defaults; no network or business task is started.
+        """
+        result = self.capabilities
+        if agent_id is not None:
+            types = self.assets.input_file_types(context, agent_id)
+            result["input_file_modes"] = tuple(value.media_type for value in types)
+            result["input_file_types"] = tuple(asdict(value) for value in types)
+        return result
+
     def enqueue(self) -> None:
+        """Wake this capability's dedicated consumer without activating legacy cleanup.
+
+        Commands are already durable before publication. Broker failure leaves
+        them available to the same queue's periodic sweep; it never authorizes a
+        second business Send or requires consuming unrelated retention work.
+        """
         try:
-            celery_app.send_task("tasks.external_agent_task.drain_external_commands", queue="retention")
+            celery_app.send_task(
+                "tasks.external_agent_task.drain_external_commands", queue=dify_config.EXTERNAL_AGENTS_QUEUE
+            )
         except Exception:
             # Durable Commands are the source of truth; beat recovers a missed wakeup.
             logger.warning("External Agent command wakeup could not reach the broker")
@@ -220,6 +252,16 @@ def build_external_agent_services(
     )
     return ExternalAgentServices(
         enabled=dify_config.EXTERNAL_AGENTS_ENABLED,
+        test_file_access=ExternalTestFileAccessService(
+            store=ExternalTestFileAccessRepository(sessions=sessions, clock=clock.now),
+            access=access,
+            signer=DifyTestFileURLSigner(
+                secret_key=dify_config.SECRET_KEY,
+                base_url=dify_config.FILES_URL,
+                signature_ttl_seconds=dify_config.FILES_ACCESS_TIMEOUT,
+                clock=clock.now,
+            ),
+        ),
         bindings=ExternalWorkflowBindingService(
             store=ExternalWorkflowBindingRepository(sessions=sessions),
             access=access,
@@ -229,6 +271,7 @@ def build_external_agent_services(
             store=assets,
             access=access,
             reference_access=observation_access,
+            icons=DifyExternalIconURLs(),
             gateway=gateway,
             secrets=codec,
             clock=clock.now,
@@ -239,6 +282,8 @@ def build_external_agent_services(
             assets=assets,
             access=access,
             runtime=runtime,
+            statistics=observations,
+            clock=clock,
             files=ExternalTestFileRepository(sessions=sessions, limits=file_limits),
             uploads=ExternalTestFileUpload(files=files, remote=remote, limits=file_limits),
             limits=file_limits,

@@ -1,12 +1,23 @@
 """Workspace permissions and encryption for the External Agent control plane."""
 
 import hmac
+from collections.abc import Mapping, Sequence
 
 from core.helper.encrypter import batch_decrypt_token, encrypt_token
+from libs.helper import build_icon_url
 from machinery.context import RequestContext
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.enterprise import rbac_service as enterprise
 from services.rbac.members import MemberService
+
+
+class DifyExternalIconURLs:
+    """Use Dify's existing signed-image route for already admitted upload IDs."""
+
+    def image_urls(self, file_ids: Sequence[str]) -> Mapping[str, str]:
+        """Generate refreshable capabilities without querying or reading file bytes."""
+        urls = {identifier: build_icon_url("image", identifier) for identifier in file_ids}
+        return {identifier: url for identifier, url in urls.items() if url is not None}
 
 
 class WorkspaceExternalSecretCodec:

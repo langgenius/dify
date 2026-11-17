@@ -10,6 +10,7 @@ import hashlib
 import json
 from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime, timedelta
+from itertools import starmap
 from sqlite3 import Connection as SQLiteConnection
 from typing import Any, Protocol
 from zoneinfo import ZoneInfo
@@ -75,6 +76,8 @@ from services.external_agents.observability import (
     aware_utc,
 )
 from services.external_agents.retention import ExternalDeletionScope, TestFileCleanup
+from services.external_agents.runtime_contracts import RuntimeError as ExternalRuntimeError
+from services.external_agents.test_service import ExternalTestStatistics
 from services.external_agents.traceability import (
     ExternalTraceStep,
     NormalizedExternalTrace,
@@ -87,6 +90,7 @@ from services.external_agents.traceability import (
 from services.external_agents.tracing_config import (
     ExternalTraceDelivery,
     ExternalTraceDeliveryStatus,
+    ExternalTracingProviderState,
     FrozenExternalTraceTarget,
     StoredExternalTracingConfig,
     TraceExportPreflightError,
@@ -161,14 +165,25 @@ class DatabaseExternalObservationAccess:
             )
         if role == "normal":
             return MonitoringScope(True, None, timezone)
+        return MonitoringScope(False, self._readable_app_ids(context), timezone)
+
+    def _readable_app_ids(self, context: RequestContext) -> frozenset[str]:
+        """Own the exact App cohort shared by Monitoring and asset reference reads."""
         with self._sessions() as session:
             ids = tuple(session.scalars(select(App.id).where(App.tenant_id == context.active_workspace_id)))
         permissions = self._permissions.permissions(context.active_workspace_id, context.account_id)
         keys = permissions.app.permission_keys_by_resource_ids(list(ids))
         allowed = frozenset(identifier for identifier, grants in keys.items() if "app.acl.monitor" in grants)
-        if context.resource_app_ids is not None:
-            allowed &= context.resource_app_ids
-        return MonitoringScope(False, allowed, timezone)
+        return allowed & context.resource_app_ids if context.resource_app_ids is not None else allowed
+
+    def reference_list_app_ids(self, context: RequestContext) -> frozenset[str] | None:
+        """Read one current App policy for the admitted list; Normal gets no detail capability."""
+        role = self._assets.role(context)
+        if role == "normal":
+            return None
+        if role not in {"owner", "admin", "editor"}:
+            raise ExternalAgentForbiddenError("Workspace membership is required.")
+        return self._readable_app_ids(context)
 
     def reference_app_ids(self, context: RequestContext, agent_id: str) -> frozenset[str]:
         """Reuse Monitoring's exact App policy, with no Normal detail bypass.
@@ -312,6 +327,73 @@ class ExternalObservabilityRepository:
     def owner(self, *, tenant_id: str, invocation_id: str, now: datetime) -> InvocationObservationOwner:
         with self._sessions() as session:
             return self._owner_value(self._owned(session, tenant_id=tenant_id, invocation_id=invocation_id, now=now))
+
+    def test_statistics(
+        self, context: RequestContext, *, agent_id: str, invocation_id: str, now: datetime
+    ) -> ExternalTestStatistics:
+        """Read one retained, actor-owned logical test without broadening its scope.
+
+        The selected attempt pins the upper sequence. Duration is the logical
+        wall time from first actual dispatch, including retry/cancellation gaps;
+        terminal reads stop at local_wait_ended_at. Only trustworthy call-total
+        rows contribute usage, and any unknown dispatched attempt makes the
+        total unknown. Prepared work and Trace steps never count as external IO.
+        """
+        try:
+            with self._sessions() as session:
+                latest = self._owned(
+                    session, tenant_id=context.active_workspace_id, invocation_id=invocation_id, now=now
+                )
+                if (
+                    latest.agent_id != agent_id
+                    or latest.initiator_id != context.account_id
+                    or latest.origin != "overview_test"
+                    or latest.app_id is not None
+                ):
+                    raise ObservationNotFoundError("external_invocation_not_found")
+                invocation, usage = ExternalAgentInvocation, ExternalAgentTraceUsageSummary
+                attempts = session.execute(
+                    select(invocation, usage.total_tokens)
+                    .outerjoin(
+                        usage, sa.and_(usage.tenant_id == invocation.tenant_id, usage.invocation_id == invocation.id)
+                    )
+                    .where(
+                        invocation.tenant_id == context.active_workspace_id,
+                        invocation.agent_id == agent_id,
+                        invocation.initiator_id == context.account_id,
+                        invocation.origin == "overview_test",
+                        invocation.app_id.is_(None),
+                        invocation.execution_key == latest.execution_key,
+                        invocation.test_generation == latest.test_generation,
+                        invocation.sequence <= latest.sequence,
+                    )
+                    .order_by(invocation.sequence)
+                ).all()
+                for attempt, _ in attempts:
+                    self._owned(session, tenant_id=context.active_workspace_id, invocation_id=attempt.id, now=now)
+                dispatched = [(attempt, tokens) for attempt, tokens in attempts if attempt.dispatched_at is not None]
+                reported = [tokens for _, tokens in dispatched if type(tokens) is int and tokens >= 0]
+                starts = [aware_utc(attempt.dispatched_at) for attempt, _ in dispatched if attempt.dispatched_at]
+                end = (
+                    aware_utc(now)
+                    if latest.local_state in {"waiting", "retry_pending"}
+                    else aware_utc(latest.local_wait_ended_at)
+                    if latest.local_wait_ended_at is not None
+                    else None
+                )
+                elapsed = (end - min(starts)).total_seconds() if starts and end is not None else None
+                count = len(dispatched)
+                return ExternalTestStatistics(
+                    elapsed if elapsed is not None and elapsed >= 0 else None,
+                    sum(reported) if count and len(reported) == count else None,
+                    count,
+                    len(reported),
+                    count,
+                )
+        except ObservationNotFoundError as error:
+            raise ExternalRuntimeError("invocation_not_found", "The requested test was not found.") from error
+        except ObservationExpiredError as error:
+            raise ExternalRuntimeError("test_expired", "The temporary test result has expired.") from error
 
     @staticmethod
     def _step(row: StepRow) -> ExternalTraceStep:
@@ -758,6 +840,32 @@ class ExternalObservabilityRepository:
                 )
             )
             return self._config_value(row) if row else None
+
+    def configured_provider_states(
+        self, context: RequestContext, *, agent_id: str
+    ) -> Sequence[ExternalTracingProviderState]:
+        """Read only configured state columns after live owner/admin admission.
+
+        No encrypted_config column is selected or decrypted. All configured
+        providers share this read snapshot and stable ordering, including disabled
+        ones; concurrent writes cannot produce a mixed N-request overview.
+        """
+        with self._sessions() as session:
+            self._manage_owner(session, context, agent_id)
+            rows = session.execute(
+                select(
+                    ExternalAgentTracingConfig.provider,
+                    ExternalAgentTracingConfig.revision,
+                    ExternalAgentTracingConfig.enabled,
+                    ExternalAgentTracingConfig.capture_content,
+                )
+                .where(
+                    ExternalAgentTracingConfig.tenant_id == context.active_workspace_id,
+                    ExternalAgentTracingConfig.agent_id == agent_id,
+                )
+                .order_by(ExternalAgentTracingConfig.provider)
+            )
+            return tuple(starmap(ExternalTracingProviderState, rows))
 
     def save_config(
         self,

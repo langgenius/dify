@@ -452,6 +452,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
+**Return visible Workflow-callable Agents and their current workflow usage**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1258,6 +1260,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
+**Return the admitted Agent's available log sources**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1273,6 +1277,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs
+**Return the admitted Agent's conversation logs**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1299,6 +1305,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
+**Return the admitted Agent's messages for a conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1473,6 +1481,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
+**Return Agent monitoring data using the admitted account's timezone**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -6015,6 +6025,7 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Active discount | **application/json**: [AnnualDiscountActiveErrorResponse](#annualdiscountactiveerrorresponse)<br>[AnnualDiscountActiveError](#annualdiscountactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7257,6 +7268,44 @@ Test external knowledge retrieval for dataset
 | 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/file-scan-policy
+Get the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /datasets/{dataset_id}/file-scan-policy
+Set the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/hit-testing
 Test dataset knowledge retrieval
 
@@ -7831,6 +7880,8 @@ Delete an API key for a dataset
 | keyword | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 20 |
 | page | query |  | No | integer, <br>**Default:** 1 |
+| sort_by | query |  | No | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at |
+| sort_order | query |  | No | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc |
 
 #### Responses
 
@@ -7854,6 +7905,12 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /external-agents/capabilities
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | query | Optional visible Agent ID for its effective default input formats | No | string (uuid) |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -7873,6 +7930,7 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Read-only verification scope | **application/json**: [ExternalAgentVerificationResponse](#externalagentverificationresponse)<br> |
+| 400 | Bad Request | **application/json**: [VerificationFailedError](#verificationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /external-agents/{agent_id}
@@ -8004,6 +8062,12 @@ Delete an API key for a dataset
 | ---- | ---------- | ----------- | -------- | ------ |
 | agent_id | path |  | Yes | string (uuid) |
 
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **multipart/form-data**: { **"file"**: binary, **"page_session_id"**: string }<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -8044,6 +8108,25 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 204 | Owned unsubmitted input cleared; admitted input remains intact |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/test-files/{lease_id}/access
+**Refresh from the exact input lease and current page/generation, never just file ID**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_generation | query |  | Yes | integer |
+| page_session_id | query |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| lease_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Fresh scoped URL for a live owned Test input | **application/json**: [ExternalTestFileAccessResponse](#externaltestfileaccessresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /external-agents/{agent_id}/tests
@@ -8096,6 +8179,26 @@ Delete an API key for a dataset
 | 202 | Cancellation requested | **application/json**: [ExternalTestCancelResponse](#externaltestcancelresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /external-agents/{agent_id}/tests/{invocation_id}/files/{file_id}/access
+**Refresh only an owned current result's live committed published file**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| expected_generation | query |  | Yes | integer |
+| page_session_id | query |  | Yes | string |
+| agent_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+| invocation_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Fresh scoped URL for this exact published Test output | **application/json**: [ExternalTestFileAccessResponse](#externaltestfileaccessresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [PUT] /external-agents/{agent_id}/tracing
 #### Parameters
 
@@ -8114,6 +8217,20 @@ Delete an API key for a dataset
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Saved collection preference | **application/json**: [ExternalAgentAssetResponse](#externalagentassetresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /external-agents/{agent_id}/tracing-config
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| agent_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Owner-only configured provider states without configuration values or secrets | **application/json**: [ExternalTracingProviderOverviewResponse](#externaltracingprovideroverviewresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /external-agents/{agent_id}/tracing-config/{provider}
@@ -8188,6 +8305,96 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/provider-types
+List the malware scanners this deployment offers
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderTypeListResponse](#filescanprovidertypelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/providers
+List the workspace's malware scanners. Secrets are never returned.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderListResponse](#filescanproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers
+Add a malware scanner. It is verified with a live check before it is saved.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderCreatePayload](#filescanprovidercreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Scanner added | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /file-scan/providers/{provider_id}
+Delete a malware scanner that no policy selects
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Scanner deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /file-scan/providers/{provider_id}
+Update a malware scanner. It is verified with a live check before it is saved.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderUpdatePayload](#filescanproviderupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Scanner updated | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers/{provider_id}/test
+Run the scanner's connectivity check again and store the result
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Check finished | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/support-type
@@ -9671,6 +9878,44 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Get the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Set the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/golden-questions
@@ -21943,6 +22188,22 @@ Auth Token is invalid or account already activated, please check again.
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Score threshold | Yes |
 
+#### AnnualDiscountActiveError
+
+You can switch to annual billing after your current discount ends.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnnualDiscountActiveError |  | You can switch to annual billing after your current discount ends. |  |
+
+#### AnnualDiscountActiveErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### AnyJSONValue
 
 | Name | Type | Description | Required |
@@ -26804,16 +27065,24 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | icon | string |  | Yes |
 | icon_background | string |  | Yes |
 | icon_type | string |  | Yes |
+| icon_url | string |  | Yes |
 | id | string |  | Yes |
 | metadata_revision | integer |  | Yes |
 | name | string |  | Yes |
 | overrides | [ string ] |  | Yes |
+| reference_count | integer | Distinct readable current App references on list rows; null withholds details. | Yes |
 | role | string |  | Yes |
 | row_version | integer |  | Yes |
 | tenant_id | string |  | Yes |
 | test_display_generation | integer |  | Yes |
 | tracing_enabled | boolean |  | Yes |
 | updated_at | dateTime |  | Yes |
+
+#### ExternalAgentCapabilitiesQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_id | string | Optional visible Agent ID for its effective default input formats | No |
 
 #### ExternalAgentCapabilitiesResponse
 
@@ -26822,6 +27091,7 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | authentication | [ string ] |  | Yes |
 | enabled | boolean |  | Yes |
 | input_file_modes | [ string ] |  | Yes |
+| input_file_types | [ [ExternalInputFileTypeResponse](#externalinputfiletyperesponse) ] | Finite Dify input types; when agent_id is supplied, intersected with saved Agent defaults, never Skills | Yes |
 | limits | object |  | Yes |
 | protocol | string |  | Yes |
 | transport | string |  | Yes |
@@ -26878,11 +27148,15 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | keyword | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
 | page | integer, <br>**Default:** 1 |  | No |
+| sort_by | string, <br>**Available values:** "created_at", "updated_at", <br>**Default:** updated_at | *Enum:* `"created_at"`, `"updated_at"` | No |
+| sort_order | string, <br>**Available values:** "asc", "desc", <br>**Default:** desc | *Enum:* `"asc"`, `"desc"` | No |
 
 #### ExternalAgentListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| disabled_count | integer |  | Yes |
+| enabled_count | integer |  | Yes |
 | items | [ [ExternalAgentAssetResponse](#externalagentassetresponse) ] |  | Yes |
 | limit | integer |  | Yes |
 | page | integer |  | Yes |
@@ -26915,6 +27189,12 @@ Built-in tool icons are URL strings; API-based tool icons are provider-defined p
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | ExternalAgentTimeoutPolicy | string |  |  |
+
+#### ExternalAgentVerificationFailureDetailsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason | [VerificationFailureReason](#verificationfailurereason) |  | Yes |
 
 #### ExternalAgentVerificationResponse
 
@@ -27035,6 +27315,13 @@ Flask blueprint initialization.
 | query | [ExternalHitTestingQueryResponse](#externalhittestingqueryresponse) |  | Yes |
 | records | [ [ExternalHitTestingRecordResponse](#externalhittestingrecordresponse) ] |  | Yes |
 
+#### ExternalInputFileTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| extensions | [ string ] | Common lowercase filename suffixes including dots; MIME/ownership/size checks remain authoritative | Yes |
+| media_type | string |  | Yes |
+
 #### ExternalKnowledgeApiBindingResponse
 
 | Name | Type | Description | Required |
@@ -27109,8 +27396,8 @@ Flask blueprint initialization.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| filename | string |  | Yes |
-| media_type | string |  | Yes |
+| filename | string |  | No |
+| media_type | string |  | No |
 | page_session_id | string |  | Yes |
 | url | string |  | Yes |
 
@@ -27127,6 +27414,21 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | result | string |  | Yes |
 
+#### ExternalTestFileAccessQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| expected_generation | integer |  | Yes |
+| page_session_id | string |  | Yes |
+
+#### ExternalTestFileAccessResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| file_id | string |  | Yes |
+| url | string |  | Yes |
+| url_expires_at | dateTime |  | Yes |
+
 #### ExternalTestFileResponse
 
 | Name | Type | Description | Required |
@@ -27137,6 +27439,8 @@ Flask blueprint initialization.
 | lease_id | string |  | Yes |
 | media_type | string |  | Yes |
 | size | integer |  | Yes |
+| url | string |  | Yes |
+| url_expires_at | dateTime |  | Yes |
 
 #### ExternalTestLeaveResponse
 
@@ -27176,6 +27480,16 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | policy | [ExternalAgentWaitPolicy](#externalagentwaitpolicy) |  | No |
 | task_text | string |  | Yes |
 
+#### ExternalTestStatisticsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attempt_count | integer | Number of actually dispatched attempts in this logical test | Yes |
+| elapsed_time | number | Seconds from first dispatch through local end or current read time | Yes |
+| token_reporting_denominator | integer | All dispatched attempts; zero means no dispatch yet | Yes |
+| token_reporting_numerator | integer | Dispatched attempts with a proven call-total token value | Yes |
+| total_tokens | integer | Sum of proven call-total tokens only when every dispatched attempt reports usage. Null means no complete proven total; it is not zero or a failed execution. Zero is a valid reported value. Trace steps are never summed. The default A2A profile has no standardized call-total usage proof. | Yes |
+
 #### ExternalTestStatusResponse
 
 | Name | Type | Description | Required |
@@ -27186,6 +27500,7 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | metadata | object |  | Yes |
 | outputs | object |  | Yes |
 | state | string |  | Yes |
+| statistics | [ExternalTestStatisticsResponse](#externalteststatisticsresponse) |  | Yes |
 
 #### ExternalTraceDeliveryListResponse
 
@@ -27277,6 +27592,22 @@ Public six-type profile; internal JSON-schema aliases are not wire types.
 | revision | integer |  | Yes |
 | values | object |  | Yes |
 
+#### ExternalTracingProviderOverviewResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled_provider | string |  | Yes |
+| providers | [ [ExternalTracingProviderStateResponse](#externaltracingproviderstateresponse) ] |  | Yes |
+
+#### ExternalTracingProviderStateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| capture_content | boolean |  | Yes |
+| enabled | boolean |  | Yes |
+| provider | string |  | Yes |
+| revision | integer |  | Yes |
+
 #### ExternalTracingRevisionQuery
 
 | Name | Type | Description | Required |
@@ -27313,6 +27644,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
@@ -27470,6 +27802,82 @@ Resolved multi-file input constraints and effective number limit.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileScanFallbackAction
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileScanFallbackAction | string |  |  |
+
+#### FileScanPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| on_unscannable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| provider_id | string |  | No |
+
+#### FileScanPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | string |  | Yes |
+| on_unscannable | string |  | Yes |
+| provider_id | string |  | No |
+
+#### FileScanProviderCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object | Non-secret settings | No |
+| credentials | object | Secret settings; write-only | No |
+| name | string | Display name | Yes |
+| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+
+#### FileScanProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderResponse](#filescanproviderresponse) ] |  | Yes |
+
+#### FileScanProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| created_at | integer |  | No |
+| credentials_set | object |  | Yes |
+| id | string |  | Yes |
+| last_error | string |  | No |
+| last_tested_at | integer |  | No |
+| name | string |  | Yes |
+| policy_count | integer |  | Yes |
+| provider_type | string |  | Yes |
+| status | string |  | Yes |
+
+#### FileScanProviderTypeListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderTypeResponse](#filescanprovidertyperesponse) ] |  | Yes |
+
+#### FileScanProviderTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| credential_fields | [ string ] |  | Yes |
+| provider_type | string |  | Yes |
+
+#### FileScanProviderUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| credentials | object | Secret settings to replace; omitted or empty fields keep their value | No |
+| name | string |  | No |
 
 #### FileTooLargeError
 
@@ -38086,6 +38494,20 @@ in form definition, or a variable while the workflow is running.
 | limit | integer |  | Yes |
 | size | integer |  | Yes |
 | usage_unknown | boolean |  | No |
+
+#### VerificationFailedError
+
+External Agent verification failed.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| VerificationFailedError |  | External Agent verification failed. |  |
+
+#### VerificationFailureReason
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| VerificationFailureReason | string |  |  |
 
 #### VerificationTokenResponse
 

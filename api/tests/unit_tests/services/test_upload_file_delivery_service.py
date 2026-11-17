@@ -6,6 +6,7 @@ import pytest
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session, sessionmaker
 
+from extensions.ext_application_services import ApplicationServices
 from extensions.ext_storage import Storage
 from extensions.storage.opendal_storage import OpenDALStorage
 from repositories.upload_file_delivery_repository import UploadFileDeliveryQueryRepository
@@ -61,8 +62,12 @@ def storage(tmp_path: Path) -> Storage:
 
 
 @pytest.fixture
-def service(files: UploadFileDeliveryQueryRepository, storage: Storage) -> UploadFileDeliveryService:
-    return UploadFileDeliveryService(files=files, storage=storage)
+def service(
+    files: UploadFileDeliveryQueryRepository, storage: Storage, account_application_services: ApplicationServices
+) -> UploadFileDeliveryService:
+    return UploadFileDeliveryService(
+        files=files, storage=storage, access=account_application_services.external_agents.test_file_access
+    )
 
 
 def test_invalid_image_signature_does_not_query_or_load_file(

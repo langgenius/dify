@@ -5,6 +5,7 @@ import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from types import MappingProxyType
 
 from .io_contracts import (
     ExternalIOError,
@@ -17,7 +18,24 @@ from .io_contracts import (
 )
 
 _ALIASES = {"image/jpg": "image/jpeg", "application/x-pdf": "application/pdf", "text/x-markdown": "text/markdown"}
-FILE_MODES = frozenset({"application/pdf", "text/plain", "text/markdown", "image/png", "image/jpeg"})
+FILE_EXTENSIONS = MappingProxyType(
+    {
+        "application/pdf": ("pdf",),
+        "text/plain": ("txt",),
+        "text/markdown": ("md", "markdown"),
+        "image/png": ("png",),
+        "image/jpeg": ("jpg", "jpeg"),
+    }
+)
+FILE_MODES = frozenset(FILE_EXTENSIONS)
+
+
+@dataclass(frozen=True, slots=True)
+class InputFileType:
+    """One accepted MIME with common lowercase chooser suffixes, including the dot."""
+
+    media_type: str
+    extensions: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -64,6 +82,21 @@ def validate_blob(blob: FileBlob, limits: FileLimits) -> None:
 def _mode_supported(media_type: str, declared_modes: Sequence[str]) -> bool:
     modes = {normalize_media_type(mode) for mode in declared_modes}
     return media_type in modes or f"{media_type.split('/')[0]}/*" in modes or "*/*" in modes
+
+
+def supported_input_file_types(agent_input_modes: Sequence[str]) -> tuple[InputFileType, ...]:
+    """Intersect the finite byte profile with Agent defaults using the dispatch gate.
+
+    Inputs are the Agent's default modes, never its per-Skill declarations.
+    Alias, parameter and wildcard handling is identical to build_input_parts;
+    suffix hints do not replace server MIME, ownership or size validation.
+    No remote work or persistence is performed.
+    """
+    return tuple(
+        InputFileType(media_type, tuple("." + suffix for suffix in FILE_EXTENSIONS[media_type]))
+        for media_type in sorted(FILE_MODES)
+        if _mode_supported(media_type, agent_input_modes)
+    )
 
 
 def build_input_parts(

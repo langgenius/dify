@@ -62,9 +62,9 @@ and cleanup continue, so a feature switch cannot freeze the logical deadline or 
 
 | Work | Queue and recovery |
 | --- | --- |
-| Durable command scan | Always scheduled on `retention`; once per second while enabled, every five seconds while disabled. It publishes admitted commands to `EXTERNAL_AGENTS_QUEUE` (default `external_agents`). |
+| Durable command scan | Scheduled on `EXTERNAL_AGENTS_QUEUE` (default `external_agents`); once per second while enabled, every five seconds while disabled. It publishes admitted commands to that same dedicated queue. |
 | Send/GetTask/Cancel/Wake | Dedicated prefork external-agent workers, default concurrency 4 and prefetch 1; SQL command and query leases fence redelivery. |
-| Maintenance | Existing `retention` queue, every 60 seconds by default, including when the feature is disabled. Runs bounded GC before scheduling exports. |
+| Maintenance | Dedicated `EXTERNAL_AGENTS_QUEUE`, every 60 seconds by default, including when the feature is disabled. Runs bounded GC before scheduling exports. |
 | Third-party trace delivery | Existing `OPS_TRACE_QUEUE` (default `ops_trace_v2`), separate from runtime and GC. Soft/hard task limits are 40/45 seconds. |
 
 Trace publication also has a 120-second SQL lease. A worker can claim a published intent immediately; publication
@@ -100,8 +100,9 @@ cd docker
 docker compose --profile external-agents up -d api worker worker_beat worker_external_agents
 ```
 
-The `external-agents` profile starts the dedicated runtime worker. The regular worker must also consume `retention`
-and `OPS_TRACE_QUEUE`; custom worker queue lists must preserve those consumers. All these processes need the same
+The `external-agents` profile starts the dedicated runtime and control worker. Keep an existing consumer for
+`OPS_TRACE_QUEUE`; BYOA does not require adding `retention` or other unrelated queues to a worker. Preserve the
+deployment's existing worker queue lists and replica counts. All these processes need the same
 database, Redis namespace, encryption setup and shared storage. Existing provider network egress policy applies to
 tracing. Never put credentials, signed URLs or private deployment access details into this README or task messages.
 

@@ -65,6 +65,7 @@
   "agentDetail.configure.advancedSettings.label": "Configuración avanzada",
   "agentDetail.configure.answer.activity.ranCommands": "Comandos ejecutados",
   "agentDetail.configure.answer.activity.runningCommands": "Ejecutando comandos",
+  "agentDetail.configure.answer.activity.startingCommands": "Iniciando comandos",
   "agentDetail.configure.answer.duration.minute": "{{count}} min",
   "agentDetail.configure.answer.duration.second": "{{count}} s",
   "agentDetail.configure.answer.responseEnded": "La respuesta ha terminado",

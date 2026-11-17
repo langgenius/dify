@@ -87,6 +87,14 @@ from .external_agent_trace import (
     ExternalAgentTraceUsageSummary,
     ExternalAgentTracingConfig,
 )
+from .file_scan import (
+    FileScanFallbackAction,
+    FileScanPolicy,
+    FileScanProvider,
+    FileScanProviderStatus,
+    FileScanRecord,
+    FileScanRecordStatus,
+)
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -347,6 +355,12 @@ __all__ = [
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
     "ExternalWorkflowBudget",
+    "FileScanFallbackAction",
+    "FileScanPolicy",
+    "FileScanProvider",
+    "FileScanProviderStatus",
+    "FileScanRecord",
+    "FileScanRecordStatus",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",

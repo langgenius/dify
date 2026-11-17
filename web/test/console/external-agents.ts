@@ -19,6 +19,8 @@ export function createExternalAgentAsset(
     icon_type: 'emoji',
     icon: '🤖',
     icon_background: '#E0E7FF',
+    icon_url: null,
+    reference_count: null,
     enabled: true,
     tracing_enabled: true,
     metadata_revision: 1,
@@ -87,6 +89,13 @@ export function createExternalAgentCapabilities(
     transport: 'HTTP+JSON',
     authentication: ['none', 'bearer'],
     input_file_modes: ['text/plain', 'text/markdown', 'application/pdf', 'image/png', 'image/jpeg'],
+    input_file_types: [
+      { media_type: 'application/pdf', extensions: ['.pdf'] },
+      { media_type: 'image/jpeg', extensions: ['.jpg', '.jpeg'] },
+      { media_type: 'image/png', extensions: ['.png'] },
+      { media_type: 'text/markdown', extensions: ['.md', '.markdown'] },
+      { media_type: 'text/plain', extensions: ['.txt'] },
+    ],
     limits: {
       logical_budget_seconds: 3600,
       files: {

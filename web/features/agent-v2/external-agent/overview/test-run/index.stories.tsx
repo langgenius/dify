@@ -15,6 +15,13 @@ const result: TestAgentRun = {
     error_code: null,
     error_message: null,
     metadata: {},
+    statistics: {
+      elapsed_time: 4.2,
+      total_tokens: null,
+      attempt_count: 1,
+      token_reporting_numerator: 0,
+      token_reporting_denominator: 1,
+    },
   },
 }
 const meta = {
