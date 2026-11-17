@@ -8,7 +8,12 @@ it('intersects normalized MIME aliases and wildcard coverage while using the eff
     },
   })
   expect(getTestFileRules(capabilities, ['TEXT/*; charset=utf-8', 'application/x-pdf'])).toEqual({
-    modes: ['application/pdf', 'text/plain', 'text/markdown'],
+    modes: ['application/pdf', 'text/markdown', 'text/plain'],
+    fileTypes: [
+      { media_type: 'application/pdf', extensions: ['.pdf'] },
+      { media_type: 'text/markdown', extensions: ['.md', '.markdown'] },
+      { media_type: 'text/plain', extensions: ['.txt'] },
+    ],
     maxFiles: 2,
     maxDocumentBytes: 100,
     maxImageBytes: 50,
@@ -29,19 +34,30 @@ it('does not substitute outer defaults when the effective files limits are absen
 })
 
 it('prefills only known extensions from the path and leaves opaque file MIME selection explicit', () => {
-  expect(suggestedLinkFile('https://files.example.test/Contract%20terms.PDF?download=1')).toEqual({
+  const { input_file_types: fileTypes } = createExternalAgentCapabilities()
+  expect(
+    suggestedLinkFile('https://files.example.test/Contract%20terms.PDF?download=1', fileTypes),
+  ).toEqual({
     name: 'Contract terms.PDF',
     mime: 'application/pdf',
   })
-  expect(suggestedLinkFile('https://files.example.test/download?id=report.pdf')).toEqual({
-    name: 'download',
-    mime: '',
-  })
+  expect(suggestedLinkFile('https://files.example.test/download?id=report.pdf', fileTypes)).toEqual(
+    {
+      name: 'download',
+      mime: '',
+    },
+  )
 })
 
 it('uses the local file extension when the browser does not report a MIME type', () => {
-  expect(localFileMime(new File(['text'], 'notes.MD'))).toBe('text/markdown')
-  expect(localFileMime(new File(['text'], 'notes.md', { type: 'text/x-markdown' }))).toBe(
+  const { input_file_types: fileTypes } = createExternalAgentCapabilities()
+  expect(localFileMime(new File(['text'], 'notes.MARKDOWN'), fileTypes)).toBe('text/markdown')
+  expect(
+    localFileMime(new File(['text'], 'notes.md', { type: 'text/x-markdown' }), fileTypes),
+  ).toBe('text/markdown')
+  expect(suggestedLinkFile('https://files.example.test/notes.markdown', fileTypes).mime).toBe(
     'text/markdown',
   )
+  const pdfOnly = fileTypes.filter((type) => type.media_type === 'application/pdf')
+  expect(localFileMime(new File(['text'], 'notes.md'), pdfOnly)).toBe('')
 })

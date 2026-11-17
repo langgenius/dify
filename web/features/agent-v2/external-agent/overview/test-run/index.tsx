@@ -22,6 +22,7 @@ import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay, matchesKeyboardEvent } from '@tanstack/react-hotkeys'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -76,6 +77,13 @@ function TestAgentSession({
   const isStopping = run?.status === 'stopping'
   const isInProgress = isRunning || isStopping
   const unknownRequest = testRun.requestUnknown
+  const filesBlockReason = isInProgress
+    ? undefined
+    : files.attachments.some((file) => file.state === 'error')
+      ? t(($) => $['external.overview.testRun.filesFailed'])
+      : files.attachments.some((file) => file.state === 'uploading')
+        ? t(($) => $['external.overview.testRun.filesUploading'])
+        : undefined
   const canRun =
     executionEnabled && !isInProgress && !unknownRequest && files.ready && task.trim().length > 0
 
@@ -238,51 +246,62 @@ function TestAgentSession({
               if (accepted) resetRun()
               return accepted
             }}
+            onRetry={(id) => {
+              if (files.retry(id)) resetRun()
+            }}
             onRemove={(id) => {
               files.remove(id)
               resetRun()
             }}
           />
         )}
-        <Button
-          form={formId}
-          type={isInProgress ? 'button' : 'submit'}
-          variant={isInProgress ? 'secondary' : 'primary'}
-          size={isInProgress ? 'medium' : 'large'}
-          className={cn('w-full shrink-0 rounded-lg', isStopping && 'h-9 flex-row-reverse')}
-          loading={isStopping || testRun.isSubmitting}
-          disabled={isRunning ? !run.currentInvocationId : !isInProgress && !canRun}
-          aria-labelledby={actionLabelId}
-          onClick={
-            isRunning
-              ? (event) => {
-                  event.preventDefault()
-                  stopRun()
+        <Tooltip disabled={!filesBlockReason}>
+          <TooltipTrigger
+            render={
+              <Button
+                form={formId}
+                type={isInProgress ? 'button' : 'submit'}
+                variant={isInProgress ? 'secondary' : 'primary'}
+                size={isInProgress ? 'medium' : 'large'}
+                className={cn('w-full shrink-0 rounded-lg', isStopping && 'h-9 flex-row-reverse')}
+                loading={isStopping || testRun.isSubmitting}
+                disabled={isRunning ? !run.currentInvocationId : !isInProgress && !canRun}
+                focusableWhenDisabled={filesBlockReason ? true : undefined}
+                aria-labelledby={actionLabelId}
+                onClick={
+                  isRunning
+                    ? (event) => {
+                        event.preventDefault()
+                        stopRun()
+                      }
+                    : undefined
                 }
-              : undefined
-          }
-        >
-          {!isStopping && (
-            <span
-              aria-hidden
-              className={cn('size-4', isRunning ? 'i-ri-stop-circle-line' : 'i-ri-play-line')}
-            />
-          )}
-          <span id={actionLabelId}>
-            {isStopping
-              ? t(($) => $['external.overview.testRun.stoppingLabel'])
-              : isRunning
-                ? t(($) => $['external.overview.testRun.stop'])
-                : t(($) => $['external.overview.sendRequest'])}
-          </span>
-          {!isInProgress && (
-            <KbdGroup aria-hidden>
-              {formatForDisplay(RUN_TEST_HOTKEY, { parts: true }).map((key) => (
-                <Kbd key={key}>{key}</Kbd>
-              ))}
-            </KbdGroup>
-          )}
-        </Button>
+              />
+            }
+          >
+            {!isStopping && (
+              <span
+                aria-hidden
+                className={cn('size-4', isRunning ? 'i-ri-stop-circle-line' : 'i-ri-play-line')}
+              />
+            )}
+            <span id={actionLabelId}>
+              {isStopping
+                ? t(($) => $['external.overview.testRun.stoppingLabel'])
+                : isRunning
+                  ? t(($) => $['external.overview.testRun.stop'])
+                  : t(($) => $['external.overview.sendRequest'])}
+            </span>
+            {!isInProgress && (
+              <KbdGroup aria-hidden>
+                {formatForDisplay(RUN_TEST_HOTKEY, { parts: true }).map((key) => (
+                  <Kbd key={key}>{key}</Kbd>
+                ))}
+              </KbdGroup>
+            )}
+          </TooltipTrigger>
+          <TooltipContent side="bottom">{filesBlockReason}</TooltipContent>
+        </Tooltip>
         {!executionEnabled && (
           <p className="system-xs-regular text-text-tertiary">
             {t(($) => $['external.overview.testRun.executionUnavailable'])}
@@ -316,7 +335,11 @@ function ExternalAgentTestPage({ overview }: TestAgentProps) {
   const [open, setOpen] = useState(false)
   const [task, setTask] = useState('')
   const pageSessionId = useTestAgentPageSession(overview)
-  const capabilities = useQuery(consoleQuery.externalAgents.capabilities.get.queryOptions())
+  const capabilities = useQuery(
+    consoleQuery.externalAgents.capabilities.get.queryOptions({
+      input: { query: { agent_id: overview.asset.id } },
+    }),
+  )
   const rules = capabilities.data ? getTestFileRules(capabilities.data, overview.inputModes) : null
   const notificationRef = useRef<string | null>(null)
   const triggerLabelId = useId()

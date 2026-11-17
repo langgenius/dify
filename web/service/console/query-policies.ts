@@ -98,6 +98,11 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                         input: { params: variables.params },
                       }),
                     }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.externalAgents.capabilities.get.queryKey({
+                        input: { query: { agent_id: variables.params.agent_id } },
+                      }),
+                    }),
                   ])
                 },
               },
