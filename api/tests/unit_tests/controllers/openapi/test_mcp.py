@@ -3,18 +3,18 @@
 from __future__ import annotations
 
 import json
-import uuid
+from typing import Protocol
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 
-from constants.oauth_bearer import TokenType
 from controllers.openapi import account as account_module
 from controllers.openapi import mcp as mcp_module
 from controllers.openapi._catalog import current_catalog
 from controllers.openapi._mcp_call import OpCall, OpResult
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS
+from controllers.openapi.auth import router as router_module
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext
@@ -24,8 +24,7 @@ MCP_PATH = "/openapi/v1/mcp"
 PROTOCOL_HEADER = "MCP-Protocol-Version"
 UNAUTHORIZED_BODY = {"code": "unauthorized", "message": "invalid bearer", "status": 401}
 
-
-pytestmark = pytest.mark.allow_error_contract_violations
+JSON_RPC_ERROR_BODY = pytest.mark.allow_error_contract_violations
 
 
 @pytest.fixture(autouse=True)
@@ -135,6 +134,7 @@ def test_the_initialized_notification_is_202(openapi_app: Flask) -> None:
     assert response.get_data() == b""
 
 
+@JSON_RPC_ERROR_BODY
 def test_an_unknown_method_is_method_not_found(admitted_bearer: AdmittedWorld) -> None:
     response = _post(admitted_bearer.client, _rpc("nope/nothing"), admitted_bearer.headers)
 
@@ -148,6 +148,7 @@ def test_an_unknown_method_without_an_id_is_202(openapi_app: Flask) -> None:
     assert response.status_code == 202
 
 
+@JSON_RPC_ERROR_BODY
 @pytest.mark.parametrize("body", [[], [_rpc("ping")]], ids=["empty-batch", "one-item-batch"])
 def test_a_batch_body_is_refused(openapi_app: Flask, body: list[object]) -> None:
     response = _post(openapi_app.test_client(), body)
@@ -157,6 +158,7 @@ def test_a_batch_body_is_refused(openapi_app: Flask, body: list[object]) -> None
     assert response.get_json()["id"] is None
 
 
+@JSON_RPC_ERROR_BODY
 @pytest.mark.parametrize("raw", [b"not json", b'"a string"', b"42", b""], ids=["text", "string", "number", "empty"])
 def test_a_non_json_or_non_object_body_is_a_parse_error(openapi_app: Flask, raw: bytes) -> None:
     response = openapi_app.test_client().post(MCP_PATH, data=raw, content_type="application/json")
@@ -165,6 +167,7 @@ def test_a_non_json_or_non_object_body_is_a_parse_error(openapi_app: Flask, raw:
     assert _error_code(response) == mcp_types.PARSE_ERROR
 
 
+@JSON_RPC_ERROR_BODY
 def test_a_missing_jsonrpc_is_invalid_request(openapi_app: Flask) -> None:
     response = _post(openapi_app.test_client(), {"id": 1, "method": "ping"})
 
@@ -172,6 +175,7 @@ def test_a_missing_jsonrpc_is_invalid_request(openapi_app: Flask) -> None:
     assert _error_code(response) == mcp_types.INVALID_REQUEST
 
 
+@JSON_RPC_ERROR_BODY
 def test_bad_params_are_invalid_params(openapi_app: Flask) -> None:
     response = _post(openapi_app.test_client(), _rpc("tools/call", {"arguments": {}}))
 
@@ -207,6 +211,7 @@ def test_a_token_that_describe_account_refuses_with_403_still_connects(
     assert len(response.get_json()["result"]["tools"]) == 4
 
 
+@JSON_RPC_ERROR_BODY
 def test_a_server_error_from_the_login_check_keeps_its_status_and_body(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -220,36 +225,82 @@ def test_a_server_error_from_the_login_check_keeps_its_status_and_body(
     assert response.get_json() == {"code": "unavailable"}
 
 
+def test_a_rate_limited_login_check_still_connects(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    def limited(_call: OpCall) -> OpResult:
+        return OpResult(status=429, body={"code": "rate_limited"}, headers={"Retry-After": "5"}, is_json=True)
+
+    monkeypatch.setattr(mcp_module, "call_op", limited)
+    response = _post(openapi_app.test_client(), _initialize(), {"Authorization": "Bearer dfoa_x"})
+
+    assert response.status_code == 200
+    assert response.get_json()["result"]["instructions"] == MCP_INSTRUCTIONS
+
+
+@JSON_RPC_ERROR_BODY
+def test_a_server_error_from_the_login_check_carries_retry_after(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def broken(_call: OpCall) -> OpResult:
+        return OpResult(status=503, body={"code": "unavailable"}, headers={"Retry-After": "7"}, is_json=True)
+
+    monkeypatch.setattr(mcp_module, "call_op", broken)
+    response = _post(openapi_app.test_client(), _rpc("tools/list"), {"Authorization": "Bearer dfoa_x"})
+
+    assert response.status_code == 503
+    assert response.headers["Retry-After"] == "7"
+
+
+def test_tools_call_without_a_token_is_http_401_with_www_authenticate(openapi_app: Flask) -> None:
+    body = _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {}}})
+    response = _post(openapi_app.test_client(), body)
+
+    assert response.status_code == 401
+    assert response.get_json() == UNAUTHORIZED_BODY
+    assert response.headers["WWW-Authenticate"]
+
+
+def test_a_known_method_the_route_does_not_serve_is_method_not_found_at_http_200(openapi_app: Flask) -> None:
+    response = _post(openapi_app.test_client(), _rpc("resources/list"))
+
+    assert response.status_code == 200
+    assert _error_code(response) == mcp_types.METHOD_NOT_FOUND
+
+
+def test_a_notification_with_an_unsupported_protocol_header_is_202(openapi_app: Flask) -> None:
+    response = _post(
+        openapi_app.test_client(),
+        _rpc("notifications/initialized", request_id=None),
+        {PROTOCOL_HEADER: "1999-01-01"},
+    )
+
+    assert response.status_code == 202
+
+
+class Authenticator(Protocol):
+    def authenticate(self, token: str) -> AuthContext: ...
+
+
 class _CountingAuthenticator:
-    def __init__(self, token: AuthContext) -> None:
-        self.token = token
+    def __init__(self, inner: Authenticator) -> None:
+        self.inner = inner
         self.calls = 0
 
-    def authenticate(self, _token: str) -> AuthContext:
+    def authenticate(self, token: str) -> AuthContext:
         self.calls += 1
-        return self.token
+        return self.inner.authenticate(token)
 
 
 def test_each_request_authenticates_exactly_once(
     admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    counter = _CountingAuthenticator(
-        AuthContext(
-            subject_email="caller@example.com",
-            subject_issuer="dify:account",
-            account_id=uuid.uuid4(),
-            client_id="difyctl",
-            token_id=uuid.uuid4(),
-            token_type=TokenType.OAUTH_ACCOUNT,
-            expires_at=None,
-        )
-    )
+    counter = _CountingAuthenticator(router_module.get_authenticator())
     monkeypatch.setattr("controllers.openapi.auth.router.get_authenticator", lambda: counter)
     call = _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {}}})
 
     for message in (_initialize(), _rpc("tools/list"), call):
         counter.calls = 0
-        _post(admitted_bearer.client, message, admitted_bearer.headers)
+        response = _post(admitted_bearer.client, message, admitted_bearer.headers)
+        assert response.status_code == 200
         assert counter.calls == 1, message["method"]
 
 

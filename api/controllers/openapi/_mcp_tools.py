@@ -287,6 +287,11 @@ class Unauthenticated(Exception):  # noqa: N818
         super().__init__("unauthenticated")
         self.headers = dict(headers)
 
+    @classmethod
+    def from_result(cls, result: OpResult) -> Unauthenticated:
+        """Postcondition: carries only the challenge headers of ``result`` that are present."""
+        return cls({name: result.headers[name] for name in _PASSED_HEADERS if name in result.headers})
+
 
 def tool_list() -> list[mcp_types.Tool]:
     """Postcondition: the four tools, fixed; needs no request, database or catalog."""
@@ -412,7 +417,7 @@ def _without_uncallable_hints(body: Any, allowed: Mapping[str, Any]) -> Any:
 def _map_result(result: OpResult, *, allowed: Mapping[str, Any], protocol_version: str) -> mcp_types.CallToolResult:
     """Postcondition: the op's response as a tool result; raises ``Unauthenticated`` on 401."""
     if result.status == HTTPStatus.UNAUTHORIZED:
-        raise Unauthenticated({name: result.headers[name] for name in _PASSED_HEADERS if name in result.headers})
+        raise Unauthenticated.from_result(result)
     if result.status >= HTTPStatus.BAD_REQUEST:
         if result.is_json:
             body = _without_uncallable_hints(result.body, allowed)

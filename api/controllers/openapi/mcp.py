@@ -18,19 +18,17 @@ from flask import Response, request
 from flask_restx import Resource
 
 from controllers.openapi import openapi_ns
-from controllers.openapi._mcp_call import OpCall, OpResult, call_op
+from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER, OpCall, OpResult, call_op
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS, Unauthenticated, run_tool, tool_list
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import handle_initialize, handle_ping, negotiate_protocol_version
 
 PROTOCOL_VERSION_HEADER: Final = "MCP-Protocol-Version"
-TRACE_ID_HEADER: Final = "X-Trace-Id"
-AUTHORIZATION_HEADER: Final = "Authorization"
 JSON_MIMETYPE: Final = "application/json"
 ACCOUNT_OP: Final = "describe.account"
 UNAUTHORIZED_BODY: Final = {"code": "unauthorized", "message": "invalid bearer", "status": HTTPStatus.UNAUTHORIZED}
-_CARRIED_HEADER_NAMES: Final = frozenset({"WWW-Authenticate", "Cache-Control"})
+_PASSED_UPSTREAM_HEADERS: Final = ("Retry-After",)
 
 
 class _LoginCheckFailed(Exception):  # noqa: N818
@@ -53,7 +51,9 @@ class _Call:
 type _Handler = Callable[[_Call], dict[str, Any]]
 
 
-def _json_response(body: Mapping[str, Any], status: int = HTTPStatus.OK, headers: Mapping[str, str] | None = None):
+def _json_response(
+    body: Mapping[str, Any], status: int = HTTPStatus.OK, headers: Mapping[str, str] | None = None
+) -> Response:
     return Response(json.dumps(body), status=status, mimetype=JSON_MIMETYPE, headers=dict(headers or {}))
 
 
@@ -62,15 +62,15 @@ def _accepted() -> Response:
 
 
 def _check_login(call: _Call) -> None:
-    """Precondition: inside a Flask request. Postcondition: returns when the token is real.
+    """Precondition: inside a Flask request. Postcondition: returns when the token was not refused as unauthenticated.
 
     Runs ``describe.account`` in-process. A 401 raises ``Unauthenticated`` with the headers it
-    carried; a 5xx raises ``_LoginCheckFailed``; any other status passes, as a 403 only means the
-    token is a kind that operation does not serve.
+    carried; a 5xx raises ``_LoginCheckFailed``; any other status passes (a 403 means a token kind
+    that operation does not serve; a 429 or 404 says nothing against the token).
     """
     result = call_op(OpCall(op=ACCOUNT_OP, input={}, authorization=call.authorization, trace_id=call.trace_id))
     if result.status == HTTPStatus.UNAUTHORIZED:
-        raise Unauthenticated({name: value for name, value in result.headers.items() if name in _CARRIED_HEADER_NAMES})
+        raise Unauthenticated.from_result(result)
     if result.status >= HTTPStatus.INTERNAL_SERVER_ERROR:
         raise _LoginCheckFailed(result)
 
@@ -121,9 +121,10 @@ def _unauthorized(error: Unauthenticated) -> Response:
 
 def _upstream_failure(error: _LoginCheckFailed) -> Response:
     result = error.result
+    headers = {name: result.headers[name] for name in _PASSED_UPSTREAM_HEADERS if name in result.headers}
     if not result.is_json:
-        return Response("", status=result.status)
-    return _json_response(result.body, result.status)
+        return Response("", status=result.status, headers=headers)
+    return _json_response(result.body, result.status, headers)
 
 
 @openapi_ns.route("/mcp")
@@ -142,7 +143,9 @@ class OpenApiMcpApi(Resource):
         try:
             message = parse_message(body)
         except McpRequestError as error:
-            if isinstance(body, dict) and not has_id(body):
+            if not isinstance(body, dict):
+                return _json_response(failure(None, error.code, error.message), HTTPStatus.BAD_REQUEST)
+            if not has_id(body):
                 return _accepted()
             return _json_response(failure(request_id_of(body), error.code, error.message), HTTPStatus.BAD_REQUEST)
         request_id = request_id_of(body)
