@@ -30,6 +30,8 @@ from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 _BEARER = "Bearer dfoa_admitted"
 _TRACE_ID = "trace-mcp-call"
 _OUTER = "outer"
+_CALLER_ADDR = "203.0.113.7"
+_LONE_SURROGATE = "\ud800"
 _INNER = "inner"
 
 _marker: ContextVar[str] = ContextVar("mcp_call_test_marker")
@@ -40,6 +42,7 @@ class _SeenRequest:
     path: str
     query: dict[str, list[str]]
     headers: dict[str, str]
+    remote_addr: str | None
 
 
 @pytest.fixture
@@ -55,6 +58,7 @@ def inner_requests(openapi_app: Flask) -> list[_SeenRequest]:
                 path=request.path,
                 query={key: request.args.getlist(key) for key in request.args},
                 headers=dict(request.headers),
+                remote_addr=request.remote_addr,
             )
         )
         g.mcp_call_marker = _INNER
@@ -157,6 +161,28 @@ def test_a_path_value_with_a_slash_is_refused_before_anything_runs(
     assert inner_requests == []
 
 
+@pytest.mark.parametrize(
+    ("op", "input"),
+    [
+        ("describe.workspace", {"workspace_id": f"a{_LONE_SURROGATE}b"}),
+        ("get.workspace", {"page": _LONE_SURROGATE}),
+        ("get.workspace", {"page": ["1", _LONE_SURROGATE]}),
+        ("get.workspace", {_LONE_SURROGATE: "1"}),
+    ],
+    ids=["path-value", "query-value", "query-list-item", "query-key"],
+)
+@pytest.mark.usefixtures("admitted_bearer")
+def test_a_url_value_that_is_not_utf8_text_is_refused_before_anything_runs(
+    openapi_app: Flask, inner_requests: list[_SeenRequest], op: str, input: dict[str, object]
+):
+    """A lone surrogate is legal in JSON but cannot be encoded into the URL."""
+    with openapi_app.test_request_context():
+        with pytest.raises(UnsafePathValue):
+            _call(op, input)
+
+    assert inner_requests == []
+
+
 @pytest.mark.usefixtures("admitted_bearer")
 def test_a_missing_path_value_is_refused_before_anything_runs(openapi_app: Flask, inner_requests: list[_SeenRequest]):
     with openapi_app.test_request_context():
@@ -230,3 +256,13 @@ def test_the_outer_request_context_survives_the_call(openapi_app: Flask, inner_r
         assert _marker.get() == _OUTER
         assert request.path == "/openapi/v1/mcp"
         _marker.reset(token)
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_the_inner_request_keeps_the_callers_address(openapi_app: Flask, inner_requests: list[_SeenRequest]):
+    with openapi_app.test_request_context(environ_base={"REMOTE_ADDR": _CALLER_ADDR}):
+        result = _call("get.workspace", {})
+
+    assert result.status == 200
+    assert inner_requests[0].remote_addr == _CALLER_ADDR
+    assert "X-Forwarded-For" not in inner_requests[0].headers
