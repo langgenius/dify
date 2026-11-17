@@ -15,7 +15,6 @@ import { Form } from '@langgenius/dify-ui/form'
 import { Input } from '@langgenius/dify-ui/input'
 import { useId, useRef, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
 import { canRetainCredential } from './credential-draft'
 import { useSaveContactImCredentials, useTestContactImConnection } from './hooks'
 import {
@@ -24,6 +23,7 @@ import {
   ContactImRepositoryError,
   ContactImRepositoryErrorCode,
 } from './types'
+import { useChannelDocLink } from './use-channel-doc-link'
 
 type EmailConfigValues = {
   senderEmail: string
@@ -43,7 +43,7 @@ export function ContactEmailConfigContent({
 }: ContactEmailConfigDialogProps) {
   const { t } = useTranslation(['contacts'])
   const { t: tCommon } = useTranslation(['common'])
-  const docLink = useDocLink()
+  const docLink = useChannelDocLink()
   const formRef = useRef<HTMLFormElement>(null)
   const saveCredentials = useSaveContactImCredentials()
   const testConnection = useTestContactImConnection()
