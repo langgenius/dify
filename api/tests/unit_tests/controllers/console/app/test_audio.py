@@ -35,6 +35,7 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from extensions.ext_application_services import application_services
 from graphon.model_runtime.errors.invoke import InvokeError
 from models import Account
 from models import App as _audio_App
@@ -42,8 +43,10 @@ from models import AppMode as _audio_AppMode
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.model import App as _agent_audio_readonly_App
 from models.model import AppMode as _agent_audio_readonly_AppMode
+from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import AudioService
+from services.audio_types import AudioAppRef
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -78,6 +81,27 @@ def _agent(harness: Harness, scope: AgentScope = AgentScope.WORKFLOW_ONLY) -> Ag
         created_by="account-1",
         updated_by="account-1",
     )
+
+
+def test_agent_asr_rejects_rebound_app_after_admission(sqlite_session: Session, harness: Harness) -> None:
+    """Reject a stale APP-scoped authorization before reading the Agent's draft or upload."""
+    admitted_app = make_app(
+        tenant_id=harness.tenant_id, app_id="runtime-app-1", mode=_agent_audio_readonly_AppMode.AGENT
+    )
+    replacement_app = make_app(
+        tenant_id=harness.tenant_id, app_id="runtime-app-2", mode=_agent_audio_readonly_AppMode.AGENT
+    )
+    agent = _agent(harness)
+    sqlite_session.add_all([agent, admitted_app, replacement_app])
+    sqlite_session.commit()
+    admitted = AudioAppRef(app_id=admitted_app.id, tenant_id=admitted_app.tenant_id, app_mode=admitted_app.mode.value)
+    agent.backing_app_id = replacement_app.id
+    sqlite_session.commit()
+
+    with harness.client.application.app_context(), pytest.raises(AgentAppNotFoundError):
+        application_services().app_audio.transcript_agent_asr(
+            app=admitted, agent_id=str(AGENT_ID), account_id=harness.account_id, build=True, audio=None
+        )
 
 
 class TestAgentAudioReadonlyCases:

@@ -77,14 +77,18 @@ def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan
     return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
 
 
-def build_agent_app_services(
-    *, database_client: sessionmaker[Session], rbac_members: MemberService
-) -> AgentAppServices:
-    """Wire Agent App use cases to the shared repository and their post-commit effects."""
-    apps = AgentAppRepository(
+def build_agent_app_repository(*, database_client: sessionmaker[Session]) -> AgentAppRepository:
+    """Build the shared Agent App repository with its publication transaction participant."""
+    return AgentAppRepository(
         session_factory=database_client,
         stage_publication_bindings=partial(stage_published_agent_knowledge_bindings, session_maker=database_client),
     )
+
+
+def build_agent_app_services(
+    *, database_client: sessionmaker[Session], rbac_members: MemberService, apps: AgentAppRepository
+) -> AgentAppServices:
+    """Wire Agent App use cases to the shared repository and their post-commit effects."""
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
         store=apps,

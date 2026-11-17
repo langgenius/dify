@@ -53,10 +53,11 @@ from models.account import TenantAccountRole
 from models.agent import AgentConfigDraftType
 from models.agent_config_entities import AgentSoulConfig
 from services.agent.errors import AgentNotFoundError, AgentVersionNotFoundError
+from services.agent_config_contracts import AgentConfigVersionMissingError
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app_ref_service import AppRefService
 from services.audio_service import AudioService, create_tts_response
-from services.audio_types import AudioUpload
+from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
     NoAudioUploadedServiceError,
@@ -163,6 +164,8 @@ def _asr_errors() -> Generator[None]:
         yield
     except AgentAppNotFoundError as exc:
         raise AgentNotFoundError from exc
+    except AgentConfigVersionMissingError as exc:
+        raise AgentVersionNotFoundError from exc
     except services.errors.app_model_config.AppModelConfigBrokenError as caught_error:
         logger.exception("App model config broken.")
         raise AppUnavailableError() from caught_error
@@ -267,18 +270,25 @@ class AgentChatMessageAudioApi(Resource):
     def post(self, context: RequestContext, agent_id: UUID) -> dict[str, str]:
         """Resolve APP-scoped RBAC and transcribe using the selected Agent debug draft."""
         payload = AgentAudioTranscriptFormPayload.model_validate(request.form.to_dict(flat=True))
-        runtime = application_services().agent_apps.runtime
+        app_services = application_services()
+        tenant_id = context.active_workspace_id
         with _asr_errors():
-            target = runtime.resolve_audio_target(context, str(agent_id))
+            app_id = app_services.agent_apps.access.resolve_runtime_app_id(context, str(agent_id))
             enforce_rbac_checks(
-                tenant_id=context.active_workspace_id,
+                tenant_id=tenant_id,
                 account_id=context.account_id,
                 checks=[RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())],
-                path_args={"app_id": target.app_id},
+                path_args={"app_id": app_id},
             )
             file = request.files.get("file")
             audio = AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None
-            result = runtime.transcribe(context, target, draft_type=payload.draft_type, audio=audio)
+            result = app_services.app_audio.transcript_agent_asr(
+                app=AudioAppRef(app_id=app_id, tenant_id=tenant_id, app_mode=AppMode.AGENT.value),
+                agent_id=str(agent_id),
+                account_id=context.account_id,
+                build=payload.draft_type == AgentConfigDraftType.DEBUG_BUILD,
+                audio=audio,
+            )
         return dump_response(AudioTranscriptResponse, result)
 
 
@@ -394,22 +404,24 @@ class AgentChatMessageTextApi(Resource):
     def post(self, req_data: TextToSpeechPayload, context: RequestContext, agent_id: UUID) -> Response | None:
         """Synthesize an owned message or preview text using the existing runtime App."""
         with _tts_errors():
-            output = application_services().agent_apps.runtime.synthesize(
-                context, str(agent_id), text=req_data.text, voice=req_data.voice, message_id=req_data.message_id
+            output = application_services().app_audio.transcript_agent_tts(
+                tenant_id=context.active_workspace_id,
+                agent_id=str(agent_id),
+                account_id=context.account_id,
+                text=req_data.text,
+                voice=req_data.voice,
+                message_id=req_data.message_id,
             )
             # MIME inspection may read the first provider chunk and raise a provider error.
             # response-contract:ignore provider audio bytes
             return create_tts_response(output.data, output.mime_type) if output is not None else None
 
 
-def _get_text_to_speech_voices(*, tenant_id: str, language: str) -> list[dict[str, object]]:
+@contextmanager
+def _voice_errors() -> Generator[None]:
+    """Translate model lookup, voice discovery and serialization errors at the Console boundary."""
     try:
-        response = AudioService.transcript_tts_voices(
-            tenant_id=tenant_id,
-            language=language,
-        )
-
-        return TextToSpeechVoiceListResponse.model_validate(response).model_dump(mode="json")
+        yield
     except ProviderTokenNotInitError as ex:
         raise ProviderNotInitializeError(ex.description) from ex
     except QuotaExceededError as caught_error:
@@ -423,6 +435,13 @@ def _get_text_to_speech_voices(*, tenant_id: str, language: str) -> list[dict[st
     except Exception as e:
         logger.exception("Failed to handle get request to TextModesApi")
         raise InternalServerError() from e
+
+
+def _get_text_to_speech_voices(*, tenant_id: str, language: str) -> list[dict[str, object]]:
+    """List voices through the legacy App path and translate provider failures."""
+    with _voice_errors():
+        voices = AudioService.transcript_tts_voices(tenant_id=tenant_id, language=language)
+        return TextToSpeechVoiceListResponse.model_validate(voices).model_dump(mode="json")
 
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
@@ -475,8 +494,13 @@ class AgentTextToSpeechVoicesApi(Resource):
     @model_validate(TextToSpeechVoiceQuery)
     def get(self, req_data: TextToSpeechVoiceQuery, context: RequestContext, agent_id: UUID) -> list[dict[str, object]]:
         """Require an existing runtime App, then discover provider voices without a DB session."""
+        app_services = application_services()
         try:
-            application_services().agent_apps.runtime.require_existing_app(context, str(agent_id))
+            app_services.agent_apps.access.resolve_existing_runtime_app_id(context, str(agent_id))
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError from exc
-        return _get_text_to_speech_voices(tenant_id=context.active_workspace_id, language=req_data.language)
+        with _voice_errors():
+            voices = app_services.app_audio.get_voices(
+                tenant_id=context.active_workspace_id, language=req_data.language
+            )
+            return TextToSpeechVoiceListResponse.model_validate(voices).model_dump(mode="json")

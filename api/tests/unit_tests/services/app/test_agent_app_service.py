@@ -16,6 +16,7 @@ from models.agent import (
 )
 from models.agent_config_entities import WorkflowNodeJobConfig
 from models.model import AppMode
+from repositories.app.agent_app_repository import AgentAppRepository
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from tests.helpers.unit.model_factories import make_app
 from tests.helpers.unit.rbac_fakes import RBACDomain
@@ -64,7 +65,9 @@ def test_access_only_lists_current_published_workflow_references(
         )
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
     ).access
     context = RequestContext("request", None, "account", "tenant-1")
     [reference] = service.list_referencing_workflows(context, "agent")
@@ -101,7 +104,9 @@ def test_access_requires_public_agent_app(
     sqlite_session.add_all([make_app(app_id="agent-app", mode=AppMode.AGENT), agent])
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
     ).access
     with pytest.raises(AgentAppNotFoundError):
         service.list_referencing_workflows(RequestContext("request", None, "account", "tenant-1"), "agent")
