@@ -8,13 +8,13 @@ from dataclasses import dataclass
 from datetime import datetime
 from inspect import unwrap
 from types import SimpleNamespace
-from typing import Final, NoReturn, Protocol, TypeIs, override
+from typing import Final, Protocol, TypeIs, override
 from unittest.mock import Mock
 
 import pytest
 from flask import Flask
 from pydantic import ValidationError
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
 
@@ -86,45 +86,6 @@ EnvironmentVariables = Sequence[VariableBase] | Sequence[EnvironmentVariableMapp
 def _is_raw(value: EnvironmentVariables) -> TypeIs[Sequence[EnvironmentVariableMappingDict]]:
     """Report whether stored environment variables are undecoded mappings rather than variable objects."""
     return bool(value) and isinstance(value[0], Mapping)
-
-
-def _raising[**P](error: Exception) -> Callable[P, NoReturn]:
-    """Build a stand-in that raises ``error`` while preserving the replaced callable's signature.
-
-    Using ``ParamSpec`` keeps the forwarder type-compatible with whatever it replaces (e.g. a
-    variable factory or a service method) instead of widening every argument to ``object``.
-    """
-
-    def _raise(*args: P.args, **kwargs: P.kwargs) -> NoReturn:
-        raise error
-
-    return _raise
-
-
-class _RaisingSyncDraftService(WorkflowService):
-    """Named fake whose draft sync raises a fixed error.
-
-    Subclassing the real service keeps the endpoint on a genuine object; ``__init__`` skips the
-    repository wiring the base constructor needs because the sync never reaches the database.
-    """
-
-    def __init__(self, error: Exception) -> None:
-        self._error = error
-
-    @override
-    def sync_draft_workflow(self, **kwargs: object) -> NoReturn:
-        raise self._error
-
-
-class _NoopSyncDraftService(WorkflowService):
-    """Named fake whose draft sync succeeds without touching the database."""
-
-    def __init__(self) -> None:
-        pass
-
-    @override
-    def sync_draft_workflow(self, **kwargs: object) -> Workflow:
-        return _make_workflow()
 
 
 def _make_workflow(
@@ -689,29 +650,83 @@ class TestWorkflowCases:
             )
 
     @staticmethod
-    def test_sync_draft_workflow_hash_mismatch(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        service = _RaisingSyncDraftService(workflow_module.WorkflowHashNotEqualError())
-        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: service)
+    def test_sync_draft_workflow_hash_mismatch(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+    ) -> None:
+        """A stale client hash must abort the real sync before the persisted draft is touched.
+
+        The endpoint builds its own ``WorkflowService()``, which binds its sessions to ``db.engine``
+        and its request session to ``db.session``; both are pointed at the test SQLite database so the
+        real ``get_draft_workflow_for_update`` / hash comparison run against a real draft row.
+        Postcondition: ``DraftWorkflowNotSync`` (409) caused by the service's own
+        ``WorkflowHashNotEqualError``, and the stored graph still equals what was persisted.
+        """
+        app_model = _workflow_app()
+        draft = _make_workflow()
+        draft.version = Workflow.VERSION_DRAFT
+        persisted_graph = draft.graph
+        sqlite_session.add_all([make_tenant(tenant_id=app_model.tenant_id), app_model, _account(), draft])
+        sqlite_session.commit()
+        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _self: sqlite_engine))
+        monkeypatch.setattr(workflow_module.db, "session", lambda: sqlite_session)
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
+        incoming_graph: dict[str, object] = {
+            "nodes": [{"id": "start", "data": {"type": "start"}}],
+            "edges": [],
+        }
 
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
-            json={"graph": {}, "features": {}, "hash": "h"},
+            json={"graph": incoming_graph, "features": {}, "hash": "stale-hash"},
         ):
-            with pytest.raises(DraftWorkflowNotSync):
-                handler(api, _account(), app_model=_workflow_app())
+            with pytest.raises(DraftWorkflowNotSync) as exc:
+                handler(api, _account(), app_model=app_model)
+
+        assert exc.value.code == 409
+        assert isinstance(exc.value.__cause__, workflow_module.WorkflowHashNotEqualError)
+        sqlite_session.expire_all()
+        persisted_draft = sqlite_session.get(Workflow, draft.id)
+        assert persisted_draft is not None
+        assert persisted_draft.graph == persisted_graph
 
     @staticmethod
-    def test_sync_draft_workflow_variable_validation_error(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-        monkeypatch.setattr(
-            workflow_module.variable_factory,
-            "build_conversation_variable_from_mapping",
-            _raising(workflow_module.VariableError("description too long")),
-        )
-        monkeypatch.setattr(workflow_module, "WorkflowService", lambda: _NoopSyncDraftService())
+    @pytest.mark.parametrize(
+        ("variable_mapping", "description"),
+        [
+            (
+                {"name": "topic", "description": "x" * 256},
+                "description of variable 'topic' is too long (max 255 characters)",
+            ),
+            ({"name": "topic"}, "missing value type"),
+            ({"name": "topic", "value_type": "string"}, "missing value"),
+        ],
+        ids=["description-too-long", "missing-value-type", "missing-value"],
+    )
+    def test_sync_draft_workflow_variable_validation_error(
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        variable_mapping: dict[str, str],
+        description: str,
+    ) -> None:
+        """Real conversation-variable validation must reject the payload before any draft write.
+
+        ``DraftWorkflowApi.post`` builds the variables with the real ``variable_factory``, which raises
+        ``VariableError`` for an over-long description or an incomplete mapping; the endpoint maps that
+        to ``InvalidArgumentError``. The real ``WorkflowService()`` is still constructed against the test
+        database, so nothing about the service or the factory is substituted.
+        Postcondition: HTTP 400 whose description is the factory's own message, caused by ``VariableError``,
+        and no draft row exists because validation runs ahead of ``sync_draft_workflow``.
+        """
+        app_model = _workflow_app()
+        sqlite_session.add_all([make_tenant(tenant_id=app_model.tenant_id), app_model, _account()])
+        sqlite_session.commit()
+        monkeypatch.setattr(type(workflow_module.db), "engine", property(lambda _self: sqlite_engine))
+        monkeypatch.setattr(workflow_module.db, "session", lambda: sqlite_session)
 
         api = workflow_module.DraftWorkflowApi()
         handler = inspect.unwrap(api.post)
@@ -719,12 +734,17 @@ class TestWorkflowCases:
         with app.test_request_context(
             "/apps/app/workflows/draft",
             method="POST",
-            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [{"name": "topic"}]},
+            json={"graph": {}, "features": {}, "hash": "h", "conversation_variables": [variable_mapping]},
         ):
             with pytest.raises(InvalidArgumentError) as exc:
-                handler(api, _account(), app_model=_workflow_app())
+                handler(api, _account(), app_model=app_model)
 
-        assert exc.value.description == "description too long"
+        assert exc.value.code == 400
+        assert exc.value.description == description
+        assert isinstance(exc.value.__cause__, workflow_module.VariableError)
+        assert sqlite_session.scalar(select(Workflow).where(Workflow.app_id == app_model.id)) is None, (
+            "variable validation must run before the service writes a draft"
+        )
 
     @staticmethod
     def test_restore_published_workflow_to_draft_success(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
