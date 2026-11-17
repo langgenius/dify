@@ -245,6 +245,52 @@ def test_async_methods_and_wait_run_parse_protocol_dtos() -> None:
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("sync", [False, True], ids=["async", "sync"])
+def test_wait_run_does_not_poll_after_its_deadline(monkeypatch: pytest.MonkeyPatch, sync: bool) -> None:
+    class PollingClock:
+        def __init__(self) -> None:
+            self.now = 0.0
+
+        def monotonic(self) -> float:
+            return self.now
+
+        def sleep(self, seconds: float) -> None:
+            self.now += seconds
+
+        async def sleep_async(self, seconds: float) -> None:
+            self.sleep(seconds)
+
+    clock = PollingClock()
+    request_count = 0
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        nonlocal request_count
+        assert request.method == "GET"
+        assert request.url.path == "/runs/run-1"
+        request_count += 1
+        return httpx.Response(200, json=_run_status_json("running" if request_count == 1 else "succeeded"))
+
+    monkeypatch.setattr(client_module, "time", clock)
+    monkeypatch.setattr(client_module, "_sleep_sync", clock.sleep)
+    monkeypatch.setattr(client_module, "_sleep_async", clock.sleep_async)
+    transport = httpx.MockTransport(handler)
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=transport) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            await client.wait_run("run-1", poll_interval_seconds=2, timeout_seconds=1)
+
+    with pytest.raises(DifyAgentTimeoutError, match="did not finish before timeout"):
+        if sync:
+            with httpx.Client(transport=transport) as http_client:
+                client = Client(base_url="http://testserver", sync_http_client=http_client)
+                client.wait_run_sync("run-1", poll_interval_seconds=2, timeout_seconds=1)
+        else:
+            asyncio.run(scenario())
+    assert request_count == 1
+    assert clock.now == 1
+
+
 def test_cancel_run_and_wait_sync_resumes_after_cursor_and_returns_cancelled_snapshot() -> None:
     snapshot = SessionSnapshot(layers={})
 
