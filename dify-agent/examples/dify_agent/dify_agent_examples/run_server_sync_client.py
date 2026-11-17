@@ -32,7 +32,7 @@ MODEL_NAME = "gpt-4o-mini"
 
 
 def main() -> None:
-    token = os.environ.get("DIFY_AGENT_API_TOKEN")
+    token = os.environ.get("DIFY_AGENT_API_TOKEN", "").strip()
     headers = {"Authorization": f"Bearer {token}"} if token else None
     with Client(base_url=API_BASE_URL, headers=headers) as client:
         run = client.create_run_sync(

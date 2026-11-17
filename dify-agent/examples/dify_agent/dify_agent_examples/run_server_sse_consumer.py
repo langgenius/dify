@@ -20,7 +20,7 @@ RUN_ID = "replace-with-run-id"
 
 
 async def main() -> None:
-    token = os.environ.get("DIFY_AGENT_API_TOKEN")
+    token = os.environ.get("DIFY_AGENT_API_TOKEN", "").strip()
     headers = {"Authorization": f"Bearer {token}"} if token else None
     async with Client(base_url=API_BASE_URL, stream_timeout=None, headers=headers) as client:
         async for event in client.stream_events(RUN_ID):
