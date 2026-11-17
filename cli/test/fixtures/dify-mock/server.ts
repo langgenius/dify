@@ -288,7 +288,7 @@ async function readMultipartRunBody(
   return { json, parts }
 }
 
-const SLOW_STREAM_GAP_MS = 200
+export const SLOW_STREAM_GAP_MS = 1000
 
 function sseResponse(body: string | ReadableStream<Uint8Array>): Response {
   return new Response(body, { status: 200, headers: { 'content-type': 'text/event-stream' } })

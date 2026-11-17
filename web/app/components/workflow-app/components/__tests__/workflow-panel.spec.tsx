@@ -33,6 +33,10 @@ const api = vi.hoisted(() => ({
     vi.fn<
       typeof import('@/service/console').consoleClient.apps.byAppId.workflows.byWorkflowId.delete
     >(),
+  retireDebugWorkspaces:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.apps.byAppId.advancedChat.workflows.draft.conversations.workspaces.retire.post
+    >(),
 }))
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -63,6 +67,8 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'workspaces.current.triggers.get': async () => [],
       'apps.byAppId.workflows.draft.variables.get': async () => ({ items: [], total: 0 }),
+      'apps.byAppId.advancedChat.workflows.draft.conversations.workspaces.retire.post': (input) =>
+        api.retireDebugWorkspaces(input),
     }),
   }
 })
@@ -120,7 +126,11 @@ function setup(
   })
   seedAppDetail(
     queryClient,
-    createAppDetailFixture({ id: 'app-123', mode, workflow: { id: 'release-1' } }),
+    createAppDetailFixture({
+      id: 'app-123',
+      mode,
+      workflow: { id: 'release-1', type: 'workflow' },
+    }),
   )
   const rendered = renderWorkflowEditor(
     <NuqsTestingAdapter>
@@ -174,6 +184,7 @@ beforeEach(() => {
     finished_at: 1700000001,
   })
   api.tracing.mockReset().mockResolvedValue({ data: [] })
+  api.retireDebugWorkspaces.mockReset().mockResolvedValue(undefined)
   api.history.mockReset().mockImplementation(async (url) => {
     if (url !== '/apps/app-123/workflows') throw new Error(`Unexpected GET: ${url}`)
     return { items: versions, page: 1, limit: 10, total: versions.length, has_more: false }
@@ -307,6 +318,13 @@ it.each(['workflow', 'advanced-chat'] as const)(
     expect(await screen.findByRole('separator', { name })).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
     await waitFor(() => expect(screen.queryByRole('separator', { name })).not.toBeInTheDocument())
+    if (mode === 'advanced-chat') {
+      expect(api.retireDebugWorkspaces).toHaveBeenCalledExactlyOnceWith({
+        params: { app_id: 'app-123' },
+      })
+    } else {
+      expect(api.retireDebugWorkspaces).not.toHaveBeenCalled()
+    }
   },
 )
 

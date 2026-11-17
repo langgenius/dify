@@ -1,4 +1,5 @@
 import type { Credential, ModelProvider } from '../../declarations'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen } from '@testing-library/react'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { ConfigurationMethodEnum } from '../../declarations'
@@ -26,13 +27,13 @@ vi.mock('../../model-auth/hooks', () => ({
     closeConfirmDelete: mockCloseConfirmDelete,
     openConfirmDelete: vi.fn(),
     doingAction: false,
+    doingActionRef: { current: false },
     handleActiveCredential: vi.fn(),
   }),
   useModelFormSchemas: () => ({
     formSchemas: [],
     formValues: {},
     modelNameAndTypeFormSchemas: [],
-    modelNameAndTypeFormValues: {},
   }),
 }))
 
@@ -88,13 +89,15 @@ describe('ModelModal dialog branches', () => {
 
   it('should hide the help link when provider help is missing', () => {
     render(
-      <ModelModal
-        provider={createProvider({ help: undefined })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({ help: undefined })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     expect(screen.queryByRole('link', { name: 'Help' })).not.toBeInTheDocument()
@@ -104,18 +107,20 @@ describe('ModelModal dialog branches', () => {
     mockLanguage = 'zh_Hans'
 
     render(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            title: { en_US: 'English Help' },
-            url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                title: { en_US: 'English Help' },
+                url: '' as unknown as NonNullable<ModelProvider['help']>['url'],
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     const link = screen.getByText('English Help').closest('a')
@@ -129,17 +134,19 @@ describe('ModelModal dialog branches', () => {
   it('should fall back to localized and english help urls when titles are missing', () => {
     mockLanguage = 'zh_Hans'
     const { rerender } = render(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            url: { zh_Hans: 'https://example.cn', en_US: 'https://example.com' },
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                url: { zh_Hans: 'https://example.cn', en_US: 'https://example.com' },
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     expect(screen.getByRole('link', { name: 'https://example.cn' })).toHaveAttribute(
@@ -148,17 +155,19 @@ describe('ModelModal dialog branches', () => {
     )
 
     rerender(
-      <ModelModal
-        provider={createProvider({
-          help: {
-            url: { en_US: 'https://example.com' },
-          } as ModelProvider['help'],
-        })}
-        configurateMethod={ConfigurationMethodEnum.predefinedModel}
-        onCancel={vi.fn()}
-        onSave={vi.fn()}
-        onRemove={vi.fn()}
-      />,
+      <Dialog defaultOpen>
+        <DialogContent>
+          <ModelModal
+            provider={createProvider({
+              help: {
+                url: { en_US: 'https://example.com' },
+              } as ModelProvider['help'],
+            })}
+            configurateMethod={ConfigurationMethodEnum.predefinedModel}
+            onSuccess={vi.fn()}
+          />
+        </DialogContent>
+      </Dialog>,
     )
 
     const link = screen.getByRole('link', { name: 'https://example.com' })

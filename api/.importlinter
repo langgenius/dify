@@ -1233,6 +1233,7 @@ allow_indirect_imports = True
 name = Workflow comment application service is framework and persistence neutral
 type = forbidden
 source_modules =
+    services.app.workflow_comment_errors
     services.app.workflow_comment_service
 forbidden_modules =
     configs
@@ -1665,4 +1666,30 @@ source_modules =
     services.agent.roster_service
 forbidden_modules =
     repositories.agent_roster_repository
+allow_indirect_imports = True
+
+[importlinter:contract:agent-observability-query-boundary]
+name = Agent observability query contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.agent.observability_contracts
+forbidden_modules =
+    configs
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    werkzeug
+allow_indirect_imports = True
+
+[importlinter:contract:agent-observability-repository-boundary]
+name = Agent observability queries do not depend on legacy Agent service implementations
+type = forbidden
+source_modules =
+    repositories.agent_observability_repository
+    repositories.app.agent_runtime_app
+forbidden_modules =
+    services.agent.roster_service
 allow_indirect_imports = True

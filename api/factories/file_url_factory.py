@@ -26,10 +26,11 @@ def re_sign_file_urls(
     preserve_url: bool = False,
     replacements: dict[str, str] | None = None,
 ) -> str:
-    """Refresh display links, reusing replacements across related content.
+    """Renew authentic display links, caching replacements across related content.
 
-    Messages retain their existing external-host and legacy-preview conversion.
-    Frozen forms preserve the original URL and renew only authentic signatures.
+    Signatures valid under the current key can be renewed even after expiry;
+    forged, unsigned or previous-key URLs stay unchanged.
+    Messages convert hosts and legacy previews; frozen forms retain their URLs.
     """
     if not content:
         return content
@@ -47,6 +48,7 @@ def re_sign_file_urls(
 
 
 def _re_sign_file_url(url: str, *, preserve_url: bool) -> str:
+    """Renew a URL with an authentic HMAC, ignoring expiry; leave invalid URLs unchanged."""
     parsed = urlsplit(url)
     path = _FILE_PREVIEW_PATH.search(parsed.path)
     if path is None:
@@ -56,20 +58,19 @@ def _re_sign_file_url(url: str, *, preserve_url: bool) -> str:
         return url
     file_id = path.group("upload_id") or path.group("generated_id")
     preview_kind = path.group("preview_kind") or "file"
-    if preserve_url:
-        if not any(
-            url.startswith(f"{base_url}/files/")
-            for base_url in (dify_config.FILES_URL, dify_config.INTERNAL_FILES_URL, "")
-        ):
-            return url
-        # Ignore expiry, but do not grant access to arbitrary paths embedded in
-        # user-authored content merely because they resemble hosted file URLs.
-        payload = f"{preview_kind}-preview|{file_id}|{query['timestamp'][0]}|{query['nonce'][0]}"
-        expected = base64.urlsafe_b64encode(
-            hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
-        )
-        if not hmac.compare_digest(query["sign"][0].encode(), expected):
-            return url
+    if preserve_url and not any(
+        url.startswith(f"{base_url}/files/") for base_url in (dify_config.FILES_URL, dify_config.INTERNAL_FILES_URL, "")
+    ):
+        return url
+
+    # Ignore expiry, but do not grant access to arbitrary paths embedded in
+    # user-authored content merely because they resemble hosted file URLs.
+    payload = f"{preview_kind}-preview|{file_id}|{query['timestamp'][0]}|{query['nonce'][0]}"
+    expected = base64.urlsafe_b64encode(
+        hmac.new(dify_config.SECRET_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+    )
+    if not hmac.compare_digest(query["sign"][0].encode(), expected):
+        return url
 
     if path.group("generated_id"):
         if not preserve_url and path.group("generated_kind") != "tools":

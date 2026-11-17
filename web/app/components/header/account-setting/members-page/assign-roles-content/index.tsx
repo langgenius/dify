@@ -63,6 +63,7 @@ const AssignRolesContent = ({
       className="contents"
       onSubmit={(event) => {
         event.preventDefault()
+        event.stopPropagation()
         handleConfirm()
       }}
     >

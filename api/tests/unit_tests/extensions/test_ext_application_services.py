@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -737,9 +738,11 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+    assert services.workflow_comments._now is naive_utc_now
 
 
 def test_build_application_services_wires_app_statistic_boundary(
@@ -1993,7 +1996,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     )
     assert admitted_app.app_mode == "chat"
     previous_metadata = get_credit_usage_metadata()
-    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    event.listen(sqlite_session_factory, "after_begin", observe_naming_session)
     plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
     try:
         with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
@@ -2016,7 +2019,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             )
     finally:
         plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
-        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+        event.remove(sqlite_session_factory, "after_begin", observe_naming_session)
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
