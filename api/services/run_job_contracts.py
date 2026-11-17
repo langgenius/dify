@@ -39,6 +39,7 @@ class JobFailure(StrEnum):
     RUN_NOT_CONFIRMED = ("run_not_confirmed", "run start was not confirmed; it may still execute")
     NO_RESULT = ("no_result", "run ended without a result")
     RUN_STALLED = ("run_stalled", "run passed the workflow time limit without finishing; its worker may have stopped")
+    RUN_INTERRUPTED = ("run_interrupted", "run was interrupted")
 
     def __new__(cls, value: str, message: str) -> JobFailure:
         member = str.__new__(cls, value)
