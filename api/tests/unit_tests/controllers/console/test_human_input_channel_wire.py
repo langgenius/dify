@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Never
 
 import pytest
@@ -69,6 +70,7 @@ def wire_app(console_app: Flask, monkeypatch: pytest.MonkeyPatch) -> Flask:
     _is_setup_completed.mark_success()
 
     monkeypatch.setattr(dify_config, "LOGIN_DISABLED", True)
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     monkeypatch.setattr(dify_config, "RBAC_ENABLED", True)
     monkeypatch.setattr("libs.login.current_user", LocalProxy(lambda: account))
     monkeypatch.setattr(
@@ -275,16 +277,100 @@ _CANONICAL_REQUESTS = (
     ("GET", f"{_BASE_PATH}/channels"),
     ("POST", f"{_BASE_PATH}/channels/email"),
     ("POST", f"{_BASE_PATH}/channels/email/test"),
+    ("POST", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}/test"),
     ("GET", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("PUT", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("DELETE", f"{_BASE_PATH}/channels/email/{_CHANNEL_ID}"),
     ("POST", f"{_BASE_PATH}/channels/im"),
     ("POST", f"{_BASE_PATH}/channels/im/test"),
+    ("POST", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/test"),
     ("GET", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("PUT", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("DELETE", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}"),
     ("POST", f"{_BASE_PATH}/channels/im/{_CHANNEL_ID}/replacement"),
 )
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [request for request in _CANONICAL_REQUESTS if "/channels/email" in request[1]],
+)
+@pytest.mark.parametrize("authenticated", [False, True])
+def test_community_rejects_email_management_before_authentication_and_dispatch(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    method: str,
+    path: str,
+    authenticated: bool,
+) -> None:
+    def unexpected_authentication() -> Never:
+        raise AssertionError("disabled Email management must not resolve authentication")
+
+    def unexpected_service() -> Never:
+        raise AssertionError("disabled Email management must not read, write or send through its owner")
+
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(dify_config, "LOGIN_DISABLED", authenticated)
+    monkeypatch.setattr("libs.login._resolve_current_user", unexpected_authentication)
+    monkeypatch.setattr(channel_controller, "build_human_input_email_channel_management_service", unexpected_service)
+
+    response = wire_app.test_client().open(path, method=method, json={"unexpected": "invalid-candidate"})
+
+    assert response.status_code == 501
+
+
+@pytest.mark.parametrize("path", ["channel-providers", "channels"])
+@pytest.mark.parametrize("mail_type", [None, "resend"])
+def test_community_discovery_exposes_only_im_channels(
+    wire_app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    path: str,
+    mail_type: str | None,
+) -> None:
+    from core.human_input_v2.entities import IMProvider
+    from repositories.human_input_v2.im_channel_repository import IMChannelStatus
+    from services.human_input_v2.im_channel_service import IMChannelView
+
+    im_channel = IMChannelView(
+        id=IMChannelId(_CHANNEL_ID),
+        created_at=datetime(2026, 11, 17),
+        updated_at=datetime(2026, 11, 17),
+        provider=IMProvider.FEISHU,
+        status=IMChannelStatus.CONNECTED,
+        status_reason=None,
+        app_identifier="feishu-app",
+        webhook_url=None,
+        config_version=1,
+    )
+
+    class IMOwner:
+        def available_providers(self) -> tuple[IMProvider, ...]:
+            return (IMProvider.FEISHU,)
+
+        def get_current(self) -> IMChannelView:
+            return im_channel
+
+    def unexpected_email_owner() -> Never:
+        raise AssertionError("Community discovery must not access tenant Email configuration")
+
+    monkeypatch.setattr(dify_config, "DEPLOYMENT_EDITION", DeploymentEdition.COMMUNITY)
+    monkeypatch.setattr(dify_config, "MAIL_TYPE", mail_type)
+    monkeypatch.setattr(
+        channel_controller, "build_human_input_email_channel_management_service", unexpected_email_owner
+    )
+    monkeypatch.setattr(channel_controller, "_workspace_im_channel_service", lambda *_args: IMOwner())
+
+    response = wire_app.test_client().get(f"{_BASE_PATH}/{path}")
+
+    assert response.status_code == 200
+    if path == "channel-providers":
+        assert response.get_json() == {
+            "email_providers": [],
+            "im_providers": [{"provider": "feishu", "connection_mode": "custom_app"}],
+        }
+    else:
+        channels = response.get_json()["channels"]
+        assert [(channel["kind"], channel["id"]) for channel in channels] == [("im", _CHANNEL_ID)]
 
 
 @pytest.mark.parametrize(("method", "path"), _CANONICAL_REQUESTS)
