@@ -351,6 +351,21 @@ def test_wait_returns_at_once_for_a_graph_job_whose_run_start_was_not_confirmed(
     assert harness.clock.slept == []
 
 
+def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_later():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    _lapse_alive_key(harness, opened.record.id)
+    reported = harness.service.view(OWNER, opened.record.id)
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.store.touch(opened.record.id)
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
+
+    later = harness.service.view(OWNER, opened.record.id)
+
+    assert (reported.status, reported.error) == (JobStatus.FAILED, RUN_NOT_CONFIRMED)
+    assert (later.status, later.error, later.outputs) == (JobStatus.FAILED, RUN_NOT_CONFIRMED, None)
+
+
 def test_view_of_a_message_job_uses_the_record():
     harness = _harness()
     opened = harness.service.open(_opening(AppMode.CHAT))

@@ -97,8 +97,8 @@ class JobCapacityError(Exception):
 def fail_if_reader_dead(store: RunJobStore, record: JobRecord, error: str) -> JobRecord:
     """Fail a job whose reader has ended before the job reached a final status.
 
-    Precondition: record is the stored state of the job. The reader refreshes the alive key on every frame and
-    streams ping every few seconds, so the key lapses only when the reader has ended.
+    Precondition: record is the stored state of the job. The reader refreshes the alive key on a timer for as long as
+    it runs, frames or not, so the key lapses only when the reader has ended.
     Postcondition: the record unchanged when it is final or its alive key is live; otherwise the record as FAILED
     with the given error, which is also saved with store.patch.
     """
@@ -356,7 +356,8 @@ class RunJobService:
         Postcondition: a view of the job; a GRAPH job with a stored run takes status, outputs and error from the
         run, and its form from the pending form while paused (None otherwise). A GRAPH job
         without a run id whose reader has ended and which is not final is FAILED with RUN_NOT_CONFIRMED, and that
-        is saved. Without a visible run row, and for
+        is saved; once saved it is final for good, even if a run id and a run row appear later. Without a visible
+        run row, and for
         MESSAGE jobs, the record's own status, error and form are used. Raises JobNotFoundError when the job is
         missing or owned by someone else.
         """
@@ -375,6 +376,9 @@ class RunJobService:
         """
         fallback = JobView(record=record, status=record.status, error=record.error, form=record.form)
         if record.family is not JobFamily.GRAPH:
+            return fallback
+        if record.status.is_final and record.error == RUN_NOT_CONFIRMED:
+            # Already reported final: a run that starts late is not linked to the job.
             return fallback
         if record.run_id is None:
             unconfirmed = fail_if_reader_dead(self._store, record, RUN_NOT_CONFIRMED)
