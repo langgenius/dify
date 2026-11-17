@@ -2492,6 +2492,37 @@ def test_result_xlsx_has_node_scoped_metrics_and_references() -> None:
     ]
 
 
+def test_result_xlsx_prefixes_custom_evaluator_metrics() -> None:
+    default_node = NodeInfo(node_id="llm-1", type="llm", title="Answer")
+    custom_evaluator = NodeInfo(node_id="evaluator-app", type="customized", title="customized")
+    results = [
+        EvaluationItemResult(
+            index=1,
+            metrics=[
+                EvaluationMetric(name="score", value=0.2, node_info=default_node),
+                EvaluationMetric(name="score", value=0.8, node_info=custom_evaluator),
+            ],
+        )
+    ]
+
+    workbook = load_workbook(io.BytesIO(_generate_result_xlsx([EvaluationDatasetInput(index=1, inputs={})], results)))
+    worksheet = workbook.active
+
+    assert worksheet is not None
+    assert [cell.value for cell in worksheet[1]] == [
+        "index",
+        "actual_output",
+        "Answer : score",
+        "Custom Evaluator : score",
+        "error",
+    ]
+    assert [cell.value for cell in worksheet[2][2:4]] == [0.2, 0.8]
+    assert set(_compute_metrics_summary(results, None)["metrics"]) == {
+        "Answer : score",
+        "Custom Evaluator : score",
+    }
+
+
 def test_summaries_and_xlsx_keep_same_title_nodes_separate() -> None:
     first_node = NodeInfo(node_id="llm-1", type="llm", title="Answer")
     second_node = NodeInfo(node_id="llm-2", type="llm", title="Answer")
