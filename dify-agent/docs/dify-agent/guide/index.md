@@ -43,7 +43,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
-| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records and per-run event streams after their last write; defaults to 2 hours. |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records, event streams, cancellation intents, and idempotency claims after their last write; defaults to 2 hours. |
 | `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Soft debounce interval for compatible text deltas. Already-ready source events may continue to merge after this interval; a waiting source triggers the timed flush. Must be greater than zero; use `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED=false` to disable coalescing. |
@@ -251,10 +251,18 @@ only the opaque `backend_binding_ref` resolved by Dify API. See
 [Runtime resources](../concepts/runtime-resources/index.md) for the ownership
 and lifecycle contract.
 
-Run records and event streams use the same retention. Status writes refresh the
-record TTL, and event writes refresh both the stream TTL and the corresponding
-record TTL so active runs that keep producing events remain observable. Text
-deltas for the same response part and provider metadata are coalesced within a
+Run records and event streams use the same `DIFY_AGENT_RUN_RETENTION_SECONDS`
+retention. Status writes refresh the record TTL, and event writes refresh both
+the stream TTL and the corresponding record TTL so active runs that keep
+producing events remain observable. Idempotency claims share that TTL. Event
+appends, accepted cancellation intents, and terminal success/failure/cancellation
+writes refresh a claim only when it is unowned or still belongs to the writing
+run; an older run cannot overwrite a newer owner after claim expiry. Passive
+admission replays extend neither the claim nor the run record TTL. Redis stores
+only the key digest, normalized request fingerprint, and run id for admission,
+never raw keys, layer Config, prompts, snapshots, or credentials.
+
+Text deltas for the same response part and provider metadata are coalesced within a
 soft debounce/size window before being published. The debounce timer flushes
 when reading the next source event would block; already-ready events may keep
 merging until the character threshold or a non-compatible event is reached.
@@ -420,8 +428,16 @@ blocks.
 
 ## Scheduling and shutdown semantics
 
-`POST /runs` persists a `running` run record and starts an `asyncio` task in the
-same process. There is no Redis job stream, consumer group, pending reclaim, or
+For a new admission, `POST /runs` persists a `running` run record and starts an
+`asyncio` task in the same process. An optional `idempotency_key` makes admission
+atomic across concurrent callers and server processes sharing the Redis prefix.
+The fingerprint includes the validated request with defaults and normalized
+snapshots, excluding `idempotency_key`. JSON object key order does not matter;
+list order, including `composition.layers`, is preserved. A matching retained
+request returns the original run and its current status without scheduling
+another task. Omitting the key or passing `null` creates a new run each time.
+
+There is no Redis job stream, consumer group, pending reclaim, or
 automatic retry layer. Request-shaped runtime failures such as bad composition,
 prompt, output, or snapshot inputs are reported later as failed runs rather than
 rejected synchronously once the request DTO itself is accepted.
@@ -459,11 +475,12 @@ response confirms that cancellation intent is durable; `GET /runs/{run_id}` may
 still report `running` until cleanup finishes. Retrying an accepted or completed
 cancellation is idempotent.
 
-Atomic terminal finalization currently assumes the configured Redis URL targets
-one Redis deployment that can execute all run-coordination keys in a Lua script.
-The record and event key names are unchanged, and cancellation adds a private
-cancel-intent key. These keys do not contain a shared Redis Cluster hash tag, so
-Redis Cluster is not supported for this transition. During
+Atomic admission, active-write retention refresh, and terminal finalization
+assume the configured Redis URL targets one Redis deployment that can execute
+all coordination keys in a Lua script, including the idempotency claim and its
+referenced run record. Record, event, cancel-intent, and claim keys do not contain
+a shared Redis Cluster hash tag, so Redis Cluster is not supported for these
+operations. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
 have exited. Deploy atomic terminal finalization everywhere first, then ensure
@@ -563,7 +580,13 @@ returned. Product Workspace retirement remains owned by the API.
 Use the HTTP status endpoint for coarse state and the event endpoints for detailed
 progress:
 
-- `POST /runs` creates a running run and schedules it locally.
+- `POST /runs` returns HTTP `202` with a new running run scheduled locally, or
+  the original `run_id` and current `RunStatus` (`running`, `succeeded`, `failed`,
+  or `cancelled`) on an exact keyed replay within retention. Reusing the same
+  `idempotency_key` with a different normalized payload while its claimed run
+  record remains live returns HTTP `409 Conflict`. Empty or whitespace-only
+  keys return HTTP `422` referencing `idempotency_key`; nonblank keys are used
+  verbatim, including surrounding whitespace.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
   Failed records can also expose a stable machine-readable `error_type` alongside
   the diagnostic `error` text.

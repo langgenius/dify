@@ -446,22 +446,6 @@ export const Workflow: FC<WorkflowProps> = memo(
       [showConfirm, setShowConfirm, handleCommentDelete, t],
     )
 
-    const handleCommentReplyDeleteClick = useCallback(
-      (commentId: string, replyId: string) => {
-        if (!showConfirm) {
-          setShowConfirm({
-            title: t(($) => $['comments.confirm.deleteReplyTitle'], { ns: 'workflowComments' }),
-            desc: t(($) => $['comments.confirm.deleteReplyDesc'], { ns: 'workflowComments' }),
-            onConfirm: async () => {
-              await handleCommentReplyDelete(commentId, replyId)
-              setShowConfirm(undefined)
-            },
-          })
-        }
-      },
-      [showConfirm, setShowConfirm, handleCommentReplyDelete, t],
-    )
-
     useEffect(() => {
       document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
       window.addEventListener('beforeunload', handleBeforeUnload)
@@ -730,8 +714,7 @@ export const Workflow: FC<WorkflowProps> = memo(
                   onReplyEdit={(replyId, content, ids) =>
                     handleCommentReplyUpdate(comment.id, replyId, content, ids ?? [])
                   }
-                  onReplyDelete={(replyId) => handleCommentReplyDeleteClick(comment.id, replyId)}
-                  onReplyDeleteDirect={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
+                  onReplyDelete={(replyId) => handleCommentReplyDelete(comment.id, replyId)}
                   canGoPrev={canGoPrev}
                   canGoNext={canGoNext}
                 />

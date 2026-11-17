@@ -15,7 +15,6 @@ import type {
   WorkflowVariableBlockType,
 } from '../../types'
 import type { PickerBlockMenuOption } from './menu'
-import type { EventEmitterValue } from '@/context/event-emitter'
 import { flip, offset, shift, useFloating } from '@floating-ui/react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
@@ -28,14 +27,12 @@ import { GeneratorType } from '@/app/components/app/configuration/config/automat
 import VarReferenceVars, {
   VAR_REFERENCE_CHILD_POPUP_CLASS_NAME,
 } from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useBasicTypeaheadTriggerMatch } from '../../hooks'
 import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_AGENT_OUTPUT_BLOCK_COMMAND } from '../agent-output-block/commands'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
 import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
 import { useOptions } from './hooks'
 
@@ -70,7 +67,6 @@ const ComponentPicker = ({
   isSupportFileVar,
 }: ComponentPickerProps) => {
   const { t } = useTranslation(['workflow', 'workflowAgent'])
-  const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
     placement: 'bottom-start',
     middleware: [
@@ -144,15 +140,6 @@ const ComponentPicker = ({
     }
   }, [editor, clearBlurTimer])
 
-  eventEmitter?.useSubscription((v: EventEmitterValue) => {
-    if (
-      typeof v !== 'string' &&
-      v.type === INSERT_VARIABLE_VALUE_BLOCK_COMMAND &&
-      typeof v.payload === 'string'
-    )
-      editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${v.payload}}}`)
-  })
-
   const { allFlattenOptions, workflowVariableOptions } = useOptions(
     contextBlock,
     queryBlock,
@@ -196,18 +183,18 @@ const ComponentPicker = ({
       const isFlat = variables.length === 1
       if (isFlat) {
         const varName = variables[0]
-        if (varName === 'current')
-          editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, currentBlock?.generatorType)
+        if (varName === 'current') editor.dispatchCommand(INSERT_CURRENT_BLOCK_COMMAND, undefined)
         else if (varName === 'error_message')
-          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, null)
-        else if (varName === 'last_run') editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, null)
+          editor.dispatchCommand(INSERT_ERROR_MESSAGE_BLOCK_COMMAND, undefined)
+        else if (varName === 'last_run')
+          editor.dispatchCommand(INSERT_LAST_RUN_BLOCK_COMMAND, undefined)
       } else if (variables[1] === 'sys.query' || variables[1] === 'sys.files') {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, [variables[1]])
       } else {
         editor.dispatchCommand(INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND, variables)
       }
     },
-    [editor, currentBlock?.generatorType, checkForTriggerMatch, triggerString],
+    [editor, checkForTriggerMatch, triggerString],
   )
 
   const resetTypeaheadState = useCallback(() => {
@@ -256,9 +243,8 @@ const ComponentPicker = ({
                 {workflowVariableBlock?.show && (
                   <div className="p-1">
                     <VarReferenceVars
-                      {...(triggerString === '/'
-                        ? { hideSearch: true, keyboardTarget }
-                        : { hideSearch: false })}
+                      hideSearch={triggerString === '/'}
+                      keyboardTarget={keyboardTarget}
                       searchText={triggerString === '/' ? effectiveQueryString || '' : undefined}
                       searchBoxClassName="mt-1"
                       vars={workflowVariableOptions}
@@ -306,7 +292,7 @@ const ComponentPicker = ({
                   <div className="mt-1 border-t border-divider-subtle p-1">
                     <button
                       type="button"
-                      className="flex h-6 w-full items-center gap-1 rounded-md py-1 pr-1 pl-3 text-left system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
+                      className="flex h-6 w-full items-center gap-1 rounded-md py-1 ps-3 pe-1 text-start system-sm-regular text-text-secondary hover:bg-state-base-hover focus-visible:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
                       onMouseDown={(event) => event.preventDefault()}
                       onClick={() => {
                         editor.update(() => {

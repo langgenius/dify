@@ -60,6 +60,7 @@ export type VariableBlockType = {
 
 export type RosterReferenceBlockType = {
   show?: boolean
+  getLabel?: (token: RosterReferenceToken) => string | undefined
   renderIcon?: (token: RosterReferenceToken) => React.ReactNode
   getWarning?: (token: RosterReferenceToken) => string | undefined
 }
@@ -67,7 +68,7 @@ export type RosterReferenceBlockType = {
 export type ExternalToolBlockType = {
   show?: boolean
   externalTools?: ExternalToolOption[]
-  onAddExternalTool?: () => void
+  onAddExternalTool?: (insertVariable: (name: string) => void) => void
 }
 
 export type GetVarType = (payload: { nodeId: string; valueSelector: ValueSelector }) => Type

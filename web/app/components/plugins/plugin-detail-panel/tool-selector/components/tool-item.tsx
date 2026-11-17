@@ -73,7 +73,7 @@ export function ToolItem({
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+        'group relative flex items-center gap-1 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pe-2 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
         open && 'bg-components-panel-on-panel-item-bg-hover shadow-sm',
         isDeleting && 'border-state-destructive-border shadow-xs hover:bg-state-destructive-hover',
       )}
@@ -130,7 +130,7 @@ export function ToolItem({
       )}
       <div
         className={cn(
-          'pointer-events-none relative z-1 grow truncate pl-0.5',
+          'pointer-events-none relative z-1 grow truncate ps-0.5',
           isTransparent && 'opacity-50',
           isShowCanNotChooseMCPTip && 'opacity-30',
         )}
@@ -167,7 +167,7 @@ export function ToolItem({
         !versionMismatch &&
         !isShowCanNotChooseMCPTip &&
         showSwitch && (
-          <div className="relative z-10 mr-1">
+          <div className="relative z-10 me-1">
             <Switch size="md" checked={switchValue ?? false} onCheckedChange={onSwitchChange} />
           </div>
         )}
@@ -214,9 +214,6 @@ export function ToolItem({
                 </div>
               </div>
             }
-            onChange={() => {
-              onInstall?.()
-            }}
           />
         </div>
       )}

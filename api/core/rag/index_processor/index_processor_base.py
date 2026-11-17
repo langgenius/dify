@@ -47,12 +47,12 @@ class BaseIndexProcessor(ABC):
     """Interface for extract files."""
 
     @abstractmethod
-    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs) -> list[Document]:
+    def extract(self, extract_setting: ExtractSetting, *, session: Session, **kwargs: Any) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
     def transform(
-        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs
+        self, documents: list[Document], current_user: Account | None = None, *, session: Session, **kwargs: Any
     ) -> list[Document]:
         raise NotImplementedError
 
@@ -89,13 +89,19 @@ class BaseIndexProcessor(ABC):
         with_keywords: bool = True,
         *,
         session: Session,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError
 
     @abstractmethod
     def clean(
-        self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, *, session: Session, **kwargs
+        self,
+        dataset: Dataset,
+        node_ids: list[str] | None,
+        with_keywords: bool = True,
+        *,
+        session: Session,
+        **kwargs: Any,
     ) -> None:
         raise NotImplementedError
 

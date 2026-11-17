@@ -234,7 +234,7 @@ function AuthorizationForm({
                     availableNodes={availableNodesWithParent}
                     onFocusChange={setIsFocus}
                     placeholder={' '}
-                    placeholderClassName="leading-[21px]!"
+                    placeholderClassName="truncate leading-[21px]!"
                   />
                 </div>
               </Field>

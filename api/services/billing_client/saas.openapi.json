@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "2d358b5a0555440b30d8601f5e786a15e28a2345",
+  "x-dify-saas-commit": "72ee562e43bd39cd8f7cf414d545efca646c27cf",
   "paths": {
     "/v1/account": {
       "delete": {
