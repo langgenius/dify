@@ -13,11 +13,13 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any, Final
+from urllib.parse import urlsplit
 
 from flask import Response, request
 from flask_restx import Resource
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from configs import dify_config
 from controllers.openapi import openapi_ns
 from controllers.openapi._mcp_call import AUTHORIZATION_HEADER, TRACE_ID_HEADER, OpCall, OpResult, call_op
 from controllers.openapi._mcp_protocol import McpRequestError, failure, has_id, parse_message, request_id_of, success
@@ -28,6 +30,8 @@ from libs.oauth_bearer import extract_bearer
 from services.dsl_content import DSL_MAX_SIZE
 
 PROTOCOL_VERSION_HEADER: Final = "MCP-Protocol-Version"
+ORIGIN_HEADER: Final = "Origin"
+_ORIGIN_NOT_ALLOWED_MESSAGE: Final = "Origin not allowed"
 JSON_MIMETYPE: Final = "application/json"
 ACCOUNT_OP: Final = "describe.account"
 _BODY_ENVELOPE_BYTES: Final = 1024 * 1024
@@ -67,6 +71,18 @@ def _json_response(
 ) -> Response:
     """Postcondition: a JSON response with ``body``, the given status and extra ``headers``."""
     return Response(json.dumps(body), status=status, mimetype=JSON_MIMETYPE, headers=dict(headers or {}))
+
+
+def _origin_allowed(origin: str) -> bool:
+    """Postcondition: True when ``origin`` is this server's own (same host and port as the request, any scheme, so a
+    TLS-terminating proxy does not turn the server's own https origin away) or is listed in
+    ``OPENAPI_CORS_ALLOW_ORIGINS``. MCP transport rule: servers validate Origin against DNS rebinding."""
+    if origin.rstrip("/") in {allowed.rstrip("/") for allowed in dify_config.OPENAPI_CORS_ALLOW_ORIGINS}:
+        return True
+    parts = urlsplit(origin)
+    if parts.scheme not in {"http", "https"}:
+        return False
+    return parts.netloc == request.host
 
 
 def _accepted() -> Response:
@@ -173,10 +189,17 @@ class OpenApiMcpApi(Resource):
         any other unparsable message; 413 with a JSON-RPC error when the body is above
         ``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
         before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
-        cut at the cap and answers 400 with a JSON-RPC parse error; 401 when
+        cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
+        read, when an ``Origin`` header is present and is neither this server's own nor in
+        ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); 401 when
         the token is not real; the login check's own status when it answers a server error.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
+        origin = request.headers.get(ORIGIN_HEADER)
+        if origin is not None and not _origin_allowed(origin):
+            return _json_response(
+                failure(None, mcp_types.INVALID_REQUEST, _ORIGIN_NOT_ALLOWED_MESSAGE), HTTPStatus.FORBIDDEN
+            )
         request.max_content_length = MCP_MAX_BODY_BYTES
         try:
             body = request.get_json(silent=True)
