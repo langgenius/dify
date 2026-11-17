@@ -69,7 +69,7 @@ Browser Mode remains a focused component or feature test and currently proves Ch
 - Test only input states supported by the type and product contract. Do not manufacture `null`, `undefined`, or extreme values without a reachable scenario.
 - Do not assert CSS class names or mechanically translate them into computed-style assertions. Assert the required outcome; use visual review for incidental styling.
 - Use DOM or data snapshots only when serialized output is itself an intentionally public, stable contract. Visual baselines follow Browser Mode Admission.
-- Never accept both correct and suspicious results, such as parsing again when a value is still a string. Assert the correct contract; if production violates it, mark the case `it.fails` with a tracking issue link and fix production separately.
+- Never accept both correct and suspicious results, such as parsing again when a value is still a string. Assert the correct contract; if production violates it, mark the case `it.fails` with a tracking issue link and fix production separately. In Browser Mode, give the known-failing `expect.element` a short `timeout` so the expected failure does not wait for the test timeout.
 
 ## Queries, Interaction, and Accessibility
 
@@ -81,6 +81,8 @@ Prefer selectors in this order:
 1. `getByTestId` only for boundaries with no useful DOM semantics, such as canvas output, editor shims, or mocked non-visual integrations.
 
 When repeated content creates ambiguity, narrow to a semantic container, then query within it with `within` in React Testing Library or locator chaining in Browser Mode.
+
+Toasts render as `dialog` or `alertdialog`. When a toast can be visible, query a dialog by its accessible name. An unnamed Browser Mode query resolves to more than one element and retries until the toast closes, and a negated assertion passes only after the toast closes. Assert that a named overlay is visible before asserting its absence so a wrong name cannot pass.
 
 If an interactive control cannot be found semantically, first check whether the production markup needs a real button, link, label, landmark, or accessible name.
 
@@ -113,7 +115,8 @@ Put `// boundary: <reason>` immediately above each retained owned-path or otherw
 
 - Await user interactions, promises, `findBy*`, and `waitFor`.
 - Wait for observable state changes. Keep side effects outside `waitFor`. For filtering or refresh, await the intended new result before asserting excluded items are absent.
-- When a production debounce or delay is the contract, use fake timers and advance the full window, including before asserting something did not happen. Restore real timers after the test. Otherwise, use real timers and await the visible result; do not lengthen timeouts, use fixed sleeps, or add broad retries to hide incorrect timing.
+- When a production debounce, delay, polling interval, or reset is the contract, use fake timers and advance the full window, including before asserting something did not happen. Fake only the timer APIs the owner uses, advance after the owner has scheduled the timer, and restore real timers after the test. When a Web Animations API animation drives the transition, such as autoplay progress, finish that animation instead of waiting for its duration. Otherwise, use real timers and await the visible result; do not lengthen timeouts, use fixed sleeps, or add broad retries to hide incorrect timing.
+- A Browser test that takes seconds is usually waiting on a production timer, a toast, or a timeout rather than doing work. Find and remove that wait instead of accepting the duration.
 - Control time, randomness, network responses, and shared stores so tests are deterministic.
 - `web/vitest.setup.ts` already runs Testing Library cleanup and resets Zustand stores after each test.
 - Vitest 5 clears mock call history before each test. This does not reset mock implementations or external state; set those up explicitly for each case. Do not use `afterEach` to prepare the next test.

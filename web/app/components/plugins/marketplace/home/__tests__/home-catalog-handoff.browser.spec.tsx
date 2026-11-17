@@ -150,11 +150,13 @@ describe('Marketplace catalog tab handoff', () => {
     await expect.element(plugins).toHaveFocus()
 
     await page.viewport(879, 800)
+    // Bound the known failure so the expected failure does not wait for the test timeout.
     await expect
       .element(
         screen
           .getByRole('group', { name: 'In-flow catalogs' })
           .getByRole('link', { name: 'Plugins' }),
+        { timeout: 1_000 },
       )
       .toHaveFocus()
     await expect.element(plugins).toHaveFocus()
