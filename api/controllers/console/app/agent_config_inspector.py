@@ -50,7 +50,6 @@ from services.agent.config_inspector_store import (
 )
 from services.agent.errors import AgentNotFoundError
 from services.agent_config_service import (
-    AgentConfigService,
     AgentConfigServiceError,
     ConfigPushFileItem,
     ConfigPushPayload,
@@ -309,11 +308,6 @@ def _with_trial_config[T, Q: TrialAgentConfigQuery, **P](
     return document_errors(decorated, AppUnavailableError, RelayedHTTPError)
 
 
-def _service() -> AgentConfigService:
-    """Return the configured asset service for all Console Inspector routes."""
-    return application_services().agent_apps.config_assets
-
-
 def _relayed_error(exc: AgentConfigServiceError) -> RelayedHTTPError:
     return RelayedHTTPError(status=exc.status_code, error_code=exc.code, message=exc.message)
 
@@ -397,7 +391,7 @@ def _with_app_route_target[T](
 
 
 def _manifest_response(target: AgentConfigSelection) -> dict[str, object]:
-    return _service().manifest(
+    return application_services().agent_apps.config_assets.manifest(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -407,7 +401,7 @@ def _manifest_response(target: AgentConfigSelection) -> dict[str, object]:
 
 
 def _skill_list_response(target: AgentConfigSelection) -> dict[str, object]:
-    return _service().list_skills(
+    return application_services().agent_apps.config_assets.list_skills(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -417,7 +411,7 @@ def _skill_list_response(target: AgentConfigSelection) -> dict[str, object]:
 
 
 def _file_list_response(target: AgentConfigSelection) -> dict[str, object]:
-    return _service().list_files(
+    return application_services().agent_apps.config_assets.list_files(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -458,7 +452,7 @@ def _upload_skill_for_target(
 ) -> tuple[dict[str, object], int]:
     if content is None:
         content, filename = _read_single_upload()
-    manifest = _service().upload_skill_for_console(
+    manifest = application_services().agent_apps.config_assets.upload_skill_for_console(
         tenant_id=tenant_id,
         agent_id=agent_id,
         user_id=user_id,
@@ -474,7 +468,7 @@ def _file_upload_response(
     target: AgentConfigSelection, payload: AgentConfigFileUploadPayload
 ) -> tuple[dict[str, object], int]:
     assert target.account_id is not None
-    manifest = _service().push_file_for_console(
+    manifest = application_services().agent_apps.config_assets.push_file_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
@@ -489,7 +483,7 @@ def _files_upload_response(
     target: AgentConfigSelection, payload: AgentConfigFilesUploadPayload
 ) -> tuple[dict[str, Any], int]:
     assert target.account_id is not None
-    result = _service().push_files_for_console(
+    result = application_services().agent_apps.config_assets.push_files_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
@@ -502,7 +496,7 @@ def _files_upload_response(
 
 def _skill_inspect_response(target: AgentConfigSelection, name: str) -> Response:
     return _json_response(
-        _service().inspect_skill(
+        application_services().agent_apps.config_assets.inspect_skill(
             tenant_id=target.tenant_id,
             agent_id=target.agent_id,
             config_version_id=target.version_id,
@@ -516,7 +510,7 @@ def _skill_inspect_response(target: AgentConfigSelection, name: str) -> Response
 def _skill_download_response(target: AgentConfigSelection, name: str) -> Response:
     return _json_response(
         {
-            "url": _service().download_skill_url(
+            "url": application_services().agent_apps.config_assets.download_skill_url(
                 tenant_id=target.tenant_id,
                 agent_id=target.agent_id,
                 config_version_id=target.version_id,
@@ -529,7 +523,7 @@ def _skill_download_response(target: AgentConfigSelection, name: str) -> Respons
 
 
 def _skill_file_preview_response(target: AgentConfigSelection, name: str, path: str) -> dict[str, object]:
-    return _service().preview_skill_file(
+    return application_services().agent_apps.config_assets.preview_skill_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -549,7 +543,7 @@ def _skill_file_download_response(
     route_params: dict[str, str],
     extra_query_params: dict[str, str] | None = None,
 ) -> Response:
-    member_path = _service().resolve_skill_file_member_path(
+    member_path = application_services().agent_apps.config_assets.resolve_skill_file_member_path(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -570,7 +564,7 @@ def _skill_file_download_response(
 
 
 def _skill_file_raw_download_response(target: AgentConfigSelection, name: str, path: str) -> Response:
-    download = _service().pull_skill_file(
+    download = application_services().agent_apps.config_assets.pull_skill_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -589,7 +583,7 @@ def _skill_file_raw_download_response(target: AgentConfigSelection, name: str, p
 
 def _skill_delete_response(target: AgentConfigSelection, name: str) -> dict[str, object]:
     assert target.account_id is not None
-    _service().push_for_console(
+    application_services().agent_apps.config_assets.push_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
@@ -601,7 +595,7 @@ def _skill_delete_response(target: AgentConfigSelection, name: str) -> dict[str,
 
 
 def _file_preview_response(target: AgentConfigSelection, name: str) -> dict[str, object]:
-    return _service().preview_file(
+    return application_services().agent_apps.config_assets.preview_file(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         config_version_id=target.version_id,
@@ -614,7 +608,7 @@ def _file_preview_response(target: AgentConfigSelection, name: str) -> dict[str,
 def _file_download_response(target: AgentConfigSelection, name: str) -> Response:
     return _json_response(
         {
-            "url": _service().download_file_url(
+            "url": application_services().agent_apps.config_assets.download_file_url(
                 tenant_id=target.tenant_id,
                 agent_id=target.agent_id,
                 config_version_id=target.version_id,
@@ -628,7 +622,7 @@ def _file_download_response(target: AgentConfigSelection, name: str) -> Response
 
 def _file_delete_response(target: AgentConfigSelection, name: str) -> dict[str, object]:
     assert target.account_id is not None
-    _service().push_for_console(
+    application_services().agent_apps.config_assets.push_for_console(
         tenant_id=target.tenant_id,
         agent_id=target.agent_id,
         user_id=target.account_id,
