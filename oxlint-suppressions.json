@@ -617,19 +617,9 @@
       "count": 20
     }
   },
-  "web/app/components/app/deploy/environment-table/row.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 11
-    }
-  },
   "web/app/components/app/deploy/shared/deployment-configuration/content.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
-    }
-  },
-  "web/app/components/app/deploy/shared/deployment-configuration/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/app/deploy/shared/deployment-configuration/workflow-source-popover.tsx": {

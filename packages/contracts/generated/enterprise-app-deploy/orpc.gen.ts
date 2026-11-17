@@ -43,6 +43,10 @@ import {
   zConsoleDeploymentServiceListEnvironmentDeploymentsResponse,
   zConsoleDeploymentServicePrecheckWorkflowDeploymentPath,
   zConsoleDeploymentServicePrecheckWorkflowDeploymentResponse,
+  zConsoleDeploymentServiceResumeDeploymentPath,
+  zConsoleDeploymentServiceResumeDeploymentResponse,
+  zConsoleDeploymentServiceSuspendDeploymentPath,
+  zConsoleDeploymentServiceSuspendDeploymentResponse,
   zConsoleDeploymentServiceUndeployWorkflowPath,
   zConsoleDeploymentServiceUndeployWorkflowResponse,
 } from './zod.gen.ts'
@@ -107,6 +111,28 @@ export const deployWorkflow = oc
   )
   .output(zConsoleDeploymentServiceDeployWorkflowResponse)
 
+export const resumeDeployment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ConsoleDeploymentService_ResumeDeployment',
+    path: '/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:resume',
+    tags: ['ConsoleDeploymentService'],
+  })
+  .input(z.object({ params: zConsoleDeploymentServiceResumeDeploymentPath }))
+  .output(zConsoleDeploymentServiceResumeDeploymentResponse)
+
+export const suspendDeployment = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'ConsoleDeploymentService_SuspendDeployment',
+    path: '/enterprise/app-deploy/apps/{app_id}/workflows/{workflow_id}/environments/{environment_id}/deployment:suspend',
+    tags: ['ConsoleDeploymentService'],
+  })
+  .input(z.object({ params: zConsoleDeploymentServiceSuspendDeploymentPath }))
+  .output(zConsoleDeploymentServiceSuspendDeploymentResponse)
+
 export const undeployWorkflow = oc
   .route({
     inputStructure: 'detailed',
@@ -135,6 +161,8 @@ export const deploymentService = {
   getEnvironmentDeployment,
   getWorkflowDeploymentOptions,
   deployWorkflow,
+  resumeDeployment,
+  suspendDeployment,
   undeployWorkflow,
   precheckWorkflowDeployment,
 }

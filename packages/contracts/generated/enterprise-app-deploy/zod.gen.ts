@@ -48,10 +48,46 @@ export const zPluginCategory = z.enum([
   'PLUGIN_CATEGORY_TOOL',
 ])
 
+export const zAppType = z.enum([
+  'APP_TYPE_UNSPECIFIED',
+  'APP_TYPE_CHAT',
+  'APP_TYPE_AGENT_CHAT',
+  'APP_TYPE_COMPLETION',
+  'APP_TYPE_ADVANCED_CHAT',
+  'APP_TYPE_WORKFLOW',
+  'APP_TYPE_AGENT',
+])
+
+export const zAppDeploymentStatus = z.enum([
+  'APP_DEPLOYMENT_STATUS_UNSPECIFIED',
+  'APP_DEPLOYMENT_STATUS_RUNNING',
+  'APP_DEPLOYMENT_STATUS_DEPLOYING',
+  'APP_DEPLOYMENT_STATUS_UNDEPLOYING',
+  'APP_DEPLOYMENT_STATUS_FAILED',
+  'APP_DEPLOYMENT_STATUS_ABNORMAL',
+])
+
+export const zDashboardAppTriggerType = z.enum([
+  'DASHBOARD_APP_TRIGGER_TYPE_UNSPECIFIED',
+  'DASHBOARD_APP_TRIGGER_TYPE_WEBHOOK',
+  'DASHBOARD_APP_TRIGGER_TYPE_SCHEDULE',
+  'DASHBOARD_APP_TRIGGER_TYPE_PLUGIN',
+])
+
+export const zDashboardAppTriggerStatus = z.enum([
+  'DASHBOARD_APP_TRIGGER_STATUS_UNSPECIFIED',
+  'DASHBOARD_APP_TRIGGER_STATUS_ENABLED',
+  'DASHBOARD_APP_TRIGGER_STATUS_DISABLED',
+  'DASHBOARD_APP_TRIGGER_STATUS_UNAUTHORIZED',
+  'DASHBOARD_APP_TRIGGER_STATUS_RATE_LIMITED',
+])
+
 export const zDeploymentOperationType = z.enum([
   'DEPLOYMENT_OPERATION_TYPE_UNSPECIFIED',
   'DEPLOYMENT_OPERATION_TYPE_DEPLOY',
   'DEPLOYMENT_OPERATION_TYPE_UNDEPLOY',
+  'DEPLOYMENT_OPERATION_TYPE_SUSPEND',
+  'DEPLOYMENT_OPERATION_TYPE_RESUME',
 ])
 
 export const zDeploymentOperationOutcome = z.enum([
@@ -82,6 +118,9 @@ export const zDeploymentOperationFailureCode = z.enum([
   'DEPLOYMENT_OPERATION_FAILURE_CODE_INTERNAL_ERROR',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_ENVIRONMENT_CPU_POOL_EXHAUSTED',
   'DEPLOYMENT_OPERATION_FAILURE_CODE_APP_RUNNER_ENV_CPU_LIMIT_EXCEEDED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_NOTHING_TO_SUSPEND',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_SUSPENDED',
+  'DEPLOYMENT_OPERATION_FAILURE_CODE_DEPLOYMENT_NOT_SUSPENDED',
 ])
 
 export const zDeploymentOperationStatus = z.enum([
@@ -143,6 +182,13 @@ export const zAppEnvironment = z.object({
   description: z.string(),
   status: zEnvironmentStatus,
   in_use: z.boolean(),
+  suspended_at: z.number().optional(),
+})
+
+export const zAppIcon = z.object({
+  type: z.string().optional(),
+  value: z.string().optional(),
+  background: z.string().optional(),
 })
 
 export const zBatchGetSourceVersionDeploymentsRequest = z.object({
@@ -169,11 +215,6 @@ export const zCheckSourceVersionDeletableResponse = z.object({
   reason: z.string().optional(),
 })
 
-export const zCreateDockerComposeBundleRequest = z.object({
-  environmentId: z.string().optional(),
-  dockerNetwork: z.string(),
-})
-
 export const zCreateEnvironmentRequest = z.object({
   displayName: z.string(),
   description: z.string().optional(),
@@ -184,6 +225,11 @@ export const zCreateEnvironmentRequest = z.object({
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' }),
   namespace: z.string().optional(),
   maxMemoryMib: z.string().optional(),
+})
+
+export const zCreateRunnerRegistrationRequest = z.object({
+  environmentId: z.string().optional(),
+  rotateJoinToken: z.boolean().optional(),
 })
 
 export const zCredentialCandidate = z.object({
@@ -198,6 +244,51 @@ export const zCredentialSelectionInput = z.object({
   provider_id: z.string(),
   category: zPluginCategory,
   credential_id: z.string(),
+})
+
+export const zDashboardAppChannel = z.object({
+  enabled: z.boolean(),
+  endpoint: z.string(),
+})
+
+export const zDashboardAppEnvironmentActivity = z.object({
+  environmentId: z.string().optional(),
+  builtIn: z.boolean(),
+  invocationCount: z.string(),
+  errorCount: z.string(),
+  lastInvokedAt: z.iso.datetime().optional(),
+})
+
+/**
+ * The server code in an MCP URL is its credential, so the console only ever
+ * sees the URL with that code masked.
+ */
+export const zDashboardAppMcpChannel = z.object({
+  enabled: z.boolean(),
+  maskedEndpoint: z.string(),
+})
+
+export const zDashboardAppTrigger = z.object({
+  type: zDashboardAppTriggerType,
+  title: z.string(),
+  providerName: z.string().optional(),
+  status: zDashboardAppTriggerStatus,
+})
+
+/**
+ * Enabled when any trigger can start the app. Webhook URLs are credentials
+ * and are deliberately not carried.
+ */
+export const zDashboardAppTriggerChannel = z.object({
+  enabled: z.boolean(),
+  triggers: z.array(zDashboardAppTrigger),
+})
+
+export const zDashboardAppAccess = z.object({
+  webApp: zDashboardAppChannel,
+  serviceApi: zDashboardAppChannel,
+  mcp: zDashboardAppMcpChannel,
+  trigger: zDashboardAppTriggerChannel,
 })
 
 export const zDeleteEnvironmentApiKeyResponse = z.record(z.string(), z.unknown())
@@ -226,17 +317,6 @@ export const zDeploymentOperationReceipt = z.object({
 
 export const zDeployWorkflowResponse = z.object({
   operation: zDeploymentOperationReceipt,
-})
-
-export const zDockerComposeBundle = z.object({
-  filename: z.string(),
-  archive: z.string(),
-  composeYaml: z.string(),
-  configYaml: z.string(),
-})
-
-export const zCreateDockerComposeBundleResponse = z.object({
-  bundle: zDockerComposeBundle,
 })
 
 export const zEnvironmentApi = z.object({
@@ -453,9 +533,10 @@ export const zError = z.object({
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_EXHAUSTED',
       'APPDEPLOY_RESOURCE_NOT_APPLICABLE_FOR_MODE',
       'APPDEPLOY_ENVIRONMENT_CPU_POOL_BELOW_ALLOCATED',
-      'APPDEPLOY_CHAT_CONTEXT_TOO_LARGE',
-      'APPDEPLOY_REVISION_RETIRED',
       'APPDEPLOY_CREDENTIAL_DENIED_BY_POLICY',
+      'APPDEPLOY_NOTHING_TO_SUSPEND',
+      'APPDEPLOY_DEPLOYMENT_SUSPENDED',
+      'APPDEPLOY_DEPLOYMENT_NOT_SUSPENDED',
       'APPDEPLOY_FILE_GRANT_UNAVAILABLE',
       'APPDEPLOY_APP_RUNNER_CONTROL_NOT_CONFIGURED',
       'APPDEPLOY_RUNTIME_ASSIGNMENT_FAILED',
@@ -480,6 +561,11 @@ export const zError = z.object({
   phase: z.string().optional(),
   occurredAt: z.iso.datetime().optional(),
   detailCode: z.string().optional(),
+})
+
+export const zGetAppActivityResponse = z.object({
+  since: z.iso.datetime(),
+  environments: z.array(zDashboardAppEnvironmentActivity),
 })
 
 export const zGetAppRunnerLogSummaryResponse = z.object({
@@ -548,6 +634,23 @@ export const zMintServiceApiFileGrantResponse = z.object({
 export const zNamedRef = z.object({
   id: z.string(),
   displayName: z.string(),
+})
+
+export const zDashboardAppEnvironment = z.object({
+  environment: zNamedRef.optional(),
+  builtIn: z.boolean(),
+  status: zAppDeploymentStatus,
+})
+
+export const zDashboardAppEnvironmentInvocations = z.object({
+  environment: zNamedRef.optional(),
+  builtIn: z.boolean(),
+  count: z.string(),
+})
+
+export const zDashboardAppInvocations = z.object({
+  total: z.string(),
+  environments: z.array(zDashboardAppEnvironmentInvocations),
 })
 
 export const zEnvironmentPoolShare = z.object({
@@ -627,8 +730,8 @@ export const zResolveApiTokenRouteResponse = z.object({
   servingRevisionId: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
-  assignmentGeneration: z.string().optional(),
   decision: z.string().optional(),
+  suspended: z.boolean().optional(),
 })
 
 export const zResolveWebAppRouteRequest = z.object({
@@ -652,12 +755,20 @@ export const zResolveWebAppRouteResponse = z.object({
   servingRevisionId: z.string().optional(),
   targetKind: zRouteTargetKind.optional(),
   directUpstream: z.string().optional(),
-  assignmentGeneration: z.string().optional(),
   userId: z.string().optional(),
   userFrom: z.string().optional(),
   userAuthType: z.string().optional(),
   fileGrant: z.string().optional(),
   fileGrantExpiresAt: z.string().optional(),
+  suspended: z.boolean().optional(),
+})
+
+export const zResumeDeploymentResponse = z.object({
+  operation: zDeploymentOperationReceipt.optional(),
+})
+
+export const zResumeEnvironmentAppResponse = z.object({
+  operationId: z.string().optional(),
 })
 
 export const zRetryEnvironmentBootstrapRequest = z.object({
@@ -707,6 +818,18 @@ export const zRetryEnvironmentBootstrapResponse = z.object({
   environment: zEnvironment,
 })
 
+export const zRunnerRegistration = z.object({
+  runnerId: z.string(),
+  joinToken: z.string(),
+  controlEndpoint: z.string(),
+  configYaml: z.string(),
+  envVars: z.record(z.string(), z.string()).optional(),
+})
+
+export const zCreateRunnerRegistrationResponse = z.object({
+  registration: zRunnerRegistration,
+})
+
 /**
  * RunnerSizing describes a runner an app owns outright, so it is present only
  * in an isolated environment; elsewhere the runner belongs to the environment.
@@ -729,6 +852,18 @@ export const zSimpleAccount = z.object({
   email: z.string().optional(),
 })
 
+export const zDashboardApp = z.object({
+  appId: z.string(),
+  name: z.string(),
+  type: zAppType,
+  icon: zAppIcon,
+  workspace: zNamedRef,
+  creator: zSimpleAccount.optional(),
+  createdAt: z.iso.datetime(),
+  environments: z.array(zDashboardAppEnvironment),
+  invocations: zDashboardAppInvocations.optional(),
+})
+
 export const zSourceVersionDeploymentEnvironment = z.object({
   id: z.string().optional(),
   name: z.string().optional(),
@@ -741,6 +876,14 @@ export const zSourceVersionDeployment = z.object({
 
 export const zBatchGetSourceVersionDeploymentsResponse = z.object({
   items: z.array(zSourceVersionDeployment).optional(),
+})
+
+export const zSuspendDeploymentResponse = z.object({
+  operation: zDeploymentOperationReceipt.optional(),
+})
+
+export const zSuspendEnvironmentAppResponse = z.object({
+  operationId: z.string().optional(),
 })
 
 export const zTestConnectionRequest = z.object({
@@ -914,6 +1057,20 @@ export const zAppRunnerLog = z.object({
   error: z.string().optional(),
 })
 
+export const zDashboardAppDeployment = z.object({
+  environment: zNamedRef.optional(),
+  builtIn: z.boolean(),
+  status: zAppDeploymentStatus,
+  version: zWorkflowVersion.optional(),
+  versionsBehind: z
+    .int()
+    .min(0, { error: 'Invalid value: Expected uint32 to be >= 0' })
+    .max(4294967295, { error: 'Invalid value: Expected uint32 to be <= 4294967295' })
+    .optional(),
+  deployedAt: z.iso.datetime().optional(),
+  access: zDashboardAppAccess,
+})
+
 export const zDeploymentOperation = z.object({
   id: z.string(),
   type: zDeploymentOperationType,
@@ -947,6 +1104,8 @@ export const zEnvironmentDeployedApp = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  suspendedAt: z.iso.datetime().optional(),
+  suspendedBy: zOperator.optional(),
 })
 
 export const zEnvironmentDeploymentOperation = z.object({
@@ -969,6 +1128,8 @@ export const zEnvironmentDeploymentState = z.object({
   deployed_at: z.number().optional(),
   deployed_by: zOperator.optional(),
   latest_operation: zEnvironmentDeploymentOperation.optional(),
+  suspended_at: z.number().optional(),
+  suspended_by: zOperator.optional(),
 })
 
 export const zEnvironmentDeployment = z.object({
@@ -976,6 +1137,11 @@ export const zEnvironmentDeployment = z.object({
   deployment: zEnvironmentDeploymentState.optional(),
   access: zEnvironmentAccess,
   deployment_id: z.string(),
+})
+
+export const zGetAppResponse = z.object({
+  app: zDashboardApp,
+  deployments: z.array(zDashboardAppDeployment),
 })
 
 export const zGetEnvironmentDeploymentResponse = z.object({
@@ -1021,6 +1187,12 @@ export const zPagination = z.object({
 export const zListAppRunnerLogAppsResponse = z.object({
   data: z.array(zNamedRef),
   pagination: zPagination,
+})
+
+export const zListAppsResponse = z.object({
+  data: z.array(zDashboardApp),
+  pagination: zPagination,
+  invocationsUnavailable: z.boolean(),
 })
 
 export const zListDeploymentOperationsResponse = z.object({
@@ -1129,6 +1301,8 @@ export const zEnvironmentDeployedAppWritable = z.object({
     .min(-2147483648, { error: 'Invalid value: Expected int32 to be >= -2147483648' })
     .max(2147483647, { error: 'Invalid value: Expected int32 to be <= 2147483647' })
     .optional(),
+  suspendedAt: z.iso.datetime().optional(),
+  suspendedBy: zOperator.optional(),
 })
 
 export const zListEnvironmentDeployedAppsResponseWritable = z.object({
@@ -1341,6 +1515,28 @@ export const zConsoleDeploymentServiceDeployWorkflowPath = z.object({
  * OK
  */
 export const zConsoleDeploymentServiceDeployWorkflowResponse = zDeployWorkflowResponse
+
+export const zConsoleDeploymentServiceResumeDeploymentPath = z.object({
+  app_id: z.string(),
+  workflow_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleDeploymentServiceResumeDeploymentResponse = zResumeDeploymentResponse
+
+export const zConsoleDeploymentServiceSuspendDeploymentPath = z.object({
+  app_id: z.string(),
+  workflow_id: z.string(),
+  environment_id: z.string(),
+})
+
+/**
+ * OK
+ */
+export const zConsoleDeploymentServiceSuspendDeploymentResponse = zSuspendDeploymentResponse
 
 export const zConsoleDeploymentServiceUndeployWorkflowPath = z.object({
   app_id: z.string(),

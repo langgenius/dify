@@ -7,9 +7,11 @@ import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Fragment, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getWorkflowVersionName } from '@/app/components/workflow/utils/version'
+import { consoleQuery } from '@/service/console'
 import { getEnvironmentDeploymentActions } from '../utils/environment-deployment'
 import { toDeploymentVersion } from '../utils/version'
 
@@ -84,11 +86,13 @@ function deploymentDialogRequest(
 }
 
 export function EnvironmentRowActions({
+  appId,
   latestVersion,
   row,
   onOpenDeployment,
   onOpenUndeploy,
 }: {
+  appId: string
   latestVersion?: DeploymentVersion
   row: EnvironmentDeployment
   onOpenDeployment: OpenDeploymentDialog
@@ -101,6 +105,25 @@ export function EnvironmentRowActions({
   })
   const primaryTriggerRef = useRef<HTMLButtonElement | null>(null)
   const menuTriggerRef = useRef<HTMLButtonElement | null>(null)
+  const queryClient = useQueryClient()
+  const invalidate = () =>
+    queryClient.invalidateQueries({
+      queryKey: consoleQuery.enterprise.appDeploy.deploymentService.key(),
+    })
+  const suspend = useMutation(
+    consoleQuery.enterprise.appDeploy.deploymentService.suspendDeployment.mutationOptions({
+      onSuccess: invalidate,
+    }),
+  )
+  const resume = useMutation(
+    consoleQuery.enterprise.appDeploy.deploymentService.resumeDeployment.mutationOptions({
+      onSuccess: invalidate,
+    }),
+  )
+  const deployment = row.deployment
+  const workflowId =
+    deployment?.current_version?.id ?? deployment?.latest_operation?.target_version?.id
+  const suspended = Boolean(deployment?.suspended_at)
   const actions = getEnvironmentDeploymentActions(row, {
     deployLatestDisabled: !latestVersion,
   })
@@ -116,7 +139,20 @@ export function EnvironmentRowActions({
     if (request) onOpenDeployment(request, returnFocusElement)
   }
   const primaryAction = actions[0]
-  const moreActions = actions.slice(1)
+  const moreActions = suspended ? actions : actions.slice(1)
+  const suspensionDisabled =
+    !workflowId ||
+    suspend.isPending ||
+    resume.isPending ||
+    row.environment.status !== 'ENVIRONMENT_STATUS_READY'
+  const changeSuspension = () => {
+    if (!workflowId) return
+    const input = {
+      params: { app_id: appId, environment_id: row.environment.id, workflow_id: workflowId },
+    }
+    if (suspended) resume.mutate(input)
+    else suspend.mutate(input)
+  }
 
   if (!primaryAction) return null
 
@@ -126,17 +162,24 @@ export function EnvironmentRowActions({
         ref={primaryTriggerRef}
         size="small"
         variant="secondary"
-        disabled={primaryAction.disabled}
+        disabled={suspended ? suspensionDisabled : primaryAction.disabled}
         focusableWhenDisabled
         className="min-w-0 gap-1 px-2"
-        onClick={() => handleAction(primaryAction, primaryTriggerRef.current)}
+        onClick={() =>
+          suspended ? changeSuspension() : handleAction(primaryAction, primaryTriggerRef.current)
+        }
       >
         <span
           aria-hidden
-          className={cn(ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind], 'size-3.5 shrink-0')}
+          className={cn(
+            suspended ? 'i-ri-play-circle-line' : ROW_ACTION_ICON_CLASS_NAMES[primaryAction.kind],
+            'size-3.5 shrink-0',
+          )}
         />
         <span className="truncate">
-          {rowActionLabel(primaryAction, row, t, defaultVersionName)}
+          {suspended
+            ? t(($) => $['studio.resume'])
+            : rowActionLabel(primaryAction, row, t, defaultVersionName)}
         </span>
       </Button>
       <Menu modal={false}>
@@ -154,6 +197,19 @@ export function EnvironmentRowActions({
           }
         />
         <MenuContent align="end" className="w-50">
+          {workflowId && !suspended && deployment?.runtimeState !== 'RUNTIME_STATE_UNDEPLOYED' && (
+            <MenuItem
+              disabled={suspensionDisabled}
+              onClick={changeSuspension}
+              className="gap-2 px-2"
+            >
+              <span
+                aria-hidden
+                className="i-ri-pause-circle-line size-4 shrink-0 text-text-secondary"
+              />
+              {t(($) => $['studio.suspend'])}
+            </MenuItem>
+          )}
           {moreActions.map((action, index) => (
             <Fragment key={action.kind}>
               {action.kind === 'undeploy' && index > 0 && <MenuSeparator />}

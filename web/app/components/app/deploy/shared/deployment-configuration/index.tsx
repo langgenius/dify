@@ -8,6 +8,7 @@ import { DialogClose, DialogTitle } from '@langgenius/dify-ui/dialog'
 import { Form } from '@langgenius/dify-ui/form'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { useTranslation } from 'react-i18next'
+import { SuspensionNotice } from '../suspension-notice'
 import { DeploymentConfigurationContent } from './content'
 import { useDeploymentConfigurationForm } from './use-deployment-configuration-form'
 import { useDeploymentConfigurationQueries } from './use-deployment-configuration-queries'
@@ -64,13 +65,14 @@ export function DeploymentConfiguration({
       errors={fieldErrors}
       onSubmit={handleSubmit}
     >
+      <SuspensionNotice appId={appId} environmentId={request.environmentId} className="px-4 pt-2" />
       {!embedded && (
         <DialogClose
           render={
             <IconButton
               aria-label={tCommon(($) => $['operation.close'])}
               size="lg"
-              className="absolute top-5 right-5"
+              className="absolute inset-e-5 top-5"
               type="button"
             >
               <span aria-hidden className="i-ri-close-line size-4" />
@@ -78,13 +80,13 @@ export function DeploymentConfiguration({
           }
         />
       )}
-      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pt-5 pr-14 pb-1')}>
+      <header className={cn('shrink-0', embedded ? 'px-3 pt-3.5 pb-1' : 'px-5 pe-14 pt-5 pb-1')}>
         {onBack && (
           <Button
             type="button"
             size="small"
             variant="ghost-accent"
-            className="-ml-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
+            className="-ms-1 h-6 gap-1 px-1 system-xs-semibold-uppercase"
             onClick={onBack}
           >
             <span aria-hidden className="i-ri-arrow-left-line size-4" />
