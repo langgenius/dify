@@ -75,14 +75,19 @@ from models.knowledge_fs import (
     KnowledgeFSControlSpace,
     KnowledgeFSControlSpaceState,
 )
+from models.knowledge_fs_cutover import (
+    KnowledgeFSCutoverRevisionWatermark,
+    KnowledgeFSWorkspaceCutoverLedger,
+    KnowledgeFSWorkspaceCutoverPhase,
+)
 from models.model import ApiToken, App, AppMode, AppModelConfig
 from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
 from repositories.app.agent_app_repository import AgentAppRepository
 from services.agent.app_composer import AgentAppComposer
-from services.agent.app_composer_store import AgentPublicationHomeUnavailableError
 from services.agent.composer_tools import list_workspace_dify_tools
-from services.agent.knowledge_spaces import authorize_composer_knowledge, stage_published_agent_knowledge_bindings
+from services.agent.knowledge_spaces import authorize_composer_knowledge
 from services.enterprise.base import EnterpriseRequest
+from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.app_entities import AppEvent
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.rbac_fakes import RBACDomain
@@ -628,10 +633,31 @@ def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness:
 
 @pytest.mark.parametrize("retired_home", [False, True], ids=["committed", "rolled-back"])
 def test_publication_commits_knowledge_binding_with_the_snapshot(harness: Harness, retired_home: bool) -> None:
-    """Flush a real KnowledgeFS binding in the publication transaction and roll it back if the Home is retired."""
+    """Publish through Console and roll back the flushed KnowledgeFS binding when the Home is retired."""
     agent_id, app_id = harness.create_agent()
     skill_id = str(uuid4())
+    watermark: KnowledgeFSCutoverRevisionWatermark = {
+        "membership_epoch": 1,
+        "space_acl_epoch": 1,
+        "external_access_epoch": 1,
+        "content_policy_revision": 1,
+    }
+    now = naive_utc_now()
     with harness.sessions.begin() as session:
+        session.add(
+            KnowledgeFSWorkspaceCutoverLedger(
+                tenant_id=harness.tenant_id,
+                source_revision_watermark=watermark,
+                applied_revision_watermark=watermark,
+                phase=KnowledgeFSWorkspaceCutoverPhase.CUTOVER,
+                freeze_at=now,
+                cutover_at=now,
+                product_routes_enabled=True,
+                capability_v2_enabled=True,
+                integrated_mode_enabled=True,
+                legacy_acl_read_only=True,
+            )
+        )
         space = KnowledgeFSControlSpace(
             tenant_id=harness.tenant_id,
             owner_account_id=harness.account_id,
@@ -681,34 +707,26 @@ def test_publication_commits_knowledge_binding_with_the_snapshot(harness: Harnes
         """Observe the SQL flush so a rollback assertion cannot pass if binding staging was skipped."""
         staged_space_ids.append(binding.control_space_id)
 
-    store = AgentAppRepository(
-        session_factory=harness.sessions,
-        stage_publication_bindings=partial(stage_published_agent_knowledge_bindings, session_maker=harness.sessions),
-    )
-    prepared = store.prepare_publication(tenant_id=harness.tenant_id, agent_id=agent_id)
-    publish = partial(
-        store.publish_composer,
-        tenant_id=harness.tenant_id,
-        agent_id=agent_id,
-        account_id=harness.account_id,
-        source=prepared,
-        version_note=None,
-    )
     event.listen(AppKnowledgeFSSpaceJoin, "after_insert", record_binding_insert)
     try:
         with config_overrides_context(
             KNOWLEDGE_FS_BASE_URL="https://knowledge-fs.example.test", KNOWLEDGE_FS_CAPABILITY_V2_ENABLED=False
         ):
-            if retired_home:
-                with pytest.raises(AgentPublicationHomeUnavailableError):
-                    publish()
-            else:
-                publication = publish()
-                assert publication.publication_kind == "first"
+            response = harness.client.post(f"/console/api/agent/{agent_id}/publish", json={}, headers=harness.headers)
     finally:
         event.remove(AppKnowledgeFSSpaceJoin, "after_insert", record_binding_insert)
 
     assert staged_space_ids == [space_id]
+    if retired_home:
+        assert response.status_code == HTTPStatus.BAD_REQUEST
+        assert response.get_json() == {
+            "code": "invalid_composer_config_error",
+            "status": HTTPStatus.BAD_REQUEST,
+            "message": "The Agent draft Home snapshot is unavailable.",
+        }
+    else:
+        assert response.status_code == HTTPStatus.OK, response.get_json()
+        assert response.get_json()["publication_kind"] == "first"
     with harness.sessions() as session:
         agent = session.get_one(Agent, agent_id)
         app = session.get_one(App, app_id)
@@ -846,8 +864,11 @@ def test_agent_copy_inherits_enterprise_webapp_access(
 
     class EnterpriseHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
-            """Record the source lookup and return a setting or a missing-resource response."""
+            """Serve the active license and the source or copied App's access mode."""
             request = urlsplit(self.path)
+            if request.path == "/info":
+                self._respond(HTTPStatus.OK, {"License": {"status": "active"}})
+                return
             if request.path != "/webapp/access-mode/id":
                 self.send_error(HTTPStatus.NOT_FOUND)
                 return
@@ -882,17 +903,25 @@ def test_agent_copy_inherits_enterprise_webapp_access(
         thread.start()
         previous_url = EnterpriseRequest.base_url
         EnterpriseRequest.base_url = f"http://127.0.0.1:{server.server_port}"
+        EnterpriseService.get_info.cache_clear()
         try:
             with config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE):
                 response = harness.client.post(f"/console/api/agent/{agent_id}/copy", headers=harness.headers, json={})
+                assert response.status_code == HTTPStatus.CREATED, response.get_json()
+                copied = response.get_json()
+                detail = harness.client.get(f"/console/api/agent/{copied['id']}", headers=harness.headers)
         finally:
+            EnterpriseService.get_info.cache_clear()
             EnterpriseRequest.base_url = previous_url
             server.shutdown()
             thread.join()
 
-    assert response.status_code == HTTPStatus.CREATED, response.get_json()
-    target_id = response.get_json()["app_id"]
-    assert reads == [source_app_id, target_id]
+    assert detail.status_code == HTTPStatus.OK, detail.get_json()
+    assert copied["access_mode"] == detail.get_json()["access_mode"] == expected_mode
+    assert copied["permission_keys"]
+    assert copied["permission_keys"] == detail.get_json()["permission_keys"]
+    target_id = copied["app_id"]
+    assert reads == [source_app_id, target_id, target_id]
     assert updates == [
         {"appId": target_id, "accessMode": "private"},
         {"appId": target_id, "accessMode": expected_mode},
