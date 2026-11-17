@@ -306,8 +306,10 @@ class RunJobService:
         FAILED as RUN_STALLED, and that is saved and final for good in the same way. Without a visible run row the
         record's own status and error are used, with no form. A MESSAGE job whose reader died is FAILED as
         RUN_INTERRUPTED, and that is saved. For a job that is final, with a message id and a visible message row, the
-        answer is the message's answer; a MESSAGE job also takes the message's error, with the record's error as the
-        fallback. Raises JobNotFoundError when the job is missing or owned by someone else.
+        answer is the message's answer. A GRAPH job whose run is final but whose record has no ending while its
+        reader is alive is RUNNING with no answer yet, because the reader is still saving it. A job the service
+        failed has no answer. A MESSAGE job also takes the message's error, with the record's error as the fallback.
+        Raises JobNotFoundError when the job is missing or owned by someone else.
         """
         record, reader_alive = self._owned(owner, job_id)
         return self._view_of(record, reader_alive=reader_alive)
@@ -366,6 +368,12 @@ class RunJobService:
         view = JobView(record=record, status=run.status, outputs=run.outputs, error=run.error, form=form)
         if not run.status.is_final:
             return view
+        if record.message_id is None:
+            return view
+        if not record.status.is_final:
+            # The run row turns final before the reader saves the answer and records the ending.
+            if reader_alive:
+                return JobView(record=record, status=JobStatus.RUNNING)
         message = self._saved_message(record)
         if message is None:
             return view
@@ -380,6 +388,8 @@ class RunJobService:
         checked = fail_if_reader_dead(self._store, record, JobFailure.RUN_INTERRUPTED, reader_alive=reader_alive)
         view = _record_view(checked)
         if not checked.status.is_final:
+            return view
+        if checked.failure is not None:
             return view
         message = self._saved_message(checked)
         if message is None:
