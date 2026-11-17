@@ -15,7 +15,7 @@ class LangfuseConfig(ProviderConfig):
     @field_validator("host")
     @classmethod
     def _host(cls, value: str) -> str:
-        return http_url(value, allowed_schemes=("https", "http")) if value.strip() else DEFAULT_HOST
+        return http_url(value, allowed_schemes=("https", "http")).rstrip("/") if value.strip() else DEFAULT_HOST
 
     @field_validator("project_url")
     @classmethod

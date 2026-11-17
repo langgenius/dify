@@ -38,13 +38,6 @@ vi.mock('@/app/notifications', async (importOriginal) => {
   }
 })
 
-// Mock modal context
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowExternalKnowledgeAPIModal: vi.fn(),
-  }),
-}))
-
 // Mock API service
 vi.mock('@/service/datasets', () => ({
   createExternalKnowledgeBase: vi.fn(),

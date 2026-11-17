@@ -26,8 +26,7 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 }))
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses, withConsoleClientResponses } =
-    await import('@/test/console/service-responses')
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
@@ -39,8 +38,6 @@ vi.mock('@/service/console', async (importOriginal) => {
       'datasets.metadata.builtIn.get': async () => ({ fields: [] }),
       'datasets.byDatasetId.autoDisableLogs.get': async () => ({ document_ids: [] }),
       'datasets.byDatasetId.errorDocs.get': async () => ({ data: [], total: 0 }),
-    }),
-    consoleClient: withConsoleClientResponses(actual.consoleClient, {
       'datasets.byDatasetId.documents.byDocumentId.rename.post': api.rename,
     }),
   }
@@ -309,8 +306,17 @@ it('requests the next page and resets the page when changing the page size or so
   })
 })
 
-it('renames the selected document through its real form and refreshes the row after success', async () => {
-  const { user } = await setup()
+it('renames the selected document through its real form and refreshes its cached list and detail', async () => {
+  const { user, queryClient } = await setup()
+  const detailKey = (id: string) =>
+    consoleQuery.datasets.byDatasetId.documents.byDocumentId.get.queryKey({
+      input: {
+        params: { dataset_id: 'dataset-1', document_id: id },
+        query: { metadata: 'without' },
+      },
+    })
+  queryClient.setQueryData(detailKey('doc-0'), documentList().data[0])
+  queryClient.setQueryData(detailKey('doc-1'), documentList().data[1])
   const row = screen.getByRole('row', { name: /Reference/ })
   await user.click(within(row).getByRole('button', { name: 'datasetDocuments.list.table.rename' }))
   const dialog = await screen.findByRole('dialog', { name: 'datasetDocuments.list.table.rename' })
@@ -326,15 +332,14 @@ it('renames the selected document through its real form and refreshes the row af
     }),
   )
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
-  expect(api.rename).toHaveBeenCalledWith(
-    {
-      params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
-      body: { name: 'API Reference' },
-    },
-    { context: { silent: true } },
-  )
   await waitFor(() => expect(dialog).not.toBeInTheDocument())
+  expect(api.rename).toHaveBeenCalledExactlyOnceWith({
+    params: { dataset_id: 'dataset-1', document_id: 'doc-1' },
+    body: { name: 'API Reference' },
+  })
   expect(await screen.findByText('API Reference')).toBeInTheDocument()
+  expect(queryClient.getQueryState(detailKey('doc-1'))?.isInvalidated).toBe(true)
+  expect(queryClient.getQueryState(detailKey('doc-0'))?.isInvalidated).toBe(false)
 })
 
 it('polls processing documents until all documents reach a terminal state', async () => {

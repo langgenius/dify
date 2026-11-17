@@ -147,6 +147,8 @@ async function main() {
     ? watch(cliOptions.envFile, {
         cwd: process.cwd(),
         ignoreInitial: true,
+        // A truncate-then-write save can otherwise reload an empty or partial env file.
+        awaitWriteFinish: { stabilityThreshold: 100, pollInterval: 25 },
       })
     : undefined
 
