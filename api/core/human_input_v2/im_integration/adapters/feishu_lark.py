@@ -864,7 +864,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 
     class _ButtonMetadata(BaseModel):
         model_config = ConfigDict(
-            extra="forbid",
+            extra="ignore",
             frozen=True,
             hide_input_in_errors=True,
             strict=True,
@@ -883,7 +883,7 @@ class _MSFeishuLarkCardCodec(IMCardEventDecoder):
 
     class _ButtonValue(BaseModel):
         model_config = ConfigDict(
-            extra="forbid",
+            extra="ignore",
             frozen=True,
             hide_input_in_errors=True,
             strict=True,
@@ -1175,7 +1175,7 @@ _MS_FEISHU_LARK_CARD_CODEC = _MSFeishuLarkCardCodec()
 
 
 class _FeishuLarkLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, hide_input_in_errors=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, hide_input_in_errors=True, strict=True)
 
     # version of the locator
     v: Literal[1]

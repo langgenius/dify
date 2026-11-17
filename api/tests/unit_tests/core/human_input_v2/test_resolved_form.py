@@ -137,12 +137,12 @@ def test_file_list_number_limit_requires_an_integer(number_limits: object, form:
         FileListInput.model_validate(values)
 
 
-def test_all_models_reject_extra_fields(form: ResolvedForm) -> None:
+def test_all_models_read_additive_fields(form: ResolvedForm) -> None:
     for model in (form, *form.parts, *form.actions):
         values = model.model_dump()
-        values["unexpected"] = True
-        with pytest.raises(ValidationError, match="extra_forbidden"):
-            type(model).model_validate(values)
+        values["future_optional"] = None
+        values["future_extension"] = {"nested": {"enabled": True, "optional": None}}
+        assert type(model).model_validate(values) == model
 
 
 @pytest.mark.parametrize(

@@ -8,6 +8,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class ChannelEncryptedCredentials(BaseModel):
     """Versioned opaque credential envelope shared by Email and IM Channels."""
 
+    # Envelope format changes require a version bump and an explicit decoder for
+    # each supported version. Plaintext extensions do not change this envelope.
     model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
 
     version: Literal[1] = Field(default=1, description="Credential envelope format version.")

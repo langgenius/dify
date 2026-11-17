@@ -23,14 +23,14 @@ class FormPartType(StrEnum):
 class MarkdownFragment(BaseModel):
     """One source-ordered Markdown fragment in a resolved form."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     type: Literal[FormPartType.MARKDOWN_FRAGMENT] = FormPartType.MARKDOWN_FRAGMENT
     text: str
 
 
 class _BasicInput(BaseModel, abc.ABC):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     output_variable_name: str
 
@@ -74,7 +74,7 @@ class FileListInput(_BasicInput):
 class UserAction(BaseModel):
     """Resolved action values required for presentation and submission validation."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     id: str
     title: str
@@ -90,7 +90,7 @@ type FormPart = Annotated[
 class ResolvedForm(BaseModel):
     """Immutable authoritative presentation snapshot for one v2 form."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True, validate_default=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True, validate_default=True)
 
     # An empty string represents a form without a title.
     title: str

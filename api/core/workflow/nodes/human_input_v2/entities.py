@@ -54,7 +54,7 @@ class AllWorkspaceContacts(BaseModel):
     than the node-data migration helper.
     """
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     type: Literal[RecipientType.ALL_WORKSPACE_CONTACTS] = RecipientType.ALL_WORKSPACE_CONTACTS
 

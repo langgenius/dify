@@ -206,7 +206,7 @@ class _TeamsInboundActivity(BaseModel):
 
 
 class _MSTeamsLocatorPayload(_Base64JSONLocatorPayload):
-    model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+    model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
     # version of the locator
     v: Literal[1]
@@ -350,7 +350,7 @@ class _MSTeamsCardCodec(IMCardEventDecoder):
         aad_object_id: UUID = Field(alias="aadObjectId", strict=False)
 
     class _ButtonMetadata(BaseModel):
-        model_config = ConfigDict(extra="forbid", frozen=True, strict=True)
+        model_config = ConfigDict(extra="ignore", frozen=True, strict=True)
 
         version: Literal[1]
         action_id: str = Field(min_length=1)
