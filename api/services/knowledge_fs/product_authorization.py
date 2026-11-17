@@ -74,7 +74,7 @@ class DifyKnowledgeFSProductRBACPort:
     def permission_keys_by_control_space(
         self,
         *,
-        session: Session,
+        session: Session | None,
         tenant_id: str,
         account_id: str,
         control_space_ids: Sequence[str],

@@ -67,9 +67,10 @@ class AgentWorkspaceRepository:
         tenant_id: str,
         binding_id: str,
         expected_owner_scope: WorkspaceOwnerScope,
+        for_update: bool = False,
     ) -> AgentWorkspaceBinding | None:
-        """Return the active binding in the exact owner scope, or None if unavailable."""
-        return self._session.scalar(
+        """Return the active owner-scoped binding, optionally locking it and its workspace for mutation."""
+        stmt = (
             select(AgentWorkspaceBinding)
             .join(
                 AgentWorkspace,
@@ -79,6 +80,7 @@ class AgentWorkspaceRepository:
             .where(
                 AgentWorkspaceBinding.id == binding_id,
                 AgentWorkspaceBinding.tenant_id == tenant_id,
+                AgentWorkspaceBinding.app_id == expected_owner_scope.app_id,
                 AgentWorkspaceBinding.status == AgentWorkingResourceStatus.ACTIVE,
                 AgentWorkspace.tenant_id == expected_owner_scope.tenant_id,
                 AgentWorkspace.app_id == expected_owner_scope.app_id,
@@ -88,6 +90,9 @@ class AgentWorkspaceRepository:
                 AgentWorkspace.status == AgentWorkingResourceStatus.ACTIVE,
             )
         )
+        if for_update:
+            stmt = stmt.with_for_update().execution_options(populate_existing=True)
+        return self._session.scalar(stmt)
 
     def retire_binding(self, *, tenant_id: str, binding_id: str) -> str | None:
         """Retire the active tenant binding and its workspace if no active siblings remain."""
