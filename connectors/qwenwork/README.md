@@ -34,5 +34,6 @@ If your organisation turns off "允许自行添加连接器", members cannot do 
 - It cannot create, change or publish apps.
 - File upload is not available over MCP. Pass a file to an app as a URL in its inputs.
 - A waiting call takes up to 45 seconds (default 25).
+- A bad token gets a 401 from Dify.
+
 A workspace token can list and run apps. It cannot answer a human-input pause, and it cannot reach plugins, model providers or tool credentials.
-A bad token gets a 401 from Dify.
