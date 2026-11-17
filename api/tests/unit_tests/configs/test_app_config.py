@@ -11,7 +11,7 @@ from yarl import URL
 
 from configs.app_config import DifyConfig
 from configs.deploy import IMEventTransportMode
-from configs.feature import OpsTraceConfig
+from configs.feature import EvaluationConfig, OpsTraceConfig
 from enums import DeploymentEdition
 
 
@@ -50,6 +50,24 @@ def test_im_event_transport_mode_defaults_to_webhook() -> None:
 def test_im_event_transport_mode_rejects_invalid_values() -> None:
     with pytest.raises(ValidationError, match="HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"):
         _make_config(HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE="SOCKET")
+
+
+def test_evaluation_config_rejects_heartbeat_interval_not_shorter_than_lease() -> None:
+    with pytest.raises(ValidationError, match="heartbeat interval must be shorter than the lease timeout"):
+        EvaluationConfig(
+            EVALUATION_RUN_HEARTBEAT_INTERVAL=60,
+            EVALUATION_RUN_LEASE_TIMEOUT=60,
+        )
+
+
+def test_evaluation_config_accepts_heartbeat_interval_shorter_than_lease() -> None:
+    config = EvaluationConfig(
+        EVALUATION_RUN_HEARTBEAT_INTERVAL=30,
+        EVALUATION_RUN_LEASE_TIMEOUT=180,
+    )
+
+    assert config.EVALUATION_RUN_MAX_RETRIES == 3
+    assert config.EVALUATION_RUN_RETRY_DELAY == 30
 
 
 class _IsolatedDifyConfig(DifyConfig):
@@ -436,3 +454,47 @@ def test_celery_broker_url_with_special_chars_password(
     assert redis_config["userid"] == expected_username  # kombu uses 'userid' not 'username'
     assert redis_config["password"] == expected_password
     assert redis_config["virtual_host"] == expected_db  # kombu uses 'virtual_host' not 'db'
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_account_passport_default_depends_on_edition_only_when_unset(edition: DeploymentEdition) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is (edition == DeploymentEdition.CLOUD)
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" not in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [None, True, False])
+def test_anonymous_end_user_auth_edition_defaults_and_overrides(
+    edition: DeploymentEdition, enabled: bool | None
+) -> None:
+    values = {} if enabled is None else {"END_USER_AUTH_ALLOW_ANONYMOUS": enabled}
+    config = _make_config(DEPLOYMENT_EDITION=edition, **values)
+    assert config.END_USER_AUTH_ALLOW_ANONYMOUS is (
+        edition == DeploymentEdition.COMMUNITY if enabled is None else enabled
+    )
+    assert ("END_USER_AUTH_ALLOW_ANONYMOUS" in config.model_fields_set) is (enabled is not None)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_explicit_account_passport_setting_overrides_every_edition(edition: DeploymentEdition, enabled: bool) -> None:
+    config = _make_config(DEPLOYMENT_EDITION=edition, WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled)
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is enabled
+    assert "WEBAPP_ACCOUNT_PASSPORT_ENABLED" in config.model_fields_set
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("value", [None, "true", "false"])
+def test_account_passport_environment_setting_overrides_edition(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    value: str | None,
+) -> None:
+    monkeypatch.setenv("DEPLOYMENT_EDITION", edition.value)
+    monkeypatch.delenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", raising=False)
+    if value is not None:
+        monkeypatch.setenv("WEBAPP_ACCOUNT_PASSPORT_ENABLED", value)
+    config = DifyConfig(_env_file=None)
+    expected = edition == DeploymentEdition.CLOUD if value is None else value == "true"
+    assert config.WEBAPP_ACCOUNT_PASSPORT_ENABLED is expected

@@ -10,10 +10,11 @@ from services.entities.account_entities import AccountSnapshot
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
     WorkspaceOwnerNotFoundError,
     WorkspacesLimitExceededError,
 )
-from services.workspace.contracts import CreatedWorkspace, WorkspaceCreation, WorkspaceMembership
+from services.workspace.contracts import CreatedWorkspace, WorkspaceActivation, WorkspaceCreation, WorkspaceMembership
 
 
 class WorkspaceOwnerQuery(Protocol):
@@ -37,6 +38,8 @@ class WorkspaceMembershipQuery(Protocol):
 
 
 class WorkspaceProvisioningStore(Protocol):
+    def get_activation(self, account_id: str) -> WorkspaceActivation: ...
+
     def provision(
         self,
         prepare: Callable[[], WorkspaceCreation],
@@ -88,6 +91,31 @@ class WorkspaceProvisioningService:
         self._policies = policies
         self._memberships = memberships
         self._members = members
+
+    def activate(self, account_id: str, *, name: str) -> WorkspaceActivation:
+        """Create a workspace only if the admitted Account has no usable membership.
+
+        The store locks the Account through the existence check, preparation and
+        commit. Retries reuse membership and preserve the first creation time.
+        Creation policy failures leave the Account and workspace rows unchanged.
+        """
+
+        def prepare() -> WorkspaceCreation:
+            if not self._policies.is_workspace_creation_allowed():
+                raise WorkSpaceNotAllowedCreateError()
+            if not self._policies.has_workspace_capacity():
+                raise WorkspacesLimitExceededError()
+            creation = self._effects.prepare(name)
+            self._effects.bind_owner(creation.id, account_id)
+            return creation
+
+        workspace = self._provisioning.provision(prepare, owner_id=account_id, only_if_no_active_workspace=True)
+        if workspace is not None:
+            self._effects.created(workspace, owner_id=account_id)
+        activation = self._provisioning.get_activation(account_id)
+        if activation.workspace_id is None:
+            raise WorkspaceNotFoundError()
+        return activation
 
     def create(self, *, name: str, owner_email: str | None = None) -> CreatedWorkspace:
         owner_id = None

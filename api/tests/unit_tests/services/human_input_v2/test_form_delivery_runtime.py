@@ -1526,6 +1526,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         WorkflowPauseStreamResponse,
     )
     from core.db.session_factory import session_factory
+    from core.workflow.human_input_policy import HumanInputSurface
     from core.workflow.nodes.human_input.entities import FormDefinition
     from core.workflow.nodes.human_input_v2.presentation import build_human_input_v2_pause_reason
     from graphon.entities import WorkflowStartReason
@@ -1582,6 +1583,7 @@ def test_pause_persistence_and_reconnect_preserve_v2_form_and_initiator_only_tok
         pause_entity=pause,
         resumption_context=None,
         session_maker=context.sessions,
+        human_input_surface=HumanInputSurface.CONSOLE,
     )
     required = next(event["data"] for event in events if event["event"] == "human_input_required")
     paused = next(event["data"] for event in events if event["event"] == "workflow_paused")
@@ -3303,6 +3305,8 @@ def web_app_approval(
     from configs import dify_config
     from controllers.web import web_ns
     from core.db.session_factory import session_factory
+    from extensions.ext_application_services import build_application_services
+    from extensions.ext_redis import redis_client
     from libs.external_api import ExternalApi
     from libs.passport import PassportService
     from models.model import App, AppMode, CustomizeTokenStrategy, Site
@@ -3386,11 +3390,19 @@ def web_app_approval(
         run.status = WorkflowExecutionStatus.PAUSED
         session.add(WorkflowPause(workflow_id=run.workflow_id, workflow_run_id=_RUN, state_object_key="web-checkpoint"))
     monkeypatch.setattr(session_factory, "create_session", context.sessions)
-    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: False))
     monkeypatch.setattr(dify_config, "SECRET_KEY", "web-approval-test-signing-key-at-least-32-bytes")
     app = Flask(__name__)
+    app.extensions["application_services"] = build_application_services(
+        database_client=context.sessions,
+        deployment_edition=dify_config.DEPLOYMENT_EDITION,
+        initialization_password="",
+        redis=redis_client,
+    )
+    monkeypatch.setattr(SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: False))
     ExternalApi(app).add_namespace(web_ns)
-    passport = PassportService().issue({"app_id": _APP, "app_code": "approval-app", "end_user_id": end_user_id})
+    passport = PassportService().issue(
+        {"sub": "Web API Passport", "app_id": _APP, "app_code": "approval-app", "end_user_id": end_user_id}
+    )
     headers = {"X-App-Code": "approval-app", "X-App-Passport": passport}
     return app.test_client(), created.form.id, token, headers, end_user_id
 
@@ -3574,7 +3586,7 @@ def test_web_app_approval_requires_original_app_and_recipient(
                 recipient.subject_type = RecipientSubjectType.CONTACT
                 recipient.subject_value = _CONTACT
     headers["X-App-Passport"] = PassportService().issue(
-        {"app_id": _APP, "app_code": "approval-app", "end_user_id": end_user_id}
+        {"sub": "Web API Passport", "app_id": _APP, "app_code": "approval-app", "end_user_id": end_user_id}
     )
     enqueue_calls: list[dict[str, object]] = []
 

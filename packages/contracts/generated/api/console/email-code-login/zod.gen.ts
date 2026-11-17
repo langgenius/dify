@@ -3,15 +3,6 @@
 import * as z from 'zod'
 
 /**
- * EmailCodeSendPayload
- */
-export const zEmailCodeSendPayload = z.object({
-  email: z.string(),
-  language: z.string().nullish(),
-  turnstile_token: z.string().max(2048).nullish(),
-})
-
-/**
  * SimpleResultDataResponse
  */
 export const zSimpleResultDataResponse = z.object({
@@ -132,18 +123,6 @@ export const zTurnstileServiceUnavailableError = zErrorResponse.and(
 )
 
 /**
- * EmailCodeLoginPayload
- */
-export const zEmailCodeLoginPayload = z.object({
-  code: z.string(),
-  email: z.string(),
-  language: z.string().nullish(),
-  timezone: z.string().nullish(),
-  token: z.uuid(),
-  turnstile_token: z.string().max(2048).nullish(),
-})
-
-/**
  * SimpleResultResponse
  */
 export const zSimpleResultResponse = z.object({
@@ -233,6 +212,34 @@ export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
     status: z.literal(400),
   }),
 )
+
+/**
+ * LoginMode
+ */
+export const zLoginMode = z.enum(['console', 'end_user'])
+
+/**
+ * EmailCodeSendPayload
+ */
+export const zEmailCodeSendPayload = z.object({
+  email: z.string(),
+  language: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
+  turnstile_token: z.string().max(2048).nullish(),
+})
+
+/**
+ * EmailCodeLoginPayload
+ */
+export const zEmailCodeLoginPayload = z.object({
+  code: z.string(),
+  email: z.string(),
+  language: z.string().nullish(),
+  mode: zLoginMode.optional().default('console'),
+  timezone: z.string().nullish(),
+  token: z.uuid(),
+  turnstile_token: z.string().max(2048).nullish(),
+})
 
 export const zPostEmailCodeLoginBody = zEmailCodeSendPayload
 

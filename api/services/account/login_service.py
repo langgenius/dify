@@ -1,4 +1,4 @@
-"""Framework-neutral application service for Console authentication use cases."""
+"""Account authentication with optional Console workspace admission."""
 
 from collections.abc import Callable, Sequence
 from datetime import datetime
@@ -7,7 +7,7 @@ from typing import Never, Protocol
 from constants.languages import get_valid_language, language_timezone_mapping
 from services import account_errors
 from services.account_ports import AccountPasswordHasher
-from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
 from services.entities.account_login_entities import (
     AccountSessionPreparation,
     EmailCodeChallengeStatus,
@@ -15,6 +15,7 @@ from services.entities.account_login_entities import (
     EmailCodeSendCommand,
     LoginAccountSnapshot,
     LoginInvitation,
+    LoginMode,
     PasswordLoginCommand,
     PasswordLoginCompletion,
     PasswordLoginResult,
@@ -73,7 +74,7 @@ class HumanVerificationGateway(Protocol):
 class AccountSessionGateway(Protocol):
     def issue(self, account_id: str) -> AccountSessionTokens: ...
 
-    def revoke(self, account_id: str) -> None: ...
+    def revoke(self, refresh_token: str) -> None: ...
 
     def resolve_refresh_token(self, refresh_token: str) -> str | None: ...
 
@@ -81,7 +82,7 @@ class AccountSessionGateway(Protocol):
 
 
 class AccountRefreshPreparationGateway(Protocol):
-    def prepare(self, account_id: str) -> RefreshAccountStatus: ...
+    def prepare(self, account_id: str, *, mode: LoginMode = LoginMode.CONSOLE) -> RefreshAccountStatus: ...
 
 
 class AccountProvisioningGateway(Protocol):
@@ -94,6 +95,21 @@ class AccountProvisioningGateway(Protocol):
         timezone: str,
         ip_address: str,
     ) -> str: ...
+
+
+class AccountOnlyRegistrationGateway(Protocol):
+    def create_account(
+        self,
+        *,
+        email: str,
+        name: str,
+        interface_language: str,
+        timezone: str,
+        ip_address: str,
+        check_normalized_email: bool,
+        status: str,
+        initialized: bool,
+    ) -> AccountSnapshot: ...
 
 
 class WorkspaceProvisioningGateway(Protocol):
@@ -149,6 +165,7 @@ class ConsoleAuthenticationService:
         sessions: AccountSessionGateway,
         refresh_preparation: AccountRefreshPreparationGateway,
         account_provisioning: AccountProvisioningGateway,
+        account_registration: AccountOnlyRegistrationGateway,
         workspace_provisioning: WorkspaceProvisioningGateway,
         email_codes: EmailCodeGateway,
         reset_password_emails: ResetPasswordEmailGateway,
@@ -156,6 +173,7 @@ class ConsoleAuthenticationService:
         now: Callable[[], datetime],
         turnstile_enabled: bool,
         turnstile_verify_required: bool,
+        defer_workspace_creation: bool = False,
     ) -> None:
         self._accounts = accounts
         self._workspaces = workspaces
@@ -167,6 +185,7 @@ class ConsoleAuthenticationService:
         self._sessions = sessions
         self._refresh_preparation = refresh_preparation
         self._account_provisioning = account_provisioning
+        self._account_registration = account_registration
         self._workspace_provisioning = workspace_provisioning
         self._email_codes = email_codes
         self._reset_password_emails = reset_password_emails
@@ -174,8 +193,11 @@ class ConsoleAuthenticationService:
         self._now = now
         self._turnstile_enabled = turnstile_enabled
         self._turnstile_verify_required = turnstile_verify_required
+        self._defer_workspace_creation = defer_workspace_creation
 
     def login_with_password(self, command: PasswordLoginCommand) -> PasswordLoginResult:
+        if command.mode == LoginMode.END_USER and command.invite_token is not None:
+            raise ValueError("End User login cannot accept a workspace invitation.")
         normalized_email = command.email.lower()
         self._ensure_email_eligible(normalized_email, command.ip_address)
         if self._security.is_login_limited(normalized_email):
@@ -201,13 +223,19 @@ class ConsoleAuthenticationService:
         if account is None:
             self._invalid_credentials(normalized_email, command.ip_address)
 
-        if not self._workspaces.has_active_for_account(account.id):
-            if invitation_token is not None:
-                self._invitations.ensure_membership(account_id=account.id, email=command.email, token=invitation_token)
-            if not self._workspaces.has_active_for_account(account.id):
-                if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
-                    raise account_errors.LoginWorkspaceLimitError
-                return PasswordLoginResult(tokens=None, workspace_found=False)
+        workspace_found = None
+        if command.mode == LoginMode.CONSOLE:
+            workspace_found = self._workspaces.has_active_for_account(account.id)
+            if not workspace_found:
+                if invitation_token is not None:
+                    self._invitations.ensure_membership(
+                        account_id=account.id, email=command.email, token=invitation_token
+                    )
+                workspace_found = self._workspaces.has_active_for_account(account.id)
+                if not workspace_found and not self._defer_workspace_creation:
+                    if self._policies.is_workspace_creation_allowed() and not self._policies.has_workspace_capacity():
+                        raise account_errors.LoginWorkspaceLimitError
+                    return PasswordLoginResult(tokens=None, workspace_found=False)
 
         tokens = self._issue_session(
             account_id=account.id,
@@ -215,10 +243,10 @@ class ConsoleAuthenticationService:
             activate_pending_account=False,
         )
         self._security.reset_login_failures(normalized_email)
-        return PasswordLoginResult(tokens=tokens, workspace_found=True)
+        return PasswordLoginResult(tokens=tokens, workspace_found=workspace_found)
 
-    def logout(self, account_id: str) -> None:
-        self._sessions.revoke(account_id)
+    def logout(self, *, refresh_token: str) -> None:
+        self._sessions.revoke(refresh_token)
 
     def send_reset_password_email(self, *, email: str, language: str | None, ip_address: str) -> str:
         normalized_email = email.lower()
@@ -278,7 +306,11 @@ class ConsoleAuthenticationService:
         account = self._preferred_account(command.email)
         self._ensure_account_not_banned(account, normalized_email, command.ip_address)
         if account is not None:
-            if not self._workspaces.has_active_for_account(account.id):
+            if (
+                command.mode == LoginMode.CONSOLE
+                and not self._defer_workspace_creation
+                and not self._workspaces.has_active_for_account(account.id)
+            ):
                 if not self._policies.has_workspace_capacity():
                     raise account_errors.LoginWorkspaceLimitError
                 if not self._policies.is_workspace_creation_allowed():
@@ -290,18 +322,35 @@ class ConsoleAuthenticationService:
                 raise account_errors.AccountNotFoundError
             if not self._policies.has_account_capacity():
                 raise account_errors.LoginSeatLimitError
-            if not self._policies.is_workspace_creation_allowed():
-                raise account_errors.LoginWorkspaceCreationNotAllowedError
-            if not self._policies.has_workspace_capacity():
-                raise account_errors.LoginWorkspaceLimitError
             interface_language = get_valid_language(command.language)
-            account_id = self._account_provisioning.create_with_owner_workspace(
-                email=normalized_email,
-                name=normalized_email,
-                interface_language=interface_language,
-                timezone=command.timezone or language_timezone_mapping.get(interface_language, "UTC"),
-                ip_address=command.ip_address,
-            )
+            timezone = command.timezone or language_timezone_mapping.get(interface_language, "UTC")
+            if command.mode == LoginMode.END_USER or self._defer_workspace_creation:
+                try:
+                    created = self._account_registration.create_account(
+                        email=normalized_email,
+                        name=normalized_email,
+                        interface_language=interface_language,
+                        timezone=timezone,
+                        ip_address=command.ip_address,
+                        check_normalized_email=True,
+                        status="uninitialized",
+                        initialized=False,
+                    )
+                except account_errors.SeatsLimitExceededError as exc:
+                    raise account_errors.LoginSeatLimitError from exc
+                account_id = created.id
+            else:
+                if not self._policies.is_workspace_creation_allowed():
+                    raise account_errors.LoginWorkspaceCreationNotAllowedError
+                if not self._policies.has_workspace_capacity():
+                    raise account_errors.LoginWorkspaceLimitError
+                account_id = self._account_provisioning.create_with_owner_workspace(
+                    email=normalized_email,
+                    name=normalized_email,
+                    interface_language=interface_language,
+                    timezone=timezone,
+                    ip_address=command.ip_address,
+                )
 
         tokens = self._issue_session(
             account_id=account_id,
@@ -311,11 +360,11 @@ class ConsoleAuthenticationService:
         self._security.reset_login_failures(normalized_email)
         return tokens
 
-    def refresh(self, refresh_token: str) -> AccountSessionTokens:
+    def refresh(self, refresh_token: str, *, mode: LoginMode = LoginMode.CONSOLE) -> AccountSessionTokens:
         account_id = self._sessions.resolve_refresh_token(refresh_token)
         if account_id is None:
             raise account_errors.InvalidRefreshTokenError("Invalid refresh token")
-        refresh_status = self._refresh_preparation.prepare(account_id)
+        refresh_status = self._refresh_preparation.prepare(account_id, mode=mode)
         if refresh_status == RefreshAccountStatus.BANNED:
             raise account_errors.InvalidRefreshTokenError("Account is banned.")
         if refresh_status == RefreshAccountStatus.NOT_FOUND:

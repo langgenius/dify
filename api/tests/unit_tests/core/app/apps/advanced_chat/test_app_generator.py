@@ -5,7 +5,9 @@ import logging
 import time
 from collections.abc import Mapping
 from contextlib import contextmanager
+from datetime import timedelta
 from decimal import Decimal
+from functools import partial
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -18,7 +20,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import Engine as _app_generator_Engine
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.engine import Engine as _advanced_chat_app_generator_Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.advanced_chat.app_generator as app_generator_module
 import core.workflow.nodes.human_input.entities  # noqa: F401
@@ -31,6 +33,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_generator import noop_restore_file_access
 from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import (
@@ -43,7 +46,10 @@ from core.app.file_access import DatabaseFileAccessController
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import RecipientId, TenantId
 from core.workflow import node_factory as node_factory_module
+from core.workflow.file_reference import build_file_reference
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine as _pause_resume_Engine
@@ -59,6 +65,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult, PauseRequestedEvent
 from graphon.nodes.base.entities import OutputVariableEntity
@@ -67,6 +74,7 @@ from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.input_entities import VariableEntity
+from graphon.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
 from models import Account as _advanced_chat_app_generator_Account
 from models import Workflow as _advanced_chat_app_generator_Workflow
@@ -77,7 +85,10 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow as _app_generator_Workflow
 from models.workflow import Workflow as _pause_resume_Workflow
 from models.workflow import WorkflowType
+from repositories.human_input_v2.form_repository import Form, FormCreateParams
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.errors.conversation import ConversationNotExistsError
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
@@ -581,7 +592,13 @@ class TestAdvancedChatAppGeneratorInternals:
         workflow = _app_generator_make_workflow(workflow_id="wf-1", features={"feature": True})
         conversation = _make_conversation(conversation_id="conv-1")
         message = _make_message(message_id="msg-1", conversation_id=conversation.id)
-        sqlite_session.add_all([app, workflow, conversation, message])
+        app.enable_site = True
+        workflow.version = "published"
+        app.workflow_id = workflow.id
+        app_config.workflow_id = workflow.id
+        user = _make_end_user(end_user_id="user")
+        conversation.from_end_user_id = user.id
+        sqlite_session.add_all([app, workflow, user, conversation, message])
         sqlite_session.commit()
         commit_count = 0
 
@@ -644,7 +661,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         response = generator._generate(
             workflow=workflow,
-            user=_app_generator_make_account(account_id="user"),
+            user=user,
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
@@ -671,9 +688,15 @@ class TestAdvancedChatAppGeneratorInternals:
         assert isinstance(captured["conversation"], ConversationSnapshot)
         assert isinstance(captured["message"], MessageSnapshot)
 
+    @pytest.mark.parametrize("resuming", [False, True], ids=["file-default", "submitted-hitl-file"])
     def test_generate_internal_flow_with_existing_records_skips_init(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: _app_generator_Engine,
+        resuming: bool,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 0
         app_config = self._build_app_config()
@@ -688,6 +711,40 @@ class TestAdvancedChatAppGeneratorInternals:
                 }
             )
         ]
+        if resuming:
+            app_config.variables = []
+            now = naive_utc_now()
+            repository = SQLAlchemyFormRepository(sqlite_session, TenantId(app_config.tenant_id), app_config.app_id)
+            form = repository.create_form(
+                FormCreateParams(
+                    workflow_run_id="run-id",
+                    node_execution_id="approval-execution",
+                    resolved_form=ResolvedForm(title="Approval", parts=(), actions=(), legacy_form_content=""),
+                    expiration_time=now + timedelta(hours=1),
+                    global_timeout_deadline=now + timedelta(days=1),
+                )
+            )
+            accepted = repository.submit_form(
+                form.id,
+                submitted_by_recipient_id=RecipientId("recipient"),
+                submitted_by_delivery_id="delivery",
+                selected_action_id="approve",
+                raw_submission_inputs={},
+                normalized_submission_data={
+                    "file": FileSegment(
+                        value=File(
+                            file_type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id=default_file.id),
+                            filename=default_file.name,
+                            extension=".txt",
+                            mime_type=default_file.mime_type,
+                            size=default_file.size,
+                        )
+                    )
+                },
+            )
+            assert isinstance(accepted, Form)
         file_runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
         monkeypatch.setattr(file_runtime, "_secret_key", lambda: b"test-key")
 
@@ -709,7 +766,13 @@ class TestAdvancedChatAppGeneratorInternals:
         workflow = _app_generator_make_workflow(workflow_id="wf-2")
         conversation = _make_conversation(conversation_id="conv-2")
         message = _make_message(message_id="msg-2", conversation_id=conversation.id)
-        sqlite_session.add_all([app, workflow, conversation, message, default_file])
+        app.enable_site = True
+        workflow.version = "published"
+        app.workflow_id = workflow.id
+        app_config.workflow_id = workflow.id
+        user = _make_end_user(end_user_id="user")
+        conversation.from_end_user_id = user.id
+        sqlite_session.add_all([app, workflow, user, conversation, message, default_file])
         sqlite_session.commit()
         commit_count = 0
 
@@ -771,7 +834,7 @@ class TestAdvancedChatAppGeneratorInternals:
 
         response = generator._generate(
             workflow=workflow,
-            user=_make_end_user(end_user_id="user"),
+            user=user,
             invoke_from=InvokeFrom.WEB_APP,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
@@ -780,6 +843,16 @@ class TestAdvancedChatAppGeneratorInternals:
             conversation=conversation,
             message=message,
             stream=False,
+            graph_runtime_state=_build_runtime_state("run-id") if resuming else None,
+            restore_file_access=(
+                partial(
+                    HumanInputSubmissionService(session_factory=sqlite_session_factory).grant_submitted_file_access,
+                    app_id=app_config.app_id,
+                    workflow_run_id="run-id",
+                )
+                if resuming
+                else noop_restore_file_access
+            ),
         )
 
         assert response == {"raw": True}
@@ -1585,6 +1658,17 @@ def _account() -> _advanced_chat_app_generator_Account:
 
 
 def test_init_generate_records_sets_conversation_metadata(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 
@@ -1602,6 +1686,17 @@ def test_init_generate_records_sets_conversation_metadata(sqlite_session: Sessio
 
 
 def test_init_generate_records_marks_existing_conversation(sqlite_session: Session):
+    app = _app()
+    app.enable_site = True
+    sqlite_session.add_all(
+        [
+            app,
+            EndUser(
+                id="user-id", tenant_id="tenant-id", app_id="app-id", type=EndUserType.BROWSER, session_id="session-id"
+            ),
+        ]
+    )
+    sqlite_session.commit()
     app_config = _make_app_config()
     entity = _make_generate_entity(app_config)
 

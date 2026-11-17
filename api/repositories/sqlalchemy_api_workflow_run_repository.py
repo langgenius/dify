@@ -34,6 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
@@ -1404,7 +1405,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         )
 
     def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
-        return load_form_tokens_by_form_id(form_ids, session=session)
+        """Read Console tokens for an admitted run's form IDs without changing recipients."""
+        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.CONSOLE)
 
     def stop_paused_workflow_task(
         self,
@@ -1502,6 +1504,37 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             except Exception:
                 logger.exception("Failed to delete stopped workflow state, workflow_run_id=%s", workflow_run.id)
         return workflow_run
+
+    @override
+    def fail_workflow_pause(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        workflow_run_id: str,
+        pause_id: str,
+        error: str,
+    ) -> WorkflowRun | None:
+        with self._session_maker(expire_on_commit=False) as session, session.begin():
+            workflow_run = session.scalar(
+                select(WorkflowRun)
+                .options(selectinload(WorkflowRun.pause))
+                .where(
+                    WorkflowRun.tenant_id == tenant_id,
+                    WorkflowRun.app_id == app_id,
+                    WorkflowRun.id == workflow_run_id,
+                )
+                .with_for_update()
+            )
+            if workflow_run is None or workflow_run.status != WorkflowExecutionStatus.PAUSED:
+                return None
+            pause = workflow_run.pause
+            if pause is None or pause.id != pause_id or pause.resumed_at is not None:
+                return None
+            workflow_run.status = WorkflowExecutionStatus.FAILED
+            workflow_run.error = error
+            workflow_run.finished_at = naive_utc_now()
+            return workflow_run
 
     @override
     def resume_workflow_pause(

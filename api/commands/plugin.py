@@ -7,14 +7,16 @@ import click
 from pydantic import TypeAdapter
 from sqlalchemy import delete, func, select
 from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import Session
 
 from configs import dify_config
+from constants.end_user_connections import OAuthClientSource
 from core.db.session_factory import session_factory
 from core.helper import encrypter
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
 from core.plugin.plugin_service import PluginService
-from core.tools.utils.system_encryption import encrypt_system_params
+from core.tools.utils.system_encryption import decrypt_system_params, encrypt_system_params
 from extensions.ext_database import db
 from models import Tenant
 from models.account import TenantPluginAutoUpgradeCategory, TenantPluginAutoUpgradeStrategy
@@ -22,6 +24,7 @@ from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
+from repositories.end_user_connection_repository import EndUserConnectionRepository
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_auto_upgrade_service import PluginAutoUpgradeService
 from services.plugin.plugin_migration import PluginMigration
@@ -41,39 +44,35 @@ def setup_system_tool_oauth_client(provider: str, client_params: str):
     plugin_id = provider_id.plugin_id
 
     try:
-        # json validate
-        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
         client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
-        click.echo(click.style("Client params validated successfully.", fg="green"))
-
-        click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
-        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
         oauth_client_params = encrypt_system_params(client_params_dict)
-        click.echo(click.style("Client params encrypted successfully.", fg="green"))
-    except Exception as e:
-        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+    except Exception:
+        click.echo(click.style("Invalid OAuth Client parameters.", fg="red"), err=True)
         return
 
-    deleted_count = cast(
-        CursorResult,
-        db.session.execute(
-            delete(ToolOAuthSystemClient).where(
-                ToolOAuthSystemClient.provider == provider_name,
-                ToolOAuthSystemClient.plugin_id == plugin_id,
+    with Session(db.engine) as session, session.begin():
+        client = session.scalar(
+            select(ToolOAuthSystemClient)
+            .where(ToolOAuthSystemClient.provider == provider_name, ToolOAuthSystemClient.plugin_id == plugin_id)
+            .with_for_update()
+        )
+        if client is None:
+            client = ToolOAuthSystemClient(
+                provider=provider_name, plugin_id=plugin_id, encrypted_oauth_params=oauth_client_params
             )
-        ),
-    ).rowcount
-    if deleted_count > 0:
-        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
-
-    oauth_client = ToolOAuthSystemClient(
-        provider=provider_name,
-        plugin_id=plugin_id,
-        encrypted_oauth_params=oauth_client_params,
-    )
-    db.session.add(oauth_client)
-    db.session.commit()
-    click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+            session.add(client)
+        elif decrypt_system_params(client.encrypted_oauth_params) != client_params_dict:
+            client.encrypted_oauth_params = oauth_client_params
+            EndUserConnectionRepository.disconnect_oauth_client_connections(
+                session,
+                tenant_id=None,
+                provider=str(provider_id),
+                source=OAuthClientSource.PLATFORM,
+                configuration_id=client.id,
+            )
+        session.flush()
+        client_id = client.id
+    click.echo(click.style(f"OAuth Client parameters saved. id: {client_id}", fg="green"))
 
 
 @click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")

@@ -31,6 +31,13 @@ class StepByStepTourStateRepository(Protocol):
 
 
 class StepByStepTourService:
+    """Start Cloud Builder guidance from first workspace creation.
+
+    Callers already have workspace admission. Invited members retain their
+    account-initialization eligibility; registration alone is not a Cloud origin.
+    Existing tour state remains owned by its repository and is never reset here.
+    """
+
     def __init__(
         self,
         *,
@@ -38,11 +45,13 @@ class StepByStepTourService:
         states: StepByStepTourStateRepository,
         enabled: bool,
         rollout_started_at: datetime | None,
+        require_workspace_creation: bool = False,
     ) -> None:
         self._accounts = accounts
         self._states = states
         self._enabled = enabled
         self._rollout_started_at = rollout_started_at
+        self._require_workspace_creation = require_workspace_creation
 
     def get_state(self, context: RequestContext) -> StepByStepTourResult:
         workspace_id = context.active_workspace_id
@@ -50,7 +59,12 @@ class StepByStepTourService:
         if account is None:
             raise RuntimeError("Console account admission resolved an unknown account")
 
-        if not self._is_eligible(account.initialized_at or account.created_at):
+        started_at = (
+            account.first_workspace_created_at or account.initialized_at
+            if self._require_workspace_creation
+            else account.initialized_at or account.created_at
+        )
+        if started_at is None or not self._is_eligible(started_at):
             return self._to_result(self._states.get(context.account_id))
 
         return self._to_result(self._states.initialize(context.account_id, workspace_id))

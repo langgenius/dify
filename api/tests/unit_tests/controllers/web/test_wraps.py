@@ -1,5 +1,7 @@
+from collections.abc import Generator
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from types import SimpleNamespace
 from typing import Never
 from unittest import mock
 from unittest.mock import MagicMock
@@ -14,6 +16,7 @@ from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound, Unauthorized
 
+from constants import COOKIE_NAME_ACCESS_TOKEN, COOKIE_NAME_WEBAPP_ACCESS_TOKEN
 from controllers.web import app as app_controller
 from controllers.web import bp, login, passport, site, wraps
 from core.logging.context import clear_request_context, get_identity_context
@@ -39,6 +42,7 @@ from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
 from tests.helpers.unit.config_override import apply_config_overrides
+from tests.unit_tests.web_identity_fakes import web_identities
 
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
@@ -135,9 +139,16 @@ def _harness(
     mocker.patch.object(
         PassportService,
         "verify",
-        return_value={"app_id": app.id, "app_code": "fixture-code", "end_user_id": old_user.id},
+        return_value={
+            "sub": "Web API Passport",
+            "app_id": app.id,
+            "app_code": "fixture-code",
+            "end_user_id": old_user.id,
+        },
     )
-    app_sessions = PassportWebAppSessionGateway(sessions=access_repo, app_access=access)
+    app_sessions = PassportWebAppSessionGateway(
+        sessions=access_repo, app_access=access, identities=base_services.web_identity
+    )
     session_verify = mocker.spy(app_sessions, "verify")
     authentication = base_services.web_authentication
     monkeypatch.setattr(authentication, "_app_access", access)
@@ -155,8 +166,16 @@ def _harness(
             tokens=tokens,
             now=lambda: datetime.now(UTC),
             access_token_expire_minutes=60,
+            identities=base_services.web_identity,
+            account_passports_enabled=False,
         ),
-        app_definitions=AppDefinitionQueryService(definitions=definitions, builtin_icon_url_prefix=""),
+        app_definitions=AppDefinitionQueryService(
+            definitions=definitions,
+            plugin_readme=base_services.app_definitions._plugin_readme,
+            plugin_asset=base_services.app_definitions._plugin_asset,
+            builtin_icon_url_prefix="",
+            connection_revisions=base_services.app_definitions._connection_revisions,
+        ),
         web_app_runtime=WebAppRuntimeQueryService(
             runtime=definitions,
             file_service=FileService(session_factory=factory),
@@ -286,7 +305,9 @@ class TestPublicAppAdmissionCases:
                 assert response.get_json() == {"accessMode": "public"}
             elif route.startswith("/login"):
                 assert response.get_json() == {"logged_in": True, "app_logged_in": True}
-                h.session_verify.assert_called_once_with(token="old-passport", app_code="fixture-code", user_id=None)
+                h.session_verify.assert_called_once_with(
+                    token="old-passport", app_code="fixture-code", user_id=None, account_id=None
+                )
                 h.login_verify.assert_not_called()
             elif route == "/site":
                 assert response.get_json()["site"]["title"] == "Must not leak"
@@ -374,46 +395,54 @@ class TestPublicAppAdmissionCases:
 class TestWrapsCases:
     @staticmethod
     @pytest.fixture(autouse=True)
-    def _reset_logging_context():
+    def _reset_logging_context() -> Generator[None]:
         clear_request_context()
         yield
         clear_request_context()
 
     @staticmethod
-    def test_validate_jwt_token_sets_logging_identity_before_view() -> None:
+    def test_validate_jwt_token_sets_logging_identity_before_view(app: Flask) -> None:
         from controllers.web import wraps
+        from libs.external_api import ExternalApi
 
         app_model = _wraps_App(id="app-id", tenant_id="tenant-id")
-        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=None)
+        end_user = _wraps_EndUser(id="end-user-id", tenant_id="tenant-id", type=EndUserType.BROWSER)
         clear_request_context()
+        received: list[tuple[_wraps_App, _wraps_EndUser]] = []
 
-        @wraps.validate_jwt_token
-        def protected_view(received_app, received_user):
-            assert get_identity_context() == ("tenant-id", "end-user-id", "end_user")
-            return received_app, received_user
+        class ProtectedApi(wraps.WebApiResource):
+            def get(self, received_app: _wraps_App, received_user: _wraps_EndUser) -> None:
+                assert get_identity_context() == ("tenant-id", "end-user-id", "browser")
+                received.append((received_app, received_user))
 
+        api = ExternalApi(app)
+        api.add_resource(ProtectedApi, "/protected")
         with mock.patch.object(wraps, "decode_jwt_token", return_value=(app_model, end_user)):
-            result = protected_view()
+            response = app.test_client().get("/protected")
 
-        assert result == (app_model, end_user)
+        assert response.status_code == 200
+        assert received == [(app_model, end_user)]
 
     @staticmethod
-    def test_validate_jwt_token_does_not_set_identity_when_authentication_fails() -> None:
+    def test_validate_jwt_token_does_not_set_identity_when_authentication_fails(app: Flask) -> None:
         from controllers.web import wraps
+        from libs.external_api import ExternalApi
 
         clear_request_context()
+        calls: list[str] = []
 
-        @wraps.validate_jwt_token
-        def protected_view(_app, _user):
-            raise AssertionError("view must not be called")
+        class ProtectedApi(wraps.WebApiResource):
+            def get(self, _app: _wraps_App, _user: _wraps_EndUser) -> None:
+                calls.append("view")
 
-        with (
-            mock.patch.object(wraps, "decode_jwt_token", side_effect=Unauthorized()),
-            pytest.raises(Unauthorized),
-        ):
-            protected_view()
+        api = ExternalApi(app)
+        api.add_resource(ProtectedApi, "/protected")
+        with mock.patch.object(wraps, "decode_jwt_token", side_effect=Unauthorized()):
+            response = app.test_client().get("/protected")
 
+        assert response.status_code == 401
         assert get_identity_context() == ("", "", "")
+        assert calls == []
 
     @staticmethod
     def test_decode_jwt_token_uses_shared_session_factory(sqlite_session: Session) -> None:
@@ -424,7 +453,7 @@ class TestWrapsCases:
         tenant_id = str(uuid4())
         app_model = _wraps_App(
             tenant_id=tenant_id,
-            mode=AppMode.CHAT.value,
+            mode=AppMode.CHAT,
             name="test-app",
             enable_site=True,
             enable_api=True,
@@ -454,6 +483,9 @@ class TestWrapsCases:
         sqlite_session.commit()
 
         with (
+            mock.patch.object(
+                wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())
+            ),
             mock.patch.object(wraps, "extract_webapp_passport", return_value="jwt-token"),
             mock.patch.object(wraps, "PassportService") as mock_passport_service,
             mock.patch.object(
@@ -463,6 +495,7 @@ class TestWrapsCases:
             ),
         ):
             mock_passport_service.return_value.verify.return_value = {
+                "sub": "Web API Passport",
                 "app_code": "app-code",
                 "app_id": app_model.id,
                 "end_user_id": end_user.id,
@@ -540,11 +573,15 @@ class TestWrapsCases:
         api.add_resource(ProtectedResource, "/chat-messages")
         app.register_blueprint(bp)
         with (
+            mock.patch.object(
+                wraps, "application_services", return_value=SimpleNamespace(web_identity=web_identities())
+            ),
             mock.patch.object(wraps, "extract_webapp_passport", return_value="fixture-passport"),
             mock.patch.object(wraps, "PassportService") as passport,
             mock.patch.object(wraps.SystemFeatureService, "is_webapp_auth_enabled", return_value=False),
         ):
             passport.return_value.verify.return_value = {
+                "sub": "Web API Passport",
                 "app_code": None if missing == "code" else "fixture-code",
                 "app_id": app_id,
                 "end_user_id": end_user_id,
@@ -575,15 +612,17 @@ class TestWrapsCases:
     @staticmethod
     @pytest.mark.usefixtures("app_query_services")
     @pytest.mark.parametrize("token", [None, "expired-token"])
-    def test_web_auth_rejects_unknown_app_code_with_http_not_found(app, monkeypatch, token):
+    def test_web_auth_rejects_unknown_app_code_with_http_not_found(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, token: str | None
+    ) -> None:
         from controllers.web import wraps
         from libs.external_api import ExternalApi
 
         class ProtectedApi(wraps.WebApiResource):
-            def get(self, _app, _user):
+            def get(self, _app: _wraps_App, _user: _wraps_EndUser) -> None:
                 pytest.fail("An unknown WebApp must not reach the protected resource")
 
-        def reject_token(_self, _token):
+        def reject_token(_self: object, _token: str) -> None:
             raise Unauthorized("Authentication has expired.")
 
         monkeypatch.setattr(wraps.SystemFeatureService, "is_webapp_auth_enabled", staticmethod(lambda: True))
@@ -594,3 +633,30 @@ class TestWrapsCases:
         response = app.test_client().get("/protected", headers={"X-App-Code": "does-not-exist"})
         assert response.status_code == 404
         assert response.get_json()["code"] == "app_not_found"
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_webapp_cookie_never_selects_console_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from flask import request
+
+    from libs.token import extract_webapp_cookie_token
+
+    apply_config_overrides(
+        monkeypatch,
+        DEPLOYMENT_EDITION=edition,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        CONSOLE_WEB_URL="http://localhost",
+        CONSOLE_API_URL="http://localhost",
+    )
+    with Flask(__name__).test_request_context(
+        "/login/status",
+        headers={
+            "Cookie": f"{COOKIE_NAME_ACCESS_TOKEN}=account-login; {COOKIE_NAME_WEBAPP_ACCESS_TOKEN}=web-login",
+        },
+    ):
+        assert extract_webapp_cookie_token(request) == "web-login"

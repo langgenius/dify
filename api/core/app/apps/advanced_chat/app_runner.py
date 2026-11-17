@@ -123,6 +123,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
+                connection_context=self.application_generate_entity.connection_context,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
@@ -206,6 +207,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id, variable_pool=variable_pool, start_at=time.time()
             )
             graph = self._init_graph(
+                connection_context=self.application_generate_entity.connection_context,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,

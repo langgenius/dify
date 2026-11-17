@@ -16,7 +16,7 @@ import type {
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type { RETRIEVE_TYPE } from '@/types/app'
-import type { I18nKeysWithPrefix } from '@/types/i18n'
+import type { I18nKeysWithoutVariables, I18nKeysWithPrefix } from '@/types/i18n'
 
 export type EnvScope = 'secret' | 'plain'
 
@@ -66,7 +66,7 @@ export type AgentKnowledgeRetrievalItem = {
   isMissing?: boolean
   name?: string
   description?: string
-  nameKey?: I18nKeysWithPrefix<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
+  nameKey?: I18nKeysWithoutVariables<'agentV2', 'agentDetail.configure.knowledgeRetrieval.'>
   queryMode?: 'agent' | 'custom'
   customQuery?: string
   datasetRefs?: AgentKnowledgeDatasetConfig[]

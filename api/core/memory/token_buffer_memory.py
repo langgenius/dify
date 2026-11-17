@@ -26,6 +26,7 @@ from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.conversation_access import require_web_message_access
 from repositories.factory import DifyAPIRepositoryFactory
 from services.agent.runtime_config_service import AgentRuntimeConfigService
 
@@ -144,9 +145,22 @@ class TokenBufferMemory:
         self,
         conversation: Conversation,
         model_instance: ModelInstance,
+        *,
+        tenant_id: str | None = None,
+        end_user_id: str | None = None,
     ) -> None:
+        """Keep explicit original Web identity only for migration-fenced history.
+
+        Supply both tenant_id and end_user_id for fenced reads, or omit both to
+        retain the legacy caller-owned session. An incomplete pair raises before
+        constructing memory; conversation ownership never supplies the caller ID.
+        """
+        if (tenant_id is None) != (end_user_id is None):
+            raise ValueError("Fenced history requires both tenant_id and end_user_id.")
         self.conversation = conversation
         self.model_instance = model_instance
+        self._tenant_id = tenant_id
+        self._end_user_id = end_user_id
 
     @staticmethod
     def _file_config(
@@ -338,13 +352,36 @@ class TokenBufferMemory:
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: int | None = None
     ) -> Sequence[PromptMessage]:
-        session = db.session()
-        history = self.load_history(
-            conversation=self.conversation,
-            app_record=self.conversation.app(session=session),
-            session=session,
-            message_limit=message_limit,
-        )
+        """Prepare bounded history, then restore files and count tokens outside its fence.
+
+        An enrolled Web actor must still own the conversation. Otherwise raise
+        before reading history. Unenrolled callers retain their existing session
+        semantics, including visibility of their own uncommitted App changes.
+        """
+        if self._end_user_id is None:
+            session = db.session()
+            history = self.load_history(
+                conversation=self.conversation,
+                app_record=self.conversation.app(session=session),
+                session=session,
+                message_limit=message_limit,
+            )
+        else:
+            assert self._tenant_id is not None
+            with Session(db.engine, expire_on_commit=False) as session:
+                require_web_message_access(
+                    session,
+                    tenant_id=self._tenant_id,
+                    app_id=self.conversation.app_id,
+                    end_user_id=self._end_user_id,
+                    conversation_id=self.conversation.id,
+                )
+                history = self.load_history(
+                    conversation=self.conversation,
+                    app_record=self.conversation.app(session=session),
+                    session=session,
+                    message_limit=message_limit,
+                )
         return history.get_prompt_messages(model_instance=self.model_instance, max_token_limit=max_token_limit)
 
     def get_history_prompt_text(

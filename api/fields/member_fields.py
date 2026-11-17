@@ -34,11 +34,28 @@ class AccountResponse(_AccountAvatarResponseMixin):
     last_login_at: int | None = None
     last_login_ip: str | None = None
     created_at: int | None = None
+    first_workspace_created_at: int | None = Field(
+        default=None,
+        description=(
+            "First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded."
+        ),
+    )
 
-    @field_validator("last_login_at", "created_at", mode="before")
+    @field_validator("last_login_at", "created_at", "first_workspace_created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
         return to_timestamp(value)
+
+
+class AccountProfileResponse(AccountResponse):
+    has_owned_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account owns an existing tenant, including archived tenants. Null means unavailable.",
+    )
+    has_tenant: bool | None = Field(
+        default=None,
+        description="Whether the Account has a tenant membership, including ownership. Null means unavailable.",
+    )
 
 
 class MemberRoleSummaryResponse(ResponseModel):

@@ -212,6 +212,11 @@ Get account avatar url
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /account/password
+**Change admitted Account credentials only while password login is enabled**
+
+Existing passwords require verification. Disabled policy rejects before
+payload validation or credential writes; failures leave credentials unchanged.
+
 #### Request Body
 
 | Required | Schema |
@@ -349,7 +354,7 @@ Get account avatar url
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [AccountResponse](#accountresponse)<br> |
+| 200 | Success | **application/json**: [AccountProfileResponse](#accountprofileresponse)<br> |
 | 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -452,6 +457,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/invite-options
+**Return visible Workflow-callable Agents and their current workflow usage**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -469,6 +476,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [DELETE] /agent/{agent_id}
+**Delete an Agent App and schedule its resource cleanup**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -485,6 +494,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}
+**Return the admitted Agent's detail and its Build conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -500,6 +511,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [PUT] /agent/{agent_id}
+**Update a roster Agent App and return its current detail**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -524,6 +537,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/api-access
+**Return API access for an Agent visible to the admitted account**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -539,6 +554,8 @@ Check if activation token is valid
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /agent/{agent_id}/api-enable
+**Change API access for an Agent and return the committed state**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1248,6 +1265,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/log-sources
+**Return the admitted Agent's available log sources**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1263,6 +1282,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs
+**Return the admitted Agent's conversation logs**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1289,6 +1310,8 @@ Create or update Agent App message feedback
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/logs/{conversation_id}/messages
+**Return the admitted Agent's messages for a conversation**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -1463,6 +1486,8 @@ Read a text/binary preview file in an Agent App conversation sandbox
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /agent/{agent_id}/statistics/summary
+**Return Agent monitoring data using the admitted account's timezone**
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2263,6 +2288,7 @@ Run draft workflow iteration node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2290,6 +2316,7 @@ Run draft workflow loop node for advanced chat
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -2316,7 +2343,7 @@ Run draft workflow for advanced chat application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
-| 400 | Invalid request parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 400 | Invalid request parameters | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -4664,6 +4691,25 @@ Get all published workflows for an application
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /apps/{app_id}/workflows/convert-type
+Convert the active published workflow between standard and evaluation kinds
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| target_type | query |  | Yes | string, <br>**Available values:** "evaluation", "workflow" |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workflow kind converted successfully | **application/json**: [WorkflowKindConvertResponse](#workflowkindconvertresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /apps/{app_id}/workflows/default-workflow-block-configs
 **Get default block config**
 
@@ -4977,6 +5023,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow iteration node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5002,6 +5049,7 @@ Submit human input form preview for workflow
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow loop node run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5196,6 +5244,7 @@ Get last run result for draft workflow node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node run started successfully | **application/json**: [WorkflowRunNodeExecutionResponse](#workflowrunnodeexecutionresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Node not found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
@@ -5277,6 +5326,7 @@ Get variables for a specific node
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Draft workflow run started successfully | **application/json**: [GeneratedAppResponse](#generatedappresponse)<br> |
+| 400 | Bad Request | **application/json**: [TestCredentialsNotReadyError](#testcredentialsnotreadyerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Permission denied | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -5372,6 +5422,22 @@ Get system variables for workflow
 | ---- | ----------- | ------ |
 | 200 | System variables retrieved successfully | **application/json**: [WorkflowDraftVariableListResponse](#workflowdraftvariablelistresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/draft/test-credentials/preflight
+Check all EndUser test credentials in the current saved draft. No request body or draft hash is required. Returns readiness without creating a Run or executing tools; existing workspace OAuth credentials may be refreshed. Actual test execution checks credentials again.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Full draft test credential readiness | **application/json**: [TestCredentialPreflightResponse](#testcredentialpreflightresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/workflows/draft/trigger/run
@@ -5584,6 +5650,31 @@ Get published workflow for an application
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /apps/{app_id}/workflows/publish/evaluation
+Publish the draft as a reusable evaluation workflow
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [PublishWorkflowPayload](#publishworkflowpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation workflow published successfully | **application/json**: [WorkflowPublishResponse](#workflowpublishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
@@ -5984,6 +6075,7 @@ Delete an API key for an app
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [BillingSubscriptionResponse](#billingsubscriptionresponse)<br> |
 | 403 | Forbidden | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| 409 | Active discount | **application/json**: [AnnualDiscountActiveErrorResponse](#annualdiscountactiveerrorresponse)<br>[AnnualDiscountActiveError](#annualdiscountactiveerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 422 | Invalid subscription query | **application/json**: [BillingUnprocessableEntityErrorResponse](#billingunprocessableentityerrorresponse)<br>[ErrorResponse](#errorresponse)<br> |
 | 502 | Billing operation failed | **application/json**: [BillingOperationFailedErrorResponse](#billingoperationfailederrorresponse)<br>[BillingOperationFailedError](#billingoperationfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Billing unavailable | **application/json**: [BillingUnavailableErrorResponse](#billingunavailableerrorresponse)<br>[BillingUnavailableError](#billingunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -7201,6 +7293,179 @@ Get dataset error documents
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /datasets/{dataset_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /datasets/{dataset_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/files/{file_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 20 |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Retrieval evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationRunPayload](#evaluationrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/evaluation/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 50 |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/runs/{run_id}/retry
+**Retry a scoped dataset evaluation using the current caller identity**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /datasets/{dataset_id}/evaluation/template/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Knowledge base evaluation template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /datasets/{dataset_id}/external-hit-testing
 Test external knowledge retrieval for dataset
 
@@ -7224,6 +7489,44 @@ Test external knowledge retrieval for dataset
 | 400 | Invalid parameters | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 404 | Dataset not found | **application/json**: [ErrorResponse](#errorresponse)<br> |
 | 409 | Conflict | **application/json**: [DatasetNameDuplicateError](#datasetnameduplicateerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /datasets/{dataset_id}/file-scan-policy
+Get the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /datasets/{dataset_id}/file-scan-policy
+Set the malware scan policy of a Classic Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| dataset_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /datasets/{dataset_id}/hit-testing
@@ -7652,6 +7955,21 @@ Delete an API key for a dataset
 | 429 | Too Many Requests | **application/json**: [EmailRegisterLimitError](#emailregisterlimiterror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /evaluation/available-metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available evaluation metrics | **application/json**: [EvaluationAvailableMetricsResponse](#evaluationavailablemetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /explore/apps
 #### Parameters
 
@@ -7715,6 +8033,96 @@ Get feature availability and limits for the current workspace
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success | **application/json**: [VectorSpaceLimitationModel](#vectorspacelimitationmodel)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/provider-types
+List the malware scanners this deployment offers
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderTypeListResponse](#filescanprovidertypelistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /file-scan/providers
+List the workspace's malware scanners. Secrets are never returned.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanProviderListResponse](#filescanproviderlistresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers
+Add a malware scanner. It is verified with a live check before it is saved.
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderCreatePayload](#filescanprovidercreatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 201 | Scanner added | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [DELETE] /file-scan/providers/{provider_id}
+Delete a malware scanner that no policy selects
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 204 | Scanner deleted |  |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PATCH] /file-scan/providers/{provider_id}
+Update a malware scanner. It is verified with a live check before it is saved.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanProviderUpdatePayload](#filescanproviderupdatepayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Scanner updated | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /file-scan/providers/{provider_id}/test
+Run the scanner's connectivity check again and store the result
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| provider_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Check finished | **application/json**: [FileScanProviderResponse](#filescanproviderresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /files/support-type
@@ -7914,6 +8322,12 @@ Request body:
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps
+**Return published, authorized installations matching the validated query**
+
+Require an admitted workspace account; preserve the cursor response shape
+and translate invalid cursors or unavailable access checks into API errors.
+No installation state changes on success or failure.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -7921,7 +8335,9 @@ Request body:
 | app_id | query | App ID to filter by | No | string |
 | cursor | query | Opaque cursor returned by the previous page | No | string |
 | limit | query | Number of installed apps to return | No | integer, <br>**Default:** 20 |
+| mode | query | App mode filter, using the same values as Studio | No | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all |
 | name | query | App name to search for | No | string |
+| sort_by | query | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" |
 
 #### Responses
 
@@ -8010,11 +8426,12 @@ Request body:
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotChatAppError](#notchatapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/chat-messages/{task_id}/stop
@@ -8077,6 +8494,106 @@ Request body:
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections
+List member-visible Workspace credentials for published End User requirements. IDs refer to Workspace credentials, not personal Connections. No secrets are read. credential_status and last_active_at are null when no persisted lifecycle or activity metadata is available.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| cursor | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| provider | query |  | No | string |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Visible Workspace Connections | **application/json**: [EndUserConnectionListResponse](#enduserconnectionlistresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /installed-apps/{installed_app_id}/connections/configuration
+Read this Tenant Member's saved App defaults, or an owned Chatflow conversation's choices, without credential checks. Missing conversation choices do not inherit current App defaults.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| conversation_id | query |  | No | string (uuid) |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Saved member choices | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /installed-apps/{installed_app_id}/connections/configuration
+Replace member App defaults or owned conversation choices and confirm the current authorization requirements. An empty map clears choices; this does not modify Workspace credentials.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionConfigurationPayload](#installedconnectionconfigurationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Member choices saved | **application/json**: [ConnectionConfigurationResponse](#connectionconfigurationresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /installed-apps/{installed_app_id}/connections/preflight
+Check explicit Workspace credential choices without saving them or starting a Run. Workspace OAuth credentials may be refreshed. Run entry and node execution recheck access independently.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| installed_app_id | path |  | Yes | string (uuid) |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [InstalledConnectionPreflightPayload](#installedconnectionpreflightpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Connection readiness | **application/json**: [InstalledConnectionPreflightResponse](#installedconnectionpreflightresponse)<br> |
+| 400 | Bad Request | **application/json**: [ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /installed-apps/{installed_app_id}/conversations
@@ -8300,7 +8817,7 @@ Request body:
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [Parameters](#parameters)<br> |
+| 200 | Success | **application/json**: [InstalledAppParametersResponse](#installedappparametersresponse)<br> |
 | 400 | Bad Request | **application/json**: [AppUnavailableError](#appunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
@@ -8407,18 +8924,19 @@ Request body:
 
 | Required | Schema |
 | -------- | ------ |
-|  Yes | **application/json**: [WorkflowRunPayload](#workflowrunpayload)<br> |
+|  Yes | **application/json**: [InstalledAppWorkflowRunPayload](#installedappworkflowrunpayload)<br> |
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Success |  |
-| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 400 | Bad Request | **application/json**: [CompletionRequestError](#completionrequesterror)<br>[ConnectionConfigurationInvalidError](#connectionconfigurationinvaliderror)<br>[ConnectionCredentialsInvalidError](#connectioncredentialsinvaliderror)<br>[ConnectionRequiredError](#connectionrequirederror)<br>[ModelCurrentlyNotSupportError](#modelcurrentlynotsupporterror)<br>[NotWorkflowAppError](#notworkflowapperror)<br>[ProviderNotInitializeError](#providernotinitializeerror)<br>[ProviderQuotaExceededError](#providerquotaexceedederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 403 | Forbidden | **application/json**: [AccessDeniedError](#accessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
-| 404 | Not Found | **application/json**: [InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [ConnectionNotFoundError](#connectionnotfounderror)<br>[InstalledAppNotFoundError](#installedappnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| 409 | Conflict | **application/json**: [ConnectionConflictError](#connectionconflicterror)<br>[ConnectionReauthorizationRequiredError](#connectionreauthorizationrequirederror)<br>[ConnectionRevisionChangedError](#connectionrevisionchangederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 429 | Too Many Requests | **application/json**: [RateLimitError](#ratelimiterror)<br>[ErrorResponse](#errorresponse)<br> |
-| 503 | Service Unavailable | **application/json**: [WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [CredentialCheckUnavailableError](#credentialcheckunavailableerror)<br>[WebAppAccessUnavailableError](#webappaccessunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /installed-apps/{installed_app_id}/workflows/tasks/{task_id}/stop
@@ -9198,6 +9716,44 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 403 | Forbidden | **application/json**: [KnowledgeFsAccessDeniedError](#knowledgefsaccessdeniederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [KnowledgeFsSpaceNotFoundError](#knowledgefsspacenotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Get the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /knowledge-fs/spaces/{control_space_id}/file-scan-policy
+Set the malware scan policy of an Agent Knowledge Base
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| control_space_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [FileScanPolicyPayload](#filescanpolicypayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Policy saved | **application/json**: [FileScanPolicyResponse](#filescanpolicyresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /knowledge-fs/spaces/{control_space_id}/golden-questions
@@ -10761,6 +11317,8 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | ---- | ---------- | ----------- | -------- | ------ |
 | cursor | query |  | No | string |
 | limit | query |  | No | integer, <br>**Default:** 50 |
+| parentId | query |  | No | string |
+| view | query |  | No | string |
 | control_space_id | path |  | Yes | string |
 | source_id | path |  | Yes | string |
 
@@ -11228,6 +11786,26 @@ Claim a workspace-staged upload. Multipart file bodies remain accepted as a lega
 | 503 | Service Unavailable | **application/json**: [KnowledgeFsOperationUnavailableError](#knowledgefsoperationunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /login
+Called by /signin in the Account origin before showing a login form and after successful login. Reuses or refreshes the existing Account session without workspace admission. Returns logged_in=false when authentication is needed. Personal portal sessions set an HttpOnly WebApp Account login cookie and return the validated personal redirect_url, defaulting to /my-apps; App-bound sessions return a one-use PKCE-bound callback to the existing /webapp-signin page.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_code | query |  | No | string |
+| code_challenge | query | S256 PKCE challenge required only when returning to an App | No | string |
+| mode | query |  | No | string, <br>**Default:** end_user |
+| redirect_url | query | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Existing Account session | **application/json**: [WebAppAccountSessionResponse](#webappaccountsessionresponse)<br> |
+| 503 | Service Unavailable | **application/json**: [WebLoginUnavailableError](#webloginunavailableerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /login
 **Authenticate user and login**
 
@@ -11438,7 +12016,8 @@ Initiate OAuth login process
 | provider | path | OAuth provider name (github/google) | Yes | string |
 | invite_token | query | Optional invitation token | No | string |
 | language | query | Preferred interface language | No | string |
-| redirect_url | query | Relative page to resume after login | No | string |
+| mode | query | End User mode skips workspace admission and provisioning | No | string, <br>**Available values:** "console", "end_user", <br>**Default:** console |
+| redirect_url | query | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No | string |
 | timezone | query | Preferred timezone | No | string |
 
 #### Responses
@@ -11499,6 +12078,13 @@ Initiate OAuth login process
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/tool/callback
+**Complete an authorized OAuth attempt and redirect with its Connection ID**
+
+Requires valid provider state and the initiating browser's proxy context.
+Personal attempts retain their own callback flow; Workspace attempts expose
+only the persisted credential ID after creation. Invalid attempts raise
+without a success redirect or exposing provider credentials.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -11510,6 +12096,7 @@ Initiate OAuth login process
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 302 | Redirect to OAuth callback page |  |
+| 400 | Bad Request | **application/json**: [ConnectionOauthFailedError](#connectionoauthfailederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /oauth/plugin/{provider}/trigger/callback
@@ -12575,6 +13162,12 @@ Update account-level Step-by-step Tour state
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /refresh-token
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  No | **application/json**: [RefreshTokenPayload](#refreshtokenpayload)<br> |
+
 #### Responses
 
 | Code | Description | Schema |
@@ -13518,11 +14111,18 @@ Get the non-sensitive bootstrap snapshot exposed before Console or Web authentic
 Authentication configuration must be available before the authentication flow can be selected.
 Authenticated license detail is served separately by SystemFeatureLicenseApi.
 
+Preconditions: no Account, workspace, or app identity is required. URL
+settings are trusted deployment configuration, never request headers.
+Postconditions: return the WebApp frontend base URL with its base path
+intact, using the Console URL when APP_WEB_URL is unset. An empty URL
+means the same-origin root. Issue no credentials and change no state;
+feature-query failures propagate unchanged.
+
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [SystemFeatureModel](#systemfeaturemodel)<br> |
+| 200 | Success | **application/json**: [ConsoleSystemFeatureResponse](#consolesystemfeatureresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /system-features/license
@@ -14375,6 +14975,21 @@ Returns information about why and where the workflow is paused.
 | 200 | Success | **application/json**: [TenantListResponse](#tenantlistresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /workspaces/activate
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [WorkspaceActivationPayload](#workspaceactivationpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace ready | **application/json**: [WorkspaceActivationResponse](#workspaceactivationresponse)<br> |
+| 400 | Bad Request | **application/json**: [AccountNotFoundError](#accountnotfounderror)<br>[LimitExceededError](#limitexceedederror)<br>[NotAllowedCreateWorkspaceError](#notallowedcreateworkspaceerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [GET] /workspaces/current/agent-provider/{provider_name}
 Get specific agent provider details
 
@@ -14434,6 +15049,27 @@ Get list of available agent providers
 | ---- | ----------- | ------ |
 | 200 | Agent Skill bindings replaced | **application/json**: [AgentSkillBindingsResponse](#agentskillbindingsresponse)<br> |
 | 400 | Bad Request | **application/json**: [InvalidRequestError](#invalidrequesterror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/available-evaluation-workflows
+**Return only evaluator Apps this caller may run, with filtered pagination**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query |  | No | string |
+| limit | query |  | No | integer, <br>**Default:** 10 |
+| named_only | query |  | No | boolean |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| user_id | query |  | No | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Available evaluation workflows | **application/json**: [AvailableEvaluationWorkflowPaginationResponse](#availableevaluationworkflowpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/customized-snippets
@@ -14752,7 +15388,10 @@ Enable a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list
+**Given authorized workspace IDs and a validated query, return JSON endpoint DTOs**
+
 List plugin endpoints with pagination
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
@@ -14769,7 +15408,10 @@ List plugin endpoints with pagination
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/endpoints/list/plugin
+**Given authorized workspace IDs and a validated query, return plugin endpoint DTOs**
+
 List endpoints for a specific plugin
+Service failures propagate. This read does not change endpoint state.
 
 #### Parameters
 
@@ -14844,6 +15486,21 @@ Update a plugin endpoint
 | ---- | ----------- | ------ |
 | 200 | Endpoint updated successfully | **application/json**: [EndpointMutationResponse](#endpointmutationresponse)<br> |
 | 403 | Admin privileges required | **application/json**: [ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /workspaces/current/evaluation-workflows/{workflow_id}/associated-targets
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workflow_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Associated evaluation targets | **application/json**: [EvaluationAssociatedTargetListResponse](#evaluationassociatedtargetlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
@@ -15338,6 +15995,8 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/human-input/v2/im-sync-runs
+**Start or reuse a workspace run using the authenticated Account ID**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15349,7 +16008,7 @@ Set or reset the IM override for a contact. This endpoint is used to override th
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/im-sync-runs/latest
-Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; the response does not include started_by.
+Return the latest IM sync run summary. The UI uses finished_at as the explicit sync time; initiator_display_name is resolved from the initiating Account.
 
 #### Responses
 
@@ -18082,6 +18741,12 @@ Import a Skill zip package from multipart form field `file`.
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /workspaces/current/tool-provider/builtin/{provider}/add
+**Create a credential for the admitted member and return its persisted ID**
+
+Requires validated credentials and Workspace creation permission. Success
+preserves the result field and exposes the created credential as a Connection;
+creation failures propagate without returning an ID or credential secrets.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -18098,7 +18763,7 @@ Import a Skill zip package from multipart form field `file`.
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Builtin provider added successfully | **application/json**: [SimpleResultResponse](#simpleresultresponse)<br> |
+| 200 | Builtin provider added successfully | **application/json**: [BuiltinToolProviderCreateResponse](#builtintoolprovidercreateresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/tool-provider/builtin/{provider}/credential/info
@@ -18930,6 +19595,256 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation dataset template | **application/vnd.openxmlformats-officedocument.spreadsheetml.sheet**: binary<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [PUT] /{evaluate_target_type}/{evaluate_target_id}/evaluation
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation configuration saved | **application/json**: [EvaluationConfigResponse](#evaluationconfigresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/default-metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Default metrics | **application/json**: [EvaluationDefaultMetricsResponse](#evaluationdefaultmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/files/{file_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| file_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation file | **application/json**: [EvaluationFileResponse](#evaluationfileresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/logs
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 20 |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation runs | **application/json**: [EvaluationRunPaginationResponse](#evaluationrunpaginationresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/metrics
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluation_framework | query |  | No | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation metrics | **application/json**: [EvaluationMetricsResponse](#evaluationmetricsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/node-info
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationNodeInfoPayload](#evaluationnodeinfopayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation node info | **application/json**: [EvaluationNodeInfoResponse](#evaluationnodeinforesponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/run
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationRunPayload](#evaluationrunpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run started | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| page_size | query |  | No | integer, <br>**Default:** 50 |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run detail | **application/json**: [EvaluationRunDetailResponse](#evaluationrundetailresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/cancel
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run cancelled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry
+**Admit a retry using the current caller and target permissions**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+| run_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation run retry scheduled | **application/json**: [EvaluationRunResponse](#evaluationrunresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [POST] /{evaluate_target_type}/{evaluate_target_id}/evaluation/template-columns
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| evaluate_target_id | path |  | Yes | string (uuid) |
+| evaluate_target_type | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [EvaluationConfigPayload](#evaluationconfigpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Evaluation template columns | **application/json**: [EvaluationTemplateColumnsResponse](#evaluationtemplatecolumnsresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ---
 ## default
 Default namespace
@@ -19194,6 +20109,26 @@ Account not link tenant.
 | name | string |  | No |
 | timezone | string |  | No |
 
+#### AccountProfileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| avatar | string |  | No |
+| avatar_url | string |  | Yes |
+| created_at | integer |  | No |
+| email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
+| has_owned_tenant | boolean | Whether the Account owns an existing tenant, including archived tenants. Null means unavailable. | No |
+| has_tenant | boolean | Whether the Account has a tenant membership, including ownership. Null means unavailable. | No |
+| id | string |  | Yes |
+| interface_language | string |  | No |
+| interface_theme | string |  | No |
+| is_password_set | boolean |  | Yes |
+| last_login_at | integer |  | No |
+| last_login_ip | string |  | No |
+| name | string |  | Yes |
+| timezone | string |  | No |
+
 #### AccountResponse
 
 | Name | Type | Description | Required |
@@ -19202,6 +20137,7 @@ Account not link tenant.
 | avatar_url | string |  | Yes |
 | created_at | integer |  | No |
 | email | string |  | Yes |
+| first_workspace_created_at | integer | First owned workspace creation time or migrated legacy Builder baseline; null if neither is recorded. | No |
 | id | string |  | Yes |
 | interface_language | string |  | No |
 | interface_theme | string |  | No |
@@ -19455,6 +20391,8 @@ Response body for adding platform contacts.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AgentAppFeaturesPayload
 
@@ -19537,6 +20475,8 @@ default (the config form sends the full desired feature state on save).
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AgentAppPublishedReferenceResponse
 
@@ -21460,6 +22400,22 @@ Auth Token is invalid or account already activated, please check again.
 | ---- | ---- | ----------- | -------- |
 | score_threshold | number | Score threshold | Yes |
 
+#### AnnualDiscountActiveError
+
+You can switch to annual billing after your current discount ends.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| AnnualDiscountActiveError |  | You can switch to annual billing after your current discount ends. |  |
+
+#### AnnualDiscountActiveErrorResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| code | string |  | Yes |
+| message | string |  | Yes |
+| status | integer |  | Yes |
+
 #### AnyJSONValue
 
 | Name | Type | Description | Required |
@@ -21890,6 +22846,8 @@ This class is used to store the schema information of an api based tool.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppDetailSiteResponse
 
@@ -21953,6 +22911,8 @@ This class is used to store the schema information of an api based tool.
 | updated_by | string |  | Yes |
 | use_icon_as_answer_icon | boolean |  | Yes |
 | workflow | [WorkflowPartial](#workflowpartial) |  | Yes |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppDisabledExternalDataToolResponse
 
@@ -22634,6 +23594,8 @@ The app preview owner is unavailable.
 | updated_by | string |  | No |
 | use_icon_as_answer_icon | boolean |  | No |
 | workflow | [WorkflowPartial](#workflowpartial) |  | No |
+| workflow_kind | string |  | No |
+| workflow_type | string |  | No |
 
 #### AppPromptMessagePayload
 
@@ -23006,6 +23968,43 @@ Invalid email or password.
 | count | integer |  | Yes |
 | document_ids | [ string ] |  | Yes |
 
+#### AvailableEvaluationWorkflowPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| has_more | boolean |  | Yes |
+| items | [ [AvailableEvaluationWorkflowResponse](#availableevaluationworkflowresponse) ] |  | Yes |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+
+#### AvailableEvaluationWorkflowQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string |  | No |
+| limit | integer, <br>**Default:** 10 |  | No |
+| named_only | boolean |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| user_id | string |  | No |
+
+#### AvailableEvaluationWorkflowResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_id | string |  | Yes |
+| app_name | string |  | Yes |
+| created_at | integer |  | Yes |
+| created_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| hash | string |  | Yes |
+| id | string |  | Yes |
+| kind | string |  | Yes |
+| marked_comment | string |  | Yes |
+| marked_name | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| updated_by | [SimpleAccountResponse](#simpleaccountresponse) |  | No |
+| version | string |  | Yes |
+
 #### AvailableModelListResponse
 
 | Name | Type | Description | Required |
@@ -23244,6 +24243,13 @@ Sandbox file download is unavailable.
 | ---- | ---- | ----------- | -------- |
 | credential_id | string |  | Yes |
 
+#### BuiltinToolProviderCreateResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| id | string | ID of the created Workspace credential, used as the Connection ID. | Yes |
+| result | string | Operation result. | Yes |
+
 #### BuiltinToolUpdatePayload
 
 | Name | Type | Description | Required |
@@ -23377,6 +24383,8 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
 | conversation_id | string |  | No |
 | files | [ object ] |  | No |
 | inputs | object |  | Yes |
@@ -23769,6 +24777,109 @@ Enum class for configurate method of provider model.
 | ---- | ---- | ----------- | -------- |
 | ConfigurateMethod | string | Enum class for configurate method of provider model. |  |
 
+#### ConnectionConfigurationInvalidError
+
+The connection is not compatible with this tool configuration.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConfigurationInvalidError |  | The connection is not compatible with this tool configuration. |  |
+
+#### ConnectionConfigurationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connections | object | Saved Connection details keyed by authorization node ID, not a readiness result. Inaccessible Connection references are returned as null. | Yes |
+| reauthorization_required | boolean | Whether this App user must renew authorization for the current requirements; not credential readiness. | Yes |
+
+#### ConnectionConflictError
+
+Connection changed during the operation.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionConflictError |  | Connection changed during the operation. |  |
+
+#### ConnectionCredentialStatus
+
+Last known credential lifecycle state, not readiness for a particular node.
+
+Keep the existing storage values. App-specific Client mismatches and unbinding
+must never be written back as a global credential state change.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialStatus | string | Last known credential lifecycle state, not readiness for a particular node.  Keep the existing storage values. App-specific Client mismatches and unbinding must never be written back as a global credential state change. |  |
+
+#### ConnectionCredentialType
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialType | string |  |  |
+
+#### ConnectionCredentialsInvalidError
+
+Invalid credentials for this provider.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionCredentialsInvalidError |  | Invalid credentials for this provider. |  |
+
+#### ConnectionNotFoundError
+
+Connection not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionNotFoundError |  | Connection not found. |  |
+
+#### ConnectionOauthFailedError
+
+OAuth authorization could not be completed. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionOauthFailedError |  | OAuth authorization could not be completed. Start authorization again. |  |
+
+#### ConnectionPreflightStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [CredentialCheckResult](#credentialcheckresult) |  | Yes |
+| connection_id | string |  | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| status | [NodeConnectionStatus](#nodeconnectionstatus) | Effective node status; null when availability cannot be determined. | Yes |
+
+#### ConnectionReauthorizationRequiredError
+
+The OAuth client changed or is unavailable. Start authorization again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionReauthorizationRequiredError |  | The OAuth client changed or is unavailable. Start authorization again. |  |
+
+#### ConnectionRequiredError
+
+Select a connection for every required tool before running.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRequiredError |  | Select a connection for every required tool before running. |  |
+
+#### ConnectionRevisionChangeDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string |  | Yes |
+
+#### ConnectionRevisionChangedError
+
+The connection requirements changed. Refresh and confirm again.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConnectionRevisionChangedError |  | The connection requirements changed. Refresh and confirm again. |  |
+
 #### ConsoleDatasetListQuery
 
 | Name | Type | Description | Required |
@@ -23823,6 +24934,35 @@ Frozen form definition and effective expiration in UTC epoch seconds.
 | page | integer |  | Yes |
 | total | integer |  | Yes |
 | total_pages | integer |  | Yes |
+
+#### ConsoleSystemFeatureResponse
+
+Extend public bootstrap with the Console-only WebApp frontend address.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
+| branding | [BrandingModel](#brandingmodel) |  | Yes |
+| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
+| enable_app_deploy | boolean |  | Yes |
+| enable_change_email | boolean, <br>**Default:** true |  | Yes |
+| enable_creators_platform | boolean |  | Yes |
+| enable_email_code_login | boolean |  | Yes |
+| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
+| enable_explore_banner | boolean |  | Yes |
+| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
+| enable_marketplace | boolean |  | Yes |
+| enable_social_oauth_login | boolean |  | Yes |
+| enable_step_by_step_tour | boolean |  | Yes |
+| is_allow_register | boolean |  | Yes |
+| is_email_setup | boolean |  | Yes |
+| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
+| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
+| rbac_enabled | boolean |  | Yes |
+| sso_enforced_for_signin | boolean |  | Yes |
+| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
+| webapp_url | string | WebApp frontend base URL, preserving its deployment base path. Falls back to the Console frontend URL; an empty string means the same-origin root. | Yes |
 
 #### Contact
 
@@ -24201,6 +25341,23 @@ Payload for creating a new snippet.
 | ---- | ---- | ----------- | -------- |
 | CreatorUserRole | string |  |  |
 
+#### CredentialCheckResult
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| checked_at | integer |  | Yes |
+| reason_code | string, <br>**Available values:** "credential_expired", "credential_invalid", "credential_revoked", "provider_network_error", "provider_rate_limited", "provider_timeout", "provider_unavailable" |  | Yes |
+| retryable | boolean |  | Yes |
+| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### CredentialCheckUnavailableError
+
+Credential validation is temporarily unavailable.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| CredentialCheckUnavailableError |  | Credential validation is temporarily unavailable. |  |
+
 #### CredentialConfiguration
 
 Model class for credential configuration.
@@ -24300,6 +25457,28 @@ Site token customization strategy
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | CustomizeTokenStrategy | string | Site token customization strategy |  |
+
+#### CustomizedMetricOutputField
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| value_type | string |  | Yes |
+| variable | string |  | Yes |
+
+#### CustomizedMetrics
+
+Custom evaluator selection.
+
+``evaluation_workflow_id`` is the evaluator App ID retained for API
+compatibility. ``evaluation_workflow_version_id`` is resolved at run
+creation so an in-flight or historical run never follows a later publish.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evaluation_workflow_id | string |  | Yes |
+| evaluation_workflow_version_id | string |  | No |
+| input_fields | object |  | Yes |
+| output_fields | [ [CustomizedMetricOutputField](#customizedmetricoutputfield) ] |  | Yes |
 
 #### CustomizedPipelineTemplatePayload
 
@@ -25172,6 +26351,14 @@ Per-output retry configuration that mirrors ``graphon.RetryConfig`` shape.
 | ---- | ---- | ----------- | -------- |
 | DefaultBlockConfigsResponse | array |  |  |
 
+#### DefaultMetric
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metric | string |  | Yes |
+| node_info_list | [ [NodeInfo](#nodeinfo) ] |  | Yes |
+| value_type | string |  | No |
+
 #### DefaultModelDataResponse
 
 | Name | Type | Description | Required |
@@ -25648,6 +26835,7 @@ Rate limit exceeded
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | allow_refresh | boolean |  | Yes |
+| can_redeem_discount | boolean | Whether the account can redeem its education discount in the current verification period. | Yes |
 | expire_at | integer |  | Yes |
 | is_student | boolean |  | Yes |
 | result | boolean |  | Yes |
@@ -25784,6 +26972,7 @@ Too many incorrect password attempts. Please try again later.
 | code | string |  | Yes |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | timezone | string |  | No |
 | token | string (uuid) |  | Yes |
 | turnstile_token | string | Cloudflare Turnstile token for email-code verification. | No |
@@ -25810,6 +26999,7 @@ Email code verification is temporarily unavailable. Please try again later.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | language | string |  | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | turnstile_token | string | Cloudflare Turnstile token. Required at runtime for Dify Cloud. | No |
 
 #### EmailDeliveryConfig
@@ -25949,6 +27139,29 @@ Too many emails have been sent from this IP address recently. Please try again l
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | EmptyObjectResponse | object |  |  |
+
+#### EndUserConnectionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EndUserConnectionResponse](#enduserconnectionresponse) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| next_cursor | string |  | Yes |
+
+#### EndUserConnectionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| account_label | string |  | Yes |
+| created_at | integer |  | Yes |
+| credential_status | [ConnectionCredentialStatus](#connectioncredentialstatus) |  | Yes |
+| credential_type | [ConnectionCredentialType](#connectioncredentialtype) |  | Yes |
+| expires_at | integer |  | Yes |
+| id | string |  | Yes |
+| last_active_at | integer |  | Yes |
+| name | string |  | Yes |
+| provider | string |  | Yes |
+| updated_at | integer |  | Yes |
 
 #### Endpoint
 
@@ -26175,6 +27388,204 @@ stays open because ``HTTPException.data`` may carry extra keys.
 | ---- | ---- | ----------- | -------- |
 | ErrorStrategy | string |  |  |
 
+#### EvaluationAssociatedTargetListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [ [EvaluationAssociatedTargetResponse](#evaluationassociatedtargetresponse) ] |  | Yes |
+
+#### EvaluationAssociatedTargetResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| target_id | string |  | Yes |
+| target_name | string |  | Yes |
+| target_type | string |  | Yes |
+
+#### EvaluationAvailableMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | [ string ] |  | Yes |
+
+#### EvaluationConfigPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationConfigResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationDefaultMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | Yes |
+
+#### EvaluationFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | No |
+| download_url | string |  | Yes |
+| extension | string |  | Yes |
+| id | string |  | Yes |
+| mime_type | string |  | Yes |
+| name | string |  | Yes |
+| size | integer |  | Yes |
+
+#### EvaluationFrameworkQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+
+#### EvaluationMetric
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| details | object |  | No |
+| name | string |  | Yes |
+| node_info | [NodeInfo](#nodeinfo) |  | No |
+| value |  |  | Yes |
+
+#### EvaluationMetricsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | object<br>[ string ] |  | Yes |
+
+#### EvaluationNodeInfoPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| metrics | [ string ] |  | No |
+
+#### EvaluationNodeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| EvaluationNodeInfoResponse | object |  |  |
+
+#### EvaluationRunDetailQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page | integer, <br>**Default:** 1 |  | No |
+| page_size | integer, <br>**Default:** 50 |  | No |
+
+#### EvaluationRunDetailResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| items | [EvaluationRunItemPaginationResponse](#evaluationrunitempaginationresponse) |  | Yes |
+| run | [EvaluationRunResponse](#evaluationrunresponse) |  | Yes |
+
+#### EvaluationRunItemPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EvaluationRunItemResponse](#evaluationrunitemresponse) ] |  | Yes |
+| page | integer |  | Yes |
+| page_size | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### EvaluationRunItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actual_output | string |  | No |
+| error | string |  | No |
+| expected_output | string |  | No |
+| id | string |  | Yes |
+| inputs | object |  | No |
+| item_index | integer |  | Yes |
+| judgment | object |  | No |
+| metadata | object |  | No |
+| metrics | [ [EvaluationMetric](#evaluationmetric) ] |  | No |
+| overall_score | number |  | No |
+| workflow_run_id | string |  | No |
+
+#### EvaluationRunListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| page | integer, <br>**Default:** 1 |  | No |
+| page_size | integer, <br>**Default:** 20 |  | No |
+
+#### EvaluationRunPaginationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [EvaluationRunResponse](#evaluationrunresponse) ] |  | Yes |
+| page | integer |  | Yes |
+| page_size | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### EvaluationRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| customized_metrics | [CustomizedMetrics](#customizedmetrics) |  | No |
+| default_metrics | [ [DefaultMetric](#defaultmetric) ] |  | No |
+| evaluation_framework | string, <br>**Available values:** "deepeval", "ragas", <br>**Default:** ragas | *Enum:* `"deepeval"`, `"ragas"` | No |
+| evaluation_model | string |  | No |
+| evaluation_model_provider | string |  | No |
+| file_id | string |  | Yes |
+| judgment_config | [JudgmentConfig](#judgmentconfig) |  | No |
+
+#### EvaluationRunResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| completed_at | integer |  | No |
+| completed_items | integer |  | Yes |
+| created_at | integer |  | No |
+| created_by | string |  | Yes |
+| dataset_file_id | string |  | No |
+| error | string |  | No |
+| evaluation_config_id | string |  | Yes |
+| failed_items | integer |  | Yes |
+| id | string |  | Yes |
+| metrics_summary | object |  | No |
+| progress | number |  | Yes |
+| result_file_id | string |  | No |
+| started_at | integer |  | No |
+| status | string |  | Yes |
+| target_agent_config_snapshot_id | string |  | No |
+| target_id | string |  | Yes |
+| target_type | string |  | Yes |
+| target_workflow_version_id | string |  | No |
+| tenant_id | string |  | Yes |
+| total_items | integer |  | Yes |
+
+#### EvaluationTemplateColumnResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+| type | string |  | Yes |
+
+#### EvaluationTemplateColumnsResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| columns | [ [EvaluationTemplateColumnResponse](#evaluationtemplatecolumnresponse) ] |  | Yes |
+
 #### EventApiEntity
 
 | Name | Type | Description | Required |
@@ -26340,12 +27751,7 @@ Request body for creating or updating one external contact.
 
 #### ExternalDatasetCreatePayload
 
-Validated fields required to create an external dataset binding.
-
-The console controller owns HTTP concerns, but the service also needs this
-contract when creating the tenant-scoped dataset and external knowledge
-binding. Keep it outside controllers so service imports do not depend on
-Flask blueprint initialization.
+Apply the deployment's description limit at the HTTP boundary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -26449,6 +27855,7 @@ Effective feature availability and limits for the current workspace.
 | can_replace_logo | boolean |  | Yes |
 | documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
 | education | [EducationModel](#educationmodel) |  | Yes |
+| enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
@@ -26606,6 +28013,82 @@ Resolved multi-file input constraints and effective number limit.
 | source_url | string |  | No |
 | tenant_id | string |  | No |
 | user_id | string |  | No |
+
+#### FileScanFallbackAction
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| FileScanFallbackAction | string |  |  |
+
+#### FileScanPolicyPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| on_unscannable | [FileScanFallbackAction](#filescanfallbackaction) |  | No |
+| provider_id | string |  | No |
+
+#### FileScanPolicyResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| enabled | boolean |  | Yes |
+| on_unavailable | string |  | Yes |
+| on_unscannable | string |  | Yes |
+| provider_id | string |  | No |
+
+#### FileScanProviderCreatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object | Non-secret settings | No |
+| credentials | object | Secret settings; write-only | No |
+| name | string | Display name | Yes |
+| provider_type | string | clamav, cloudmersive, scanii, metadefender or api | Yes |
+
+#### FileScanProviderListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderResponse](#filescanproviderresponse) ] |  | Yes |
+
+#### FileScanProviderResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | Yes |
+| created_at | integer |  | No |
+| credentials_set | object |  | Yes |
+| id | string |  | Yes |
+| last_error | string |  | No |
+| last_tested_at | integer |  | No |
+| name | string |  | Yes |
+| policy_count | integer |  | Yes |
+| provider_type | string |  | Yes |
+| status | string |  | Yes |
+
+#### FileScanProviderTypeListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [FileScanProviderTypeResponse](#filescanprovidertyperesponse) ] |  | Yes |
+
+#### FileScanProviderTypeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| available | boolean |  | Yes |
+| credential_fields | [ string ] |  | Yes |
+| provider_type | string |  | Yes |
+
+#### FileScanProviderUpdatePayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| config | object |  | No |
+| credentials | object | Secret settings to replace; omitted or empty fields keep their value | No |
+| name | string |  | No |
 
 #### FileTooLargeError
 
@@ -26816,7 +28299,7 @@ Response body for reading the latest IM sync run summary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| attachment_ids | [ string ] | List of attachment IDs to include in the retrieval context. | No |
+| attachment_ids | [ string ] | Upload file UUIDs to include in the retrieval context. Omit or use an empty list when there are no attachments. | No |
 | external_retrieval_model | object | Retrieval settings for external knowledge bases. | No |
 | query | string | Search query text. | Yes |
 | retrieval_model | [RetrievalModel](#retrievalmodel) | Retrieval model configuration. Controls how chunks are searched and ranked when querying this knowledge base. | No |
@@ -26895,6 +28378,7 @@ A trimmed version of `HumanInputContact` that only includes the fields needed fo
 | ---- | ---- | ----------- | -------- |
 | avatar_url | string | URL of the contact's avatar. | No |
 | created_at | integer | Timestamp when the contact was created. | Yes |
+| email | string | Primary contact email if one exists. | No |
 | id | string | Unique contact identifier. | Yes |
 | name | string | Display name shown in the contact directory. | Yes |
 
@@ -27257,8 +28741,8 @@ Stable reconciliation bucket for one synchronized directory entry.
 
 One IM sync run snapshot.
 
-The latest-only UI displays ``finished_at`` as the explicit sync time. The
-transport contract intentionally does not expose a ``started_by`` actor.
+The latest-only UI displays ``finished_at`` as the explicit sync time.
+The initiator display name is resolved from the initiating Dify Account.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27267,6 +28751,7 @@ transport contract intentionally does not expose a ``started_by`` actor.
 | error_message | string | Terminal error message. Present only when the sync run status is `failed`. | No |
 | finished_at | integer | Unix timestamp in seconds when the sync run finished. This is the sync time displayed by the latest-only UI and is None while the run is unfinished. | No |
 | id | string | Unique sync run identifier. | Yes |
+| initiator_display_name | string | Current initiating Account name; empty for EE administrators or an unavailable Account. | Yes |
 | provider | [IMProvider](#improvider) | IM provider associated with the sync run. | Yes |
 | result_counts | [IMSyncRunResultCounts](#imsyncrunresultcounts) | Aggregate reconciliation counts for the current run snapshot. | Yes |
 | started_at | integer | Unix timestamp in seconds when the sync run started. | No |
@@ -27463,6 +28948,27 @@ The app was not found in this workspace.
 | ---- | ---- | ----------- | -------- |
 | InstalledAppNotFoundError |  | The app was not found in this workspace. |  |
 
+#### InstalledAppParametersResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_reply | { **"enabled"**: boolean } |  | Yes |
+| connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Web App-compatible tool requirements. Installed App choices reference visible Workspace credentials. | Yes |
+| connection_revision | string | Opaque published authorization contract, as in Web App parameters. | Yes |
+| file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
+| more_like_this | { **"enabled"**: boolean } |  | Yes |
+| opening_statement | string |  | No |
+| requires_end_user_connections | boolean | Whether the published App requires explicit member Connection choices. | Yes |
+| retriever_resource | { **"enabled"**: boolean } |  | Yes |
+| sensitive_word_avoidance | { **"enabled"**: boolean } |  | Yes |
+| show_thoughts | { **"enabled"**: boolean } |  | No |
+| speech_to_text | { **"enabled"**: boolean } |  | Yes |
+| suggested_questions | [ string ] |  | Yes |
+| suggested_questions_after_answer | { **"enabled"**: boolean } |  | Yes |
+| system_parameters | [SystemParameters](#systemparameters) | System-level parameter limits. | Yes |
+| text_to_speech | { **"autoPlay"**: string, **"enabled"**: boolean, **"language"**: string, **"voice"**: string } |  | Yes |
+| user_input_form | [ object<br>object<br>object<br>object<br>object<br>object<br>object<br>object<br>object ] |  | Yes |
+
 #### InstalledAppResponse
 
 | Name | Type | Description | Required |
@@ -27488,6 +28994,15 @@ The app is not available in this app library.
 | ---- | ---- | ----------- | -------- |
 | is_pinned | boolean |  | No |
 
+#### InstalledAppWorkflowRunPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Opaque connection contract revision from Web App parameters. Required for EndUser tool authentication; must match current authorization requirements; verified plugin upgrades may inherit consent. | No |
+| connections | object | Explicit choices keyed by independent authorization node ID. Required for EndUser tool authentication. Missing/null choices are not filled from saved selections. | No |
+| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
+| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
+
 #### InstalledAppsListQuery
 
 | Name | Type | Description | Required |
@@ -27495,7 +29010,33 @@ The app is not available in this app library.
 | app_id | string | App ID to filter by | No |
 | cursor | string | Opaque cursor returned by the previous page | No |
 | limit | integer, <br>**Default:** 20 | Number of installed apps to return | No |
+| mode | string, <br>**Available values:** "advanced-chat", "agent", "agent-chat", "all", "channel", "chat", "completion", "workflow", <br>**Default:** all | App mode filter, using the same values as Studio<br>*Enum:* `"advanced-chat"`, `"agent"`, `"agent-chat"`, `"all"`, `"channel"`, `"chat"`, `"completion"`, `"workflow"` | No |
 | name | string | App name to search for | No |
+| sort_by | string, <br>**Available values:** "earliest_created", "last_modified", "recently_created" | Sort by app modification or creation time, using the same values as Studio. When omitted, pinned apps come first, then recently used apps. Restart pagination when changing sort order. | No |
+
+#### InstalledConnectionConfigurationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Complete choices keyed by independent authorization node ID. Missing/null nodes are unselected; an empty map clears the configuration. Saving explicitly approves the submitted authorization contract. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string (uuid) | Opaque revision issued for the current Web App. Use App parameters for tool-node operations or the owned Connection revision endpoint for Provider management. | Yes |
+| connections | object | Explicit choices keyed by independent authorization node ID. Missing/null choices remain disconnected; saved choices are never inferred. | Yes |
+| conversation_id | string | Existing Chatflow conversation. Omit for a new conversation or plain Workflow. | No |
+
+#### InstalledConnectionPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| connection_revision | string | Connection contract revision evaluated by this preflight. | Yes |
+| connections | [ [ConnectionPreflightStatus](#connectionpreflightstatus) ] |  | Yes |
+| ready | boolean |  | Yes |
 
 #### InstantMessageChannelRecipient
 
@@ -27715,7 +29256,45 @@ This invitation was sent to another account. Please sign in with the invited acc
 | ---- | ---- | ----------- | -------- |
 | JsonValue |  |  |  |
 
+#### JudgmentCondition
+
+A single judgment condition that checks one metric value.
+
+Mirrors ``graphon.utils.condition.entities.Condition`` with the left-hand
+side being a metric selector instead of a workflow variable selector.
+
+Attributes:
+    variable_selector: ``[node_id, metric_name]`` identifying the metric.
+    comparison_operator: Reuses workflow's ``SupportedComparisonOperator``.
+    value: The comparison target (right side).  For unary operators such
+        as ``empty`` or ``null`` this can be ``None``.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| comparison_operator | [SupportedComparisonOperator](#supportedcomparisonoperator) |  | Yes |
+| value | string<br>[ string ]<br>boolean |  | No |
+| variable_selector | [ string ] |  | Yes |
+
+#### JudgmentConfig
+
+A group of judgment conditions combined with a logical operator.
+
+Attributes:
+    logical_operator: How to combine condition results — "and" requires
+        all conditions to pass, "or" requires at least one.
+    conditions: The list of individual conditions to evaluate.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| conditions | [ [JudgmentCondition](#judgmentcondition) ] |  | No |
+| logical_operator | string, <br>**Available values:** "and", "or", <br>**Default:** and | *Enum:* `"and"`, `"or"` | No |
+
 #### KnowledgeConfig
+
+Document ingestion configuration with a validated indexing technique.
+
+The indexing technique remains an IndexTechniqueType enum after validation.
+JSON serialization preserves its public economy or high_quality value.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27725,7 +29304,7 @@ This invitation was sent to another account. Please sign in with the invited acc
 | duplicate | boolean, <br>**Default:** true | Whether duplicate document content is allowed. | No |
 | embedding_model | string | Embedding model name. Use the `model` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
 | embedding_model_provider | string | Embedding model provider. Use the `provider` field from [Get Available Models](/api-reference/models/get-available-models) with `model_type=text-embedding`. | No |
-| indexing_technique | string, <br>**Available values:** "economy", "high_quality" | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted.<br>*Enum:* `"economy"`, `"high_quality"` | Yes |
+| indexing_technique | [IndexTechniqueType](#indextechniquetype) | `high_quality` uses embedding models for precise search; `economy` uses keyword-based indexing. Required when adding the first document to a knowledge base; subsequent documents inherit the knowledge base's indexing technique if omitted. | Yes |
 | is_multimodal | boolean | Whether the document uses multimodal indexing. | No |
 | name | string | Document name. | No |
 | original_document_id | string | Original document ID for replacement updates. | No |
@@ -28654,9 +30233,11 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | name | string |  | Yes |
 | page_id | string |  | Yes |
+| parent_id | string |  | No |
 | provider_item_id | string |  | Yes |
 | type | string |  | Yes |
 | workspace_id | string |  | Yes |
@@ -28718,6 +30299,7 @@ Accepted staged or legacy multipart upload, preserving both response shapes.
 | documents | [ [KnowledgeFSInitialSourcePreviewDocumentResponse](#knowledgefsinitialsourcepreviewdocumentresponse) ] |  | No |
 | files | [ [KnowledgeFSInitialSourcePreviewFileResponse](#knowledgefsinitialsourcepreviewfileresponse) ] |  | No |
 | kind | string, <br>**Available values:** "online_document", "online_drive", "website_crawl" | *Enum:* `"online_document"`, `"online_drive"`, `"website_crawl"` | Yes |
+| next_cursor | string |  | No |
 | next_page_parameters | object |  | No |
 | pages | [ [KnowledgeFSInitialSourcePreviewPageResponse](#knowledgefsinitialsourcepreviewpageresponse) ] |  | No |
 
@@ -29242,7 +30824,7 @@ granted when the caller holds the dataset permission it maps to (see
 | ---- | ---- | ----------- | -------- |
 | action | string, <br>**Available values:** "configure_model", "configure_parser", "configure_source", "contact_admin", "retry", "reupload" |  | No |
 | category | string, <br>**Available values:** "authorization", "canceled", "configuration", "conflict", "dependency", "internal", "not_found", "rate_limit", "timeout", "validation" | *Enum:* `"authorization"`, `"canceled"`, `"configuration"`, `"conflict"`, `"dependency"`, `"internal"`, `"not_found"`, `"rate_limit"`, `"timeout"`, `"validation"` | Yes |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DOCUMENT_SEMANTIC_GROUNDING_FAILED", "DOCUMENT_SOURCE_NOT_FOUND", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DOCUMENT_SEMANTIC_GROUNDING_FAILED"`, `"DOCUMENT_SOURCE_NOT_FOUND"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
 | message | string |  | Yes |
 | parameters | object |  | No |
 | retryPolicy | string, <br>**Available values:** "after_configuration", "automatic", "manual", "never" | *Enum:* `"after_configuration"`, `"automatic"`, `"manual"`, `"never"` | Yes |
@@ -29775,7 +31357,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DOCUMENT_SEMANTIC_GROUNDING_FAILED", "DOCUMENT_SOURCE_NOT_FOUND", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
 | error | string |  | No |
 | failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | valid | boolean |  | Yes |
@@ -29869,7 +31451,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
+| code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DOCUMENT_SEMANTIC_GROUNDING_FAILED", "DOCUMENT_SOURCE_NOT_FOUND", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" | *Enum:* `"DOCUMENT_COMPILATION_FAILED"`, `"DOCUMENT_COMPILATION_LEASE_LOST"`, `"DOCUMENT_COMPILATION_PROFILE_CHANGED"`, `"DOCUMENT_COMPILATION_RETRYABLE"`, `"DOCUMENT_COUNT_QUOTA_EXCEEDED"`, `"DOCUMENT_COUNT_QUOTA_UNAVAILABLE"`, `"DOCUMENT_DISABLED"`, `"DOCUMENT_PARSER_INPUT_INVALID"`, `"DOCUMENT_PARSER_NOT_CONFIGURED"`, `"DOCUMENT_PARSER_RATE_LIMITED"`, `"DOCUMENT_PARSER_RESPONSE_INVALID"`, `"DOCUMENT_PARSER_TIMEOUT"`, `"DOCUMENT_PARSER_UNAVAILABLE"`, `"DOCUMENT_PARSER_UNSUPPORTED_TYPE"`, `"DOCUMENT_PDF_RENDER_FAILED"`, `"DOCUMENT_SEMANTIC_GROUNDING_FAILED"`, `"DOCUMENT_SOURCE_NOT_FOUND"`, `"DURABLE_DELETION_IDEMPOTENCY_CONFLICT"`, `"EMBEDDING_DIMENSION_INVALID"`, `"EMBEDDING_DIMENSION_UNSUPPORTED"`, `"EXECUTION_ATTEMPTS_EXHAUSTED"`, `"KNOWLEDGE_FS_ACCESS_DENIED"`, `"KNOWLEDGE_FS_CONFLICT"`, `"KNOWLEDGE_FS_INTERNAL_ERROR"`, `"KNOWLEDGE_FS_INVALID_REQUEST"`, `"KNOWLEDGE_FS_NOT_FOUND"`, `"KNOWLEDGE_FS_RATE_LIMITED"`, `"KNOWLEDGE_FS_TIMEOUT"`, `"KNOWLEDGE_FS_UNAVAILABLE"`, `"KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND"`, `"KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS"`, `"KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED"`, `"KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT"`, `"LOGICAL_DOCUMENT_CAS_CONFLICT"`, `"MODEL_CAPABILITY_MISMATCH"`, `"MODEL_CONFIGURATION_STALE"`, `"MODEL_CREDENTIAL_INVALID"`, `"MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE"`, `"MODEL_IDENTITY_MISMATCH"`, `"MODEL_PREFLIGHT_CANCELED"`, `"MODEL_PREFLIGHT_FAILED"`, `"MODEL_PREFLIGHT_TIMEOUT"`, `"MODEL_PREFLIGHT_UNAVAILABLE"`, `"MODEL_PROFILE_ACTIVATION_INCOMPLETE"`, `"MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED"`, `"MODEL_RUNTIME_CONTEXT_LIMIT"`, `"MODEL_RUNTIME_FAILED"`, `"MODEL_RUNTIME_OUTPUT_LIMIT"`, `"MODEL_RUNTIME_RESPONSE_INVALID"`, `"MODEL_RUNTIME_TIMEOUT"`, `"MODEL_RUNTIME_UNAVAILABLE"`, `"MODEL_SELECTION_NOT_FOUND"`, `"RESEARCH_TASK_CAPABILITY_REVOKED"`, `"RESEARCH_TASK_DISPATCH_DEAD"`, `"RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED"`, `"RESEARCH_TASK_FAILED"`, `"RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID"`, `"RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID"`, `"RETRIEVAL_DELETION_IN_PROGRESS"`, `"RETRIEVAL_EXECUTION_LEASE_LOST"`, `"SOURCE_BULK_ACTION_FAILED"`, `"SOURCE_CONNECTION_UNAVAILABLE"`, `"SOURCE_CRAWL_PAGE_NOT_FOUND"`, `"SOURCE_CRAWL_PROVIDER_UNAVAILABLE"`, `"SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED"`, `"SOURCE_CREDENTIAL_CONFIG_INVALID"`, `"SOURCE_CREDENTIAL_MUTATION_FAILED"`, `"SOURCE_CREDENTIAL_TEST_FAILED"`, `"SOURCE_CREDENTIAL_UNAVAILABLE"`, `"SOURCE_DOCUMENT_COMPILATION_FAILED"`, `"SOURCE_DOCUMENT_MATERIALIZATION_FAILED"`, `"SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED"`, `"SOURCE_IMPORT_PARTIAL_FAILURE"`, `"SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID"`, `"SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED"`, `"SOURCE_ONLINE_DOCUMENT_UNAVAILABLE"`, `"SOURCE_ONLINE_DRIVE_CONFIG_INVALID"`, `"SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED"`, `"SOURCE_ONLINE_DRIVE_IMPORT_FAILED"`, `"SOURCE_ONLINE_DRIVE_REQUEST_FAILED"`, `"SOURCE_ONLINE_DRIVE_UNAVAILABLE"`, `"SOURCE_OPERATION_FAILED"`, `"SOURCE_PROVIDER_REJECTED"`, `"SOURCE_PROVIDER_TIMEOUT"`, `"SOURCE_PROVIDER_UNAVAILABLE"`, `"SOURCE_SECRET_INTEGRITY_FAILED"`, `"SOURCE_SECRET_REF_CONFLICT"`, `"SOURCE_SYNC_FAILED"`, `"SOURCE_SYNC_SELECTION_MISMATCH"`, `"SOURCE_VERSION_CONFLICT"`, `"SOURCE_WEBSITE_CRAWL_CONFIG_INVALID"`, `"SOURCE_WEBSITE_CRAWL_FAILED"`, `"SOURCE_WORKFLOW_CONTENT_MISSING"`, `"SOURCE_WORKFLOW_CONTENT_TOO_LARGE"`, `"SOURCE_WORKFLOW_EXTERNAL_TIMEOUT"`, `"SOURCE_WORKFLOW_FAILED"`, `"UPLOAD_INITIALIZATION_FAILED"`, `"UPLOAD_INTEGRITY_MISMATCH"`, `"VECTOR_SPACE_QUOTA_EXCEEDED"`, `"VECTOR_SPACE_QUOTA_UNAVAILABLE"` | Yes |
 | error | string |  | Yes |
 | failure | [KnowledgeFSPublicFailureResponse](#knowledgefspublicfailureresponse) |  | No |
 | filename | string |  | Yes |
@@ -29931,6 +31513,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| has_children | boolean |  | No |
 | last_edited_time | string |  | No |
 | page_id | string |  | Yes |
 | page_name | string |  | Yes |
@@ -29943,6 +31526,8 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | ---- | ---- | ----------- | -------- |
 | cursor | string |  | No |
 | limit | integer, <br>**Default:** 50 |  | No |
+| parentId | string |  | No |
+| view | string |  | No |
 
 #### KnowledgeFSSourcePagesResponse
 
@@ -30067,7 +31652,7 @@ the file name and a short-lived signed preview URL for files the caller still ow
 | id | string |  | Yes |
 | kind | string |  | Yes |
 | knowledge_space_id | string |  | Yes |
-| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
+| last_error_code | string, <br>**Available values:** "DOCUMENT_COMPILATION_FAILED", "DOCUMENT_COMPILATION_LEASE_LOST", "DOCUMENT_COMPILATION_PROFILE_CHANGED", "DOCUMENT_COMPILATION_RETRYABLE", "DOCUMENT_COUNT_QUOTA_EXCEEDED", "DOCUMENT_COUNT_QUOTA_UNAVAILABLE", "DOCUMENT_DISABLED", "DOCUMENT_PARSER_INPUT_INVALID", "DOCUMENT_PARSER_NOT_CONFIGURED", "DOCUMENT_PARSER_RATE_LIMITED", "DOCUMENT_PARSER_RESPONSE_INVALID", "DOCUMENT_PARSER_TIMEOUT", "DOCUMENT_PARSER_UNAVAILABLE", "DOCUMENT_PARSER_UNSUPPORTED_TYPE", "DOCUMENT_PDF_RENDER_FAILED", "DOCUMENT_SEMANTIC_GROUNDING_FAILED", "DOCUMENT_SOURCE_NOT_FOUND", "DURABLE_DELETION_IDEMPOTENCY_CONFLICT", "EMBEDDING_DIMENSION_INVALID", "EMBEDDING_DIMENSION_UNSUPPORTED", "EXECUTION_ATTEMPTS_EXHAUSTED", "KNOWLEDGE_FS_ACCESS_DENIED", "KNOWLEDGE_FS_CONFLICT", "KNOWLEDGE_FS_INTERNAL_ERROR", "KNOWLEDGE_FS_INVALID_REQUEST", "KNOWLEDGE_FS_NOT_FOUND", "KNOWLEDGE_FS_RATE_LIMITED", "KNOWLEDGE_FS_TIMEOUT", "KNOWLEDGE_FS_UNAVAILABLE", "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND", "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS", "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED", "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT", "LOGICAL_DOCUMENT_CAS_CONFLICT", "MODEL_CAPABILITY_MISMATCH", "MODEL_CONFIGURATION_STALE", "MODEL_CREDENTIAL_INVALID", "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE", "MODEL_IDENTITY_MISMATCH", "MODEL_PREFLIGHT_CANCELED", "MODEL_PREFLIGHT_FAILED", "MODEL_PREFLIGHT_TIMEOUT", "MODEL_PREFLIGHT_UNAVAILABLE", "MODEL_PROFILE_ACTIVATION_INCOMPLETE", "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED", "MODEL_RUNTIME_CONTEXT_LIMIT", "MODEL_RUNTIME_FAILED", "MODEL_RUNTIME_OUTPUT_LIMIT", "MODEL_RUNTIME_RESPONSE_INVALID", "MODEL_RUNTIME_TIMEOUT", "MODEL_RUNTIME_UNAVAILABLE", "MODEL_SELECTION_NOT_FOUND", "RESEARCH_TASK_CAPABILITY_REVOKED", "RESEARCH_TASK_DISPATCH_DEAD", "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED", "RESEARCH_TASK_FAILED", "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID", "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID", "RETRIEVAL_DELETION_IN_PROGRESS", "RETRIEVAL_EXECUTION_LEASE_LOST", "SOURCE_BULK_ACTION_FAILED", "SOURCE_CONNECTION_UNAVAILABLE", "SOURCE_CRAWL_PAGE_NOT_FOUND", "SOURCE_CRAWL_PROVIDER_UNAVAILABLE", "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED", "SOURCE_CREDENTIAL_CONFIG_INVALID", "SOURCE_CREDENTIAL_MUTATION_FAILED", "SOURCE_CREDENTIAL_TEST_FAILED", "SOURCE_CREDENTIAL_UNAVAILABLE", "SOURCE_DOCUMENT_COMPILATION_FAILED", "SOURCE_DOCUMENT_MATERIALIZATION_FAILED", "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED", "SOURCE_IMPORT_PARTIAL_FAILURE", "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID", "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED", "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED", "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED", "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE", "SOURCE_ONLINE_DRIVE_CONFIG_INVALID", "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED", "SOURCE_ONLINE_DRIVE_IMPORT_FAILED", "SOURCE_ONLINE_DRIVE_REQUEST_FAILED", "SOURCE_ONLINE_DRIVE_UNAVAILABLE", "SOURCE_OPERATION_FAILED", "SOURCE_PROVIDER_REJECTED", "SOURCE_PROVIDER_TIMEOUT", "SOURCE_PROVIDER_UNAVAILABLE", "SOURCE_SECRET_INTEGRITY_FAILED", "SOURCE_SECRET_REF_CONFLICT", "SOURCE_SYNC_FAILED", "SOURCE_SYNC_SELECTION_MISMATCH", "SOURCE_VERSION_CONFLICT", "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID", "SOURCE_WEBSITE_CRAWL_FAILED", "SOURCE_WORKFLOW_CONTENT_MISSING", "SOURCE_WORKFLOW_CONTENT_TOO_LARGE", "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT", "SOURCE_WORKFLOW_FAILED", "UPLOAD_INITIALIZATION_FAILED", "UPLOAD_INTEGRITY_MISMATCH", "VECTOR_SPACE_QUOTA_EXCEEDED", "VECTOR_SPACE_QUOTA_UNAVAILABLE" |  | No |
 | max_execution_attempts | integer |  | Yes |
 | progress_completed | integer |  | Yes |
 | progress_failed | integer |  | Yes |
@@ -30868,12 +32453,19 @@ Paginated response body for organization candidate search.
 | configs | [ object ] |  | No |
 | enabled | boolean |  | No |
 
+#### LoginMode
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| LoginMode | string |  |  |
+
 #### LoginPayload
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | invite_token | string | Invitation token | No |
+| mode | [LoginMode](#loginmode) | End User mode authenticates an Account without workspace admission or provisioning. | No |
 | password | string |  | Yes |
 | remember_me | boolean | Remember me flag | No |
 
@@ -31764,6 +33356,14 @@ Please upload your file.
 | ---- | ---- | ----------- | -------- |
 | enabled | boolean |  | No |
 
+#### NodeConnectionStatus
+
+The current selection's effective status for one published Tool node.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| NodeConnectionStatus | string | The current selection's effective status for one published Tool node. |  |
+
 #### NodeDataMigrationBlocker
 
 Stable node-scoped reason why the backend cannot produce lossless v2 data.
@@ -31826,6 +33426,14 @@ One converted node returned with its frontend correlation identifier.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | node_id | string |  | Yes |
+
+#### NodeInfo
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
 
 #### NodeNotInWorkflowRunError
 
@@ -32111,7 +33719,8 @@ Only support workflow app.
 | ---- | ---- | ----------- | -------- |
 | invite_token | string | Optional invitation token | No |
 | language | string | Preferred interface language | No |
-| redirect_url | string | Relative page to resume after login | No |
+| mode | [LoginMode](#loginmode) | End User mode skips workspace admission and provisioning | No |
+| redirect_url | string | Console page to resume after login; End User mode accepts personal portal URLs, defaults to /my-apps and can resume /signin to complete an App handoff | No |
 | timezone | string | Preferred timezone | No |
 
 #### OAuthProviderAccountResponse
@@ -34138,6 +35747,12 @@ A configured credential whose stored value is omitted.
 | ---- | ---- | ----------- | -------- |
 | redirect_url | string |  | Yes |
 
+#### RefreshTokenPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| mode | [LoginMode](#loginmode) | End User mode refreshes the Account session without workspace admission | No |
+
 #### RelatedAppListResponse
 
 | Name | Type | Description | Required |
@@ -35789,6 +37404,12 @@ The subscription constructor of the trigger provider
 | not_started | integer |  | No |
 | timeout | integer |  | No |
 
+#### SupportedComparisonOperator
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| SupportedComparisonOperator | string |  |  |
+
 #### SwitchWorkspacePayload
 
 | Name | Type | Description | Required |
@@ -35838,34 +37459,6 @@ Model class for provider system configuration response.
 | current_quota_type | [ProviderQuotaType](#providerquotatype) |  | No |
 | enabled | boolean |  | Yes |
 | quota_configurations | [ [QuotaConfiguration](#quotaconfiguration) ], <br>**Default:**  |  | No |
-
-#### SystemFeatureModel
-
-Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
-| branding | [BrandingModel](#brandingmodel) |  | Yes |
-| deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
-| enable_app_deploy | boolean |  | Yes |
-| enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_creators_platform | boolean |  | Yes |
-| enable_email_code_login | boolean |  | Yes |
-| enable_email_password_login | boolean, <br>**Default:** true |  | Yes |
-| enable_explore_banner | boolean |  | Yes |
-| enable_learn_app | boolean, <br>**Default:** true |  | Yes |
-| enable_marketplace | boolean |  | Yes |
-| enable_social_oauth_login | boolean |  | Yes |
-| enable_step_by_step_tour | boolean |  | Yes |
-| is_allow_register | boolean |  | Yes |
-| is_email_setup | boolean |  | Yes |
-| license | [LicenseStatusModel](#licensestatusmodel) |  | Yes |
-| plugin_installation_permission | [PluginInstallationPermissionModel](#plugininstallationpermissionmodel) |  | Yes |
-| rbac_enabled | boolean |  | Yes |
-| sso_enforced_for_signin | boolean |  | Yes |
-| sso_enforced_for_signin_protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
-| webapp_auth | [WebAppAuthModel](#webappauthmodel) |  | Yes |
 
 #### SystemParameters
 
@@ -36015,6 +37608,46 @@ Tag type
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | TenantPluginInstallPermission | string |  |  |
+
+#### TestCredentialCheck
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| reason_code | string |  | Yes |
+| retryable | boolean |  | Yes |
+| status | string, <br>**Available values:** "invalid", "temporarily_unavailable", "unsupported", "valid" | *Enum:* `"invalid"`, `"temporarily_unavailable"`, `"unsupported"`, `"valid"` | Yes |
+
+#### TestCredentialPreflightResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialReadiness
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| credentials | [ [TestCredentialState](#testcredentialstate) ] |  | Yes |
+| ready | boolean |  | Yes |
+
+#### TestCredentialState
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| check | [TestCredentialCheck](#testcredentialcheck) |  | Yes |
+| credential_id | string |  | Yes |
+| node_id | string |  | Yes |
+| node_ids | [ string ] |  | Yes |
+| status | string, <br>**Available values:** "connected", "disconnected", "incompatible", "invalid", "reconnect_required", "temporarily_unavailable" | *Enum:* `"connected"`, `"disconnected"`, `"incompatible"`, `"invalid"`, `"reconnect_required"`, `"temporarily_unavailable"` | Yes |
+
+#### TestCredentialsNotReadyError
+
+Required test credentials are not ready.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| TestCredentialsNotReadyError |  | Required test credentials are not ready. |  |
 
 #### TextContentResponse
 
@@ -37242,6 +38875,22 @@ The app access service is unavailable. Try again later.
 | ---- | ---- | ----------- | -------- |
 | WebAppAccessUnavailableError |  | The app access service is unavailable. Try again later. |  |
 
+#### WebAppAccountSessionQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| app_code | string |  | No |
+| code_challenge | string | S256 PKCE challenge required only when returning to an App | No |
+| mode | string, <br>**Default:** end_user |  | No |
+| redirect_url | string | Personal portal return URL, or App return URL when app_code and code_challenge are provided | No |
+
+#### WebAppAccountSessionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| logged_in | boolean |  | Yes |
+| redirect_url | string |  | Yes |
+
 #### WebAppAuthModel
 
 | Name | Type | Description | Required |
@@ -37258,6 +38907,29 @@ The app access service is unavailable. Try again later.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | protocol | [SSOProtocol](#ssoprotocol) |  | Yes |
+
+#### WebAppConnectionRequirement
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_credential_types | [ [ConnectionCredentialType](#connectioncredentialtype) ] |  | Yes |
+| icon | string | Plugin icon URL, using the Integrations asset endpoint. | Yes |
+| icon_dark | string | Dark plugin icon URL; null when the plugin has no dark icon. | Yes |
+| node_id | string | Independent authorization node ID to use as the selection key. | Yes |
+| node_ids | [ string ] | The authorization node and all nodes explicitly reusing it. | Yes |
+| plugin_unique_identifier | string | Exact plugin artifact recorded in connection_revision. | Yes |
+| provider | string |  | Yes |
+| provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
+| purpose | string |  | Yes |
+| title | string |  | Yes |
+
+#### WebLoginUnavailableError
+
+Web App login is temporarily unavailable. Please retry.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| WebLoginUnavailableError |  | Web App login is temporarily unavailable. Please retry. |  |
 
 #### WebhookTriggerNotFoundError
 
@@ -37408,6 +39080,23 @@ Data entity
 | total_tokens | integer |  | Yes |
 | workflow_id | string |  | Yes |
 
+#### WorkflowAppLogEvaluationItemResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| details | object |  | No |
+| name | string |  | Yes |
+| node_info | [WorkflowAppLogEvaluationNodeInfoResponse](#workflowapplogevaluationnodeinforesponse) |  | No |
+| value |  |  | No |
+
+#### WorkflowAppLogEvaluationNodeInfoResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| node_id | string |  | Yes |
+| title | string |  | Yes |
+| type | string |  | Yes |
+
 #### WorkflowAppLogPaginationResponse
 
 | Name | Type | Description | Required |
@@ -37428,6 +39117,7 @@ Data entity
 | created_by_role | string |  | No |
 | created_from | string |  | No |
 | details |  |  | No |
+| evaluation | [ [WorkflowAppLogEvaluationItemResponse](#workflowapplogevaluationitemresponse) ] |  | No |
 | id | string |  | Yes |
 | workflow_run | [WorkflowRunForLogResponse](#workflowrunforlogresponse) |  | No |
 
@@ -37964,6 +39654,22 @@ tenant's default model. The underlying generator never raises — an empty
 | ---- | ---- | ----------- | -------- |
 | suggestions | [ string ] |  | Yes |
 
+#### WorkflowKindConvertQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| target_type | string, <br>**Available values:** "evaluation", "workflow" | *Enum:* `"evaluation"`, `"workflow"` | Yes |
+
+#### WorkflowKindConvertResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| kind | string |  | Yes |
+| result | string |  | Yes |
+| type | string |  | Yes |
+| updated_at | integer |  | Yes |
+| workflow_id | string |  | Yes |
+
 #### WorkflowListQuery
 
 | Name | Type | Description | Required |
@@ -38067,6 +39773,8 @@ Enabled routes require at least two exits; drafts may omit conditions.
 | created_at | integer |  | No |
 | created_by | string |  | No |
 | id | string |  | Yes |
+| kind | string |  | No |
+| type | string |  | Yes |
 | updated_at | integer |  | No |
 | updated_by | string |  | No |
 
@@ -38355,13 +40063,6 @@ Workflow run not found.
 | has_more | boolean |  | Yes |
 | limit | integer |  | Yes |
 
-#### WorkflowRunPayload
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| files | [ object<br>object<br>object<br>object ] | File list for workflow system file inputs. Available when file upload is enabled for the workflow. To attach a local file, first upload it via [Upload File](/api-reference/files/upload-file) and use the returned `id` as `upload_file_id` with `transfer_method: local_file`. | No |
-| inputs | object | Key-value pairs for workflow input variables. Values for file-type variables should be arrays of file objects with `type`, `transfer_method`, and either `url` or `upload_file_id`. Refer to the `user_input_form` field in the [Get App Parameters](/api-reference/applications/get-app-parameters) response to discover the variable names and types expected by your app. | Yes |
-
 #### WorkflowRunRequest
 
 | Name | Type | Description | Required |
@@ -38557,6 +40258,19 @@ Workflow tool configuration
 | ---- | ---- | ----------- | -------- |
 | items | [ [AccessMatrixItem](#accessmatrixitem) ] |  | No |
 | pagination | [Pagination](#pagination) |  | No |
+
+#### WorkspaceActivationPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| name | string |  | Yes |
+
+#### WorkspaceActivationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| first_workspace_created_at | integer |  | Yes |
+| workspace_id | string |  | Yes |
 
 #### WorkspaceCustomConfigPayload
 

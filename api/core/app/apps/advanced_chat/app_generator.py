@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -19,6 +19,8 @@ from constants import UUID_NIL
 if TYPE_CHECKING:
     from controllers.console.app.workflow import LoopNodeRunPayload
     from core.app.apps.workflow_app_runner import WorkflowRunDriver
+
+from context.connection_execution import ConnectionExecutionContext
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -29,6 +31,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_generator import noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -92,6 +95,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -107,6 +111,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Generator[Mapping | str]: ...
 
     @overload
@@ -122,6 +127,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]: ...
 
     def generate(
@@ -136,6 +142,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         *,
         session: Session,
+        connection_context: ConnectionExecutionContext | None = None,
     ) -> Mapping[str, Any] | Generator[str | Mapping]:
         """
         Generate App response.
@@ -214,6 +221,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
             # init application generate entity
             application_generate_entity = AdvancedChatAppGenerateEntity(
+                connection_context=connection_context,
                 task_id=str(uuid.uuid4()),
                 app_config=app_config,
                 file_upload_config=file_extra_config,
@@ -291,9 +299,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_runtime_state: RuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ):
         """
         Resume a paused advanced chat execution.
+
+        ``restore_file_access`` restores host-owned grants inside the new
+        execution scope before worker contexts are copied. The default callback
+        leaves existing access rules unchanged.
 
         ``trace_scope`` is transient and excluded from generate-entity serialization,
         so resumed executions create it again before persistence layers receive the entity.
@@ -324,6 +337,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
             session=session,
         )
 
@@ -532,9 +546,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        On resume, HITL submissions must already be committed. Restore their
+        EndUser file grants before capturing worker and response contexts.
 
         :param workflow: Workflow
         :param user: account or end user
@@ -552,6 +570,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            # Restore grants before copying contexts for both workers and responses.
+            restore_file_access()
             is_first_conversation = conversation is None
 
             if conversation is not None and message is not None:
@@ -605,7 +625,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 },
             )
 
-            worker_thread.start()
+            with self._web_workflow_launch(
+                application_generate_entity,
+                workflow=workflow,
+                user=user,
+                conversation_id=conversation.id,
+                resume=graph_runtime_state is not None,
+            ):
+                worker_thread.start()
 
             # Capture the scalar fields needed by the response pipeline before
             # releasing the request-scoped SQLAlchemy session.
@@ -668,7 +695,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :return:
         """
 
-        with preserve_flask_contexts(flask_app, context_vars=context):
+        with (
+            preserve_flask_contexts(flask_app, context_vars=context),
+            self._web_workflow_worker(application_generate_entity),
+        ):
             # get conversation and message
             conversation = self._get_conversation(conversation_id)
             message = self._get_message(message_id)

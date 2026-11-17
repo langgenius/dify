@@ -19,6 +19,57 @@ export const zErrorResponse = z.object({
 })
 
 /**
+ * WorkspaceActivationPayload
+ */
+export const zWorkspaceActivationPayload = z.object({
+  name: z.string().min(1).max(255),
+})
+
+/**
+ * WorkspaceActivationResponse
+ */
+export const zWorkspaceActivationResponse = z.object({
+  first_workspace_created_at: z.int().nullable(),
+  workspace_id: z.string(),
+})
+
+/**
+ * AccountNotFoundError
+ *
+ * Account not found.
+ */
+export const zAccountNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('account_not_found'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * LimitExceededError
+ *
+ * Unable to create account because the licensed seats limit was exceeded
+ */
+export const zLimitExceededError = zErrorResponse.and(
+  z.object({
+    code: z.literal('limit_exceeded'),
+    status: z.literal(400),
+  }),
+)
+
+/**
+ * NotAllowedCreateWorkspaceError
+ *
+ * Workspace not found, please contact system admin to invite you to join in a workspace.
+ */
+export const zNotAllowedCreateWorkspaceError = zErrorResponse.and(
+  z.object({
+    code: z.literal('not_allowed_create_workspace'),
+    status: z.literal(400),
+  }),
+)
+
+/**
  * AgentSkillBindingsPayload
  */
 export const zAgentSkillBindingsPayload = z.object({
@@ -34,6 +85,18 @@ export const zInvalidRequestError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_request'),
     status: z.literal(400),
+  }),
+)
+
+/**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
   }),
 )
 
@@ -229,18 +292,6 @@ export const zMemberInviteErrorResponse = z.object({
 export const zInvalidRoleError = zErrorResponse.and(
   z.object({
     code: z.literal('invalid_role'),
-    status: z.literal(400),
-  }),
-)
-
-/**
- * LimitExceededError
- *
- * Unable to create account because the licensed seats limit was exceeded
- */
-export const zLimitExceededError = zErrorResponse.and(
-  z.object({
-    code: z.literal('limit_exceeded'),
     status: z.literal(400),
   }),
 )
@@ -622,18 +673,6 @@ export const zNetworkAccessInvalidInputError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_invalid_input'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 
@@ -1191,6 +1230,14 @@ export const zApiToolSchemaPayload = z.object({
 })
 
 /**
+ * BuiltinToolProviderCreateResponse
+ */
+export const zBuiltinToolProviderCreateResponse = z.object({
+  id: z.string(),
+  result: z.string(),
+})
+
+/**
  * BuiltinProviderDefaultCredentialPayload
  */
 export const zBuiltinProviderDefaultCredentialPayload = z.object({
@@ -1607,6 +1654,35 @@ export const zSimpleAccountResponse = z.object({
 })
 
 /**
+ * AvailableEvaluationWorkflowResponse
+ */
+export const zAvailableEvaluationWorkflowResponse = z.object({
+  app_id: z.string(),
+  app_name: z.string(),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  hash: z.string(),
+  id: z.string(),
+  kind: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+})
+
+/**
+ * AvailableEvaluationWorkflowPaginationResponse
+ */
+export const zAvailableEvaluationWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zAvailableEvaluationWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * SnippetTagResponse
  */
 export const zSnippetTagResponse = z.object({
@@ -1704,6 +1780,22 @@ export const zSnippetImportResponse = z.object({
   warnings: z.array(zDslImportWarning),
 })
 
+/**
+ * EvaluationAssociatedTargetResponse
+ */
+export const zEvaluationAssociatedTargetResponse = z.object({
+  target_id: z.string(),
+  target_name: z.string(),
+  target_type: z.string(),
+})
+
+/**
+ * EvaluationAssociatedTargetListResponse
+ */
+export const zEvaluationAssociatedTargetListResponse = z.object({
+  items: z.array(zEvaluationAssociatedTargetResponse),
+})
+
 export const zSenderName = z.string().min(1).max(255)
 
 /**
@@ -1752,6 +1844,7 @@ export const zUnchangedInput = z.object({
 export const zHumanInputContactSummary = z.object({
   avatar_url: z.string().optional().default(''),
   created_at: z.int(),
+  email: z.string().nullish(),
   id: z.string(),
   name: z.string(),
 })
@@ -3393,8 +3486,8 @@ export const zImSyncRunStatus = z.enum(['failed', 'queued', 'running', 'succeede
  *
  * One IM sync run snapshot.
  *
- * The latest-only UI displays ``finished_at`` as the explicit sync time. The
- * transport contract intentionally does not expose a ``started_by`` actor.
+ * The latest-only UI displays ``finished_at`` as the explicit sync time.
+ * The initiator display name is resolved from the initiating Dify Account.
  */
 export const zImSyncRun = z.object({
   channel_config_version: z.int().gte(1),
@@ -3402,6 +3495,7 @@ export const zImSyncRun = z.object({
   error_message: z.string().nullish(),
   finished_at: z.int().nullish(),
   id: z.string(),
+  initiator_display_name: z.string(),
   provider: zImProvider,
   result_counts: zImSyncRunResultCounts,
   started_at: z.int().nullish(),
@@ -6395,6 +6489,13 @@ export const zInteractiveSurfaceDeliveryConfigWritable = z.record(z.string(), z.
  */
 export const zGetWorkspacesResponse = zTenantListResponse
 
+export const zPostWorkspacesActivateBody = zWorkspaceActivationPayload
+
+/**
+ * Workspace ready
+ */
+export const zPostWorkspacesActivateResponse = zWorkspaceActivationResponse
+
 export const zGetWorkspacesCurrentAgentProviderByProviderNamePath = z.object({
   provider_name: z.string(),
 })
@@ -6428,6 +6529,20 @@ export const zPutWorkspacesCurrentAgentsByAgentIdSkillsPath = z.object({
  * Agent Skill bindings replaced
  */
 export const zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse = zAgentSkillBindingsResponse
+
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsQuery = z.object({
+  keyword: z.string().max(255).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(10),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  user_id: z.string().optional(),
+})
+
+/**
+ * Available evaluation workflows
+ */
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  zAvailableEvaluationWorkflowPaginationResponse
 
 export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
   creators: z.array(z.string()).optional(),
@@ -6633,6 +6748,16 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
+
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsPath = z.object({
+  workflow_id: z.uuid(),
+})
+
+/**
+ * Associated evaluation targets
+ */
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  zEvaluationAssociatedTargetListResponse
 
 /**
  * Success
@@ -8722,7 +8847,8 @@ export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddPath = z.obje
 /**
  * Builtin provider added successfully
  */
-export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse = zSimpleResultResponse
+export const zPostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse =
+  zBuiltinToolProviderCreateResponse
 
 export const zGetWorkspacesCurrentToolProviderBuiltinByProviderCredentialInfoPath = z.object({
   provider: z.string(),

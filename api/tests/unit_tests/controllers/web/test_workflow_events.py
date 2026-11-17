@@ -2,14 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 from flask import Flask
+from sqlalchemy import Engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from controllers.common.errors import NotFoundError
 from controllers.web.workflow_events import WorkflowEventsApi
+from core.workflow.human_input_policy import HumanInputSurface
+from extensions.ext_database import db
 from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import App, AppMode, EndUser
@@ -56,14 +61,36 @@ def _workflow_run(
     return workflow_run
 
 
+@pytest.fixture
+def workflow_database(app: Flask, sqlite_engine: Engine, sqlite_session: Session) -> Iterator[None]:
+    """Persist an owned run in SQLite and bind the controller to that database.
+
+    Tests use the real repository; dispose the controller's engine after use.
+    """
+    app.config["SQLALCHEMY_DATABASE_URI"] = sqlite_engine.url
+    db.init_app(app)
+    sqlite_session.add(_workflow_run())
+    sqlite_session.commit()
+    with app.app_context():
+        try:
+            yield
+        finally:
+            db.session.remove()
+            db.engine.dispose()
+
+
 # ---------------------------------------------------------------------------
 # WorkflowEventsApi
 # ---------------------------------------------------------------------------
 class TestWorkflowEventsApi:
+    @pytest.fixture(autouse=True)
+    def history_database(self, sqlite_session_factory: sessionmaker[Session]) -> None:
+        self.history_engine = sqlite_session_factory.kw["bind"]
+
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_not_found(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = None
         mock_factory.create_api_workflow_run_repository.return_value = mock_repo
@@ -75,7 +102,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_app(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(app_id="other-app")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -90,7 +117,7 @@ class TestWorkflowEventsApi:
     def test_workflow_run_not_created_by_end_user(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(created_by_role=CreatorUserRole.ACCOUNT)
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -103,7 +130,7 @@ class TestWorkflowEventsApi:
     @patch("controllers.web.workflow_events.DifyAPIRepositoryFactory")
     @patch("controllers.web.workflow_events.db")
     def test_workflow_run_wrong_end_user(self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(created_by="other-user")
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -119,7 +146,7 @@ class TestWorkflowEventsApi:
     def test_finished_run_returns_sse_response(
         self, mock_db: MagicMock, mock_factory: MagicMock, mock_converter: MagicMock, app: Flask
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run(finished_at=datetime(2024, 1, 1))
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -140,7 +167,7 @@ class TestWorkflowEventsApi:
     def test_snapshot_stream_can_continue_across_pauses(
         self, mock_db: MagicMock, mock_factory: MagicMock, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        mock_db.engine = "engine"
+        mock_db.engine = self.history_engine
         run = _workflow_run()
         mock_repo = MagicMock()
         mock_repo.get_workflow_run_by_id_and_tenant_id.return_value = run
@@ -165,6 +192,50 @@ class TestWorkflowEventsApi:
                 "tenant_id": "tenant-1",
                 "app_id": "app-1",
                 "session_maker": ANY,
+                "human_input_surface": HumanInputSurface.WEB_APP,
                 "close_on_pause": False,
             }
         ]
+
+    @pytest.mark.usefixtures("workflow_database")
+    def test_snapshot_stream_restricts_pending_forms_to_web_app_surface(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A reconnecting Web App run must not fall back to BACKSTAGE resume tokens."""
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
+        monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
+
+        with app.test_request_context("/workflow/run-1/events?include_state_snapshot=true"):
+            response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+
+        assert response.get_data(as_text=True) == 'data: {"event":"snapshot"}\n\n'
+        assert len(snapshot_calls) == 1
+        assert snapshot_calls[0]["human_input_surface"] == HumanInputSurface.WEB_APP
+        assert snapshot_calls[0]["close_on_pause"] is True
+
+    @pytest.mark.usefixtures("workflow_database")
+    def test_non_snapshot_stream_skips_snapshot_builder(self, app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+        """Without include_state_snapshot the legacy event path is used unchanged."""
+        snapshot_calls: list[dict[str, object]] = []
+
+        def snapshot_builder(**kwargs: object) -> list[dict[str, str]]:
+            snapshot_calls.append(kwargs)
+            return [{"event": "snapshot"}]
+
+        monkeypatch.setattr("controllers.web.workflow_events.build_workflow_event_stream", snapshot_builder)
+        monkeypatch.setattr(
+            "controllers.web.workflow_events.MessageGenerator.retrieve_events",
+            lambda *_args, **_kwargs: iter([{"event": "message"}]),
+        )
+
+        with app.test_request_context("/workflow/run-1/events"):
+            response = WorkflowEventsApi().get(_workflow_app(), _end_user(), "run-1")
+
+        assert response.mimetype == "text/event-stream"
+        assert response.get_data(as_text=True) == 'data: {"event":"message"}\n\n'
+        assert snapshot_calls == []

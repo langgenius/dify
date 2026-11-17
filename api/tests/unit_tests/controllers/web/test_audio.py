@@ -30,7 +30,7 @@ from services.app_ref_service import AppRef, MessageRef
 from services.audio_service import FILE_SIZE_LIMIT, AudioService
 from services.errors.audio import ProviderNotSupportSpeechToTextServiceError
 from tests.helpers.unit.audio_runtime_fixtures import AudioRuntimeObservations, record_calls
-from tests.helpers.unit.model_factories import make_app, make_end_user, make_message
+from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 
 
 @pytest.fixture
@@ -205,21 +205,27 @@ class TestTextApi:
         service_calls: list[dict[str, object]],
     ) -> None:
         message_id = "550e8400-e29b-41d4-a716-446655440000"
-        sqlite_session.add(
-            make_message(
-                message_id=message_id,
-                app_id="other-app" if owner == "other-app" else web_app.id,
-                from_end_user_id="other-user" if owner == "other-user" else "eu-1",
-                answer="persisted answer",
-                inputs={},
-                query="Question",
-                message={"role": "user", "content": "Question"},
-                message_unit_price=Decimal(0),
-                answer_unit_price=Decimal(0),
-                currency="USD",
-                from_source=ConversationFromSource.API,
-            )
+        message = make_message(
+            message_id=message_id,
+            app_id="other-app" if owner == "other-app" else web_app.id,
+            from_end_user_id="other-user" if owner == "other-user" else "eu-1",
+            answer="persisted answer",
+            inputs={},
+            query="Question",
+            message={"role": "user", "content": "Question"},
+            message_unit_price=Decimal(0),
+            answer_unit_price=Decimal(0),
+            currency="USD",
+            from_source=ConversationFromSource.API,
         )
+        conversation = make_conversation(
+            app_id=message.app_id,
+            from_source=ConversationFromSource.API,
+            from_end_user_id=message.from_end_user_id,
+            inputs={},
+        )
+        conversation.messages.append(message)
+        sqlite_session.add(conversation)
         sqlite_session.commit()
         with app.test_request_context(
             "/text-to-audio", method="POST", json={"text": "ignored input", "message_id": message_id}

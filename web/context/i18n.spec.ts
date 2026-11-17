@@ -99,6 +99,22 @@ describe('useDocLink', () => {
 
   describe('Product prefix handling', () => {
     it.each([
+      ['CLOUD', 'zh-Hans', 'zh', 'cloud'],
+      ['COMMUNITY', 'ja-JP', 'ja', 'self-host'],
+    ] as const)(
+      'routes channel setup guides for %s using the current %s locale',
+      (deploymentEdition, locale, language, product) => {
+        mockDeploymentEdition.value = deploymentEdition
+        vi.mocked(useLocale).mockReturnValue(locale)
+        const { result } = renderHook(() => useDocLink())
+
+        expect(result.current('/use-dify/workspace/channels/email')).toBe(
+          `${defaultDocBaseUrl}/${language}/${product}/use-dify/workspace/channels/email`,
+        )
+      },
+    )
+
+    it.each([
       ['CLOUD', 'cloud'],
       ['COMMUNITY', 'self-host'],
     ] as const)(

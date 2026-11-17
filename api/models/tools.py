@@ -477,6 +477,7 @@ class ToolFile(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tool_file_pkey"),
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
+        sa.Index("tool_file_owner_idx", "tenant_id", "user_id"),
     )
 
     id: Mapped[str] = mapped_column(

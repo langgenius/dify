@@ -120,7 +120,9 @@ class AccountIdentityGateway:
 
     def load_user(self, account_id: str) -> Account | None:
         now = naive_utc_now()
-        account = self._accounts.load_identity(account_id, now=now)
+        account = self._accounts.load_identity(
+            account_id, now=now, require_workspace=dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+        )
         if account is None:
             return None
         if account.status == AccountStatus.BANNED:
@@ -358,6 +360,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
             is_student=result.is_student,
             expire_at=result.expire_at,
             allow_refresh=result.allow_refresh,
+            can_redeem_discount=result.can_redeem_discount,
         )
 
     @override

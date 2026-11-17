@@ -4,11 +4,13 @@ import json
 import logging
 import urllib.parse
 from dataclasses import dataclass
-from typing import NotRequired, TypedDict, override
+from typing import Literal, NotRequired, TypedDict, override
 
 import httpx
-from pydantic import TypeAdapter, ValidationError
+from itsdangerous import BadData, URLSafeTimedSerializer
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
+from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
@@ -35,6 +37,33 @@ class OAuthState(TypedDict, total=False):
     timezone: str
     language: str
     redirect_url: str
+
+
+ACCOUNT_OAUTH_STATE_PREFIX = "account_oauth."
+ACCOUNT_OAUTH_STATE_MAX_AGE = 600
+
+
+class AccountOAuthState(BaseModel):
+    mode: Literal["console", "end_user"]
+    provider: str
+    nonce: str
+    context: OAuthState
+
+
+def encode_account_oauth_state(state: AccountOAuthState) -> str:
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="account-oauth-login")
+    return ACCOUNT_OAUTH_STATE_PREFIX + serializer.dumps(state.model_dump())
+
+
+def decode_account_oauth_state(state: str) -> AccountOAuthState:
+    if not state.startswith(ACCOUNT_OAUTH_STATE_PREFIX):
+        raise ValueError("Invalid Account OAuth state.")
+    serializer = URLSafeTimedSerializer(dify_config.SECRET_KEY, salt="account-oauth-login")
+    try:
+        payload = serializer.loads(state.removeprefix(ACCOUNT_OAUTH_STATE_PREFIX), max_age=ACCOUNT_OAUTH_STATE_MAX_AGE)
+        return AccountOAuthState.model_validate(payload)
+    except (BadData, ValidationError) as exc:
+        raise ValueError("Invalid or expired Account OAuth state.") from exc
 
 
 class GitHubEmailRecord(TypedDict, total=False):
@@ -127,6 +156,7 @@ class OAuth:
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         raise NotImplementedError()
 
@@ -157,13 +187,14 @@ class GitHubOAuth(OAuth):
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
             "redirect_uri": self.redirect_uri,
             "scope": "user:email",  # Request only basic user information
         }
-        state = encode_oauth_state(
+        state = state or encode_oauth_state(
             invite_token=invite_token,
             timezone=timezone,
             language=language,
@@ -260,6 +291,7 @@ class GoogleOAuth(OAuth):
         timezone: str | None = None,
         language: str | None = None,
         redirect_url: str | None = None,
+        state: str | None = None,
     ) -> str:
         params = {
             "client_id": self.client_id,
@@ -267,7 +299,7 @@ class GoogleOAuth(OAuth):
             "redirect_uri": self.redirect_uri,
             "scope": "openid email",
         }
-        state = encode_oauth_state(
+        state = state or encode_oauth_state(
             invite_token=invite_token,
             timezone=timezone,
             language=language,

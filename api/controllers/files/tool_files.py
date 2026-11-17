@@ -6,12 +6,13 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.common.file_response import enforce_download_for_html
+from controllers.common.file_response import harden_active_content_response
 from controllers.common.schema import query_params_from_model, register_schema_models
 from controllers.console.wraps import model_validate
 from controllers.files import files_ns
 from extensions.ext_application_services import application_services
 from services.tool_file_download_service import (
+    ToolFileDownload,
     ToolFileDownloadAccessDeniedError,
     ToolFileDownloadNotFoundError,
 )
@@ -47,6 +48,7 @@ class ToolFileApi(Resource):
     )
     @model_validate(ToolFileQuery)
     def get(self, args: ToolFileQuery, file_id: UUID, extension: str) -> Response:
+        """Validate the signed request before streaming; active content is sandboxed."""
         try:
             download = application_services().tool_file_downloads.get_signed_file(
                 file_id=str(file_id),
@@ -59,6 +61,11 @@ class ToolFileApi(Resource):
         except ToolFileDownloadNotFoundError as error:
             raise NotFound("file is not found") from error
 
+        return self._build_response(download=download, as_attachment=args.as_attachment, extension=extension)
+
+    @staticmethod
+    def _build_response(*, download: ToolFileDownload, as_attachment: bool, extension: str) -> Response:
+        """Stream a verified file; sandbox SVG previews and download other active content."""
         response = Response(
             download.content,
             mimetype=download.mime_type,
@@ -67,15 +74,16 @@ class ToolFileApi(Resource):
         )
         if download.size > 0:
             response.headers["Content-Length"] = str(download.size)
-        if args.as_attachment and download.filename:
+        if as_attachment and download.filename:
             encoded_filename = quote(download.filename)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
 
-        enforce_download_for_html(
+        harden_active_content_response(
             response,
             mime_type=download.mime_type,
             filename=download.filename,
             extension=extension,
+            inline_svg=not as_attachment,
         )
 
         return response

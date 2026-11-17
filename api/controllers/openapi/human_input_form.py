@@ -13,7 +13,6 @@ from werkzeug.exceptions import BadRequest
 from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.human_input import stringify_form_default_values
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
@@ -30,7 +29,6 @@ from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
-    CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
@@ -107,7 +105,6 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),
@@ -157,7 +154,6 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),

@@ -2,6 +2,7 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
+import { zPaidPlanRequiredError, zServiceApiDisabledError } from './zod.gen.ts'
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -394,12 +395,23 @@ export const sessions = {
   bySessionId,
 }
 
+/**
+ * Return account details with workspace visibility bounded by PAT scope
+ *
+ * The account snapshot supplies current memberships and the default workspace.
+ * A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+ * present only when its workspace remains visible. Non-PAT requests have no
+ * workspace filter. This handler is read-only and does not change membership.
+ */
 export const get5 = oc
   .route({
+    description:
+      "The account snapshot supplies current memberships and the default workspace.\nA PAT's admitted workspace IDs narrow that snapshot; the returned default is\npresent only when its workspace remains visible. Non-PAT requests have no\nworkspace filter. This handler is read-only and does not change membership.",
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAccount',
     path: '/account',
+    summary: 'Return account details with workspace visibility bounded by PAT scope',
     tags: ['openapi'],
   })
   .output(zGetAccountResponse)
@@ -1470,6 +1482,10 @@ export const post16 = oc
   })
   .input(z.object({ body: zPostAppsByAppIdPublishBody, params: zPostAppsByAppIdPublishPath }))
   .output(zPostAppsByAppIdPublishResponse)
+  .errors({
+    paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
+    service_api_disabled: { status: 403, data: zServiceApiDisabledError },
+  })
 
 export const publish = {
   post: post16,

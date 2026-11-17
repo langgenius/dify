@@ -43,6 +43,7 @@ from services.billing_service import BillingService
 from services.enterprise.enterprise_service import try_join_default_workspace
 from services.entities.account_activation_entities import InvitationLookup
 from services.entities.account_entities import AccountSessionTokens
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
@@ -105,6 +106,7 @@ class DifyOAuthProviderGateway(OAuthProviderGateway):
             timezone=request.timezone,
             language=request.language,
             redirect_url=request.redirect_url,
+            state=request.state,
         )
 
     @override
@@ -243,8 +245,9 @@ class AccountActivationOAuthInvitationGateway(OAuthInvitationGateway):
 
 
 class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
-    def __init__(self, *, accounts: AccountService) -> None:
+    def __init__(self, *, accounts: AccountService, defer_workspace_creation: bool = False) -> None:
         self._accounts = accounts
+        self._defer_workspace_creation = defer_workspace_creation
 
     def register(self, registration: OAuthAccountRegistration) -> str:
         try:
@@ -256,8 +259,12 @@ class AccountLifecycleOAuthRegistrationGateway(OAuthAccountRegistrationGateway):
                 timezone=registration.timezone,
                 ip_address=registration.ip_address,
                 check_normalized_email=True,
-                status="active",
-                initialized=True,
+                status=(
+                    "uninitialized"
+                    if registration.mode == LoginMode.END_USER or self._defer_workspace_creation
+                    else "active"
+                ),
+                initialized=registration.mode == LoginMode.CONSOLE and not self._defer_workspace_creation,
             )
         except AccountEmailDomainSuspendedError:
             raise

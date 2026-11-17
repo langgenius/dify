@@ -2,10 +2,12 @@
 
 import logging
 
+from sqlalchemy import delete
 from sqlalchemy.orm import Session
 
 from core.agent.workspace import AgentWorkspaceNotFoundError, WorkspaceOwnerScope
 from models.agent import AgentWorkspaceOwnerType
+from models.installed_app_connection import InstalledAppConnectionConfiguration
 from models.model import App, Conversation
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
 
@@ -47,4 +49,12 @@ def retire_conversation(*, app_model: App, conversation: Conversation, session: 
         conversation_id=conversation.id,
     )
     conversation.is_deleted = True
+    session.execute(
+        delete(InstalledAppConnectionConfiguration).where(
+            InstalledAppConnectionConfiguration.tenant_id == app_model.tenant_id,
+            InstalledAppConnectionConfiguration.app_id == app_model.id,
+            InstalledAppConnectionConfiguration.scope_id == conversation.id,
+            InstalledAppConnectionConfiguration.account_id == conversation.from_account_id,
+        )
+    )
     return tuple(retired_workspace_ids)

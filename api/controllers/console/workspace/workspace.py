@@ -20,18 +20,35 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.error import AccountNotLinkTenantError
-from controllers.console.flask_admission import console_account_admission, console_admin_admission
+from controllers.console.error import (
+    AccountNotFound,
+    AccountNotLinkTenantError,
+    NotAllowedCreateWorkspace,
+    WorkspacesLimitExceeded,
+)
+from controllers.console.flask_admission import (
+    console_account_admission,
+    console_account_identity_admission,
+    console_admin_admission,
+)
 from controllers.console.workspace.error import CurrentWorkspaceArchivedError
+from controllers.console.wraps import model_validate, only_edition_cloud
 from enums import CloudPlan, DeploymentEdition
 from enums.account import TenantAccountRole
 from extensions.ext_application_services import application_services
 from fields.base import ResponseModel
 from libs.external_api import error_responses
 from libs.helper import dump_response, to_timestamp
-from machinery.context import RequestContext
+from machinery.context import AccountRequestContext, RequestContext
 from services.errors import file as file_errors
-from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError, WorkspaceNotLinkedError
+from services.errors.workspace import (
+    WorkspaceArchivedError,
+    WorkSpaceNotAllowedCreateError,
+    WorkspaceNotFoundError,
+    WorkspaceNotLinkedError,
+    WorkspaceOwnerNotFoundError,
+    WorkspacesLimitExceededError,
+)
 from services.workspace.contracts import WorkspaceCustomConfigChanges
 
 
@@ -56,6 +73,27 @@ class WorkspaceCustomConfigResponse(ResponseModel):
 
 class WorkspaceInfoPayload(BaseModel):
     name: str
+
+
+class WorkspaceActivationPayload(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Workspace name must not be blank.")
+        return value.strip()
+
+
+class WorkspaceActivationResponse(ResponseModel):
+    workspace_id: str
+    first_workspace_created_at: int | None
+
+    @field_validator("first_workspace_created_at", mode="before")
+    @classmethod
+    def normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        return to_timestamp(value)
 
 
 class TenantInfoResponse(ResponseModel):
@@ -189,6 +227,7 @@ register_schema_models(
     SwitchWorkspacePayload,
     WorkspaceCustomConfigPayload,
     WorkspaceInfoPayload,
+    WorkspaceActivationPayload,
 )
 register_response_schema_models(
     console_ns,
@@ -203,7 +242,30 @@ register_response_schema_models(
     WorkspaceTenantResultResponse,
     WorkspaceLogoUploadResponse,
     WorkspacePermissionResponse,
+    WorkspaceActivationResponse,
 )
+
+
+@console_ns.route("/workspaces/activate")
+class WorkspaceActivationApi(Resource):
+    @error_responses(AccountNotFound, NotAllowedCreateWorkspace, WorkspacesLimitExceeded)
+    @console_ns.expect(console_ns.models[WorkspaceActivationPayload.__name__])
+    @console_ns.response(HTTPStatus.OK, "Workspace ready", console_ns.models[WorkspaceActivationResponse.__name__])
+    @console_account_identity_admission
+    @only_edition_cloud
+    @model_validate(WorkspaceActivationPayload)
+    def post(self, args: WorkspaceActivationPayload, context: AccountRequestContext):
+        try:
+            result = application_services().workspaces.provisioning.activate(context.account_id, name=args.name)
+        except WorkspaceOwnerNotFoundError as error:
+            raise AccountNotFound() from error
+        except WorkSpaceNotAllowedCreateError as error:
+            raise NotAllowedCreateWorkspace() from error
+        except WorkspacesLimitExceededError as error:
+            raise WorkspacesLimitExceeded() from error
+        except WorkspaceNotFoundError as error:
+            raise NotFound() from error
+        return dump_response(WorkspaceActivationResponse, result)
 
 
 @console_ns.route("/workspaces")

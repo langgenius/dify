@@ -178,14 +178,16 @@ def test_revocation_without_feedback_has_specific_error_and_does_not_commit(harn
 
 
 @pytest.mark.parametrize("field", ["app_id", "from_account_id", "from_end_user_id", "from_source"])
-def test_owned_feedback_checks_every_message_owner_predicate(harness: _Harness, field: str) -> None:
+def test_owned_feedback_checks_every_conversation_owner_predicate(harness: _Harness, field: str) -> None:
     value = str(uuid4())
     if field == "from_source":
         value = (
             ConversationFromSource.API if isinstance(harness.actor, MessageAccount) else ConversationFromSource.CONSOLE
         )
     with harness.factory.begin() as session:
-        session.execute(update(Message).where(Message.id == harness.message.id).values({field: value}))
+        session.execute(
+            update(Conversation).where(Conversation.id == harness.message.conversation_id).values({field: value})
+        )
     with pytest.raises(MessageNotExistsError):
         harness.set_feedback(rating=FeedbackRating.LIKE)
     assert _feedback(harness) is None

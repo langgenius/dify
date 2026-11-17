@@ -9,6 +9,7 @@ from uuid import UUID
 from pydantic import BaseModel, Field
 
 from models.model import AppMode, IconType
+from services.entities.app_list_entities import AppListSortBy
 from services.entities.dsl_entities import DslImportWarning
 
 
@@ -35,7 +36,6 @@ class SupportedAppType(StrEnum):
 
 SUPPORTED_APP_TYPES: Final[tuple[AppMode, ...]] = tuple(AppMode(t.value) for t in SupportedAppType)
 
-AppListSortBy = Literal["last_modified", "recently_created", "earliest_created"]
 RecentAppMode = Literal[
     AppMode.COMPLETION,
     AppMode.WORKFLOW,
@@ -164,6 +164,8 @@ class AppRecord:
     author_name: str | None = None
     app_model_config: dict[str, Any] | None = None
     workflow: dict[str, Any] | None = None
+    workflow_type: str | None = None
+    workflow_kind: str | None = None
     site: dict[str, Any] | None = None
     tracing: str | None = None
     bound_agent_id: str | None = None

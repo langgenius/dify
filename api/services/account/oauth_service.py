@@ -1,4 +1,4 @@
-"""Application service for Console account OAuth sign-in."""
+"""Account OAuth sign-in with optional Console workspace provisioning."""
 
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
@@ -19,6 +19,7 @@ from services.account_errors import (
 )
 from services.account_ports import AccountIntegrationRepository, AccountRepository, AccountWorkspaceMembershipQuery
 from services.entities.account_entities import AccountSessionTokens, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.account_oauth_entities import (
     OAuthAccountRegistration,
     OAuthAuthorizationRequest,
@@ -95,6 +96,7 @@ class AccountOAuthService:
         workspace_policy: OAuthWorkspacePolicyGateway,
         supported_languages: Sequence[str],
         now: Callable[[], datetime],
+        defer_workspace_creation: bool = False,
     ) -> None:
         self._providers = dict(providers)
         self._accounts = accounts
@@ -109,11 +111,14 @@ class AccountOAuthService:
         self._workspace_policy = workspace_policy
         self._supported_languages = tuple(supported_languages)
         self._now = now
+        self._defer_workspace_creation = defer_workspace_creation
 
     def start_authorization(self, provider: str, request: OAuthAuthorizationRequest) -> str:
         return self._provider(provider).get_authorization_url(request)
 
     def complete_authorization(self, command: OAuthCallbackCommand) -> OAuthCallbackResult:
+        if command.mode == LoginMode.END_USER and command.invite_token is not None:
+            raise ValueError("End User login cannot accept a workspace invitation.")
         provider = self._provider(command.provider)
         identity = provider.get_identity(command.code)
         identity_email_key = self._identity_email_key(identity.email)
@@ -146,10 +151,11 @@ class AccountOAuthService:
         self._integrations.link(account.id, provider=command.provider, open_id=identity.id)
         identity_claim.ensure_owned()
         with self._account_claims.acquire_account(account.id) as account_claim:
-            if oauth_new_user:
-                self._provision_new_account_workspaces(account.id, account_claim)
-            else:
-                self._provision_owner_workspace_if_required(account.id, account_claim)
+            if command.mode == LoginMode.CONSOLE and not self._defer_workspace_creation:
+                if oauth_new_user:
+                    self._provision_new_account_workspaces(account.id, account_claim)
+                else:
+                    self._provision_owner_workspace_if_required(account.id, account_claim)
             if account.status == _PENDING_ACCOUNT_STATUS:
                 account_claim.ensure_owned()
                 self._accounts.activate_pending(account.id, initialized_at=self._now())
@@ -248,6 +254,7 @@ class AccountOAuthService:
                 language=language,
                 timezone=command.timezone,
                 ip_address=command.ip_address,
+                mode=command.mode,
             )
         )
         account = self._accounts.get(account_id)

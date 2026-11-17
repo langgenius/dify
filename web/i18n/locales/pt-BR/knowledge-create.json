@@ -20,7 +20,6 @@
   "selectedFiles": "Arquivos selecionados ({{valid}} de {{total}} válidos)",
   "startWith": "Comece com",
   "startWithHelp": "Você pode adicionar mais fontes ou documentos a qualquer momento.",
-  "uploadCharactersUnavailable": "Caracteres: —",
   "uploadCompleted": "Adicionado",
   "uploadDocuments": "Carregar documentos",
   "uploadDropZoneTitle": "Arraste e solte arquivos ou procure",

@@ -5,17 +5,21 @@ import { createDeferred } from '@/test/deferred'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import CreatorContent from '../creator-content'
 
-const publisher = vi.hoisted(() => ({
+const marketplace = vi.hoisted(() => ({
   fetchPluginPage: vi.fn(),
   fetchTemplatePage: vi.fn(),
 }))
 
-vi.mock('../publisher', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../publisher')>()
+// boundary: publisher pagination stops at the external Marketplace HTTP client.
+vi.mock('@/service/marketplace', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {
     ...actual,
-    fetchPublisherPluginPage: publisher.fetchPluginPage,
-    fetchPublisherTemplatePage: publisher.fetchTemplatePage,
+    marketplaceClient: {
+      ...actual.marketplaceClient,
+      publisherPlugins: marketplace.fetchPluginPage,
+      publisherTemplates: marketplace.fetchTemplatePage,
+    },
   }
 })
 
@@ -115,20 +119,22 @@ it('sorts the real cards from the keyboard, persists the URL state, and restores
 
 it('keeps one load-more request active and appends its real card before removing the control', async () => {
   const nextPage = createDeferred<{
-    items: Array<{
-      type: 'plugin'
-      org: string
-      name: string
-      labels: { 'en-US': string }
-      brief: { 'en-US': string }
-      install_count: number
-      created_at: string
-      updated_at: string
-    }>
-    hasMore: boolean
+    data: {
+      plugins: Array<{
+        type: 'plugin'
+        org: string
+        name: string
+        labels: { 'en-US': string }
+        brief: { 'en-US': string }
+        install_count: number
+        created_at: string
+        updated_at: string
+      }>
+      total: number
+    }
   }>()
-  publisher.fetchPluginPage.mockReturnValue(nextPage.promise)
-  publisher.fetchTemplatePage.mockResolvedValue({ items: [], hasMore: false })
+  marketplace.fetchPluginPage.mockReturnValue(nextPage.promise)
+  marketplace.fetchTemplatePage.mockResolvedValue({ data: { templates: [], total: 0 } })
   const { screen } = await renderContent({ withMore: true })
   const loadMore = screen.getByRole('button', {
     name: 'plugin.marketplace.creatorProfile.loadMore',
@@ -137,30 +143,30 @@ it('keeps one load-more request active and appends its real card before removing
   await loadMore.click()
   await expect.element(loadMore).toBeDisabled()
   await expect.element(loadMore).toHaveAttribute('aria-busy', 'true')
-  expect(publisher.fetchPluginPage).toHaveBeenCalledExactlyOnceWith({
-    uniqueHandle: 'scarlettmao',
-    page: 2,
-    sortField: 'updatedAt',
-    sortOrder: 'desc',
+  expect(marketplace.fetchPluginPage).toHaveBeenCalledExactlyOnceWith({
+    params: { uniqueHandle: 'scarlettmao' },
+    query: { page: 2, page_size: 40, sort_by: 'version_updated_at', sort_order: 'DESC' },
   })
   nextPage.resolve({
-    items: [
-      {
-        type: 'plugin',
-        org: 'dify',
-        name: 'delta',
-        labels: { 'en-US': 'Delta' },
-        brief: { 'en-US': 'Delta plugin' },
-        install_count: 4,
-        created_at: '2026-01-04T00:00:00Z',
-        updated_at: '2026-02-04T00:00:00Z',
-      },
-    ],
-    hasMore: false,
+    data: {
+      plugins: [
+        {
+          type: 'plugin',
+          org: 'dify',
+          name: 'delta',
+          labels: { 'en-US': 'Delta' },
+          brief: { 'en-US': 'Delta plugin' },
+          install_count: 4,
+          created_at: '2026-01-04T00:00:00Z',
+          updated_at: '2026-02-04T00:00:00Z',
+        },
+      ],
+      total: 4,
+    },
   })
 
   await expect.element(screen.getByRole('link', { name: 'Delta' })).toBeVisible()
   await expect.element(loadMore).not.toBeInTheDocument()
-  expect(publisher.fetchPluginPage).toHaveBeenCalledOnce()
-  expect(publisher.fetchTemplatePage).not.toHaveBeenCalled()
+  expect(marketplace.fetchPluginPage).toHaveBeenCalledOnce()
+  expect(marketplace.fetchTemplatePage).not.toHaveBeenCalled()
 })

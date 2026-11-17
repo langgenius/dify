@@ -88,6 +88,34 @@ def console_email_registration_admission[T, **P, R](
     return setup_required(check_registration_features)
 
 
+def console_account_identity_admission[T, **P, R](
+    view: Callable[Concatenate[T, AccountRequestContext, P], R],
+) -> Callable[Concatenate[T, P], R | Response]:
+    """Admit Cloud Accounts before workspace creation; retain other editions' initialization gate."""
+
+    @wraps(view)
+    def inject(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        account, _ = current_account_with_tenant_optional()
+        if account is None:
+            raise Unauthorized()
+        context = AccountRequestContext(
+            account_id=account.id,
+            request_id=get_request_id(),
+            trace_id=get_trace_id() or request.headers.get("X-Trace-Id"),
+        )
+        return view(self, context, *args, **kwargs)
+
+    initialized = account_initialization_required(inject)
+
+    @wraps(view)
+    def admit(self: T, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            return inject(self, *args, **kwargs)
+        return initialized(self, *args, **kwargs)
+
+    return setup_required(login_required(admit))
+
+
 def console_account_admission[T, **P, R](
     *,
     editions: frozenset[DeploymentEdition] | None = None,

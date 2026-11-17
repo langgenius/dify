@@ -506,10 +506,46 @@ def test_system_features_specs_exclude_backend_only_fields(generated_specs: list
         spec_path = next(path for path in generated_specs if path.name == spec_name)
         payload = json.loads(spec_path.read_text(encoding="utf-8"))
         schemas = payload["components"]["schemas"]
-        system_features_schema = schemas["SystemFeatureModel"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
 
         assert excluded_fields.isdisjoint(system_features_schema["properties"])
         assert "PluginManagerModel" not in schemas
+
+
+def test_account_login_discovery_is_web_bootstrap_only(generated_specs: list[Path]):
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        if spec_name == "web-openapi.json":
+            assert "account_login_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["account_login_url"]["anyOf"] == [
+                {"type": "string"},
+                {"type": "null"},
+            ]
+            assert "account_login_url" not in schemas["WebAccountProfileResponse"]["properties"]
+        else:
+            assert "account_login_url" not in system_features_schema["properties"]
+
+
+def test_webapp_url_discovery_is_console_bootstrap_only(generated_specs: list[Path]):
+    for spec_name in ("console-openapi.json", "web-openapi.json"):
+        spec_path = next(path for path in generated_specs if path.name == spec_name)
+        payload = json.loads(spec_path.read_text(encoding="utf-8"))
+        schemas = payload["components"]["schemas"]
+        response_schema = _response_schema(payload["paths"]["/system-features"]["get"])
+        system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
+
+        if spec_name == "console-openapi.json":
+            assert "webapp_url" in system_features_schema["required"]
+            assert system_features_schema["properties"]["webapp_url"]["type"] == "string"
+            assert "default" not in system_features_schema["properties"]["webapp_url"]
+        else:
+            assert "webapp_url" not in system_features_schema["properties"]
 
 
 def test_generate_specs_writes_get_operations_without_request_bodies(generated_specs: list[Path]):
@@ -725,6 +761,39 @@ def test_generate_specs_include_agent_v2_knowledge_set_schema_and_query_enums(ge
         "#/components/schemas/AgentKnowledgeSetConfig"
     )
     assert schemas["AgentKnowledgeQueryMode"]["enum"] == ["generated_query", "user_query"]
+
+
+def test_generate_specs_include_evaluation_console_contract(generated_specs: list[Path]):
+    console_path = next(path for path in generated_specs if path.name == "console-openapi.json")
+    payload = json.loads(console_path.read_text(encoding="utf-8"))
+    schemas = payload["components"]["schemas"]
+    paths = payload["paths"]
+
+    xlsx_media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    binary_schema = {"format": "binary", "type": "string"}
+    for path in (
+        "/datasets/{dataset_id}/evaluation/template/download",
+        "/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download",
+    ):
+        response_content = paths[path]["post"]["responses"]["200"]["content"]
+        assert response_content == {xlsx_media_type: {"schema": binary_schema}}
+
+    template_download_request = paths["/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download"]["post"][
+        "requestBody"
+    ]
+    assert template_download_request["content"]["application/json"]["schema"]["$ref"] == (
+        "#/components/schemas/EvaluationConfigPayload"
+    )
+
+    for path in (
+        "/datasets/{dataset_id}/evaluation/runs/{run_id}/retry",
+        "/{evaluate_target_type}/{evaluate_target_id}/evaluation/runs/{run_id}/retry",
+    ):
+        assert _response_schema(paths[path]["post"])["$ref"] == "#/components/schemas/EvaluationRunResponse"
+
+    assert "target_workflow_version_id" in schemas["EvaluationRunResponse"]["properties"]
+    assert "workflow_run_id" in schemas["EvaluationRunItemResponse"]["properties"]
+    assert "node_info" in schemas["EvaluationMetric"]["properties"]
 
 
 def test_checked_in_agent_v2_knowledge_openapi_and_generated_contracts_are_in_sync():

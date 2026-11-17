@@ -3,18 +3,33 @@ import logging
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import InternalServerError
 
-from controllers.common.controller_schemas import WorkflowRunPayload
+from controllers.common.controller_schemas import WorkflowRunPayload as BaseWorkflowRunPayload
+from controllers.common.end_user_connections import (
+    ConnectionCheckUnavailableHTTPError,
+    ConnectionConfigurationHTTPError,
+    ConnectionConflictHTTPError,
+    ConnectionCredentialsHTTPError,
+    ConnectionLoginRequiredError,
+    ConnectionNotFoundHTTPError,
+    ConnectionReauthorizationHTTPError,
+    ConnectionRequiredHTTPError,
+    ConnectionRevisionChangedHTTPError,
+    ConnectionSecretUnavailableHTTPError,
+    raise_connection_error,
+)
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
+    EndUserBusyHTTPError,
     NotWorkflowAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
     TriggerWorkflowServiceModeUnavailableError,
+    WebExecutionResourcesChangedHTTPError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
@@ -28,14 +43,22 @@ from graphon.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.external_api import error_responses
 from models.model import App, AppMode, EndUser
+from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.execution import ConnectionRunInput
 from services.errors.app import (
     TriggerWorkflowServiceModeUnavailableError as TriggerWorkflowServiceModeUnavailableServiceError,
 )
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+
+
+class WorkflowRunPayload(BaseWorkflowRunPayload, ConnectionRunInput):
+    pass
+
 
 register_schema_models(web_ns, WorkflowRunPayload)
 register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultResponse)
@@ -44,6 +67,18 @@ register_response_schema_models(web_ns, GeneratedAppResponse, SimpleResultRespon
 @web_ns.route("/workflows/run")
 class WorkflowRunApi(WebApiResource):
     @error_responses(
+        ConnectionCheckUnavailableHTTPError,
+        ConnectionConfigurationHTTPError,
+        ConnectionLoginRequiredError,
+        ConnectionConflictHTTPError,
+        ConnectionCredentialsHTTPError,
+        ConnectionNotFoundHTTPError,
+        ConnectionReauthorizationHTTPError,
+        ConnectionRequiredHTTPError,
+        ConnectionSecretUnavailableHTTPError,
+        ConnectionRevisionChangedHTTPError,
+        EndUserBusyHTTPError,
+        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotWorkflowAppError,
@@ -53,7 +88,15 @@ class WorkflowRunApi(WebApiResource):
         TriggerWorkflowServiceModeUnavailableError,
     )
     @web_ns.doc("Run Workflow")
-    @web_ns.doc(description="Execute a workflow with provided inputs and files.")
+    @web_ns.doc(
+        description=(
+            "Execute a workflow with provided inputs and files. With Account Passport enabled, "
+            "current resource ownership "
+            "is rechecked and the Run is registered before execution. Admission can reject identity contention "
+            "or resources changed since preparation. Queued failures use the existing event stream; "
+            "synchronous conflicts return 409. Refresh and retry."
+        )
+    )
     @web_ns.expect(web_ns.models[WorkflowRunPayload.__name__])
     @web_ns.doc(
         responses={
@@ -76,7 +119,7 @@ class WorkflowRunApi(WebApiResource):
             raise NotWorkflowAppError()
 
         payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        args = payload.model_dump(mode="json", exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
@@ -90,6 +133,12 @@ class WorkflowRunApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except EndUserBusyError as error:
+            raise EndUserBusyHTTPError() from error
+        except WebExecutionResourcesChangedError as error:
+            raise WebExecutionResourcesChangedHTTPError() from error
+        except ConnectionError as error:
+            raise_connection_error(error)
         except TriggerWorkflowServiceModeUnavailableServiceError as caught_error:
             raise TriggerWorkflowServiceModeUnavailableError() from caught_error
         except ProviderTokenNotInitError as ex:

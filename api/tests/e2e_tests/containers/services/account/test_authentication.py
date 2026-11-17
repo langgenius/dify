@@ -125,7 +125,8 @@ def test_refresh_rotates_both_redis_indexes_and_rejects_reuse(account: Account) 
     assert redis_client.get(new_key) == account.id.encode()
 
 
-def test_logout_revokes_real_redis_session_and_is_idempotent(account: Account) -> None:
+@pytest.mark.parametrize("later_login", [False, True])
+def test_logout_revokes_real_redis_session_and_is_idempotent(account: Account, later_login: bool) -> None:
     services = application_services().accounts
     tokens = services.lifecycle.login(account.id, ip_address="127.0.0.1")
     account_key = f"account_refresh_token:{account.id}"
@@ -133,14 +134,21 @@ def test_logout_revokes_real_redis_session_and_is_idempotent(account: Account) -
     assert redis_client.exists(account_key)
     assert redis_client.exists(refresh_key)
 
-    services.authentication.logout(account.id)
+    later = services.lifecycle.login(account.id, ip_address="127.0.0.1") if later_login else None
+    services.authentication.logout(refresh_token=tokens.refresh_token)
 
-    assert redis_client.get(account_key) is None
+    expected_current = later.refresh_token.encode() if later else None
+    assert redis_client.get(account_key) == expected_current
     assert redis_client.get(refresh_key) is None
     with pytest.raises(InvalidRefreshTokenError):
         services.authentication.refresh(tokens.refresh_token)
-    services.authentication.logout(account.id)
-    assert redis_client.get(account_key) is None
+    services.authentication.logout(refresh_token=tokens.refresh_token)
+    assert redis_client.get(account_key) == expected_current
+    if later:
+        assert redis_client.get(f"refresh_token:{later.refresh_token}") == account.id.encode()
+        services.authentication.logout(refresh_token=later.refresh_token)
+        assert redis_client.get(f"refresh_token:{later.refresh_token}") is None
+        assert redis_client.get(account_key) is None
 
 
 @pytest.mark.parametrize("reason", ["unknown", "expired", "deleted-account", "banned-account"])

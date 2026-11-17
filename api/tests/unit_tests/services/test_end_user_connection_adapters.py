@@ -1,0 +1,156 @@
+import json
+from urllib.parse import parse_qs, urlsplit
+
+import httpx
+import pytest
+from sqlalchemy.orm import Session, sessionmaker
+
+from clients.plugin.auth_entities import CredentialCheckResult
+from clients.plugin.errors import PluginNotImplementedError
+from core.entities.provider_entities import ProviderConfig, ProviderConfigType
+from core.tools.tool_manager import ToolManager
+from services import end_user_connection_adapters as adapters
+from services.end_user_connections.errors import (
+    ConnectionConfigurationError,
+    ConnectionInvalidCredentialsError,
+    ConnectionRevisionChangedError,
+    ConnectionSecretUnavailableError,
+)
+from tests.helpers.end_user_api_key import PROVIDER, ScriptedAuth, make_harness, plugin_provider
+
+
+def test_cipher_encrypts_the_entire_payload_with_the_tenant_key(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, str]] = []
+
+    def encrypt(tenant_id: str, value: str) -> str:
+        calls.append((tenant_id, value))
+        return "ciphertext"
+
+    monkeypatch.setattr(adapters, "encrypt_token", encrypt)
+    monkeypatch.setattr(
+        adapters,
+        "decrypt_token",
+        lambda tenant, value: calls[0][1] if (tenant, value) == ("tenant", "ciphertext") else "null",
+    )
+    cipher = adapters.TenantConnectionCipher()
+    assert cipher.encrypt("tenant", {"api_key": "secret", "endpoint": "https://provider.example"}) == "ciphertext"
+    assert calls[0][0] == "tenant"
+    assert json.loads(calls[0][1]) == {"api_key": "secret", "endpoint": "https://provider.example"}
+    assert cipher.decrypt("tenant", "ciphertext")["api_key"] == "secret"
+    with pytest.raises(ConnectionSecretUnavailableError):
+        cipher.decrypt("other", "ciphertext")
+
+
+@pytest.mark.parametrize("operation", ["encrypt_token", "decrypt_token"])
+def test_cipher_failure_does_not_echo_provider_secrets(monkeypatch: pytest.MonkeyPatch, operation: str) -> None:
+    def fail(*_args: object) -> str:
+        raise ValueError("sensitive-secret")
+
+    monkeypatch.setattr(adapters, operation, fail)
+    cipher = adapters.TenantConnectionCipher()
+    attempt = (
+        (lambda: cipher.encrypt("tenant", {"api_key": "sensitive-secret"}))
+        if operation == "encrypt_token"
+        else (lambda: cipher.decrypt("tenant", "ciphertext"))
+    )
+    with pytest.raises(ConnectionSecretUnavailableError) as exc:
+        attempt()
+    assert "sensitive-secret" not in str(exc.value)
+    assert exc.value.__suppress_context__
+
+
+def test_gateway_rejects_cross_tenant_provider_cache_entry(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = plugin_provider("other-tenant")
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionConfigurationError):
+        gateway.provider("tenant", PROVIDER)
+
+
+@pytest.mark.parametrize(
+    "schema",
+    [
+        [],
+        [ProviderConfig(name="app", type=ProviderConfigType.APP_SELECTOR)],
+        [ProviderConfig(name="models", type=ProviderConfigType.MODEL_SELECTOR)],
+        [ProviderConfig(name="tools", type=ProviderConfigType.TOOLS_SELECTOR)],
+        [ProviderConfig(name="regions", type=ProviderConfigType.SELECT, multiple=True)],
+    ],
+)
+def test_web_schema_rejects_workspace_selectors_and_unsupported_forms(
+    monkeypatch: pytest.MonkeyPatch, schema: list[ProviderConfig]
+) -> None:
+    controller = plugin_provider("tenant")
+    controller.entity.credentials_schema = schema
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionConfigurationError):
+        gateway.get_schema("tenant", PROVIDER, plugin_unique_identifier=controller.plugin_unique_identifier)
+
+
+def test_web_schema_rejects_a_provider_upgrade_after_revision_admission(monkeypatch: pytest.MonkeyPatch) -> None:
+    controller = plugin_provider("tenant")
+    admitted_identifier = controller.plugin_unique_identifier
+    controller.plugin_unique_identifier = "vendor/calendar:2.0.0@" + "b" * 64
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionRevisionChangedError):
+        gateway.get_schema("tenant", PROVIDER, plugin_unique_identifier=admitted_identifier)
+
+
+@pytest.mark.parametrize("failure", [PluginNotImplementedError("unsupported"), httpx.ReadTimeout("sensitive-secret")])
+def test_plugin_failures_remain_unsupported_or_temporary(
+    sqlite_session_factory: sessionmaker[Session], monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    harness = make_harness(sqlite_session_factory)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=harness.auth)
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: plugin_provider(harness.context.tenant_id))
+
+    def fail(**_kwargs: object) -> CredentialCheckResult:
+        raise failure
+
+    monkeypatch.setattr(harness.auth, "check_provider_credentials", fail)
+    result = gateway.check(harness.context, PROVIDER, {"api_key": "sensitive-secret"})
+    assert result.status == (
+        "unsupported" if isinstance(failure, PluginNotImplementedError) else "temporarily_unavailable"
+    )
+    assert "sensitive-secret" not in result.model_dump_json()
+
+
+def test_empty_required_key_is_rejected_even_if_checking_is_unsupported(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: plugin_provider("tenant"))
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    with pytest.raises(ConnectionInvalidCredentialsError):
+        gateway.validate_format("tenant", PROVIDER, {"api_key": ""})
+
+
+def test_revision_identifier_bypasses_the_request_controller_cache(monkeypatch: pytest.MonkeyPatch) -> None:
+    from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
+    from core.plugin.impl.tool import PluginToolManager
+
+    controller = plugin_provider("tenant")
+    controller.entity.identity.icon_dark = "icon-dark.svg"
+    monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_args: controller)
+    identifiers = iter(["vendor/calendar:1.0@first", "vendor/calendar:1.0@rebuilt"])
+    calls: list[tuple[str, str]] = []
+
+    def fetch(_self: PluginToolManager, tenant_id: str, provider: str) -> PluginToolProviderEntity:
+        calls.append((tenant_id, provider))
+        return PluginToolProviderEntity(
+            provider=provider,
+            plugin_id=controller.plugin_id,
+            plugin_unique_identifier=next(identifiers),
+            declaration=controller.entity,
+        )
+
+    monkeypatch.setattr(PluginToolManager, "fetch_tool_provider", fetch)
+    gateway = adapters.PluginApiKeyCredentialGateway(auth=ScriptedAuth())
+    assert gateway.provider("tenant", PROVIDER) is controller
+    assert gateway.plugin_unique_identifier("tenant", PROVIDER) == "vendor/calendar:1.0@first"
+    metadata = gateway.provider_metadata("tenant", PROVIDER)
+    assert metadata.plugin_unique_identifier == "vendor/calendar:1.0@rebuilt"
+    assert metadata.provider_label == controller.entity.identity.label
+    assert parse_qs(urlsplit(metadata.icon).query) == {"tenant_id": ["tenant"], "filename": ["icon.svg"]}
+    assert metadata.icon_dark is not None
+    assert parse_qs(urlsplit(metadata.icon_dark).query) == {"tenant_id": ["tenant"], "filename": ["icon-dark.svg"]}
+    assert calls == [("tenant", PROVIDER), ("tenant", PROVIDER)]

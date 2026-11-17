@@ -18,6 +18,30 @@ export type ErrorResponse = {
   status: number
 }
 
+export type WorkspaceActivationPayload = {
+  name: string
+}
+
+export type WorkspaceActivationResponse = {
+  first_workspace_created_at: number | null
+  workspace_id: string
+}
+
+export type AccountNotFoundError = ErrorResponse & {
+  code: 'account_not_found'
+  status: 400
+}
+
+export type LimitExceededError = ErrorResponse & {
+  code: 'limit_exceeded'
+  status: 400
+}
+
+export type NotAllowedCreateWorkspaceError = ErrorResponse & {
+  code: 'not_allowed_create_workspace'
+  status: 400
+}
+
 export type AgentProviderResponse = {
   declaration: AgentProviderEntityWithPlugin
   meta: Meta
@@ -41,6 +65,18 @@ export type AgentSkillBindingsPayload = {
 export type InvalidRequestError = ErrorResponse & {
   code: 'invalid_request'
   status: 400
+}
+
+export type AvailableEvaluationWorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<AvailableEvaluationWorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
 }
 
 export type SnippetPaginationResponse = {
@@ -171,6 +207,10 @@ export type EndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
+}
+
+export type EvaluationAssociatedTargetListResponse = {
+  items: Array<EvaluationAssociatedTargetResponse>
 }
 
 export type ListChannelProvidersResponse = {
@@ -413,11 +453,6 @@ export type MemberInviteErrorResponse = {
 
 export type InvalidRoleError = ErrorResponse & {
   code: 'invalid_role'
-  status: 400
-}
-
-export type LimitExceededError = ErrorResponse & {
-  code: 'limit_exceeded'
   status: 400
 }
 
@@ -714,11 +749,6 @@ export type NetworkAccessGroupMutationResponse = {
 export type NetworkAccessInvalidInputError = ErrorResponse & {
   code: 'network_access_invalid_input'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNameConflictError = ErrorResponse & {
@@ -1382,6 +1412,11 @@ export type BuiltinToolAddPayload = {
   visibility?: string | null
 }
 
+export type BuiltinToolProviderCreateResponse = {
+  id: string
+  result: string
+}
+
 export type ToolProviderCredentialInfoApiEntity = {
   credentials: Array<ToolProviderCredentialApiEntity>
   is_oauth_custom_client_enabled?: boolean
@@ -1801,6 +1836,22 @@ export type AgentSkillBindingItemResponse = {
   updated_at: number
 }
 
+export type AvailableEvaluationWorkflowResponse = {
+  app_id: string
+  app_name: string
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  hash: string
+  id: string
+  kind: string
+  marked_comment: string
+  marked_name: string
+  type: string
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
+}
+
 export type SnippetListItemResponse = {
   author_name: string | null
   created_at: number
@@ -1910,6 +1961,12 @@ export type EndpointListItemResponse = {
   tenant_id: string
   updated_at: string
   url: string
+}
+
+export type EvaluationAssociatedTargetResponse = {
+  target_id: string
+  target_name: string
+  target_type: string
 }
 
 export type ChannelProvider = {
@@ -2034,6 +2091,7 @@ export type HumanInputContact = {
 export type HumanInputContactSummary = {
   avatar_url?: string
   created_at: number
+  email?: string | null
   id: string
   name: string
 }
@@ -2060,6 +2118,7 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  initiator_display_name: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null
@@ -4316,6 +4375,28 @@ export type GetWorkspacesResponses = {
 
 export type GetWorkspacesResponse = GetWorkspacesResponses[keyof GetWorkspacesResponses]
 
+export type PostWorkspacesActivateData = {
+  body: WorkspaceActivationPayload
+  path?: never
+  query?: never
+  url: '/workspaces/activate'
+}
+
+export type PostWorkspacesActivateErrors = {
+  400: AccountNotFoundError | LimitExceededError | NotAllowedCreateWorkspaceError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostWorkspacesActivateError =
+  PostWorkspacesActivateErrors[keyof PostWorkspacesActivateErrors]
+
+export type PostWorkspacesActivateResponses = {
+  200: WorkspaceActivationResponse
+}
+
+export type PostWorkspacesActivateResponse =
+  PostWorkspacesActivateResponses[keyof PostWorkspacesActivateResponses]
+
 export type GetWorkspacesCurrentAgentProviderByProviderNameData = {
   body?: never
   path: {
@@ -4406,6 +4487,34 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
 
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponse =
   PutWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsResponses]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    named_only?: boolean
+    page?: number
+    user_id?: string
+  }
+  url: '/workspaces/current/available-evaluation-workflows'
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsError =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses = {
+  200: AvailableEvaluationWorkflowPaginationResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses]
 
 export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
@@ -4945,6 +5054,30 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsData = {
+  body?: never
+  path: {
+    workflow_id: string
+  }
+  query?: never
+  url: '/workspaces/current/evaluation-workflows/{workflow_id}/associated-targets'
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsError =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses = {
+  200: EvaluationAssociatedTargetListResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses]
 
 export type GetWorkspacesCurrentHumanInputV2ChannelProvidersData = {
   body?: never
@@ -9780,7 +9913,7 @@ export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddError =
   PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors[keyof PostWorkspacesCurrentToolProviderBuiltinByProviderAddErrors]
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponses = {
-  200: SimpleResultResponse
+  200: BuiltinToolProviderCreateResponse
 }
 
 export type PostWorkspacesCurrentToolProviderBuiltinByProviderAddResponse =

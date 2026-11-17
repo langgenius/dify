@@ -18,10 +18,12 @@ from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
 from core.app.apps.message_generator import MessageGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
+from core.workflow.human_input_policy import HumanInputSurface
 from extensions.ext_database import db
 from libs.external_api import error_responses
 from models.enums import CreatorUserRole
 from models.model import App, AppMode, EndUser
+from repositories.conversation_access import may_read_conversation_run, original_run_creator
 from repositories.factory import DifyAPIRepositoryFactory
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
@@ -40,6 +42,9 @@ class WorkflowEventsApi(WebApiResource):
         GET /api/workflow/<task_id>/events
 
         Returns Server-Sent Events stream.
+
+        Requires a run owned by the current app and end user. Pending V1 forms
+        expose only Web App recipient tokens; invalid ownership returns 404.
         """
         workflow_run_id = task_id
         session_maker = sessionmaker(db.engine)
@@ -58,14 +63,25 @@ class WorkflowEventsApi(WebApiResource):
         if workflow_run.created_by_role != CreatorUserRole.END_USER:
             raise NotFoundError(f"WorkflowRun not created by end user, id={workflow_run_id}")
 
-        if workflow_run.created_by != end_user.id:
-            raise NotFoundError(f"WorkflowRun not created by the current end user, id={workflow_run_id}")
+        with session_maker() as access_session:
+            allowed = may_read_conversation_run(
+                access_session,
+                app_id=app_model.id,
+                user=end_user,
+                run_id=workflow_run.id,
+                original_end_user_id=workflow_run.created_by,
+            )
+            creator = original_run_creator(
+                access_session, tenant_id=app_model.tenant_id, app_id=app_model.id, end_user_id=workflow_run.created_by
+            )
+        if not allowed:
+            raise NotFoundError(f"WorkflowRun not owned by the current end user, id={workflow_run_id}")
 
         if workflow_run.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
                 task_id=workflow_run.id,
                 workflow_run=workflow_run,
-                creator_user=end_user,
+                creator_user=creator,
             )
 
             payload = response.model_dump(mode="json")
@@ -99,6 +115,7 @@ class WorkflowEventsApi(WebApiResource):
                             tenant_id=app_model.tenant_id,
                             app_id=app_model.id,
                             session_maker=session_maker,
+                            human_input_surface=HumanInputSurface.WEB_APP,
                             close_on_pause=not continue_on_pause,
                         )
                     )

@@ -20,7 +20,6 @@
   "selectedFiles": "चुनी गई फ़ाइलें ({{total}} में से {{valid}} मान्य)",
   "startWith": "से शुरू करें",
   "startWithHelp": "आप किसी भी समय अधिक स्रोत या दस्तावेज़ जोड़ सकते हैं।",
-  "uploadCharactersUnavailable": "वर्ण: —",
   "uploadCompleted": "जोड़ा गया",
   "uploadDocuments": "दस्तावेज़ अपलोड करें",
   "uploadDropZoneTitle": "फ़ाइलें खींचकर छोड़ें या ब्राउज़ करें",

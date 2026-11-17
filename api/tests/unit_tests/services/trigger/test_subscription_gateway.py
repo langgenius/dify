@@ -8,9 +8,11 @@ from http import HTTPStatus
 import pytest
 
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import CredentialType
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDaemonInnerError
+from core.plugin.impl.trigger import PluginTriggerClient
 from core.trigger.entities.entities import Subscription
 from models.provider_ids import TriggerProviderID
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.trigger.subscription_query_service import TriggerSubscriptionSchemas
 from services.trigger.subscription_service import (
@@ -39,7 +41,7 @@ def _prepare(
         "credentials_schema": [{"name": "token", "type": "secret-input", "required": True}],
     }
     declaration["subscription_schema"] = [{"name": "remote_id", "type": "text-input"}]
-    gateway = PluginTriggerSubscriptionGateway()
+    gateway = PluginTriggerSubscriptionGateway(providers=PluginTriggerProviderLoader(client=PluginTriggerClient()))
     context = Context()
     schemas = context.run(
         gateway.get_schemas,
@@ -223,9 +225,12 @@ def test_remote_subscription_failures_propagate_for_service_context(
     }
     invoke = commands[operation]
 
-    with pytest.raises(ValueError, match="^plugin daemon: remote operation failed, code: 1$"):
+    with pytest.raises(PluginDaemonInnerError) as caught:
         context.run(invoke)
 
+    assert caught.value.code == 1
+    assert caught.value.message == "remote operation failed"
+    assert "remote operation failed" not in str(caught.value)
     assert len(daemon.requests) == 2
 
 

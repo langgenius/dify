@@ -1,6 +1,7 @@
 import logging
 from collections.abc import Generator
 from contextlib import contextmanager
+from dataclasses import replace
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
@@ -18,13 +19,16 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.variables import SegmentType
 from graphon.variables.segments import StringSegment
 from libs.archive_storage import ArchiveStorageNotConfiguredError
-from models import AppStar
+from models import AccountWebApp, AppStar
 from models.agent import WorkflowAgentBindingType, WorkflowAgentNodeBinding
+from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from models.model import UploadFile
 from models.workflow import WorkflowArchiveLog, WorkflowDraftVariable, WorkflowDraftVariableFile
 from services.network_access_group_service import NetworkAccessGroupUpstreamError
 from tasks.remove_app_and_related_data_task import (
+    _delete_account_webapps,
+    _delete_app_connections,
     _delete_app_stars,
     _delete_app_workflow_archive_logs,
     _delete_archived_workflow_run_files,
@@ -33,7 +37,28 @@ from tasks.remove_app_and_related_data_task import (
     _delete_workflow_agent_node_bindings,
     delete_draft_variables_batch,
 )
+from tests.helpers.end_user_connection_contract import new_app_selection, new_connection, new_session_selection
 from tests.helpers.unit.config_override import apply_config_overrides
+
+
+def test_app_connection_cleanup_preserves_credentials_and_other_apps(sqlite_session: Session) -> None:
+    connection = new_connection()
+    app_selection = new_app_selection(connection)
+    session_selection = replace(new_session_selection(connection), app_id=app_selection.app_id)
+    kept = new_app_selection(connection)
+    sqlite_session.add(connection)
+    sqlite_session.flush()
+    sqlite_session.add_all([app_selection, session_selection, kept])
+    sqlite_session.commit()
+
+    _delete_app_connections(connection.tenant_id, app_selection.app_id)
+    _delete_app_connections(connection.tenant_id, app_selection.app_id)
+
+    sqlite_session.expunge_all()
+    assert sqlite_session.get(AppConnection, app_selection.id) is None
+    assert sqlite_session.get(SessionConnection, session_selection.id) is None
+    assert sqlite_session.get(AppConnection, kept.id) is not None
+    assert sqlite_session.get(EndUserConnection, connection.id) == connection
 
 
 def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_session: Session) -> None:
@@ -84,8 +109,20 @@ def test_delete_workflow_agent_node_bindings_is_scoped_to_tenant_and_app(sqlite_
     assert sqlite_session.get(WorkflowAgentNodeBinding, other_tenant_id) is not None
 
 
-def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_app_cleanup_removes_agent_bindings_before_workflows(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
     events: list[str] = []
+    connection = replace(new_connection(), tenant_id="tenant-1")
+    selections = [
+        replace(new_app_selection(connection), app_id="app-1"),
+        replace(new_session_selection(connection), app_id="app-1"),
+    ]
+    sqlite_session.add(connection)
+    sqlite_session.flush()
+    sqlite_session.add_all(selections)
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY)
     other_cleanup_names = (
         "cleanup_app_storage",
@@ -95,6 +132,7 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
         "_delete_app_api_tokens",
         "_delete_installed_apps",
         "_delete_app_stars",
+        "_delete_account_webapps",
         "_delete_recommended_apps",
         "_delete_app_annotation_data",
         "_delete_app_dataset_joins",
@@ -132,6 +170,8 @@ def test_app_cleanup_removes_agent_bindings_before_workflows(monkeypatch: pytest
     assert events == ["bindings", "workflows", "executions", "runs"]
     delete_bindings.assert_called_once_with("tenant-1", "app-1")
     delete_workflows.assert_called_once_with("tenant-1", "app-1")
+    assert all(sqlite_session.get(type(selection), selection.id) is None for selection in selections)
+    assert sqlite_session.get(EndUserConnection, connection.id) == connection
 
 
 def test_cloud_app_cleanup_schedules_independent_binding_cleanup(
@@ -599,6 +639,32 @@ class TestDeleteAppStars:
         sqlite_session.expunge_all()
 
         assert sqlite_session.get(AppStar, app_star.id) is None
+
+
+@patch("tasks.remove_app_and_related_data_task._delete_records")
+def test_personal_webapp_cleanup_keeps_other_tenants_and_apps(
+    mock_delete_records: MagicMock, sqlite_session: Session
+) -> None:
+    tenant_id, app_id, account_id = str(uuid4()), str(uuid4()), str(uuid4())
+    states = [
+        AccountWebApp(tenant_id=tenant_id, app_id=app_id, account_id=account_id),
+        AccountWebApp(tenant_id=tenant_id, app_id=app_id, account_id=str(uuid4())),
+        AccountWebApp(tenant_id=str(uuid4()), app_id=app_id, account_id=account_id),
+        AccountWebApp(tenant_id=tenant_id, app_id=str(uuid4()), account_id=account_id),
+    ]
+    sqlite_session.add_all(states)
+    sqlite_session.commit()
+    _delete_account_webapps(tenant_id, app_id)
+    _, params, delete_state, _ = mock_delete_records.call_args[0]
+    assert params == {"tenant_id": tenant_id, "app_id": app_id}
+    for state in states:
+        delete_state(sqlite_session, state.id)
+    sqlite_session.commit()
+    sqlite_session.expunge_all()
+    assert sqlite_session.get(AccountWebApp, states[0].id) is None
+    assert sqlite_session.get(AccountWebApp, states[1].id) is None
+    assert sqlite_session.get(AccountWebApp, states[2].id) is not None
+    assert sqlite_session.get(AccountWebApp, states[3].id) is not None
 
 
 class TestDeleteArchivedWorkflowRunFiles:

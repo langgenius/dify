@@ -6,6 +6,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
+from context.connection_execution import ConnectionExecutionContext
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.agent_strategy import AgentStrategyInfo
 from core.app.entities.app_invoke_entities import (
@@ -47,13 +48,13 @@ from core.credit_usage import CreditUsageAppType
 from core.rag.entities import RetrievalSourceMetadata
 from core.repositories.factory import WorkflowExecutionRepository, WorkflowNodeExecutionRepository
 from core.repositories.human_input_repository import HumanInputFormRecord
+from core.workflow.agent_log_events import NodeRunAgentLogEvent
 from core.workflow.node_factory import (
     DifyGraphInitContext,
     DifyNodeFactory,
     get_default_root_node_id,
     resolve_workflow_node_class,
 )
-from core.workflow.nodes.agent.events import NodeRunAgentLogEvent
 from core.workflow.nodes.human_input.boundary import resolve_human_input_node_id
 from core.workflow.nodes.human_input.callback import DifyHITLCallback
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -239,6 +240,8 @@ class WorkflowBasedAppRunner:
         root_node_id: str | None = None,
         app_type: CreditUsageAppType | None = None,
         trace_session_id: str | None = None,
+        connection_context: ConnectionExecutionContext | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Graph:
         """
         Init graph
@@ -247,6 +250,7 @@ class WorkflowBasedAppRunner:
 
         # Create explicit graph init context for Graph.init.
         run_context = build_dify_run_context(
+            connection_context=connection_context,
             tenant_id=tenant_id or "",
             app_id=self._app_id,
             user_id=user_id,
@@ -254,6 +258,7 @@ class WorkflowBasedAppRunner:
             invoke_from=invoke_from,
             app_type=app_type,
             trace_session_id=trace_session_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         graph_init_context = DifyGraphInitContext(
             execution_driver=self._execution_driver,

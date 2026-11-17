@@ -10,6 +10,14 @@ const zErrorResponse = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zWebLoginUnavailableError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('web_login_unavailable'),
+      status: z.literal(503),
+    }),
+  ))()
+
 const zAccountBannedError = /* @__PURE__ */ (() =>
   zErrorResponse.and(
     z.object({
@@ -81,6 +89,8 @@ const zEmailCodeLoginLimitError = /* @__PURE__ */ (() =>
       status: z.literal(429),
     }),
   ))()
+
+export const getErrors = { web_login_unavailable: { status: 503, data: zWebLoginUnavailableError } }
 
 export const postErrors = {
   account_banned: { status: 400, data: zAccountBannedError },

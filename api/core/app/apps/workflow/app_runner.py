@@ -87,6 +87,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph_runtime_state = resume_state
             variable_pool = graph_runtime_state.variable_pool
             graph = self._init_graph(
+                connection_context=self.application_generate_entity.connection_context,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
@@ -98,6 +99,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 call_depth=self.application_generate_entity.call_depth,
+                capture_agent_evaluation_trace=bool(
+                    self.application_generate_entity.extras.get("capture_agent_evaluation_trace")
+                ),
             )
         elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
@@ -143,6 +147,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 workflow_id=self._workflow.id, variable_pool=variable_pool, start_at=time.perf_counter()
             )
             graph = self._init_graph(
+                connection_context=self.application_generate_entity.connection_context,
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,
                 workflow_id=self._workflow.id,
@@ -154,6 +159,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 app_type=get_credit_usage_app_type(app_config.app_mode),
                 trace_session_id=self.application_generate_entity.extras.get("trace_session_id"),
                 call_depth=self.application_generate_entity.call_depth,
+                capture_agent_evaluation_trace=bool(
+                    self.application_generate_entity.extras.get("capture_agent_evaluation_trace")
+                ),
             )
 
         # RUN WORKFLOW

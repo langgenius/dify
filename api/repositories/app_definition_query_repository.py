@@ -1,5 +1,6 @@
 """Database repository for externally visible app definitions."""
 
+from collections.abc import Mapping, Sequence
 from typing import Any, cast, override
 
 from sqlalchemy import String, select
@@ -10,7 +11,7 @@ from core.agent.publish_visibility import agent_has_workflow_callable_active_sna
 from core.app.apps.agent_app.app_feature_projection import merge_agent_app_features
 from core.app.apps.agent_app.app_variable_projection import agent_app_variables_to_user_input_form
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.agent import AgentConfigSnapshot
 from models.agent_config_entities import AgentSoulConfig
 from models.model import App, AppMode, AppModelConfig, Site, load_annotation_reply_config
@@ -23,8 +24,13 @@ from services.app_definition_query_service import (
     AppSiteConfiguration,
     AppToolIconSource,
     ServiceApiAppRecord,
+    WebAppParameterConfig,
 )
+from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
+from services.workflow.entities import TriggerWorkflowSnapshot
+from services.workflow.tool_credentials import requires_end_user_connections
+from services.workflow_test_credentials import BuilderScope, BuilderTestMembership
 
 
 def map_site_configuration(site: Site) -> AppSiteConfiguration:
@@ -120,6 +126,96 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         self._session_factory = session_factory
 
+    def get_test_draft_graph(self, scope: BuilderScope) -> Mapping[str, Any] | None:
+        with self._session_factory() as session:
+            workflow = session.scalar(
+                select(Workflow)
+                .join(App, App.id == Workflow.app_id)
+                .where(
+                    Workflow.tenant_id == scope.tenant_id,
+                    Workflow.app_id == scope.app_id,
+                    Workflow.version == Workflow.VERSION_DRAFT,
+                    App.tenant_id == scope.tenant_id,
+                    App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                )
+            )
+            return workflow.graph_dict if workflow is not None else None
+
+    def get_test_membership(self, scope: BuilderScope) -> BuilderTestMembership | None:
+        with self._session_factory() as session:
+            row = session.execute(
+                select(App.created_by, TenantAccountJoin.role)
+                .select_from(App)
+                .join(TenantAccountJoin, TenantAccountJoin.tenant_id == App.tenant_id)
+                .join(Account, Account.id == TenantAccountJoin.account_id)
+                .where(
+                    App.id == scope.app_id,
+                    App.tenant_id == scope.tenant_id,
+                    Account.id == scope.account_id,
+                    Account.status == AccountStatus.ACTIVE,
+                )
+            ).one_or_none()
+            if row is None:
+                return None
+            owner_id, role = row
+            return BuilderTestMembership(owner_id, role.value)
+
+    def get_trigger_workflow(self, *, tenant_id: str, app_id: str, workflow_id: str | None) -> TriggerWorkflowSnapshot:
+        with self._session_factory() as session:
+            app = session.scalar(select(App).where(App.id == app_id, App.tenant_id == tenant_id))
+            if app is None:
+                raise WorkflowNotFoundError(f"App not found: {app_id}")
+            selected_id = workflow_id or app.workflow_id
+            workflow = (
+                session.scalar(
+                    select(Workflow).where(
+                        Workflow.id == selected_id, Workflow.app_id == app_id, Workflow.tenant_id == tenant_id
+                    )
+                )
+                if selected_id
+                else None
+            )
+            if workflow is None:
+                if workflow_id:
+                    raise WorkflowNotFoundError(f"Published workflow not found: {workflow_id}")
+                raise WorkflowNotFoundError(f"No published workflow found for app: {app_id}")
+            if workflow_id and workflow.version == Workflow.VERSION_DRAFT:
+                raise IsDraftWorkflowError(
+                    f"Cannot use draft workflow version. Workflow ID: {workflow_id}. "
+                    "Please use a published workflow version or leave workflow_id empty."
+                )
+            return self._trigger_workflow_snapshot(workflow)
+
+    def get_published_trigger_workflows(
+        self, *, tenant_id: str, app_ids: Sequence[str]
+    ) -> Mapping[str, TriggerWorkflowSnapshot]:
+        if not app_ids:
+            return {}
+        with self._session_factory() as session:
+            workflows = session.scalars(
+                select(Workflow)
+                .join(App, App.workflow_id == Workflow.id)
+                .where(
+                    App.id.in_(app_ids),
+                    App.tenant_id == tenant_id,
+                    Workflow.app_id == App.id,
+                    Workflow.tenant_id == App.tenant_id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            ).all()
+            return {workflow.app_id: self._trigger_workflow_snapshot(workflow) for workflow in workflows}
+
+    @staticmethod
+    def _trigger_workflow_snapshot(workflow: Workflow) -> TriggerWorkflowSnapshot:
+        return TriggerWorkflowSnapshot(
+            id=workflow.id,
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            type=workflow.type,
+            version=workflow.version,
+            graph=workflow.graph,
+        )
+
     @override
     def get_service_api_record(self, app_id: str, *, tenant_id: str | None = None) -> ServiceApiAppRecord | None:
         with self._session_factory() as session:
@@ -161,6 +257,29 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
             )
 
     @override
+    def get_published_workflow_graph(self, tenant_id: str, app_id: str) -> Mapping[str, Any] | None:
+        """Read only the selected, owned publication and return its graph without an open session.
+
+        Return None when no workflow-backed publication matches the app/tenant
+        scope. Drafts and foreign app/workspace references never supply a graph;
+        database and graph decoding failures propagate without changing state.
+        """
+        with self._session_factory() as session:
+            workflow = session.scalar(
+                select(Workflow)
+                .join(App, App.workflow_id == Workflow.id)
+                .where(
+                    App.id == app_id,
+                    App.tenant_id == tenant_id,
+                    App.mode.in_([AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]),
+                    Workflow.app_id == app_id,
+                    Workflow.tenant_id == tenant_id,
+                    Workflow.version != Workflow.VERSION_DRAFT,
+                )
+            )
+            return workflow.graph_dict if workflow is not None else None
+
+    @override
     def get_mode(self, app_id: str) -> str | None:
         with self._session_factory() as session:
             mode = session.scalar(select(App.mode).where(App.id == app_id).limit(1))
@@ -182,6 +301,54 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 return _get_public_agent_parameter_config(app, session=session)
 
             return load_app_parameter_config(app, session=session)
+
+    @override
+    def get_web_parameter_config(self, app_id: str, tenant_id: str) -> WebAppParameterConfig | None:
+        with self._session_factory() as session:
+            record = session.execute(
+                select(App, Site.default_language)
+                .outerjoin(Site, Site.app_id == App.id)
+                .where(App.id == app_id, App.tenant_id == tenant_id)
+                .limit(1)
+            ).one_or_none()
+            if record is None:
+                return None
+            app, default_language = record
+            if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+                workflow = session.scalar(
+                    select(Workflow).where(
+                        Workflow.id == app.workflow_id,
+                        Workflow.app_id == app.id,
+                        Workflow.tenant_id == tenant_id,
+                        Workflow.version != "draft",
+                    )
+                )
+                if workflow is None:
+                    return None
+                return WebAppParameterConfig(
+                    default_language=default_language or "en-US",
+                    parameters=AppParameterConfig(
+                        features_dict=workflow.features_dict,
+                        user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+                    ),
+                    workflow_id=workflow.id,
+                    requires_end_user_connections=requires_end_user_connections(workflow.graph_dict),
+                    graph=workflow.graph_dict,
+                )
+            config = (
+                _get_public_agent_parameter_config(app, session=session)
+                if app.mode == AppMode.AGENT
+                else load_app_parameter_config(app, session=session)
+            )
+            if config is None:
+                return None
+            return WebAppParameterConfig(
+                parameters=config,
+                default_language=default_language or "en-US",
+                workflow_id=None,
+                requires_end_user_connections=False,
+                graph=None,
+            )
 
     @override
     def get_tool_icon_sources(self, app_id: str) -> tuple[AppToolIconSource, ...] | None:

@@ -14,14 +14,18 @@ from flask import Flask
 from pydantic import ValidationError
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import HTTPException, NotFound, UnprocessableEntity
+from werkzeug.exceptions import BadRequest, HTTPException, NotFound, UnprocessableEntity
 
 from controllers.common.errors import InvalidArgumentError
 from controllers.console import wraps as console_wraps
 from controllers.console.app import workflow as workflow_module
 from controllers.console.app import wraps as app_wraps
 from controllers.console.app.error import DraftWorkflowNotExist, DraftWorkflowNotSync
-from controllers.console.app.workflow import ConvertToWorkflowApi
+from controllers.console.app.workflow import (
+    ConvertToWorkflowApi,
+    EvaluationPublishedWorkflowApi,
+    WorkflowKindConvertApi,
+)
 from core.workflow.llm_environment_variable import LLMEnvironmentVariable
 from enums import DeploymentEdition
 from graphon.file import File, FileTransferMethod, FileType
@@ -229,8 +233,13 @@ class TestWorkflowCases:
             assert "warning" not in response
 
     @staticmethod
+    @pytest.mark.parametrize("error_type", [RuntimeError, workflow_module.WorkflowToolEndUserAuthError])
     def test_publish_workflow_rolls_back_on_service_failure(
-        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+        app: Flask,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: Engine,
+        error_type: type[Exception],
     ) -> None:
         app_model = _workflow_app(app_id="app-1", tenant_id="tenant-1")
         sqlite_session.add(app_model)
@@ -241,7 +250,7 @@ class TestWorkflowCases:
             assert persisted_app is not None
             persisted_app.name = "changed"
             session.flush()
-            raise RuntimeError("publish failed")
+            raise error_type("publish failed")
 
         service = workflow_module.WorkflowService(session_maker=sessionmaker(bind=sqlite_engine))
         monkeypatch.setattr(service, "publish_workflow", fail_after_update)
@@ -249,7 +258,8 @@ class TestWorkflowCases:
         current_user = _workflow_Account(name="Test", email="test@example.com")
         current_user.id = "account-1"
         with app.test_request_context("/apps/app-1/workflows/publish", method="POST", json={}):
-            with pytest.raises(RuntimeError, match="publish failed"):
+            expected_error = BadRequest if error_type is workflow_module.WorkflowToolEndUserAuthError else RuntimeError
+            with pytest.raises(expected_error, match="publish failed"):
                 inspect.unwrap(workflow_module.PublishedWorkflowApi.post)(
                     workflow_module.PublishedWorkflowApi(),
                     workflow_module.PublishWorkflowPayload.model_validate({}),
@@ -1401,6 +1411,20 @@ class TestWorkflowConvertApiCases:
 
             assert response["new_app_id"] == "new-app-1"
             assert response["permission_keys"] == ["app.acl.view_layout", "app.acl.edit"]
+
+
+@pytest.mark.parametrize("resource_class", [EvaluationPublishedWorkflowApi, WorkflowKindConvertApi])
+def test_evaluation_workflow_mutations_reject_community(
+    app: Flask,
+    monkeypatch: pytest.MonkeyPatch,
+    resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
+) -> None:
+    monkeypatch.setattr("controllers.console.wraps.SystemFeatureService.is_evaluation_enabled", lambda: False)
+
+    with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
+        resource_class().post()
+
+    assert exc_info.value.code == 404
 
 
 def _make_account() -> _workflow_human_input_debug_api_Account:

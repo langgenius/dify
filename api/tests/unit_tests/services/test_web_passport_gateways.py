@@ -17,6 +17,7 @@ def _passport() -> PassportService:
 def test_deployment_auth_gateway_reads_deployment_setting() -> None:
     gateway = DeploymentWebPassportAuthGateway(
         webapp_auth_enabled=True,
+        is_user_allowed=lambda _user, _app: True,
         get_app_access_mode=lambda _app_id: WebAppSettings(accessMode=WebAppAccessMode.PUBLIC),
     )
 
@@ -44,6 +45,7 @@ def test_deployment_auth_gateway_delegates_access_mode_mapping(
 
     gateway = DeploymentWebPassportAuthGateway(
         webapp_auth_enabled=True,
+        is_user_allowed=lambda _user, _app: True,
         get_app_access_mode=get_access_mode,
     )
 

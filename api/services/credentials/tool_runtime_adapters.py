@@ -35,7 +35,7 @@ class ProviderToolCredentialRuntime:
 
     def resolve(
         self, *, service: ToolCredentialService, workspace_id: str, credential_id: str | None
-    ) -> tuple[Mapping[str, object], CredentialType]:
+    ) -> tuple[Mapping[str, object], CredentialType, str]:
         """Map credential failures to tool errors, retaining temporary coordination failures."""
         try:
             resolved = service.resolve(workspace_id=workspace_id, credential_id=credential_id)
@@ -55,7 +55,7 @@ class ProviderToolCredentialRuntime:
             raise ToolProviderCredentialValidationError(message) from exc
         except ToolCredentialRefreshError as exc:
             raise ToolProviderCredentialValidationError(str(exc)) from exc
-        return resolved.credentials, CredentialType(resolved.credential_type)
+        return resolved.credentials, CredentialType(resolved.credential_type), resolved.credential_id
 
     def check_policy(self, record: ToolRuntimeCredential) -> None:
         runtime_check_credential_policy_compliance(

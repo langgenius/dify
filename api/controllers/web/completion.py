@@ -6,6 +6,19 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.end_user_connections import (
+    ConnectionCheckUnavailableHTTPError,
+    ConnectionConfigurationHTTPError,
+    ConnectionConflictHTTPError,
+    ConnectionCredentialsHTTPError,
+    ConnectionLoginRequiredError,
+    ConnectionNotFoundHTTPError,
+    ConnectionReauthorizationHTTPError,
+    ConnectionRequiredHTTPError,
+    ConnectionRevisionChangedHTTPError,
+    ConnectionSecretUnavailableHTTPError,
+    raise_connection_error,
+)
 from controllers.common.fields import GeneratedAppResponse, SimpleResultResponse
 from controllers.common.schema import register_response_schema_models, register_schema_models
 from controllers.console.app.wraps import with_session
@@ -15,11 +28,13 @@ from controllers.web.error import (
     AppUnavailableError,
     CompletionRequestError,
     ConversationCompletedError,
+    EndUserBusyHTTPError,
     NotChatAppError,
     NotCompletionAppError,
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
+    WebExecutionResourcesChangedHTTPError,
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
@@ -35,9 +50,13 @@ from libs import helper
 from libs.external_api import error_responses
 from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
+from repositories.entities.web_execution import EndUserBusyError, WebExecutionResourcesChangedError
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.conversation_service import ConversationService
+from services.end_user_connections.errors import ConnectionError
+from services.end_user_connections.execution import ConnectionRunInput
+from services.end_user_connections.preflight import ConnectionId, NodeId
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -67,7 +86,16 @@ class CompletionMessagePayload(BaseModel):
     retriever_from: str = Field(default="web_app", description="Source of retriever")
 
 
-class ChatMessagePayload(BaseModel):
+class ChatMessagePayload(ConnectionRunInput):
+    connections: dict[NodeId, ConnectionId | None] | None = Field(
+        default=None,
+        description=(
+            "Chatflow choices keyed by independent authorization node ID. Omit on an existing conversation to reuse "
+            "its last accepted choices. Explicit choices replace the saved configuration after validation. "
+            "An explicit null, empty map, or missing node does not inherit saved choices. "
+            "Required for a new conversation with EndUser tool authentication."
+        ),
+    )
     inputs: dict[str, Any] = Field(
         description="Input variables for the chat",
     )
@@ -83,7 +111,13 @@ class ChatMessagePayload(BaseModel):
     parent_message_id: str | None = Field(default=None, description="Parent message ID")
     retriever_from: str = Field(default="web_app", description="Source of retriever")
 
-    @field_validator("conversation_id", "parent_message_id")
+    @field_validator("conversation_id")
+    @classmethod
+    def validate_conversation_id(cls, value: str | None) -> str | None:
+        # An empty ID starts a new conversation, including connection preflight and queued execution.
+        return uuid_value(value) if value else None
+
+    @field_validator("parent_message_id")
     @classmethod
     def validate_uuid(cls, value: str | None) -> str | None:
         if value is None:
@@ -201,8 +235,20 @@ class CompletionStopApi(WebApiResource):
 @web_ns.route("/chat-messages")
 class ChatApi(WebApiResource):
     @error_responses(
+        ConnectionCheckUnavailableHTTPError,
+        ConnectionConfigurationHTTPError,
+        ConnectionLoginRequiredError,
+        ConnectionConflictHTTPError,
+        ConnectionCredentialsHTTPError,
+        ConnectionNotFoundHTTPError,
+        ConnectionReauthorizationHTTPError,
+        ConnectionRequiredHTTPError,
+        ConnectionSecretUnavailableHTTPError,
+        ConnectionRevisionChangedHTTPError,
         AgentNotPublishedError,
         AppUnavailableError,
+        EndUserBusyHTTPError,
+        WebExecutionResourcesChangedHTTPError,
         CompletionRequestError,
         InvokeRateLimitHttpError,
         NotChatAppError,
@@ -230,7 +276,13 @@ class ChatApi(WebApiResource):
             raise NotChatAppError()
 
         payload = ChatMessagePayload.model_validate(web_ns.payload or {})
-        args = payload.model_dump(exclude_none=True)
+        if app_mode != AppMode.ADVANCED_CHAT and (
+            payload.connection_revision is not None or payload.connections is not None
+        ):
+            raise ValueError("Connection selections require a Chatflow app.")
+        args = payload.model_dump(mode="json", exclude_none=True)
+        if "connections" in payload.model_fields_set and payload.connections is None:
+            args["connections"] = None
 
         streaming = _resolve_agent_app_streaming(app_mode=app_mode, response_mode=payload.response_mode)
         args["auto_generate_name"] = False
@@ -256,6 +308,12 @@ class ChatApi(WebApiResource):
 
             # response-contract:ignore compact_generate_response
             return helper.compact_generate_response(response)
+        except EndUserBusyError as error:
+            raise EndUserBusyHTTPError() from error
+        except WebExecutionResourcesChangedError as error:
+            raise WebExecutionResourcesChangedHTTPError() from error
+        except ConnectionError as error:
+            raise_connection_error(error)
         except services.errors.conversation.ConversationNotExistsError as caught_error:
             raise NotFound("Conversation Not Exists.") from caught_error
         except services.errors.conversation.ConversationCompletedError as caught_error:

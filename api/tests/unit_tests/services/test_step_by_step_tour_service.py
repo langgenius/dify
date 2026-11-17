@@ -65,6 +65,7 @@ def _accounts(session_factory: sessionmaker[Session], account: AccountSnapshot |
         row = make_account(account_id=account.id, name=account.name, email=account.email)
         row.created_at = account.created_at
         row.initialized_at = account.initialized_at
+        row.first_workspace_created_at = account.first_workspace_created_at
         with session_factory.begin() as session:
             session.add(row)
     return SQLAlchemyAccountRepository(session_factory)
@@ -199,3 +200,43 @@ def test_get_state_rejects_unknown_admitted_account(sqlite_session_factory: sess
 
     with pytest.raises(RuntimeError, match="unknown account"):
         service.get_state(_context())
+
+
+@pytest.mark.parametrize("created_workspace", [False, True])
+def test_cloud_onboarding_uses_workspace_origin_instead_of_old_account_registration(
+    sqlite_session_factory: sessionmaker[Session], created_workspace: bool
+) -> None:
+    states = StateRepositoryStub()
+    account = replace(
+        _account(started_at=datetime(2020, 1, 1)),
+        first_workspace_created_at=datetime(2026, 7, 1) if created_workspace else None,
+    )
+    service = StepByStepTourService(
+        accounts=_accounts(sqlite_session_factory, account),
+        states=states,
+        enabled=True,
+        rollout_started_at=datetime(2026, 6, 1),
+        require_workspace_creation=True,
+    )
+
+    result = service.get_state(_context())
+
+    assert result.first_workspace_id == ("workspace-1" if created_workspace else None)
+    assert states.initialize_calls == ([("account-1", "workspace-1")] if created_workspace else [])
+
+
+def test_cloud_invitation_keeps_its_existing_initialization_rule(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    states = StateRepositoryStub()
+    service = StepByStepTourService(
+        accounts=_accounts(sqlite_session_factory, _account(started_at=datetime(2026, 7, 1))),
+        states=states,
+        enabled=True,
+        rollout_started_at=datetime(2026, 6, 1),
+        require_workspace_creation=True,
+    )
+
+    result = service.get_state(_context())
+
+    assert result.first_workspace_id == "workspace-1"

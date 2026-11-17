@@ -89,6 +89,7 @@ class AppScopedEndUserRepo(AppScopedEndUserQuery, AppScopedEndUserRepository[End
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id == app_id,
                     EndUser.session_id == user_id,
+                    EndUser.account_id.is_(None),
                 )
             ).all()
         return [self._stored(end_user) for end_user in end_users]
@@ -108,6 +109,7 @@ class AppScopedEndUserRepo(AppScopedEndUserQuery, AppScopedEndUserRepository[End
                     EndUser.tenant_id == tenant_id,
                     EndUser.app_id.in_(app_ids),
                     EndUser.session_id == user_id,
+                    EndUser.account_id.is_(None),
                     EndUser.type == EndUserType(type),
                 )
             ).all()

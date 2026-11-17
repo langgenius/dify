@@ -31,9 +31,15 @@ from services.workflow_draft_variable_service import DraftVariableSaver as Draft
 if TYPE_CHECKING:
     from graphon.variables.input_entities import VariableEntity
 
+from extensions.application_services.web_execution import web_workflow_launch, web_workflow_worker
+
 logger = logging.getLogger(__name__)
 
 _WORKER_THREAD_JOIN_TIMEOUT_SECONDS = 300
+
+
+def noop_restore_file_access() -> None:
+    """Leave the current file-access scope unchanged when no restoration is needed."""
 
 
 @final
@@ -74,6 +80,9 @@ class _DebuggerDraftVariableSaver:
 
 
 class BaseAppGenerator:
+    _web_workflow_launch = staticmethod(web_workflow_launch)
+    _web_workflow_worker = staticmethod(web_workflow_worker)
+
     _file_access_controller: DatabaseFileAccessController = DatabaseFileAccessController()
 
     @staticmethod

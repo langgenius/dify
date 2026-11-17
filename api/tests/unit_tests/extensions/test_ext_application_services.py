@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import RedisClientWrapper
 from extensions.tracing import application_tracing_hooks, create_trace_scope_for_app
 from graphon.model_runtime.entities.model_entities import ModelType
+from libs.datetime_utils import naive_utc_now
 from machinery.context import RequestContext
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.enums import AppStatus, ConversationFromSource, CustomizeTokenStrategy
@@ -150,6 +151,7 @@ from services.network_access_group_gateway import (
 )
 from services.network_access_group_service import NetworkAccessGroupAccessDeniedError, NetworkAccessGroupService
 from services.oauth_device_application_service import OAuthDeviceApplicationService
+from services.plugin.plugin_parameter_gateway import DaemonPluginParameterGateway
 from services.plugin_file_upload_gateway import ToolFilePluginUploadGateway
 from services.plugin_file_upload_service import PluginFileUploadService
 from services.retention.workflow_run.archive_download_task_cache import WorkflowRunArchiveDownloadTaskCache
@@ -158,7 +160,11 @@ from services.tag_application_service import TagApplicationService
 from services.tool_file_download_service import ToolFileDownloadService
 from services.tracing.adapters import CeleryTraceEmitter
 from services.tracing.runtime_bridge import RuntimeApplicationTracingHooks
-from services.trigger.oauth_gateway import TriggerOAuthBuilderGateway
+from services.trigger.endpoint_gateway import PluginTriggerEndpointGateway
+from services.trigger.event_gateway import PluginTriggerEventGateway
+from services.trigger.oauth_gateway import PluginTriggerOAuthGateway, TriggerOAuthBuilderGateway
+from services.trigger.provider_gateway import PluginTriggerProviderQuery
+from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway
 from services.upload_file_delivery_service import UploadFileDeliveryService
 from services.web_authentication_adapters import (
     AccountWebAuthenticationSecurityGateway,
@@ -732,9 +738,11 @@ def test_build_application_services_wires_workflow_comment_boundary(
     )
 
     assert isinstance(services.workflow_comments, WorkflowCommentService)
-    assert isinstance(services.workflow_comments._comments, WorkflowCommentRepository)
-    assert services.workflow_comments._comments._session_factory is sqlite_session_factory
+    assert isinstance(services.workflow_comments._threads, WorkflowCommentRepository)
+    assert services.workflow_comments._threads._session_factory is sqlite_session_factory
+    assert services.workflow_comments._queries is services.workflow_comments._threads
     assert isinstance(services.workflow_comments._notifier, CeleryWorkflowCommentMentionNotifier)
+    assert services.workflow_comments._now is naive_utc_now
 
 
 def test_build_application_services_wires_app_statistic_boundary(
@@ -1119,58 +1127,54 @@ def test_build_application_services_wires_credential_query(
     records = services.credential_queries.list_models(workspace_id=tenant_id, provider="openai", actor_id=actor_id)
 
     assert [(record.id, record.name) for record in records] == [(credential_id, "Team")]
-    assert services.workspaces.trigger_subscriptions._credentials is services.credential_queries
-    assert services.workspaces.trigger_events._subscriptions is services.workspaces.trigger_subscriptions
-    assert (
-        services.workspaces.trigger_binding_queries
-        is services.workspaces.trigger_subscription_management._subscriptions
-    )
-    assert services.workspaces.trigger_events._requests is services.workspaces.trigger_endpoints._requests
+    assert services.triggers.subscriptions._credentials is services.credential_queries
+    assert services.triggers.events._subscriptions is services.triggers.subscriptions
+    assert services.triggers.binding_queries is services.triggers.subscription_management._subscriptions
+    assert services.triggers.events._requests is services.triggers.endpoints._requests
     assert services.workspaces.plugin_parameters._credentials is services.credential_queries
-    assert services.workspaces.plugin_parameters._builders is services.workspaces.trigger_builders
+    assert services.workspaces.plugin_parameters._builders is services.triggers.builders
     assert (
-        services.workspaces.plugin_parameters._subscriptions
-        is services.workspaces.trigger_subscription_management._subscriptions
+        services.workspaces.plugin_parameters._subscriptions is services.triggers.subscription_management._subscriptions
     )
-    assert services.workspaces.trigger_subscriptions._schemas is services.workspaces.trigger_providers
-    assert (
-        services.workspaces.trigger_subscriptions._subscriptions
-        is services.workspaces.trigger_subscription_management._subscriptions
-    )
-    gateway = services.workspaces.trigger_oauth._builders
+    assert services.triggers.subscriptions._schemas is services.triggers.providers
+    assert services.triggers.subscriptions._subscriptions is services.triggers.subscription_management._subscriptions
+    gateway = services.triggers.oauth._builders
     assert isinstance(gateway, TriggerOAuthBuilderGateway)
-    assert gateway._builders is services.workspaces.trigger_builders
+    assert gateway._builders is services.triggers.builders
+    assert services.triggers.builders._create_subscription == services.triggers.subscription_management.create
+    assert services.triggers.endpoints._subscriptions is services.triggers.subscription_management._subscriptions
     assert (
-        services.workspaces.trigger_builders._create_subscription
-        == services.workspaces.trigger_subscription_management.create
+        services.triggers.subscription_renewal._subscriptions
+        is services.triggers.subscription_management._subscriptions
     )
+    assert services.triggers.subscription_renewal._providers is services.triggers.subscription_management._providers
+    assert services.triggers.subscription_refresh._renewal is services.triggers.subscription_renewal
     assert (
-        services.workspaces.trigger_endpoints._subscriptions
-        is services.workspaces.trigger_subscription_management._subscriptions
+        services.triggers.subscription_refresh._subscriptions
+        is services.triggers.subscription_management._subscriptions
     )
-    assert (
-        services.workspaces.trigger_subscription_renewal._subscriptions
-        is services.workspaces.trigger_subscription_management._subscriptions
-    )
-    assert (
-        services.workspaces.trigger_subscription_renewal._providers
-        is services.workspaces.trigger_subscription_management._providers
-    )
-    assert (
-        services.workspaces.trigger_subscription_renewal._locks
-        is services.workspaces.trigger_subscription_management._locks
-    )
-    assert (
-        services.workspaces.trigger_subscription_renewal._codec
-        is services.workspaces.trigger_subscription_management._codec
-    )
-    assert services.workspaces.trigger_subscription_refresh._renewal is services.workspaces.trigger_subscription_renewal
-    assert (
-        services.workspaces.trigger_subscription_refresh._subscriptions
-        is services.workspaces.trigger_subscription_management._subscriptions
-    )
-    assert services.workspaces.trigger_subscription_renewal._clients is services.workspaces.trigger_oauth_clients
-    assert services.workspaces.trigger_subscription_renewal._oauth is services.workspaces.trigger_oauth._providers
+    assert services.triggers.subscription_renewal._locks is services.triggers.subscription_management._locks
+    assert services.triggers.subscription_renewal._codec is services.triggers.subscription_management._codec
+    assert services.triggers.subscription_renewal._clients is services.triggers.oauth_clients
+    assert services.triggers.subscription_renewal._oauth is services.triggers.oauth._providers
+    provider_query = services.triggers.providers
+    events_gateway = services.triggers.events._plugins
+    endpoint_gateway = services.triggers.endpoints._provider
+    subscription_gateway = services.triggers.subscription_management._providers
+    oauth_gateway = services.triggers.oauth._providers
+    parameter_gateway = services.workspaces.plugin_parameters._plugins
+    assert isinstance(provider_query, PluginTriggerProviderQuery)
+    assert isinstance(events_gateway, PluginTriggerEventGateway)
+    assert isinstance(endpoint_gateway, PluginTriggerEndpointGateway)
+    assert isinstance(subscription_gateway, PluginTriggerSubscriptionGateway)
+    assert isinstance(oauth_gateway, PluginTriggerOAuthGateway)
+    assert isinstance(parameter_gateway, DaemonPluginParameterGateway)
+    provider_loader = provider_query._providers
+    assert events_gateway._providers is provider_loader
+    assert endpoint_gateway._providers is provider_loader
+    assert subscription_gateway._providers is provider_loader
+    assert oauth_gateway._providers is provider_loader
+    assert parameter_gateway._providers is provider_loader
 
 
 def test_build_application_services_uses_supplied_redis_for_both_workflow_stop_signals(
@@ -1847,6 +1851,7 @@ def test_installed_app_management_composition_reads_real_installations_and_curre
             limit=1,
             app_id=None,
             name=None,
+            mode="all",
         )
         assert page.editable is True
         assert page.has_more is False
@@ -1992,7 +1997,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
     )
     assert admitted_app.app_mode == "chat"
     previous_metadata = get_credit_usage_metadata()
-    event.listen(db.session.session_factory, "after_begin", observe_naming_session)
+    event.listen(sqlite_session_factory, "after_begin", observe_naming_session)
     plugin_http._httpx_client.event_hooks["request"].append(observe_naming_request)
     try:
         with naming_app.app_context(), use_credit_usage_metadata({"request_id": "naming-request"}):
@@ -2015,7 +2020,7 @@ def test_installed_app_conversations_wire_real_persistence_naming_and_cleanup(
             )
     finally:
         plugin_http._httpx_client.event_hooks["request"].remove(observe_naming_request)
-        event.remove(db.session.session_factory, "after_begin", observe_naming_session)
+        event.remove(sqlite_session_factory, "after_begin", observe_naming_session)
     assert len([path for path, _payload in naming_plugin.requests if path.endswith("/llm/invoke")]) == 1
     assert get_credit_usage_metadata() == previous_metadata
     assert queued == [conversation_id]
@@ -2170,3 +2175,94 @@ def test_installed_app_visibility_propagates_access_unavailable_with_original_ca
     assert type(caught.value) is WebAppAccessUnavailableError
     assert caught.value.__cause__ is enterprise_error
     assert enterprise_request.call_count == (2 if failure_stage == "permissions" else 1)
+
+
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+@pytest.mark.parametrize("enabled", [True, False])
+def test_account_passport_exchange_is_controlled_by_configuration_in_every_edition(
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
+    enabled: bool,
+) -> None:
+    from libs.passport import PassportService
+    from models.model import AppModelConfig, EndUser
+    from services.enterprise.enterprise_service import WebAppSettings
+    from services.web_passport_service import WebPassportAccountExchangeDisabledError
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    apply_config_overrides(
+        monkeypatch,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=enabled,
+        SECRET_KEY="test-account-passport-configuration-signing-key",
+    )
+    monkeypatch.setattr(
+        EnterpriseService.WebAppAuth,
+        "get_app_access_mode_by_id",
+        MagicMock(return_value=WebAppSettings(accessMode="public")),
+    )
+    account = Account(name="Consumer", email="consumer@example.com")
+    sqlite_session.add(account)
+    app_model = App(tenant_id=str(uuid4()), name="Rollout", mode="chat", enable_site=True, enable_api=False)
+    sqlite_session.add(app_model)
+    sqlite_session.flush()
+    config = AppModelConfig(app_id=app_model.id)
+    sqlite_session.add(config)
+    sqlite_session.flush()
+    app_model.app_model_config_id = config.id
+    sqlite_session.add(
+        Site(
+            app_id=app_model.id,
+            code="rollout-code",
+            title="Rollout",
+            default_language="en-US",
+            customize_token_strategy=CustomizeTokenStrategy.UUID,
+        )
+    )
+    sqlite_session.commit()
+    services = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=edition,
+        initialization_password="",
+        redis=_redis(),
+    )
+    token = PassportService().issue(
+        {
+            "sub": "Web API Account Login",
+            "token_source": "webapp_account_login",
+            "auth_type": "internal",
+            "user_id": account.id,
+            "exp": 2_000_000_000,
+        }
+    )
+    if not enabled:
+        with pytest.raises(WebPassportAccountExchangeDisabledError):
+            services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
+        assert sqlite_session.scalar(select(EndUser.id).where(EndUser.account_id == account.id)) is None
+        return
+
+    result = services.web_passport.issue_for_account(app_code="rollout-code", access_token=token)
+    claims = PassportService().verify(result.access_token)
+    stored = sqlite_session.get(EndUser, claims["end_user_id"])
+    assert stored is not None
+    assert stored.account_id == account.id
+    assert "account_id" not in claims
+    assert "user_id" not in claims
+
+    apply_config_overrides(monkeypatch, WEBAPP_ACCOUNT_PASSPORT_ENABLED=False)
+    reader = ext_application_services.build_application_services(
+        database_client=sqlite_session_factory,
+        deployment_edition=edition,
+        initialization_password="",
+        redis=_redis(),
+    )
+    assert not reader.web_authentication.get_login_status(
+        app_code="rollout-code",
+        user_id=None,
+        access_token=None,
+        app_session_token=result.access_token,
+        account_login_token=token,
+    ).app_logged_in
+    with pytest.raises(WebPassportAccountExchangeDisabledError):
+        reader.web_passport.issue_for_account(app_code="rollout-code", access_token=token)

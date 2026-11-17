@@ -490,7 +490,7 @@ class TestDatasetModelValidation:
     def test_dataset_query_get_queries_uses_caller_session(self, sqlite_session: Session) -> None:
         dataset_query = DatasetQuery(
             dataset_id=str(uuid4()),
-            content=json.dumps([{"content_type": "image_query", "content": "file-1"}]),
+            content=json.dumps([{"content_type": "image_query", "content": "f030575b-8ac7-4824-949d-8a1cd575c082"}]),
             source="hit_testing",
             source_app_id=None,
             created_by_role=CreatorUserRole.ACCOUNT,
@@ -509,7 +509,7 @@ class TestDatasetModelValidation:
             created_at=datetime(2024, 1, 1),
             used=False,
         )
-        upload_file.id = "file-1"
+        upload_file.id = "f030575b-8ac7-4824-949d-8a1cd575c082"
         sqlite_session.add_all([_make_dataset(dataset_id=dataset_query.dataset_id), dataset_query, upload_file])
         sqlite_session.flush()
 
@@ -519,9 +519,9 @@ class TestDatasetModelValidation:
         assert queries == [
             {
                 "content_type": "image_query",
-                "content": "file-1",
+                "content": "f030575b-8ac7-4824-949d-8a1cd575c082",
                 "file_info": {
-                    "id": "file-1",
+                    "id": "f030575b-8ac7-4824-949d-8a1cd575c082",
                     "name": "image.png",
                     "size": 10,
                     "extension": "png",

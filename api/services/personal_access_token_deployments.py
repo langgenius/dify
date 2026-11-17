@@ -23,7 +23,9 @@ from services.personal_access_token_service import (
 
 
 class DeploymentContext(Protocol):
-    def deployment_context(self, account_id: str) -> tuple[str | None, tuple[PersonalAccessTokenResourceView, ...]]: ...
+    def deployment_context(
+        self, account_id: str, *, app_ids: frozenset[str] | None = None
+    ) -> tuple[str | None, tuple[PersonalAccessTokenResourceView, ...]]: ...
 
 
 class _Environment(BaseModel):
@@ -47,8 +49,10 @@ class ConsolePersonalAccessTokenDeploymentCatalog:
         self._headers = headers
         self._enabled = enabled
 
-    def snapshot(self, account_id: str) -> PersonalAccessTokenDeploymentSnapshot:
-        current, apps = self._context.deployment_context(account_id)
+    def snapshot(
+        self, account_id: str, *, app_ids: frozenset[str] | None = None
+    ) -> PersonalAccessTokenDeploymentSnapshot:
+        current, apps = self._context.deployment_context(account_id, app_ids=app_ids)
         if not self._enabled() or current is None:
             return PersonalAccessTokenDeploymentSnapshot(current, ())
         headers = self._headers()

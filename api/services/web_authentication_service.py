@@ -6,6 +6,7 @@ from enums import WebAppAccessMode
 from machinery.context import RequestContext
 from services.account_ports import AccountPasswordHasher
 from services.entities.account_entities import AccountAuthenticationSnapshot, AccountPasswordDigest, AccountSnapshot
+from services.entities.account_login_entities import LoginMode
 from services.entities.auth_audit_entities import LoginFailureReason
 from services.entities.authentication_entities import (
     StoredAuthenticationToken,
@@ -27,6 +28,8 @@ class WebAuthenticationTokenGateway(Protocol):
     def issue_access_token(self, *, account_id: str, email: str) -> str: ...
 
     def verify_access_token(self, token: str | None) -> bool: ...
+
+    def account_id(self, token: str | None) -> str | None: ...
 
     def send_email_login_code(self, *, account_id: str, email: str, language: str) -> str: ...
 
@@ -66,7 +69,15 @@ class WebAppAccessGateway(Protocol):
 
 
 class WebAppSessionGateway(Protocol):
-    def verify(self, *, token: str | None, app_code: str, user_id: str | None) -> bool: ...
+    def verify(
+        self,
+        *,
+        token: str | None,
+        app_code: str,
+        user_id: str | None,
+        account_id: str | None = None,
+        require_account: bool = False,
+    ) -> bool: ...
 
 
 class WebAppSessionQuery(Protocol):
@@ -173,16 +184,44 @@ class WebAuthenticationService:
         user_id: str | None,
         access_token: str | None,
         app_session_token: str | None,
+        account_login_token: str | None = None,
+        mode: LoginMode = LoginMode.CONSOLE,
     ) -> WebLoginStatus:
+        """Require the cookie-only Account proof for Account-linked App sessions.
+
+        Legacy anonymous and Enterprise sessions may omit account_login_token.
+        access_token retains the legacy cookie-or-bearer login contract.
+        """
+        if mode == LoginMode.END_USER:
+            if app_code and self._app_access.find_app_id_by_code(app_code) is None:
+                raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
+            account_id = self._tokens.account_id(account_login_token)
+            app_logged_in = bool(
+                account_id
+                and app_code
+                and self._app_sessions.verify(
+                    token=app_session_token,
+                    app_code=app_code,
+                    user_id=user_id,
+                    account_id=account_id,
+                    require_account=True,
+                )
+            )
+            return WebLoginStatus(logged_in=account_id is not None, app_logged_in=app_logged_in)
         if not app_code:
-            return WebLoginStatus(logged_in=bool(access_token), app_logged_in=False)
+            return WebLoginStatus(logged_in=self._tokens.verify_access_token(access_token), app_logged_in=False)
 
         app_id = self._app_access.find_app_id_by_code(app_code)
         if app_id is None:
             raise WebAppAccessAppNotFoundError(f"App with code {app_code} not found")
         is_public = not self._private_app_access_enabled or not self._app_access.requires_permission_check(app_id)
         logged_in = is_public or self._tokens.verify_access_token(access_token)
-        app_logged_in = self._app_sessions.verify(token=app_session_token, app_code=app_code, user_id=user_id)
+        app_logged_in = self._app_sessions.verify(
+            token=app_session_token,
+            app_code=app_code,
+            user_id=user_id,
+            account_id=self._tokens.account_id(account_login_token),
+        )
         return WebLoginStatus(logged_in=logged_in, app_logged_in=app_logged_in)
 
     def send_email_login_code(self, *, email: str, language: str | None) -> str:

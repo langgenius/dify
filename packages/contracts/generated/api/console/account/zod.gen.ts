@@ -169,6 +169,7 @@ export const zAccountResponse = z.object({
   avatar_url: z.string().nullable(),
   created_at: z.int().nullish(),
   email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
   id: z.string(),
   interface_language: z.string().nullish(),
   interface_theme: z.string().nullish(),
@@ -266,6 +267,7 @@ export const zEmailCodeAccountDeletionRateLimitExceededError = zErrorResponse.an
  */
 export const zEducationStatusResponse = z.object({
   allow_refresh: z.boolean(),
+  can_redeem_discount: z.boolean(),
   expire_at: z.int().nullable(),
   is_student: z.boolean(),
   result: z.boolean(),
@@ -479,6 +481,27 @@ export const zPersonalAccessTokenCreatedResponse = z.object({
 })
 
 /**
+ * AccountProfileResponse
+ */
+export const zAccountProfileResponse = z.object({
+  avatar: z.string().nullish(),
+  avatar_url: z.string().nullable(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
  * AccountProfilePatchPayload
  */
 export const zAccountProfilePatchPayload = z
@@ -670,6 +693,27 @@ export const zAccountResponseWritable = z.object({
   avatar: z.string().nullish(),
   created_at: z.int().nullish(),
   email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  id: z.string(),
+  interface_language: z.string().nullish(),
+  interface_theme: z.string().nullish(),
+  is_password_set: z.boolean(),
+  last_login_at: z.int().nullish(),
+  last_login_ip: z.string().nullish(),
+  name: z.string(),
+  timezone: z.string().nullish(),
+})
+
+/**
+ * AccountProfileResponse
+ */
+export const zAccountProfileResponseWritable = z.object({
+  avatar: z.string().nullish(),
+  created_at: z.int().nullish(),
+  email: z.string(),
+  first_workspace_created_at: z.int().nullish(),
+  has_owned_tenant: z.boolean().nullish(),
+  has_tenant: z.boolean().nullish(),
   id: z.string(),
   interface_language: z.string().nullish(),
   interface_theme: z.string().nullish(),
@@ -861,7 +905,7 @@ export const zPatchAccountPersonalAccessTokensByTokenIdResponse = zPersonalAcces
 /**
  * Success
  */
-export const zGetAccountProfileResponse = zAccountResponse
+export const zGetAccountProfileResponse = zAccountProfileResponse
 
 export const zPatchAccountProfileBody = zAccountProfilePatchPayload
 

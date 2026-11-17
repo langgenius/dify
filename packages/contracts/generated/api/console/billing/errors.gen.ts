@@ -26,12 +26,21 @@ const zBillingUnavailableError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zAnnualDiscountActiveError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('annual_discount_active'),
+      status: z.literal(409),
+    }),
+  ))()
+
 export const getErrors = {
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
 }
 
 export const get2Errors = {
+  annual_discount_active: { status: 409, data: zAnnualDiscountActiveError },
   billing_operation_failed: { status: 502, data: zBillingOperationFailedError },
   billing_unavailable: { status: 503, data: zBillingUnavailableError },
 }

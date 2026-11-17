@@ -8,6 +8,7 @@ from .account import (
     TenantAccountRole,
     TenantStatus,
 )
+from .account_webapp import AccountWebApp
 from .agent import (
     Agent,
     AgentConfigDraft,
@@ -57,6 +58,7 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
+from .end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from .enums import (
     AppTriggerStatus,
     AppTriggerType,
@@ -65,7 +67,23 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
+from .file_scan import (
+    FileScanFallbackAction,
+    FileScanPolicy,
+    FileScanProvider,
+    FileScanProviderStatus,
+    FileScanRecord,
+    FileScanRecordStatus,
+)
 from .human_input import HumanInputForm, HumanInputFormUploadFile, HumanInputFormUploadToken
 from .human_input_v2 import (
     ContactSubjectType,
@@ -87,6 +105,7 @@ from .human_input_v2 import (
     IMSyncDirectoryEntryPayload,
     IMSyncIdentitySnapshot,
 )
+from .installed_app_connection import InstalledAppConnectionConfiguration
 from .knowledge_fs import (
     AppKnowledgeFSSpaceJoin,
     KnowledgeFSApiCredential,
@@ -238,6 +257,7 @@ __all__ = [
     "AccountStatus",
     "AccountStepByStepTourState",
     "AccountTrialAppRecord",
+    "AccountWebApp",
     "Agent",
     "AgentConfigDraft",
     "AgentConfigDraftType",
@@ -265,6 +285,7 @@ __all__ = [
     "App",
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
+    "AppConnection",
     "AppDatasetJoin",
     "AppKnowledgeFSSpaceJoin",
     "AppMCPServer",
@@ -305,10 +326,23 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EndUserConnection",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunItemStatus",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "FileScanFallbackAction",
+    "FileScanPolicy",
+    "FileScanProvider",
+    "FileScanProviderStatus",
+    "FileScanRecord",
+    "FileScanRecordStatus",
     "HumanInputContactIdentity",
     "HumanInputContent",
     "HumanInputEmailProvider",
@@ -332,6 +366,7 @@ __all__ = [
     "IMSyncIdentitySnapshot",
     "IconType",
     "InstalledApp",
+    "InstalledAppConnectionConfiguration",
     "InvitationCode",
     "KnowledgeFSApiCredential",
     "KnowledgeFSApiCredentialStatus",
@@ -399,6 +434,7 @@ __all__ = [
     "ResourceAccessTokenRelation",
     "ResourceAccessTokenResourceType",
     "SavedMessage",
+    "SessionConnection",
     "Site",
     "Skill",
     "SkillDraftFile",

@@ -1383,7 +1383,7 @@ MATRIX: dict[str, dict[Case, Expect]] = {
     "app_run.completion": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "app_run.stop": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "app_run.stop.task": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
-    "human_input_form.get": dict(_DUAL_SUBJECT_RUN),
+    "human_input_form.get": {**_DUAL_SUBJECT_RUN, Case.RBAC_ON_DENIED: ADMIT},
     "files.upload": {
         **_DUAL_SUBJECT_RUN,
         Case.RBAC_ON_DENIED: ADMIT_NO_RBAC_PERMISSION,
@@ -1483,7 +1483,6 @@ _REQ_RUN = (
     CheckAppApiEnabled(),
     CheckWorkspaceMember(),
     CheckScope(Scope.APPS_RUN),
-    CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
     CheckAppAccess(),
 )
 _REQ_RUN_FORM = (*_REQ_RUN, CheckFormSurface())
@@ -2265,7 +2264,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/runs"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}/nodes"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}:publish"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}:publish"): frozenset({"200", "403", "422", "default"}),
     ("get", "/apps/{app_id}/versions"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/versions/{version_id}:restore"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/release:check"): frozenset({"200", "default"}),

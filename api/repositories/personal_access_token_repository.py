@@ -588,13 +588,18 @@ class PersonalAccessTokenRepository:
                 role=role,
             )
 
-    def deployment_context(self, account_id: str) -> tuple[str | None, tuple[PersonalAccessTokenResourceView, ...]]:
+    def deployment_context(
+        self, account_id: str, *, app_ids: frozenset[str] | None = None
+    ) -> tuple[str | None, tuple[PersonalAccessTokenResourceView, ...]]:
         """Close the read session before the deployment catalog performs remote I/O."""
         workspace = self.current_workspace(account_id)
         if workspace is None:
             return None, ()
         current = workspace.workspace_id
         with self._session_factory() as session:
+            query = self._available_apps(account_id).where(App.tenant_id == current)
+            if app_ids is not None:
+                query = query.where(App.id.in_(app_ids))
             return current, tuple(
                 PersonalAccessTokenResourceView(
                     resource_type="app",
@@ -609,9 +614,7 @@ class PersonalAccessTokenRepository:
                     display_name_snapshot=app.name,
                     workspace_name_snapshot=workspace_name,
                 )
-                for app, workspace_name in session.execute(
-                    self._available_apps(account_id).where(App.tenant_id == current)
-                )
+                for app, workspace_name in session.execute(query)
             )
 
     def workspace_candidates(

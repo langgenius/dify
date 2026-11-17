@@ -11,7 +11,7 @@ from typing import Any, Final
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from core.trigger.constants import TRIGGER_NODE_TYPES
+from constants.trigger import TRIGGER_NODE_TYPES
 from core.workflow.human_input_adapter import adapt_node_config_for_graph
 from core.workflow.node_factory import resolve_workflow_node_class
 from core.workflow.variable_prefixes import ROOT_VARIABLE_NODE_IDS
@@ -21,6 +21,7 @@ from graphon.nodes.base.node import Node
 from graphon.variables import VariableBase
 from models import AppMode
 from services.workflow.node_defaults import complete_sub_models, editor_defaults, node_data_type
+from services.workflow.tool_credential_validation import check_tool_credentials
 from services.workflow_service import WorkflowService
 from services.workflow_variable_reference_validator import SOURCE_HANDLE, branch_handles
 
@@ -322,6 +323,12 @@ def check_graph(graph: Mapping[str, Any], *, mode: AppMode, resources: ResourceC
         mode=mode,
     )
     issues = [issue for check in _CHECKS for issue in check(view)]
+    existing_locations = {(issue.node_id, issue.loc) for issue in issues}
+    issues.extend(
+        GraphIssue(IssueCode.NODE_DATA_INVALID, issue.message, issue.node_id, _data_loc(issue.node_id, *issue.path))
+        for issue in check_tool_credentials(graph, complete=True)
+        if (issue.node_id, _data_loc(issue.node_id, *issue.path)) not in existing_locations
+    )
     if resources is not None:
         for node_id, raw in raw_nodes.items():
             problem = resources(raw)

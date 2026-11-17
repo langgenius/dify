@@ -5,11 +5,11 @@ from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from core.plugin.entities.request import TriggerInvokeEventResponse
-from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.trigger.entities.entities import EventParameter
 from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
 from graphon.entities.graph_config import NodeConfigDict
 from models.provider_ids import TriggerProviderID
+from services.trigger.debug_events import PluginTriggerDebugEvent
 from services.trigger.subscription_query_service import TriggerSubscriptionRuntime, TriggerSubscriptionRuntimeReader
 
 
