@@ -1,8 +1,8 @@
 {
   "title": "连接 Dify",
   "title_en": "Connect Dify",
-  "description": "填写你的 Dify 地址和访问令牌。凭证仅保存在本机的 WorkBuddy 中。",
-  "description_en": "Enter your Dify host and an access token. They are stored only on this computer, in WorkBuddy.",
+  "description": "填写你的 Dify 地址和个人访问令牌。凭证仅保存在本机的 WorkBuddy 中。",
+  "description_en": "Enter your Dify host and a personal access token. They are stored only on this computer, in WorkBuddy.",
   "docUrl": "https://docs.dify.ai",
   "docLabel": "Dify 文档",
   "docLabel_en": "Dify documentation",
@@ -19,8 +19,8 @@
     },
     {
       "key": "DIFY_TOKEN",
-      "label": "访问令牌",
-      "label_en": "Access token",
+      "label": "个人访问令牌",
+      "label_en": "Personal access token",
       "type": "password",
       "required": true,
       "placeholder": "dpat_...",
