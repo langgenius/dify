@@ -1142,7 +1142,15 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
     sqlite_session_factory: sessionmaker[Session], mode: AppMode, source: str
 ) -> None:
     root_source = "end_user" if source in {"end_user", "reuse_end_user"} else "workspace"
-    tool = {"id": "tool-1", "data": {"type": "tool", "credential_source": root_source}}
+    tool = {
+        "id": "tool-1",
+        "data": {
+            "type": "tool",
+            "credential_source": root_source,
+            "provider_id": "calendar",
+            "end_user_auth": {"allowed_credential_types": ["api-key"], "purpose": "Read events"},
+        },
+    }
     if source == "legacy":
         tool["data"].pop("credential_source")
     if source == "note":
@@ -1197,6 +1205,14 @@ def test_web_parameters_derive_connection_requirements_from_selected_published_g
     assert result.parameters.features_dict["opening_statement"] == "Published"
     assert result.requires_end_user_connections == (root_source == "end_user")
     assert result.graph == {"nodes": nodes}
+    if root_source == "end_user":
+        [requirement] = result.connection_requirements
+        assert requirement.node_id == "tool-1"
+        assert requirement.node_ids == (("tool-1", "tool-2") if source == "reuse_end_user" else ("tool-1",))
+        assert requirement.provider == "langgenius/calendar/calendar"
+        assert requirement.purpose == "Read events"
+    else:
+        assert result.connection_requirements == ()
     assert repository.get_web_parameter_config(_APP_ID, _OTHER_TENANT_ID) is None
 
 
@@ -1222,6 +1238,24 @@ def test_web_parameters_do_not_treat_unavailable_workflow_as_connection_free(
             )
     repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
     assert repository.get_web_parameter_config(_APP_ID, _TENANT_ID) is None
+
+
+def test_web_model_app_parameters_have_no_workflow_requirements(sqlite_session_factory: sessionmaker[Session]) -> None:
+    with sqlite_session_factory.begin() as session:
+        app = _persist_app(session)
+        config = AppModelConfig(app_id=app.id, opening_statement="Hello", user_input_form="[]")
+        session.add(config)
+        session.flush()
+        app.app_model_config_id = config.id
+    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_web_parameter_config(
+        _APP_ID, _TENANT_ID
+    )
+    assert result is not None
+    assert result.workflow_id is None
+    assert result.graph is None
+    assert result.connection_requirements == ()
+    assert result.requires_end_user_connections is False
+    assert result.parameters.features_dict["opening_statement"] == "Hello"
 
 
 def test_publish_during_parameter_mapping_does_not_mix_versions(
@@ -1262,23 +1296,37 @@ def test_publish_during_parameter_mapping_does_not_mix_versions(
     assert result.workflow_id == _WORKFLOW_ID
     assert result.parameters.features_dict["opening_statement"] == "First"
     assert result.graph == {"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "workspace"}}]}
+    assert result.connection_requirements == ()
     assert result.requires_end_user_connections is False
 
 
-def test_web_model_app_parameters_have_no_workflow_requirements(sqlite_session_factory: sessionmaker[Session]) -> None:
+@pytest.mark.parametrize("provider_id", [None, "invalid/provider", "calendar"])
+def test_incomplete_published_connection_requirements_make_web_parameters_unavailable(
+    sqlite_session_factory: sessionmaker[Session], provider_id: str | None
+) -> None:
+    data: dict[str, object] = {"type": "tool", "credential_source": "end_user"}
+    if provider_id is not None:
+        data["provider_id"] = provider_id
+    if provider_id != "calendar":
+        data["end_user_auth"] = {"allowed_credential_types": ["api-key"], "purpose": "Read events"}
     with sqlite_session_factory.begin() as session:
-        app = _persist_app(session)
-        config = AppModelConfig(app_id=app.id, opening_statement="Hello", user_input_form="[]")
-        session.add(config)
-        app.app_model_config_id = config.id
-    result = AppDefinitionQueryRepository(session_factory=sqlite_session_factory).get_web_parameter_config(
-        _APP_ID, _TENANT_ID
-    )
-    assert result is not None
-    assert result.workflow_id is None
-    assert result.graph is None
-    assert result.requires_end_user_connections is False
-    assert result.parameters.features_dict["opening_statement"] == "Hello"
+        app = _persist_app(session, mode=AppMode.WORKFLOW)
+        app.workflow_id = _WORKFLOW_ID
+        session.add(
+            Workflow(
+                id=_WORKFLOW_ID,
+                tenant_id=_TENANT_ID,
+                app_id=app.id,
+                type=WorkflowType.WORKFLOW,
+                version="published",
+                graph=json.dumps({"nodes": [{"id": "tool", "data": data}]}),
+                _features="{}",
+                created_by=_ACCOUNT_ID,
+            )
+        )
+
+    repository = AppDefinitionQueryRepository(session_factory=sqlite_session_factory)
+    assert repository.get_web_parameter_config(_APP_ID, _TENANT_ID) is None
 
 
 def test_builder_membership_lookup_requires_complete_owner_chain_and_active_membership(

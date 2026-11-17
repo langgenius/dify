@@ -85,7 +85,7 @@ async function setup(
 beforeEach(() => {
   api.remove.mockReset().mockResolvedValue({ result: 'success' })
   api.update.mockReset().mockResolvedValue({ result: 'success' })
-  api.add.mockReset().mockResolvedValue({ result: 'success' })
+  api.add.mockReset().mockResolvedValue({ result: 'success', id: 'credential-created' })
   api.setDefault.mockReset().mockResolvedValue({ result: 'success' })
 })
 

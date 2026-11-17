@@ -12,6 +12,7 @@ import pytest
 import sqlalchemy as sa
 from flask import Flask
 from flask.testing import FlaskClient
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
 
@@ -40,6 +41,7 @@ from services.app_definition_query_service import (
     AppDefinitionNotPublishedError,
     AppDefinitionQueryService,
     AppDefinitionUnavailableError,
+    WebAppParametersDict,
 )
 from services.end_user_connection_revision_adapters import PluginConnectionRevisions
 from services.webapp_access_query_service import (
@@ -106,14 +108,18 @@ class TestAppParameterApi:
         )
         calls: list[tuple[str, str]] = []
 
-        def get_web_parameters(app_id: str, tenant_id: str) -> dict[str, object]:
+        def get_web_parameters(app_id: str, tenant_id: str) -> WebAppParametersDict:
             calls.append((app_id, tenant_id))
-            return {
-                **get_parameters_from_feature_dict(features_dict={"opening_statement": "Hello"}, user_input_form=[]),
-                "connection_revision": None,
-                "requires_end_user_connections": False,
-                "connection_requirements": [],
-            }
+            return TypeAdapter(WebAppParametersDict).validate_python(
+                {
+                    **get_parameters_from_feature_dict(
+                        features_dict={"opening_statement": "Hello"}, user_input_form=[]
+                    ),
+                    "connection_revision": None,
+                    "requires_end_user_connections": False,
+                    "connection_requirements": (),
+                }
+            )
 
         monkeypatch.setattr(
             real_application_services.app_definitions,

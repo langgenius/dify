@@ -1,3 +1,4 @@
+import { Button } from '@langgenius/dify-ui/button'
 import {
   Menu,
   MenuContent,
@@ -16,12 +17,14 @@ type LocaleMenuProps<T extends string> = {
   items: Array<LocaleMenuItem<T>>
   value?: T
   onChange?: (value: T) => void
+  compact?: boolean
 }
 
 export default function LocaleMenu<T extends string>({
   items,
   value,
   onChange,
+  compact = false,
 }: LocaleMenuProps<T>) {
   const selectedItem = items.find((item) => item.value === value)
 
@@ -30,16 +33,30 @@ export default function LocaleMenu<T extends string>({
       <Menu>
         <MenuTrigger
           render={
-            <button
-              type="button"
-              className="inline-flex max-w-full min-w-0 items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
-            />
+            compact ? (
+              <Button variant="ghost" className="h-8 px-2 system-sm-medium text-text-tertiary" />
+            ) : (
+              <button
+                type="button"
+                className="inline-flex max-w-full min-w-0 items-center rounded-lg border border-components-button-secondary-border px-2.5 py-1.5 text-[13px] font-medium text-text-primary hover:bg-state-base-hover"
+              />
+            )
           }
         >
-          <span className="me-1 i-heroicons-globe-alt size-5 shrink-0" aria-hidden="true" />
+          <span
+            className={
+              compact
+                ? 'i-ri-global-line size-4 shrink-0'
+                : 'me-1 i-heroicons-globe-alt size-5 shrink-0'
+            }
+            aria-hidden="true"
+          />
           <span className="truncate">{selectedItem?.name}</span>
+          {compact && (
+            <span className="i-ri-arrow-down-s-line size-4 shrink-0" aria-hidden="true" />
+          )}
         </MenuTrigger>
-        <MenuContent sideOffset={8} className="w-50">
+        <MenuContent align={compact ? 'end' : undefined} sideOffset={8} className="w-50">
           <MenuRadioGroup<T> value={value} onValueChange={(nextValue) => onChange?.(nextValue)}>
             {items.map((item) => (
               <MenuRadioItem<T>

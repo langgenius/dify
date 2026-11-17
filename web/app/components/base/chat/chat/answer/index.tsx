@@ -45,6 +45,7 @@ type AnswerProps = {
     content?: string
     showThoughts?: boolean
   }) => ReactNode
+  humanInputFormDisabled?: boolean
   onHumanInputFormSubmit?: (formToken: string, formData: HumanInputFormSubmitData) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
@@ -63,6 +64,7 @@ const Answer: FC<AnswerProps> = ({
   switchSibling,
   hideAvatar,
   renderAgentContent,
+  humanInputFormDisabled,
   onHumanInputFormSubmit,
 }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
@@ -220,6 +222,7 @@ const Answer: FC<AnswerProps> = ({
               {humanInputFormDataList && humanInputFormDataList.length > 0 && (
                 <HumanInputFormList
                   humanInputFormDataList={humanInputFormDataList}
+                  disabled={humanInputFormDisabled}
                   onHumanInputFormSubmit={onHumanInputFormSubmit}
                   getHumanInputNodeData={getHumanInputNodeData}
                 />

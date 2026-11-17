@@ -35,6 +35,56 @@ describe('WebAppAddress', () => {
     })
   })
 
+  it.each([
+    '/chat/chat-app',
+    '/chat/chat-app/migrate-conversations',
+    '/chat/chat-app/migrate-conversations/',
+  ])('keeps the chat app address for %s', (pathname) => {
+    expect(parseWebAppAddress(pathname)).toEqual({
+      kind: 'default',
+      code: 'chat-app',
+    })
+  })
+
+  it.each([
+    '/chat/chat-app/unknown',
+    '/chat/chat-app/migrate-conversations/extra',
+    '/workflow/chat-app/migrate-conversations',
+    '/chatbot/chat-app/migrate-conversations',
+    '/environment/chat/chat-app/migrate-conversations',
+    '/chat/webapp-signin/migrate-conversations',
+  ])('rejects unsupported WebApp subroutes at %s', (pathname) => {
+    expect(parseWebAppAddress(pathname)).toBeNull()
+  })
+
+  it('uses the migration route app instead of a different redirect target', () => {
+    vi.stubGlobal(
+      'location',
+      new URL(
+        'https://example.com/chat/current-app/migrate-conversations?redirect_url=%2Fchat%2Fother-app',
+      ),
+    )
+
+    expect(resolveWebAppAddress()).toEqual({
+      kind: 'default',
+      code: 'current-app',
+    })
+  })
+
+  it('resolves a migration route when returning from WebApp sign-in', () => {
+    vi.stubGlobal(
+      'location',
+      new URL(
+        'https://example.com/webapp-signin?redirect_url=%2Fchat%2Fchat-app%2Fmigrate-conversations',
+      ),
+    )
+
+    expect(resolveWebAppAddress()).toEqual({
+      kind: 'default',
+      code: 'chat-app',
+    })
+  })
+
   it('builds the environment upload and workflow URLs', () => {
     const address = parseWebAppAddress('/environment/workflow/workflow-app')
     expect(getWebAppApiPath(address, '/files/upload')).toBe(

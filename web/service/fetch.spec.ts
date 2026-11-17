@@ -10,6 +10,7 @@ import {
 import { request } from './base'
 // oxlint-disable-next-line no-restricted-imports -- This spec directly tests low-level public API routing.
 import { base } from './fetch'
+import { setWebAppAccessToken } from './webapp-auth'
 
 const refreshAccessTokenOrReLoginMock = vi.hoisted(() => vi.fn())
 
@@ -36,6 +37,8 @@ describe('base', () => {
     vi.restoreAllMocks()
     window.history.replaceState({}, '', originalUrl)
     markAppDeletionFailed('deleted-app')
+    localStorage.clear()
+    sessionStorage.clear()
   })
 
   describe('Public API routing', () => {
@@ -182,6 +185,31 @@ describe('base', () => {
   })
 
   describe('Error responses', () => {
+    it('keeps an optional account-login requirement separate from Console refresh and redirects', async () => {
+      window.history.replaceState({}, '', '/chat/account-app')
+      setWebAppAccessToken('expired-proof', 'end_user')
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+        Response.json(
+          {
+            code: 'end_user_login_required',
+            message: 'Account login required',
+            status: 401,
+          },
+          { status: 401 },
+        ),
+      )
+
+      await expect(
+        // oxlint-disable-next-line typescript/no-deprecated -- Exercise the public auth error owner through its transport boundary.
+        request('/connections', {}, { isPublicAPI: true, silent: true }),
+      ).rejects.toMatchObject({ code: 'end_user_login_required' })
+
+      expect(fetch).toHaveBeenCalledOnce()
+      expect(refreshAccessTokenOrReLoginMock).not.toHaveBeenCalled()
+      expect(window.location.pathname).toBe('/chat/account-app')
+      expect(toast.error).not.toHaveBeenCalled()
+    })
     it('should preserve structured error details when a 401 response is rejected', async () => {
       // Arrange
       const unauthorizedResponse = new Response(

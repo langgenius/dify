@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import { Button } from '@langgenius/dify-ui/button'
-import { RiPlayLine } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import SingleRunButton from '../../single-run-button'
 
 type Props = Readonly<{
   canSingleRun: boolean
   onSingleRun: () => void
+  disabledReason?: string
 }>
 
-const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
+const NoData: FC<Props> = ({ canSingleRun, onSingleRun, disabledReason }) => {
   const { t } = useTranslation(['workflowDebug'])
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
@@ -22,10 +22,12 @@ const NoData: FC<Props> = ({ canSingleRun, onSingleRun }) => {
         {t(($) => $['debug.noData.description'], { ns: 'workflowDebug' })}
       </div>
       {canSingleRun && (
-        <Button className="flex" size="small" onClick={onSingleRun}>
-          <RiPlayLine className="size-3.5" />
-          <div>{t(($) => $['debug.noData.runThisNode'], { ns: 'workflowDebug' })}</div>
-        </Button>
+        <SingleRunButton
+          showLabel
+          label={t(($) => $['debug.noData.runThisNode'], { ns: 'workflowDebug' })}
+          disabledReason={disabledReason}
+          onClick={onSingleRun}
+        />
       )}
     </div>
   )

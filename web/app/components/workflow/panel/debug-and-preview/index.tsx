@@ -1,4 +1,5 @@
 import type { StartNodeType } from '../../nodes/start/types'
+import type { PreviewChatState } from './chat-wrapper'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
@@ -16,6 +17,8 @@ import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import { useSetDebugPreviewPanelWidth } from '../../persistence/local-storage-options'
 import { BlockEnum } from '../../types'
 import { getPreviewPanelMaxWidth } from '../panel-width'
+import TestConnections from '../test-connections'
+import { useTestConnections } from '../test-connections/use-test-connections'
 import ChatWrapper from './chat-wrapper'
 
 export type ChatWrapperRefType = {
@@ -25,6 +28,11 @@ const DebugAndPreview = () => {
   const { t } = useTranslation(['common', 'workflow'])
   const panelId = useId()
   const chatRef = useRef({ handleRestart: noop })
+  const connections = useTestConnections()
+  const [chatState, setChatState] = useState<PreviewChatState>({
+    hasConversation: false,
+    isResponding: false,
+  })
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const { handleNodeCancelRunningStatus } = useNodesInteractionsWithoutSync()
   const { handleEdgeCancelRunningStatus } = useEdgesInteractionsWithoutSync()
@@ -41,6 +49,7 @@ const DebugAndPreview = () => {
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 
   const handleRestartChat = () => {
+    connections.onOpenChange(false)
     handleNodeCancelRunningStatus()
     handleEdgeCancelRunningStatus()
     chatRef.current.handleRestart()
@@ -79,7 +88,7 @@ const DebugAndPreview = () => {
         controls={panelId}
         label={t(($) => $['common.debugAndPreview'], { ns: 'workflow' })}
         onResize={(width) => handleResize(width, 'user')}
-        className="absolute top-0 -left-1 flex h-full w-1 cursor-col-resize items-center justify-center"
+        className="absolute -inset-s-1 top-0 flex h-full w-1 cursor-col-resize items-center justify-center"
       >
         <div className="h-10 w-0.5 rounded-xs bg-state-base-handle group-focus-visible/resize:h-full group-focus-visible/resize:bg-state-accent-solid hover:h-full hover:bg-state-accent-solid active:h-full active:bg-state-accent-solid"></div>
       </ResizeHandle>
@@ -87,7 +96,7 @@ const DebugAndPreview = () => {
         id={panelId}
         ref={containerRef}
         className={cn(
-          'relative flex h-full flex-col rounded-l-2xl border border-r-0 border-components-panel-border bg-chatbot-bg shadow-xl',
+          'relative flex h-full flex-col rounded-s-2xl border border-e-0 border-components-panel-border bg-chatbot-bg shadow-xl',
         )}
         style={{ width: `${panelWidth}px` }}
       >
@@ -96,6 +105,11 @@ const DebugAndPreview = () => {
             {t(($) => $['common.debugAndPreview'], { ns: 'workflow' }).toLocaleUpperCase()}
           </div>
           <div className="flex items-center gap-1">
+            <TestConnections
+              connections={connections}
+              isResponding={chatState.isResponding}
+              showTrigger={chatState.hasConversation}
+            />
             <Tooltip>
               <TooltipTrigger
                 render={
@@ -127,7 +141,7 @@ const DebugAndPreview = () => {
                   <TooltipContent>{userInputFieldLabel}</TooltipContent>
                 </Tooltip>
                 {expanded && (
-                  <div className="absolute right-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-t-[0.5px] border-l-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
+                  <div className="absolute inset-e-1.25 -bottom-4.25 z-10 h-3 w-3 rotate-45 border-s-[0.5px] border-t-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg" />
                 )}
               </div>
             )}
@@ -139,6 +153,8 @@ const DebugAndPreview = () => {
         </div>
         <div className="grow overflow-y-auto rounded-b-2xl">
           <ChatWrapper
+            connections={connections}
+            onChatStateChange={setChatState}
             ref={chatRef}
             showConversationVariableModal={showConversationVariableModal}
             onConversationModalHide={() => setShowConversationVariableModal(false)}

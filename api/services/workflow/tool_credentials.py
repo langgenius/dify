@@ -10,6 +10,11 @@ from domain.plugins.provider_id import normalize_tool_provider_id
 from graphon.enums import BuiltinNodeTypes
 from graphon.nodes.tool.entities import ToolNodeData
 from services.end_user_connections.revision import AuthorizationRequirementSnapshot
+from services.entities import tool_connection_entities
+from services.entities.tool_connection_entities import ToolConnectionRequirement
+
+first_end_user_tool_node = tool_connection_entities.first_end_user_tool_node
+requires_end_user_connections = tool_connection_entities.requires_end_user_connections
 
 
 class EndUserAuthConfig(BaseModel):
@@ -57,19 +62,6 @@ class ToolCredentialConfig(BaseModel):
 
 class ToolNodeSpec(ToolNodeData, ToolCredentialConfig):
     """The editor-facing schema includes Dify policy without changing Graphon's node model."""
-
-
-class ToolConnectionRequirement(BaseModel):
-    """Published authorization requirements, independent of personal connection readiness."""
-
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    node_id: str = Field(description="Independent authorization node ID to use as the selection key.")
-    node_ids: tuple[str, ...] = Field(description="The authorization node and all nodes explicitly reusing it.")
-    title: str
-    purpose: str
-    provider: str
-    allowed_credential_types: tuple[ConnectionCredentialType, ...]
 
 
 def get_tool_connection_requirements(graph: Mapping[str, Any]) -> tuple[ToolConnectionRequirement, ...]:
@@ -144,33 +136,6 @@ def get_tool_authorization_requirements(graph: Mapping[str, Any]) -> tuple[Autho
             )
         )
     return tuple(sorted(requirements, key=lambda item: item.node_id))
-
-
-def requires_end_user_connections(graph: Mapping[str, Any]) -> bool:
-    """Static discovery only: reuse delegates to a node that declares its source.
-
-    A declared EndUser requirement must stay visible even if its configuration
-    is incomplete; publication validation and Preflight diagnose that separately.
-    """
-    return first_end_user_tool_node(graph) is not None
-
-
-def first_end_user_tool_node(graph: Mapping[str, Any]) -> str | None:
-    """Find the node declaring personal credentials, including incomplete drafts."""
-    return next(
-        (
-            str(node.get("id", "unknown"))
-            for node in graph.get("nodes", [])
-            if (
-                isinstance(node, Mapping)
-                and node.get("type") != "custom-note"
-                and isinstance(data := node.get("data"), Mapping)
-                and data.get("type") == BuiltinNodeTypes.TOOL
-                and data.get("credential_source") == "end_user"
-            )
-        ),
-        None,
-    )
 
 
 class WorkflowToolEndUserAuthError(ValueError):

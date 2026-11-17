@@ -1,5 +1,5 @@
 from copy import deepcopy
-from typing import TypedDict, cast
+from typing import TypedDict
 
 import pytest
 
@@ -42,6 +42,13 @@ def tool_node(node_id: str = "tool", /, **overrides: object) -> ToolNodeFixture:
             **overrides,
         },
     }
+
+
+def authentication(node: ToolNodeFixture) -> dict[str, object]:
+    """Return mutable authentication settings from a node fixture, rejecting non-mapping settings."""
+    auth = node["data"]["end_user_auth"]
+    assert isinstance(auth, dict)
+    return auth
 
 
 def test_legacy_nodes_keep_their_workspace_source_without_rewriting_data() -> None:
@@ -93,7 +100,7 @@ def test_malformed_draft_fields_are_located(overrides: dict[str, object], path: 
 
 def test_purpose_limit_counts_characters_not_utf8_bytes() -> None:
     node = tool_node()
-    auth = cast(dict[str, object], node["data"]["end_user_auth"])
+    auth = authentication(node)
     auth["purpose"] = "\u4e2d" * 50
     graph = {"nodes": [node]}
 
@@ -138,10 +145,9 @@ def test_complete_configuration_rejects_invalid_sources_and_providers(
 @pytest.mark.parametrize("methods", [["oauth2"], ["api-key"], ["oauth2", "api-key"]])
 def test_end_user_nodes_allow_one_or_both_authentication_methods(methods: list[str]) -> None:
     node = tool_node()
-    cast(dict[str, object], node["data"]["end_user_auth"])["allowed_credential_types"] = methods
-    cast(dict[str, object], node["data"]["end_user_auth"])["oauth_client_type"] = (
-        "default" if "oauth2" in methods else None
-    )
+    auth = authentication(node)
+    auth["allowed_credential_types"] = methods
+    auth["oauth_client_type"] = "default" if "oauth2" in methods else None
 
     assert check_tool_credentials({"nodes": [node]}, complete=True) == []
 
@@ -159,14 +165,12 @@ def test_same_provider_nodes_have_independent_authentication_requirements(
 ) -> None:
     first = tool_node("first")
     second = tool_node("second")
-    cast(dict[str, object], first["data"]["end_user_auth"])["allowed_credential_types"] = first_methods
-    cast(dict[str, object], first["data"]["end_user_auth"])["oauth_client_type"] = (
-        "default" if "oauth2" in first_methods else None
-    )
-    cast(dict[str, object], second["data"]["end_user_auth"])["allowed_credential_types"] = second_methods
-    cast(dict[str, object], second["data"]["end_user_auth"])["oauth_client_type"] = (
-        "default" if "oauth2" in second_methods else None
-    )
+    first_auth = authentication(first)
+    first_auth["allowed_credential_types"] = first_methods
+    first_auth["oauth_client_type"] = "default" if "oauth2" in first_methods else None
+    second_auth = authentication(second)
+    second_auth["allowed_credential_types"] = second_methods
+    second_auth["oauth_client_type"] = "default" if "oauth2" in second_methods else None
 
     graph = {"nodes": [first, second]}
     original = deepcopy(graph)
@@ -179,10 +183,9 @@ def test_same_provider_nodes_have_independent_authentication_requirements(
 def test_provider_grouping_does_not_merge_node_requirements_or_test_credentials() -> None:
     nodes = [tool_node("both"), tool_node("oauth"), tool_node("api-key")]
     for node, methods in zip(nodes, (["oauth2", "api-key"], ["oauth2"], ["api-key"]), strict=True):
-        cast(dict[str, object], node["data"]["end_user_auth"])["allowed_credential_types"] = methods
-        cast(dict[str, object], node["data"]["end_user_auth"])["oauth_client_type"] = (
-            "default" if "oauth2" in methods else None
-        )
+        auth = authentication(node)
+        auth["allowed_credential_types"] = methods
+        auth["oauth_client_type"] = "default" if "oauth2" in methods else None
         node["data"]["test_credential_id"] = f"test-{node['id']}"
 
     graph = {"nodes": nodes}
@@ -201,9 +204,7 @@ def reuse_node(node_id: str, target: str | None) -> ToolNodeFixture:
 def test_explicit_reuse_does_not_constrain_other_nodes_of_the_same_provider() -> None:
     oauth = tool_node("oauth")
     api_key = tool_node("api-key")
-    cast(dict[str, object], api_key["data"]["end_user_auth"]).update(
-        allowed_credential_types=["api-key"], oauth_client_type=None
-    )
+    authentication(api_key).update(allowed_credential_types=["api-key"], oauth_client_type=None)
     graph = {"nodes": [oauth, api_key, reuse_node("reuse", "oauth")]}
 
     assert check_graph(graph, mode=AppMode.WORKFLOW) == []
@@ -417,7 +418,7 @@ def test_dify_schema_exposes_credentials_without_extending_graphon() -> None:
 @pytest.mark.parametrize("client_type", ["default", "custom"])
 def test_oauth_requires_explicit_client_selection_but_drafts_can_omit_it(client_type: str) -> None:
     node = tool_node()
-    auth = cast(dict[str, object], node["data"]["end_user_auth"])
+    auth = authentication(node)
     del auth["oauth_client_type"]
     graph = {"nodes": [node]}
 
@@ -435,7 +436,7 @@ def test_oauth_requires_explicit_client_selection_but_drafts_can_omit_it(client_
 @pytest.mark.parametrize("client_type", ["default", "custom"])
 def test_api_key_only_configuration_cannot_select_an_oauth_client(client_type: str) -> None:
     node = tool_node(end_user_auth={"allowed_credential_types": ["api-key"], "purpose": "Read calendar"})
-    cast(dict[str, object], node["data"]["end_user_auth"])["oauth_client_type"] = client_type
+    authentication(node)["oauth_client_type"] = client_type
 
     assert check_tool_credentials({"nodes": [node]}, complete=False) == []
     [issue] = check_tool_credentials({"nodes": [node]}, complete=True)

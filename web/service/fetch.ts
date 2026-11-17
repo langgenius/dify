@@ -19,7 +19,7 @@ import { getHttpErrorBodyMessage, httpErrorFromResponse, isHttpErrorStatus } fro
 import { clearRequestErrorToasts, notifyRequestError } from './request-error-toast'
 import { captureRequestGuard } from './request-guard'
 import { getWebAppPublicApiPath, resolveWebAppAddress } from './webapp-address'
-import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
+import { captureWebAppAuthSession, getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
 
@@ -50,10 +50,12 @@ const afterResponse204: AfterResponseHook = async ({ response }) => {
 const afterResponseErrorCode = (
   otherOptions: IOtherOptions,
   requestGuard: RequestGuard | undefined,
+  assertAuthSessionCurrent: () => void,
 ): AfterResponseHook => {
   return async ({ request, response }) => {
     if (isHttpErrorStatus(response.status)) {
       const error = await httpErrorFromResponse(response)
+      assertAuthSessionCurrent()
       const errorData = error.data
       const handled = requestGuard?.handleError(response.status, errorData, error)
       if (handled || requestGuard?.isActive() === false) throw error
@@ -144,6 +146,11 @@ async function base<T>(
   } = otherOptions
   const requestGuard = captureRequestGuard(url, isPublicAPI, request?.method || init.method)
   requestGuard?.beforeRequest()
+  const isAuthSessionCurrent = isPublicAPI ? captureWebAppAuthSession() : () => true
+  const assertAuthSessionCurrent = () => {
+    if (!isAuthSessionCurrent())
+      throw new DOMException('The Web App account changed.', 'AbortError')
+  }
 
   const headers = new Headers(headersFromProps || {})
 
@@ -173,11 +180,13 @@ async function base<T>(
       ...baseHooks,
       beforeRequest: [
         ...(baseHooks.beforeRequest || []),
-        isPublicAPI && beforeRequestPublicWithCode,
+        assertAuthSessionCurrent,
+        isPublicAPI && !otherOptions.isWebAppAccountAPI && beforeRequestPublicWithCode,
       ].filter((h): h is BeforeRequestHook => Boolean(h)),
       afterResponse: [
+        assertAuthSessionCurrent,
         ...(baseHooks.afterResponse || []),
-        afterResponseErrorCode(otherOptions, requestGuard),
+        afterResponseErrorCode(otherOptions, requestGuard, assertAuthSessionCurrent),
       ],
     },
   })
@@ -212,7 +221,9 @@ async function base<T>(
     return (await res.blob()) as T
   }
 
-  return (await res.json()) as T
+  const result = (await res.json()) as T
+  assertAuthSessionCurrent()
+  return result
 }
 
 /**

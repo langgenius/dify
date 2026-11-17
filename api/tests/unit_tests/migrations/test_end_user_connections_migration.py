@@ -1,7 +1,7 @@
 import importlib.util
 from collections.abc import Iterator
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Protocol, runtime_checkable
 from uuid import uuid4
 
 import pytest
@@ -32,12 +32,19 @@ TABLE_NAMES = {
 }
 
 
+@runtime_checkable
 class ConnectionMigration(Protocol):
     op: Operations
 
     def upgrade(self) -> None: ...
 
     def downgrade(self) -> None: ...
+
+
+def require_migration(candidate: object) -> ConnectionMigration:
+    """Require the dynamically loaded module to expose the migration operation contract."""
+    assert isinstance(candidate, ConnectionMigration)
+    return candidate
 
 
 def load_migration(
@@ -49,7 +56,7 @@ def load_migration(
     assert spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    migration = cast(ConnectionMigration, module)
+    migration = require_migration(module)
     migration.op = Operations(MigrationContext.configure(connection))
     return migration
 

@@ -1,11 +1,9 @@
 from collections.abc import Sequence
 from dataclasses import replace
-from typing import cast
 
 import pytest
 
 from core.tools.__base.tool import Tool
-from services.credentials.query import CredentialQuery
 from services.workflow_test_credential_adapters import BuilderTestAccessGateway, DraftTestCredentialPlanner
 from services.workflow_test_credentials import TestCredentialError as CredentialError
 from tests.helpers.workflow_test_credentials import SCOPE, BuilderCredentialHarness, tool_node
@@ -139,7 +137,7 @@ def test_workspace_gateway_rechecks_selection_after_external_validation(
     monkeypatch.setattr(ToolManager, "get_tool_runtime", load_runtime)
     node = tool_node("a", credential_id, end_user_auth={"allowed_credential_types": ["api-key"], "purpose": "Read"})
     (requirement,) = DraftTestCredentialPlanner().requirements({"nodes": [node]}, "a")
-    gateway = WorkspaceTestCredentialGateway(queries=cast(CredentialQuery, queries), auth=auth)
+    gateway = WorkspaceTestCredentialGateway(queries=queries, auth=auth)
     with pytest.raises(Unavailable):
         gateway.resolve(SCOPE, requirement)
     assert len(auth.calls) == 1
@@ -201,9 +199,7 @@ def test_workspace_gateway_refreshes_before_check_and_returns_only_runtime_secre
     monkeypatch.setattr(ToolManager, "get_builtin_provider", lambda *_: provider)
     monkeypatch.setattr(ToolManager, "get_tool_runtime", load_runtime)
     (requirement,) = DraftTestCredentialPlanner().requirements({"nodes": [tool_node("a", credential_id)]}, "a")
-    result = WorkspaceTestCredentialGateway(queries=cast(CredentialQuery, queries), auth=auth).resolve(
-        SCOPE, requirement
-    )
+    result = WorkspaceTestCredentialGateway(queries=queries, auth=auth).resolve(SCOPE, requirement)
     assert result.credentials == {"access_token": "refreshed-secret"}
     assert auth.calls[0][3] == result.credentials
     assert result.credential_id == credential_id

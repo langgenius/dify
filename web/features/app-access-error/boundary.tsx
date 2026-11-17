@@ -12,7 +12,7 @@ import {
   getAppAccessScopeKey,
 } from './state'
 
-const AppNotAccessible = dynamic(() => import('./page'))
+const AppNotAccessible = dynamic(() => import('./view'))
 
 export default function AppAccessBoundary({ children }: PropsWithChildren) {
   const pathname = usePathname()

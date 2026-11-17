@@ -3,7 +3,7 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 import sqlalchemy as sa
@@ -103,14 +103,12 @@ class EndUserConnectionRepository:
                     sa.select(selection.id).where(*scope).order_by(selection.id).limit(batch_size).with_for_update()
                 ).all()
                 if selection_ids:
-                    result = cast(
-                        CursorResult,
-                        session.execute(
-                            sa.delete(selection)
-                            .where(*scope, selection.id.in_(selection_ids))
-                            .execution_options(synchronize_session=False)
-                        ),
+                    result = session.execute(
+                        sa.delete(selection)
+                        .where(*scope, selection.id.in_(selection_ids))
+                        .execution_options(synchronize_session=False)
                     )
+                    assert isinstance(result, CursorResult)
                     deleted += result.rowcount
         return deleted
 
@@ -527,23 +525,22 @@ class EndUserConnectionRepository:
         ]
         if tenant_id is not None:
             scope.append(EndUserConnection.tenant_id == tenant_id)
-        changed = cast(
-            CursorResult,
-            session.execute(
-                sa.update(EndUserConnection)
-                .where(*scope)
-                .values(
-                    {
-                        "status": ConnectionCredentialStatus.RECONNECT_REQUIRED,
-                        "encrypted_credentials": "",
-                        "expires_at": None,
-                        "revision": EndUserConnection.revision + 1,
-                        "updated_at": naive_utc_now(),
-                    }
-                )
-                .execution_options(synchronize_session=False)
-            ),
-        ).rowcount
+        result = session.execute(
+            sa.update(EndUserConnection)
+            .where(*scope)
+            .values(
+                {
+                    "status": ConnectionCredentialStatus.RECONNECT_REQUIRED,
+                    "encrypted_credentials": "",
+                    "expires_at": None,
+                    "revision": EndUserConnection.revision + 1,
+                    "updated_at": naive_utc_now(),
+                }
+            )
+            .execution_options(synchronize_session=False)
+        )
+        assert isinstance(result, CursorResult)
+        changed = result.rowcount
         # Lock grants before live choices, matching Run acceptance. Correlated
         # deletes also avoid loading every grant or expanding large ID lists.
         if changed:
@@ -648,22 +645,20 @@ class EndUserConnectionRepository:
         cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
     ) -> int:
         """Transfer credential owners inside the caller's validated identity transaction."""
-        transferred = cast(
-            CursorResult,
-            session.execute(
-                sa.update(EndUserConnection)
-                .where(EndUserConnection.tenant_id == guest.tenant_id, *cls._owner(guest.owner))
-                .values(
-                    {
-                        "account_id": account.account_id,
-                        "end_user_id": None,
-                        "revision": EndUserConnection.revision + 1,
-                        "updated_at": naive_utc_now(),
-                    }
-                )
-            ),
-        ).rowcount
-        return transferred
+        result = session.execute(
+            sa.update(EndUserConnection)
+            .where(EndUserConnection.tenant_id == guest.tenant_id, *cls._owner(guest.owner))
+            .values(
+                {
+                    "account_id": account.account_id,
+                    "end_user_id": None,
+                    "revision": EndUserConnection.revision + 1,
+                    "updated_at": naive_utc_now(),
+                }
+            )
+        )
+        assert isinstance(result, CursorResult)
+        return result.rowcount
 
     @classmethod
     def transfer_guest_defaults(
@@ -1134,9 +1129,8 @@ class EndUserConnectionRepository:
                 values["last_active_at"] = naive_utc_now()
             if values:
                 values.update(revision=EndUserConnection.revision + 1, updated_at=naive_utc_now())
-                result = cast(
-                    CursorResult, session.execute(sa.update(EndUserConnection).where(*predicates).values(**values))
-                )
+                result = session.execute(sa.update(EndUserConnection).where(*predicates).values(**values))
+                assert isinstance(result, CursorResult)
                 if result.rowcount != 1:
                     raise ConnectionConflictError()
                 row = session.scalar(
@@ -1157,9 +1151,8 @@ class EndUserConnectionRepository:
     def delete(self, context: ConnectionManagementContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
             self._require_management_context(session, context, lock=True)
-            result = cast(
-                CursorResult, session.execute(sa.delete(EndUserConnection).where(*self._guard(context, guard)))
-            )
+            result = session.execute(sa.delete(EndUserConnection).where(*self._guard(context, guard)))
+            assert isinstance(result, CursorResult)
             if result.rowcount != 1:
                 raise ConnectionConflictError()
 
@@ -1349,33 +1342,31 @@ class EndUserConnectionRepository:
                 session.add(row)
                 session.flush()
             else:
-                result = cast(
-                    CursorResult,
-                    session.execute(
-                        sa.update(EndUserConnection)
-                        .where(
-                            *self._guard(context, attempt.guard),
-                            EndUserConnection.provider == attempt.provider,
-                            EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
-                        )
-                        .values(
-                            {
-                                "encrypted_credentials": encrypted_credentials,
-                                "status": ConnectionCredentialStatus.CONNECTED,
-                                "oauth_client_source": client.source,
-                                "oauth_client_configuration_id": client.configuration_id,
-                                "oauth_client_id": client.client_id,
-                                "oauth_client_fingerprint": attempt.client.fingerprint,
-                                "oauth_plugin_unique_identifier": client.plugin_unique_identifier,
-                                "expires_at": expires_at,
-                                "account_label": account_label,
-                                "revision": EndUserConnection.revision + 1,
-                                "updated_at": naive_utc_now(),
-                                "last_active_at": naive_utc_now(),
-                            }
-                        )
-                    ),
+                result = session.execute(
+                    sa.update(EndUserConnection)
+                    .where(
+                        *self._guard(context, attempt.guard),
+                        EndUserConnection.provider == attempt.provider,
+                        EndUserConnection.credential_type == ConnectionCredentialType.OAUTH2,
+                    )
+                    .values(
+                        {
+                            "encrypted_credentials": encrypted_credentials,
+                            "status": ConnectionCredentialStatus.CONNECTED,
+                            "oauth_client_source": client.source,
+                            "oauth_client_configuration_id": client.configuration_id,
+                            "oauth_client_id": client.client_id,
+                            "oauth_client_fingerprint": attempt.client.fingerprint,
+                            "oauth_plugin_unique_identifier": client.plugin_unique_identifier,
+                            "expires_at": expires_at,
+                            "account_label": account_label,
+                            "revision": EndUserConnection.revision + 1,
+                            "updated_at": naive_utc_now(),
+                            "last_active_at": naive_utc_now(),
+                        }
+                    )
                 )
+                assert isinstance(result, CursorResult)
                 if result.rowcount != 1:
                     raise ConnectionConflictError()
                 row = session.scalar(

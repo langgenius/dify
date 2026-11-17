@@ -18,7 +18,7 @@ from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, webapp_login_claims
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, webapp_login_claims
 
 
 @pytest.fixture(autouse=True)

@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { MainNavItem } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useStudioListHref } from '@/app/components/apps/list-navigation-state'
@@ -10,20 +10,30 @@ const NavIcon = ({ icon, className }: { icon: string; className?: string }) => (
   <span aria-hidden className={cn(icon, 'h-5 w-5 shrink-0', className)} />
 )
 
-type MainNavLinkProps = {
+type MainNavLinkProps = Pick<ComponentProps<'a'>, 'target' | 'rel'> & {
   item: MainNavItem
   pathname: string
   children?: ReactNode
 }
 
-const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
+const NavLink = ({
+  item,
+  pathname,
+  children,
+  href,
+  target,
+  rel,
+}: MainNavLinkProps & { href: string }) => {
   const activated = item.active(pathname)
-  const appsHref = useStudioListHref('/apps')
+  // New-window links must preserve the Webapp URL without Console's base path.
+  const LinkComponent = target === '_blank' ? 'a' : Link
 
   return (
-    <Link
-      href={item.href === '/apps' ? appsHref : item.href}
-      scroll={false}
+    <LinkComponent
+      href={href}
+      target={target}
+      rel={rel}
+      {...(target === '_blank' ? {} : { scroll: false })}
       aria-current={activated ? 'page' : undefined}
       title={item.label}
       className={cn(
@@ -38,8 +48,21 @@ const MainNavLink = ({ item, pathname, children }: MainNavLinkProps) => {
         {item.label}
       </span>
       {children}
-    </Link>
+    </LinkComponent>
   )
 }
+
+const StudioNavLink = (props: MainNavLinkProps) => {
+  const href = useStudioListHref('/apps')
+
+  return <NavLink {...props} href={href} />
+}
+
+const MainNavLink = (props: MainNavLinkProps) =>
+  props.item.href === '/apps' ? (
+    <StudioNavLink {...props} />
+  ) : (
+    <NavLink {...props} href={props.item.href} />
+  )
 
 export default MainNavLink

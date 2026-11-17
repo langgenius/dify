@@ -11,7 +11,6 @@ import { ShortcutKbd } from '@/app/components/workflow/shortcuts/shortcut-kbd'
 import { useStore } from '@/app/components/workflow/store/workflow'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import { toast } from '@/app/notifications'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useWorkflowRunValidation } from '../hooks/use-checklist'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
@@ -38,11 +37,12 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { warningNodes } = useWorkflowRunValidation()
+  const { hasValidationErrors } = useWorkflowRunValidation()
   const workflowRunningData = useStore((s) => s.workflowRunningData)
   const isListening = useStore((s) => s.isListening)
   const canRun = useHooksStore((s) => s.accessControl.canRun)
-  const isRunDisabled = disabled || !canRun
+  const isRunUnavailable = disabled || !canRun
+  const isRunDisabled = isRunUnavailable || hasValidationErrors
 
   const status = workflowRunningData?.result.status
   const isRunning = status === WorkflowRunningStatus.Running || isListening
@@ -81,16 +81,6 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     (option: TriggerOption) => {
       if (isRunDisabled) return
 
-      // Validate checklist before running any workflow
-      let isValid: boolean = true
-      warningNodes.forEach((node) => {
-        if (node.id === option.nodeId) isValid = false
-      })
-      if (!isValid) {
-        toast.error(t(($) => $['panel.checklistTip'], { ns: 'workflow' }))
-        return
-      }
-
       if (option.type === TriggerType.UserInput) {
         handleWorkflowStartRunInWorkflow()
         trackEvent('app_start_action_time', { action_type: 'user_input' })
@@ -112,8 +102,6 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
     },
     [
       isRunDisabled,
-      warningNodes,
-      t,
       handleWorkflowStartRunInWorkflow,
       handleWorkflowTriggerScheduleRunInWorkflow,
       handleWorkflowTriggerWebhookRunInWorkflow,
@@ -129,7 +117,7 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
 
   return (
     <div className="flex items-center gap-x-px">
-      {isRunDisabled ? (
+      {isRunUnavailable || (hasValidationErrors && !isRunning) ? (
         <button
           type="button"
           className={cn(
@@ -138,7 +126,7 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
           disabled
           style={{ userSelect: 'none' }}
         >
-          <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+          <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
           {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
           <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
         </button>
@@ -146,11 +134,11 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
         <button
           type="button"
           className={cn(
-            'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 system-xs-medium text-text-accent',
+            'flex h-7 cursor-not-allowed items-center gap-x-1 rounded-s-md bg-state-accent-hover px-1.5 system-xs-medium text-text-accent',
           )}
           disabled={true}
         >
-          <span className="mr-1 i-ri-loader-2-line size-4 animate-spin" />
+          <span className="me-1 i-ri-loader-2-line size-4 animate-spin" />
           {isListening
             ? t(($) => $['common.listening'], { ns: 'workflow' })
             : t(($) => $['common.running'], { ns: 'workflow' })}
@@ -164,18 +152,18 @@ const RunMode = ({ text, disabled = false }: RunModeProps) => {
             )}
             style={{ userSelect: 'none' }}
           >
-            <span aria-hidden className="mr-1 i-ri-play-large-line size-4" />
+            <span aria-hidden className="me-1 i-ri-play-large-line size-4" />
             {text ?? t(($) => $['common.run'], { ns: 'workflow' })}
             <ShortcutKbd hotkey={TEST_RUN_MENU_HOTKEY} textColor="secondary" />
           </button>
         </TestRunMenu>
       )}
-      {isRunning && !isRunDisabled && (
+      {isRunning && !isRunUnavailable && (
         <button
           type="button"
           aria-label={t(($) => $['debug.variableInspect.trigger.stop'], { ns: 'workflowDebug' })}
           className={cn(
-            'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
+            'flex size-7 items-center justify-center rounded-e-md bg-state-accent-active',
           )}
           onClick={handleStop}
         >

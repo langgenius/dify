@@ -10,11 +10,8 @@ export const usePluginAuth = (
   enable?: boolean,
   includeCredentialIds?: string[],
 ) => {
-  const { data, isLoading } = useGetPluginCredentialInfoHook(
-    pluginPayload,
-    enable,
-    includeCredentialIds,
-  )
+  const { data, isLoading, isError, isFetching, errorUpdatedAt, dataUpdatedAt, refetch } =
+    useGetPluginCredentialInfoHook(pluginPayload, enable, includeCredentialIds)
   const isAuthorized = !!data?.credentials.length
   const canOAuth = data?.supported_credential_types.includes(CredentialTypeEnum.OAUTH2)
   const canApiKey = data?.supported_credential_types.includes(CredentialTypeEnum.API_KEY)
@@ -28,5 +25,13 @@ export const usePluginAuth = (
     credentials: data?.credentials || [],
     notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,
+    ...((isError || (isFetching && errorUpdatedAt > dataUpdatedAt)) && {
+      loadError: {
+        isRetrying: isFetching,
+        onRetry: () => {
+          void refetch().catch(() => {})
+        },
+      },
+    }),
   }
 }

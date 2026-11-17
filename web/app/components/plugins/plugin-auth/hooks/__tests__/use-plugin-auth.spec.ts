@@ -16,11 +16,15 @@ const mockCredentialInfo = vi.fn().mockReturnValue({
 })
 
 const mockInvalidate = vi.fn()
+const mockQueryState = { isError: false, isFetching: false, errorUpdatedAt: 0, dataUpdatedAt: 0 }
+const mockRefetch = vi.fn().mockResolvedValue({})
 
 vi.mock('../use-credential', () => ({
   useGetPluginCredentialInfoHook: (_payload: unknown, enable?: boolean) => ({
     data: enable ? mockCredentialInfo() : undefined,
     isLoading: false,
+    ...mockQueryState,
+    refetch: mockRefetch,
   }),
   useInvalidPluginCredentialInfoHook: () => mockInvalidate,
 }))
@@ -33,6 +37,10 @@ const basePayload = {
 describe('usePluginAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockQueryState.isError = false
+    mockQueryState.isFetching = false
+    mockQueryState.errorUpdatedAt = 0
+    mockQueryState.dataUpdatedAt = 0
   })
 
   it('should return authorized state when credentials exist', () => {
@@ -78,5 +86,23 @@ describe('usePluginAuth', () => {
 
     expect(result.current.canApiKey).toBe(true)
     expect(result.current.canOAuth).toBe(false)
+  })
+
+  it('keeps cached credentials and exposes the failed request retry', () => {
+    mockQueryState.isError = true
+    mockQueryState.errorUpdatedAt = 1
+    const { result, rerender } = renderHook(() => usePluginAuth(basePayload, true))
+    expect(result.current.credentials).toEqual(mockCredentials)
+    result.current.loadError?.onRetry()
+    expect(mockRefetch).toHaveBeenCalledOnce()
+
+    mockQueryState.isFetching = true
+    mockQueryState.isError = false
+    rerender()
+    expect(result.current.loadError?.isRetrying).toBe(true)
+
+    mockQueryState.isFetching = false
+    rerender()
+    expect(result.current.loadError).toBeUndefined()
   })
 })

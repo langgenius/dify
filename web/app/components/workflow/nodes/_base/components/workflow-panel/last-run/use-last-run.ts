@@ -35,6 +35,7 @@ import { useWorkflowRunValidation } from '../../../../../hooks/use-checklist'
 import useInspectVarsCrud from '../../../../../hooks/use-inspect-vars-crud'
 import { useNodesSyncDraft } from '../../../../../hooks/use-nodes-sync-draft'
 import { useSetWorkflowVarsWithValue } from '../../../../../hooks/use-set-workflow-vars-with-value'
+import { useSingleRunAuthorization } from '../../../../../hooks/use-single-run-authorization'
 import { TabType } from '../types'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
@@ -151,10 +152,17 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const [isRunAfterSingleRun, setIsRunAfterSingleRun] = useState(false)
 
   const { id, resource, data } = oneStepRunParams
+  const { disabledReason: singleRunDisabledReason, usesAppUserAuth } = useSingleRunAuthorization(
+    id,
+    data,
+  )
   const oneStepRunRes = useOneStepRun({
     ...oneStepRunParams,
     iteratorInputKey: blockType === BlockEnum.Iteration ? `${id}.input_selector` : '',
-    moreDataForCheckValid: getDataForCheckMore(),
+    moreDataForCheckValid: {
+      ...getDataForCheckMore(),
+      ...(usesAppUserAuth ? { notAuthed: false } : {}),
+    },
     isRunAfterSingleRun,
   })
 
@@ -245,6 +253,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   const invalidLastRun = useInvalidateLastRun(resource, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
+    if (singleRunDisabledReason) return
     if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
     if (!isValid) return
@@ -353,6 +362,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
   }
 
   const handleSingleRun = () => {
+    if (singleRunDisabledReason) return
     if (blockIfChecklistFailed()) return
     const { isValid } = checkValid()
     if (!isValid) return
@@ -391,6 +401,7 @@ const useLastRun = <T>({ ...oneStepRunParams }: Params<T>) => {
     nodeInfo,
     setRunInputData,
     handleSingleRun,
+    singleRunDisabledReason,
     handleRunWithParams,
     getExistVarValuesInForms,
     getFilteredExistVarForms,

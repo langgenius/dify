@@ -1,3 +1,4 @@
+import type { InvalidateOptions } from '@tanstack/react-query'
 import type { CredentialTypeEnum, PluginPayload } from '../types'
 import { useQueryClient } from '@tanstack/react-query'
 import { getToolListQueryKey } from '@/app/components/tools/utils/tool-list-query-key'
@@ -43,9 +44,10 @@ export const useInvalidPluginCredentialInfoHook = (pluginPayload: PluginPayload)
   const queryClient = useQueryClient()
   const toolListQueryKey = getToolListQueryKey(pluginPayload.providerType)
 
-  return () => {
-    invalidPluginCredentialInfo()
-    if (toolListQueryKey) queryClient.invalidateQueries({ queryKey: toolListQueryKey })
+  return (options?: InvalidateOptions): void | Promise<void> => {
+    const refreshed = invalidPluginCredentialInfo(options)
+    if (toolListQueryKey) void queryClient.invalidateQueries({ queryKey: toolListQueryKey })
+    return refreshed
   }
 }
 

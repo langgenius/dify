@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+from typing import NoReturn
 from unittest.mock import MagicMock, create_autospec, patch
 
 import pytest
@@ -5,6 +7,7 @@ from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.app_definition_query_service as module
+from constants.end_user_connections import ConnectionCredentialType
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from core.tools.entities.common_entities import I18nObject
 from models.account import Tenant
@@ -20,9 +23,16 @@ from services.app_definition_query_service import (
     AppToolIconSource,
 )
 from services.end_user_connections.revision import ConnectionProviderMetadata
+from services.entities.tool_connection_entities import ToolConnectionRequirement
 from services.errors.app import AppAbnormalStatusError
 
 _BUILTIN_ICON_URL_PREFIX = "https://console.example/console/api/workspaces/current/tool-provider/builtin/"
+
+
+class UnusedConnectionRevisions:
+    def resolve(self, tenant_id: str, app_id: str, graph: Mapping[str, object]) -> NoReturn:
+        del tenant_id, app_id, graph
+        raise AssertionError("Service API admission must not resolve WebApp connection revisions.")
 
 
 def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
@@ -54,9 +64,9 @@ def persisted_app_service(sqlite_session_factory: sessionmaker[Session]) -> AppD
         )
     return AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
-        connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
         plugin_readme=lambda *_args: "",
         plugin_asset=lambda *_args: b"",
+        connection_revisions=UnusedConnectionRevisions(),
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )
 
@@ -84,9 +94,9 @@ def test_service_api_orphaned_key_does_not_require_database(
 ) -> None:
     service = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=unbound_session_factory),
-        connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
         plugin_readme=lambda *_args: "",
         plugin_asset=lambda *_args: b"",
+        connection_revisions=UnusedConnectionRevisions(),
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
     )
 
@@ -268,6 +278,16 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
         default_language=language,
         workflow_id="published-version",
         requires_end_user_connections=True,
+        connection_requirements=(
+            ToolConnectionRequirement(
+                node_id="tool-1",
+                node_ids=("tool-1", "tool-2"),
+                title="tool-1",
+                purpose="Read events",
+                provider="vendor/calendar/calendar",
+                allowed_credential_types=(ConnectionCredentialType.API_KEY,),
+            ),
+        ),
         graph={
             "nodes": [
                 {
@@ -336,30 +356,25 @@ def test_web_parameters_preserve_agent_publication_errors(
         service.get_web_parameters("app-1", "tenant-1")
 
 
-@pytest.mark.parametrize("graph", [None, {"nodes": []}])
-def test_web_parameters_without_personal_tools_have_empty_requirements(graph: dict[str, object] | None) -> None:
+@pytest.mark.parametrize("workflow_id", [None, "published-version"])
+def test_web_parameters_without_personal_tools_have_empty_requirements(workflow_id: str | None) -> None:
     service, definitions = _service()
     definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
         parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
         default_language="en-US",
-        workflow_id="published-version" if graph is not None else None,
+        workflow_id=workflow_id,
         requires_end_user_connections=False,
-        graph=graph,
+        connection_requirements=(),
+        graph={"nodes": []} if workflow_id is not None else None,
     )
 
     result = service.get_web_parameters("app-1", "tenant-1")
     assert result["connection_requirements"] == ()
 
 
-def test_incomplete_published_connection_requirement_is_not_reported_as_connection_free() -> None:
+def test_unavailable_web_parameter_config_is_not_reported_as_connection_free() -> None:
     service, definitions = _service()
-    definitions.get_web_parameter_config.return_value = module.WebAppParameterConfig(
-        parameters=AppParameterConfig(features_dict={}, user_input_form=[]),
-        default_language="en-US",
-        workflow_id="published-version",
-        requires_end_user_connections=True,
-        graph={"nodes": [{"id": "tool", "data": {"type": "tool", "credential_source": "end_user"}}]},
-    )
+    definitions.get_web_parameter_config.return_value = None
 
     with pytest.raises(AppDefinitionUnavailableError):
         service.get_web_parameters("app-1", "tenant-1")

@@ -29,7 +29,7 @@ from services.app_definition_query_service import (
 from services.errors.app import IsDraftWorkflowError, WorkflowNotFoundError
 from services.web_app_runtime_query_service import WebAppRuntimeRecord
 from services.workflow.entities import TriggerWorkflowSnapshot
-from services.workflow.tool_credentials import requires_end_user_connections
+from services.workflow.tool_credentials import get_tool_connection_requirements, requires_end_user_connections
 from services.workflow_test_credentials import BuilderScope, BuilderTestMembership
 
 
@@ -325,15 +325,21 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 )
                 if workflow is None:
                     return None
+                graph = workflow.graph_dict
+                try:
+                    requirements = get_tool_connection_requirements(graph)
+                except (KeyError, TypeError, ValueError):
+                    return None
                 return WebAppParameterConfig(
                     default_language=default_language or "en-US",
                     parameters=AppParameterConfig(
                         features_dict=workflow.features_dict,
-                        user_input_form=cast(list[dict[str, Any]], workflow.user_input_form(to_old_structure=True)),
+                        user_input_form=[dict(field) for field in workflow.user_input_form(to_old_structure=True)],
                     ),
                     workflow_id=workflow.id,
-                    requires_end_user_connections=requires_end_user_connections(workflow.graph_dict),
-                    graph=workflow.graph_dict,
+                    requires_end_user_connections=requires_end_user_connections(graph),
+                    connection_requirements=requirements,
+                    graph=graph,
                 )
             config = (
                 _get_public_agent_parameter_config(app, session=session)
@@ -347,6 +353,7 @@ class AppDefinitionQueryRepository(AppDefinitionQuery):
                 default_language=default_language or "en-US",
                 workflow_id=None,
                 requires_end_user_connections=False,
+                connection_requirements=(),
                 graph=None,
             )
 

@@ -66,6 +66,62 @@ describe('useOAuthCallback', () => {
     expect(close).toHaveBeenCalledTimes(1)
   })
 
+  it('forwards the created connection ID to the opener and closes the popup', () => {
+    const postMessage = vi.fn()
+    setOpener({ origin: window.location.origin, postMessage } as unknown as Window)
+    const close = vi.fn()
+    window.close = close
+    window.history.replaceState({}, '', '/oauth-callback?connection_id=connection-123')
+
+    renderHook(() => useOAuthCallback())
+
+    expect(postMessage).toHaveBeenCalledExactlyOnceWith(
+      { type: 'oauth_callback', success: true, connectionId: 'connection-123' },
+      window.location.origin,
+    )
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it('can return an owner-bound connection ID when the opener origin is cross-origin', () => {
+    const postMessage = vi.fn()
+    setOpener({
+      get origin() {
+        throw new DOMException('Cross-origin opener.', 'SecurityError')
+      },
+      postMessage,
+    } as unknown as Window)
+    const close = vi.fn()
+    window.close = close
+    window.history.replaceState({}, '', '/oauth-callback?connection_id=connection-123')
+
+    renderHook(() => useOAuthCallback())
+
+    expect(postMessage).toHaveBeenCalledExactlyOnceWith(
+      { type: 'oauth_callback', success: true, connectionId: 'connection-123' },
+      '*',
+    )
+    expect(close).toHaveBeenCalledOnce()
+  })
+
+  it.each([
+    '/oauth-callback?subscription_id=sub-123',
+    '/oauth-callback?connection_id=connection-123&error=access_denied',
+  ])('does not send another OAuth result to an unreadable cross-origin opener: %s', (url) => {
+    const postMessage = vi.fn()
+    setOpener({
+      get origin() {
+        throw new DOMException('Cross-origin opener.', 'SecurityError')
+      },
+      postMessage,
+    } as unknown as Window)
+    window.close = vi.fn()
+    window.history.replaceState({}, '', url)
+
+    renderHook(() => useOAuthCallback())
+
+    expect(postMessage).not.toHaveBeenCalled()
+  })
+
   it('falls back to targetOrigin "*" when window.opener has no origin (e.g. file:// popup)', () => {
     const postMessage = vi.fn()
     setOpener({ postMessage } as unknown as Window)

@@ -344,11 +344,11 @@ class AppScopedEndUserServices:
 
 @dataclass(frozen=True, slots=True)
 class ApplicationServices:
-    consumer: ConsumerService
     annotation_commands: AnnotationCommandService
     annotation_imports: AnnotationImportService
     annotation_queries: AnnotationQuery
     annotation_reply: AnnotationReplyService
+    consumer: ConsumerService
     rbac: RBACServices
     agent_apps: AgentAppServices
     agent_versions: AgentVersionService
@@ -693,6 +693,11 @@ def build_application_services(
         trigger_builders=triggers.builders,
         trigger_providers=trigger_providers,
     )
+    end_user_connections = build_end_user_connections(database_client=database_client)
+    end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
+    end_user_connection_preflight = build_end_user_connection_preflight(
+        database_client=database_client, connections=end_user_connections
+    )
     conversations = ConversationRepository(session_factory=database_client)
     conversation_names = ConversationNameService(
         conversations=conversations,
@@ -710,11 +715,7 @@ def build_application_services(
     messages = MessageRepository(session_factory=database_client)
     workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(session_factory=database_client, repository=messages)
-    end_user_connections = build_end_user_connections(database_client=database_client)
-    end_user_connection_oauth = build_end_user_connection_oauth(database_client=database_client)
-    end_user_connection_preflight = build_end_user_connection_preflight(
-        database_client=database_client, connections=end_user_connections
-    )
+
     web_passport = WebPassportService(
         passports=web_passport_repository,
         auth=DeploymentWebPassportAuthGateway(
@@ -739,14 +740,6 @@ def build_application_services(
         webapp_auth_enabled=webapp_auth_enabled,
     )
     return ApplicationServices(
-        consumer=build_consumer_service(
-            database_client=database_client,
-            access=installed_apps.access,
-            shared_apps_enabled=webapp_auth_enabled,
-            management=end_user_connections,
-            identities=web_identity,
-            tokens=web_passport_tokens,
-        ),
         annotation_commands=AnnotationCommandService(
             annotations=annotations,
             add_index=add_annotation_to_index_task.delay,
@@ -773,6 +766,14 @@ def build_application_services(
             enable_task=enable_annotation_reply_task.delay,
             disable_task=disable_annotation_reply_task.delay,
         ),
+        consumer=build_consumer_service(
+            database_client=database_client,
+            access=installed_apps.access,
+            shared_apps_enabled=webapp_auth_enabled,
+            management=end_user_connections,
+            identities=web_identity,
+            tokens=web_passport_tokens,
+        ),
         rbac=rbac,
         conversation_names=conversation_names,
         conversation_commands=conversation_commands,
@@ -795,7 +796,7 @@ def build_application_services(
             ),
             planner=DraftTestCredentialPlanner(),
             credentials=WorkspaceTestCredentialGateway(
-                queries=CredentialQueryRepository(session_factory=database_client),
+                queries=credential_queries,
                 auth=PluginCredentialAuthClient(),
             ),
         ),

@@ -1,4 +1,4 @@
-"""The baseline merge joins histories without applying additional schema changes."""
+"""Merge revisions preserve existing histories and add no schema operations."""
 
 from importlib import import_module
 from pathlib import Path
@@ -7,15 +7,35 @@ from alembic.config import Config
 from alembic.script import ScriptDirectory
 
 
-def test_merge_has_one_head_and_no_schema_operations() -> None:
+def test_auth_and_im_merge_has_no_schema_operations() -> None:
     migration = import_module("migrations.versions.2026_11_11_1200-8e1a5c7b9d24_merge_end_user_auth_and_im_sync")
+
+    assert set(migration.down_revision) == {"c64f2b7a913e", "6b7e2a9c4d10"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None
+
+
+def test_auth_tokens_and_connections_merge_has_no_schema_operations() -> None:
+    migration = import_module(
+        "migrations.versions.2026_11_11_1300-92d7a3f1c6e8_merge_end_user_auth_personal_tokens_and_connections"
+    )
+    assert set(migration.down_revision) == {"b2e4c6d8a013", "e7f1a9c4d602", "8e1a5c7b9d24"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None
+
+
+def test_merge_has_one_head_and_preserves_all_histories_without_schema_operations() -> None:
+    """Require the combined deployment head to retain every existing migration without schema changes."""
+    migration = import_module("migrations.versions.2026_11_17_1300-a83f1c6d2e90_merge_end_user_auth_frontend_histories")
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
     scripts = ScriptDirectory.from_config(configuration)
 
-    assert len(scripts.get_heads()) == 1
-    assert scripts.get_revision(migration.revision) is not None
-    assert set(migration.down_revision) == {"c64f2b7a913e", "6b7e2a9c4d10"}
+    assert scripts.get_heads() == [migration.revision]
+    assert set(migration.down_revision) == {"b6d8f2a4c901", "3b7a9d1e6c42"}
+    reachable_revisions = {revision.revision for revision in scripts.iterate_revisions(migration.revision, "base")}
+    assert set(migration.down_revision) <= reachable_revisions
+    assert reachable_revisions == {revision.revision for revision in scripts.walk_revisions()}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
 
@@ -54,3 +74,17 @@ def test_evaluation_merge_preserves_both_parents_without_schema_operations() -> 
     assert set(migration.down_revision) == {"9f2c7a6e4b31", "f8b6e2c4a901"}
     assert migration.upgrade() is None
     assert migration.downgrade() is None
+
+
+def test_enterprise_pat_upgrade_keeps_the_im_sync_schema_update() -> None:
+    """Upgrade an existing Enterprise PAT deployment without skipping IM sync or recreating PAT tables."""
+    configuration = Config()
+    configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
+    scripts = ScriptDirectory.from_config(configuration)
+    head = scripts.get_current_head()
+    assert head is not None
+    revisions = [step.revision.revision for step in scripts._upgrade_revs(head, "b2e4c6d8a013")]
+
+    assert "6b7e2a9c4d10" in revisions
+    assert "b2e4c6d8a013" not in revisions
+    assert revisions[-1] == head

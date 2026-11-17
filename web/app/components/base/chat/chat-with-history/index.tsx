@@ -6,7 +6,10 @@ import { cn } from '@langgenius/dify-ui/cn'
 import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
+import { InstalledAppConnectionsProvider } from '@/app/components/explore/installed-app/connections/provider'
+import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { createTheme } from '../embedded-chatbot/theme/theme'
 import ChatWrapper from './chat-wrapper'
 import { ChatWithHistoryContext, useChatWithHistoryContext } from './context'
@@ -19,8 +22,14 @@ type ChatWithHistoryProps = {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
-  const { appData, appChatListDataLoading, chatShouldReloadKey, isBelowSm, sidebarCollapseState } =
-    useChatWithHistoryContext()
+  const {
+    appData,
+    appChatListDataLoading,
+    chatShouldReloadKey,
+    conversationSession,
+    isBelowSm,
+    sidebarCollapseState,
+  } = useChatWithHistoryContext()
   const isSidebarCollapsed = sidebarCollapseState
   const site = appData?.site
 
@@ -111,7 +120,9 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({ className }) => {
             <Header toggleButtonRef={isSidebarCollapsed ? sidebarToggleRef : undefined} />
           )}
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
-          {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
+          {!appChatListDataLoading && (
+            <ChatWrapper key={JSON.stringify([chatShouldReloadKey, conversationSession])} />
+          )}
         </div>
       </div>
     </div>
@@ -156,6 +167,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     handleRenameConversation,
     handleNewConversationCompleted,
     chatShouldReloadKey,
+    conversationSession,
     isInstalledApp,
     appId,
     handleFeedback,
@@ -175,6 +187,14 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     appData?.site?.chat_color_theme ?? null,
     appData?.site?.chat_color_theme_inverted ?? false,
   )
+
+  const address = resolveWebAppAddress()
+  const chat = <ChatWithHistory className={className} />
+  const supportsConnections =
+    !isInstalledApp &&
+    !isNewAgent &&
+    appData?.mode === 'advanced-chat' &&
+    address?.kind === 'default'
 
   return (
     <ChatWithHistoryContext.Provider
@@ -202,6 +222,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         handleRenameConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
+        conversationSession: supportsConnections ? conversationSession : undefined,
         isBelowSm,
         isInstalledApp,
         appId,
@@ -222,7 +243,25 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
         renderAgentContent,
       }}
     >
-      <ChatWithHistory className={className} />
+      {installedAppInfo?.app.mode === 'advanced-chat' ? (
+        <InstalledAppConnectionsProvider
+          key={installedAppInfo.id}
+          installedAppId={installedAppInfo.id}
+          conversationId={currentConversationId || undefined}
+        >
+          {chat}
+        </InstalledAppConnectionsProvider>
+      ) : supportsConnections ? (
+        <WebAppConnectionsProvider
+          address={address}
+          conversationId={currentConversationId || undefined}
+          selectionSession={conversationSession}
+        >
+          {chat}
+        </WebAppConnectionsProvider>
+      ) : (
+        chat
+      )}
     </ChatWithHistoryContext.Provider>
   )
 }

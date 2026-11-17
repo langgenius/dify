@@ -1,7 +1,7 @@
 import pytest
 
 from services.web_identity_service import WebIdentityError, WebIdentityService
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, WebAccounts, web_identities
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, WebAccounts, web_identities
 
 
 def account_claims(**overrides: object) -> dict[str, object]:

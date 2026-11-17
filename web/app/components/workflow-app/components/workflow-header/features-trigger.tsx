@@ -28,6 +28,7 @@ import {
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
 import { isAgentV2NodeData } from '@/app/components/workflow/nodes/agent-v2/types'
+import { getTestCredentialNodes } from '@/app/components/workflow/nodes/tool/authorization'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { BlockEnum, InputVarType, isTriggerNode } from '@/app/components/workflow/types'
@@ -360,6 +361,7 @@ const FeaturesTrigger = () => {
           onToggle: onPublisherToggle,
           workflowKindChangePending,
           workflowToolAvailable: lastPublishedHasUserInput,
+          hasEndUserAuthTools: getTestCredentialNodes(nodes).length > 0,
           alignOffset: 4,
           missingStartNode: !startNode,
           hasTriggerNode,

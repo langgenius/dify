@@ -7,10 +7,12 @@ import {
   OAUTH_REGISTRATION_GA_SENT_KEY,
   REGISTRATION_SUCCESS_STORAGE_KEY,
 } from '@/app/components/base/amplitude/registration-session-state'
+import EndUserAccountMenu from '@/app/components/end-user/layout/account-menu'
 import AccountSection from '@/app/components/main-nav/components/account-section'
 import EducationUserInfo from '@/app/education/user-info'
 import { createAccountProfileQueryClient } from '@/test/console/account-profile'
 import { renderWithConsoleQuery as renderWithConsoleQueryWithoutUrlState } from '@/test/console/query-data'
+import { render } from '@/test/console/render'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
 import AccountMenu from '../index'
 
@@ -138,6 +140,20 @@ describe('AccountMenu', () => {
     await waitFor(() =>
       expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('preferences'),
     )
+  })
+
+  it('shows only Logout in the end-user preview without ending the Console session', async () => {
+    const user = userEvent.setup()
+    render(<EndUserAccountMenu />)
+
+    await user.click(screen.getByRole('button', { name: 'app.endUser.userMenu:{"name":"Evan Z"}' }))
+    const logoutItem = await screen.findByRole('menuitem', { name: 'common.userProfile.logout' })
+    expect(screen.getAllByRole('menuitem')).toHaveLength(1)
+
+    await user.click(logoutItem)
+
+    await waitFor(() => expect(screen.queryByRole('menu')).not.toBeInTheDocument())
+    expect(logout).not.toHaveBeenCalled()
   })
 
   it.each(['main navigation', 'account page', 'education'] as const)(

@@ -2,7 +2,6 @@
 
 from datetime import datetime, timedelta
 from importlib import import_module
-from typing import cast
 from uuid import uuid4
 
 import pytest
@@ -10,7 +9,7 @@ import sqlalchemy as sa
 from alembic.autogenerate import compare_metadata
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from sqlalchemy.engine import Connection, Engine, create_mock_engine
+from sqlalchemy.engine import Engine, create_mock_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.account_webapp import AccountWebApp
@@ -127,7 +126,7 @@ def test_backfill_seeds_only_owned_recent_usage_and_never_stars(
 def test_backfill_compiles_for_supported_dialects(dialect: str) -> None:
     statements = []
     engine = create_mock_engine(f"{dialect}://", lambda statement, *_args, **_kwargs: statements.append(statement))
-    import_module(MIGRATION).backfill_recent_usage(cast(Connection, engine))
+    import_module(MIGRATION).backfill_recent_usage(engine)
     assert len(statements) == 1
     sql = str(statements[0].compile(dialect=engine.dialect))
     assert "app_stars" not in sql

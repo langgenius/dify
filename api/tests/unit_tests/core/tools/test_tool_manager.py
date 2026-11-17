@@ -509,6 +509,8 @@ def test_get_tool_runtime_builtin_refreshes_expired_oauth_credentials(
         )
 
     assert result == "runtime-tool"
+    if credential_selection == "plugin-explicit":
+        assert tool.fork_tool_runtime.call_args.kwargs["runtime"].credential_id == provider_id
     tool_database.session.expire_all()
     assert tool.fork_tool_runtime.call_args.kwargs["runtime"].credential_id == provider_id
     persisted = tool_database.session.get(BuiltinToolProvider, provider_id)

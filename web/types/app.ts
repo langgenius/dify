@@ -99,7 +99,8 @@ type ExternalDataToolFormItem = ExternalDataTool & {
   hide?: boolean
 }
 
-type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length'> & {
+type JsonObjectFormItem = Omit<TextTypeFormItem, 'max_length' | 'default'> & {
+  default?: unknown
   json_schema?: string | Record<string, unknown>
 }
 

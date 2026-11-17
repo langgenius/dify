@@ -3,7 +3,7 @@
 from collections.abc import Callable
 from datetime import datetime
 from typing import cast
-from unittest.mock import Mock, create_autospec
+from unittest.mock import Mock, NonCallableMock, create_autospec
 
 import pytest
 from blinker import Signal
@@ -436,7 +436,8 @@ def test_activation_starts_at_workspace_commit_and_retries_reuse_membership(
 
     signal.connect(observe)
     result = service.activate(account_id, name="First workspace")
-    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+    assert isinstance(service._policies, NonCallableMock)
+    service._policies.is_workspace_creation_allowed.return_value = False
     repeated = service.activate(account_id, name="Ignored retry name")
 
     assert result == repeated
@@ -547,7 +548,8 @@ def test_activation_policy_failure_rolls_back_without_starting_builder_lifecycle
         account = Account(name="User", email="user@example.com")
         session.add(account)
         account_id = account.id
-    cast(Mock, service._policies).is_workspace_creation_allowed.return_value = False
+    assert isinstance(service._policies, NonCallableMock)
+    service._policies.is_workspace_creation_allowed.return_value = False
 
     with pytest.raises(WorkSpaceNotAllowedCreateError):
         service.activate(account_id, name="Blocked")

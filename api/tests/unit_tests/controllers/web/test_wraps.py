@@ -42,7 +42,7 @@ from services.web_authentication_adapters import PassportWebAppSessionGateway
 from services.web_passport_gateways import PassportTokenGateway
 from services.web_passport_service import WebPassportService
 from tests.helpers.unit.config_override import apply_config_overrides
-from tests.unit_tests.web_identity_fakes import web_identities
+from tests.helpers.unit.web_identity_fakes import web_identities
 
 """Public bootstrap admission with real SQL repositories and the canonical hook."""
 
@@ -164,10 +164,10 @@ def _harness(
             passports=passport_repo,
             auth=auth,
             tokens=tokens,
-            now=lambda: datetime.now(UTC),
-            access_token_expire_minutes=60,
             identities=base_services.web_identity,
             account_passports_enabled=False,
+            now=lambda: datetime.now(UTC),
+            access_token_expire_minutes=60,
         ),
         app_definitions=AppDefinitionQueryService(
             definitions=definitions,

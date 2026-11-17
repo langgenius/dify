@@ -21,17 +21,12 @@ import { consoleQuery } from '@/service/console'
 type ContactSupportProps = {
   placement: 'menu' | 'sidebar'
   compact?: boolean
-  showDivider?: boolean
 }
 
 const sidebarItemClassName =
   'flex h-8 w-full items-center gap-2 rounded-[10px] bg-components-main-nav-nav-button-bg px-2 py-1.5 text-start system-md-medium text-components-main-nav-nav-button-text outline-hidden transition-colors hover:bg-components-main-nav-nav-button-bg-hover hover:text-components-main-nav-nav-button-text focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-state-accent-solid focus-visible:outline-solid'
 
-export default function ContactSupport({
-  placement,
-  compact = false,
-  showDivider = true,
-}: ContactSupportProps) {
+export default function ContactSupport({ placement, compact = false }: ContactSupportProps) {
   const { t } = useTranslation(['billing', 'common'])
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
   const deploymentEdition = systemFeatures.deployment_edition
@@ -56,12 +51,7 @@ export default function ContactSupport({
     if (!isPaidCloudPlan || !hasZendeskWidget || systemFeatures.branding.enabled) return null
 
     return (
-      <div className={cn('flex flex-col gap-px p-2', compact && 'items-center')}>
-        {showDivider && (
-          <div className="w-full px-1 py-1.5" aria-hidden="true">
-            <div className="h-px bg-divider-subtle" />
-          </div>
-        )}
+      <div className={cn('flex flex-col px-2 pt-px pb-2', compact && 'items-center')}>
         <button
           type="button"
           className={cn(sidebarItemClassName, compact && 'size-8 justify-center p-0')}

@@ -13,13 +13,13 @@ from services.end_user_connections.errors import ConnectionRevisionChangedError
 from services.end_user_connections.preflight import ConnectionPreflightStatus, ConnectionPreflightView
 from services.end_user_connections.selections import ConnectionConfiguration
 from services.installed_app_connections import InstalledAppConnectionService
-from tests.unit_tests.controllers.console.explore.test_installed_app_admission import harness
+from tests.unit_tests.controllers.console.explore.test_installed_app_admission import _Harness, harness
 
 __all__ = ["harness"]
 
 
 @pytest.fixture
-def transport(harness, monkeypatch: pytest.MonkeyPatch):
+def transport(harness: _Harness, monkeypatch: pytest.MonkeyPatch) -> SimpleNamespace:
     connections = create_autospec(InstalledAppConnectionService, instance=True, spec_set=True)
     monkeypatch.setattr(
         module, "application_services", lambda: SimpleNamespace(installed_apps=SimpleNamespace(connections=connections))
@@ -69,7 +69,7 @@ def transport(harness, monkeypatch: pytest.MonkeyPatch):
     )
 
 
-def test_list_serializes_webapp_fields_and_admitted_member_scope(transport):
+def test_list_serializes_webapp_fields_and_admitted_member_scope(transport: SimpleNamespace) -> None:
     response = transport.client.get(transport.url, query_string={"provider": transport.summary.provider, "limit": 10})
     assert response.status_code == 200
     result = response.get_json()
@@ -95,7 +95,7 @@ def test_list_serializes_webapp_fields_and_admitted_member_scope(transport):
     assert kwargs == {"provider": transport.summary.provider, "cursor": None, "limit": 10}
 
 
-def test_configuration_get_put_preserves_ids_and_explicit_empty_selection(transport):
+def test_configuration_get_put_preserves_ids_and_explicit_empty_selection(transport: SimpleNamespace) -> None:
     conversation_id = str(uuid4())
     response = transport.client.get(transport.url + "/configuration", query_string={"conversation_id": conversation_id})
     assert response.status_code == 200
@@ -111,7 +111,7 @@ def test_configuration_get_put_preserves_ids_and_explicit_empty_selection(transp
     assert str(command.conversation_id) == conversation_id
 
 
-def test_preflight_uses_webapp_request_and_response_contract(transport):
+def test_preflight_uses_webapp_request_and_response_contract(transport: SimpleNamespace) -> None:
     response = transport.client.post(
         transport.url + "/preflight",
         json={"connection_revision": transport.revision, "connections": {"root": transport.summary.id}},
@@ -127,7 +127,7 @@ def test_preflight_uses_webapp_request_and_response_contract(transport):
     assert str(transport.service.preflight.call_args.args[1].connections["root"]) == transport.summary.id
 
 
-def test_queries_require_console_admission_before_connection_lookup(transport):
+def test_queries_require_console_admission_before_connection_lookup(transport: SimpleNamespace) -> None:
     transport.harness.state.allowed = False
     response = transport.client.get(transport.url)
     assert response.status_code == 403
@@ -135,7 +135,7 @@ def test_queries_require_console_admission_before_connection_lookup(transport):
     transport.service.configuration.assert_not_called()
 
 
-def test_changed_revision_preserves_webapp_error_shape(transport):
+def test_changed_revision_preserves_webapp_error_shape(transport: SimpleNamespace) -> None:
     transport.service.preflight.side_effect = ConnectionRevisionChangedError(current_revision=transport.revision)
     response = transport.client.post(
         transport.url + "/preflight", json={"connection_revision": str(uuid4()), "connections": {}}
@@ -145,7 +145,7 @@ def test_changed_revision_preserves_webapp_error_shape(transport):
     assert response.get_json()["details"] == {"connection_revision": transport.revision}
 
 
-def test_invalid_preflight_payload_is_rejected_before_service(transport):
+def test_invalid_preflight_payload_is_rejected_before_service(transport: SimpleNamespace) -> None:
     response = transport.client.post(
         transport.url + "/preflight",
         json={"connection_revision": transport.revision, "connections": {"root": "not-a-credential"}},

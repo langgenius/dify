@@ -2,7 +2,27 @@ import type { ResourceVarInputs } from '../_base/types'
 import type { Collection, CollectionType } from '@/app/components/tools/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 
+export const ToolCredentialSource = {
+  Workspace: 'workspace',
+  EndUser: 'end_user',
+  ReuseNode: 'reuse_node',
+} as const
+
+export type ToolCredentialSource = (typeof ToolCredentialSource)[keyof typeof ToolCredentialSource]
+
+// The workflow graph is an open schema in the generated API contract.
+// These fields describe the Tool node's persisted authorization configuration.
+export type EndUserAuthConfig = {
+  allowed_credential_types?: ('api-key' | 'oauth2')[] | null
+  oauth_client_type?: 'default' | 'custom' | null
+  purpose?: string | null
+}
+
 export type ToolNodeType = CommonNodeType & {
+  credential_source?: ToolCredentialSource
+  end_user_auth?: EndUserAuthConfig | null
+  reuse_node_id?: string | null
+  test_credential_id?: string | null
   provider_id: string
   provider_type: CollectionType
   provider_name: string

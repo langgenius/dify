@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -33,6 +34,7 @@ from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenResource
 from services.conversation_name_generator import DefaultModelConversationNameGenerator
 from services.conversation_name_service import ConversationNameService
+from services.end_user_connections.revision import ConnectionRevisions
 from services.resource_access_token_service import ResourceAccessTokenService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
 from tests.helpers.unit.services.tracing_ports import untraced_scopes
@@ -168,7 +170,11 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
     event.listen(db.session.session_factory, "after_begin", track_scoped)
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
+            definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
+            builtin_icon_url_prefix="",
+            connection_revisions=create_autospec(ConnectionRevisions, instance=True, spec_set=True),
+            plugin_readme=lambda *_args: "",
+            plugin_asset=lambda *_args: b"",
         ),
         app_scoped_end_users=_EndUsers(
             AppScopedEndUserService(end_users=AppScopedEndUserRepo(session_factory=provision_factory))

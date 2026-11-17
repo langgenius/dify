@@ -5,6 +5,7 @@ import type {
   BuiltinToolUpdatePayload,
   ToolOAuthCustomClientPayload,
 } from '@dify/contracts/api/console/workspaces/types.gen'
+import type { InvalidateOptions } from '@tanstack/react-query'
 import type {
   Credential,
   CredentialTypeEnum,
@@ -16,7 +17,6 @@ import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { get } from './base'
 import { consoleQuery } from './console'
 import { selectCredentialFormSchema } from './console/plugin-auth-select'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'plugins-auth'
 
@@ -36,7 +36,21 @@ export const useGetPluginCredentialInfo = (url: string) => {
 }
 
 export const useInvalidPluginCredentialInfo = (url: string) => {
-  return useInvalid([NAME_SPACE, 'credential-info', url])
+  const queryClient = useQueryClient()
+  return useCallback(
+    (options?: InvalidateOptions) =>
+      queryClient.invalidateQueries(
+        {
+          predicate: ({ queryKey }) =>
+            queryKey[0] === NAME_SPACE &&
+            queryKey[1] === 'credential-info' &&
+            typeof queryKey[2] === 'string' &&
+            (queryKey[2] === url || queryKey[2].startsWith(`${url}?`)),
+        },
+        options,
+      ),
+    [queryClient, url],
+  )
 }
 
 export const useSetPluginDefaultCredential = ({ category, provider }: PluginPayload) => {

@@ -9,9 +9,11 @@ import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
+import { WebAppConnectionsProvider } from '@/app/components/share/connections/connection-provider'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppSourceType } from '@/service/share'
+import { resolveWebAppAddress } from '@/service/webapp-address'
 import { EmbeddedChatbotContext, useEmbeddedChatbotContext } from './context'
 import { useEmbeddedChatbot } from './hooks'
 import { createTheme } from './theme/theme'
@@ -25,6 +27,7 @@ const Chatbot = () => {
     appData,
     appChatListDataLoading,
     chatShouldReloadKey,
+    conversationSession,
     handleNewConversation,
     theme,
   } = useEmbeddedChatbotContext()
@@ -63,7 +66,9 @@ const Chatbot = () => {
           )}
         >
           {appChatListDataLoading && <LoadingPlaceholder className="h-full" />}
-          {!appChatListDataLoading && <ChatWrapper key={chatShouldReloadKey} />}
+          {!appChatListDataLoading && (
+            <ChatWrapper key={JSON.stringify([chatShouldReloadKey, conversationSession])} />
+          )}
         </div>
       </div>
       {/* powered by */}
@@ -119,6 +124,7 @@ const EmbeddedChatbotWrapper = () => {
     handleChangeConversation,
     handleNewConversationCompleted,
     chatShouldReloadKey,
+    conversationSession,
     isInstalledApp,
     allowResetChat,
     appId,
@@ -137,6 +143,10 @@ const EmbeddedChatbotWrapper = () => {
     appData?.site?.chat_color_theme ?? null,
     appData?.site?.chat_color_theme_inverted ?? false,
   )
+
+  const address = resolveWebAppAddress()
+  const chat = <Chatbot />
+  const supportsConnections = appData?.mode === 'advanced-chat' && address?.kind === 'default'
 
   return (
     <EmbeddedChatbotContext.Provider
@@ -160,6 +170,7 @@ const EmbeddedChatbotWrapper = () => {
         handleChangeConversation,
         handleNewConversationCompleted,
         chatShouldReloadKey,
+        conversationSession: supportsConnections ? conversationSession : undefined,
         isBelowSm,
         isInstalledApp,
         allowResetChat,
@@ -177,7 +188,17 @@ const EmbeddedChatbotWrapper = () => {
         initUserVariables,
       }}
     >
-      <Chatbot />
+      {supportsConnections ? (
+        <WebAppConnectionsProvider
+          address={address}
+          conversationId={currentConversationId || undefined}
+          selectionSession={conversationSession}
+        >
+          {chat}
+        </WebAppConnectionsProvider>
+      ) : (
+        chat
+      )}
     </EmbeddedChatbotContext.Provider>
   )
 }

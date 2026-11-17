@@ -84,8 +84,10 @@ def test_full_preflight_requires_no_body_and_reports_unready_nodes(app: Flask, m
         controller, "application_services", lambda: SimpleNamespace(workflow_test_credentials=harness.service)
     )
     with app.test_request_context("/preflight", method="POST"):
-        result = controller.TestCredentialPreflightApi().post(app_id=SCOPE.app_id)
-    assert result["ready"] is False
-    assert len(result["credentials"]) == 2
-    assert "draft_hash" not in result
-    assert "secret" not in str(result)
+        result = controller.TestCredentialPreflightResponse.model_validate(
+            controller.TestCredentialPreflightApi().post(app_id=SCOPE.app_id)
+        )
+    assert result.ready is False
+    assert len(result.credentials) == 2
+    assert "draft_hash" not in result.model_dump()
+    assert "secret" not in result.model_dump_json()

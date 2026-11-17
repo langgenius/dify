@@ -102,9 +102,9 @@ def test_unpublished_app_does_not_resolve_for_passport(
     assert _repository(sqlite_session_factory).get_active_web_app("code") is None
 
 
-@pytest.mark.parametrize("authenticated", [False, True])
+@pytest.mark.parametrize("identity", ["anonymous", "enterprise", "account"])
 def test_publication_is_rechecked_before_end_user_write(
-    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], authenticated: bool
+    sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], identity: str
 ) -> None:
     app, _ = _persist_webapp(sqlite_session)
     repository = _repository(sqlite_session_factory)
@@ -113,7 +113,9 @@ def test_publication_is_rechecked_before_end_user_write(
     app.app_model_config_id = None
     sqlite_session.commit()
 
-    if authenticated:
+    if identity == "account":
+        resolution = repository.resolve_account_end_user(record, str(uuid4()))
+    elif identity == "enterprise":
         resolution = repository.resolve_authenticated_end_user(record, session_id="not-created", end_user_id=None)
     else:
         resolution = repository.resolve_standard_end_user(record, "not-created")

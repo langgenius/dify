@@ -4,24 +4,32 @@ import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Any, NamedTuple, Protocol
+from typing import Annotated, Any, Protocol
+from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AfterValidator, BaseModel, ConfigDict, WithJsonSchema
 
 from constants.end_user_connections import ConnectionRevisionAcceptanceReason, OAuthClientSource
-from core.tools.entities.common_entities import I18nObject
-from libs.uuid_utils import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
+from services.entities import tool_connection_entities
 
-ConnectionRevision = UUIDStr
+
+def _normalize_connection_revision(value: str) -> str:
+    if not value:
+        raise ValueError("must be a non-empty valid UUID")
+    try:
+        return str(UUID(value))
+    except ValueError as error:
+        raise ValueError("must be a valid UUID") from error
 
 
-class ConnectionProviderMetadata(NamedTuple):
-    provider: str
-    provider_label: I18nObject
-    plugin_unique_identifier: str
-    icon: str
-    icon_dark: str | None
+ConnectionRevision = Annotated[
+    str,
+    AfterValidator(_normalize_connection_revision),
+    WithJsonSchema({"format": "uuid", "type": "string"}),
+]
+ConnectionProviderMetadata = tool_connection_entities.ConnectionProviderMetadata
+ConnectionRevisions = tool_connection_entities.ConnectionRevisions
 
 
 class OAuthClientContractSnapshot(BaseModel):
@@ -97,12 +105,6 @@ class ConnectionRevisionSnapshots(Protocol):
     def save_revision(self, snapshot: ConnectionContractSnapshot) -> str: ...
 
     def get_revision(self, tenant_id: str, app_id: str, revision: str) -> ConnectionContractSnapshot | None: ...
-
-
-class ConnectionRevisions(Protocol):
-    def resolve(
-        self, tenant_id: str, app_id: str, graph: Mapping[str, Any]
-    ) -> tuple[str, tuple[ConnectionProviderMetadata, ...]]: ...
 
 
 class ConnectionSelectionRevisions(Protocol):

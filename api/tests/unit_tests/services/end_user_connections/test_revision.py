@@ -2,7 +2,6 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -231,11 +230,16 @@ def test_revision_tracks_authentication_content_and_ignores_presentation_changes
     assert metadata[0].icon == installed.icon
     presentation = deepcopy(graph)
     presentation["nodes"][0]["position"] = {"x": 100, "y": 100}
-    cast(dict[str, object], presentation["nodes"][0]["data"])["title"] = "Renamed tool"
+    presentation_data = presentation["nodes"][0]["data"]
+    assert isinstance(presentation_data, dict)
+    presentation_data["title"] = "Renamed tool"
     assert revisions.resolve("tenant", "app", presentation)[0] == before
     changed = deepcopy(graph)
-    data = cast(dict[str, object], changed["nodes"][0]["data"])
-    cast(dict[str, object], data["end_user_auth"])["purpose"] = "Different access purpose"
+    data = changed["nodes"][0]["data"]
+    assert isinstance(data, dict)
+    auth = data["end_user_auth"]
+    assert isinstance(auth, dict)
+    auth["purpose"] = "Different access purpose"
     assert revisions.resolve("tenant", "app", changed)[0] != before
 
 

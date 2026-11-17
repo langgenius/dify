@@ -846,7 +846,6 @@ class WorkflowRun(TypeBase):
     # Historical runs can lack a task ID until pause replay.
     task_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     stop_requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
-    connection_context: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     status: Mapped[WorkflowExecutionStatus] = mapped_column(
         EnumText(WorkflowExecutionStatus, length=255),
         nullable=False,
@@ -860,6 +859,8 @@ class WorkflowRun(TypeBase):
         default_factory=lambda: str(uuid4()),
     )
     graph: Mapped[str | None] = mapped_column(LongText, default=None)
+    # Keep the Run's reference snapshot even when a selected Connection is deleted.
+    connection_context: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     inputs: Mapped[str | None] = mapped_column(LongText, default=None)
     outputs: Mapped[str | None] = mapped_column(LongText, default="{}")
     error: Mapped[str | None] = mapped_column(LongText, default=None)

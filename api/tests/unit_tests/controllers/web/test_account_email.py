@@ -23,7 +23,7 @@ from services.entities.account_entities import AccountChangeEmailNewEmailVerifie
 from tests.helpers.unit.account_email import AccountEmailTransports
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_account
-from tests.unit_tests.web_identity_fakes import ACCOUNT_ID, webapp_login_claims
+from tests.helpers.unit.web_identity_fakes import ACCOUNT_ID, webapp_login_claims
 
 PATHS = [
     "/api/account/change-email",

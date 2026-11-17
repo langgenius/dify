@@ -4,6 +4,12 @@ The panel owns Readme loading, empty and error presentation. Its store owns the
 selected plugin and drawer/dialog session, while TanStack Query owns the fetched
 text and binary resources.
 
+`ReadmePanelView` owns the shared panel layout and Markdown loading, empty, and
+error states. Console's `ReadmePanelContent` supplies its query result and plugin
+metadata header. WebApp callers can supply their own query result and provider
+header without mounting the Console query or store. Only Console callers pass
+`pluginInfo`, which enables the Console plugin asset endpoint for relative images.
+
 ## API and type ownership
 
 The Console `PluginReadmeApi` and `PluginAssetApi` controllers in

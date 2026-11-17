@@ -4,6 +4,7 @@ from collections.abc import Iterator
 from dataclasses import FrozenInstanceError, asdict, dataclass
 from decimal import Decimal
 from typing import Literal
+from unittest.mock import create_autospec
 from uuid import uuid4
 
 import pytest
@@ -35,6 +36,7 @@ from repositories.message_repository import MessageRepository
 from services.app_definition_query_service import AppDefinitionQueryService, AppDefinitionUnavailableError
 from services.app_scoped_end_user_service import AppScopedEndUserService
 from services.auth.resource_access_token_contracts import ResourceAccessTokenCreateResult, ResourceAccessTokenResource
+from services.end_user_connections.revision import ConnectionRevisions
 from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
 from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
@@ -192,7 +194,11 @@ def harness(
     )
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
-            definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
+            definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
+            builtin_icon_url_prefix="",
+            connection_revisions=create_autospec(ConnectionRevisions, instance=True, spec_set=True),
+            plugin_readme=lambda *_args: "",
+            plugin_asset=lambda *_args: b"",
         ),
         message_suggested_questions=service,
         app_scoped_end_users=_EndUsers(
@@ -424,7 +430,7 @@ def test_unsupported_mode_does_not_invoke_questions(harness: _Harness, mode: App
     ("failure", "status", "code", "message"),
     [
         ("message", 404, "not_found", "Message Not Exists."),
-        ("conversation", 404, "not_found", "Conversation not found"),
+        ("conversation", 404, "not_found", "Message Not Exists."),
         ("agent_version", 404, "agent_version_not_found_error", "Agent config version not found."),
         ("disabled", 403, "app_suggested_questions_after_answer_disabled", ""),
     ],
@@ -564,7 +570,9 @@ def test_default_admission_keeps_legacy_app_attached(harness: _Harness) -> None:
     with harness.app.test_request_context("/legacy?user=alice", headers={"Authorization": "Bearer test-token"}):
         assert harness.app.dispatch_request() == "legacy"
         assert db.session().in_transaction()
-        assert harness.admissions == []
+        # Personal-credential admission also runs for legacy views, using a closed read session.
+        assert len(harness.admissions) == 1
+        assert all(not session.in_transaction() and not session.identity_map for session in harness.admissions)
 
 
 def test_request_identity_remains_installed_after_generation(harness: _Harness) -> None:

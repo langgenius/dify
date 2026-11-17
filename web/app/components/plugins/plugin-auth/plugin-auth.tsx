@@ -1,97 +1,148 @@
+import type { AppUserAuthDraft, AuthorizationTab } from './app-user-auth/draft'
+import type { ReuseFromNodeProps } from './reuse-from-node'
 import type { PluginPayload } from './types'
+import type { WorkspaceConnectionSelectorProps } from './workspace-auth/workspace-connection-selector'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useQueryState } from 'nuqs'
-import { memo } from 'react'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
+import { Tabs, TabsList, TabsPanel, TabsTab } from '@langgenius/dify-ui/tabs'
+import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  settingsQueryParamName,
-  settingsQueryParser,
-} from '@/app/components/header/account-setting/query-params'
-import { useCredentialPermissions } from '@/hooks/use-credential-permissions'
-import Authorize from './authorize'
-import Authorized from './authorized'
+import AppUserAuth from './app-user-auth'
+import { createAppUserAuthDraft } from './app-user-auth/draft'
 import { usePluginAuth } from './hooks/use-plugin-auth'
-import { AuthCategory } from './types'
+import ReuseFromNode from './reuse-from-node'
+import WorkspaceAuth from './workspace-auth'
 
-type PluginAuthProps = {
+export type PluginAuthProps = {
   pluginPayload: PluginPayload
-  children?: React.ReactNode
+  nodeAuth?: Omit<WorkspaceConnectionSelectorProps, 'pluginPayload' | 'authorization'>
   className?: string
+  showAuthorizationTabs?: boolean
+  authorizationTab?: AuthorizationTab
+  onAuthorizationTabChange?: (tab: AuthorizationTab) => void
+  appUserAuth?: {
+    draft?: AppUserAuthDraft
+    onChange: (draft: AppUserAuthDraft) => void
+  }
+  reuseFromNode?: ReuseFromNodeProps
 }
-const PluginAuth = ({ pluginPayload, children, className }: PluginAuthProps) => {
+const authorizationTabClassName =
+  'min-h-8 min-w-0 flex-1 justify-center rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg px-2 py-1.5 text-center system-sm-regular wrap-anywhere text-text-secondary hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover data-active:border-components-option-card-option-selected-border data-active:bg-components-option-card-option-selected-bg data-active:system-sm-medium data-active:shadow-xs data-active:inset-ring-[0.5px] data-active:inset-ring-components-option-card-option-selected-border'
+
+const PluginAuth = ({
+  pluginPayload,
+  nodeAuth,
+  className,
+  showAuthorizationTabs = false,
+  authorizationTab,
+  onAuthorizationTabChange,
+  appUserAuth,
+  reuseFromNode,
+}: PluginAuthProps) => {
   const { t } = useTranslation(['plugin'])
-  const [, setSettingsDestination] = useQueryState(settingsQueryParamName, settingsQueryParser)
-  const { canCreateCredential } = useCredentialPermissions()
-  const {
-    isAuthorized,
-    canOAuth,
-    canApiKey,
-    credentials,
-    invalidPluginCredentialInfo,
-    notAllowCustomCredential,
-  } = usePluginAuth(pluginPayload, !!pluginPayload.provider)
-  const showPermissionHint =
-    !isAuthorized &&
-    !canCreateCredential &&
-    !notAllowCustomCredential &&
-    pluginPayload.category === AuthCategory.tool &&
-    (canOAuth || canApiKey)
-  const authorizeContent = (
-    <Authorize
-      pluginPayload={pluginPayload}
-      canOAuth={canOAuth}
-      canApiKey={canApiKey}
-      onUpdate={invalidPluginCredentialInfo}
-      notAllowCustomCredential={notAllowCustomCredential}
-    />
+  const labelId = useId()
+  const includeCredentialIds = [
+    ...new Set([
+      ...(nodeAuth?.credentialId ? [nodeAuth.credentialId] : []),
+      ...(appUserAuth?.draft?.testCredentialId ? [appUserAuth.draft.testCredentialId] : []),
+    ]),
+  ]
+  const authorization = usePluginAuth(
+    pluginPayload,
+    !!pluginPayload.provider,
+    includeCredentialIds.length ? includeCredentialIds : undefined,
   )
 
-  return (
-    <div className={cn(!isAuthorized && className)}>
-      {!isAuthorized && (
-        <>
-          {authorizeContent}
-          {showPermissionHint && (
-            <div className="mt-2 rounded-lg border border-divider-subtle bg-background-section-burn px-2.5 py-2">
-              <div className="flex items-start gap-2">
-                <span
-                  aria-hidden
-                  className="mt-0.5 i-ri-lock-2-line size-3.5 shrink-0 text-text-tertiary"
-                />
-                <div className="min-w-0 grow">
-                  <div className="system-xs-medium text-text-secondary">
-                    {t(($) => $['auth.permissionHint.title'], { ns: 'plugin' })}
-                  </div>
-                  <div className="mt-0.5 system-xs-regular text-text-tertiary">
-                    {t(($) => $['auth.permissionHint.description'], { ns: 'plugin' })}
-                  </div>
-                  <div className="mt-1.5">
-                    <button
-                      type="button"
-                      className="-ml-1.5 rounded-md px-1.5 py-0.5 system-xs-medium text-text-accent hover:bg-state-base-hover focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
-                      onClick={() => setSettingsDestination('members')}
-                    >
-                      {t(($) => $['auth.permissionHint.action'], { ns: 'plugin' })}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-      {isAuthorized && !children && (
-        <Authorized
+  if (!showAuthorizationTabs) {
+    return (
+      <div className={cn(!authorization.isAuthorized && className)}>
+        <WorkspaceAuth
           pluginPayload={pluginPayload}
-          credentials={credentials}
-          canOAuth={canOAuth}
-          canApiKey={canApiKey}
-          onUpdate={invalidPluginCredentialInfo}
-          notAllowCustomCredential={notAllowCustomCredential}
+          authorization={authorization}
+          nodeAuth={nodeAuth}
         />
-      )}
-      {isAuthorized && children}
-    </div>
+      </div>
+    )
+  }
+
+  return (
+    <Tabs
+      defaultValue="workspace-auth"
+      value={authorizationTab}
+      onValueChange={(tab) => {
+        if (tab !== 'workspace-auth' && tab !== 'app-user-auth' && tab !== 'reuse-from-node') return
+        if (tab === 'app-user-auth' && appUserAuth && !appUserAuth.draft) {
+          appUserAuth.onChange(
+            createAppUserAuthDraft({
+              canOAuth: !!authorization.canOAuth,
+              canApiKey: !!authorization.canApiKey,
+            }),
+          )
+        }
+        onAuthorizationTabChange?.(tab)
+      }}
+      className="pt-2"
+    >
+      <div className="space-y-2 px-4 py-2">
+        <div className="flex h-6 items-center gap-0.5">
+          <h3 id={labelId} className="system-xs-medium-uppercase text-text-secondary">
+            {t(($) => $['auth.authorization'], { ns: 'plugin' })}
+          </h3>
+          <Infotip>
+            <InfotipTrigger aria-labelledby={labelId} className="size-4" />
+            <InfotipContent aria-labelledby={labelId}>
+              {t(($) => $['auth.useApiAuthDesc'], { ns: 'plugin' })}
+            </InfotipContent>
+          </Infotip>
+        </div>
+        <TabsList aria-labelledby={labelId} className="gap-2">
+          <TabsTab value="workspace-auth" className={authorizationTabClassName}>
+            {t(($) => $['auth.workspaceAuth'], { ns: 'plugin' })}
+          </TabsTab>
+          <TabsTab
+            value="app-user-auth"
+            disabled={authorization.isLoading}
+            className={authorizationTabClassName}
+          >
+            {t(($) => $['auth.appUserAuth'], { ns: 'plugin' })}
+          </TabsTab>
+          <TabsTab value="reuse-from-node" className={authorizationTabClassName}>
+            {t(($) => $['auth.reuseFromNode'], { ns: 'plugin' })}
+          </TabsTab>
+        </TabsList>
+      </div>
+      <TabsPanel value="workspace-auth" className={cn('px-4 py-2', className)}>
+        <WorkspaceAuth
+          pluginPayload={pluginPayload}
+          authorization={authorization}
+          nodeAuth={nodeAuth}
+          showDescription
+        />
+      </TabsPanel>
+      <TabsPanel
+        value="app-user-auth"
+        keepMounted
+        className="px-4 py-2 data-hidden:hidden"
+        render={(props, { hidden }) => (
+          <div {...props}>
+            {!authorization.isLoading && (
+              <AppUserAuth
+                pluginPayload={pluginPayload}
+                authorization={authorization}
+                active={!hidden}
+                key={`${pluginPayload.category}/${pluginPayload.provider}/${authorization.canOAuth}/${authorization.canApiKey}`}
+                providerName={nodeAuth?.providerName}
+                value={appUserAuth?.draft}
+                onChange={appUserAuth?.onChange}
+              />
+            )}
+          </div>
+        )}
+      />
+      <TabsPanel value="reuse-from-node" className="px-4 py-2">
+        <ReuseFromNode {...reuseFromNode} />
+      </TabsPanel>
+    </Tabs>
   )
 }
 

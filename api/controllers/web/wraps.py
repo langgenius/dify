@@ -69,12 +69,12 @@ def decode_jwt_token(app_code: str | None = None, user_id: str | None = None) ->
         if not tk:
             raise Unauthorized("App token is missing.")
         decoded = PassportService().verify(tk)
-        decoded_app_code = decoded.get("app_code")
-        if not isinstance(decoded_app_code, str) or not decoded_app_code:
+        token_app_code = decoded.get("app_code")
+        if not isinstance(token_app_code, str) or not token_app_code:
             raise WebAppNotFoundError()
-        if decoded_app_code != app_code:
+        if token_app_code != app_code:
             raise Unauthorized("Passport belongs to another web app.")
-        app_code = decoded_app_code
+        app_code = token_app_code
         app_id = decoded.get("app_id")
         app_model, end_user = get_web_passport_identity(app_id, app_code, decoded.get("end_user_id"))
         if app_model is None:

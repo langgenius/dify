@@ -4,8 +4,9 @@ import type { HumanInputFormSubmitData } from '../chat/answer/human-input-conten
 import type { ChatConfig, ChatItem, ChatItemInTree, OnSend } from '../types'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackWebAppEvent } from '@/app/components/base/amplitude/web-app-event'
 import AnswerIcon from '@/app/components/base/answer-icon'
@@ -13,6 +14,11 @@ import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
+import { InstalledConnectionSetup } from '@/app/components/explore/installed-app/connections'
+import { useOptionalInstalledAppConnections } from '@/app/components/explore/installed-app/connections/use-installed-app-connections'
+import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
+import WebAppConnectionDialog from '@/app/components/share/connections/webapp-connection-dialog'
+import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { InputVarType } from '@/app/components/workflow/types'
 import { prepareHumanInputFormSubmission } from '@/service/human-input-submission'
 import {
@@ -33,6 +39,12 @@ import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
   const { t } = useTranslation(['share'])
+  const webAppConnections = useOptionalWebAppConnections()
+  const installedConnections = useOptionalInstalledAppConnections()
+  const connections = webAppConnections ?? installedConnections
+  const [connectionSetupComplete, setConnectionSetupComplete] = useState(false)
+  const [connectionDialogHandle] = useState(() => createDialogHandle())
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const {
     appParams,
     appPrevChatTree,
@@ -60,6 +72,12 @@ const ChatWrapper = () => {
     isNewAgent,
     renderAgentContent,
   } = useChatWithHistoryContext()
+
+  const connectionsReady = connections?.canRun ?? true
+  const connectionsReadyRef = useRef(connectionsReady)
+  useEffect(() => {
+    connectionsReadyRef.current = connectionsReady
+  }, [connectionsReady])
 
   const appSourceType = isInstalledApp ? AppSourceType.installedApp : AppSourceType.webApp
   const timezone =
@@ -211,6 +229,12 @@ const ChatWrapper = () => {
 
   const doSend: OnSend = useCallback(
     (message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
+      if (
+        connections &&
+        (!connections.canRun ||
+          (!currentConversationId && !connectionSetupComplete && connections.status !== 'inactive'))
+      )
+        return false
       if (!currentConversationId) setHasSent(true)
       const data: any = {
         query: message,
@@ -218,9 +242,13 @@ const ChatWrapper = () => {
         inputs: currentConversationId ? currentConversationInputs : newConversationInputs,
         conversation_id: currentConversationId,
         parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
+        ...(connections?.runConfiguration && {
+          connection_revision: connections.runConfiguration.connection_revision,
+          connections: { ...connections.runConfiguration.connections },
+        }),
       }
 
-      handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
+      const accepted = handleSend(getUrl('chat-messages', appSourceType, appId || ''), data, {
         onGetConversationMessages: isNewAgent
           ? (conversationId) => fetchChatList(conversationId, appSourceType, appId)
           : undefined,
@@ -232,8 +260,11 @@ const ChatWrapper = () => {
       const appMode = isNewAgent ? 'agent-v2' : appData?.mode
       if (appSourceType === AppSourceType.webApp && appMode)
         trackWebAppEvent('webapp_run', { app_mode: appMode })
+      return accepted
     },
     [
+      connections,
+      connectionSetupComplete,
       currentConversationId,
       currentConversationInputs,
       newConversationInputs,
@@ -290,8 +321,11 @@ const ChatWrapper = () => {
 
   const handleSubmitHumanInputForm = useCallback(
     async (formToken: string, formData: HumanInputFormSubmitData) => {
+      if (!connectionsReadyRef.current) return
       const { form_version: formVersion, ...submission } = formData
       await prepareHumanInputFormSubmission(prepareHumanInputSubmission)
+      if (!connectionsReadyRef.current) return
+
       if (isInstalledApp) await submitHumanInputFormService(formToken, submission, formVersion)
       else await submitHumanInputForm(formToken, submission, formVersion)
     },
@@ -302,54 +336,67 @@ const ChatWrapper = () => {
   const [descExpanded, setDescExpanded] = useState(false)
 
   const description = appData?.site.description
+  const showConnectionSetup = Boolean(
+    connections &&
+    connections.status !== 'inactive' &&
+    !currentConversationId &&
+    !connectionSetupComplete,
+  )
+  const signInRequired = connections?.status === 'sign-in-required'
+  const showConnectionSignIn = showConnectionSetup && signInRequired
+  const showIntroduction =
+    (!!description || showConnectionSetup) && !currentConversationId && !hasSent
   const [showDescToggle, setShowDescToggle] = useState(false)
   const handleDescRef = useCallback((node: HTMLDivElement | null) => {
     setShowDescToggle(!!node && node.scrollHeight > node.clientHeight)
   }, [])
 
-  const descriptionNode = useMemo(() => {
-    if (!description || currentConversationId || hasSent) return null
-    return (
-      <div className={cn('flex flex-col items-center px-4 pt-6', isBelowSm && 'pt-4')}>
-        <div className="w-full max-w-2xl rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-md">
-          <div className={cn('p-6', isBelowSm && 'p-4')}>
-            <div
-              ref={handleDescRef}
-              className={cn(
-                'relative system-xs-regular wrap-break-word whitespace-pre-wrap text-text-tertiary',
-                !descExpanded && 'line-clamp-3',
-                descExpanded && 'max-h-32 overflow-y-auto',
-              )}
-            >
-              {description}
-              {!descExpanded && showDescToggle && (
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6 bg-linear-to-b from-components-panel-bg-transparent to-components-panel-bg" />
+  const descriptionNode = showIntroduction ? (
+    <div className={showConnectionSignIn ? undefined : 'px-4'}>
+      <div className="mx-auto flex w-full max-w-150 flex-col items-start gap-3">
+        <AppIcon size="xxl" icon={appData?.site} className="shadow-xs" />
+        <div className="flex w-full min-w-0 flex-col gap-2">
+          <h1 className="system-xl-semibold wrap-anywhere text-text-primary">
+            {appData?.site.title}
+          </h1>
+          {description && (
+            <div>
+              <div
+                ref={handleDescRef}
+                className={cn(
+                  'system-xs-regular wrap-anywhere whitespace-pre-wrap text-text-tertiary',
+                  !descExpanded && 'line-clamp-3',
+                  descExpanded && 'max-h-32 overflow-y-auto',
+                )}
+              >
+                {description}
+              </div>
+              {showDescToggle && (
+                <button
+                  type="button"
+                  aria-expanded={descExpanded}
+                  className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
+                  onClick={() => setDescExpanded((v) => !v)}
+                >
+                  {descExpanded ? (
+                    <>
+                      <RiArrowUpSLine className="size-3" />
+                      {t(($) => $['chat.collapse'], { ns: 'share' })}
+                    </>
+                  ) : (
+                    <>
+                      <RiArrowDownSLine className="size-3" />
+                      {t(($) => $['chat.expand'], { ns: 'share' })}
+                    </>
+                  )}
+                </button>
               )}
             </div>
-            {showDescToggle && (
-              <button
-                type="button"
-                className="mt-0.5 flex items-center gap-0.5 system-xs-regular text-text-accent hover:opacity-80"
-                onClick={() => setDescExpanded((v) => !v)}
-              >
-                {descExpanded ? (
-                  <>
-                    <RiArrowUpSLine className="size-3" />
-                    {t(($) => $['chat.collapse'], { ns: 'share' })}
-                  </>
-                ) : (
-                  <>
-                    <RiArrowDownSLine className="size-3" />
-                    {t(($) => $['chat.expand'], { ns: 'share' })}
-                  </>
-                )}
-              </button>
-            )}
-          </div>
+          )}
         </div>
       </div>
-    )
-  }, [description, isBelowSm, currentConversationId, hasSent, descExpanded, showDescToggle, t])
+    </div>
+  ) : null
 
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length) return null
@@ -423,29 +470,65 @@ const ChatWrapper = () => {
         ? { type: 'app' as const, appId, appSourceType }
         : undefined
 
+  if (showConnectionSetup && !showConnectionSignIn)
+    return (
+      <div className="flex h-full flex-col gap-6 overflow-y-auto p-6">
+        {descriptionNode}
+        {installedConnections ? (
+          <div className="mx-auto w-full max-w-150">
+            <InstalledConnectionSetup onStart={() => setConnectionSetupComplete(true)} />
+          </div>
+        ) : (
+          <WebAppConnectionSetup
+            className="mx-auto w-full max-w-150"
+            onStart={() => setConnectionSetupComplete(true)}
+          />
+        )}
+      </div>
+    )
+
   return (
     <div className="h-full overflow-hidden bg-chatbot-bg">
       <Chat
         appData={appData ?? undefined}
         config={appConfig}
         speechToTextTarget={speechToTextTarget}
-        chatList={messageList}
+        chatList={showConnectionSignIn ? [] : messageList}
         isResponding={respondingState}
-        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isBelowSm && 'px-4'}`}
-        chatFooterClassName="pb-4"
-        chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`}
+        chatContainerClassName={showIntroduction ? 'flex flex-col' : undefined}
+        chatContainerInnerClassName={cn(
+          'mx-auto w-full max-w-192',
+          !showIntroduction && 'pt-6',
+          isBelowSm && 'px-4',
+        )}
+        chatFooterClassName={showConnectionSignIn ? 'pb-2' : 'pb-4'}
+        chatFooterInnerClassName={
+          showConnectionSignIn
+            ? 'mx-auto w-full max-w-196 px-2'
+            : `mx-auto w-full max-w-[768px] ${isBelowSm ? 'px-2' : 'px-4'}`
+        }
         onSend={doSend}
         inputs={currentConversationId ? (currentConversationInputs as any) : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        humanInputFormDisabled={!connectionsReady}
         onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={
-          <>
-            {descriptionNode}
-            {chatNode}
-            {welcome}
-          </>
+          showConnectionSignIn ? (
+            <div className="my-auto w-full shrink-0 px-4 py-6">
+              <div className="mx-auto flex w-full max-w-150 flex-col gap-6">
+                {descriptionNode}
+                <WebAppConnectionSetup onStart={() => setConnectionSetupComplete(true)} />
+              </div>
+            </div>
+          ) : (
+            <div className={cn(showIntroduction && 'my-auto w-full shrink-0 py-6')}>
+              {descriptionNode}
+              {chatNode}
+              {welcome}
+            </div>
+          )
         }
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
@@ -454,7 +537,28 @@ const ChatWrapper = () => {
         hideProcessDetail
         theme={theme}
         switchSibling={doSwitchSibling}
-        inputDisabled={inputDisabled}
+        inputDisabled={inputDisabled || Boolean(connections && !connections.canRun)}
+        inputRef={inputRef}
+        disabledInputAction={
+          webAppConnections &&
+          !webAppConnections.canRun &&
+          webAppConnections.status !== 'inactive' &&
+          webAppConnections.status !== 'sign-in-required' ? (
+            <DialogTrigger
+              handle={connectionDialogHandle}
+              className="size-full cursor-pointer rounded-xl focus-visible:ring-0 focus-visible:inset-ring-2 focus-visible:inset-ring-state-accent-solid"
+            >
+              <span className="sr-only">
+                {t(($) => $['connections.configure.title'], { ns: 'share' })}
+              </span>
+            </DialogTrigger>
+          ) : undefined
+        }
+        inputPlaceholder={
+          signInRequired
+            ? t(($) => $['connections.required.inputPlaceholder'], { ns: 'share' })
+            : undefined
+        }
         sidebarCollapseState={sidebarCollapseState}
         renderAgentContent={renderAgentContent}
         questionIcon={
@@ -465,6 +569,11 @@ const ChatWrapper = () => {
             </Avatar>
           ) : undefined
         }
+      />
+      <WebAppConnectionDialog
+        handle={connectionDialogHandle}
+        isResponding={respondingState}
+        finalFocus={() => (inputRef.current?.disabled === false ? inputRef.current : true)}
       />
     </div>
   )

@@ -18,6 +18,7 @@ type OperationProps = {
   sendButtonLabel?: string
   sendButtonLoading?: boolean
   disabled?: boolean
+  sendDisabled?: boolean
   theme?: Theme | null
   ref?: Ref<HTMLDivElement>
 }
@@ -31,23 +32,25 @@ const Operation: FC<OperationProps> = ({
   sendButtonLabel,
   sendButtonLoading,
   disabled,
+  sendDisabled,
   theme,
 }) => {
   const { t } = useTranslation(['common'])
+  const actionsDisabled = readonly || disabled
 
   return (
     <div className={cn('flex shrink-0 items-center justify-end')}>
-      <div className="flex items-center pl-1" ref={ref}>
+      <div className="flex items-center ps-1" ref={ref}>
         <div className="flex items-center gap-1">
           {fileConfig?.enabled && (
-            <FileUploaderInChatInput readonly={readonly} fileConfig={fileConfig} />
+            <FileUploaderInChatInput readonly={actionsDisabled} fileConfig={fileConfig} />
           )}
           {speechToTextConfig?.enabled && onShowVoiceInput && (
             <IconButton
               className="shrink-0"
               size="lg"
               aria-label={t(($) => $['voiceInput.start'], { ns: 'common' })}
-              disabled={readonly}
+              disabled={actionsDisabled}
               onClick={onShowVoiceInput}
             >
               <span className="i-ri-mic-line size-5" aria-hidden="true" />
@@ -56,9 +59,9 @@ const Operation: FC<OperationProps> = ({
         </div>
         <Button
           aria-label={sendButtonLabel ? undefined : t(($) => $['operation.send'], { ns: 'common' })}
-          className={cn('ml-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
+          className={cn('ms-3 focus-visible:ring-inset', sendButtonLabel ? 'px-3' : 'w-8 px-0')}
           variant="primary"
-          disabled={readonly || disabled}
+          disabled={actionsDisabled || sendDisabled}
           loading={sendButtonLoading}
           onClick={onSend}
           style={

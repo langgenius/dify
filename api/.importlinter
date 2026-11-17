@@ -1427,6 +1427,24 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:annotation-application-boundary]
+name = Annotation application services and contracts are framework and persistence neutral
+type = forbidden
+source_modules =
+    services.annotation_query
+    services.annotation_command_service
+    services.annotation_import_service
+    services.annotation_reply_service
+forbidden_modules =
+    controllers
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:workflow-test-credential-service]
 name = Builder test credential use cases are framework and persistence neutral
 type = forbidden
@@ -1454,24 +1472,6 @@ forbidden_modules =
     models
     sqlalchemy
 allow_indirect_imports = True
-
-[importlinter:contract:annotation-application-boundary]
-name = Annotation application services and contracts are framework and persistence neutral
-type = forbidden
-source_modules =
-    services.annotation_query
-    services.annotation_command_service
-    services.annotation_import_service
-    services.annotation_reply_service
-forbidden_modules =
-    controllers
-    extensions
-    flask
-    models
-    repositories
-    sqlalchemy
-    tasks
-    werkzeug
 
 [importlinter:contract:tracing-application-boundary]
 name = Trace pipeline and Agent trace collection services and contracts are framework and persistence neutral

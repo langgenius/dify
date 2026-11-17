@@ -39,4 +39,14 @@ describe('MobileOperationMenu Component', () => {
       expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     })
   })
+
+  it('keeps reset unavailable when personal connections require sign-in', async () => {
+    const user = userEvent.setup()
+    render(<MobileOperationMenu {...defaultProps} resetDisabled />)
+    await user.click(screen.getByRole('button', { name: 'common.operation.more' }))
+    const reset = screen.getByRole('menuitem', { name: 'share.chat.resetChat' })
+    expect(reset).toHaveAttribute('aria-disabled', 'true')
+    await user.click(reset)
+    expect(defaultProps.handleResetChat).not.toHaveBeenCalled()
+  })
 })

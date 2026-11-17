@@ -125,6 +125,16 @@ it('starts real voice UI only while the operation is available and editable', as
     <Chat
       chatList={[]}
       config={config}
+      inputDisabled
+      speechToTextTarget={{ type: 'consoleApp', appId: 'app-1' }}
+    />,
+  )
+  await expect.element(page.getByRole('button', { name: 'Voice input' })).toBeDisabled()
+  expect(startVoiceRecorder).toHaveBeenCalledTimes(1)
+  await screen.rerender(
+    <Chat
+      chatList={[]}
+      config={config}
       readonly
       speechToTextTarget={{ type: 'consoleApp', appId: 'app-1' }}
     />,

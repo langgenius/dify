@@ -23,7 +23,7 @@ from core.app.entities.app_invoke_entities import (
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
 from models.end_user_connection import AppConnection, EndUserConnection, SessionConnection
 from models.enums import ConversationFromSource
-from models.enums import InvokeFrom as ConversationInvokeFrom
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import App, AppMode, Conversation, EndUser
 from models.tools import ToolOAuthTenantClient
 from models.workflow import Workflow, WorkflowRun
@@ -244,7 +244,7 @@ def test_existing_conversation_must_belong_to_authenticated_user(
             from_source=ConversationFromSource.API,
             from_end_user_id=harness.base.context.end_user_id,
             from_account_id=None,
-            invoke_from=ConversationInvokeFrom.WEB_APP,
+            invoke_from=ModelInvokeFrom.WEB_APP,
             _inputs={},
             is_deleted=False,
         )
@@ -334,7 +334,9 @@ def test_queue_pause_and_runtime_context_preserve_the_same_selection(
             {**entity_args, "query": "hello", "conversation_id": conversation_id}
         )
         if chatflow
-        else WorkflowAppGenerateEntity.model_validate({**entity_args, "workflow_execution_id": params.workflow_run_id})
+        else WorkflowAppGenerateEntity.model_validate(
+            {**entity_args, "workflow_execution_id": params.workflow_run_id, "user_from": UserFrom.END_USER}
+        )
     )
     paused = WorkflowResumptionContext.model_validate(
         {
@@ -474,7 +476,7 @@ def test_missing_selection_never_uses_saved_defaults(
                 from_source=ConversationFromSource.API,
                 from_end_user_id=harness.base.context.end_user_id,
                 from_account_id=None,
-                invoke_from=ConversationInvokeFrom.WEB_APP,
+                invoke_from=ModelInvokeFrom.WEB_APP,
                 _inputs={},
                 is_deleted=False,
             )

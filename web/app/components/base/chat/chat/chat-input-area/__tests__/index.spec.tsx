@@ -7,7 +7,7 @@ import * as React from 'react'
 import { FeaturesProvider } from '@/app/components/base/features/context'
 import { transcribeAudio } from '@/app/components/base/voice-input/api'
 import { startVoiceRecorder } from '@/app/components/base/voice-input/recorder'
-import { InputVarType } from '@/app/components/workflow/types'
+import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { TransferMethod } from '@/types/app'
@@ -247,6 +247,86 @@ describe('ChatInputArea', () => {
 
   // -------------------------------------------------------------------------
   describe('User Interaction', () => {
+    it('disables the entire composer while preserving its draft and attachment actions for reactivation', async () => {
+      const user = userEvent.setup()
+      const onSend = vi.fn()
+      const onFeatureBarClick = vi.fn()
+      initialFiles.value = [
+        makeFile({ supportFileType: SupportUploadFileTypes.image, progress: -1 }),
+        makeFile({
+          id: 'report',
+          name: 'report.pdf',
+          type: 'application/pdf',
+          supportFileType: SupportUploadFileTypes.document,
+        }),
+      ]
+      const props = {
+        visionConfig: mockVisionConfig,
+        speechToTextConfig: { enabled: true },
+        speechToTextTarget,
+        showFeatureBar: true,
+        onFeatureBarClick,
+        onSend,
+      }
+      const { rerender } = render(<ChatInputArea {...props} />)
+      await user.type(getTextarea()!, 'Keep this draft')
+
+      rerender(
+        <ChatInputArea
+          {...props}
+          disabled
+          customPlaceholder="Sign in and connect services to get started"
+        />,
+      )
+
+      const textarea = screen.getByRole('textbox')
+      expect(textarea).toBeDisabled()
+      expect(textarea).toHaveValue('Keep this draft')
+      expect(textarea).toHaveAttribute('placeholder', 'Sign in and connect services to get started')
+      for (const button of screen.getAllByRole('button')) expect(button).toBeDisabled()
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.send' }))
+      expect(onSend).not.toHaveBeenCalled()
+      expect(startVoiceRecorder).not.toHaveBeenCalled()
+      expect(onFeatureBarClick).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+
+      rerender(<ChatInputArea {...props} />)
+      expect(textarea).toBeEnabled()
+      expect(textarea).toHaveValue('Keep this draft')
+      for (const button of screen.getAllByRole('button')) expect(button).toBeEnabled()
+    })
+
+    it('keeps upload and voice available when only sending is unavailable for an empty query', () => {
+      render(
+        <ChatInputArea visionConfig={mockVisionConfig} speechToTextTarget={speechToTextTarget} />,
+      )
+
+      expect(screen.getByRole('button', { name: 'common.operation.send' })).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeEnabled()
+      expect(
+        screen.getByRole('button', { name: 'common.fileUploader.uploadFromComputer' }),
+      ).toBeEnabled()
+    })
+
+    it('cancels active voice input when disabled without restarting it when editing becomes available again', async () => {
+      const user = userEvent.setup()
+      const props = { visionConfig: mockVisionConfig, speechToTextTarget }
+      const { rerender } = render(<ChatInputArea {...props} />)
+      await user.click(screen.getByRole('button', { name: 'common.voiceInput.start' }))
+      await screen.findByRole('button', { name: 'common.voiceInput.stop' })
+
+      rerender(<ChatInputArea {...props} disabled />)
+      await waitFor(() => expect(recorderCancel).toHaveBeenCalledOnce())
+      expect(
+        screen.queryByRole('button', { name: 'common.voiceInput.stop' }),
+      ).not.toBeInTheDocument()
+
+      rerender(<ChatInputArea {...props} />)
+      expect(screen.getByRole('button', { name: 'common.voiceInput.start' })).toBeEnabled()
+      expect(startVoiceRecorder).toHaveBeenCalledOnce()
+    })
+
     it('should clear the textarea after a message is sent', async () => {
       const user = userEvent.setup({ delay: null })
       const onSend = vi.fn()

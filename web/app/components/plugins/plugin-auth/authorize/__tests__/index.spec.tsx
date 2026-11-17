@@ -36,7 +36,7 @@ it.each([
   [false, false, null, null],
   [true, false, 'plugin.auth.useOAuthAuth', null],
   [false, true, null, 'plugin.auth.useApiAuth'],
-  [true, true, 'plugin.auth.addOAuth', 'plugin.auth.addApi'],
+  [true, true, 'plugin.auth.addOAuth', 'plugin.auth.common.addApiKey'],
 ] as const)(
   'exposes the supported authorization methods (OAuth=%s, API key=%s)',
   async (canOAuth, canApiKey, oauthLabel, apiLabel) => {
@@ -78,7 +78,7 @@ it.each([
       },
     )
     const oauth = await screen.findByRole('button', { name: 'plugin.auth.addOAuth' })
-    const api = screen.getByRole('button', { name: 'plugin.auth.addApi' })
+    const api = screen.getByRole('button', { name: 'plugin.auth.common.addApiKey' })
     expect(oauth).toBeDisabled()
     expect(api).toBeDisabled()
     expect(screen.getByRole('button', { name: 'plugin.auth.oauthClientSettings' })).toBeDisabled()

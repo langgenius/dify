@@ -441,7 +441,7 @@ def test_deleted_connection_uses_normal_tool_node_failure(harness: OAuthHarness)
             run_context={"_dify": context(harness, {"tool-1": selected.id})},
             call_depth=0,
         ),
-        runtime_state=RuntimeState(variable_pool=VariablePool(), start_at=0, workflow_id=harness.base.workflow_id),
+        runtime_state=RuntimeState(workflow_id=harness.base.workflow_id, variable_pool=VariablePool(), start_at=0),
     )
     node = factory.create_node({"id": "tool-1", "data": node_data()})
     node.bind_execution_id("node-execution")

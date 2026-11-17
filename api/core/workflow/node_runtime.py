@@ -557,10 +557,10 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         self._run_context = resolve_dify_run_context(run_context)
         self._file_reference_factory = DifyFileReferenceFactory(self._run_context)
         self._session_maker = session_maker
-        self._graph = deepcopy(graph) if graph is not None else None
-        self._workflow_id = workflow_id
         self._execution_driver = execution_driver
         self._workflow_tools = workflow_tools if workflow_tools is not None else {}
+        self._graph = deepcopy(graph) if graph is not None else None
+        self._workflow_id = workflow_id
 
     @property
     def file_reference_factory(self) -> FileReferenceFactoryProtocol:

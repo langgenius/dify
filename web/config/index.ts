@@ -19,6 +19,7 @@ export const PUBLIC_API_PREFIX = getStringConfig(
   env.NEXT_PUBLIC_PUBLIC_API_PREFIX,
   'http://localhost:5001/api',
 )
+export const APP_WEB_URL = getStringConfig(env.NEXT_PUBLIC_APP_WEB_URL, '')
 export const AMPLITUDE_API_KEY = getStringConfig(env.NEXT_PUBLIC_AMPLITUDE_API_KEY, '')
 export const COOKIEYES_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_COOKIEYES_SITE_KEY, '')
 export const TURNSTILE_SITE_KEY = getStringConfig(env.NEXT_PUBLIC_TURNSTILE_SITE_KEY, '')
@@ -97,6 +98,8 @@ export const CSRF_COOKIE_NAME = () => {
 export const CSRF_HEADER_NAME = 'X-CSRF-Token'
 export const ACCESS_TOKEN_LOCAL_STORAGE_NAME = 'access_token'
 export const PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) => `passport-${appCode}`
+export const AUTHENTICATED_PASSPORT_LOCAL_STORAGE_NAME = (appCode: string) =>
+  `authenticated-passport-${appCode}`
 export const PASSPORT_HEADER_NAME = 'X-App-Passport'
 
 export const WEB_APP_SHARE_CODE_HEADER_NAME = 'X-App-Code'

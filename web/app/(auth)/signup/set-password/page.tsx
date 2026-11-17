@@ -19,6 +19,7 @@ import Cookies from 'js-cookie'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { isEndUserSignIn } from '@/app/(auth)/signin/utils/end-user-login'
 import { resolvePostLoginRedirect } from '@/app/(auth)/signin/utils/post-login-redirect'
 import { rememberRegistrationSuccess } from '@/app/components/base/amplitude/registration-tracking'
 import { validPassword } from '@/config'
@@ -94,7 +95,8 @@ const ChangePasswordForm = () => {
           )
           Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
-          await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
+          if (!isEndUserSignIn(searchParams))
+            await queryClient.resetQueries({ queryKey: consoleQuery.account.profile.get.key() })
           replaceLoginRedirect(resolvePostLoginRedirect(searchParams), router.replace, basePath)
         }
       } catch (error) {

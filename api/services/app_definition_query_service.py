@@ -9,14 +9,13 @@ from pydantic import Field
 from core.app.app_config.common.parameters_mapping import AppParametersDict, get_parameters_from_feature_dict
 from core.app.apps.agent_app.errors import AgentAppGeneratorError, AgentAppNotPublishedError
 from services.end_user_connections.errors import ConnectionError
-from services.end_user_connections.revision import ConnectionRevisions
-from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
-from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
-from services.workflow.tool_credentials import (
+from services.entities.tool_connection_entities import (
+    ConnectionRevisions,
     ToolConnectionRequirement,
-    get_tool_connection_requirements,
     requires_end_user_connections,
 )
+from services.errors.app import AppAbnormalStatusError, AppApiDisabledError
+from services.errors.workspace import WorkspaceArchivedError, WorkspaceNotFoundError
 
 
 class AppParameterConfig(NamedTuple):
@@ -30,6 +29,7 @@ class WebAppParameterConfig(NamedTuple):
     # Non-workflow app modes have no workflow version or personal tool requirements.
     workflow_id: str | None
     requires_end_user_connections: bool
+    connection_requirements: tuple[ToolConnectionRequirement, ...]
     graph: Mapping[str, Any] | None
 
 
@@ -243,7 +243,7 @@ class AppDefinitionQueryService:
         if config is None:
             raise AppDefinitionUnavailableError()
         try:
-            requirements = get_tool_connection_requirements(config.graph) if config.graph is not None else ()
+            requirements = config.connection_requirements
             revision, providers = (
                 self._connection_revisions.resolve(tenant_id, app_id, config.graph)
                 if config.workflow_id is not None and config.graph is not None
