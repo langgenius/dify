@@ -35,6 +35,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
 )
 from core.app.apps.base_app_generator import noop_restore_file_access
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -42,6 +43,7 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
     WorkflowAppGenerateEntity,
 )
+from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
@@ -856,9 +858,9 @@ class TestAdvancedChatAppGeneratorInternals:
             .startswith(f"/files/{default_file.id}/file-preview?")
         )
 
-    def test_generate_worker_raises_when_workflow_not_found(
+    def test_generate_worker_publishes_error_when_workflow_not_found(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -891,23 +893,37 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
         )
 
-        with pytest.raises(ValueError, match="Workflow not found"):
-            generator._generate_worker(
-                flask_app=SimpleNamespace(),
-                application_generate_entity=application_generate_entity,
-                queue_manager=MagicMock(),
-                conversation_id="conv",
-                message_id="msg",
-                context=SimpleNamespace(),
-                variable_loader=SimpleNamespace(),
-                workflow_execution_repository=SimpleNamespace(),
-                workflow_node_execution_repository=SimpleNamespace(),
-                graph_runtime_state=None,
-            )
+        queue_manager = MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="user",
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id="conv",
+            app_mode=AppMode.ADVANCED_CHAT,
+            message_id="msg",
+        )
 
-    def test_generate_worker_raises_when_app_not_found_for_internal_call(
+        # The caller blocks on the queue, so the failure must arrive there instead of killing the worker.
+        generator._generate_worker(
+            flask_app=SimpleNamespace(),
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation_id="conv",
+            message_id="msg",
+            context=SimpleNamespace(),
+            variable_loader=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=None,
+        )
+
+        events = [message.event for message in queue_manager.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "Workflow not found"
+
+    def test_generate_worker_publishes_error_when_app_not_found_for_internal_call(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -942,19 +958,33 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
         )
 
-        with pytest.raises(ValueError, match="App not found"):
-            generator._generate_worker(
-                flask_app=SimpleNamespace(),
-                application_generate_entity=application_generate_entity,
-                queue_manager=MagicMock(),
-                conversation_id="conv",
-                message_id="msg",
-                context=SimpleNamespace(),
-                variable_loader=SimpleNamespace(),
-                workflow_execution_repository=SimpleNamespace(),
-                workflow_node_execution_repository=SimpleNamespace(),
-                graph_runtime_state=None,
-            )
+        queue_manager = MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="internal-user",
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id="conv",
+            app_mode=AppMode.ADVANCED_CHAT,
+            message_id="msg",
+        )
+
+        # The caller blocks on the queue, so the failure must arrive there instead of killing the worker.
+        generator._generate_worker(
+            flask_app=SimpleNamespace(),
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation_id="conv",
+            message_id="msg",
+            context=SimpleNamespace(),
+            variable_loader=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=None,
+        )
+
+        events = [message.event for message in queue_manager.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "App not found"
 
     def test_generate_worker_handles_stopped_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
