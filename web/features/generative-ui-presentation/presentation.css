@@ -1,0 +1,1098 @@
+.generative-ui-presentation {
+  --deck-blue: var(--color-text-accent);
+  --deck-ink: var(--color-text-primary);
+  --deck-muted: var(--color-text-tertiary);
+  --deck-line: var(--color-divider-regular);
+  position: relative;
+  display: flex;
+  height: 100dvh;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-background-default);
+  color: var(--deck-ink);
+  font-family: var(--font-sans);
+}
+
+body:has(.generative-ui-presentation) [data-openui-devtools-auto-mount],
+body:has(.generative-ui-presentation) [data-openui-devtools-root] {
+  display: none;
+}
+
+.generative-ui-presentation :focus-visible {
+  outline: 2px solid var(--deck-blue);
+  outline-offset: 5px;
+}
+
+.generative-ui-presentation .presentation-header,
+.generative-ui-presentation .presentation-footer {
+  z-index: 2;
+  display: flex;
+  min-height: 64px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 20px;
+  padding: 0 36px;
+}
+
+.generative-ui-presentation .presentation-header {
+  border-bottom: 1px solid var(--deck-line);
+}
+
+.generative-ui-presentation .presentation-header-title {
+  border-inline-start: 1px solid var(--deck-line);
+  padding-inline-start: 20px;
+  color: var(--deck-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+}
+
+.generative-ui-presentation .presentation-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-inline-start: auto;
+}
+
+.generative-ui-presentation .presentation-export {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 5px;
+  border-radius: 6px;
+  padding: 4px 8px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  text-decoration: none;
+}
+
+.generative-ui-presentation .presentation-export:hover {
+  background: var(--color-background-body);
+}
+
+.generative-ui-presentation .presentation-stage {
+  min-height: 0;
+  flex: 1;
+}
+
+.generative-ui-presentation .reveal {
+  height: 100%;
+  color: var(--deck-ink);
+  font-family: inherit;
+  font-size: 28px;
+}
+
+.generative-ui-presentation .reveal .slides {
+  text-align: start;
+}
+
+.generative-ui-presentation .reveal .slides > section,
+.generative-ui-presentation .reveal .slides > .pdf-page > section {
+  box-sizing: border-box;
+  height: 900px;
+  padding: 90px 104px;
+}
+
+.generative-ui-presentation .reveal .slides h1,
+.generative-ui-presentation .reveal .slides h2,
+.generative-ui-presentation .reveal .slides h3,
+.generative-ui-presentation .reveal .slides p,
+.generative-ui-presentation .reveal .slides figure {
+  margin: 0;
+}
+
+.generative-ui-presentation .reveal .slides h2 {
+  max-width: 1250px;
+  font-size: 64px;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.3;
+}
+
+.generative-ui-presentation .reveal .slides .slide-lead {
+  margin-top: 24px;
+  color: var(--color-text-secondary);
+  font-size: 30px;
+  line-height: 1.6;
+}
+
+.generative-ui-presentation .reveal .slides .slide-eyebrow {
+  margin-bottom: 26px;
+  color: var(--deck-blue);
+  font-size: 25px;
+  font-weight: 550;
+}
+
+.generative-ui-presentation .cover-layout {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 1.1fr 1fr;
+  align-items: center;
+  gap: 100px;
+}
+
+.generative-ui-presentation .cover-copy {
+  padding-bottom: 20px;
+}
+
+.generative-ui-presentation .cover-eyebrow {
+  margin-bottom: 28px !important;
+  color: var(--color-text-secondary);
+  font-size: 28px;
+  font-weight: 550;
+  letter-spacing: -0.02em;
+}
+
+.generative-ui-presentation .reveal .cover-slide h1 {
+  font-size: 126px;
+  font-weight: 650;
+  letter-spacing: -0.065em;
+  line-height: 1.05;
+}
+
+.generative-ui-presentation .cover-slide h1 > span {
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .cover-slide h1 .cover-period {
+  color: var(--deck-ink);
+}
+
+.generative-ui-presentation .reveal .cover-subtitle {
+  margin-top: 36px;
+  color: var(--color-text-secondary);
+  font-size: 32px;
+  line-height: 1.5;
+}
+
+.generative-ui-presentation .cover-line {
+  width: 48px;
+  height: 3px;
+  margin-top: 48px;
+  background: var(--deck-blue);
+}
+
+.generative-ui-presentation .reveal .cover-label {
+  margin-top: 20px;
+  color: var(--deck-muted);
+  font-size: 18px;
+  letter-spacing: 0.025em;
+}
+
+.generative-ui-presentation .cover-preview {
+  position: relative;
+}
+
+.generative-ui-presentation .cover-slide.present .preview-prompt,
+.generative-ui-presentation .cover-slide.present .preview-body figure {
+  animation: deck-assemble 450ms both;
+}
+
+.generative-ui-presentation .cover-slide.present .preview-body figure:first-child {
+  animation-delay: 100ms;
+}
+
+.generative-ui-presentation .cover-slide.present .preview-body figure:nth-child(2) {
+  animation-delay: 240ms;
+}
+
+.generative-ui-presentation .cover-preview::before {
+  position: absolute;
+  inset: -45px;
+  z-index: -1;
+  background-image: radial-gradient(var(--deck-line) 1px, transparent 1px);
+  background-size: 20px 20px;
+  content: '';
+  mask-image: radial-gradient(ellipse at center, #000 40%, transparent 74%);
+}
+
+.generative-ui-presentation .interface-preview {
+  overflow: hidden;
+  border: 1px solid var(--deck-line);
+  border-radius: 20px;
+  background: var(--color-background-default);
+  box-shadow:
+    0 24px 64px rgb(16 24 40 / 0.08),
+    0 2px 6px rgb(16 24 40 / 0.03);
+}
+
+.generative-ui-presentation .preview-window-bar {
+  display: flex;
+  height: 48px;
+  align-items: center;
+  gap: 7px;
+  border-bottom: 1px solid var(--deck-line);
+  padding: 0 20px;
+  background: var(--color-background-section);
+}
+
+.generative-ui-presentation .preview-window-bar > span:not([class]) {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-divider-solid);
+}
+
+.generative-ui-presentation .preview-window-name {
+  margin-inline-start: 13px;
+  color: var(--deck-muted);
+  font-size: 14px;
+  font-weight: 550;
+}
+
+.generative-ui-presentation .preview-window-icon {
+  width: 16px;
+  height: 16px;
+  margin-inline-start: auto;
+  color: var(--deck-muted);
+}
+
+.generative-ui-presentation .preview-prompt {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 22px 0;
+  border-radius: 10px;
+  padding: 15px;
+  background: var(--color-background-body);
+  font-size: 17px;
+  line-height: 1.5;
+}
+
+.generative-ui-presentation .preview-prompt > span {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .preview-body {
+  max-height: 600px;
+  overflow: auto;
+  padding: 20px 22px;
+  text-align: start;
+}
+
+.generative-ui-presentation .preview-body figure {
+  box-shadow: none;
+}
+
+.generative-ui-presentation .preview-caption {
+  border-top: 1px solid var(--deck-line);
+  padding: 12px 22px;
+  color: var(--deck-muted);
+  font-size: 13px;
+}
+
+.generative-ui-presentation .positioning-content {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 100px;
+  margin-top: 74px;
+}
+
+.generative-ui-presentation .reveal .positioning-list {
+  display: flex;
+  flex-direction: column;
+  gap: 38px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.generative-ui-presentation .positioning-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 24px;
+  font-size: 31px;
+  line-height: 1.6;
+}
+
+.generative-ui-presentation .list-number {
+  color: var(--deck-blue);
+  font-size: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.generative-ui-presentation .component-composition {
+  overflow: hidden;
+  border: 1px solid var(--deck-line);
+  border-radius: 16px;
+  background: var(--color-background-section);
+}
+
+.generative-ui-presentation .composition-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--deck-line);
+  padding: 20px 28px;
+  color: var(--deck-blue);
+  font-size: 21px;
+  font-weight: 550;
+}
+
+.generative-ui-presentation .composition-heading > span {
+  width: 24px;
+  height: 24px;
+}
+
+.generative-ui-presentation .composition-code {
+  padding: 28px;
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 23px;
+  line-height: 1.9;
+}
+
+.generative-ui-presentation .composition-code > span {
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .composition-foot {
+  border-top: 1px solid var(--deck-line);
+  padding: 14px 28px;
+  color: var(--deck-muted);
+  font-size: 16px;
+}
+
+.generative-ui-presentation .reveal .threshold-slide h2 {
+  font-size: 52px;
+}
+
+.generative-ui-presentation .reveal .threshold-slide .slide-lead {
+  margin-top: 10px;
+  font-size: 24px;
+}
+
+.generative-ui-presentation .threshold-configuration {
+  display: grid;
+  grid-template-columns: 180px 1.65fr 28px 1fr;
+  align-items: center;
+  gap: 16px;
+  margin-top: 18px;
+  border-block: 1px solid var(--deck-line);
+  padding: 12px 0;
+}
+
+.generative-ui-presentation .threshold-configuration > p {
+  color: var(--deck-muted);
+  font-size: 19px;
+}
+
+.generative-ui-presentation .threshold-node {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.generative-ui-presentation .threshold-node > span {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .threshold-node strong {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 21px;
+  font-weight: 600;
+}
+
+.generative-ui-presentation .threshold-node code {
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  line-height: 1.4;
+}
+
+.generative-ui-presentation .threshold-bindings {
+  display: flex;
+  gap: 24px;
+}
+
+.generative-ui-presentation .threshold-connection {
+  width: 24px;
+  height: 24px;
+  color: var(--deck-muted);
+}
+
+.generative-ui-presentation .threshold-examples {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 32px;
+  margin-top: 20px;
+}
+
+.generative-ui-presentation .threshold-example {
+  min-width: 0;
+}
+
+.generative-ui-presentation .threshold-example-heading {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+
+.generative-ui-presentation .threshold-example-number {
+  color: var(--deck-blue);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+}
+
+.generative-ui-presentation .reveal .threshold-example h3 {
+  font-size: 27px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.generative-ui-presentation .threshold-example-language {
+  margin-inline-start: auto;
+  color: var(--deck-muted);
+  font-size: 16px;
+}
+
+.generative-ui-presentation .threshold-code {
+  margin: 0;
+  border: 1px solid var(--deck-line);
+  border-radius: 12px;
+  padding: 14px 20px;
+  background: var(--color-background-section);
+  color: var(--color-text-secondary);
+  font-family: var(--font-mono);
+  font-size: 20px;
+  line-height: 23px;
+  white-space: pre;
+}
+
+.generative-ui-presentation .threshold-code code {
+  font: inherit;
+}
+
+.generative-ui-presentation .threshold-form-example {
+  display: flex;
+  min-height: 329px;
+  flex-direction: column;
+}
+
+.generative-ui-presentation .threshold-submission {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 22px;
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .threshold-submission > span {
+  width: 24px;
+  height: 24px;
+}
+
+.generative-ui-presentation .threshold-submission samp {
+  font-family: var(--font-mono);
+  font-size: 24px;
+}
+
+.generative-ui-presentation .reveal .threshold-example-caption {
+  margin-top: 10px;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  line-height: 1.4;
+}
+
+.generative-ui-presentation .reveal .slides .threshold-conclusion {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin-top: 20px;
+  border-inline-start: 3px solid var(--deck-blue);
+  padding: 8px 22px;
+  color: var(--deck-blue);
+  font-size: 24px;
+  line-height: 1.5;
+}
+
+.generative-ui-presentation .threshold-conclusion > span {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+}
+
+.generative-ui-presentation .technology-rows {
+  margin-top: 60px;
+}
+
+.generative-ui-presentation .technology-row {
+  display: grid;
+  grid-template-columns: 60px 610px 1fr;
+  min-height: 145px;
+  align-items: center;
+  gap: 22px;
+  border-top: 1px solid var(--deck-line);
+}
+
+.generative-ui-presentation .technology-row:last-child {
+  border-bottom: 1px solid var(--deck-line);
+}
+
+.generative-ui-presentation .technology-number {
+  color: var(--deck-muted);
+  font-size: 19px;
+}
+
+.generative-ui-presentation .technology-row dt {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  font-size: 33px;
+  font-weight: 550;
+  letter-spacing: -0.025em;
+}
+
+.generative-ui-presentation .technology-row dt > span {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .technology-row dd {
+  color: var(--color-text-secondary);
+  font-size: 27px;
+  line-height: 1.6;
+}
+
+.generative-ui-presentation .reveal .slides .technology-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-top: 32px;
+  border: 1px solid color-mix(in srgb, var(--deck-blue) 15%, var(--deck-line));
+  border-radius: 12px;
+  padding: 18px 24px;
+  background: color-mix(in srgb, var(--deck-blue) 4%, var(--color-background-default));
+  color: var(--deck-blue);
+  font-size: 27px;
+  line-height: 1.6;
+}
+
+.generative-ui-presentation .reveal .technology-source {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--deck-blue);
+  font-size: 18px;
+  line-height: 1.5;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.generative-ui-presentation .technology-source > span {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+}
+
+.generative-ui-presentation .reveal .architecture-slide {
+  padding-inline: 90px;
+}
+
+.generative-ui-presentation .architecture {
+  margin-top: 32px;
+}
+
+.generative-ui-presentation .architecture-canvas {
+  position: relative;
+  height: 440px;
+}
+
+.generative-ui-presentation .architecture-lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke-width: 2;
+}
+
+.generative-ui-presentation .flow-base {
+  stroke: var(--color-divider-solid);
+}
+
+.generative-ui-presentation .reveal .flow-highlight {
+  color: var(--deck-blue);
+  stroke: currentColor;
+  transition-duration: 250ms;
+}
+
+.generative-ui-presentation .flow-highlight.visible:not(.current-fragment) {
+  opacity: 0.35;
+}
+
+.generative-ui-presentation .flow-particles {
+  stroke-width: 4;
+  stroke-dasharray: 6 14;
+  opacity: 0;
+}
+
+.generative-ui-presentation .flow-highlight.current-fragment .flow-particles {
+  animation: deck-flow 0.7s linear infinite;
+  opacity: 1;
+}
+
+.generative-ui-presentation .architecture-node {
+  position: absolute;
+  top: 138px;
+  display: flex;
+  width: 17.39%;
+  height: 126px;
+  flex-direction: column;
+  justify-content: center;
+  border: 1px solid var(--deck-line);
+  border-radius: 14px;
+  padding-inline-start: 68px;
+  background: var(--color-background-default);
+  transition:
+    border-color 200ms,
+    box-shadow 200ms,
+    background 200ms;
+}
+
+.generative-ui-presentation .architecture-node-icon {
+  position: absolute;
+  inset-inline-start: 22px;
+  top: 38px;
+  width: 30px;
+  height: 30px;
+  color: var(--deck-muted);
+}
+
+.generative-ui-presentation .architecture-node-title {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.generative-ui-presentation .architecture-node-detail {
+  margin-top: 8px;
+  color: var(--deck-muted);
+  font-size: 16px;
+}
+
+.generative-ui-presentation .architecture-constraint {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 1px dashed var(--color-divider-solid);
+  border-radius: 8px;
+  padding: 10px 18px;
+  color: var(--color-text-secondary);
+  font-size: 20px;
+}
+
+.generative-ui-presentation .architecture-stream-label {
+  position: absolute;
+  top: 285px;
+  left: 59.8%;
+  transform: translateX(-50%);
+  color: var(--deck-muted);
+  font-family: var(--font-mono);
+  font-size: 18px;
+}
+
+.generative-ui-presentation .architecture-feedback {
+  position: absolute;
+  top: 350px;
+  left: 59.8%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(-50%);
+  padding: 5px 16px;
+  background: var(--color-background-default);
+  color: var(--deck-muted);
+  font-size: 21px;
+  white-space: nowrap;
+}
+
+.generative-ui-presentation .architecture-feedback > span:first-child {
+  width: 22px;
+  height: 22px;
+}
+
+.generative-ui-presentation .architecture-feedback-divider {
+  height: 18px;
+  border-inline-start: 1px solid var(--deck-line);
+}
+
+.generative-ui-presentation .architecture-caption {
+  position: relative;
+  height: 100px;
+  border-top: 1px solid var(--deck-line);
+  padding-top: 36px;
+}
+
+.generative-ui-presentation .architecture-idle {
+  color: var(--deck-muted);
+  font-size: 26px;
+}
+
+.generative-ui-presentation .architecture:has(.architecture-step.visible) .architecture-idle {
+  visibility: hidden;
+}
+
+.generative-ui-presentation .architecture-step {
+  position: absolute;
+  inset: 36px 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 22px;
+  font-size: 28px;
+  line-height: 1.6;
+}
+
+.generative-ui-presentation .reveal .architecture-step.fragment {
+  transition: none;
+}
+
+.generative-ui-presentation .architecture-step-number {
+  color: var(--deck-blue);
+  font-family: var(--font-mono);
+  font-size: 22px;
+}
+
+.generative-ui-presentation .architecture-steps {
+  display: flex;
+  gap: 8px;
+  margin-top: 24px;
+}
+
+.generative-ui-presentation .reveal .architecture-step-dot.fragment {
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--deck-line);
+  opacity: 1;
+  visibility: visible;
+}
+
+.generative-ui-presentation .reveal .architecture-step-dot.visible {
+  background: var(--deck-blue);
+}
+
+.generative-ui-presentation
+  .architecture:has([data-step='0'].current-fragment)
+  .architecture-node-request,
+.generative-ui-presentation
+  .architecture:has([data-step='0'].current-fragment)
+  .architecture-node-workflow,
+.generative-ui-presentation
+  .architecture:has([data-step='1'].current-fragment)
+  .architecture-node-workflow,
+.generative-ui-presentation
+  .architecture:has([data-step='1'].current-fragment)
+  .architecture-node-model,
+.generative-ui-presentation
+  .architecture:has([data-step='2'].current-fragment)
+  .architecture-node-model,
+.generative-ui-presentation
+  .architecture:has([data-step='2'].current-fragment)
+  .architecture-node-renderer,
+.generative-ui-presentation
+  .architecture:has([data-step='3'].current-fragment)
+  .architecture-node-renderer,
+.generative-ui-presentation
+  .architecture:has([data-step='3'].current-fragment)
+  .architecture-node-interface,
+.generative-ui-presentation
+  .architecture:has([data-step='4'].current-fragment)
+  .architecture-node-interface,
+.generative-ui-presentation
+  .architecture:has([data-step='5'].current-fragment)
+  .architecture-node-interface,
+.generative-ui-presentation
+  .architecture:has([data-step='5'].current-fragment)
+  .architecture-node-workflow {
+  border-color: var(--deck-blue);
+  background: color-mix(in srgb, var(--deck-blue) 3%, var(--color-background-default));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--deck-blue) 7%, transparent);
+}
+
+.generative-ui-presentation
+  .architecture:has([data-step='1'].current-fragment)
+  .architecture-constraint,
+.generative-ui-presentation
+  .architecture:has([data-step='2'].current-fragment)
+  .architecture-stream-label,
+.generative-ui-presentation
+  .architecture:has([data-step='5'].current-fragment)
+  .architecture-feedback {
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .reveal .demo-slide {
+  padding-top: 105px;
+  text-align: center;
+}
+
+.generative-ui-presentation .demo-symbol {
+  display: flex;
+  width: 80px;
+  height: 80px;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 35px;
+  border: 1px solid color-mix(in srgb, var(--deck-blue) 18%, transparent);
+  border-radius: 22px;
+  background: color-mix(in srgb, var(--deck-blue) 6%, var(--color-background-default));
+  color: var(--deck-blue);
+}
+
+.generative-ui-presentation .demo-symbol > span {
+  width: 32px;
+  height: 32px;
+}
+
+.generative-ui-presentation .reveal .demo-slide h2 {
+  max-width: none;
+  font-size: 124px;
+  letter-spacing: -0.06em;
+}
+
+.generative-ui-presentation .demo-actions {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 42px;
+}
+
+.generative-ui-presentation .reveal .demo-start,
+.generative-ui-presentation .reveal .demo-replay-trigger {
+  height: auto;
+  border-radius: 10px;
+  padding: 17px 28px;
+  font-size: 22px;
+  line-height: 1.4;
+  text-decoration: none;
+}
+
+.generative-ui-presentation .demo-replay {
+  display: grid;
+  height: 100%;
+  grid-template-columns: 1fr 620px;
+  align-items: center;
+  gap: 90px;
+  text-align: start;
+}
+
+.generative-ui-presentation .reveal .demo-replay h2 {
+  font-size: 64px;
+  letter-spacing: -0.035em;
+}
+
+.generative-ui-presentation .replay-controls {
+  display: flex;
+  gap: 12px;
+  margin-top: 36px;
+}
+
+.generative-ui-presentation .replay-controls button {
+  font-size: 18px;
+}
+
+.generative-ui-presentation .replay-preview {
+  min-height: 660px;
+}
+
+.generative-ui-presentation .qa-layout {
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
+
+.generative-ui-presentation .qa-copy {
+  position: relative;
+}
+
+.generative-ui-presentation .reveal .qa-slide h2 {
+  font-size: 200px;
+  letter-spacing: -0.08em;
+  line-height: 1.1;
+}
+
+.generative-ui-presentation .qa-slide h2 > span {
+  padding: 0 12px;
+  color: var(--deck-blue);
+  font-weight: 400;
+}
+
+.generative-ui-presentation .qa-mark {
+  position: absolute;
+  top: 15px;
+  right: 80px;
+  color: color-mix(in srgb, var(--deck-blue) 7%, transparent);
+  font-size: 750px;
+  font-weight: 650;
+  line-height: 1;
+}
+
+.generative-ui-presentation .presentation-footer {
+  min-height: 72px;
+  border-top: 1px solid var(--deck-line);
+}
+
+.generative-ui-presentation .presentation-keyboard-hint {
+  visibility: hidden;
+  flex: 1;
+  color: var(--deck-muted);
+  font-size: 11px;
+}
+
+.generative-ui-presentation .presentation-pagination {
+  display: flex;
+  gap: 7px;
+}
+
+.generative-ui-presentation .presentation-pagination button {
+  display: flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--deck-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.generative-ui-presentation .presentation-pagination button:hover {
+  background: var(--color-background-body);
+}
+
+.generative-ui-presentation .presentation-pagination button[aria-current='page'] {
+  background: color-mix(in srgb, var(--deck-blue) 8%, var(--color-background-default));
+  color: var(--deck-blue);
+  font-weight: 600;
+}
+
+.generative-ui-presentation .presentation-arrows {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.generative-ui-presentation .presentation-page-count {
+  margin-inline-end: 10px;
+  color: var(--deck-ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.generative-ui-presentation .presentation-page-count > span {
+  color: var(--deck-muted);
+}
+
+@keyframes deck-flow {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes deck-assemble {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 760px) {
+  .generative-ui-presentation .presentation-header,
+  .generative-ui-presentation .presentation-footer {
+    min-height: 52px;
+    gap: 8px;
+    padding-inline: 16px;
+  }
+
+  .generative-ui-presentation .presentation-keyboard-hint,
+  .generative-ui-presentation .presentation-header-title {
+    display: none;
+  }
+
+  .generative-ui-presentation .presentation-pagination {
+    gap: 2px;
+  }
+
+  .generative-ui-presentation .presentation-pagination button {
+    width: 28px;
+  }
+
+  .generative-ui-presentation .presentation-arrows {
+    gap: 4px;
+  }
+}
+
+@media print, (prefers-reduced-motion: reduce) {
+  .generative-ui-presentation *,
+  .generative-ui-presentation *::before,
+  .generative-ui-presentation *::after {
+    animation: none !important;
+    transition-duration: 0s !important;
+  }
+}
+
+@media print {
+  .generative-ui-presentation .reveal .slides > .pdf-page > section {
+    padding: 90px 104px !important;
+  }
+
+  .generative-ui-presentation .preview-body {
+    max-height: none;
+    overflow: visible;
+  }
+
+  .generative-ui-presentation,
+  .generative-ui-presentation .presentation-stage {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  .generative-ui-presentation .presentation-header,
+  .generative-ui-presentation .presentation-footer {
+    display: none;
+  }
+
+  .generative-ui-presentation .reveal .architecture-caption .fragment {
+    display: none;
+  }
+
+  .generative-ui-presentation .architecture-idle {
+    display: none;
+  }
+
+  .generative-ui-presentation .architecture-caption .architecture-step:last-child {
+    display: flex;
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .generative-ui-presentation .architecture:has(.architecture-step) .architecture-node {
+    border-color: var(--deck-blue);
+    box-shadow: none;
+  }
+}

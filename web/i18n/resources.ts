@@ -65,6 +65,7 @@ export const namespaces = [
   'plugin',
   'pluginTags',
   'pluginTrigger',
+  'presentation',
   'register',
   'runLog',
   'share',

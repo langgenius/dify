@@ -5,6 +5,7 @@ import { Buffer } from 'node:buffer'
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
 import { getWebAppDocumentResponse } from '@/features/app-access-error/document-response'
+import { GENERATIVE_UI_PRESENTATION_PATH } from '@/features/generative-ui-presentation/route'
 
 const NECESSARY_DOMAIN =
   '*.sentry.io http://localhost:* http://127.0.0.1:* https://analytics.google.com googletagmanager.com *.googletagmanager.com https://www.google-analytics.com https://cdn-cookieyes.com https://ungh.cc https://api2.amplitude.com *.amplitude.com'
@@ -49,6 +50,12 @@ const appendFrameAncestors = (response: NextResponse, frameOrigin: string) => {
 }
 
 const wrapResponseWithFrameProtection = (response: NextResponse, pathname: string) => {
+  if (pathname === GENERATIVE_UI_PRESENTATION_PATH) {
+    response.headers.set('X-Frame-Options', 'SAMEORIGIN')
+    appendFrameAncestors(response, "'self'")
+    return response
+  }
+
   // Published app routes are intentionally embeddable; all other routes default to clickjacking protection.
   const preventEmbedding =
     matchesPathSegment(pathname, NON_EMBEDDABLE_PATH_SEGMENTS) ||

@@ -122,6 +122,7 @@ catalog:
   '@pierre/highlights': 0.5.1
   '@playwright/test': 1.65.0
   '@remixicon/react': 4.9.0
+  '@revealjs/react': 0.2.2
   # Keep v10 for self-hosted Sentry compatibility; v11 requires server >=26.4.2 (#43035).
   '@sentry/react': 10.78.0
   '@shadcn/lint': 0.2.5
@@ -267,6 +268,7 @@ catalog:
   reactflow: 11.11.4
   remark-breaks: 4.0.0
   remark-directive: 4.0.0
+  reveal.js: 6.0.2
   scheduler: 0.28.0
   server-only: 0.0.1
   sharp: 0.35.5

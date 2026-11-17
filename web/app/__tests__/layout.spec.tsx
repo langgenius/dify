@@ -38,6 +38,33 @@ describe('Root layout System Features bootstrap', () => {
     mocks.headers.mockResolvedValue(new Headers())
   })
 
+  it('renders the presentation without requesting backend configuration', async () => {
+    mocks.headers.mockResolvedValue(
+      new Headers({ 'x-dify-pathname': '/presentations/generative-ui' }),
+    )
+    const { default: RootLayout, generateMetadata } = await import('../layout')
+
+    const html = renderToStaticMarkup(
+      await RootLayout({ children: <main>Dify Generative UI</main> }),
+    )
+    const document = new DOMParser().parseFromString(html, 'text/html')
+
+    expect(document.body.querySelector('main')).toHaveTextContent('Dify Generative UI')
+    await expect(generateMetadata()).resolves.toEqual({ icons: { icon: '/favicon.ico' } })
+    expect(mocks.getOptionalSystemFeatures).not.toHaveBeenCalled()
+    expect(mocks.dehydrateSystemFeatures).not.toHaveBeenCalled()
+  })
+
+  it('still bootstraps backend configuration for console routes', async () => {
+    mocks.headers.mockResolvedValue(new Headers({ 'x-dify-pathname': '/apps' }))
+    const { default: RootLayout } = await import('../layout')
+
+    await RootLayout({ children: <main>Apps</main> })
+
+    expect(mocks.getOptionalSystemFeatures).toHaveBeenCalledOnce()
+    expect(mocks.dehydrateSystemFeatures).toHaveBeenCalledOnce()
+  })
+
   it.each([
     ['zh-CN,zh;q=0.9', 'zh-Hans', 'ltr'],
     ['ar-TN,ar;q=0.9', 'ar-TN', 'rtl'],

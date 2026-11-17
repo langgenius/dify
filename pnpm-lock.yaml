@@ -284,6 +284,9 @@ catalogs:
     '@remixicon/react':
       specifier: 4.9.0
       version: 4.9.0
+    '@revealjs/react':
+      specifier: 0.2.2
+      version: 0.2.2
     '@sentry/react':
       specifier: 10.78.0
       version: 10.78.0
@@ -710,6 +713,9 @@ catalogs:
     remark-directive:
       specifier: 4.0.0
       version: 4.0.0
+    reveal.js:
+      specifier: 6.0.2
+      version: 6.0.2
     scheduler:
       specifier: 0.28.0
       version: 0.28.0
@@ -1587,6 +1593,9 @@ importers:
       '@remixicon/react':
         specifier: 'catalog:'
         version: 4.9.0(react@19.3.1)
+      '@revealjs/react':
+        specifier: 'catalog:'
+        version: 0.2.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(reveal.js@6.0.2)
       '@sentry/react':
         specifier: 'catalog:'
         version: 10.78.0(react@19.3.1)
@@ -1785,6 +1794,9 @@ importers:
       remark-directive:
         specifier: 'catalog:'
         version: 4.0.0(supports-color@11.0.0)
+      reveal.js:
+        specifier: 'catalog:'
+        version: 6.0.2
       scheduler:
         specifier: 'catalog:'
         version: 0.28.0
@@ -4360,6 +4372,13 @@ packages:
   '@resvg/resvg-wasm@2.4.1':
     resolution: {integrity: sha512-yi6R0HyHtsoWTRA06Col4WoDs7SvlXU3DLMNP2bdAgs7HK18dTEVl1weXgxRzi8gwLteGUbIg29zulxIB3GSdg==}
     engines: {node: '>= 10'}
+
+  '@revealjs/react@0.2.2':
+    resolution: {integrity: sha512-9X0iSrBAH7yvB8Z/fKOCROoh121C1Z+il3eakHg+revvcCLs7bK03XQzNTOec++WQ3x9JutgXtz77AQLev0R/w==}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+      reveal.js: '>=5'
 
   '@rolldown/pluginutils@1.0.1':
     resolution: {integrity: sha512-2j9bGt5Jh8hj+vPtgzPtl72j0yRxHAyumoo6TNfAjsLB04UtpSvPbPcDcBMxz7n+9CYB0c1GxQFxYRg2jimqGw==}
@@ -8186,6 +8205,9 @@ packages:
     resolution: {integrity: sha512-g6QUff04oZpHs0eG5p83rFLhHeV00ug/Yf9nZM6fLeUrPguBTkTQOdpAWWspMh55TZfVQDPaN3NQJfbVRAxdIw==}
     engines: {iojs: '>=1.0.0', node: '>=0.10.0'}
 
+  reveal.js@6.0.2:
+    resolution: {integrity: sha512-JYIg5D9aoxoaLeb84O+OvAwsKWdIavVgEDScxtYEXFCT6t6TQrhNtSgogcjdCpdLsWglhJn3zyE3fUOwiH5KEg==}
+
   rou3@1.0.0:
     resolution: {integrity: sha512-ySeaQkSrua+ut9g+65I7FHqOFBaY8tV0FmccXItoq0q21se32Q3u4YiW7/RqXSosWgYJaaKwRHXy3BST9PeCNQ==}
     engines: {node: '>=20.19.0'}
@@ -11193,6 +11215,12 @@ snapshots:
       react: 19.3.1
 
   '@resvg/resvg-wasm@2.4.1': {}
+
+  '@revealjs/react@0.2.2(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(reveal.js@6.0.2)':
+    dependencies:
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+      reveal.js: 6.0.2
 
   '@rolldown/pluginutils@1.0.1': {}
 
@@ -15420,6 +15448,8 @@ snapshots:
 
   reusify@1.1.0: {}
 
+  reveal.js@6.0.2: {}
+
   rou3@1.0.0: {}
 
   run-applescript@7.1.0: {}
@@ -16469,6 +16499,7 @@ time:
   '@pierre/highlights@0.5.1': '2026-11-11T05:04:30.437Z'
   '@playwright/test@1.65.0': '2026-11-05T18:30:18.050Z'
   '@remixicon/react@4.9.0': '2026-01-29T10:53:18.993Z'
+  '@revealjs/react@0.2.2': '2026-09-10T15:44:31.272Z'
   '@sentry/react@10.78.0': '2026-10-28T16:57:37.210Z'
   '@shadcn/lint@0.2.5': '2026-11-02T19:21:28.667Z'
   '@storybook/addon-a11y@10.6.7': '2026-11-10T11:33:38.812Z'
@@ -16613,6 +16644,7 @@ time:
   reactflow@11.11.4: '2024-06-20T11:31:29.797Z'
   remark-breaks@4.0.0: '2023-09-22T16:45:41.061Z'
   remark-directive@4.0.0: '2025-02-27T15:15:20.630Z'
+  reveal.js@6.0.2: '2026-09-10T15:45:39.252Z'
   scheduler@0.28.0: '2026-09-09T17:17:30.281Z'
   server-only@0.0.1: '2022-09-03T01:07:26.139Z'
   sharp@0.35.5: '2026-09-27T13:46:24.509Z'

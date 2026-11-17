@@ -9,6 +9,7 @@ import { IS_PROD } from '@/config'
 import { getDatasetMap } from '@/env'
 import AppAccessBoundary from '@/features/app-access-error/boundary'
 import { getAppAccessErrorDocument } from '@/features/app-access-error/document'
+import { GENERATIVE_UI_PRESENTATION_PATH } from '@/features/generative-ui-presentation/route'
 import { SystemFeaturesBootstrapBoundary } from '@/features/system-features/bootstrap-boundary'
 import {
   dehydrateSystemFeatures,
@@ -35,7 +36,11 @@ export const viewport: Viewport = {
 }
 
 export async function generateMetadata(): Promise<Metadata> {
-  if (getAppAccessErrorDocument(await headers()))
+  const requestHeaders = await headers()
+  if (
+    getAppAccessErrorDocument(requestHeaders) ||
+    requestHeaders.get('x-dify-pathname') === GENERATIVE_UI_PRESENTATION_PATH
+  )
     return { icons: { icon: `${basePath}/favicon.ico` } }
   const systemFeatures = await getOptionalSystemFeatures()
   const branding = systemFeatures?.branding
@@ -59,21 +64,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const nonce = IS_PROD ? (requestHeaders.get('x-nonce') ?? undefined) : undefined
 
   const errorDocument = getAppAccessErrorDocument(requestHeaders)
-  const [locale] = errorDocument
-    ? [errorDocument.locale]
-    : await Promise.all([getLocaleOnServer(), getOptionalSystemFeatures()])
-  const dehydratedState = errorDocument ? undefined : dehydrateSystemFeatures()
+  const isPresentation = requestHeaders.get('x-dify-pathname') === GENERATIVE_UI_PRESENTATION_PATH
+  const needsConsoleBootstrap = !errorDocument && !isPresentation
+  const [locale] = needsConsoleBootstrap
+    ? await Promise.all([getLocaleOnServer(), getOptionalSystemFeatures()])
+    : [errorDocument?.locale ?? (await getLocaleOnServer())]
+  const dehydratedState = needsConsoleBootstrap ? dehydrateSystemFeatures() : undefined
 
   return (
     <html lang={locale} dir={dir(locale)} {...datasetMap} suppressHydrationWarning>
-      <head>{!errorDocument && <ReactScanLoader />}</head>
+      <head>{needsConsoleBootstrap && <ReactScanLoader />}</head>
       <body className="bg-background-body">
-        {!errorDocument && <CloudAnalytics />}
+        {needsConsoleBootstrap && <CloudAnalytics />}
         <div className="isolate">
           <JotaiProvider>
             <ThemeProvider nonce={nonce}>
               <NuqsAdapter>
-                {errorDocument ? (
+                {!needsConsoleBootstrap ? (
                   children
                 ) : (
                   <QueryStateProvider>
@@ -94,7 +101,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               </NuqsAdapter>
             </ThemeProvider>
           </JotaiProvider>
-          {!errorDocument && <AgentationLoader />}
+          {needsConsoleBootstrap && <AgentationLoader />}
         </div>
       </body>
     </html>

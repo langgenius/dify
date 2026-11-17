@@ -26,6 +26,21 @@ afterEach(() => {
 })
 
 describe('proxy frame options', () => {
+  it.each(['development', 'production'])(
+    'permits only same-origin presentation previews in %s',
+    async (mode) => {
+      vi.stubEnv('NODE_ENV', mode)
+
+      const response = await proxy(
+        createRequest('https://cloud.dify.ai/presentations/generative-ui?receiver'),
+      )
+
+      expect(response.headers.get('x-frame-options')).toBe('SAMEORIGIN')
+      expect(response.headers.get('content-security-policy')).toContain("frame-ancestors 'self'")
+      expect(canEmbedPath('/presentations/generative-ui')).toBe(false)
+    },
+  )
+
   it('should allow embedded share routes', () => {
     expect(canEmbedPath('/chatbot/token')).toBe(true)
     expect(canEmbedPath('/workflow/token')).toBe(true)
