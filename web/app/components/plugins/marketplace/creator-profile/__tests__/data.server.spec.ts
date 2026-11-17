@@ -1,4 +1,5 @@
 import type { MarketplacePlugin, MarketplaceTemplate } from '@dify/contracts/marketplace'
+import { ORPCError } from '@orpc/client'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { loadCreatorProfile } from '../data.server'
 
@@ -81,6 +82,35 @@ describe('loadCreatorProfile', () => {
     expect(loaded?.pluginsByCreationId['plugin:dify/search']).toBeDefined()
     expect(loaded?.viewModel.profile.backgroundUrl).toBe('')
     expect(loaded?.viewModel.profile.avatarUrl).toBe('')
+  })
+
+  it('reports an unknown creator as missing so the page can render its 404', async () => {
+    mocks.creatorDetail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+
+    await expect(
+      loadCreatorProfile({ uniqueHandle: 'unknown-creator', locale: 'en-US' }),
+    ).resolves.toBeNull()
+  })
+
+  it('reports an unknown organization as missing so the page can render its 404', async () => {
+    mocks.organizationDetail.mockRejectedValue(new ORPCError('NOT_FOUND', { status: 404 }))
+
+    await expect(
+      loadCreatorProfile({
+        uniqueHandle: 'unknown-organization',
+        publisherType: 'organization',
+        locale: 'en-US',
+      }),
+    ).resolves.toBeNull()
+  })
+
+  it('still fails when the Marketplace cannot load the creator', async () => {
+    const error = new ORPCError('INTERNAL_SERVER_ERROR', { status: 500 })
+    mocks.creatorDetail.mockRejectedValue(error)
+
+    await expect(
+      loadCreatorProfile({ uniqueHandle: 'unavailable-creator', locale: 'en-US' }),
+    ).rejects.toBe(error)
   })
 
   it('only emits the remote background URL when the API reports an uploaded background', async () => {
