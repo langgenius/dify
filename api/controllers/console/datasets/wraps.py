@@ -2,10 +2,10 @@ from collections.abc import Callable
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
+from flask import current_app
 from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
-from extensions.ext_database import db
 from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
@@ -16,12 +16,14 @@ R = TypeVar("R")
 
 
 def _scoped_session() -> Session:
-    """Return the scoped session that unmigrated handlers later commit.
+    """Return the request-scoped session unmigrated handlers commit.
 
-    Handlers that have not composed ``with_session`` above this decorator still
-    read and commit through that session, so the pipeline has to be loaded there.
+    Those handlers still read and commit through the application session, so the
+    pipeline has to be loaded there. The factory is passed into the decorator;
+    it is not a default argument on ``get_rag_pipeline_with``.
     """
-    return db.session()
+    scoped = current_app.extensions["sqlalchemy"].session
+    return scoped()
 
 
 def load_rag_pipeline(session: Session, pipeline_id: str, *, tenant_id: str) -> Pipeline:
@@ -99,7 +101,7 @@ def get_rag_pipeline_with(
     outside the tenant raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    def decorator[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    def decorator(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("pipeline_id"):
