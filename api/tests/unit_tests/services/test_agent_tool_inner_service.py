@@ -1,12 +1,16 @@
 """Unit tests for the Agent tool inner invoke service."""
 
+import json
+import sqlite3
 from collections.abc import Generator
 from dataclasses import dataclass, field
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy.orm import Session
+from sqlalchemy import Connection, Engine, create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
+import core.db.session_factory as session_factory_module
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolInvokeFrom, ToolInvokeMessage, ToolProviderType
@@ -17,6 +21,8 @@ from core.tools.errors import (
     ToolProviderNotFoundError,
 )
 from core.workflow.file_reference import build_file_reference, is_canonical_file_reference, resolve_file_record_id
+from graphon.file import File, FileTransferMethod, FileType
+from models import ToolFile
 from models.model import App, AppMode
 from services.agent_tool_inner_service import AgentToolInnerService
 from services.entities.agent_tool_inner import AgentToolInvokeRequest
@@ -98,10 +104,6 @@ def _invoke_observation(session: Session, messages: list[ToolInvokeMessage]) -> 
 
 @pytest.mark.parametrize("message_type", ["image_link", "binary_link", "link"])
 def test_media_tool_observations_expose_persisted_canonical_handles(sqlite_session: Session, message_type: str) -> None:
-    import json
-
-    from models import ToolFile
-
     _persist_app(sqlite_session)
     record = ToolFile(
         tenant_id="tenant-1",
@@ -132,6 +134,52 @@ def test_media_tool_observations_expose_persisted_canonical_handles(sqlite_sessi
     assert "chart.png" not in inaccessible
 
 
+def test_media_tool_observations_read_tool_files_committed_in_separate_transaction_under_pinned_snapshot(
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Given a pinned outer read snapshot, invoke still resolves ToolFiles committed during transformation."""
+    snapshot_engine = create_engine(sqlite_engine.url)
+
+    @event.listens_for(snapshot_engine, "connect")
+    def _configure_wal_snapshot(dbapi_connection: sqlite3.Connection, _connection_record: object) -> None:
+        dbapi_connection.isolation_level = None
+        dbapi_connection.execute("PRAGMA journal_mode=WAL")
+
+    @event.listens_for(snapshot_engine, "begin")
+    def _begin_snapshot(conn: Connection) -> None:
+        conn.exec_driver_sql("BEGIN")
+
+    try:
+        snapshot_factory = sessionmaker(bind=snapshot_engine, expire_on_commit=False)
+        monkeypatch.setattr(session_factory_module, "_session_maker", snapshot_factory)
+        monkeypatch.setattr("core.tools.tool_file_manager.storage.save", lambda *_args: None)
+        with snapshot_factory() as setup_session:
+            _persist_app(setup_session)
+
+        blob_message = ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.BLOB,
+            message=ToolInvokeMessage.BlobMessage(blob=b"png-bytes"),
+            meta={"mime_type": "image/png", "filename": "chart.png"},
+        )
+        with (
+            snapshot_factory() as outer_session,
+            patch("services.agent_tool_inner_service.ToolManager.get_agent_tool_runtime", return_value=_FakeTool()),
+            patch("services.agent_tool_inner_service.ToolEngine.generic_invoke", return_value=iter([blob_message])),
+        ):
+            response = AgentToolInnerService().invoke(_request(), session=outer_session)
+            summary = json.loads(response.observation.split("Tool generated media file: ")[1].split(" (call")[0])
+            record_id = resolve_file_record_id(summary["reference"])
+            assert record_id is not None
+            # Prove the outer session's MVCC snapshot remained pinned before the ToolFile commit.
+            assert outer_session.get(ToolFile, record_id) is None
+
+        assert summary["transfer_method"] == "tool_file"
+        assert (summary["filename"], summary["mime_type"], summary["size"]) == ("chart.png", "image/png", 9)
+    finally:
+        snapshot_engine.dispose()
+
+
 @pytest.mark.parametrize("message_type", ["image_link", "binary_link"])
 @pytest.mark.parametrize(
     "url",
@@ -144,8 +192,6 @@ def test_external_media_link_observations_preserve_original_urls(
     sqlite_session: Session, message_type: str, url: str
 ) -> None:
     """Given an external media link, invoke exposes a copyable handle with its exact URL."""
-    import json
-
     _persist_app(sqlite_session)
     message = ToolInvokeMessage(
         type=ToolInvokeMessage.MessageType(message_type),
@@ -197,10 +243,6 @@ def test_file_message_observations_preserve_copyable_locators(
     sqlite_session: Session, method: str, reference: str | None, include_metadata: bool
 ) -> None:
     """Given a File message, invoke preserves URLs and emits canonical references with optional metadata."""
-    import json
-
-    from graphon.file import File, FileTransferMethod, FileType
-
     _persist_app(sqlite_session)
     file = File(
         filename="report.pdf" if include_metadata else None,
@@ -229,6 +271,18 @@ def test_file_message_observations_preserve_copyable_locators(
     else:
         assert is_canonical_file_reference(summary["reference"])
         assert resolve_file_record_id(summary["reference"]) == "record"
+
+
+def test_file_message_without_file_metadata_preserves_default_formatter_output(sqlite_session: Session) -> None:
+    """Given a FILE message without a File object in meta, invoke leaves it to ToolEngine formatting."""
+    _persist_app(sqlite_session)
+    message = ToolInvokeMessage(
+        type=ToolInvokeMessage.MessageType.FILE,
+        message=ToolInvokeMessage.FileMessage(file_marker="file"),
+        meta={},
+    )
+    observation = _invoke_observation(sqlite_session, [message])
+    assert "read_media" not in observation
 
 
 @pytest.mark.parametrize(
