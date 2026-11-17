@@ -95,7 +95,7 @@ describe('result metric columns', () => {
       createItem({ id: 'item-2', metrics: [{ name: 'answer_correctness', value: 0.5 }] }),
     ]
 
-    expect(getMetricColumns(resource, items, 'Custom Evaluator')).toEqual([
+    expect(getMetricColumns(resource, items)).toEqual([
       { id: 'answer_correctness', metricName: 'answer_correctness', label: 'Answer Correctness' },
     ])
   })
@@ -107,11 +107,7 @@ describe('result metric columns', () => {
     })
 
     expect(
-      getMetricColumns(
-        resource,
-        [createItem({ metrics: [{ name: 'tool_selection', value: 1 }] })],
-        'Custom Evaluator',
-      ),
+      getMetricColumns(resource, [createItem({ metrics: [{ name: 'tool_selection', value: 1 }] })]),
     ).toEqual([{ id: 'tool_selection', metricName: 'tool_selection', label: 'Tool Selection' }])
   })
 
@@ -134,7 +130,7 @@ describe('result metric columns', () => {
       ],
     })
 
-    const columns = getMetricColumns(resource, [item], 'Custom Evaluator')
+    const columns = getMetricColumns(resource, [item])
 
     expect(columns.map(({ label, nodeLabel }) => [label, nodeLabel])).toEqual([
       ['Context Precision', 'Classic Knowledge'],
@@ -146,7 +142,7 @@ describe('result metric columns', () => {
     ])
   })
 
-  it('shows a custom evaluator below the metric name, including when it is the only node', () => {
+  it('always shows Custom Evaluator in English below the metric name', () => {
     const resource = buildStateFromEvaluationConfig('apps', 'app-1', {
       evaluation_framework: 'ragas',
       default_metrics: [],
@@ -160,7 +156,7 @@ describe('result metric columns', () => {
       metrics: [{ name: 'score', value: 0.2, node_info: nodeInfo }, customMetric],
     })
 
-    const columns = getMetricColumns(resource, [item], 'Custom Evaluator')
+    const columns = getMetricColumns(resource, [item])
 
     expect(columns.map(({ label, nodeLabel }) => [label, nodeLabel])).toEqual([
       ['Score', 'General Answer'],
@@ -168,7 +164,7 @@ describe('result metric columns', () => {
     ])
     expect(columns.map((column) => getMetricValue(item.metrics ?? [], column))).toEqual([0.2, 0.8])
     expect(
-      getMetricColumns(resource, [createItem({ metrics: [customMetric] })], 'Custom Evaluator').map(
+      getMetricColumns(resource, [createItem({ metrics: [customMetric] })]).map(
         ({ label, nodeLabel }) => [label, nodeLabel],
       ),
     ).toEqual([['Score', 'Custom Evaluator']])
