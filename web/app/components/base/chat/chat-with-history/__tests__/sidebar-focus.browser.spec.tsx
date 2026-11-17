@@ -140,6 +140,8 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   const outside = screen.getByRole('button', { name: 'Before chat' })
   await outside.click()
   await expect.element(outside).toHaveFocus()
+  // The panel closes after the blur settles; Tab before then can land inside it.
+  await expect.element(conversation).not.toBeInViewport()
   const expand = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }).last()
   await userEvent.tab()
   await expect.element(expand).toHaveFocus()
