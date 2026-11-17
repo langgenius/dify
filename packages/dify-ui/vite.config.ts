@@ -48,7 +48,7 @@ export default defineConfig({
           include: ['src/**/__tests__/**/*.spec.{ts,tsx}'],
           browser: {
             trace: {
-              mode: 'retain-on-failure',
+              mode: isCI ? 'retain-on-failure' : 'off',
               tracesDir: './.vitest-browser/traces',
             },
           },

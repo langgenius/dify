@@ -2,11 +2,8 @@ import type { MouseEvent, ReactNode } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
-import {
-  SegmentedControl,
-  SegmentedControlDivider,
-  SegmentedControlItem,
-} from '@langgenius/dify-ui/segmented-control'
+import { SegmentedControl, SegmentedControlItem } from '@langgenius/dify-ui/segmented-control'
+import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
@@ -149,7 +146,7 @@ export function AgentPreviewHeader({
   )
 
   return (
-    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 pr-(--agent-preview-header-end,1rem) max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2 max-sm:pr-(--agent-preview-header-end,0.5rem)">
+    <div className="relative z-1 flex h-12 shrink-0 items-center justify-between gap-3 px-4 py-2 pe-(--agent-preview-header-end,1rem) max-sm:h-auto max-sm:flex-wrap max-sm:gap-1 max-sm:px-2 max-sm:pe-(--agent-preview-header-end,0.5rem)">
       <div className="flex min-w-0 flex-1 items-center gap-2 max-sm:w-full max-sm:flex-none">
         <SegmentedControl<AgentConfigureRightPanelMode>
           value={mode}
@@ -235,7 +232,7 @@ export function AgentPreviewHeader({
         </div>
         {chatFeatures && (
           <>
-            <SegmentedControlDivider className="mx-3 max-sm:hidden" />
+            <Separator decorative orientation="vertical" className="mx-3 h-3.5 max-sm:hidden" />
             <button
               type="button"
               aria-expanded={chatFeatures.open}

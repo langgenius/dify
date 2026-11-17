@@ -3,6 +3,7 @@ import type { LoadedCreatorProfile } from '../model'
 import type { Plugin } from '@/app/components/plugins/types'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createPluginEntity } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
@@ -16,19 +17,12 @@ const api = vi.hoisted(() => ({
   installed: vi.fn(),
 }))
 
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: api.push }),
 }))
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  default: () => <span aria-hidden />,
-}))
-
-vi.mock('../../detail-dialog/use-silent-install', () => ({
-  useSilentMarketplaceInstall: () => ({ install: vi.fn() }),
-}))
-
-// Keep embedded Marketplace documents local while preserving their real route parameters.
+// boundary: embedded Marketplace documents stay local while preserving their real route parameters.
 vi.mock('@/features/marketplace/links', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/features/marketplace/links')>()
   const toBlank = (url: string) =>
@@ -45,6 +39,7 @@ vi.mock('@/features/marketplace/links', async (importOriginal) => {
   }
 })
 
+// boundary: creator search stops at the external Marketplace HTTP client.
 vi.mock('@/service/marketplace', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/marketplace')>()
   return {
@@ -73,6 +68,7 @@ vi.mock('@/service/marketplace', async (importOriginal) => {
   }
 })
 
+// boundary: installed-plugin reads and silent-install mutations stop at the console transport.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
   const { withConsoleResponses } = await import('@/test/console/service-responses')
@@ -172,9 +168,10 @@ const loadedProfile: LoadedCreatorProfile = {
 
 async function renderProfile(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLOUD') {
   const { wrapper: UrlState, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
-  const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
+  const { queryClient, wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: edition },
   })
+  seedModelProviderQueries(queryClient, [])
   const screen = await render(
     <ConsoleProvider>
       <UrlState>

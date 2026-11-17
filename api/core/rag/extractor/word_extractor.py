@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
+from libs.http_headers import content_type_media_type
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
@@ -143,7 +144,9 @@ class WordExtractor(BaseExtractor):
                         logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
+                        image_ext = mimetypes.guess_extension(
+                            content_type_media_type(response.headers.get("Content-Type", ""))
+                        )
                         if image_ext is None:
                             continue
                         file_uuid = str(uuid.uuid4())

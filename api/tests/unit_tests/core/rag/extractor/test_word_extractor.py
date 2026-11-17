@@ -496,6 +496,40 @@ def test_extract_images_handles_invalid_external_cases(monkeypatch: pytest.Monke
     assert transaction_events == ["commit"]
 
 
+def test_extract_images_accepts_content_type_with_parameters(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session):
+    """A Content-Type parameter (e.g. ``; charset=utf-8``) must not hide the media type of the image."""
+    saves: list[tuple[str, bytes]] = []
+
+    def save(key: str, data: bytes):
+        saves.append((key, data))
+
+    monkeypatch.setattr(we.storage, "save", save)
+    apply_config_overrides(monkeypatch, FILES_URL="http://files.local", STORAGE_TYPE="local")
+
+    def fake_make_request(method: str, url: str, **kwargs):
+        assert method == "GET"
+        return Response(200, headers={"Content-Type": "image/png; charset=utf-8"}, content=b"ext-bytes")
+
+    monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
+
+    doc = Document()
+    doc.part.rels.add_relationship(RT.IMAGE, "https://example.com/logo.png", "rId1", is_external=True)
+
+    extractor = WordExtractor(
+        file_path=__file__,
+        tenant_id="00000000-0000-0000-0000-000000000001",
+        user_id="00000000-0000-0000-0000-000000000002",
+        session=sqlite_session,
+    )
+
+    image_map = extractor._extract_images_from_docx(doc)
+
+    assert set(image_map.keys()) == {"rId1"}
+    assert len(saves) == 1
+    assert saves[0][0].endswith(".png")
+    assert saves[0][1] == b"ext-bytes"
+
+
 def test_table_to_markdown_and_parse_helpers(monkeypatch: pytest.MonkeyPatch):
     extractor = object.__new__(WordExtractor)
 

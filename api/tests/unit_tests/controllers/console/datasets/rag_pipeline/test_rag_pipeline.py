@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
 from inspect import unwrap
 from unittest.mock import ANY, PropertyMock, patch
 
@@ -23,7 +22,6 @@ from controllers.console.datasets.rag_pipeline.rag_pipeline import (
 )
 from models.account import Account, TenantAccountRole
 from models.dataset import Pipeline, PipelineCustomizedTemplate
-from models.engine import db
 from services.entities.knowledge_entities.rag_pipeline_entities import PipelineTemplateInfoEntity
 from services.errors.base import NoPermissionError
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
@@ -73,17 +71,6 @@ def _pipeline() -> Pipeline:
     return pipeline
 
 
-@pytest.fixture
-def database_app() -> Iterator[Flask]:
-    app = Flask(__name__)
-    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-    db.init_app(app)
-
-    with app.app_context():
-        PipelineCustomizedTemplate.__table__.create(db.engine)
-        yield app
-
-
 class TestPipelineTemplateListApi:
     def test_get_uses_query_defaults_and_serializes_nullable_fields(self, app: Flask, sqlite_engine: Engine) -> None:
         api = PipelineTemplateListApi()
@@ -91,7 +78,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": [_template_item()]}
@@ -121,7 +110,9 @@ class TestPipelineTemplateListApi:
         tenant_id = "tenant-1"
         service_calls: list[tuple[str, str, str]] = []
 
-        def get_pipeline_templates(*, type: str, language: str, current_tenant_id: str, session) -> dict[str, object]:
+        def get_pipeline_templates(
+            *, type: str, language: str, current_tenant_id: str, session: Session
+        ) -> dict[str, object]:
             del session
             service_calls.append((type, language, current_tenant_id))
             return {"pipeline_templates": []}
@@ -147,7 +138,7 @@ class TestPipelineTemplateDetailApi:
         service_calls: list[tuple[str, str, str]] = []
 
         def get_pipeline_template_detail(
-            template_id: str, current_tenant_id: str, type: str, *, session
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
         ) -> dict[str, object]:
             del session
             service_calls.append((template_id, current_tenant_id, type))
@@ -174,7 +165,9 @@ class TestPipelineTemplateDetailApi:
         api = PipelineTemplateDetailApi()
         method = unwrap(api.get)
 
-        def get_pipeline_template_detail(template_id: str, current_tenant_id: str, type: str, *, session) -> None:
+        def get_pipeline_template_detail(
+            template_id: str, current_tenant_id: str, type: str, *, session: Session
+        ) -> None:
             del template_id, current_tenant_id, type, session
 
         with (
@@ -205,7 +198,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -256,7 +249,7 @@ class TestCustomizedPipelineTemplateApi:
             current_user: Account,
             current_tenant_id: str,
             *,
-            session,
+            session: Session,
         ) -> None:
             assert session is unbound_session
             service_calls.append((template_id, template_info, current_user, current_tenant_id))
@@ -294,7 +287,7 @@ class TestCustomizedPipelineTemplateApi:
         tenant_id = "tenant-1"
         deleted_templates: list[tuple[str, str]] = []
 
-        def delete_template(template_id: str, current_tenant_id: str, *, session) -> None:
+        def delete_template(template_id: str, current_tenant_id: str, *, session: Session) -> None:
             assert session is unbound_session
             deleted_templates.append((template_id, current_tenant_id))
 

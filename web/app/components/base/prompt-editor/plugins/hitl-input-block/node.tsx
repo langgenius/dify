@@ -224,8 +224,8 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedNode {
     return {
+      ...super.exportJSON(),
       type: 'hitl-input-block',
-      version: 1,
       variableName: this.getVariableName(),
       nodeId: this.getNodeId(),
       formInputs: this.getFormInputs(),

@@ -1,8 +1,7 @@
 """Shared helpers for workflow pause-time human input form lookups.
 
-Both controllers and streaming response converters need the same recipient
-priority when exposing resume links for paused human input forms. Keep that
-selection logic here so all API surfaces stay consistent.
+Controllers and streaming response converters supply the current response
+surface. Resolve existing recipients through its policy without creating tokens.
 """
 
 from __future__ import annotations
@@ -25,9 +24,13 @@ def load_form_dispositions_by_form_id(
     form_ids: Sequence[str],
     *,
     session: Session | None = None,
-    surface: HumanInputSurface | None = None,
+    surface: HumanInputSurface,
 ) -> dict[str, FormDisposition]:
-    """Resolve each paused form's resume token and approval channels for `surface`."""
+    """Read dispositions for admitted form IDs and an explicit response surface.
+
+    Use the supplied session or a short owned read session. IDs without recipients
+    are omitted; forms without allowed recipients have no token. No rows are changed.
+    """
     unique_form_ids = list(dict.fromkeys(form_ids))
     if not unique_form_ids:
         return {}
@@ -43,8 +46,9 @@ def _load_form_dispositions_by_form_id(
     session: Session,
     form_ids: Sequence[str],
     *,
-    surface: HumanInputSurface | None,
+    surface: HumanInputSurface,
 ) -> dict[str, FormDisposition]:
+    """Read existing recipients in the caller's session and apply the surface policy."""
     recipients_by_form_id: dict[str, list[tuple[RecipientType, str]]] = {}
     stmt = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id.in_(form_ids))
     for recipient in session.scalars(stmt):
@@ -61,9 +65,12 @@ def load_form_tokens_by_form_id(
     form_ids: Sequence[str],
     *,
     session: Session | None = None,
-    surface: HumanInputSurface | None = None,
+    surface: HumanInputSurface,
 ) -> dict[str, str]:
-    """Resume tokens only, for callers that don't surface approval channels."""
+    """Read allowed tokens for admitted form IDs; omit forms without actionable tokens.
+
+    The response surface is explicit, and recipient records are never modified.
+    """
     dispositions = load_form_dispositions_by_form_id(form_ids, session=session, surface=surface)
     return {
         form_id: disposition.form_token
