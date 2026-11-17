@@ -78,9 +78,7 @@ def delete_segment_from_index_task(
                     # selects dataset-wide index and summary cleanup.
                     from services.knowledge.summaries.adapters import SummaryIndexAdapter
 
-                    SummaryIndexAdapter.delete_summaries_for_segments(
-                        dataset, segment_ids, session=session
-                    )
+                    SummaryIndexAdapter.delete_summaries_for_segments(dataset, segment_ids, session=session)
                     session.execute(
                         delete(ChildChunk).where(
                             ChildChunk.tenant_id == dataset.tenant_id,

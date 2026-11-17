@@ -290,9 +290,7 @@ def test_delete_disabled_segment_with_no_index_node_ids_preserves_other_segments
     ):
         delete_segment_from_index_task.run([], dataset.id, document.id, [disabled_segment.id], [])
 
-    assert [entry.args for entry in vector_backend.delete_by_ids.call_args_list] == [
-        (["disabled-summary-node"],)
-    ]
+    assert [entry.args for entry in vector_backend.delete_by_ids.call_args_list] == [(["disabled-summary-node"],)]
     vector_backend.delete.assert_not_called()
     keyword_delete.assert_not_called()
     storage_delete.assert_called_once_with(attachment.key)
