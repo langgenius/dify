@@ -6,6 +6,8 @@ import type { EvaluationResourceState } from '../../types'
 import { formatTime } from '@/utils/time'
 
 const PREFERRED_QUERY_INPUT_KEYS = ['query', 'question', 'input']
+// Keep this preview node label in English across UI languages.
+const CUSTOM_EVALUATOR_LABEL = 'Custom Evaluator'
 
 export type MetricColumn = {
   /** Unique column key: the metric name, plus the node id when the metric covers several nodes. */
@@ -150,7 +152,6 @@ export const getIsItemPassed = (item: EvaluationRunItem) => {
 export const getMetricColumns = (
   resource: EvaluationResourceState,
   items: EvaluationRunItem[],
-  customEvaluatorLabel: string,
 ): MetricColumn[] => {
   const configLabels = new Map(
     resource.metrics.map((metric) => [normalizeMetricKey(metric.optionId), metric.label] as const),
@@ -186,7 +187,7 @@ export const getMetricColumns = (
           id: name,
           metricName: name,
           label,
-          ...(node?.isCustomEvaluator && { nodeLabel: customEvaluatorLabel }),
+          ...(node?.isCustomEvaluator && { nodeLabel: CUSTOM_EVALUATOR_LABEL }),
         },
       ]
     }
@@ -196,7 +197,7 @@ export const getMetricColumns = (
       metricName: name,
       label,
       nodeId,
-      nodeLabel: node.isCustomEvaluator ? customEvaluatorLabel : node.title,
+      nodeLabel: node.isCustomEvaluator ? CUSTOM_EVALUATOR_LABEL : node.title,
     }))
   })
 }
