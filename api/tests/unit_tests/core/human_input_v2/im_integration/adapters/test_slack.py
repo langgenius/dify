@@ -9,13 +9,11 @@ from core.human_input_v2.im_integration.adapters.entities import (
     ProviderUserId,
 )
 from core.human_input_v2.resolved_form import MarkdownFragment, ParagraphInput
-from tests.unit_tests.core.human_input_v2.im_provider.test_slack_sdk_boundary import (
-    _adapter,
-    _custom_intent,
-    _SlackApiServer,
+from tests.helpers.unit.core.human_input_v2.slack import (
+    SlackApiServer,
+    make_slack_adapter,
+    make_slack_form,
 )
-
-pytest_plugins = ("tests.unit_tests.core.human_input_v2.im_provider.test_slack_sdk_boundary",)
 
 
 @pytest.mark.parametrize(
@@ -30,15 +28,15 @@ pytest_plugins = ("tests.unit_tests.core.human_input_v2.im_provider.test_slack_s
 )
 def test_card_markdown_limit_applies_to_all_fragments(
     monkeypatch: pytest.MonkeyPatch,
-    slack_api_server: _SlackApiServer,
+    slack_api_server: SlackApiServer,
     lengths: tuple[int, ...],
     representable: bool,
     expected_total_length: int,
 ) -> None:
     """Assess without I/O; preserve accepted content and reject oversized sends before I/O."""
-    adapter, _client = _adapter(monkeypatch, slack_api_server)
+    adapter, _client = make_slack_adapter(monkeypatch, slack_api_server)
     paragraphs = tuple(MarkdownFragment(text="审" * length) for length in lengths)
-    intent = _custom_intent(
+    intent = make_slack_form(
         blocks=(paragraphs[0], ParagraphInput(output_variable_name="note", default_value="Approved"), *paragraphs[1:])
     )
 

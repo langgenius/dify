@@ -16,18 +16,13 @@ from repositories.human_input_v2.delivery_repository import IMMessageType, IMUse
 from services.human_input_v2.delivery_service import HumanInputDeliveryService
 from services.human_input_v2.form_service import CreatedForm
 from services.human_input_v2.submission_service import HumanInputSubmissionService
-from tests.unit_tests.core.human_input_v2.im_provider.test_slack_sdk_boundary import _adapter, _SlackApiServer
-from tests.unit_tests.services.human_input_v2.test_form_delivery_runtime import (
-    _ACCOUNT,
-    _CONTACT,
-    Context,
-    _add_im,
-    _node,
-)
-
-pytest_plugins = (
-    "tests.unit_tests.services.human_input_v2.test_form_delivery_runtime",
-    "tests.unit_tests.core.human_input_v2.im_provider.test_slack_sdk_boundary",
+from tests.helpers.unit.core.human_input_v2.slack import SlackApiServer, make_slack_adapter
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    ACCOUNT_ID,
+    CONTACT_ID,
+    FormRuntimeContext,
+    add_slack_channel,
+    make_form_node,
 )
 
 
@@ -40,10 +35,10 @@ pytest_plugins = (
     ],
 )
 def test_slack_markdown_limit_selects_delivery_and_preserves_approval(
-    context: Context,
+    context: FormRuntimeContext,
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
-    slack_api_server: _SlackApiServer,
+    slack_api_server: SlackApiServer,
     lengths: tuple[int, int],
     message_type: IMMessageType,
 ) -> None:
@@ -51,9 +46,9 @@ def test_slack_markdown_limit_selects_delivery_and_preserves_approval(
     from tasks.app_generate.workflow_execute_task import resume_app_execution
 
     config_overrides(CONSOLE_WEB_URL="https://console.example.com")
-    _add_im(context)
+    add_slack_channel(context)
     node = HumanInputNodeData.model_validate(
-        _node(Contact(contact_id=_CONTACT)).model_dump(mode="json")
+        make_form_node(Contact(contact_id=CONTACT_ID)).model_dump(mode="json")
         | {
             "form_content": "a" * lengths[0] + "{{#$output.note#}}" + "b" * lengths[1],
             "inputs": [{"type": "paragraph", "output_variable_name": "note"}],
@@ -61,7 +56,7 @@ def test_slack_markdown_limit_selects_delivery_and_preserves_approval(
     )
     created = context.prepare(node)
     assert isinstance(created, CreatedForm)
-    adapter, _client = _adapter(monkeypatch, slack_api_server)
+    adapter, _client = make_slack_adapter(monkeypatch, slack_api_server)
     slack_api_server.state.enqueue(
         "chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"}
     )
@@ -113,7 +108,7 @@ def test_slack_markdown_limit_selects_delivery_and_preserves_approval(
 
         monkeypatch.setattr(resume_app_execution, "apply_async", publish_resume)
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
-            account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
+            account_id=ACCOUNT_ID, form_token=token, action="approve", inputs={"note": "Approved"}
         )
         with context.sessions() as session:
             submitted = session.get_one(HumanInputForm, created.form.id)

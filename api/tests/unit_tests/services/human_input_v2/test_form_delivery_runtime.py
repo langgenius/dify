@@ -4,7 +4,6 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field, replace
 from datetime import timedelta
-from sqlite3 import Connection as SQLiteConnection
 from typing import Protocol
 from unittest.mock import Mock, create_autospec
 from uuid import uuid4
@@ -15,10 +14,8 @@ from celery import Task
 from flask.testing import FlaskClient
 from pydantic import JsonValue
 from sqlalchemy import event
-from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
-from sqlalchemy.orm import Session, sessionmaker
-from sqlalchemy.pool import ConnectionPoolEntry
+from sqlalchemy.orm import Session
 from werkzeug.test import TestResponse
 
 from core.human_input_v2.entities import EmailProviderType, IMProvider
@@ -41,13 +38,11 @@ from graphon.enums import WorkflowExecutionStatus
 from graphon.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from models import CreatorUserRole
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import EndUserType, WorkflowRunTriggeredFrom
+from models.account import Account, TenantAccountJoin
+from models.enums import EndUserType
 from models.human_input_v2 import (
-    ContactSubjectType,
     FormViewEvent,
     HumanInputAuditEvent,
-    HumanInputContactIdentity,
     HumanInputDelivery,
     HumanInputDeliveryAttempt,
     HumanInputEmailProvider,
@@ -56,7 +51,6 @@ from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMBindingWorkspaceOverride,
     HumanInputIMChannel,
-    HumanInputIMIdentity,
     HumanInputPlatformContactWorkspaceEntry,
     HumanInputRecipient,
     OtpVerificationEvent,
@@ -75,9 +69,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
 )
 from services.human_input_v2.email_otp_service import AccessChallenge
 from services.human_input_v2.form_service import (
-    AccountInitiator,
     CreatedForm,
-    FormExecutionContext,
     HumanInputFormService,
 )
 from services.human_input_v2.node_data_migration import (
@@ -85,14 +77,33 @@ from services.human_input_v2.node_data_migration import (
     MigrationNode,
     NodeDataMigrationSuccess,
 )
-
-_TENANT = TenantId("00000000-0000-0000-0000-000000000001")
-_APP = "00000000-0000-0000-0000-000000000002"
-_RUN = "00000000-0000-0000-0000-000000000003"
-_ACCOUNT = AccountId("00000000-0000-0000-0000-000000000004")
-_CONTACT = ContactId("00000000-0000-0000-0000-000000000005")
-_EXECUTION = "00000000-0000-0000-0000-000000000006"
-
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    ACCOUNT_ID as _ACCOUNT,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    APP_ID as _APP,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    CONTACT_ID as _CONTACT,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    NODE_EXECUTION_ID as _EXECUTION,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    TENANT_ID as _TENANT,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    WORKFLOW_RUN_ID as _RUN,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    FormRuntimeContext as Context,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    add_slack_channel as _add_im,
+)
+from tests.helpers.unit.services.human_input_v2.form_runtime import (
+    make_form_node as _node,
+)
 
 CreatedIMCards = tuple[str, str, set[str], Mock, list[dict[str, str]], list[dict[str, object]]]
 
@@ -160,36 +171,6 @@ def _pause_state(form_id: str, *, node_version: str = "2") -> str:
         ),
         serialized_graph_runtime_state=runtime.dumps(),
     ).dumps()
-
-
-@dataclass
-class Context:
-    sessions: sessionmaker[Session]
-    service: HumanInputFormService
-    execution: FormExecutionContext
-
-    def prepare(self, data: HumanInputNodeData, pool: VariablePool | None = None) -> CreatedForm | PreparedForm:
-        return self.service.prepare_form(
-            node_execution_id=_EXECUTION, node_data=data, variable_pool=pool or VariablePool()
-        )
-
-    def handle_timeouts(self) -> None:
-        from services.human_input_v2.form_service import handle_form_timeouts
-
-        handle_form_timeouts(session_factory=self.sessions, tenant_id=_TENANT, app_id=_APP, workflow_run_id=_RUN)
-
-
-def _node(*recipients: Contact | DynamicEmail | Initiator | OnetimeEmail) -> HumanInputNodeData:
-    return HumanInputNodeData.model_validate(
-        {
-            "recipients_spec": list(recipients),
-            "message_template": {"subject": "Review", "body": "Open {{#url#}}"},
-            "debug_mode": {"enabled": False, "channels": []},
-            "title": "Frozen",
-            "form_content": "Please approve",
-            "user_actions": [{"id": "approve", "title": "Approve"}],
-        }
-    )
 
 
 @pytest.mark.parametrize("with_empty_disabled_email", [False, True])
@@ -324,63 +305,6 @@ def test_factory_runs_v2_and_reuses_persisted_approval(
     assert isinstance(first[0].reason, HitlRequired)
     assert first[0].reason.session_id == f"hitlv2:{required.prepared_form.form.id}"
     assert required.prepared_form.form_token == revisited.prepared_form.form_token
-
-
-@pytest.fixture
-def context(sqlite_engine: sa.Engine, monkeypatch: pytest.MonkeyPatch) -> Context:
-    from tasks.human_input_im_card_tasks import update_human_input_im_card_task
-
-    monkeypatch.setattr(update_human_input_im_card_task, "apply_async", lambda **_kwargs: None)
-    engine = sqlite_engine
-
-    @event.listens_for(engine, "connect")
-    def setup_connection(connection: SQLiteConnection, _record: ConnectionPoolEntry) -> None:
-        connection.isolation_level = None
-
-    @event.listens_for(engine, "begin")
-    def begin_transaction(connection: Connection) -> None:
-        # SQLite cannot upgrade competing read transactions to writers. Reserve
-        # its writer at begin so concurrent calls can wait for serialized commits.
-        connection.exec_driver_sql("BEGIN IMMEDIATE")
-
-    sessions = sessionmaker(engine, expire_on_commit=False)
-    monkeypatch.setattr("core.db.session_factory.session_factory.get_session_maker", lambda: sessions)
-    with sessions.begin() as session:
-        account = Account(name="Initiator", email="member@example.com", status=AccountStatus.ACTIVE)
-        account.id = _ACCOUNT
-        tenant = Tenant(name="Workspace")
-        tenant.id = _TENANT
-        identity = HumanInputContactIdentity(subject_type=ContactSubjectType.ACCOUNT, account_id=_ACCOUNT)
-        identity.id = _CONTACT
-        session.add_all(
-            [
-                account,
-                tenant,
-                identity,
-                TenantAccountJoin(tenant_id=_TENANT, account_id=_ACCOUNT, role=TenantAccountRole.NORMAL),
-                WorkflowRun(
-                    id=_RUN,
-                    tenant_id=_TENANT,
-                    app_id=_APP,
-                    workflow_id=str(uuid4()),
-                    type=WorkflowType.WORKFLOW,
-                    triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-                    version="1",
-                    status=WorkflowExecutionStatus.RUNNING,
-                    created_by_role=CreatorUserRole.ACCOUNT,
-                    created_by=_ACCOUNT,
-                ),
-            ]
-        )
-    execution = FormExecutionContext(
-        tenant_id=_TENANT,
-        app_id=_APP,
-        workflow_run_id=_RUN,
-        global_timeout_deadline=naive_utc_now() + timedelta(days=3),
-        initiator=AccountInitiator(_ACCOUNT),
-        debugging_account_id=None,
-    )
-    return Context(sessions, HumanInputFormService(session_factory=sessions, context=execution), execution)
 
 
 @pytest.fixture
@@ -555,44 +479,6 @@ def providers(context: Context, monkeypatch: pytest.MonkeyPatch) -> tuple[Mock, 
     outbox = EmailOutbox(email_accepted)
     monkeypatch.setattr(ResendProviderGateway, "send_message", outbox.send_message)
     return adapter, outbox
-
-
-def _add_im(context: Context) -> None:
-    from libs.datetime_utils import naive_utc_now
-    from models.human_input_v2 import IMIdentityRawPayload
-    from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
-    from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
-    from repositories.human_input_v2.sqlalchemy_im_channel_repository import WorkspaceIMChannelWriter
-
-    now = naive_utc_now()
-    channel_id = IMChannelId(str(uuid4()))
-    identity_id = str(uuid4())
-    with context.sessions.begin() as session:
-        WorkspaceIMChannelWriter(session, _TENANT, _ACCOUNT).create(
-            IMChannel(
-                id=channel_id,
-                created_at=now,
-                updated_at=now,
-                provider=IMProvider.SLACK,
-                provider_tenant_id="provider-team",
-                encrypted_credentials=ChannelEncryptedCredentials(ciphertext="protected"),
-                app_identifier="app",
-                webhook_id=WebhookId(str(uuid4())),
-                config_version=1,
-                status=IMChannelStatus.CONNECTED,
-            )
-        )
-        identity = HumanInputIMIdentity(
-            channel_id=channel_id,
-            provider_user_id="im-user",
-            raw_payload=IMIdentityRawPayload({}),
-            last_seen_sync_run_id=str(uuid4()),
-            last_seen_at=now,
-        )
-        identity.id = identity_id
-        session.add_all(
-            [identity, HumanInputIMBinding(channel_id=channel_id, contact_id=_CONTACT, im_identity_id=identity_id)]
-        )
 
 
 @pytest.mark.parametrize("include_contact", [False, True])
