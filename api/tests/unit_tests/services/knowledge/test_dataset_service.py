@@ -649,8 +649,9 @@ class TestDatasetServiceDatasetCases:
             assert total == 2
             assert {dataset.id for dataset in datasets} == {creator_one.id, creator_two.id}
 
+        @pytest.mark.parametrize("include_all", [False, True])
         def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(
-            self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
+            self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session, include_all: bool
         ) -> None:
             user = _dataset_service_dataset_account(role=TenantAccountRole.NORMAL)
             accessible = _dataset_service_dataset_dataset(
@@ -667,7 +668,7 @@ class TestDatasetServiceDatasetCases:
             with (
                 _dataset_service_dataset_patch(
                     "services.knowledge.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
-                    return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
+                    side_effect=AssertionError("List queries must reuse the caller-resolved RBAC scope"),
                 ),
             ):
                 datasets, total = _dataset_service_dataset_DatasetService.get_datasets(
@@ -677,6 +678,7 @@ class TestDatasetServiceDatasetCases:
                     tenant_id="tenant-1",
                     user=user,
                     accessible_dataset_ids=[accessible.id],
+                    include_all=include_all,
                     tags=application_tags,
                 )
 

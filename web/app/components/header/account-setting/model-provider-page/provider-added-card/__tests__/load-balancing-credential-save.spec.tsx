@@ -8,7 +8,7 @@ import { zModelCredentialResponse } from '@dify/contracts/api/console/workspaces
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { ModalContextProvider } from '@/context/modal-context-provider'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import {
   ConfigurationMethodEnum,
@@ -98,7 +98,7 @@ function CredentialFlow({
   })
 
   return (
-    <ModalContextProvider>
+    <>
       <ModelLoadBalancingConfigs
         provider={provider}
         model={model}
@@ -117,7 +117,8 @@ function CredentialFlow({
             : [],
         }}
       />
-    </ModalContextProvider>
+      <ModelCredentialDialog />
+    </>
   )
 }
 

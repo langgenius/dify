@@ -1,14 +1,13 @@
+from http import HTTPStatus
 from typing import Literal
 from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, field_validator
-from sqlalchemy import func, or_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
-from controllers.common.agent_access import resolve_agent_access_filter
 from controllers.common.rbac import AgentId, RBACCheck, Workspace
 from controllers.common.schema import (
     query_params_from_model,
@@ -40,14 +39,13 @@ from controllers.console.app.app import (
 from controllers.console.app.app import (
     UpdateAppPayload as GenericUpdateAppPayload,
 )
+from controllers.console.app.response import app_detail_response
 from controllers.console.error import ApiKeyLimitExceededHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import (
     RBACPermission,
     account_initialization_required,
     edit_permission_required,
-    enterprise_license_required,
-    is_admin_or_owner_required,
     model_validate,
     rbac_permission_required,
     setup_required,
@@ -55,7 +53,6 @@ from controllers.console.wraps import (
     with_current_user,
 )
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
 from fields.agent_fields import (
     AgentConfigDraftSummaryResponse,
@@ -73,16 +70,15 @@ from fields.agent_fields import (
 )
 from fields.api_key_fields import ApiKeyItem, ApiKeyList
 from fields.base import ResponseModel
-from libs.datetime_utils import parse_time_range
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import login_required
 from machinery.context import RequestContext
 from models import Account
+from models.account import TenantAccountRole
 from models.agent import Agent, AgentStatus
 from models.agent_config_entities import AgentSoulConfig
-from models.enums import ApiTokenType
-from models.model import ApiToken, App, IconType
+from models.model import App, IconType
 from services.agent.composer_service import AgentComposerService
 from services.agent.errors import (
     AgentAccessNotReadyError,
@@ -97,17 +93,24 @@ from services.agent.errors import (
     InvalidComposerConfigError,
     PlaintextSecretNotAllowedError,
 )
-from services.agent.observability_service import (
-    AgentLogQueryParams,
-    AgentObservabilityService,
-    AgentStatisticsQueryParams,
-)
+from services.agent.observability_contracts import AgentLogQuery, AgentObservabilityNotFoundError
+from services.agent.observability_contracts import AgentStatisticsQuery as AgentObservabilityStatisticsQuery
 from services.agent.roster_service import AgentRosterService
-from services.app_service import AgentAppPublicationCounts, AppListParams, AppResponseView, AppService, CreateAppParams
+from services.agent.version_store import (
+    AgentVersionPlanRequiredError,
+    AgentVersionUnavailableError,
+    VersionAgentNotFoundError,
+)
+from services.app.agent_app_contracts import (
+    AgentAppDetail,
+    AgentAppListPage,
+    AgentAppNameConflictError,
+    AgentAppNotFoundError,
+)
+from services.app_service import AppResponseView, CreateAppParams
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.agent_entities import ComposerSavePayload, RosterListQuery
-from services.feature_service import FeatureService
-from services.rbac import contracts as rbac_contracts
+from services.entities.app_entities import AppListParams, UpdateAppParams
 from services.system_feature_service import SystemFeatureService
 
 AgentPublicationStatus = Literal["published", "drafts"]
@@ -172,28 +175,6 @@ class AgentAppCopyPayload(BaseModel):
         if value is None:
             return None
         return value.strip()
-
-
-class AgentApiStatusPayload(BaseModel):
-    enable_api: bool = Field(..., description="Enable or disable Agent service API")
-
-
-class AgentApiAccessResponse(BaseModel):
-    access_ready: bool
-    enabled: bool
-    service_api_base_url: str
-    streaming_only: bool = True
-    chat_endpoint: str
-    stop_endpoint: str
-    conversations_endpoint: str
-    messages_endpoint: str
-    files_upload_endpoint: str
-    parameters_endpoint: str
-    info_endpoint: str
-    meta_endpoint: str
-    api_rpm: int
-    api_rph: int
-    api_key_count: int
 
 
 class AgentAppPublishedReferenceResponse(BaseModel):
@@ -373,7 +354,6 @@ register_schema_models(
     AgentPublishPayload,
     AgentBuildDraftCheckoutPayload,
     ComposerSavePayload,
-    AgentApiStatusPayload,
     AgentAppListQuery,
     AgentInviteOptionsQuery,
     AgentLogsQuery,
@@ -386,7 +366,6 @@ register_response_schema_models(
     console_ns,
     AgentPublicationCountsResponse,
     AgentAppPagination,
-    AgentApiAccessResponse,
     AgentAppPublishedReferenceResponse,
     AgentAppDetailWithSite,
     AgentAppPartial,
@@ -475,155 +454,67 @@ def _serialize_agent_app_detail(
     return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
 
-def _serialize_agent_app_pagination(
-    session: Session,
-    app_pagination,
-    *,
-    tenant_id: str,
-    current_user: Account,
-    publication_counts: AgentAppPublicationCounts,
-    agent_permissions: rbac_contracts.ResourcePermissionSnapshot,
-) -> dict:
-    """Serialize Agent App lists with roster-shaped items.
+def _agent_app_detail_response(detail: AgentAppDetail) -> dict[str, object]:
+    """Render detached App and Agent details using the existing Console response schema."""
+    payload = app_detail_response(detail.app).model_dump(mode="json")
+    payload.update(
+        id=detail.agent_id,
+        app_id=detail.app_id,
+        backing_app_id=detail.backing_app_id,
+        hidden_app_backed=detail.hidden_app_backed,
+        debug_conversation_id=detail.debug_conversation_id,
+        debug_conversation_has_messages=detail.debug_conversation_message_count > 0,
+        debug_conversation_message_count=detail.debug_conversation_message_count,
+        role=detail.role,
+        access_ready=detail.access_ready,
+    )
+    return AgentAppDetailWithSite.model_validate(payload).model_dump(mode="json", exclude={"bound_agent_id"})
 
-    Each item starts from the shared App list shape, then drops
-    `bound_agent_id`, rewrites `id` to the backing roster Agent id, stores the
-    original App id in `app_id`, and injects roster-only `role` when a backing
-    Agent is present.
-    """
 
-    app_ids = [str(app.id) for app in app_pagination.items]
-    roster_service = _agent_roster_service(session)
-    agents_by_app_id = roster_service.load_app_backing_agents_by_app_id(
-        tenant_id=tenant_id,
-        app_ids=app_ids,
-    )
-    active_config_is_published_by_agent_id = roster_service.load_active_config_is_published_by_agent_id(
-        tenant_id=tenant_id,
-        agents=list(agents_by_app_id.values()),
-    )
-    published_references_by_agent_id = roster_service.load_published_references_by_agent_id(
-        tenant_id=tenant_id,
-        agent_ids=[agent.id for agent in agents_by_app_id.values()],
-    )
-    reference_counts_by_agent_id = roster_service.load_reference_counts_by_agent_id(
-        tenant_id=tenant_id,
-        agent_ids=[agent.id for agent in agents_by_app_id.values()],
-    )
-    debug_conversation_ids_by_agent_id = roster_service.load_or_create_build_conversation_ids_by_agent_id(
-        tenant_id=tenant_id,
-        agents=list(agents_by_app_id.values()),
-        account_id=current_user.id,
-    )
-    permission_keys_by_agent_id = agent_permissions.permission_keys_by_resource_ids(
-        [agent.id for agent in agents_by_app_id.values()]
-    )
+def _agent_app_list_response(page: AgentAppListPage) -> dict[str, object]:
+    """Render detached App records with their Agent-specific list fields."""
     payload = GenericAppPagination.model_validate(
         {
-            "page": app_pagination.page,
-            "limit": app_pagination.per_page,
-            "total": app_pagination.total,
-            "has_more": app_pagination.has_next,
-            "data": [AppResponseView(app, session=session) for app in app_pagination.items],
-        },
+            "page": page.page,
+            "limit": page.limit,
+            "total": page.total,
+            "has_more": page.has_more,
+            "data": [item.app for item in page.data],
+        }
     ).model_dump(mode="json")
     payload["publication_counts"] = {
-        "published": publication_counts.published,
-        "drafts": publication_counts.drafts,
+        "published": page.publication_counts.published,
+        "drafts": page.publication_counts.drafts,
     }
-    for item in payload["data"]:
-        app_id = item["id"]
+    for item, record in zip(payload["data"], page.data, strict=True):
         item.pop("bound_agent_id", None)
-        agent = agents_by_app_id.get(app_id)
-        if agent:
-            item["app_id"] = app_id
-            item["backing_app_id"] = agent.backing_app_id or app_id
-            item["hidden_app_backed"] = False
-            item["id"] = agent.id
-            item["debug_conversation_id"] = debug_conversation_ids_by_agent_id.get(agent.id)
-            item["permission_keys"] = permission_keys_by_agent_id.get(str(agent.id), [])
-            item["role"] = agent.role or ""
-            item["active_config_is_published"] = active_config_is_published_by_agent_id.get(agent.id, False)
-            item["reference_count"] = reference_counts_by_agent_id.get(agent.id, 0)
-            published_references = published_references_by_agent_id.get(agent.id, [])
-            item["published_reference_count"] = len(published_references)
-            item["published_references"] = [
-                {
-                    "app_id": reference["app_id"],
-                    "app_name": reference["app_name"],
-                    "app_icon_type": reference["app_icon_type"],
-                    "app_icon": reference["app_icon"],
-                    "app_icon_background": reference["app_icon_background"],
-                }
-                for reference in published_references
-            ]
+        if record.agent_id:
+            item.update(
+                app_id=record.app.id,
+                backing_app_id=record.backing_app_id,
+                hidden_app_backed=False,
+                id=record.agent_id,
+                debug_conversation_id=record.debug_conversation_id,
+                permission_keys=record.permission_keys,
+                role=record.role,
+                active_config_is_published=record.active_config_is_published,
+                reference_count=record.reference_count,
+                published_reference_count=len(record.published_references),
+                published_references=[
+                    {
+                        key: reference[key]
+                        for key in ("app_id", "app_name", "app_icon_type", "app_icon", "app_icon_background")
+                    }
+                    for reference in record.published_references
+                ],
+            )
     return AgentAppPagination.model_validate(payload).model_dump(
-        mode="json",
-        exclude={"data": {"__all__": {"bound_agent_id"}}},
+        mode="json", exclude={"data": {"__all__": {"bound_agent_id"}}}
     )
 
 
 def _resolve_agent_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
     return _agent_roster_service(session).get_agent_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
-
-
-def _resolve_agent_runtime_app_model(session: Session, *, tenant_id: str, agent_id: UUID) -> App:
-    return _agent_roster_service(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=str(agent_id))
-
-
-def _agent_api_key_count(session: Session, app_model: App) -> int:
-    return (
-        session.scalar(
-            select(func.count(ApiToken.id)).where(
-                or_(ApiToken.tenant_id == app_model.tenant_id, ApiToken.tenant_id.is_(None)),
-                ApiToken.type == ApiTokenType.APP,
-                ApiToken.app_id == app_model.id,
-            )
-        )
-        or 0
-    )
-
-
-def _agent_app_access_ready(session: Session, app_model: App) -> bool:
-    agent = _agent_roster_service(session).get_app_backing_agent(
-        tenant_id=app_model.tenant_id,
-        app_id=str(app_model.id),
-    )
-    return bool(agent and agent_has_workflow_callable_active_snapshot(session=session, agent=agent))
-
-
-def _serialize_agent_api_access(session: Session, app_model: App) -> dict:
-    base_url = app_model.api_base_url
-    access_ready = _agent_app_access_ready(session, app_model)
-    response = AgentApiAccessResponse(
-        access_ready=access_ready,
-        enabled=bool(app_model.enable_api and access_ready),
-        service_api_base_url=base_url,
-        chat_endpoint=f"{base_url}/chat-messages",
-        stop_endpoint=f"{base_url}/chat-messages/{{task_id}}/stop",
-        conversations_endpoint=f"{base_url}/conversations",
-        messages_endpoint=f"{base_url}/messages",
-        files_upload_endpoint=f"{base_url}/files/upload",
-        parameters_endpoint=f"{base_url}/parameters",
-        info_endpoint=f"{base_url}/info",
-        meta_endpoint=f"{base_url}/meta",
-        api_rpm=app_model.api_rpm or 0,
-        api_rph=app_model.api_rph or 0,
-        api_key_count=_agent_api_key_count(session, app_model),
-    )
-    return response.model_dump(mode="json")
-
-
-def _agent_observability_service(session: Session) -> AgentObservabilityService:
-    return AgentObservabilityService(session)
-
-
-def _parse_observability_time_range(start: str | None, end: str | None, account: Account):
-    timezone = account.timezone or "UTC"
-    try:
-        return parse_time_range(start, end, timezone)
-    except ValueError as exc:
-        abort(400, description=str(exc))
 
 
 def _query_values(name: str, alias_name: str | None = None) -> list[str]:
@@ -651,17 +542,10 @@ def _query_values(name: str, alias_name: str | None = None) -> list[str]:
 class AgentAppListApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentAppListQuery))
-    @console_ns.response(200, "Agent app list", console_ns.models[AgentAppPagination.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, current_tenant_id: str, current_user: Account):
+    @console_ns.response(HTTPStatus.OK, "Agent app list", console_ns.models[AgentAppPagination.__name__])
+    @console_account_admission()
+    def get(self, context: RequestContext) -> dict[str, object]:
         args = query_params_from_request(AgentAppListQuery, list_fields=APP_LIST_QUERY_ARRAY_FIELDS)
-        agent_is_published = None if args.publication_status is None else args.publication_status == "published"
-
         params = AppListParams(
             page=args.page,
             limit=args.limit,
@@ -672,68 +556,24 @@ class AgentAppListApi(Resource):
             creator_ids=args.creator_ids,
             is_created_by_me=args.is_created_by_me,
             status="normal",
-            agent_is_published=agent_is_published,
+            agent_is_published=None if args.publication_status is None else args.publication_status == "published",
         )
-
-        permissions = application_services().rbac.members.permissions(
-            current_tenant_id,
-            current_user.id,
-        )
-        if dify_config.RBAC_ENABLED:
-            access_filter = resolve_agent_access_filter(
-                current_tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            access_filter.apply_to_app_params(params, tenant_id=current_tenant_id, session=session)
-
-        app_service = AppService()
-        publication_counts = app_service.get_agent_publication_counts(
-            current_user.id,
-            current_tenant_id,
-            params,
-            session,
-        )
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, params, session)
-        if app_pagination is None:
-            empty = AgentAppPagination(
-                page=args.page,
-                limit=args.limit,
-                total=0,
-                has_more=False,
-                publication_counts=AgentPublicationCountsResponse(
-                    published=publication_counts.published,
-                    drafts=publication_counts.drafts,
-                ),
-                data=[],
-            )
-            return empty.model_dump(mode="json")
-
-        return _serialize_agent_app_pagination(
-            session,
-            app_pagination,
-            tenant_id=current_tenant_id,
-            current_user=current_user,
-            publication_counts=publication_counts,
-            agent_permissions=permissions.agent,
-        )
+        return _agent_app_list_response(application_services().agent_apps.collection.list_apps(context, params))
 
     @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppCreatePayload.__name__])
-    @console_ns.response(201, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__])
-    @console_ns.response(409, "Agent name already exists")
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_CREATE, Workspace()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.CREATED, "Agent app created successfully", console_ns.models[AgentAppDetailWithSite.__name__]
+    )
+    @console_ns.response(HTTPStatus.CONFLICT, "Agent name already exists")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_CREATE, Workspace())],
+    )
     @model_validate(AgentAppCreatePayload)
-    def post(self, req_data: AgentAppCreatePayload, session: Session, current_tenant_id: str, current_user: Account):
+    def post(self, req_data: AgentAppCreatePayload, context: RequestContext) -> tuple[dict[str, object], int]:
         params = CreateAppParams(
             name=req_data.name,
             description=req_data.description,
@@ -743,77 +583,80 @@ class AgentAppListApi(Resource):
             icon=req_data.icon,
             icon_background=req_data.icon_background,
         )
-
-        app = AppService().create_app(current_tenant_id, params, current_user, session=session)
-        return _serialize_agent_app_detail(session, app, current_user=current_user), 201
+        try:
+            detail = application_services().agent_apps.collection.create(context, params)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return _agent_app_detail_response(detail), HTTPStatus.CREATED
 
 
 @console_ns.route("/agent/<uuid:agent_id>")
 class AgentAppApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId()))
-    @enterprise_license_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_app_detail(session, app_model, current_user=current_user, agent_id=str(agent_id))
+    @console_ns.response(HTTPStatus.OK, "Agent app detail", console_ns.models[AgentAppDetailWithSite.__name__])
+    @console_account_admission(
+        require_valid_enterprise_license=True,
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_PREVIEW, AgentId())],
+    )
+    def get(self, request_context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's detail and its Build conversation."""
+        try:
+            detail = application_services().agent_apps.detail.get(request_context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return _agent_app_detail_response(detail)
 
     @error_responses(AgentNameConflictError, AgentNotFoundError)
     @console_ns.expect(console_ns.models[AgentAppUpdatePayload.__name__])
-    @console_ns.response(200, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @console_ns.response(400, "Invalid request parameters")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_EDIT, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
+    @console_ns.response(
+        HTTPStatus.OK, "Agent app updated successfully", console_ns.models[AgentAppDetailWithSite.__name__]
+    )
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_ns.response(HTTPStatus.BAD_REQUEST, "Invalid request parameters")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_EDIT, AgentId())],
+    )
     @model_validate(AgentAppUpdatePayload)
     def put(
         self,
         req_data: AgentAppUpdatePayload,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
+        request_context: RequestContext,
         agent_id: UUID,
-    ):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        args_dict: AppService.ArgsDict = {
-            "name": req_data.name,
-            "description": req_data.description or "",
-            "icon_type": req_data.icon_type,
-            "icon": req_data.icon or "",
-            "icon_background": req_data.icon_background or "",
-            "use_icon_as_answer_icon": req_data.use_icon_as_answer_icon or False,
-            "max_active_requests": req_data.max_active_requests or 0,
-            "role": req_data.role,
-        }
-        updated = AppService().update_app(app_model, args_dict, session=session)
-        return _serialize_agent_app_detail(session, updated, current_user=current_user)
+    ) -> dict[str, object]:
+        """Update a roster Agent App and return its current detail."""
+        params = UpdateAppParams(
+            name=req_data.name,
+            description=req_data.description or "",
+            icon_type=req_data.icon_type,
+            icon=req_data.icon or "",
+            icon_background=req_data.icon_background or "",
+            use_icon_as_answer_icon=req_data.use_icon_as_answer_icon or False,
+            max_active_requests=req_data.max_active_requests or 0,
+            role=req_data.role,
+        )
+        try:
+            detail = application_services().agent_apps.detail.update(request_context, str(agent_id), params)
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentAppNameConflictError as exc:
+            raise AgentNameConflictError from exc
+        return _agent_app_detail_response(detail)
 
     @error_responses(AgentNotFoundError)
-    @console_ns.response(204, "Agent app deleted successfully")
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_DELETE, AgentId()))
-    @with_current_tenant_id
-    @with_session
-    def delete(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        AppService().delete_app(app_model, session=session)
-        return "", 204
+    @console_ns.response(HTTPStatus.NO_CONTENT, "Agent app deleted successfully")
+    @console_ns.response(HTTPStatus.FORBIDDEN, "Insufficient permissions")
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_DELETE, AgentId())],
+    )
+    def delete(self, request_context: RequestContext, agent_id: UUID) -> tuple[str, int]:
+        """Delete an Agent App and schedule its resource cleanup."""
+        try:
+            application_services().agent_apps.lifecycle.delete(request_context, str(agent_id))
+        except AgentAppNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return "", HTTPStatus.NO_CONTENT
 
 
 @console_ns.route("/agent/<uuid:agent_id>/debug-conversation/refresh")
@@ -1051,41 +894,6 @@ class AgentAppCopyApi(Resource):
         return _serialize_agent_app_detail(session, copied_app, current_user=current_user), 201
 
 
-@console_ns.route("/agent/<uuid:agent_id>/api-access")
-class AgentApiAccessApi(Resource):
-    @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent service API access", console_ns.models[AgentApiAccessResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_VIEW, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        return _serialize_agent_api_access(session, app_model)
-
-
-@console_ns.route("/agent/<uuid:agent_id>/api-enable")
-class AgentApiStatusApi(Resource):
-    @error_responses(AgentAccessNotReadyError, AgentNotFoundError)
-    @console_ns.expect(console_ns.models[AgentApiStatusPayload.__name__])
-    @console_ns.response(200, "Agent service API status updated", console_ns.models[AgentApiAccessResponse.__name__])
-    @console_ns.response(403, "Insufficient permissions")
-    @setup_required
-    @login_required
-    @is_admin_or_owner_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_ACCESS_POINT_MANAGE, AgentId()))
-    @with_current_tenant_id
-    @with_session
-    @model_validate(AgentApiStatusPayload)
-    def post(self, req_data: AgentApiStatusPayload, session: Session, tenant_id: str, agent_id: UUID):
-        app_model = _resolve_agent_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        app_model = AppService().update_app_api_status(app_model, req_data.enable_api, session=session)
-        return _serialize_agent_api_access(session, app_model)
-
-
 @console_ns.route("/agent/<uuid:agent_id>/api-keys")
 class AgentApiKeyListApi(Resource):
     @console_ns.response(200, "Agent service API keys", console_ns.models[ApiKeyList.__name__])
@@ -1132,85 +940,61 @@ class AgentApiKeyApi(Resource):
 @console_ns.route("/agent/invite-options")
 class AgentInviteOptionsApi(Resource):
     @console_ns.doc(params=query_params_from_model(AgentInviteOptionsQuery))
-    @console_ns.response(200, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_ns.response(HTTPStatus.OK, "Agent invite options", console_ns.models[AgentInviteOptionsResponse.__name__])
+    @console_account_admission()
     @model_validate(AgentInviteOptionsQuery)
     def get(
         self,
         req_data: AgentInviteOptionsQuery,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-    ):
-        accessible_agent_ids = None
-        if dify_config.RBAC_ENABLED:
-            permissions = application_services().rbac.members.permissions(
-                tenant_id,
-                current_user.id,
-            )
-            access_filter = resolve_agent_access_filter(
-                tenant_id,
-                current_user.id,
-                permissions=permissions,
-            )
-            if access_filter.accessible_agent_ids is not None:
-                accessible_agent_ids = sorted(access_filter.accessible_agent_ids)
-
+        context: RequestContext,
+    ) -> dict[str, object]:
+        """Return visible Workflow-callable Agents and their current workflow usage."""
         return dump_response(
             AgentInviteOptionsResponse,
-            _agent_roster_service(session).list_invite_options(
-                tenant_id=tenant_id,
+            application_services().agent_invite_options.list(
+                context,
                 page=req_data.page,
                 limit=req_data.limit,
                 keyword=req_data.keyword,
                 app_id=req_data.app_id,
-                accessible_agent_ids=accessible_agent_ids,
             ),
         )
+
+
+def _agent_log_query() -> AgentLogQuery:
+    """Parse repeated and indexed log query parameters, including singular aliases."""
+    query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
+    query_data["sources"] = _query_values("sources", "source")
+    query_data["statuses"] = _query_values("statuses", "status")
+    query = AgentLogsQuery.model_validate(query_data)
+    return AgentLogQuery(
+        page=query.page,
+        limit=query.limit,
+        keyword=query.keyword,
+        statuses=tuple(query.statuses),
+        sources=tuple(query.sources),
+        sort_by=query.sort_by,
+        sort_order=query.sort_order,
+        start=query.start,
+        end=query.end,
+    )
 
 
 @console_ns.route("/agent/<uuid:agent_id>/logs")
 class AgentLogsApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
-    @console_ns.response(200, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _query_values("sources", "source")
-        query_data["statuses"] = _query_values("statuses", "status")
-        query = AgentLogsQuery.model_validate(query_data)
-        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+    @console_ns.response(HTTPStatus.OK, "Agent logs", console_ns.models[AgentLogListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's conversation logs."""
+        query = _agent_log_query()
         try:
-            payload = _agent_observability_service(session).list_logs(
-                app=app_model,
-                agent_id=str(agent_id),
-                params=AgentLogQueryParams(
-                    page=query.page,
-                    limit=query.limit,
-                    keyword=query.keyword,
-                    statuses=tuple(query.statuses),
-                    sources=tuple(query.sources),
-                    sort_by=query.sort_by,
-                    sort_order=query.sort_order,
-                    start=start,
-                    end=end,
-                ),
-            )
+            payload = application_services().agent_observability.list_logs(context, str(agent_id), query)
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogListResponse, payload)
 
 
@@ -1218,57 +1002,33 @@ class AgentLogsApi(Resource):
 class AgentLogMessagesApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentLogsQuery))
-    @console_ns.response(200, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, conversation_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        query_data: dict[str, object] = dict(request.args.to_dict(flat=True))
-        query_data["sources"] = _query_values("sources", "source")
-        query_data["statuses"] = _query_values("statuses", "status")
-        query = AgentLogsQuery.model_validate(query_data)
-        start, end = _parse_observability_time_range(query.start, query.end, current_user)
+    @console_ns.response(HTTPStatus.OK, "Agent log messages", console_ns.models[AgentLogMessageListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID, conversation_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's messages for a conversation."""
+        query = _agent_log_query()
         try:
-            payload = _agent_observability_service(session).list_log_messages(
-                app=app_model,
-                agent_id=str(agent_id),
-                conversation_id=str(conversation_id),  # pyrefly: ignore[unnecessary-type-conversion]
-                params=AgentLogQueryParams(
-                    page=query.page,
-                    limit=query.limit,
-                    keyword=query.keyword,
-                    statuses=tuple(query.statuses),
-                    sources=tuple(query.sources),
-                    sort_by=query.sort_by,
-                    sort_order=query.sort_order,
-                    start=start,
-                    end=end,
-                ),
+            payload = application_services().agent_observability.list_log_messages(
+                context, str(agent_id), str(conversation_id), query
             )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentLogMessageListResponse, payload)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/log-sources")
 class AgentLogSourcesApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        payload = _agent_observability_service(session).list_log_sources(app=app_model, agent_id=str(agent_id))
+    @console_ns.response(HTTPStatus.OK, "Agent log sources", console_ns.models[AgentLogSourceListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_LOG_MANAGE, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return the admitted Agent's available log sources."""
+        try:
+            payload = application_services().agent_observability.list_log_sources(context, str(agent_id))
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         return dump_response(AgentLogSourceListResponse, payload)
 
 
@@ -1277,103 +1037,74 @@ class AgentStatisticsSummaryApi(Resource):
     @error_responses(AgentNotFoundError)
     @console_ns.doc(params=query_params_from_model(AgentStatisticsQuery))
     @console_ns.response(
-        200,
+        HTTPStatus.OK,
         "Agent monitoring summary and chart data",
         console_ns.models[AgentStatisticSummaryEnvelopeResponse.__name__],
     )
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_MONITOR, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session(write=False)
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_MONITOR, AgentId())])
     @model_validate(AgentStatisticsQuery)
-    def get(
-        self,
-        req_data: AgentStatisticsQuery,
-        session: Session,
-        tenant_id: str,
-        current_user: Account,
-        agent_id: UUID,
-    ):
-        app_model = _resolve_agent_runtime_app_model(session, tenant_id=tenant_id, agent_id=agent_id)
-        timezone = current_user.timezone or "UTC"
-        start, end = _parse_observability_time_range(req_data.start, req_data.end, current_user)
+    def get(self, req_data: AgentStatisticsQuery, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        """Return Agent monitoring data using the admitted account's timezone."""
         try:
-            payload = _agent_observability_service(session).get_statistics_summary(
-                app=app_model,
-                agent_id=str(agent_id),
-                params=AgentStatisticsQueryParams(source=req_data.source, start=start, end=end, timezone=timezone),
+            payload = application_services().agent_observability.statistics(
+                context,
+                str(agent_id),
+                AgentObservabilityStatisticsQuery(source=req_data.source, start=req_data.start, end=req_data.end),
             )
+        except AgentObservabilityNotFoundError as exc:
+            raise AgentNotFoundError from exc
         except ValueError as exc:
-            abort(400, description=str(exc))
+            abort(HTTPStatus.BAD_REQUEST, description=str(exc))
         return dump_response(AgentStatisticSummaryEnvelopeResponse, payload)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions")
 class AgentRosterVersionsApi(Resource):
     @error_responses(AgentNotFoundError)
-    @console_ns.response(200, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID):
-        return dump_response(
-            AgentConfigSnapshotListResponse,
-            {"data": _agent_roster_service(session).list_agent_versions(tenant_id=tenant_id, agent_id=str(agent_id))},
-        )
+    @console_ns.response(HTTPStatus.OK, "Agent versions", console_ns.models[AgentConfigSnapshotListResponse.__name__])
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID) -> dict[str, object]:
+        try:
+            versions = application_services().agent_versions.list_versions(context, str(agent_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        return dump_response(AgentConfigSnapshotListResponse, {"data": versions})
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>")
 class AgentRosterVersionDetailApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_tenant_id
-    @with_session(write=False)
-    def get(self, session: Session, tenant_id: str, agent_id: UUID, version_id: UUID):
-        return dump_response(
-            AgentConfigSnapshotDetailResponse,
-            _agent_roster_service(session).get_agent_version_detail(
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                version_id=str(version_id),
-            ),
-        )
+    @console_ns.response(
+        HTTPStatus.OK, "Agent version detail", console_ns.models[AgentConfigSnapshotDetailResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())])
+    def get(self, context: RequestContext, agent_id: UUID, version_id: UUID) -> dict[str, object]:
+        try:
+            version = application_services().agent_versions.get_version(context, str(agent_id), str(version_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentVersionUnavailableError as exc:
+            raise AgentVersionNotFoundError from exc
+        return dump_response(AgentConfigSnapshotDetailResponse, version)
 
 
 @console_ns.route("/agent/<uuid:agent_id>/versions/<uuid:version_id>/restore")
 class AgentRosterVersionRestoreApi(Resource):
     @error_responses(AgentNotFoundError, AgentVersionNotFoundError)
-    @console_ns.response(200, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @edit_permission_required
-    @rbac_permission_required(RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId()))
-    @with_current_user
-    @with_current_tenant_id
-    @with_session
-    def post(self, session: Session, tenant_id: str, current_user: Account, agent_id: UUID, version_id: UUID):
-        if (
-            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
-            and not FeatureService.get_workspace_plan(tenant_id).is_paid
-        ):
-            abort(403, description="This feature requires a paid plan.")
-
-        return dump_response(
-            AgentConfigSnapshotRestoreResponse,
-            _agent_roster_service(session).restore_agent_version(
-                tenant_id=tenant_id,
-                agent_id=str(agent_id),
-                version_id=str(version_id),
-                account_id=current_user.id,
-            ),
-        )
+    @console_ns.response(
+        HTTPStatus.OK, "Agent version restored", console_ns.models[AgentConfigSnapshotRestoreResponse.__name__]
+    )
+    @console_account_admission(
+        allowed_roles=frozenset({TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}),
+        rbac_checks=[RBACCheck(RBACPermission.AGENT_RELEASE_AND_VERSION, AgentId())],
+    )
+    def post(self, context: RequestContext, agent_id: UUID, version_id: UUID) -> dict[str, object]:
+        try:
+            restored = application_services().agent_versions.restore_version(context, str(agent_id), str(version_id))
+        except VersionAgentNotFoundError as exc:
+            raise AgentNotFoundError from exc
+        except AgentVersionUnavailableError as exc:
+            raise AgentVersionNotFoundError from exc
+        except AgentVersionPlanRequiredError:
+            abort(HTTPStatus.FORBIDDEN, description="This feature requires a paid plan.")
+        return dump_response(AgentConfigSnapshotRestoreResponse, restored)

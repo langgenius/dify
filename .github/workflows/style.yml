@@ -71,7 +71,7 @@ jobs:
 
       - name: Install dependencies
         if: inputs.run-python-style
-        run: uv sync --project api --dev
+        run: uv sync --project api --dev --group evaluation
 
       - name: Run Import Linter
         if: inputs.run-python-style
@@ -184,6 +184,9 @@ jobs:
 
       - name: Check generated i18n types
         run: vp run i18n:check-types
+
+      - name: Check Browser spec policy
+        run: vp run lint:browser-spec-policy
 
       - name: Web tsslint
         env:

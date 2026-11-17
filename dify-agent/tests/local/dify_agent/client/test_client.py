@@ -828,6 +828,58 @@ def test_stream_events_raises_when_reconnects_are_exhausted() -> None:
     assert calls == 2
 
 
+def test_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    """A proxy that drops every connection must not fail a run that keeps resuming."""
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    client = Client(
+        base_url="http://testserver",
+        sync_http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+
+    events = list(client.stream_events_sync("run-1", max_reconnects=1, reconnect_delay_seconds=0))
+
+    assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+    assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
+
+
+def test_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
+            return httpx.Response(
+                200,
+                stream=DisconnectingSyncStream(_event_frame(progress_event)),
+            )
+        return httpx.Response(200, stream=DisconnectingSyncStream(": keepalive\n\n"))
+
+    events: list[RunEvent] = []
+    with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+        client = Client(base_url="http://testserver", sync_http_client=http_client)
+        with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+            for event in client.stream_events_sync("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                events.append(event)
+
+    assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+    assert events == [progress_event]
+
+
 def test_stream_events_default_reconnect_budget_is_finite() -> None:
     calls = 0
 
@@ -1008,6 +1060,62 @@ def test_async_stream_events_reconnects_from_latest_event_after_transport_error(
     asyncio.run(scenario())
 
 
+def test_async_stream_events_resets_reconnect_budget_after_each_delivered_event() -> None:
+    seen_after: list[str] = []
+    progress_events = 5
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        index = len(seen_after)
+        if index <= progress_events:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(RunStartedEvent(id=f"{index}-0", run_id="run-1"))),
+            )
+        return httpx.Response(200, content=_event_frame(_run_succeeded_event(event_id=f"{index}-0")))
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        events = [event async for event in client.stream_events("run-1", max_reconnects=1, reconnect_delay_seconds=0)]
+
+        assert seen_after == ["0-0", "1-0", "2-0", "3-0", "4-0", "5-0"]
+        assert [event.type for event in events] == ["run_started"] * progress_events + ["run_succeeded"]
+        await http_client.aclose()
+
+    asyncio.run(scenario())
+
+
+def test_async_stream_events_still_bounds_consecutive_reconnects_after_progress() -> None:
+    """Only a delivered event restores spent retries; comment-only heartbeats do not."""
+    seen_after: list[str] = []
+    progress_event = RunStartedEvent(id="1-0", run_id="run-1")
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_after.append(request.url.params["after"])
+        assert len(seen_after) <= 4, "heartbeats must not restore the reconnect budget"
+        if len(seen_after) == 2:
+            return httpx.Response(
+                200,
+                stream=DisconnectingAsyncStream(_event_frame(progress_event)),
+            )
+        return httpx.Response(200, stream=DisconnectingAsyncStream(": keepalive\n\n"))
+
+    async def scenario() -> None:
+        events: list[RunEvent] = []
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            with pytest.raises(DifyAgentStreamError, match="^SSE stream reconnect attempts exhausted$"):
+                async for event in client.stream_events("run-1", max_reconnects=2, reconnect_delay_seconds=0):
+                    events.append(event)
+
+        assert seen_after == ["0-0", "0-0", "1-0", "1-0"]
+        assert events == [progress_event]
+
+    asyncio.run(scenario())
+
+
 def test_async_stream_events_reconnects_after_eof_before_terminal() -> None:
     calls = 0
 
@@ -1098,3 +1206,39 @@ def test_stream_timeout_can_reconnect_until_terminal() -> None:
 
     assert calls == 2
     assert [event.type for event in events] == ["run_succeeded"]
+
+
+def test_sync_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    """A backend that cannot snapshot reports explicit null; the client must
+    preserve it instead of failing or fabricating a ref."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    http_client = httpx.Client(transport=httpx.MockTransport(handler))
+    client = Client(base_url="http://testserver", sync_http_client=http_client)
+
+    created = client.create_home_snapshot_from_binding_sync(_create_home_snapshot_from_binding_request())
+
+    assert created.snapshot_ref is None
+    http_client.close()
+
+
+def test_async_home_snapshot_client_parses_null_snapshot_ref() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.method == "POST"
+        assert request.url.path == "/home-snapshots/from-binding"
+        return httpx.Response(201, json={"snapshot_ref": None})
+
+    async def scenario() -> None:
+        http_client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+        client = Client(base_url="http://testserver", async_http_client=http_client)
+
+        created = await client.create_home_snapshot_from_binding(_create_home_snapshot_from_binding_request())
+
+        assert created.snapshot_ref is None
+        await http_client.aclose()
+
+    asyncio.run(scenario())
