@@ -33,7 +33,7 @@ from controllers.console.app.workflow import (
 )
 from controllers.console.app.wraps import with_session
 from controllers.console.datasets.error import PipelineNotFoundError
-from controllers.console.datasets.wraps import get_rag_pipeline, load_rag_pipeline, require_tenant_id
+from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.workspace.tool_providers import ToolProviderApiEntityResponse
 from controllers.console.wraps import (
     RBACPermission,
@@ -411,14 +411,18 @@ class DraftRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @with_session
+    @get_rag_pipeline
     @model_validate(RagPipelineDraftWorkflowRunPayload)
     def post(
-        self, req_data: RagPipelineDraftWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID
+        self,
+        req_data: RagPipelineDraftWorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        pipeline: Pipeline,
     ):
         """
         Run draft workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id), tenant_id=require_tenant_id(current_user))
         args = req_data.model_dump()
 
         try:
@@ -449,12 +453,18 @@ class PublishedRagPipelineRunApi(Resource):
     @rbac_permission_required(RBACCheck(RBACPermission.DATASET_EDIT, DatasetByPipeline()))
     @with_current_user
     @with_session
+    @get_rag_pipeline
     @model_validate(PublishedWorkflowRunPayload)
-    def post(self, req_data: PublishedWorkflowRunPayload, session: Session, current_user: Account, pipeline_id: UUID):
+    def post(
+        self,
+        req_data: PublishedWorkflowRunPayload,
+        session: Session,
+        current_user: Account,
+        pipeline: Pipeline,
+    ):
         """
         Run published workflow
         """
-        pipeline = load_rag_pipeline(session, str(pipeline_id), tenant_id=require_tenant_id(current_user))
         args = req_data.model_dump(exclude_none=True)
         streaming = req_data.response_mode == "streaming"
 

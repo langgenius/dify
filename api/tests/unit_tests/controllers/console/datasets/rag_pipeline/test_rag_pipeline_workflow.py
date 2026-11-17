@@ -724,7 +724,6 @@ class TestRagPipelineWorkflowCases:
         with (
             Session(sqlite_engine) as session,
             app.test_request_context("/", json=payload),
-            patch.object(module, "load_rag_pipeline", return_value=pipeline),
             patch.object(module.PipelineGenerateService, "generate", side_effect=record_generate),
             patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
         ):
@@ -733,7 +732,7 @@ class TestRagPipelineWorkflowCases:
                 if api_type is module.DraftRagPipelineRunApi
                 else PublishedWorkflowRunPayload.model_validate(payload)
             )
-            response = handler(api, req_data, session, _account(), pipeline.id)
+            response = handler(api, req_data, session, _account(), pipeline)
 
         assert response == {"ok": True}
         assert recorded == [(session, pipeline_application, pipeline.id)]
@@ -765,13 +764,12 @@ class TestRagPipelineWorkflowCases:
         with (
             Session(sqlite_engine) as session,
             app.test_request_context("/", json=payload),
-            patch.object(module, "load_rag_pipeline", return_value=pipeline),
             patch.object(
                 module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")
             ) as generate,
             pytest.raises(InvokeRateLimitHttpError),
         ):
-            handler(api, req_data, session, _account(), pipeline.id)
+            handler(api, req_data, session, _account(), pipeline)
 
         assert generate.call_args.kwargs["session"] is session
         assert generate.call_args.kwargs["generator"] is pipeline_application

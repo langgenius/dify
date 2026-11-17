@@ -4,26 +4,11 @@ from functools import wraps
 from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
-from extensions.ext_database import current_scoped_session
+from extensions.ext_database import db
 from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
-from machinery.errors import ActiveWorkspaceRequiredError
-from models import Account
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
-
-
-def require_tenant_id(account: Account) -> str:
-    """Return the active tenant of an account the controller already holds.
-
-    Precondition: ``account`` is the signed-in console account.
-    Postcondition: returns its tenant id. An account with no active workspace
-    raises ``ActiveWorkspaceRequiredError``.
-    """
-    tenant_id = account.current_tenant_id
-    if tenant_id is None:
-        raise ActiveWorkspaceRequiredError()
-    return tenant_id
 
 
 def load_rag_pipeline(session: Session, pipeline_id: str, *, tenant_id: str) -> Pipeline:
@@ -85,7 +70,7 @@ def _pipeline_for_call(
 
 def get_rag_pipeline_with(
     *,
-    session_factory: Callable[[], Session] = current_scoped_session,
+    session_factory: Callable[[], Session] = db.session,
     resolve_tenant_id: Callable[[], str] = _request_tenant_id,
 ):
     """Build ``get_rag_pipeline`` with an explicit session factory and tenant resolver.
@@ -126,28 +111,12 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
     A handler that composes ``@with_session`` directly above this decorator loads
     the pipeline through that request session. A handler that has not migrated
-    loads it through ``current_scoped_session``, the same request-scoped session
-    those handlers later commit.
+    loads it through the application's scoped session, the same one those handlers
+    later commit and the fallback this refactor removes once every caller injects.
 
     Precondition: ``pipeline_id`` is a keyword argument and a tenant is signed in.
     Postcondition: the view receives ``pipeline`` instead of ``pipeline_id``. A
     missing ``pipeline_id`` raises ``ValueError``. A pipeline outside the tenant
     raises ``PipelineNotFoundError``. Nothing is written.
     """
-
-    @wraps(view)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-        if not kwargs.get("pipeline_id"):
-            raise ValueError("missing pipeline_id in path parameters")
-
-        pipeline_id = str(kwargs.get("pipeline_id"))
-        del kwargs["pipeline_id"]
-        kwargs["pipeline"] = _pipeline_for_call(
-            args,
-            pipeline_id,
-            session_factory=current_scoped_session,
-            resolve_tenant_id=_request_tenant_id,
-        )
-        return view(*args, **kwargs)
-
-    return document_errors(decorated_view, PipelineNotFoundError)
+    return get_rag_pipeline_with()(view)

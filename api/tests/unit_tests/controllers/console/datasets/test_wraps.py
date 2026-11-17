@@ -1,20 +1,25 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from inspect import unwrap
 from uuid import uuid4
 
 import pytest
+from flask import Flask, g
+from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, object_session, sessionmaker
 
 from controllers.console.datasets.error import PipelineNotFoundError
 from controllers.console.datasets.rag_pipeline.datasource_content_preview import DataSourceContentPreviewApi
 from controllers.console.datasets.rag_pipeline.rag_pipeline import PublishCustomizedPipelineTemplateApi
+from controllers.console.datasets.rag_pipeline.rag_pipeline_workflow import (
+    DraftRagPipelineRunApi,
+    PublishedRagPipelineRunApi,
+)
 from controllers.console.datasets.wraps import (
     get_rag_pipeline,
     get_rag_pipeline_with,
     load_rag_pipeline,
-    require_tenant_id,
 )
-from machinery.errors import ActiveWorkspaceRequiredError
+from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Pipeline
 from tests.helpers.unit.model_factories import make_account, make_tenant
@@ -45,6 +50,22 @@ def _committed_name(factory: sessionmaker[Session], pipeline_id: str) -> str:
         stored = other.get(Pipeline, pipeline_id)
         assert stored is not None
         return stored.name
+
+
+@pytest.fixture
+def scoped_session_app(sqlite_engine: Engine) -> Iterator[Flask]:
+    """A Flask app whose ``db.session`` is bound to the pristine test database.
+
+    The production defaults of ``get_rag_pipeline`` read that scoped session, so
+    exercising them needs a real application registered with Flask-SQLAlchemy.
+    """
+    app = Flask(__name__)
+    app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=str(sqlite_engine.url))
+    db.init_app(app)
+    yield app
+    with app.app_context():
+        db.session.remove()
+        db.engine.dispose()
 
 
 def test_missing_pipeline_id() -> None:
@@ -82,16 +103,48 @@ def test_load_rag_pipeline_rejects_a_missing_row(sqlite_session: Session) -> Non
         load_rag_pipeline(sqlite_session, str(uuid4()), tenant_id=str(uuid4()))
 
 
-def test_require_tenant_id_reads_the_account_workspace() -> None:
+def test_unmigrated_handler_loads_through_the_scoped_session(scoped_session_app: Flask) -> None:
+    """A handler that has not migrated gets its pipeline from the request-scoped session.
+
+    No dependency is patched here: the decorator keeps its production defaults, so
+    ``db.session`` and ``current_account_with_tenant`` both run for real.
+    """
     tenant = make_tenant()
     account = make_account(tenant=tenant)
 
-    assert require_tenant_id(account) == tenant.id
+    with scoped_session_app.app_context(), scoped_session_app.test_request_context("/"):
+        g._login_user = account
+        pipeline = _persist_pipeline(db.session(), tenant_id=tenant.id, name="Scoped pipeline")
+
+        @get_rag_pipeline
+        def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str = "") -> Pipeline:
+            assert pipeline is not None
+            assert pipeline_id == ""
+            return pipeline
+
+        loaded = dummy_view(pipeline_id=pipeline.id)
+
+        assert loaded.id == pipeline.id
+        assert loaded.name == "Scoped pipeline"
+        assert object_session(loaded) is db.session()
 
 
-def test_require_tenant_id_rejects_an_account_without_a_workspace() -> None:
-    with pytest.raises(ActiveWorkspaceRequiredError):
-        require_tenant_id(make_account())
+def test_unmigrated_handler_rejects_another_tenants_row(scoped_session_app: Flask) -> None:
+    tenant = make_tenant()
+    account = make_account(tenant=tenant)
+
+    with scoped_session_app.app_context(), scoped_session_app.test_request_context("/"):
+        g._login_user = account
+        pipeline = _persist_pipeline(db.session(), tenant_id=str(uuid4()))
+
+        @get_rag_pipeline
+        def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str = "") -> Pipeline:
+            assert pipeline_id == ""
+            assert pipeline is not None
+            return pipeline
+
+        with pytest.raises(PipelineNotFoundError):
+            dummy_view(pipeline_id=pipeline.id)
 
 
 def test_pipeline_id_removed_from_kwargs(
@@ -206,8 +259,18 @@ def _decorator_layers[**P, R](view: Callable[P, R]) -> list[str]:
 
 @pytest.mark.parametrize(
     "view",
-    [PublishCustomizedPipelineTemplateApi.post, DataSourceContentPreviewApi.post],
-    ids=["publish_customized_pipeline_template", "datasource_content_preview"],
+    [
+        PublishCustomizedPipelineTemplateApi.post,
+        DataSourceContentPreviewApi.post,
+        DraftRagPipelineRunApi.post,
+        PublishedRagPipelineRunApi.post,
+    ],
+    ids=[
+        "publish_customized_pipeline_template",
+        "datasource_content_preview",
+        "draft_rag_pipeline_run",
+        "published_rag_pipeline_run",
+    ],
 )
 def test_migrated_handlers_inject_their_session_into_get_rag_pipeline[**P, R](view: Callable[P, R]) -> None:
     """``with_session`` sits directly above ``get_rag_pipeline``, so the pipeline loads through the

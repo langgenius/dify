@@ -2,7 +2,6 @@ import logging
 
 import gevent
 from sqlalchemy import event
-from sqlalchemy.orm import Session
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
@@ -49,19 +48,6 @@ def _setup_gevent_compatibility():
             _safe_rollback(dbapi_connection)
 
     _gevent_compatibility_setup = True
-
-
-def current_scoped_session() -> Session:
-    """Return the request-scoped session owned by the Flask application.
-
-    Unmigrated console handlers read and update rows through this session, then
-    commit it. Callers that already hold a session should pass that session
-    instead.
-
-    Precondition: ``init_app`` has run and a Flask application context is active.
-    Postcondition: returns the scoped session for this context. Nothing is written.
-    """
-    return db.session()
 
 
 def init_app(app: DifyApp):
