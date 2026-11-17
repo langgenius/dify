@@ -239,6 +239,7 @@ def test_generated_template_uses_provided_column_names() -> None:
         ],
         "App",
         frozenset({"Knowledge : expected_output"}),
+        language="zh-Hans",
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
@@ -264,8 +265,43 @@ def test_generated_template_uses_provided_column_names() -> None:
     assert worksheet["A2"].alignment.wrap_text
 
 
+@pytest.mark.parametrize(
+    ("language", "expected_help", "expected_notice"),
+    [
+        (
+            "en-US",
+            "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+            "This row contains example explanations. Delete this row before uploading the dataset for evaluation.",
+        ),
+        (
+            "fr-FR",
+            "Saisissez l’entrée de cette ligne, par exemple une question, "
+            "une instruction ou la valeur attendue par ce champ.",
+            "Cette ligne contient des explications à titre d’exemple. "
+            "Supprimez-la avant de téléverser le jeu de données pour l’évaluation.",
+        ),
+        (
+            "unsupported",
+            "Enter the input for this test row, such as a question, instruction, or value required by this field.",
+            "This row contains example explanations. Delete this row before uploading the dataset for evaluation.",
+        ),
+    ],
+)
+def test_generated_template_uses_requested_language(language: str, expected_help: str, expected_notice: str) -> None:
+    content = EvaluationService._generate_xlsx_template(
+        [{"name": "index", "type": "number"}, {"name": "input", "type": "string"}],
+        "App",
+        language=language,
+    )
+    worksheet = load_workbook(io.BytesIO(content)).active
+
+    assert worksheet is not None
+    assert worksheet["B2"].value == expected_help
+    assert worksheet["C2"].value == expected_notice
+
+
 def test_retrieval_dataset_template_has_query_and_reference_columns() -> None:
-    content, filename = EvaluationService.generate_retrieval_dataset_template()
+    content, filename = EvaluationService.generate_retrieval_dataset_template("zh-Hans")
     workbook = load_workbook(io.BytesIO(content))
     worksheet = workbook.active
 
@@ -315,6 +351,7 @@ def test_generated_template_includes_reference_columns_for_selected_metrics(
             ],
         ),
         sqlite_session,
+        language="zh-Hans",
     )
     worksheet = load_workbook(io.BytesIO(content)).active
 
@@ -662,6 +699,7 @@ def test_standalone_agent_template_uses_plain_success_criteria_column(sqlite_ses
             ],
         ),
         sqlite_session,
+        language="zh-Hans",
     )
     workbook = load_workbook(io.BytesIO(content))
     worksheet = workbook.active

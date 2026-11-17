@@ -71,6 +71,7 @@ from services.errors.evaluation import (
     EvaluationMaxConcurrentRunsError,
     EvaluationNotFoundError,
 )
+from services.evaluation_template_i18n import EvaluationTemplateCopy, get_evaluation_template_copy
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
@@ -201,6 +202,7 @@ class EvaluationService:
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
+        language: str = "en-US",
     ) -> tuple[bytes, str]:
         """
         Generate evaluation dataset template as XLSX bytes.
@@ -212,6 +214,7 @@ class EvaluationService:
         :param target_type: Target type string ("apps", "snippets", or "agents")
         :param data: Evaluation configuration used to determine reference columns
         :param session: Database session used to resolve target inputs
+        :param language: The current interface language; unsupported values use English
         :return: Tuple of (xlsx_content_bytes, filename)
         :raises ValueError: If target type is not supported or app mode is excluded
         """
@@ -222,7 +225,7 @@ class EvaluationService:
             for node in metric.node_info_list
             if cls.NODE_TYPE_CATEGORY_MAPPING.get(node.type) == EvaluationCategory.RETRIEVAL
         )
-        xlsx_content = cls._generate_xlsx_template(columns, target.name, retrieval_output_columns)
+        xlsx_content = cls._generate_xlsx_template(columns, target.name, retrieval_output_columns, language=language)
 
         # Build filename
         truncated_name = target.name[:10] + "..." if len(target.name) > 10 else target.name
@@ -279,26 +282,30 @@ class EvaluationService:
         return []
 
     @staticmethod
-    def _template_column_help(column_name: str, retrieval_output_columns: frozenset[str]) -> str:
+    def _template_column_help(
+        column_name: str,
+        retrieval_output_columns: frozenset[str],
+        copy: EvaluationTemplateCopy,
+    ) -> str:
         """Map a generated column name to help text without changing the column schema.
 
         The caller supplies generated columns; unrecognized names are input fields
-        and receive the generic input help. Copy matches the Chinese field help
-        in ``web/i18n/locales/zh-Hans/evaluation.json``.
+        and receive the generic input help. The copy is generated from the
+        matching Web locale resources.
         """
         if column_name == "index":
-            return "填写不重复的整数作为本条测试的序号，方便定位评测结果。"
+            return copy["index"]
 
         field_name = column_name.rsplit(":", 1)[-1].strip()
         if field_name == "expected_output":
             if column_name in retrieval_output_columns:
-                return "填写本条问题的参考答案或关键事实，用于评估检索内容的相关性和覆盖程度。"
-            return "填写该节点对本条输入应给出的参考答案，用于对照实际输出。"
+                return copy["retrievalExpectedOutput"]
+            return copy["expectedOutput"]
         if field_name == "success_criteria":
-            return "填写 Agent 完成任务必须满足的条件，每行一条；评测会逐条判断。没有额外条件可留空。"
+            return copy["successCriteria"]
         if field_name == "expected_tool_calls":
-            return "以 JSON 数组填写 Agent 预期调用的工具和参数。"
-        return "填写本条测试的输入内容，例如用户问题、指令或该字段要求的值。"
+            return copy["expectedToolCalls"]
+        return copy["input"]
 
     @classmethod
     def _generate_xlsx_template(
@@ -306,6 +313,8 @@ class EvaluationService:
         columns: Sequence[EvaluationTemplateColumn],
         target_name: str,
         retrieval_output_columns: frozenset[str] = frozenset(),
+        *,
+        language: str = "en-US",
     ) -> bytes:
         """
         Generate XLSX bytes from ordered columns and known retrieval references.
@@ -317,6 +326,7 @@ class EvaluationService:
         :param columns: Nonempty ordered template columns, starting with ``index``.
         :param target_name: Target name retained for the template call contract.
         :param retrieval_output_columns: Output columns belonging to retrieval nodes.
+        :param language: The current interface language; unsupported values use English.
         :return: XLSX bytes with unchanged headers and one removable help row.
         """
         wb = Workbook()
@@ -338,6 +348,7 @@ class EvaluationService:
         )
 
         headers = [column["name"] for column in columns]
+        copy = get_evaluation_template_copy(language)
 
         # Write header row
         for col_idx, header in enumerate(headers, start=1):
@@ -356,7 +367,7 @@ class EvaluationService:
             cell = ws.cell(
                 row=2,
                 column=col_idx,
-                value=cls._template_column_help(header, retrieval_output_columns),
+                value=cls._template_column_help(header, retrieval_output_columns, copy),
             )
             cell.font = help_font
             cell.fill = help_fill
@@ -368,7 +379,7 @@ class EvaluationService:
         notice_cell = ws.cell(
             row=2,
             column=notice_col_idx,
-            value="该行为示例说明请删除本行后进行上传评估。",
+            value=copy["notice"],
         )
         notice_cell.font = Font(bold=True, color="9C4D00")
         notice_cell.fill = help_fill
@@ -383,13 +394,14 @@ class EvaluationService:
         return output.getvalue()
 
     @classmethod
-    def generate_retrieval_dataset_template(cls) -> tuple[bytes, str]:
+    def generate_retrieval_dataset_template(cls, language: str = "en-US") -> tuple[bytes, str]:
         """Generate evaluation dataset XLSX template for knowledge base retrieval.
 
         The template contains ``index``, ``query``, and ``expected_output``
         headers plus a removable help row. Callers delete that row, fill data,
         and start a run with ``target_type="knowledge_base"``.
 
+        :param language: The current interface language; unsupported values use English.
         :returns: (xlsx_content_bytes, filename)
         """
         columns: list[EvaluationTemplateColumn] = [
@@ -397,7 +409,9 @@ class EvaluationService:
             {"name": "query", "type": "string"},
             {"name": "expected_output", "type": "string"},
         ]
-        content = cls._generate_xlsx_template(columns, "Knowledge base", frozenset({"expected_output"}))
+        content = cls._generate_xlsx_template(
+            columns, "Knowledge base", frozenset({"expected_output"}), language=language
+        )
         return content, "retrieval-evaluation-dataset.xlsx"
 
     # ---- Evaluation Configuration CRUD ----
