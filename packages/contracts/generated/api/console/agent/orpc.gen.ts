@@ -639,12 +639,16 @@ export const chatMessages = {
   byTaskId,
 }
 
+/**
+ * Return mention candidates from tenant-scoped configuration and workspace tools
+ */
 export const get7 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdComposerCandidates',
     path: '/agent/{agent_id}/composer/candidates',
+    summary: 'Return mention candidates from tenant-scoped configuration and workspace tools',
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdComposerCandidatesPath }))
@@ -655,12 +659,17 @@ export const candidates = {
   get: get7,
 }
 
+/**
+ * Check publish rules for the supplied configuration and report findings without writing
+ */
 export const post8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAgentByAgentIdComposerValidate',
     path: '/agent/{agent_id}/composer/validate',
+    summary:
+      'Check publish rules for the supplied configuration and report findings without writing',
     tags: ['console'],
   })
   .input(
@@ -682,12 +691,16 @@ export const validate = {
   post: post8,
 }
 
+/**
+ * Return the Agent's effective shared configuration without creating a draft
+ */
 export const get8 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAgentByAgentIdComposer',
     path: '/agent/{agent_id}/composer',
+    summary: "Return the Agent's effective shared configuration without creating a draft",
     tags: ['console'],
   })
   .input(z.object({ params: zGetAgentByAgentIdComposerPath }))
@@ -697,12 +710,16 @@ export const get8 = oc
     agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
   })
 
+/**
+ * Save the shared draft and return the committed state with validation findings
+ */
 export const put2 = oc
   .route({
     inputStructure: 'detailed',
     method: 'PUT',
     operationId: 'putAgentByAgentIdComposer',
     path: '/agent/{agent_id}/composer',
+    summary: 'Save the shared draft and return the committed state with validation findings',
     tags: ['console'],
   })
   .input(z.object({ body: zPutAgentByAgentIdComposerBody, params: zPutAgentByAgentIdComposerPath }))

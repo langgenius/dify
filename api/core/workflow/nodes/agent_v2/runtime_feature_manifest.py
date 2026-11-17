@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import Any
 
 from models.agent_config_entities import AgentSoulConfig
-from services.agent.knowledge_datasets import list_agent_soul_knowledge_dataset_ids
+from models.agent_knowledge import list_agent_soul_knowledge_dataset_ids
 
 SUPPORTED_AGENT_BACKEND_FEATURES = frozenset(
     {

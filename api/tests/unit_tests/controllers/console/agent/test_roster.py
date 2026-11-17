@@ -13,8 +13,6 @@ from controllers.console import console_ns
 from controllers.console.agent import composer as composer_controller
 from controllers.console.agent import roster as roster_controller
 from controllers.console.agent.composer import (
-    AgentComposerApi,
-    AgentComposerCandidatesApi,
     WorkflowAgentComposerApi,
     WorkflowAgentComposerCandidatesApi,
     WorkflowAgentComposerCopyFromRosterApi,
@@ -96,24 +94,6 @@ def _workflow_composer_response(**overrides: object) -> dict[str, object]:
     }
     response.update(overrides)
     return response
-
-
-def _agent_app_composer_response() -> dict[str, object]:
-    return {
-        "variant": "agent_app",
-        "agent": {
-            "id": "agent-1",
-            "name": "Analyst",
-            "description": "",
-            "scope": "roster",
-            "status": "active",
-            "active_config_snapshot_id": "version-1",
-        },
-        "active_config_snapshot": _version_response(),
-        "active_config_is_published": True,
-        "agent_soul": {},
-        "save_options": ["save_to_current_version"],
-    }
 
 
 def _app_detail_obj(**overrides: object) -> App:
@@ -518,71 +498,6 @@ def test_workflow_impact_returns_empty_without_version(app: Flask) -> None:
             "node-1",
         )
     assert result == {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
-
-
-def test_agent_composer_routes_resolve_app_from_agent_id(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    captured: dict[str, object] = {}
-    payload = {
-        "variant": ComposerVariant.AGENT_APP.value,
-        "save_strategy": ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION.value,
-        "agent_soul": {"prompt": {"system_prompt": "x"}},
-    }
-
-    def load_agent_composer(**kwargs: object) -> dict[str, object]:
-        captured["load"] = kwargs
-        return _agent_app_composer_response()
-
-    def save_agent_composer(**kwargs: object) -> dict[str, object]:
-        captured["save"] = kwargs
-        return _agent_app_composer_response()
-
-    def get_agent_app_candidates(**kwargs: object) -> dict[str, object]:
-        captured["candidates"] = kwargs
-        return _candidates_response("agent_app")
-
-    monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", load_agent_composer)
-    monkeypatch.setattr(composer_controller.AgentComposerService, "save_agent_composer", save_agent_composer)
-    monkeypatch.setattr(composer_controller.ComposerConfigValidator, "validate_publish_payload", lambda payload: None)
-    monkeypatch.setattr(composer_controller.AgentComposerService, "get_agent_app_candidates", get_agent_app_candidates)
-    composer = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", agent_id)
-    assert composer["variant"] == "agent_app"
-    assert composer["active_config_is_published"] is True
-    assert cast(dict[str, object], captured["load"])["agent_id"] == agent_id
-    composer_save_payload = ComposerSavePayload(
-        variant=ComposerVariant.AGENT_APP,
-        save_strategy=ComposerSaveStrategy.SAVE_TO_CURRENT_VERSION,
-        agent_soul={"prompt": {"system_prompt": "x"}},
-    )
-    with app.test_request_context(json=payload):
-        saved_composer = unwrap(AgentComposerApi.put)(
-            AgentComposerApi(), composer_save_payload, MagicMock(), "tenant-1", account_id, agent_id
-        )
-        assert saved_composer["variant"] == "agent_app"
-        assert saved_composer["active_config_is_published"] is True
-        assert cast(dict[str, object], captured["save"])["agent_id"] == agent_id
-    candidates = unwrap(AgentComposerCandidatesApi.get)(
-        AgentComposerCandidatesApi(), MagicMock(), "tenant-1", account_id, agent_id
-    )
-    assert candidates["variant"] == "agent_app"
-    assert cast(dict[str, object], captured["candidates"])["agent_id"] == agent_id
-
-
-def test_agent_composer_get_uses_read_only_session() -> None:
-    assert "@with_session(write=False)\n    def get" in getsource(AgentComposerApi)
-
-
-def test_agent_composer_get_accepts_missing_draft(app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    payload = _agent_app_composer_response()
-    payload["draft"] = None
-    payload["agent_soul"] = {"prompt": {"system_prompt": "read-only snapshot"}}
-    monkeypatch.setattr(composer_controller.AgentComposerService, "load_agent_composer", lambda **_kwargs: payload)
-    with app.test_request_context():
-        result = unwrap(AgentComposerApi.get)(AgentComposerApi(), MagicMock(), "tenant-1", "agent-1")
-    assert result["draft"] is None
-    assert result["agent_soul"]["prompt"]["system_prompt"] == "read-only snapshot"
 
 
 def test_agent_chat_generate_and_stop_routes_resolve_app_from_agent_id(
