@@ -1415,7 +1415,9 @@ a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC 
 any other unparsable message; 413 with a JSON-RPC error when the body is above
 ``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
 before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
-cut at the cap and answers 400 with a JSON-RPC parse error; 401 when
+cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
+read, when an ``Origin`` header is present and is neither this server's own nor in
+``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); 401 when
 the token is not real; the login check's own status when it answers a server error.
 
 #### Responses
