@@ -45,6 +45,16 @@ changes, and CI checks the PR against its target revision.
 
 ## Typing Best Practises
 
+- Use `StrEnum` for sets of string alternatives. At a comparison such as
+  `mode == ScopeMode.SELECTED`, the enum identifies the owning set and lets
+  readers discover its other members. A bare `mode == "selected"` does not.
+- Do not add `Literal["a", "b", ...]` with multiple string arguments. Keep
+  single-value `Literal["tag"]` for tagged unions; non-string and mixed-value
+  Literals are outside this rule. The `no-new-multi-string-literal` guard checks
+  new occurrences in API Python sources through `make lint` and CI. Existing
+  occurrences and identical moves retain their Git baseline. For a justified
+  exception, add `# guard-ignore: no-new-multi-string-literal -- <reason>` on
+  the line where the Literal starts.
 - Treat nullable types (`T | None`) strictly as union types; document the semantic meaning for each branch.
 - Treat default parameter values as introducing distinct function overloads; verify that every added default has demonstrable practical utility and avoids masking unsafe runtime states.
 
