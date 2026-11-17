@@ -14,8 +14,8 @@
       "type": "text",
       "required": true,
       "placeholder": "dify.example.com",
-      "description": "只填域名，不要带 https://、端口或路径。服务器需要能通过 HTTPS 的默认 443 端口访问。",
-      "description_en": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443."
+      "description": "只填域名，不要带 https://、端口或路径。服务器需要能通过 HTTPS 的默认 443 端口访问。Dify 管理员需要开启 Open API。",
+      "description_en": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443. Your Dify admin must turn on the Open API."
     },
     {
       "key": "DIFY_TOKEN",

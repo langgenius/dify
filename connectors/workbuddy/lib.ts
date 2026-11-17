@@ -5,7 +5,8 @@ export const CONNECTOR_TYPES = ['cli', 'mcp'] as const
 export type ConnectorType = (typeof CONNECTOR_TYPES)[number]
 export const TOKEN_AUTH_MODE = 'token'
 export const TOKEN_SCHEMA_FILE = 'token-schema.json'
-const DEFAULT_CONNECTOR_TYPE: ConnectorType = 'mcp'
+export const MCP_CONNECTOR_TYPE = 'mcp' satisfies ConnectorType
+const DEFAULT_CONNECTOR_TYPE: ConnectorType = MCP_CONNECTOR_TYPE
 
 export type ConnectorMeta = { version: string; type: ConnectorType; auth_mode?: string }
 
@@ -97,7 +98,7 @@ export function connectorMeta(raw: Record<string, unknown>, path: string): Conne
 // The files beside connector-meta.json that a connector of this kind ships.
 export function connectorFiles(meta: ConnectorMeta): readonly string[] {
   const files = CONNECTOR_FILES[meta.type]
-  if (meta.type === 'mcp' && meta.auth_mode === TOKEN_AUTH_MODE)
-    return [...files, TOKEN_SCHEMA_FILE]
-  return files
+  if (meta.type !== MCP_CONNECTOR_TYPE) return files
+  if (meta.auth_mode !== TOKEN_AUTH_MODE) return files
+  return [...files, TOKEN_SCHEMA_FILE]
 }
