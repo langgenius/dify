@@ -92,7 +92,7 @@ CELERY_BROKER_URL=${CELERY_BROKER_URL:-redis://:${REDIS_PASSWORD:-difyai123456}@
 # OPENAPI_KNOWN_CLIENT_IDS=difyctl
 # OPENAPI_RATE_LIMIT_PER_TOKEN=60
 # DEVICE_FLOW_APPROVE_RATE_LIMIT_PER_HOUR=10
-# ENABLE_OAUTH_BEARER=false
+# ENABLE_OAUTH_BEARER=true
 
 # Container variable mappings; keep these expressions unchanged in the copy.
 AGENT_BACKEND_API_TOKEN=${DIFY_AGENT_API_TOKEN:-dify-agent-run-token-for-dev-only}
