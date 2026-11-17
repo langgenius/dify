@@ -4,7 +4,7 @@ import json
 import sys
 import uuid
 from collections.abc import Callable
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
@@ -102,6 +102,16 @@ def test_translate_maps_value_error_to_a_fixed_bad_request() -> None:
 _TEST_APP_ID = str(uuid.uuid4())
 _TEST_TENANT_ID = str(uuid.uuid4())
 _TEST_ACCOUNT_ID = str(uuid.uuid4())
+
+
+@dataclass(slots=True)
+class _ApplicationServicesStub:
+    files: object
+
+
+@dataclass(slots=True)
+class _FileServiceStub:
+    upload_file: Callable[..., UploadFile]
 
 
 def _make_app() -> App:
@@ -329,14 +339,15 @@ def test_run_discards_uploads_when_generation_is_rejected_before_streaming(
 ) -> None:
     generate_mock = _generate_stub(monkeypatch, [])
     generate_mock.side_effect = AppInvokeQuotaExceededError("request limit reached")
-    upload_service = Mock()
 
     def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
         return make_upload_file(file_id=f"uf-{filename}", extension=filename.rsplit(".", 1)[-1], mime_type=mimetype)
 
-    upload_service.upload_file.side_effect = upload_file
+    upload_service = _FileServiceStub(upload_file=upload_file)
     monkeypatch.setattr(
-        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+        sys.modules["controllers.openapi._files"],
+        "application_services",
+        lambda: _ApplicationServicesStub(files=upload_service),
     )
     discarded: list[list[str]] = []
     monkeypatch.setattr(app_run, "discard_uploaded_files", lambda ids: discarded.append(list(ids)), raising=False)
@@ -364,16 +375,17 @@ def test_run_discards_file_parts_when_attachment_materialization_fails(
     app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     generate_mock = _generate_stub(monkeypatch, [])
-    upload_service = Mock()
 
     def upload_file(*, filename: str, content: bytes, mimetype: str, user: Account) -> UploadFile:
         if filename == "p.jpg":
             raise ValueError("attachment upload failed")
         return make_upload_file(file_id="uf-r.pdf", extension="pdf", mime_type=mimetype)
 
-    upload_service.upload_file.side_effect = upload_file
+    upload_service = _FileServiceStub(upload_file=upload_file)
     monkeypatch.setattr(
-        sys.modules["controllers.openapi._files"], "application_services", lambda: SimpleNamespace(files=upload_service)
+        sys.modules["controllers.openapi._files"],
+        "application_services",
+        lambda: _ApplicationServicesStub(files=upload_service),
     )
     discarded: list[list[str]] = []
     monkeypatch.setattr(app_run, "discard_uploaded_files", lambda ids: discarded.append(list(ids)), raising=False)

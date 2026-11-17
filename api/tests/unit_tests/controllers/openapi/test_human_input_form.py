@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 import sys
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from io import BytesIO
 from types import SimpleNamespace
@@ -49,8 +50,26 @@ from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser, UploadFile
 from services.file_service import FileService
 from services.human_input_service import InvalidFormDataError
+from tests.helpers.unit.model_factories import make_upload_file
 
 _MODULE = "controllers.openapi.human_input_form"
+
+
+@dataclass(slots=True)
+class _ApplicationServicesStub:
+    files: object
+
+
+class _FileServiceStub:
+    def __init__(self, upload_file):
+        self._upload_file = upload_file
+        self.deleted_file_ids: list[str] = []
+
+    def upload_file(self, **kwargs):
+        return self._upload_file(**kwargs)
+
+    def delete_file(self, file_id: str) -> None:
+        self.deleted_file_ids.append(file_id)
 
 
 def _context(caller: Account | EndUser, caller_role: CreatorUserRole) -> Context:
@@ -243,7 +262,7 @@ class TestOpenApiHumanInputFormPost:
         monkeypatch.setattr(file_service_module.storage, "delete", lambda key: deleted_keys.append(key))
         monkeypatch.setattr(file_service_module.file_helpers, "get_signed_file_url", lambda **_: "signed-url")
         upload_service = FileService(session_factory=sqlite_session.get_bind())
-        monkeypatch.setattr(_files, "application_services", lambda: SimpleNamespace(files=upload_service))
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
 
         submission_service = Mock()
         submission_service.authorize_openapi_form.return_value = SimpleNamespace(app_id="app-1", tenant_id="tenant-1")
@@ -286,11 +305,10 @@ class TestOpenApiHumanInputFormPost:
 
         service = _mock_service(monkeypatch, _make_form())
         service.submit_form_by_token.side_effect = InvalidFormDataError("invalid file input")
-        upload_service = Mock()
-        upload_service.upload_file.return_value = SimpleNamespace(
-            id="uploaded-file", extension="txt", mime_type="text/plain"
+        upload_service = _FileServiceStub(
+            lambda **_: make_upload_file(file_id="uploaded-file", extension="txt", mime_type="text/plain")
         )
-        monkeypatch.setattr(_files, "application_services", lambda: SimpleNamespace(files=upload_service))
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
 
         body = OpenApiFormSubmitPayload(
             action="approve",
@@ -308,7 +326,7 @@ class TestOpenApiHumanInputFormPost:
                     body=body,
                 )
 
-        upload_service.delete_file.assert_called_once_with("uploaded-file")
+        assert upload_service.deleted_file_ids == ["uploaded-file"]
 
 
 class TestSubmitFollowRunHint:
@@ -374,7 +392,7 @@ class TestCheckFormSurface:
     def _run(self, monkeypatch: pytest.MonkeyPatch, form) -> None:
         _mock_service(monkeypatch, form)
         ctx = _context(_make_account(), CreatorUserRole.ACCOUNT)
-        CheckFormSurface().run(ctx.subject, ctx, Mock())
+        CheckFormSurface().run(ctx.subject, ctx, None)
 
     def test_admits_a_web_app_recipient(self, monkeypatch: pytest.MonkeyPatch):
         self._run(monkeypatch, _make_form(recipient_type=RecipientType.STANDALONE_WEB_APP))
