@@ -3,7 +3,7 @@ import logging
 from collections.abc import Sequence
 from functools import cached_property
 
-from celery import signature
+from celery import Celery, signature
 from celery.canvas import Signature
 
 from configs import dify_config
@@ -18,16 +18,44 @@ logger = logging.getLogger(__name__)
 
 
 class RagPipelineTaskProxy:
+    """Upload the invoke entities of a dispatch and start the pipeline task that consumes them.
+
+    The celery application publishing the pipeline task is a constructor dependency: the
+    dispatch hands its signatures to that application. Production leaves the dependency
+    unset and therefore publishes through celery's current application, while a caller
+    owning another broker can hand in the application bound to it.
+    """
+
     # Default uploaded file name for rag pipeline invoke entities
     _RAG_PIPELINE_INVOKE_ENTITIES_FILE_NAME = "rag_pipeline_invoke_entities.json"
 
     def __init__(
-        self, dataset_tenant_id: str, user_id: str, rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity]
+        self,
+        dataset_tenant_id: str,
+        user_id: str,
+        rag_pipeline_invoke_entities: Sequence[RagPipelineInvokeEntity],
+        *,
+        celery_app: Celery | None = None,
     ):
         self._dataset_tenant_id = dataset_tenant_id
         self._user_id = user_id
         self._rag_pipeline_invoke_entities = rag_pipeline_invoke_entities
+        self._celery_app = celery_app
         self._tenant_isolated_task_queue = TenantIsolatedTaskQueue(dataset_tenant_id, "pipeline")
+
+    def _task_signature(self, task: str, queue: str) -> Signature:
+        """Build the signature publishing ``task`` to ``queue``.
+
+        Preconditions:
+            ``task`` names one of the rag pipeline tasks and ``queue`` is the pipeline
+            queue that task is configured to consume.
+        Postconditions:
+            Returns a signature bound to the injected celery application, or to celery's
+            current application when the dependency was not injected.
+        """
+        if self._celery_app is None:
+            return signature(task, queue=queue)
+        return self._celery_app.signature(task, queue=queue)
 
     @cached_property
     def features(self):
@@ -73,7 +101,7 @@ class RagPipelineTaskProxy:
         Postconditions:
             Returns the celery signature dispatched for the file.
         """
-        task_func = signature("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task", queue="pipeline")
+        task_func = self._task_signature("tasks.rag_pipeline.rag_pipeline_run_task.rag_pipeline_run_task", "pipeline")
         self._send_to_tenant_queue(upload_file_id, task_func)
         return task_func
 
@@ -83,21 +111,23 @@ class RagPipelineTaskProxy:
         Postconditions:
             Returns the celery signature dispatched for the file.
         """
-        task_func = signature(
-            "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
-            queue="priority_pipeline",
+        task_func = self._task_signature(
+            "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task", "priority_pipeline"
         )
         self._send_to_tenant_queue(upload_file_id, task_func)
         return task_func
 
-    def _send_to_priority_direct_queue(self, upload_file_id: str):
-        self._send_to_direct_queue(
-            upload_file_id,
-            signature(
-                "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
-                queue="priority_pipeline",
-            ),
+    def _send_to_priority_direct_queue(self, upload_file_id: str) -> Signature:
+        """Send the file to the priority pipeline queue without tenant isolation.
+
+        Postconditions:
+            Returns the celery signature dispatched for the file.
+        """
+        task_func = self._task_signature(
+            "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task", "priority_pipeline"
         )
+        self._send_to_direct_queue(upload_file_id, task_func)
+        return task_func
 
     def _dispatch(self):
         upload_file_id = self._upload_invoke_entities()

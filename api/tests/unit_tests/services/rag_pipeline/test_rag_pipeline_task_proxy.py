@@ -1,10 +1,15 @@
 import json
 import logging
+from collections.abc import Iterator
 from datetime import datetime
+from queue import Empty
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, call, patch
+from uuid import uuid4
 
 import pytest
+from celery import Celery
+from kombu.simple import SimpleQueue
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
@@ -16,6 +21,40 @@ from models.enums import CreatorUserRole
 from models.model import UploadFile
 from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from tests.helpers.unit.config_override import config_overrides_context
+
+_PIPELINE_QUEUES = ("pipeline", "priority_pipeline")
+
+
+def _drain(queue_name: str, celery_app: Celery) -> list[tuple[str, dict[str, object]]]:
+    """Drain ``queue_name`` into the (task name, task kwargs) pairs published so far."""
+    published: list[tuple[str, dict[str, object]]] = []
+    with celery_app.connection_for_read() as connection, SimpleQueue(connection, queue_name) as messages:
+        while True:
+            try:
+                message = messages.get(block=False)
+            except Empty:
+                return published
+            published.append((message.headers["task"], message.payload[1]))
+            message.ack()
+
+
+def _clear(celery_app: Celery) -> None:
+    """Drop every message left in the pipeline queues by a previous test."""
+    for queue_name in _PIPELINE_QUEUES:
+        _drain(queue_name, celery_app)
+
+
+@pytest.fixture
+def celery_app() -> Iterator[Celery]:
+    """Expose a real celery application whose in-memory broker records publications."""
+    celery_app = Celery(f"rag-pipeline-{uuid4()}", broker="memory://", set_as_current=False)
+    celery_app.conf.update(task_default_queue="priority_pipeline", task_ignore_result=True, task_publish_retry=False)
+    _clear(celery_app)
+    try:
+        yield celery_app
+    finally:
+        _clear(celery_app)
+        celery_app.close()
 
 
 class TestRagPipelineTaskProxyCases:
@@ -216,11 +255,12 @@ class RagPipelineTaskProxyTestDataFactory:
         dataset_tenant_id: str = "tenant-123",
         user_id: str = "user-456",
         rag_pipeline_invoke_entities: list[RagPipelineInvokeEntity] | None = None,
+        celery_app: Celery | None = None,
     ) -> RagPipelineTaskProxy:
         """Create RagPipelineTaskProxy instance for testing."""
         if rag_pipeline_invoke_entities is None:
             rag_pipeline_invoke_entities = [RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_invoke_entity()]
-        return RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities)
+        return RagPipelineTaskProxy(dataset_tenant_id, user_id, rag_pipeline_invoke_entities, celery_app=celery_app)
 
     @staticmethod
     def create_upload_file(file_id: str = "file-123") -> UploadFile:
@@ -469,22 +509,24 @@ class TestRagPipelineTaskProxyCasesServices:
             assert sent.options["queue"] == "priority_pipeline"
             tenant_queue_commands.assert_any_call("LPUSH", "tenant_self_pipeline_task_queue:tenant-123", upload_file_id)
 
-        def test_send_to_priority_direct_queue(self, mocker: MockerFixture) -> None:
+        def test_send_to_priority_direct_queue(self, celery_app: Celery) -> None:
             """Test _send_to_priority_direct_queue method."""
             # Arrange
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_direct_queue")
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
             upload_file_id = "file-123"
 
             # Act
-            proxy._send_to_priority_direct_queue(upload_file_id)
+            sent = proxy._send_to_priority_direct_queue(upload_file_id)
 
             # Assert
-            send_mock.assert_called_once()
-            sent_file_id, task = send_mock.call_args.args
-            assert sent_file_id == upload_file_id
-            assert task.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
-            assert task.options["queue"] == "priority_pipeline"
+            assert sent.task == "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task"
+            assert sent.options["queue"] == "priority_pipeline"
+            assert _drain("priority_pipeline", celery_app) == [
+                (
+                    "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
+                    {"rag_pipeline_invoke_entities_file_id": upload_file_id, "tenant_id": "tenant-123"},
+                )
+            ]
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
@@ -555,14 +597,13 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            celery_app: Celery,
         ) -> None:
             """Test _dispatch method outside Cloud."""
             # Arrange
             mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features()
             mock_feature_service.get_features.return_value = mock_features
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_priority_direct_queue")
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -573,7 +614,12 @@ class TestRagPipelineTaskProxyCasesServices:
             proxy._dispatch()
 
             # If billing is disabled, for example: self-hosted or enterprise, should send to priority direct queue
-            send_mock.assert_called_once_with("file-123")
+            assert _drain("priority_pipeline", celery_app) == [
+                (
+                    "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
+                    {"rag_pipeline_invoke_entities_file_id": "file-123", "tenant_id": "tenant-123"},
+                )
+            ]
 
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FileService")
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.session_factory.get_session_maker")
@@ -602,14 +648,15 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            celery_app: Celery,
+            tenant_queue_commands: MagicMock,
         ) -> None:
             """Test _dispatch method with empty plan string."""
             # Arrange
             mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan="")
             mock_feature_service.get_features.return_value = mock_features
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
+            tenant_queue_commands.return_value = None
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -620,7 +667,13 @@ class TestRagPipelineTaskProxyCasesServices:
             proxy._dispatch()
 
             # Assert
-            send_mock.assert_called_once_with("file-123")
+            tenant_queue_commands.assert_any_call("SETEX", "tenant_pipeline_task:tenant-123", 3600, 1)
+            assert _drain("priority_pipeline", celery_app) == [
+                (
+                    "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
+                    {"rag_pipeline_invoke_entities_file_id": "file-123", "tenant_id": "tenant-123"},
+                )
+            ]
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
@@ -631,14 +684,15 @@ class TestRagPipelineTaskProxyCasesServices:
             mock_db: MagicMock,
             mock_file_service_class: MagicMock,
             mock_feature_service: MagicMock,
-            mocker: MockerFixture,
+            celery_app: Celery,
+            tenant_queue_commands: MagicMock,
         ) -> None:
             """Test _dispatch method with None plan."""
             # Arrange
             mock_features = RagPipelineTaskProxyTestDataFactory.create_mock_features(plan=None)
             mock_feature_service.get_features.return_value = mock_features
-            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy()
-            send_mock = mocker.patch.object(proxy, "_send_to_priority_tenant_queue")
+            proxy = RagPipelineTaskProxyTestDataFactory.create_rag_pipeline_task_proxy(celery_app=celery_app)
+            tenant_queue_commands.return_value = None
 
             mock_file_service = Mock()
             mock_file_service_class.return_value = mock_file_service
@@ -649,7 +703,13 @@ class TestRagPipelineTaskProxyCasesServices:
             proxy._dispatch()
 
             # Assert
-            send_mock.assert_called_once_with("file-123")
+            tenant_queue_commands.assert_any_call("SETEX", "tenant_pipeline_task:tenant-123", 3600, 1)
+            assert _drain("priority_pipeline", celery_app) == [
+                (
+                    "tasks.rag_pipeline.priority_rag_pipeline_run_task.priority_rag_pipeline_run_task",
+                    {"rag_pipeline_invoke_entities_file_id": "file-123", "tenant_id": "tenant-123"},
+                )
+            ]
 
         @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
         @patch("services.rag_pipeline.rag_pipeline_task_proxy.FeatureService")
