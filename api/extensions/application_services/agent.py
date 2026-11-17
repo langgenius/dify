@@ -25,6 +25,7 @@ from services.agent.knowledge_spaces import (
 )
 from services.agent.observability_contracts import AgentObservability
 from services.agent.version_service import AgentVersionService
+from services.agent_config_service import AgentConfigService
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from services.app.agent_app_sandbox_service import AgentAppSandboxService
 from services.app.agent_app_service import (
@@ -66,6 +67,7 @@ class AgentAppServices:
     sandbox: AgentAppSandboxService
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
+    config_assets: AgentConfigService
 
 
 def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
@@ -106,6 +108,7 @@ def build_agent_app_services(
             inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
             store=apps,
             authorize_knowledge=partial(authorize_composer_knowledge, session_factory=database_client),

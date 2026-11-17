@@ -5,6 +5,7 @@ from dataclasses import replace
 from typing import Any, Protocol
 
 from machinery.context import RequestContext
+from services.agent.config_inspector_store import AgentConfigSelection
 from services.app.agent_app_contracts import (
     AgentApiAccess,
     AgentApiAccessChange,
@@ -27,6 +28,25 @@ from services.rbac.contracts import ResourcePermissionSnapshot
 
 
 class AgentAppReferences(Protocol):
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Select config from the admitted Agent, preparing the write draft when needed."""
+        ...
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the config of a tenant workflow node."""
+        ...
+
     def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str: ...
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]: ...
@@ -253,6 +273,29 @@ class AgentAppCollectionService:
 class AgentAppAccessService:
     def __init__(self, *, references: AgentAppReferences) -> None:
         self._references = references
+
+    def resolve_config_selection(
+        self, context: RequestContext, agent_id: str, *, version_id: str | None, build: bool, for_write: bool
+    ) -> AgentConfigSelection:
+        """Return the selected asset version with no live ORM objects or session."""
+        return self._references.resolve_config_selection(
+            context, agent_id, version_id=version_id, build=build, for_write=for_write
+        )
+
+    def resolve_workflow_config_selection(
+        self,
+        context: RequestContext,
+        app_id: str,
+        *,
+        node_id: str | None,
+        version_id: str | None,
+        build: bool,
+        for_write: bool,
+    ) -> AgentConfigSelection:
+        """Select the admitted workflow configuration before opening any asset store."""
+        return self._references.resolve_workflow_config_selection(
+            context, app_id, node_id=node_id, version_id=version_id, build=build, for_write=for_write
+        )
 
     def resolve_existing_runtime_app_id(self, context: RequestContext, agent_id: str) -> str:
         return self._references.resolve_existing_runtime_app_id(
