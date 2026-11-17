@@ -721,20 +721,15 @@ class TestRagPipelineWorkflowCases:
             recorded.append((session, generator, pipeline.id))
             return {"event": "done"}
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json=payload),
-            patch.object(module.PipelineGenerateService, "generate", side_effect=record_generate),
-            patch.object(module.helper, "compact_generate_response", return_value={"ok": True}),
-        ):
+        with Session(sqlite_engine) as session, app.test_request_context("/", json=payload):
             req_data = (
                 RagPipelineDraftWorkflowRunPayload.model_validate(payload)
                 if api_type is module.DraftRagPipelineRunApi
                 else PublishedWorkflowRunPayload.model_validate(payload)
             )
-            response = handler(api, req_data, session, _account(), pipeline)
+            response = handler(api, req_data, session, _account(), pipeline, generate=record_generate)
 
-        assert response == {"ok": True}
+        assert json.loads(response.get_data(as_text=True)) == {"event": "done"}
         assert recorded == [(session, pipeline_application, pipeline.id)]
         assert session.get_bind() is sqlite_engine
 
@@ -760,19 +755,31 @@ class TestRagPipelineWorkflowCases:
             if api_type is module.DraftRagPipelineRunApi
             else PublishedWorkflowRunPayload.model_validate(payload)
         )
+        handed: list[tuple[Session, PipelineGenerator]] = []
 
-        with (
-            Session(sqlite_engine) as session,
-            app.test_request_context("/", json=payload),
-            patch.object(
-                module.PipelineGenerateService, "generate", side_effect=InvokeRateLimitError("limit")
-            ) as generate,
-            pytest.raises(InvokeRateLimitHttpError),
-        ):
-            handler(api, req_data, session, _account(), pipeline)
+        def reject_generate(
+            *,
+            pipeline: Pipeline,
+            session: Session,
+            generator: PipelineGenerator,
+            user: Account,
+            args: dict[str, str],
+            invoke_from: str,
+            streaming: bool,
+        ) -> dict[str, str]:
+            assert pipeline.id
+            assert user.id
+            assert args["datasource_type"] == "x"
+            assert invoke_from != ""
+            assert isinstance(streaming, bool)
+            handed.append((session, generator))
+            raise InvokeRateLimitError("limit")
 
-        assert generate.call_args.kwargs["session"] is session
-        assert generate.call_args.kwargs["generator"] is pipeline_application
+        with Session(sqlite_engine) as session, app.test_request_context("/", json=payload):
+            with pytest.raises(InvokeRateLimitHttpError):
+                handler(api, req_data, session, _account(), pipeline, generate=reject_generate)
+
+        assert handed == [(session, pipeline_application)]
 
 
 """Unit tests for rag_pipeline_workflow controller endpoints."""

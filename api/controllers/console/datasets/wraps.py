@@ -68,15 +68,16 @@ def _pipeline_for_call(
     return load_rag_pipeline(session, pipeline_id, tenant_id=resolve_tenant_id())
 
 
-def get_rag_pipeline_with(
+def get_rag_pipeline_with[**P, R](
     *,
-    session_factory: Callable[[], Session] = db.session,
+    session_factory: Callable[[], Session],
     resolve_tenant_id: Callable[[], str] = _request_tenant_id,
-):
+) -> Callable[[Callable[P, R]], Callable[P, R]]:
     """Build ``get_rag_pipeline`` with an explicit session factory and tenant resolver.
 
-    Production handlers use ``get_rag_pipeline``, which fills both from the request.
-    Tests pass a real session factory and the tenant that owns the fixture row.
+    Callers pass the session factory. Tests pass the factory that owns the fixture
+    row. ``get_rag_pipeline`` passes the scoped session for handlers that have not
+    composed ``with_session`` yet.
 
     Precondition: ``session_factory`` returns an open session and
     ``resolve_tenant_id`` returns the signed-in tenant.
@@ -85,7 +86,7 @@ def get_rag_pipeline_with(
     outside the tenant raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    def decorator[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    def decorator(view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("pipeline_id"):

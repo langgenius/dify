@@ -1,5 +1,6 @@
 import json
 import logging
+from collections.abc import Callable, Generator, Mapping
 from typing import Any, Literal, cast
 from uuid import UUID
 
@@ -86,6 +87,30 @@ from services.workflow_ref_service import WorkflowRefService
 from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError, WorkflowService
 
 logger = logging.getLogger(__name__)
+
+type PipelineGenerateResult = Mapping[str, Any] | Generator[str, None, None]
+
+
+def _generate_pipeline(
+    *,
+    pipeline: Pipeline,
+    session: Session,
+    generator: PipelineGenerator,
+    user: Account,
+    args: Mapping[str, Any],
+    invoke_from: InvokeFrom,
+    streaming: bool,
+) -> PipelineGenerateResult:
+    """Run one pipeline through ``PipelineGenerateService`` on the caller's session."""
+    return PipelineGenerateService.generate(
+        pipeline=pipeline,
+        user=user,
+        args=args,
+        invoke_from=invoke_from,
+        streaming=streaming,
+        session=session,
+        generator=generator,
+    )
 
 
 class DraftWorkflowSyncPayload(BaseModel):
@@ -419,6 +444,8 @@ class DraftRagPipelineRunApi(Resource):
         session: Session,
         current_user: Account,
         pipeline: Pipeline,
+        *,
+        generate: Callable[..., PipelineGenerateResult] = _generate_pipeline,
     ):
         """
         Run draft workflow
@@ -426,7 +453,7 @@ class DraftRagPipelineRunApi(Resource):
         args = req_data.model_dump()
 
         try:
-            response = PipelineGenerateService.generate(
+            response = generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
@@ -461,6 +488,8 @@ class PublishedRagPipelineRunApi(Resource):
         session: Session,
         current_user: Account,
         pipeline: Pipeline,
+        *,
+        generate: Callable[..., PipelineGenerateResult] = _generate_pipeline,
     ):
         """
         Run published workflow
@@ -469,7 +498,7 @@ class PublishedRagPipelineRunApi(Resource):
         streaming = req_data.response_mode == "streaming"
 
         try:
-            response = PipelineGenerateService.generate(
+            response = generate(
                 generator=application_services().knowledge.pipeline_generator,
                 session=session,
                 pipeline=pipeline,
