@@ -168,45 +168,40 @@ it.each(['create', 'duplicate'] as const)(
   },
 )
 
-it('pages resource types independently and counts selections across tabs and search', async () => {
+it('pages app resources and preserves selections across search and load more', async () => {
   const base = {
     workspace_id: activeToken.id,
     workspace_name: 'Production',
     available: true,
     reason: null,
   }
-  const app: PersonalAccessTokenResourceResponse = {
-    ...base,
-    resource_id: '019a0000-0000-7000-8000-000000000098',
-    resource_type: 'app',
-    display_name: 'Assistant',
+  const apps: PersonalAccessTokenResourceResponse[] = Array.from(
+    { length: 21 },
+    (_, index) => ({
+      ...base,
+      resource_id: `019a0000-0000-7000-8000-${String(index + 10).padStart(12, '0')}`,
+      resource_type: 'app',
+      display_name: `Assistant ${index + 1}`,
+    }),
+  )
+  apps[0] = {
+    ...apps[0]!,
     app_deployments: [
       {
         ...base,
         resource_id: '019a0000-0000-7000-8000-000000000099',
         resource_type: 'app_deployment',
-        display_name: 'Assistant / Staging',
-        parent_app_id: '019a0000-0000-7000-8000-000000000098',
+        display_name: 'Assistant 1 / Staging',
+        parent_app_id: apps[0]!.resource_id,
       },
     ],
   }
-  const datasets: PersonalAccessTokenResourceResponse[] = Array.from(
-    { length: 21 },
-    (_, index) => ({
-      ...base,
-      resource_id: `019a0000-0000-7000-8000-${String(index + 10).padStart(12, '0')}`,
-      resource_type: 'dataset',
-      display_name: `Handbook ${index + 1}`,
-    }),
-  )
   responses.call.mockImplementation(
     async (operation: string, input: Pick<GetAccountPersonalAccessTokenResourcesData, 'query'>) => {
       if (!operation.includes('personalAccessTokenResources'))
         return { data: [], page: 1, limit: 20, total: 0, has_more: false }
-      const { resource_type, keyword = '', cursor = 0, limit = 20 } = input.query ?? {}
-      const resources =
-        resource_type === 'app' ? [app] : resource_type === 'dataset' ? datasets : []
-      const matches = resources.filter((resource) => resource.display_name.includes(keyword))
+      const { keyword = '', cursor = 0, limit = 20 } = input.query ?? {}
+      const matches = apps.filter((resource) => resource.display_name.includes(keyword))
       const hasMore = cursor + limit < matches.length
       return {
         data: matches.slice(cursor, cursor + limit),
@@ -230,42 +225,34 @@ it('pages resource types independently and counts selections across tabs and sea
     .getByRole('radiogroup', { name: 'Resources' })
     .getByRole('radio', { name: 'Selected' })
     .click()
-  await expect
-    .element(dialog.getByRole('tab', { name: 'Apps 0 selected' }))
-    .toHaveAttribute('aria-selected', 'true')
-  expect(await dialog.getByRole('tab').all()).toHaveLength(2)
-  await dialog.getByRole('checkbox', { name: 'Built-in' }).click()
+  await expect.element(dialog.getByRole('tab')).not.toBeInTheDocument()
+  const builtIn = dialog.getByRole('checkbox', { name: 'Built-in' }).nth(0)
+  await builtIn.click()
   await dialog.getByRole('checkbox', { name: 'Staging' }).click()
   const dialogHeight = dialog.element().getBoundingClientRect().height
 
   const search = dialog.getByRole('searchbox')
-  await search.fill('Handbook')
+  await search.fill('No such assistant')
   await expect.element(dialog.getByText('No matching resources')).toBeVisible()
   expect(dialog.element().getBoundingClientRect().height).toBe(dialogHeight)
-  const appsTab = dialog.getByRole('tab', { name: 'Apps 2 selected' })
-  await expect.element(appsTab).toBeVisible()
-  await dialog.getByRole('tab', { name: 'Knowledge bases 0 selected' }).click()
-  await expect.element(search).toHaveValue('Handbook')
-  await expect.element(dialog.getByRole('checkbox', { name: 'Handbook 1' })).toBeVisible()
-  expect(dialog.element().getBoundingClientRect().height).toBe(dialogHeight)
-  await dialog.getByRole('button', { name: 'Load more resources' }).click()
-  await dialog.getByRole('checkbox', { name: 'Handbook 21' }).click()
-  await expect.element(dialog.getByRole('status')).toHaveTextContent('All results shown')
-  await expect
-    .element(dialog.getByRole('tab', { name: 'Knowledge bases 1 selected' }))
-    .toBeVisible()
-  expect(responses.call.mock.calls).toContainEqual([
-    'account.personalAccessTokenResources.get',
-    { query: { cursor: 20, limit: 20, keyword: 'Handbook', resource_type: 'dataset' } },
-  ])
-
-  await appsTab.click()
   await search.fill('')
-  await expect.element(dialog.getByRole('checkbox', { name: 'Built-in' })).toBeChecked()
-  const staging = dialog.getByRole('checkbox', { name: 'Staging' })
-  await expect.element(staging).toBeChecked()
-  await staging.click()
-  await expect.element(dialog.getByRole('tab', { name: 'Apps 1 selected' })).toBeVisible()
+  await expect.element(builtIn).toBeChecked()
+  await expect.element(dialog.getByRole('checkbox', { name: 'Staging' })).toBeChecked()
+
+  await dialog.getByRole('button', { name: 'Load more resources' }).click()
+  await expect.element(dialog.getByRole('status')).toHaveTextContent('All results shown')
+  const resourceCalls = responses.call.mock.calls.filter(([operation]) =>
+    operation.includes('personalAccessTokenResources'),
+  )
+  expect(
+    resourceCalls.every(([, input]) => input.query.resource_type === 'app'),
+  ).toBe(true)
+  expect(resourceCalls).toContainEqual([
+    'account.personalAccessTokenResources.get',
+    { query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' } },
+  ])
+  await expect.element(builtIn).toBeChecked()
+  await expect.element(dialog.getByRole('checkbox', { name: 'Staging' })).toBeChecked()
 })
 
 it('returns keyboard focus to Create token after deletion removes the trigger row', async () => {
