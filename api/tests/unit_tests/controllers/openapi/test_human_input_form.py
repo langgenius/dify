@@ -60,6 +60,12 @@ class _ApplicationServicesStub:
     files: object
 
 
+@dataclass(slots=True)
+class _AuthorizedFormStub:
+    app_id: str
+    tenant_id: str
+
+
 class _FileServiceStub:
     def __init__(self, upload_file):
         self._upload_file = upload_file
@@ -265,7 +271,9 @@ class TestOpenApiHumanInputFormPost:
         monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
 
         submission_service = Mock()
-        submission_service.authorize_openapi_form.return_value = SimpleNamespace(app_id="app-1", tenant_id="tenant-1")
+        submission_service.authorize_openapi_form.return_value = _AuthorizedFormStub(
+            app_id="app-1", tenant_id="tenant-1"
+        )
         submission_service.submit_openapi_form.side_effect = HumanInputFormError(
             HumanInputFormErrorCode.INVALID_INPUT, form_id="form-1"
         )
