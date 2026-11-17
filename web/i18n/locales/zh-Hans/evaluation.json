@@ -1,6 +1,6 @@
 {
   "batch.description": "执行批量评测并追踪性能历史。",
-  "batch.downloadTemplate": "下载 XLSX 模板",
+  "batch.downloadTemplate": "下载测试集模版",
   "batch.emptyHistory": "还没有测试历史。",
   "batch.example": "示例：",
   "batch.fieldHelp.expectedOutput": "填写该节点对本条输入应给出的参考答案，用于对照实际输出。",
