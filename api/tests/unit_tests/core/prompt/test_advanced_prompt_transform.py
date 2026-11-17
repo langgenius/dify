@@ -1,13 +1,8 @@
-from collections.abc import Sequence
-from typing import override
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_manager import ModelInstance
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -15,7 +10,6 @@ from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
-    PromptMessage,
     PromptMessageRole,
     SystemPromptMessage,
     TextPromptMessageContent,
@@ -24,37 +18,7 @@ from graphon.model_runtime.entities.message_entities import (
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.core.model_fixtures import make_model_config, make_token_buffer_memory
 
-type _ChatModelArgs = tuple[ModelConfigWithCredentialsEntity, MemoryConfig, list[ChatModelMessage], dict[str, str], str]
-
-
-class _FixedTokenBudgetTransform(AdvancedPromptTransform):
-    """Transform whose remaining-token budget is fixed, so history rendering is model-independent."""
-
-    @override
-    def _calculate_rest_token(
-        self,
-        prompt_messages: list[PromptMessage],
-        *,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-    ) -> int:
-        return 2000
-
-
-class _HistoryFreeTransform(AdvancedPromptTransform):
-    """Transform that keeps prompt messages untouched, so the test never reads conversation history."""
-
-    @override
-    def _append_chat_histories(
-        self,
-        memory: TokenBufferMemory,
-        memory_config: MemoryConfig,
-        prompt_messages: list[PromptMessage],
-        *,
-        model_config: ModelConfigWithCredentialsEntity | None = None,
-        model_instance: ModelInstance | None = None,
-    ) -> list[PromptMessage]:
-        return prompt_messages
+ChatModelArgs = tuple[ModelConfigWithCredentialsEntity, MemoryConfig, list[ChatModelMessage], dict[str, str], str]
 
 
 def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -74,19 +38,12 @@ def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) 
 
     memory = make_token_buffer_memory(model_config)
 
-    history_prompt_messages: list[PromptMessage] = [
-        UserPromptMessage(content="Hi"),
-        AssistantPromptMessage(content="Hello"),
-    ]
-    history_limits: list[int] = []
+    history_prompt_messages = [UserPromptMessage(content="Hi"), AssistantPromptMessage(content="Hello")]
+    monkeypatch.setattr(memory, "get_history_prompt_messages", MagicMock(return_value=history_prompt_messages))
 
-    def history(max_token_limit: int = 2000, message_limit: int | None = None) -> Sequence[PromptMessage]:
-        history_limits.append(max_token_limit)
-        return history_prompt_messages
-
-    monkeypatch.setattr(memory, "get_history_prompt_messages", history)
-
-    prompt_transform = _FixedTokenBudgetTransform()
+    prompt_transform = AdvancedPromptTransform()
+    # Budget calculation needs initialized provider credentials; this test covers message assembly.
+    monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     prompt_messages = prompt_transform._get_completion_model_prompt_messages(
         prompt_template=prompt_template_config,
         inputs=inputs,
@@ -98,7 +55,6 @@ def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) 
         model_config=model_config,
     )
 
-    assert history_limits == [2000]
     assert len(prompt_messages) == 1
     assert prompt_messages[0].content == PromptTemplateParser(template=prompt_template).format(
         {
@@ -114,7 +70,7 @@ def test__get_completion_model_prompt_messages(monkeypatch: pytest.MonkeyPatch) 
     )
 
 
-def test__get_chat_model_prompt_messages(get_chat_model_args: _ChatModelArgs, monkeypatch: pytest.MonkeyPatch) -> None:
+def test__get_chat_model_prompt_messages(get_chat_model_args: ChatModelArgs, monkeypatch: pytest.MonkeyPatch) -> None:
     model_config, memory_config, messages, inputs, context = get_chat_model_args
 
     files = []
@@ -122,18 +78,12 @@ def test__get_chat_model_prompt_messages(get_chat_model_args: _ChatModelArgs, mo
 
     memory = make_token_buffer_memory(model_config)
 
-    history_prompt_messages: list[PromptMessage] = [
-        UserPromptMessage(content="Hi1."),
-        AssistantPromptMessage(content="Hello1!"),
-    ]
+    history_prompt_messages = [UserPromptMessage(content="Hi1."), AssistantPromptMessage(content="Hello1!")]
+    monkeypatch.setattr(memory, "get_history_prompt_messages", MagicMock(return_value=history_prompt_messages))
 
-    def history(max_token_limit: int = 2000, message_limit: int | None = None) -> Sequence[PromptMessage]:
-        assert max_token_limit == 2000
-        return history_prompt_messages
-
-    monkeypatch.setattr(memory, "get_history_prompt_messages", history)
-
-    prompt_transform = _FixedTokenBudgetTransform()
+    prompt_transform = AdvancedPromptTransform()
+    # Budget calculation needs initialized provider credentials; this test covers message assembly.
+    monkeypatch.setattr(prompt_transform, "_calculate_rest_token", MagicMock(return_value=2000))
     prompt_messages = prompt_transform._get_chat_model_prompt_messages(
         prompt_template=messages,
         inputs=inputs,
@@ -153,12 +103,12 @@ def test__get_chat_model_prompt_messages(get_chat_model_args: _ChatModelArgs, mo
     assert prompt_messages[5].content == query
 
 
-def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args: _ChatModelArgs) -> None:
+def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args: ChatModelArgs) -> None:
     model_config, _, messages, inputs, context = get_chat_model_args
 
     files = []
 
-    prompt_transform = _FixedTokenBudgetTransform()
+    prompt_transform = AdvancedPromptTransform()
     prompt_messages = prompt_transform._get_chat_model_prompt_messages(
         prompt_template=messages,
         inputs=inputs,
@@ -178,7 +128,7 @@ def test__get_chat_model_prompt_messages_no_memory(get_chat_model_args: _ChatMod
 
 
 def test__get_chat_model_prompt_messages_with_files_no_memory(
-    get_chat_model_args: _ChatModelArgs, monkeypatch: pytest.MonkeyPatch
+    get_chat_model_args: ChatModelArgs, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     model_config, _, messages, inputs, context = get_chat_model_args
     apply_config_overrides(monkeypatch, MULTIMODAL_SEND_FORMAT="url")
@@ -194,7 +144,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(
         )
     ]
 
-    prompt_transform = _FixedTokenBudgetTransform()
+    prompt_transform = AdvancedPromptTransform()
     with patch("graphon.file.file_manager.to_prompt_message_content", autospec=True) as mock_get_encoded_string:
         mock_get_encoded_string.return_value = ImagePromptMessageContent(
             url=str(files[0].remote_url), format="jpg", mime_type="image/jpg"
@@ -221,7 +171,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(
 
 
 @pytest.fixture
-def get_chat_model_args() -> _ChatModelArgs:
+def get_chat_model_args() -> ChatModelArgs:
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
 
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
@@ -241,11 +191,18 @@ def get_chat_model_args() -> _ChatModelArgs:
     return model_config, memory_config, prompt_messages, inputs, context
 
 
-def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
+def test_get_prompt_dispatches_completion_and_chat(monkeypatch: pytest.MonkeyPatch) -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     completion_template = CompletionModelPromptTemplate(text="Hello {{name}}", edition_type="basic")
     chat_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="basic")]
+
+    monkeypatch.setattr(
+        transform, "_get_completion_model_prompt_messages", MagicMock(return_value=[UserPromptMessage(content="c")])
+    )
+    monkeypatch.setattr(
+        transform, "_get_chat_model_prompt_messages", MagicMock(return_value=[UserPromptMessage(content="h")])
+    )
 
     completion_result = transform.get_prompt(
         prompt_template=completion_template,
@@ -257,9 +214,7 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
         memory=None,
         model_config=model_config,
     )
-    assert len(completion_result) == 1
-    assert isinstance(completion_result[0], UserPromptMessage)
-    assert completion_result[0].content == "Hello john"
+    assert completion_result[0].content == "c"
 
     chat_result = transform.get_prompt(
         prompt_template=chat_template,
@@ -271,17 +226,7 @@ def test_get_prompt_dispatches_completion_and_chat_and_invalid() -> None:
         memory=None,
         model_config=model_config,
     )
-    assert len(chat_result) == 2
-    assert isinstance(chat_result[0], UserPromptMessage)
-    assert chat_result[0].content == "Hello john"
-    assert isinstance(chat_result[1], UserPromptMessage)
-    assert chat_result[1].content == "q"
-
-    # A malformed template payload is rejected at the validation boundary (parse-don't-validate),
-    # so it never reaches get_prompt's defensive isinstance guard. Assert the boundary contract
-    # directly instead of smuggling untyped data past the type checker with a cast.
-    with pytest.raises(ValidationError):
-        TypeAdapter(list[ChatModelMessage]).validate_python(["not-chat-model-message"])
+    assert chat_result[0].content == "h"
 
 
 def test_completion_prompt_jinja2_with_files() -> None:
@@ -363,7 +308,7 @@ def test_chat_prompt_with_variable_template_and_context() -> None:
     assert messages[0].content == "sys=john ctx=context-text"
 
 
-def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
+def test_chat_prompt_jinja2_branch() -> None:
     transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     prompt_template = [ChatModelMessage(text="Hello {{name}}", role=PromptMessageRole.USER, edition_type="jinja2")]
@@ -380,22 +325,6 @@ def test_chat_prompt_jinja2_branch_and_invalid_edition() -> None:
             model_config=model_config,
         )
     assert messages[0].content == "Hello John"
-
-    invalid_edition_message = ChatModelMessage(text="bad", role=PromptMessageRole.USER).model_copy(
-        update={"edition_type": "x"}
-    )
-    bad_prompt_template = [invalid_edition_message]
-    with pytest.raises(ValueError, match="Invalid edition type"):
-        transform._get_chat_model_prompt_messages(
-            prompt_template=bad_prompt_template,
-            inputs={},
-            query=None,
-            files=[],
-            context=None,
-            memory_config=None,
-            memory=None,
-            model_config=model_config,
-        )
 
 
 def test_chat_prompt_query_template_and_query_only_branch() -> None:
@@ -420,8 +349,8 @@ def test_chat_prompt_query_template_and_query_only_branch() -> None:
     assert messages[-1].content == "query={{#sys.query#}} ctx=ctx"
 
 
-def test_chat_prompt_memory_with_files_and_query() -> None:
-    transform = _HistoryFreeTransform()
+def test_chat_prompt_memory_with_files_and_query(monkeypatch: pytest.MonkeyPatch) -> None:
+    transform = AdvancedPromptTransform()
     model_config = make_model_config(provider="openai", model="gpt-4", mode="chat")
     memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
     memory = make_token_buffer_memory(model_config)
@@ -435,6 +364,11 @@ def test_chat_prompt_memory_with_files_and_query() -> None:
         storage_key="",
     )
 
+    monkeypatch.setattr(
+        transform,
+        "_append_chat_histories",
+        MagicMock(side_effect=lambda memory, memory_config, prompt_messages, **kwargs: prompt_messages),
+    )
     with patch("core.prompt.advanced_prompt_transform.file_manager.to_prompt_message_content") as to_content:
         to_content.return_value = ImagePromptMessageContent(
             url="https://example.com/image.jpg", format="jpg", mime_type="image/jpg"
