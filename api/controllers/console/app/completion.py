@@ -399,7 +399,7 @@ class AgentChatMessageStopApi(Resource):
     def post(self, context: RequestContext, agent_id: UUID, task_id: str) -> tuple[dict[str, str], HTTPStatus]:
         """Stop a task owned by the admitted account after resolving the Agent's runtime App."""
         try:
-            application_services().agent_apps.runtime.require_runtime_app(context, str(agent_id))
+            application_services().agent_apps.access.resolve_runtime_app_id(context, str(agent_id))
         except AgentAppNotFoundError as exc:
             raise AgentNotFoundError from exc
         application_services().app_tasks.stop_task(task_id, InvokeFrom.DEBUGGER, context.account_id)

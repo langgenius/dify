@@ -69,6 +69,11 @@ def create_tts_response(
     return response
 
 
+def _audio_ref(app: App) -> AudioAppRef:
+    """Detach the routing data needed by the model provider from a loaded App."""
+    return AudioAppRef(app_id=app.id, tenant_id=app.tenant_id, app_mode=app.mode.value)
+
+
 class AudioService:
     @staticmethod
     def _get_message_by_ref(session: Session, message_ref: MessageRef) -> Message | None:
@@ -101,7 +106,7 @@ class AudioService:
         """
         cls.prepare_asr(app_model, session=session)
         return cls.invoke_speech_to_text(
-            app_model=app_model,
+            app=_audio_ref(app_model),
             audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
             end_user=end_user,
         )
@@ -155,7 +160,7 @@ class AudioService:
         """
         cls.prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
         return cls.invoke_speech_to_text(
-            app_model=app_model,
+            app=_audio_ref(app_model),
             audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
             end_user=end_user,
         )
@@ -173,9 +178,9 @@ class AudioService:
         if not features.get("speech_to_text", {}).get("enabled"):
             raise SpeechToTextDisabledServiceError()
 
-    @classmethod
+    @staticmethod
     def invoke_speech_to_text(
-        cls, app_model: App, audio: AudioUpload | None, *, end_user: str | None = None
+        app: AudioAppRef, audio: AudioUpload | None, *, end_user: str | None = None
     ) -> dict[str, str]:
         """Validate the upload and invoke ASR after application configuration is resolved."""
         if audio is None:
@@ -192,8 +197,7 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
 
-        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
-        return {"text": audio_provider_gateway.speech_to_text(app=app_ref, content=file_content, end_user=end_user)}
+        return {"text": audio_provider_gateway.speech_to_text(app=app, content=file_content, end_user=end_user)}
 
     @classmethod
     def transcript_tts(
@@ -217,7 +221,7 @@ class AudioService:
         )
         if prepared is None:
             return None
-        output = cls.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=end_user)
+        output = cls.invoke_tts(_audio_ref(app_model), text=prepared.text, voice=prepared.voice, end_user=end_user)
         return create_tts_response(output.data, output.mime_type)
 
     @classmethod
@@ -273,18 +277,16 @@ class AudioService:
 
         return PreparedTextToAudio(text=text, voice=voice)
 
-    @classmethod
+    @staticmethod
     def invoke_tts(
-        cls,
-        app_model: App,
+        app: AudioAppRef,
         *,
         text: str,
         voice: str | None,
         end_user: str | None = None,
     ) -> AudioOutput:
         """Invoke the provider using text and voice resolved by preparation."""
-        app_ref = AudioAppRef(app_id=app_model.id, tenant_id=app_model.tenant_id, app_mode=app_model.mode.value)
-        return audio_provider_gateway.text_to_speech(app=app_ref, text=text.strip(), voice=voice, end_user=end_user)
+        return audio_provider_gateway.text_to_speech(app=app, text=text.strip(), voice=voice, end_user=end_user)
 
     @classmethod
     def transcript_tts_voices(cls, tenant_id: str, language: str) -> list[TTSModelVoice]:
