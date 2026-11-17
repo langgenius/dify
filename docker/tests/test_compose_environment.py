@@ -862,6 +862,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             "api": "api",
             "api_websocket": "api",
             "worker": "worker",
+            "worker_external_agents": "worker",
             "worker_knowledge_fs_upgrade": "worker",
             "worker_beat": "worker-beat",
             "knowledge_fs_document_worker": "worker",
