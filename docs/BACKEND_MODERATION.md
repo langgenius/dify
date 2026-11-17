@@ -283,6 +283,9 @@ whole-stream buffering mode selected by an omitted limit.
 - Output checks inspect completion text, tool arguments, and native structured
   payloads even when their message text is empty. Binary image, audio,
   video, and document content is not inspected by these text moderation backends.
+- Tool names are checked in both streaming and non-streaming output, including
+  name-only deltas. Streaming name fields are collected separately so repeated
+  tool metadata cannot split the argument text being checked.
 - Non-stream output is checked in independent segments of
   `MODERATION_NON_STREAM_SEGMENT_SIZE` characters. Every segment must pass before
   the original result is returned.
