@@ -19,9 +19,15 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.wraps import with_current_tenant_id, with_current_user
+from controllers.console.wraps import (
+    account_initialization_required,
+    setup_required,
+    with_current_tenant_id,
+    with_current_user,
+)
 from core.human_input_v2.entities import (
     ChannelKind,
+    DebugChannel,
     EmailProviderType,
     IMProvider,
 )
@@ -40,6 +46,7 @@ from core.human_input_v2.shared import (
 from fields.base import ResponseModel
 from fields.timestamp import Timestamp
 from libs.helper import EmailStr
+from libs.login import login_required
 from models.account import Account
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from repositories.human_input_v2.email_channel.entities import ResendCandidate
@@ -173,6 +180,10 @@ class ListChannelsResponse(ResponseModel):
     channels: Sequence[ChannelSummary]
 
 
+class HumanInputTestChannelsResponse(ResponseModel):
+    channels: tuple[DebugChannel, ...]
+
+
 type _SenderName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=255)]
 
 
@@ -276,6 +287,7 @@ register_response_schema_models(
     ListChannelProvidersResponse,
     ChannelSummary,
     ListChannelsResponse,
+    HumanInputTestChannelsResponse,
     EmailChannelMutationResponse,
     EmailChannelDetailResponse,
     IMChannelMutationResponse,
@@ -358,6 +370,19 @@ def _workspace_im_channel_service(tenant_id: str, account: Account) -> Workspace
     return build_workspace_im_channel_service(TenantId(tenant_id), _actor_id(account))
 
 
+def _configured_channel_views(tenant_id: str, account: Account) -> tuple[EmailChannelView | None, IMChannelView | None]:
+    """Read supported channel views for the server-resolved Workspace.
+
+    Credentials are not decrypted and providers are not called.
+    """
+    email = (
+        build_human_input_email_channel_management_service().get_current(_workspace_scope(tenant_id))
+        if FeatureService.use_tenant_scoped_email_config()
+        else None
+    )
+    return email, _workspace_im_channel_service(tenant_id, account).get_current()
+
+
 def _provider_failure_response(error: ChannelProviderError | IMProviderError) -> ChannelTestResponse:
     """Map a safe provider failure at the API boundary without dropping supplied diagnostics."""
     if isinstance(error, CredentialTestRejectedError):
@@ -419,19 +444,35 @@ class ListChannelsApi(WorkspaceChannelResource):
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
         """List supported configured channels for the admitted administrator without reading disabled owners."""
-        workspace_scope = _workspace_scope(tenant_id)
-        email = (
-            build_human_input_email_channel_management_service().get_current(workspace_scope)
-            if FeatureService.use_tenant_scoped_email_config()
-            else None
-        )
-        im = _workspace_im_channel_service(tenant_id, current_user).get_current()
+        email, im = _configured_channel_views(tenant_id, current_user)
         channels: list[ChannelSummary] = []
         if email is not None:
             channels.append(_email_channel_summary_response(email))
         if im is not None:
             channels.append(_im_channel_summary_response(im))
         return ListChannelsResponse(channels=channels).model_dump(mode="json")
+
+
+@console_ns.route("/workspaces/current/human-input/v2/test-channels")
+class ListTestChannelsApi(Resource):
+    """Expose only test channel identifiers to authenticated Dify Workspace members."""
+
+    @console_ns.response(200, "Success", console_ns.models[HumanInputTestChannelsResponse.__name__])
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @workspace_channel_api_admission
+    @with_current_user
+    @with_current_tenant_id
+    def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
+        """List current Workspace test channels without granting channel management or app execution permissions."""
+        email, im = _configured_channel_views(tenant_id, current_user)
+        channels: list[DebugChannel] = []
+        if email is not None:
+            channels.append(DebugChannel.EMAIL)
+        if im is not None:
+            channels.append(DebugChannel(im.provider.value))
+        return HumanInputTestChannelsResponse(channels=tuple(channels)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/test")
