@@ -382,6 +382,7 @@ describe('MainNav', () => {
       '/skills',
       '/integrations/model-provider',
       '/marketplace',
+      '/published-apps',
     ])
   })
 
@@ -403,6 +404,7 @@ describe('MainNav', () => {
       '/skills',
       '/integrations/model-provider',
       '/marketplace',
+      '/published-apps',
     ])
   })
 
