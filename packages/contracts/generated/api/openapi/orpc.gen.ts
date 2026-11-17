@@ -1916,14 +1916,15 @@ export const apps = {
  * (result, or error for an unsupported protocol version or tool name); 202 with no body for
  * a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
  * any other unparsable message; 413 with a JSON-RPC error when the body is above
- * ``MCP_MAX_BODY_BYTES`` (checked before the body is read and before any login check);
- * 401 when the token is not real; the login check's own status
- * when it answers a server error.
+ * ``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
+ * before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
+ * cut at the cap and answers 400 with a JSON-RPC parse error; 401 when
+ * the token is not real; the login check's own status when it answers a server error.
  */
 export const post23 = oc
   .route({
     description:
-      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` (checked before the body is read and before any login check);\n401 when the token is not real; the login check's own status\nwhen it answers a server error.",
+      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 413 with a JSON-RPC error when the body is above\n``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and\nbefore any login check); a body above the cap sent without a ``Content-Length`` (chunked) is\ncut at the cap and answers 400 with a JSON-RPC parse error; 401 when\nthe token is not real; the login check's own status when it answers a server error.",
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postMcp',
