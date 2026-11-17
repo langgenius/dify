@@ -8,8 +8,9 @@ import json
 from decimal import Decimal
 from typing import cast
 
+from sqlalchemy.orm import Session, sessionmaker
+
 from core.credit_usage import CreditUsageCreatedBy
-from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
@@ -89,6 +90,8 @@ class ModelInvocationUtils:
         tool_name: str,
         prompt_messages: list[PromptMessage],
         caller_user_id: str | None = None,
+        *,
+        session_maker: sessionmaker[Session],
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context
@@ -98,13 +101,14 @@ class ModelInvocationUtils:
         :param tool_type: tool type
         :param tool_name: tool name
         :param prompt_messages: prompt messages
+        :param session_maker: factory for the short-lived sessions that own the log row writes
         :return: AssistantPromptMessage
 
-        The ``ToolModelInvoke`` log row is written through sessions this method owns, so it never
-        commits work pending in the caller's session. The row is committed with an empty response
-        before the model is called and no session is open during the call. On success, a second
-        session records the response and usage. If the call fails, the row keeps its empty response
-        and ``InvokeModelError`` is raised.
+        The ``ToolModelInvoke`` log row is written through sessions from ``session_maker``, so it
+        never commits work pending in the caller's session. The row is committed with an empty
+        response before the model is called and no session is open during the call. On success, a
+        second session records the response and usage. If the call fails, the row keeps its empty
+        response and ``InvokeModelError`` is raised.
         """
 
         # get model manager
@@ -142,9 +146,8 @@ class ModelInvocationUtils:
             currency="USD",
         )
 
-        with session_factory.create_session() as session:
+        with session_maker.begin() as session:
             session.add(tool_model_invoke)
-            session.commit()
 
         try:
             response: LLMResult = model_instance.invoke_llm(
@@ -169,7 +172,7 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke error: {e}") from e
 
         # update tool model invoke
-        with session_factory.create_session() as session:
+        with session_maker.begin() as session:
             session.add(tool_model_invoke)
             tool_model_invoke.model_response = str(response.message.content)
             if response.usage:
@@ -179,7 +182,5 @@ class ModelInvocationUtils:
                 tool_model_invoke.provider_response_latency = response.usage.latency
                 tool_model_invoke.total_price = response.usage.total_price
                 tool_model_invoke.currency = response.usage.currency
-
-            session.commit()
 
         return response

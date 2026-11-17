@@ -138,6 +138,7 @@ def test_invoke_success_and_error_mappings(sqlite_session_factory: sessionmaker[
             tool_name="tool-a",
             prompt_messages=[],
             caller_user_id=CALLER_ID,
+            session_maker=sqlite_session_factory,
         )
 
     assert response.message.content == "ok"
@@ -174,7 +175,9 @@ def test_invoke_success_and_error_mappings(sqlite_session_factory: sessionmaker[
         "generic-error",
     ],
 )
-def test_invoke_error_mappings(exc: Exception, expected: str, sqlite_session: Session) -> None:
+def test_invoke_error_mappings(
+    exc: Exception, expected: str, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
     model_instance = make_model_instance(provider="provider", model="model-a")
     manager = ModelManager.for_tenant(TENANT_ID, user_id=USER_ID)
 
@@ -191,6 +194,7 @@ def test_invoke_error_mappings(exc: Exception, expected: str, sqlite_session: Se
                 tool_type=ToolProviderType.BUILT_IN,
                 tool_name="tool-a",
                 prompt_messages=[],
+                session_maker=sqlite_session_factory,
             )
     persisted = sqlite_session.scalar(select(ToolModelInvoke))
     assert persisted is not None
