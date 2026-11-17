@@ -182,6 +182,29 @@ def _raise_on_execution_insert(engine: Engine) -> Generator[None]:
         event.remove(engine, "before_cursor_execute", raise_error)
 
 
+@contextmanager
+def _record_execution_statements(engine: Engine) -> Generator[list[str]]:
+    """Collect the statements issued against the node execution table, as the driver receives them."""
+    statements: list[str] = []
+
+    def record(
+        _conn: Any,
+        _cursor: Any,
+        statement: str,
+        _parameters: Any,
+        _context: Any,
+        _executemany: Any,
+    ) -> None:
+        if "workflow_node_executions" in statement:
+            statements.append(" ".join(statement.split()))
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+
+
 class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
     @staticmethod
     def test_init_accepts_real_engine_and_sessionmaker_and_sets_role(
@@ -374,6 +397,46 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             assert persisted.outputs_dict == {"result": "second"}
         assert execution.node_execution_id is not None
         assert repo._node_execution_cache[execution.node_execution_id].id == execution.id
+
+    @staticmethod
+    def test_save_update_reads_only_the_stored_process_data(
+        monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """Updating a record needs one fact from the stored row: its process data and the ids in it.
+
+        The update therefore selects that one column and writes with a single UPDATE. It does not
+        load the row with its inputs and outputs, which only cost time to fetch and hydrate.
+        """
+        repo = _repository(monkeypatch, sqlite_session_factory)
+        execution = _sqlalchemy_workflow_node_execution_repository_execution(
+            status=_RepositoryExecutionStatus.RUNNING,
+            inputs={"value": 1},
+            process_data={"workflow_agent_binding_id": "binding-1"},
+        )
+        repo.save(execution)
+        execution.status = _RepositoryExecutionStatus.SUCCEEDED
+        execution.outputs = {"result": "done"}
+        execution.process_data = {"step": 2}
+
+        with _record_execution_statements(sqlite_engine) as statements:
+            repo.save(execution)
+
+        selects = [statement for statement in statements if statement.startswith("SELECT")]
+        assert len(selects) == 1
+        selected_columns = selects[0].split(" FROM ")[0]
+        assert "process_data" in selected_columns
+        assert "inputs" not in selected_columns
+        assert "outputs" not in selected_columns
+        assert [statement.split()[0] for statement in statements] == ["SELECT", "UPDATE"]
+        with sqlite_session_factory() as session:
+            persisted = session.get(
+                _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, execution.id
+            )
+            assert persisted is not None
+            assert persisted.status == _RepositoryExecutionStatus.SUCCEEDED
+            assert persisted.inputs_dict == {"value": 1}
+            assert persisted.outputs_dict == {"result": "done"}
+            assert persisted.process_data_dict == {"step": 2, "workflow_agent_binding_id": "binding-1"}
 
     @staticmethod
     def test_save_owned_session_rolls_back_failed_insert(

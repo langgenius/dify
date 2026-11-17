@@ -117,6 +117,7 @@ class ProviderConfiguration(BaseModel):
     _bound_model_runtime: ModelRuntime | None = PrivateAttr(default=None)
     _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
     _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
+    _policy_checked_credential_ids: set[str] = PrivateAttr(default_factory=set)
 
     @model_validator(mode="after")
     def _(self):
@@ -236,25 +237,33 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                from core.helper.credential_utils import runtime_check_credential_policy_compliance
-
-                runtime_check_credential_policy_compliance(
-                    credential_id=current_credential_id,
-                    provider=self.provider.provider,
-                    credential_type=PluginCredentialType.MODEL,
-                )
+                self._check_credential_policy_once(current_credential_id)
             else:
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        from core.helper.credential_utils import runtime_check_credential_policy_compliance
-
-                        runtime_check_credential_policy_compliance(
-                            credential_id=credential_configuration.credential_id,
-                            provider=self.provider.provider,
-                            credential_type=PluginCredentialType.MODEL,
-                        )
+                        self._check_credential_policy_once(credential_configuration.credential_id)
             return credentials
+
+    def _check_credential_policy_once(self, credential_id: str) -> None:
+        """Check the credential policy the first time this configuration hands a credential out.
+
+        A configuration is the snapshot of a provider's credentials that one request resolved, and a
+        request asks it for the same credentials several times: once for every model instance it
+        builds. In the enterprise edition each check is a round trip to the plugin manager, so only the
+        first one for a credential is made; a credential that fails is checked again every time.
+        """
+        if credential_id in self._policy_checked_credential_ids:
+            return
+
+        from core.helper.credential_utils import runtime_check_credential_policy_compliance
+
+        runtime_check_credential_policy_compliance(
+            credential_id=credential_id,
+            provider=self.provider.provider,
+            credential_type=PluginCredentialType.MODEL,
+        )
+        self._policy_checked_credential_ids.add(credential_id)
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
         """

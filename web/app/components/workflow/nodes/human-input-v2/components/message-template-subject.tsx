@@ -206,7 +206,7 @@ const MessageTemplateSubject = ({
         disabled && 'cursor-not-allowed opacity-50',
       )}
       className="min-h-6 break-words [&_[data-lexical-decorator]]:h-lh [&_[data-lexical-decorator]]:align-top"
-      placeholderClassName="px-2 py-1 pe-8"
+      placeholderClassName="truncate px-2 py-1 pe-8"
       placeholder={placeholder}
       editable={!disabled}
       aria-disabled={disabled}
