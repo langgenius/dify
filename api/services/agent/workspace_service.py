@@ -273,6 +273,21 @@ class AgentWorkspaceService:
                 retired.append(workspace_id)
         return retired
 
+    @classmethod
+    def list_retired_workspace_ids_for_app(cls, *, session: Session, tenant_id: str, app_id: str) -> list[str]:
+        """List retired app and workflow-tool Workspaces eligible for collection retries."""
+        return list(
+            session.scalars(
+                select(AgentWorkspace.id)
+                .where(
+                    AgentWorkspace.tenant_id == tenant_id,
+                    or_(AgentWorkspace.app_id == app_id, cls._workflow_tool_owned_by_app(tenant_id, app_id)),
+                    AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED,
+                )
+                .order_by(AgentWorkspace.id)
+            ).all()
+        )
+
     @staticmethod
     def _workflow_tool_owned_by_app(tenant_id: str, app_id: str) -> ColumnElement[bool]:
         """Follow the persisted caller and Binding, independently of optional run-log storage."""

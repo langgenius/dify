@@ -1,3 +1,4 @@
+import json
 from contextlib import nullcontext
 from dataclasses import dataclass
 from unittest.mock import MagicMock
@@ -5,6 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.node_execution_process_data import WORKFLOW_TOOL_ROOT_APP_ID_KEY
+from graphon.enums import WorkflowNodeExecutionStatus
 from models.agent import (
     Agent,
     AgentConfigVersionKind,
@@ -20,9 +23,9 @@ from models.agent import (
     WorkflowAgentBindingType,
     WorkflowAgentNodeBinding,
 )
-from models.enums import AppStatus
+from models.enums import AppStatus, CreatorUserRole
 from models.model import App, AppMode
-from models.workflow import Workflow, WorkflowType
+from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from services.agent.home_snapshot_service import AgentHomeSnapshotService
 from services.agent.retirement_service import WorkflowAgentRetirementService
 
@@ -382,6 +385,83 @@ def test_retire_unowned_archives_orphan_and_retires_resources(
         home_snapshot_ids=[home.id],
         purge_agent_ids=[agent.id],
     )
+
+
+def test_retire_unowned_collects_cross_app_workflow_tool_workspace(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+) -> None:
+    seeded = _seed_orphan_aggregate(sqlite_session)
+    workspace = AgentWorkspace(
+        id="workflow-tool-workspace",
+        tenant_id="tenant-1",
+        app_id="source-app",
+        owner_type=AgentWorkspaceOwnerType.WORKFLOW_RUN,
+        owner_id="workflow-run-1",
+        owner_scope_key="node-1:binding-1",
+        backend_workspace_ref="workflow-tool-workspace-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+        active_guard=1,
+    )
+    binding = AgentWorkspaceBinding(
+        id="workflow-tool-binding",
+        tenant_id="tenant-1",
+        app_id="source-app",
+        workspace_id=workspace.id,
+        agent_id=seeded.agent_id,
+        base_home_snapshot_id=None,
+        agent_config_version_id="config-1",
+        agent_config_version_kind=AgentConfigVersionKind.SNAPSHOT,
+        backend_binding_ref="workflow-tool-binding-ref",
+        status=AgentWorkingResourceStatus.ACTIVE,
+    )
+    execution = WorkflowNodeExecutionModel(
+        tenant_id="tenant-1",
+        app_id="source-app",
+        workflow_id="source-workflow",
+        workflow_run_id="workflow-run-1",
+        node_id="node-1",
+        node_type="agent",
+        title="Agent",
+        index=1,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_TOOL,
+        status=WorkflowNodeExecutionStatus.SUCCEEDED,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+        process_data=json.dumps({WORKFLOW_TOOL_ROOT_APP_ID_KEY: seeded.app_id}),
+        agent_workspace_binding_id=binding.id,
+    )
+    sqlite_session.add_all([workspace, binding, execution])
+    sqlite_session.commit()
+    monkeypatch.setattr(
+        "services.agent.retirement_service.session_factory.create_session",
+        lambda: nullcontext(sqlite_session),
+    )
+    cleanup_app, enqueue_collection = _publication_mocks(monkeypatch)
+    enqueue_collection.side_effect = [RuntimeError("broker unavailable"), None]
+
+    with pytest.raises(RuntimeError, match="broker unavailable"):
+        WorkflowAgentRetirementService.retire_unowned(
+            tenant_id="tenant-1",
+            agent_ids=[seeded.agent_id],
+            account_id="account-1",
+        )
+
+    assert workspace.status is AgentWorkingResourceStatus.RETIRED
+    assert binding.status is AgentWorkingResourceStatus.RETIRED
+    sqlite_session.expire_all()
+
+    WorkflowAgentRetirementService.retire_unowned(
+        tenant_id="tenant-1",
+        agent_ids=[seeded.agent_id],
+        account_id="account-1",
+    )
+
+    assert enqueue_collection.call_count == 2
+    for call in enqueue_collection.call_args_list:
+        workspace_ids = call.kwargs["workspace_ids"]
+        assert set(workspace_ids) == {seeded.workspace_id, workspace.id}
+        assert len(workspace_ids) == 2
 
 
 def test_hidden_app_cleanup_failure_blocks_collector_and_keeps_committed_state(

@@ -15,7 +15,6 @@ from models.agent import (
     AgentScope,
     AgentStatus,
     AgentWorkingResourceStatus,
-    AgentWorkspace,
     AgentWorkspaceBinding,
     WorkflowAgentNodeBinding,
 )
@@ -75,19 +74,19 @@ class WorkflowAgentRetirementService:
                 ).all()
                 backing_app_ids = sorted({agent.backing_app_id for agent in retired_agents if agent.backing_app_id})
                 for app_id in backing_app_ids:
-                    AgentWorkspaceService.retire_all_for_app(
-                        session=session,
-                        tenant_id=tenant_id,
-                        app_id=app_id,
+                    retired_workspaces.extend(
+                        AgentWorkspaceService.retire_all_for_app(
+                            session=session,
+                            tenant_id=tenant_id,
+                            app_id=app_id,
+                        )
                     )
                     retired_workspaces.extend(
-                        session.scalars(
-                            select(AgentWorkspace.id).where(
-                                AgentWorkspace.tenant_id == tenant_id,
-                                AgentWorkspace.app_id == app_id,
-                                AgentWorkspace.status == AgentWorkingResourceStatus.RETIRED,
-                            )
-                        ).all()
+                        AgentWorkspaceService.list_retired_workspace_ids_for_app(
+                            session=session,
+                            tenant_id=tenant_id,
+                            app_id=app_id,
+                        )
                     )
                 for agent_id in retired_agent_ids:
                     bindings = session.scalars(
@@ -141,7 +140,7 @@ class WorkflowAgentRetirementService:
                 raise
         enqueue_agent_resource_collection(
             tenant_id=tenant_id,
-            workspace_ids=retired_workspaces,
+            workspace_ids=list(dict.fromkeys(retired_workspaces)),
             binding_ids=retired_bindings,
             home_snapshot_ids=retired_snapshots,
             purge_agent_ids=retired_agent_ids,
