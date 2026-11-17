@@ -1,7 +1,8 @@
 import { useAtom, useAtomValue } from 'jotai'
 import { useTranslation } from 'react-i18next'
 import { PlanUpgradeModal } from '@/app/components/billing/plan-upgrade-modal'
-import { collaborationUpgradeAvailableAtom, collaborationUpgradeOpenAtom } from './upgrade-state'
+import { collaborationUpgradeOpenAtom } from '../editor-resource/state'
+import { collaborationUpgradeAvailableAtom } from './upgrade-state'
 
 export function CollaborationUpgradeModal() {
   const { t } = useTranslation(['billing'])

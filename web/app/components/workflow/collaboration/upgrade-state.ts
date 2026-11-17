@@ -17,5 +17,3 @@ export const collaborationUpgradeAvailableAtom = atom(
     get(deploymentEditionAtom) === 'CLOUD' &&
     get(workspacePlanQueryAtom).data === 'sandbox',
 )
-
-export const collaborationUpgradeOpenAtom = atom(false)

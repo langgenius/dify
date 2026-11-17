@@ -7,6 +7,8 @@ export const editorResourceAtom = atomWithLazy<EditorResource>(() => {
   throw new Error('EditorResourceScope is required for the workflow editor')
 })
 
+export const collaborationUpgradeOpenAtom = atom(false)
+
 export const editorResourceKindAtom = atom((get) => get(editorResourceAtom).kind)
 export const editorCollaborationEnabledAtom = atom((get) => {
   const resource = get(editorResourceAtom)
