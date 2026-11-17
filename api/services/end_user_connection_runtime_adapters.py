@@ -29,7 +29,7 @@ from services.end_user_connections.errors import (
 )
 from services.end_user_connections.policy import require_owned_connection
 from services.end_user_connections.revision import ConnectionRevisionAcceptance
-from services.workflow.tool_credentials import resolve_tool_credential_root
+from services.workflow.tool_credential_validation import resolve_tool_credential_root
 from services.workflow_test_credentials import BuilderScope
 
 if TYPE_CHECKING:
