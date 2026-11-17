@@ -630,7 +630,8 @@ describe('AppCard', () => {
 
   it('keeps the failed edit draft and retries without reopening the card dialog', async () => {
     const user = userEvent.setup()
-    api.update.mockRejectedValueOnce(new Error('Edit failed'))
+    const firstSave = createDeferred<Awaited<ReturnType<typeof api.update>>>()
+    api.update.mockReturnValueOnce(firstSave.promise)
     render(<AppCard onDelete={onDelete} app={mockApp} />)
     await chooseAction(user, 'app.editApp')
     const dialog = await screen.findByRole('dialog', { name: 'app.editAppTitle' })
@@ -644,6 +645,9 @@ describe('AppCard', () => {
     await user.clear(description)
     await user.type(description, 'Updated description')
     await user.click(within(dialog).getByRole('button', { name: /common.operation.save/ }))
+    await user.keyboard('{Escape}')
+    expect(dialog).toBeInTheDocument()
+    await act(async () => firstSave.reject(new Error('Edit failed')))
     expect(await within(dialog).findByRole('alert')).toHaveTextContent('Edit failed')
     expect(name).toHaveValue('Updated App')
     expect(description).toHaveValue('Updated description')

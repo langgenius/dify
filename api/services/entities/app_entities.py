@@ -164,6 +164,8 @@ class AppRecord:
     author_name: str | None = None
     app_model_config: dict[str, Any] | None = None
     workflow: dict[str, Any] | None = None
+    workflow_type: str | None = None
+    workflow_kind: str | None = None
     site: dict[str, Any] | None = None
     tracing: str | None = None
     bound_agent_id: str | None = None

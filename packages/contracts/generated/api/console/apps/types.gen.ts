@@ -60,6 +60,8 @@ export type AppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppImportPayload = {
@@ -475,6 +477,8 @@ export type AppDetail = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AudioTranscriptResponse = {
@@ -1308,6 +1312,14 @@ export type WorkflowPaginationResponse = {
   page: number
 }
 
+export type WorkflowKindConvertResponse = {
+  kind: string
+  result: string
+  type: string
+  updated_at: number
+  workflow_id: string
+}
+
 export type DefaultBlockConfigsResponse = Array<DefaultBlockConfigItemResponse>
 
 export type DefaultBlockConfigResponse = {
@@ -1705,6 +1717,8 @@ export type AppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type IconType = 'emoji' | 'image' | 'link'
@@ -1804,6 +1818,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -2451,6 +2467,7 @@ export type WorkflowAppLogPartialResponse = {
   created_by_role?: string | null
   created_from?: string | null
   details?: unknown
+  evaluation?: Array<WorkflowAppLogEvaluationItemResponse>
   id: string
   workflow_run?: WorkflowRunForLogResponse | null
 }
@@ -3476,6 +3493,15 @@ export type AppExternalDataInputPayload = {
   external_data_tool: AppInputFieldPayload
 }
 
+export type WorkflowAppLogEvaluationItemResponse = {
+  details?: {
+    [key: string]: unknown
+  }
+  name: string
+  node_info?: WorkflowAppLogEvaluationNodeInfoResponse | null
+  value?: unknown
+}
+
 export type WorkflowRunForLogResponse = {
   created_at?: number | null
   elapsed_time?: number | null
@@ -4165,6 +4191,12 @@ export type AppSelectFieldPayload = {
     | undefined
 }
 
+export type WorkflowAppLogEvaluationNodeInfoResponse = {
+  node_id: string
+  title: string
+  type: string
+}
+
 export type WorkflowFileUploadTransferPayload = {
   enabled?: boolean | null
   number_limits?: number | null
@@ -4659,6 +4691,8 @@ export type AppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type RecentAppListResponseWritable = {
@@ -4732,6 +4766,8 @@ export type AppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {
@@ -8443,6 +8479,33 @@ export type GetAppsByAppIdWorkflowsResponses = {
 export type GetAppsByAppIdWorkflowsResponse =
   GetAppsByAppIdWorkflowsResponses[keyof GetAppsByAppIdWorkflowsResponses]
 
+export type PostAppsByAppIdWorkflowsConvertTypeData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query: {
+    target_type: 'evaluation' | 'workflow'
+  }
+  url: '/apps/{app_id}/workflows/convert-type'
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeError =
+  PostAppsByAppIdWorkflowsConvertTypeErrors[keyof PostAppsByAppIdWorkflowsConvertTypeErrors]
+
+export type PostAppsByAppIdWorkflowsConvertTypeResponses = {
+  200: WorkflowKindConvertResponse
+}
+
+export type PostAppsByAppIdWorkflowsConvertTypeResponse =
+  PostAppsByAppIdWorkflowsConvertTypeResponses[keyof PostAppsByAppIdWorkflowsConvertTypeResponses]
+
 export type GetAppsByAppIdWorkflowsDefaultWorkflowBlockConfigsData = {
   body?: never
   path: {
@@ -9571,6 +9634,7 @@ export type PostAppsByAppIdWorkflowsPublishData = {
 }
 
 export type PostAppsByAppIdWorkflowsPublishErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
   404: AppNotFoundError | ErrorResponse
   default: ErrorResponse
 }
@@ -9584,6 +9648,31 @@ export type PostAppsByAppIdWorkflowsPublishResponses = {
 
 export type PostAppsByAppIdWorkflowsPublishResponse =
   PostAppsByAppIdWorkflowsPublishResponses[keyof PostAppsByAppIdWorkflowsPublishResponses]
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationData = {
+  body: PublishWorkflowPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/workflows/publish/evaluation'
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationError =
+  PostAppsByAppIdWorkflowsPublishEvaluationErrors[keyof PostAppsByAppIdWorkflowsPublishEvaluationErrors]
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationResponses = {
+  200: WorkflowPublishResponse
+}
+
+export type PostAppsByAppIdWorkflowsPublishEvaluationResponse =
+  PostAppsByAppIdWorkflowsPublishEvaluationResponses[keyof PostAppsByAppIdWorkflowsPublishEvaluationResponses]
 
 export type GetAppsByAppIdWorkflowsPublishedRunsByRunIdNodeOutputsData = {
   body?: never
