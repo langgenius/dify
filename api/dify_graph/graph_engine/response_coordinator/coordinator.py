@@ -9,7 +9,7 @@ import logging
 from collections import deque
 from collections.abc import Sequence
 from threading import RLock
-from typing import Literal, TypeAlias, final
+from typing import Literal, final
 from uuid import uuid4
 
 from pydantic import BaseModel, Field
@@ -26,8 +26,8 @@ from .session import ResponseSession
 logger = logging.getLogger(__name__)
 
 # Type definitions
-NodeID: TypeAlias = str
-EdgeID: TypeAlias = str
+type NodeID = str
+type EdgeID = str
 
 
 class ResponseSessionState(BaseModel):
@@ -52,16 +52,17 @@ class StreamPositionState(BaseModel):
 
 
 class ResponseStreamCoordinatorState(BaseModel):
-    """Serialized snapshot of ResponseStreamCoordinator."""
+    """Version 2 stores taken edges; residual paths are retained when loading version 1."""
 
     type: Literal["ResponseStreamCoordinator"] = Field(default="ResponseStreamCoordinator")
-    version: str = Field(default="1.0")
+    version: str = Field(default="2.0")
     response_nodes: Sequence[str] = Field(default_factory=list)
     active_session: ResponseSessionState | None = None
     waiting_sessions: Sequence[ResponseSessionState] = Field(default_factory=list)
     pending_sessions: Sequence[ResponseSessionState] = Field(default_factory=list)
     node_execution_ids: dict[str, str] = Field(default_factory=dict)
     paths_map: dict[str, list[list[str]]] = Field(default_factory=dict)
+    taken_edges: list[str] = Field(default_factory=list)
     stream_buffers: Sequence[StreamBufferState] = Field(default_factory=list)
     stream_positions: Sequence[StreamPositionState] = Field(default_factory=list)
     closed_streams: Sequence[tuple[str, ...]] = Field(default_factory=list)
@@ -74,6 +75,8 @@ class ResponseStreamCoordinator:
 
     Ensures ordered streaming of responses based on upstream node outputs and constants.
     """
+
+    _taken_edges: set[EdgeID]
 
     def __init__(self, variable_pool: "VariablePool", graph: GraphProtocol) -> None:
         """
@@ -97,8 +100,9 @@ class ResponseStreamCoordinator:
         # Track response nodes
         self._response_nodes: set[NodeID] = set()
 
-        # Store paths for each response node
+        # Only legacy snapshots retain already-enumerated, partially consumed paths.
         self._paths_maps: dict[NodeID, list[Path]] = {}
+        self._taken_edges = set()
 
         # Track node execution IDs and types for proper event forwarding
         self._node_execution_ids: dict[NodeID, str] = {}  # node_id -> execution_id
@@ -111,10 +115,6 @@ class ResponseStreamCoordinator:
             if response_node_id in self._response_nodes:
                 return
             self._response_nodes.add(response_node_id)
-
-            # Build and save paths map for this response node
-            paths_map = self._build_paths_map(response_node_id)
-            self._paths_maps[response_node_id] = paths_map
 
             # Create and store response session for this node
             response_node = self._graph.nodes[response_node_id]
@@ -145,93 +145,42 @@ class ResponseStreamCoordinator:
                 self._node_execution_ids[node_id] = str(uuid4())
             return self._node_execution_ids[node_id]
 
-    def _build_paths_map(self, response_node_id: NodeID) -> list[Path]:
+    def _is_response_reachable(self, session: ResponseSession) -> bool:
+        """Find a route whose blocking edges have all been taken, visiting each node once.
+
+        Nonblocking edges allow early streaming without waiting for their source to finish.
+        Track observed edge events separately from graph state, which may be restored later.
         """
-        Build a paths map for a response node by finding all paths from root node
-        to the response node, recording branch edges along each path.
+        variable_selectors = {
+            tuple(segment.selector[:2]) for segment in session.template.segments if isinstance(segment, VariableSegment)
+        }
+        pending = [self._graph.root_node.id]
+        visited = set(pending)
+        while pending:
+            node_id = pending.pop()
+            if node_id == session.node_id:
+                return True
 
-        Args:
-            response_node_id: ID of the response node to analyze
-
-        Returns:
-            List of Path objects, where each path contains branch edge IDs
-        """
-        # Get root node ID
-        root_node_id = self._graph.root_node.id
-
-        # If root is the response node, return empty path
-        if root_node_id == response_node_id:
-            return [Path()]
-
-        # Extract variable selectors from the response node's template
-        response_node = self._graph.nodes[response_node_id]
-        response_session = ResponseSession.from_node(response_node)
-        template = response_session.template
-
-        # Collect all variable selectors from the template
-        variable_selectors: set[tuple[str, ...]] = set()
-        for segment in template.segments:
-            if isinstance(segment, VariableSegment):
-                variable_selectors.add(tuple(segment.selector[:2]))
-
-        # Step 1: Find all complete paths from root to response node
-        all_complete_paths: list[list[EdgeID]] = []
-
-        def find_paths(
-            current_node_id: NodeID, target_node_id: NodeID, current_path: list[EdgeID], visited: set[NodeID]
-        ) -> None:
-            """Recursively find all paths from current node to target node."""
-            if current_node_id == target_node_id:
-                # Found a complete path, store it
-                all_complete_paths.append(current_path.copy())
-                return
-
-            # Mark as visited to avoid cycles
-            visited.add(current_node_id)
-
-            # Explore outgoing edges
-            outgoing_edges = self._graph.get_outgoing_edges(current_node_id)
-            for edge in outgoing_edges:
-                edge_id = edge.id
-                next_node_id = edge.head
-
-                # Skip if already visited in this path
-                if next_node_id not in visited:
-                    # Add edge to path and recurse
-                    new_path = current_path + [edge_id]
-                    find_paths(next_node_id, target_node_id, new_path, visited.copy())
-
-        # Start searching from root node
-        find_paths(root_node_id, response_node_id, [], set())
-
-        # Step 2: For each complete path, filter edges based on node blocking behavior
-        filtered_paths: list[Path] = []
-        for path in all_complete_paths:
-            blocking_edges: list[str] = []
-            for edge_id in path:
-                edge = self._graph.edges[edge_id]
-                source_node = self._graph.nodes[edge.tail]
-
-                # Check if node is a branch, container, or response node
-                if source_node.execution_type in {
-                    NodeExecutionType.BRANCH,
-                    NodeExecutionType.CONTAINER,
-                    NodeExecutionType.RESPONSE,
-                } or source_node.blocks_variable_output(variable_selectors):
-                    blocking_edges.append(edge_id)
-
-            # Keep the path even if it's empty
-            filtered_paths.append(Path(edges=blocking_edges))
-
-        return filtered_paths
+            node = self._graph.nodes[node_id]
+            blocks = node.execution_type in {
+                NodeExecutionType.BRANCH,
+                NodeExecutionType.CONTAINER,
+                NodeExecutionType.RESPONSE,
+            } or node.blocks_variable_output(variable_selectors)
+            for edge in self._graph.get_outgoing_edges(node_id):
+                if blocks and edge.id not in self._taken_edges:
+                    continue
+                if edge.head not in visited:
+                    visited.add(edge.head)
+                    pending.append(edge.head)
+        return False
 
     def on_edge_taken(self, edge_id: str) -> Sequence[NodeRunStreamChunkEvent]:
         """
         Handle when an edge is taken (selected by a branch node).
 
-        This method updates the paths for all response nodes by removing
-        the taken edge. If any response node has an empty path after removal,
-        it means the node is now deterministically reachable and should start.
+        A pending response starts once reachable through nonblocking or taken edges.
+        Legacy snapshots continue consuming their saved residual path conditions.
 
         Args:
             edge_id: The ID of the edge that was taken
@@ -242,24 +191,21 @@ class ResponseStreamCoordinator:
         events: list[NodeRunStreamChunkEvent] = []
 
         with self._lock:
+            self._taken_edges.add(edge_id)
             # Check each response node in order
             for response_node_id in self._response_nodes:
-                if response_node_id not in self._paths_maps:
+                session = self._response_sessions.get(response_node_id)
+                if session is None:
                     continue
 
-                paths = self._paths_maps[response_node_id]
-                has_reachable_path = False
+                paths = self._paths_maps.get(response_node_id)
+                if paths is not None:
+                    for path in paths:
+                        path.remove_edge(edge_id)
+                    has_reachable_path = any(path.is_empty() for path in paths)
+                else:
+                    has_reachable_path = self._is_response_reachable(session)
 
-                # Update each path by removing the taken edge
-                for path in paths:
-                    # Remove the taken edge from this path
-                    path.remove_edge(edge_id)
-
-                    # Check if this path is now empty (node is reachable)
-                    if path.is_empty():
-                        has_reachable_path = True
-
-                # If node is now reachable (has empty path), start/queue session
                 if has_reachable_path:
                     # Pass the node_id to the activation method
                     # The method will handle checking and removing from map
@@ -641,6 +587,7 @@ class ResponseStreamCoordinator:
                     node_id: [path.edges.copy() for path in paths]
                     for node_id, paths in sorted(self._paths_maps.items())
                 },
+                taken_edges=sorted(self._taken_edges),
                 stream_buffers=[
                     StreamBufferState(
                         selector=selector,
@@ -657,14 +604,14 @@ class ResponseStreamCoordinator:
             return state.model_dump_json()
 
     def loads(self, data: str) -> None:
-        """Restore coordinator state from JSON."""
+        """Restore native reachability state or version 1 residual paths without enumerating paths."""
 
         state = ResponseStreamCoordinatorState.model_validate_json(data)
 
         if state.type != "ResponseStreamCoordinator":
             raise ValueError(f"Invalid serialized data type: {state.type}")
 
-        if state.version != "1.0":
+        if state.version not in {"1.0", "2.0"}:
             raise ValueError(f"Unsupported serialized version: {state.version}")
 
         with self._lock:
@@ -673,6 +620,7 @@ class ResponseStreamCoordinator:
                 node_id: [Path(edges=list(path_edges)) for path_edges in paths]
                 for node_id, paths in state.paths_map.items()
             }
+            self._taken_edges = set(state.taken_edges)
             self._node_execution_ids = dict(state.node_execution_ids)
 
             self._stream_buffers = {
