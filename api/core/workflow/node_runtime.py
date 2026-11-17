@@ -174,7 +174,17 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
         self._run_context = resolve_dify_run_context(run_context)
 
     @override
-    def build_from_mapping(self, *, mapping: Mapping[str, Any]):
+    def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
+        """Resolve a workflow file mapping into the graph-layer ``File``.
+
+        Preconditions: ``mapping`` carries a ``transfer_method`` recognised by the
+        file factory, and ``self._run_context.tenant_id`` names the owning tenant.
+        Postconditions: the result is a ``File`` rebuilt from the persisted record
+        for that tenant, so callers never receive the raw mapping back.
+        Failure behavior: an unknown transfer method, an unresolvable record id or
+        a record outside the tenant raises ``ValueError`` and yields no value; no
+        state is mutated on either path.
+        """
         return file_factory.build_from_mapping(
             mapping=mapping,
             tenant_id=self._run_context.tenant_id,
@@ -585,7 +595,13 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
         return self._file_reference_factory
 
     @override
-    def build_file_reference(self, *, mapping: Mapping[str, Any]):
+    def build_file_reference(self, *, mapping: Mapping[str, Any]) -> File:
+        """Delegate a tool-produced file mapping to the file reference factory.
+
+        Preconditions and postconditions are those of
+        ``DifyFileReferenceFactory.build_from_mapping``: the returned value is a
+        ``File``, never the mapping itself, and failure raises ``ValueError``.
+        """
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 
     @override
