@@ -77,7 +77,7 @@ it('sends multipart bytes with CSRF and cookies, and reports real upload progres
   const form = await multipart.formData()
   const file = form.get('file')
   expect(file).toBeInstanceOf(File)
-  if (!(file instanceof File)) throw new Error('Expected the selected file')
+  if (!(file instanceof File)) throw new TypeError('Expected the selected file')
   expect(file.name).toBe('diagram.png')
   expect(await file.text()).toBe('image bytes')
   xhr.upload.onprogress?.(

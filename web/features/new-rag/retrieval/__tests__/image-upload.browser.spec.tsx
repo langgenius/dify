@@ -9,6 +9,7 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { RetrievalTestPage } from '../page'
 
 const api = vi.hoisted(() => ({ upload: vi.fn() }))
+// boundary: Use real English catalogs for upload control names; locale loading and switching are outside these upload lifecycle tests.
 vi.mock('react-i18next', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-i18next')>()
   const { createReactI18nextMock } = await import('@/test/i18n-mock')
