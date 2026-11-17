@@ -464,11 +464,11 @@ def test_completion_start_serves_completion_apps_only(world: World, sqlite_sessi
 
 def test_the_four_start_ops_are_separate_resource_classes(openapi_app: Flask) -> None:
     ops = (WORKFLOW_START_OP, ADVANCED_CHAT_START_OP, CHAT_START_OP, COMPLETION_START_OP)
-    handlers: dict[str, Callable[..., object]] = {}
-    for _, _, fn in iter_handlers(openapi_app):
-        spec = spec_of(fn)
-        if spec is not None and spec.catalog.op in ops:
-            handlers[spec.catalog.op] = fn
+    specs = [(spec_of(fn), fn) for _, _, fn in iter_handlers(openapi_app)]
+    declared = [(spec, fn) for spec, fn in specs if spec is not None]
+    handlers: dict[str, Callable[..., object]] = {
+        spec.catalog.op: fn for spec, fn in declared if spec.catalog.op in ops
+    }
 
     assert set(handlers) == set(ops)
     expected = {
