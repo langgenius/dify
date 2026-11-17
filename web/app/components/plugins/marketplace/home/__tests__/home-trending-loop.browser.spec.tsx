@@ -59,14 +59,17 @@ describe('Marketplace home trending loop', () => {
       }
       await expectSlideInViewport('Third banner')
 
+      // Finish the real autoplay progress animation instead of waiting out its duration.
+      const autoplay = document.querySelector('[data-carousel-progress]')!.getAnimations()
+      expect(autoplay).toHaveLength(1)
+      autoplay[0]!.finish()
+
       await expect
-        .poll(
-          () =>
-            screen
-              .getByRole('button', { name: 'First banner' })
-              .element()
-              .getAttribute('aria-current'),
-          { timeout: 8000 },
+        .poll(() =>
+          screen
+            .getByRole('button', { name: 'First banner' })
+            .element()
+            .getAttribute('aria-current'),
         )
         .toBe('true')
 
