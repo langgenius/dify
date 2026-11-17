@@ -6,6 +6,7 @@ import pytest
 
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from models.api_based_extension import APIBasedExtensionPoint
+from services.api_based_extension_adapters import request_api_based_extension
 
 
 @pytest.fixture
@@ -44,6 +45,39 @@ def test_request_success(install_client):
     assert json.loads(request.content) == {"point": APIBasedExtensionPoint.PING.value, "params": {"foo": "bar"}}
     assert request.headers["Content-Type"] == "application/json"
     assert request.headers["Authorization"] == "Bearer test_key"
+
+
+@pytest.mark.parametrize(
+    ("point", "params"),
+    [
+        (
+            APIBasedExtensionPoint.APP_MODERATION_INPUT,
+            {"app_id": "app", "inputs": {"field": [1, True, None]}, "query": "hello"},
+        ),
+        (APIBasedExtensionPoint.APP_MODERATION_OUTPUT, {"app_id": "app", "text": "hello"}),
+    ],
+)
+def test_request_adapter_preserves_moderation_wire_contract(
+    install_client, point: APIBasedExtensionPoint, params: dict[str, object]
+) -> None:
+    """Use the fixture's in-process transport for each moderation point and payload.
+
+    Require one authenticated POST with unchanged JSON and its decoded response.
+    """
+    requests, _ = install_client(
+        lambda _: httpx.Response(200, json={"flagged": True, "action": "direct_output", "preset_response": "Blocked"})
+    )
+
+    result = request_api_based_extension("https://moderation.example.test/check", "plaintext-key", point, params)
+
+    assert result == {"flagged": True, "action": "direct_output", "preset_response": "Blocked"}
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert str(request.url) == "https://moderation.example.test/check"
+    assert json.loads(request.content) == {"point": point.value, "params": params}
+    assert request.headers["Content-Type"] == "application/json"
+    assert request.headers["Authorization"] == "Bearer plaintext-key"
 
 
 def test_request_with_ssrf_proxy(

@@ -1,36 +1,42 @@
 """API moderation with explicit, workspace-scoped persistence and outbound capabilities.
 
-Form settings and runtime direction selection have distinct legacy contracts. Parse
-only the selected runtime direction, and finish request validation before any I/O.
+Complete form settings require both directions and a string extension ID. Runtime
+selection validates only its direction, and enabled requests are validated before I/O.
 """
 
-import operator
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Literal, TypedDict
+from typing import Annotated, Literal, TypedDict
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, InstanceOf, JsonValue, TypeAdapter
 
+from graphon.file import File
 from services.api_based_extension_application_service import APIBasedExtensionRecord
 
 
-class APIModerationDirectionConfig(TypedDict, total=False):
-    """Legacy enabled values use Python truthiness without boolean coercion."""
+class APIModerationDirectionConfig(TypedDict):
+    """A configured direction explicitly chooses a boolean enable state."""
 
-    enabled: object
+    enabled: bool
 
 
-class APIModerationConfig(TypedDict, total=False):
-    """Stored API settings; an absent runtime ID still reaches the scoped lookup."""
+class APIModerationConfig(TypedDict):
+    """Complete authored settings; partial runtime values enter through raw mappings."""
 
     inputs_config: APIModerationDirectionConfig
     outputs_config: APIModerationDirectionConfig
-    api_based_extension_id: object
+    api_based_extension_id: str
+
+
+_direction_adapter = TypeAdapter(APIModerationDirectionConfig)
+_extension_id_adapter = TypeAdapter(Annotated[str, Field(strict=True, min_length=1)])
 
 
 class ModerationInputParams(BaseModel):
+    """Keep JSON mappings as JSON and admit file variants only as existing File instances."""
+
     app_id: str = ""
-    inputs: dict[str, object] = Field(default_factory=dict)
+    inputs: dict[str, JsonValue | InstanceOf[File] | list[InstanceOf[File]]] = Field(default_factory=dict)
     query: str = ""
 
 
@@ -46,9 +52,9 @@ class DisabledDirection:
 
 @dataclass(frozen=True, slots=True)
 class EnabledDirection:
-    """The original lookup key, preserved without string conversion."""
+    """The selected enabled direction has a validated, nonempty string lookup key."""
 
-    extension_id: object
+    extension_id: str
 
 
 def parse_direction(
@@ -56,31 +62,28 @@ def parse_direction(
 ) -> DisabledDirection | EnabledDirection:
     """Parse one runtime direction without inspecting the opposite direction.
 
-    Missing config raises the existing ValueError. Native indexing errors and
-    truthiness are retained for malformed selected values. This function does no I/O.
+    Missing config raises ValueError; malformed selected settings raise
+    ValidationError. Disabled settings return before ID validation. No I/O occurs.
     """
     if raw is None:
         raise ValueError("The config is not set.")
-    enabled: object = operator.itemgetter("enabled")(operator.itemgetter(direction)(raw))
-    if enabled:
-        return EnabledDirection(raw.get("api_based_extension_id", ""))
-    return DisabledDirection()
+    selected = _direction_adapter.validate_python(raw.get(direction), strict=True)
+    if not selected["enabled"]:
+        return DisabledDirection()
+    return EnabledDirection(_extension_id_adapter.validate_python(raw.get("api_based_extension_id")))
 
 
 def _parse_form(raw: Mapping[str, object]) -> EnabledDirection:
-    """Parse form settings in their existing error order without any I/O."""
-    inputs_config = raw.get("inputs_config")
-    if not isinstance(inputs_config, dict):
-        raise ValueError("inputs_config must be a dict")
-    outputs_config = raw.get("outputs_config")
-    if not isinstance(outputs_config, dict):
-        raise ValueError("outputs_config must be a dict")
-    if not inputs_config.get("enabled") and not outputs_config.get("enabled"):
+    """Validate both directions, require one enabled, then parse the ID without I/O.
+
+    Malformed settings raise ValidationError. Two disabled directions retain their
+    business error before ID validation, including when the ID is absent or invalid.
+    """
+    inputs_config = _direction_adapter.validate_python(raw.get("inputs_config"), strict=True)
+    outputs_config = _direction_adapter.validate_python(raw.get("outputs_config"), strict=True)
+    if not inputs_config["enabled"] and not outputs_config["enabled"]:
         raise ValueError("At least one of inputs_config or outputs_config must be enabled")
-    extension_id = raw.get("api_based_extension_id")
-    if not extension_id:
-        raise ValueError("api_based_extension_id is required")
-    return EnabledDirection(extension_id)
+    return EnabledDirection(_extension_id_adapter.validate_python(raw.get("api_based_extension_id")))
 
 
 class APIModerationService:
@@ -93,11 +96,12 @@ class APIModerationService:
     def __init__(
         self,
         *,
-        find_extension: Callable[[str, object], APIBasedExtensionRecord | None],
+        find_extension: Callable[[str, str], APIBasedExtensionRecord | None],
         decrypt_key: Callable[[str, str], str],
         request_inputs: Callable[[str, str, ModerationInputParams], object],
         request_outputs: Callable[[str, str, ModerationOutputParams], object],
     ) -> None:
+        """Store all four required capabilities without performing I/O."""
         self._find_extension = find_extension
         self._decrypt_key = decrypt_key
         self._request_inputs = request_inputs
@@ -106,8 +110,9 @@ class APIModerationService:
     def validate_config(self, tenant_id: str, raw: Mapping[str, object]) -> None:
         """Require valid form settings and an owned extension without outbound I/O.
 
-        Invalid settings or absence raise the existing ValueError; lookup failures
-        propagate after its session closes. Successful validation changes no state.
+        Malformed settings raise ValidationError; both-disabled settings or an
+        absent owned row raise ValueError. Lookup failures propagate after session
+        cleanup. Successful validation changes no state.
         """
         self._require_extension(tenant_id, _parse_form(raw).extension_id)
 
@@ -116,18 +121,19 @@ class APIModerationService:
         tenant_id: str,
         app_id: str,
         raw: Mapping[str, object] | None,
-        inputs: dict[str, object],
+        inputs: Mapping[str, object],
         query: str = "",
     ) -> object:
         """Return the disabled result or raw input response for facade validation.
 
-        Parse the selected direction and validate request parameters before lookup.
-        Lookup, decrypt and request failures propagate unchanged in that order.
+        Raw mappings admit dynamic variable names with JSON, File or list[File]
+        values. Enabled settings and payloads must validate before lookup. Disabled
+        settings skip payload validation and all I/O. Dependency failures propagate.
         """
         selection = parse_direction(raw, "inputs_config")
         if isinstance(selection, DisabledDirection):
             return {"flagged": False, "action": "direct_output", "preset_response": ""}
-        params = ModerationInputParams(app_id=app_id, inputs=inputs, query=query)
+        params = ModerationInputParams.model_validate({"app_id": app_id, "inputs": inputs, "query": query})
         extension = self._require_extension(tenant_id, selection.extension_id)
         key = self._decrypt_key(tenant_id, extension.api_key)
         return self._request_inputs(extension.api_endpoint, key, params)
@@ -135,8 +141,9 @@ class APIModerationService:
     def moderate_outputs(self, tenant_id: str, app_id: str, raw: Mapping[str, object] | None, text: str) -> object:
         """Return the disabled result or raw output response for facade validation.
 
-        Parse the selected direction and validate request parameters before lookup.
-        Lookup, decrypt and request failures propagate unchanged in that order.
+        Enabled settings and request parameters validate before lookup. Disabled
+        settings skip payload validation and all I/O. Lookup, decrypt and request
+        failures propagate unchanged in that order.
         """
         selection = parse_direction(raw, "outputs_config")
         if isinstance(selection, DisabledDirection):
@@ -146,8 +153,12 @@ class APIModerationService:
         key = self._decrypt_key(tenant_id, extension.api_key)
         return self._request_outputs(extension.api_endpoint, key, params)
 
-    def _require_extension(self, tenant_id: str, extension_id: object) -> APIBasedExtensionRecord:
-        """Return an owned detached record or fail after the lookup session closes."""
+    def _require_extension(self, tenant_id: str, extension_id: str) -> APIBasedExtensionRecord:
+        """Look up string tenant/extension IDs without outbound work.
+
+        Return the owned detached record after session cleanup. Missing records
+        raise ValueError; lookup failures propagate unchanged after cleanup.
+        """
         extension = self._find_extension(tenant_id, extension_id)
         if extension is None:
             raise ValueError("API-based Extension not found. Please check it again.")

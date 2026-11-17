@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.extension.extensible import ExtensionModule
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
 from extensions.ext_code_based_extension import code_based_extension
@@ -127,6 +128,30 @@ def test_api_factory_binds_once_at_first_operation(moderation_app: Flask, reques
     assert requests.calls == []
 
 
+def test_api_factory_outputs_reuse_callbacks_after_app_context_closes(
+    moderation_app: Flask, requests: _Requests
+) -> None:
+    """Use the owned-row app fixture to bind and call the real service twice.
+
+    Both outputs and recorded requests must survive closing the first app context.
+    """
+    factory = ModerationFactory(
+        "api", "app", _TENANT_ID, {"outputs_config": {"enabled": True}, "api_based_extension_id": _EXTENSION_ID}
+    )
+    expected = ModerationOutputsResult(
+        flagged=True, action=ModerationAction.DIRECT_OUTPUT, preset_response="Blocked by API"
+    )
+    with moderation_app.app_context():
+        assert factory.moderation_for_outputs("first") == expected
+    assert factory.moderation_for_outputs("second") == expected
+    assert requests.calls == [
+        (_TENANT_ID, "encrypted-key"),
+        ("https://moderation.example.test/check", "plaintext", ModerationOutputParams(app_id="app", text="first")),
+        (_TENANT_ID, "encrypted-key"),
+        ("https://moderation.example.test/check", "plaintext", ModerationOutputParams(app_id="app", text="second")),
+    ]
+
+
 def test_api_factory_requires_root_bundle(moderation_app: Flask) -> None:
     moderation_app.extensions[API_MODERATION_EXTENSION_KEY] = object()
     with moderation_app.app_context(), pytest.raises(TypeError, match="API moderation callbacks are not configured"):
@@ -134,17 +159,29 @@ def test_api_factory_requires_root_bundle(moderation_app: Flask) -> None:
 
 
 def test_api_factory_validation_uses_injected_real_repository(moderation_app: Flask, requests: _Requests) -> None:
+    """Validate owned settings through the fixture's repository without outbound calls.
+
+    The same settings in another workspace must fail with the missing-row error.
+    """
     with moderation_app.app_context():
         ModerationFactory.validate_config(
             "api",
             _TENANT_ID,
-            {"inputs_config": {"enabled": True}, "outputs_config": {}, "api_based_extension_id": _EXTENSION_ID},
+            {
+                "inputs_config": {"enabled": True},
+                "outputs_config": {"enabled": False},
+                "api_based_extension_id": _EXTENSION_ID,
+            },
         )
         with pytest.raises(ValueError, match="API-based Extension not found"):
             ModerationFactory.validate_config(
                 "api",
                 "foreign",
-                {"inputs_config": {"enabled": True}, "outputs_config": {}, "api_based_extension_id": _EXTENSION_ID},
+                {
+                    "inputs_config": {"enabled": True},
+                    "outputs_config": {"enabled": False},
+                    "api_based_extension_id": _EXTENSION_ID,
+                },
             )
     assert requests.calls == []
 
@@ -154,6 +191,24 @@ def scanned_providers() -> Iterator[None]:
     code_based_extension.init()
     yield
     code_based_extension.init()
+
+
+@pytest.mark.usefixtures("scanned_providers")
+@pytest.mark.parametrize("operation", ["construct", "validate"])
+def test_factory_rejects_scanned_class_from_another_extension_module(operation: str) -> None:
+    """Misregister a scanned external-data class and require TypeError on either path.
+
+    The scanned_providers fixture restores the registry after success or failure.
+    """
+    provider = code_based_extension.module_extension(ExtensionModule.MODERATION, "keywords")
+    provider.extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, "api")
+
+    if operation == "construct":
+        with pytest.raises(TypeError, match="Extension keywords is not a moderation provider"):
+            ModerationFactory("keywords", "app", _TENANT_ID, {})
+    else:
+        with pytest.raises(TypeError, match="Extension keywords is not a moderation provider"):
+            ModerationFactory.validate_config("keywords", _TENANT_ID, {})
 
 
 @pytest.mark.usefixtures("scanned_providers")

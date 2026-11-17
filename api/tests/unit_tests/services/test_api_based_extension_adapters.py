@@ -1,12 +1,16 @@
+from typing import Literal
 from unittest.mock import MagicMock
 
 import pytest
+from pydantic import JsonValue
 
 import services.api_based_extension_adapters as module
+from graphon.file import File, FileTransferMethod, FileType
 from models.api_based_extension import APIBasedExtensionPoint
 from services.api_based_extension_adapters import APIBasedExtensionPingProbe, APIModerationGateway, WorkspaceTokenCipher
 from services.api_based_extension_application_service import APIBasedExtensionConnectionError
 from services.api_moderation_service import ModerationInputParams, ModerationOutputParams
+from services.entities.message_entities import MessageInputValue
 
 
 def test_workspace_token_cipher_delegates_to_the_platform_encrypter(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +66,8 @@ def test_ping_probe_wraps_transport_failures(monkeypatch: pytest.MonkeyPatch) ->
 
 
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
-def test_moderation_gateway_translates_point_and_validated_parameters(direction: str) -> None:
+def test_moderation_gateway_translates_point_and_validated_parameters(direction: Literal["inputs", "outputs"]) -> None:
+    """Validated input/output parameters retain their point, payload and response identity."""
     response = object()
     calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
 
@@ -84,8 +89,79 @@ def test_moderation_gateway_translates_point_and_validated_parameters(direction:
     assert calls == [("https://extension.example.test", "plaintext-key", point, expected)]
 
 
+def test_input_domain_serialization_preserves_files_and_json() -> None:
+    """File instances serialize as files while ordinary file-shaped JSON stays intact."""
+    attachment = File(
+        file_id="66666666-6666-4666-8666-666666666666",
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/input.pdf",
+        filename="input.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=12,
+    )
+    file_shaped_json: dict[str, JsonValue] = {
+        "dify_model_identity": "__dify__file__",
+        "id": "77777777-7777-4777-8777-777777777777",
+        "type": "document",
+        "transfer_method": "remote_url",
+        "remote_url": "https://example.com/ordinary.json",
+        "filename": "ordinary.json",
+        "extension": ".json",
+        "mime_type": "application/json",
+        "size": 4,
+        "ordinary_json": {"keep": [1, True]},
+    }
+    values: dict[str, MessageInputValue] = {
+        "动态变量": "value",
+        "nothing": None,
+        "empty_text": "",
+        "empty_object": {},
+        "empty_list": [],
+        "nested": {"list": [{"checked": True}, None, ""]},
+        "mixed": [1, True],
+        "file": attachment,
+        "files": [attachment],
+        "file_json": file_shaped_json,
+    }
+    params = ModerationInputParams(inputs=values)
+    calls: list[tuple[str, str, APIBasedExtensionPoint, dict[str, object]]] = []
+    response = {"flagged": False}
+
+    def request(endpoint: str, key: str, point: APIBasedExtensionPoint, payload: dict[str, object]) -> object:
+        calls.append((endpoint, key, point, payload))
+        wire_inputs = payload["inputs"]
+        assert isinstance(wire_inputs, dict)
+        wire_mixed = wire_inputs["mixed"]
+        assert isinstance(wire_mixed, list)
+        assert type(wire_mixed[0]) is int
+        assert type(wire_mixed[1]) is bool
+        return response
+
+    assert APIModerationGateway(request=request).inputs("https://extension.example.test", "plaintext-key", params) is (
+        response
+    )
+    assert params.inputs["file"] is attachment
+    files = params.inputs["files"]
+    assert isinstance(files, list)
+    assert len(files) == 1
+    assert files[0] is attachment
+    assert isinstance(params.inputs["file_json"], dict)
+    assert params.inputs["file_json"] == file_shaped_json
+    expected = {
+        "app_id": "",
+        "inputs": {**values, "file": attachment.model_dump(), "files": [attachment.model_dump()]},
+        "query": "",
+    }
+    assert calls == [
+        ("https://extension.example.test", "plaintext-key", APIBasedExtensionPoint.APP_MODERATION_INPUT, expected)
+    ]
+
+
 @pytest.mark.parametrize("direction", ["inputs", "outputs"])
-def test_moderation_gateway_preserves_request_failure_identity(direction: str) -> None:
+def test_moderation_gateway_preserves_request_failure_identity(direction: Literal["inputs", "outputs"]) -> None:
+    """Either gateway method propagates the original request failure instance."""
     failure = ValueError("request timeout")
 
     def request(_endpoint: str, _key: str, _point: APIBasedExtensionPoint, _params: dict[str, object]) -> object:
