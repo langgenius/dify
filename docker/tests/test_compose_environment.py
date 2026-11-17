@@ -1179,6 +1179,10 @@ class ComposeEnvironmentTests(unittest.TestCase):
                 self.assertEqual(result.count("COMPOSE_PROFILES="), 1)
                 self.assertIn("\nDIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN=", result)
 
+                after_first_sync = env_file.read_bytes()
+                subprocess.run(command, cwd=self.project, check=True, capture_output=True)
+                self.assertEqual(env_file.read_bytes(), after_first_sync)
+
     def test_runtime_secrets_stay_in_their_service(self):
         self.copy_template(
             "envs/core-services/api.defaults",
