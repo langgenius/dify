@@ -96,11 +96,13 @@ export const AppCard = memo(
         case 'completion':
           return t(($) => $['types.completion'], { ns: 'app' })
         case 'workflow':
-          return t(($) => $['types.workflow'], { ns: 'app' })
+          return app.workflow_kind === 'evaluation'
+            ? t(($) => $['types.evaluationWorkflow'], { ns: 'app' })
+            : t(($) => $['types.workflow'], { ns: 'app' })
         default:
           return app.mode
       }
-    }, [app.mode, t])
+    }, [app.mode, app.workflow_kind, t])
 
     const onlinePresenceUsers = useMemo(() => {
       return onlineUsers

@@ -1,80 +1,93 @@
+from collections.abc import Callable
+from dataclasses import dataclass
+
 import pytest
 
 
+@dataclass
 class DummyTool:
-    def __init__(self, name):
-        self.name = name
+    name: str
 
 
+@dataclass
 class DummyPromptEntity:
-    def __init__(self, first_prompt):
-        self.first_prompt = first_prompt
+    first_prompt: str
 
 
+@dataclass
 class DummyAgentConfig:
-    def __init__(self, prompt_entity=None):
-        self.prompt = prompt_entity
+    prompt_entity: DummyPromptEntity | None = None
+
+    @property
+    def prompt(self) -> DummyPromptEntity | None:
+        return self.prompt_entity
 
 
+@dataclass
 class DummyAppConfig:
-    def __init__(self, agent=None):
-        self.agent = agent
+    agent: DummyAgentConfig | None = None
 
 
+@dataclass
 class DummyScratchpadUnit:
-    def __init__(
-        self,
-        final=False,
-        thought=None,
-        action_str=None,
-        observation=None,
-        agent_response=None,
-    ):
-        self._final = final
-        self.thought = thought
-        self.action_str = action_str
-        self.observation = observation
-        self.agent_response = agent_response
+    final: bool = False
+    thought: str | None = None
+    action_str: str | None = None
+    observation: str | None = None
+    agent_response: str | None = None
 
-    def is_final(self):
-        return self._final
+    def is_final(self) -> bool:
+        return self.final
 
 
 @pytest.fixture
-def dummy_tool_factory():
-    def _factory(name):
+def dummy_tool_factory() -> Callable[[str], DummyTool]:
+    def _factory(name: str) -> DummyTool:
         return DummyTool(name)
 
     return _factory
 
 
 @pytest.fixture
-def dummy_prompt_entity_factory():
-    def _factory(first_prompt):
+def dummy_prompt_entity_factory() -> Callable[[str], DummyPromptEntity]:
+    def _factory(first_prompt: str) -> DummyPromptEntity:
         return DummyPromptEntity(first_prompt)
 
     return _factory
 
 
 @pytest.fixture
-def dummy_agent_config_factory():
-    def _factory(prompt_entity=None):
+def dummy_agent_config_factory() -> Callable[..., DummyAgentConfig]:
+    def _factory(prompt_entity: DummyPromptEntity | None = None) -> DummyAgentConfig:
         return DummyAgentConfig(prompt_entity)
 
     return _factory
 
 
 @pytest.fixture
-def dummy_app_config_factory():
-    def _factory(agent=None):
+def dummy_app_config_factory() -> Callable[..., DummyAppConfig]:
+    def _factory(agent: DummyAgentConfig | None = None) -> DummyAppConfig:
         return DummyAppConfig(agent)
 
     return _factory
 
 
 @pytest.fixture
-def dummy_scratchpad_unit_factory():
-    def _factory(**kwargs):
-        return DummyScratchpadUnit(**kwargs)
+def dummy_scratchpad_unit_factory() -> Callable[..., DummyScratchpadUnit]:
+    def _factory(
+        *,
+        final: bool = False,
+        thought: str | None = None,
+        action_str: str | None = None,
+        observation: str | None = None,
+        agent_response: str | None = None,
+    ) -> DummyScratchpadUnit:
+        return DummyScratchpadUnit(
+            final=final,
+            thought=thought,
+            action_str=action_str,
+            observation=observation,
+            agent_response=agent_response,
+        )
 
     return _factory

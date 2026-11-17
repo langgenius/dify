@@ -80,7 +80,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
       provider.declaration.identity.name.toLowerCase().includes(query.toLowerCase()),
     )
   }, [query, providers.data])
-  const { strategyStatus, refetch: refetchStrategyInfo } = useStrategyInfo(
+  const { strategyStatus } = useStrategyInfo(
     value?.agent_strategy_provider_name,
     value?.agent_strategy_name,
   )
@@ -159,7 +159,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
               {value?.agent_strategy_label ||
                 t(($) => $['nodes.agent.strategy.selectTip'], { ns: 'workflowAgent' })}
             </p>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ms-auto flex items-center gap-1">
               {showInstallButton && value?.plugin_unique_identifier && (
                 <InstallPluginButton
                   onClick={(e) => e.stopPropagation()}
@@ -202,9 +202,6 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
                       </p>
                     </div>
                   }
-                  onChange={() => {
-                    refetchStrategyInfo()
-                  }}
                 />
               )}
             </div>

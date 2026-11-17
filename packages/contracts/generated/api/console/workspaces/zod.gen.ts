@@ -89,6 +89,18 @@ export const zInvalidRequestError = zErrorResponse.and(
 )
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorResponse.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * SnippetImportPayload
  *
  * Payload for importing snippet from DSL.
@@ -661,18 +673,6 @@ export const zNetworkAccessInvalidInputError = zErrorResponse.and(
   z.object({
     code: z.literal('network_access_invalid_input'),
     status: z.literal(400),
-  }),
-)
-
-/**
- * PaidPlanRequiredError
- *
- * This feature requires a paid plan.
- */
-export const zPaidPlanRequiredError = zErrorResponse.and(
-  z.object({
-    code: z.literal('paid_plan_required'),
-    status: z.literal(403),
   }),
 )
 
@@ -1654,6 +1654,35 @@ export const zSimpleAccountResponse = z.object({
 })
 
 /**
+ * AvailableEvaluationWorkflowResponse
+ */
+export const zAvailableEvaluationWorkflowResponse = z.object({
+  app_id: z.string(),
+  app_name: z.string(),
+  created_at: z.int(),
+  created_by: zSimpleAccountResponse.nullish(),
+  hash: z.string(),
+  id: z.string(),
+  kind: z.string(),
+  marked_comment: z.string(),
+  marked_name: z.string(),
+  type: z.string(),
+  updated_at: z.int(),
+  updated_by: zSimpleAccountResponse.nullish(),
+  version: z.string(),
+})
+
+/**
+ * AvailableEvaluationWorkflowPaginationResponse
+ */
+export const zAvailableEvaluationWorkflowPaginationResponse = z.object({
+  has_more: z.boolean(),
+  items: z.array(zAvailableEvaluationWorkflowResponse),
+  limit: z.int(),
+  page: z.int(),
+})
+
+/**
  * SnippetTagResponse
  */
 export const zSnippetTagResponse = z.object({
@@ -1749,6 +1778,22 @@ export const zSnippetImportResponse = z.object({
   snippet_id: z.string().nullable(),
   status: zImportStatus,
   warnings: z.array(zDslImportWarning),
+})
+
+/**
+ * EvaluationAssociatedTargetResponse
+ */
+export const zEvaluationAssociatedTargetResponse = z.object({
+  target_id: z.string(),
+  target_name: z.string(),
+  target_type: z.string(),
+})
+
+/**
+ * EvaluationAssociatedTargetListResponse
+ */
+export const zEvaluationAssociatedTargetListResponse = z.object({
+  items: z.array(zEvaluationAssociatedTargetResponse),
 })
 
 export const zSenderName = z.string().min(1).max(255)
@@ -5047,10 +5092,12 @@ export const zEndpointListResponse = z.object({
  * DefaultValueType
  */
 export const zDefaultValueType = z.enum([
+  'array[boolean]',
   'array[file]',
   'array[number]',
   'array[object]',
   'array[string]',
+  'boolean',
   'number',
   'object',
   'string',
@@ -6485,6 +6532,20 @@ export const zPutWorkspacesCurrentAgentsByAgentIdSkillsPath = z.object({
  */
 export const zPutWorkspacesCurrentAgentsByAgentIdSkillsResponse = zAgentSkillBindingsResponse
 
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsQuery = z.object({
+  keyword: z.string().max(255).optional(),
+  limit: z.int().gte(1).lte(100).optional().default(10),
+  named_only: z.boolean().optional().default(false),
+  page: z.int().gte(1).lte(99999).optional().default(1),
+  user_id: z.string().optional(),
+})
+
+/**
+ * Available evaluation workflows
+ */
+export const zGetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  zAvailableEvaluationWorkflowPaginationResponse
+
 export const zGetWorkspacesCurrentCustomizedSnippetsQuery = z.object({
   creators: z.array(z.string()).optional(),
   is_published: z.boolean().optional(),
@@ -6689,6 +6750,16 @@ export const zPatchWorkspacesCurrentEndpointsByIdPath = z.object({
  * Endpoint updated successfully
  */
 export const zPatchWorkspacesCurrentEndpointsByIdResponse = zEndpointMutationResponse
+
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsPath = z.object({
+  workflow_id: z.uuid(),
+})
+
+/**
+ * Associated evaluation targets
+ */
+export const zGetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  zEvaluationAssociatedTargetListResponse
 
 /**
  * Success

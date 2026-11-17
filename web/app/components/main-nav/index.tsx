@@ -26,6 +26,7 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
+import ContactSupport from './components/contact-support'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
@@ -190,6 +191,7 @@ export function MainNavFooter({
           <span aria-hidden className="ms-auto i-ri-arrow-right-up-line size-4.5 shrink-0" />
         </MainNavLink>
       </nav>
+      <ContactSupport placement="sidebar" />
       <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
         <div className="flex min-w-0 items-center gap-1 overflow-hidden">
           <AccountSection />
