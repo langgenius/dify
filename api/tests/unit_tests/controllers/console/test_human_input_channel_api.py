@@ -97,7 +97,7 @@ def test_channel_transport_models_match_the_canonical_schema() -> None:
         "invalid_credentials",
         "connection_failure",
     }
-    assert set(module.ChannelTestResponse.model_fields) == {"status", "status_description"}
+    assert set(module.ChannelTestResponse.model_fields) == {"status", "status_description", "details"}
     assert set(module.ListChannelProvidersResponse.model_fields) == {"email_providers", "im_providers"}
     assert set(module.ChannelProvider.model_fields) == {"provider", "connection_mode"}
     assert set(module.ChannelDeleteResponse.model_fields) == {"channel_id"}

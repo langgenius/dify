@@ -25,6 +25,11 @@ from core.human_input_v2.entities import (
     EmailProviderType,
     IMProvider,
 )
+from core.human_input_v2.im_integration.adapters.entities import (
+    CredentialTestFailureKind,
+    CredentialTestRejectedError,
+    IMProviderError,
+)
 from core.human_input_v2.shared import (
     AccountId,
     EmailProviderId,
@@ -74,6 +79,7 @@ from .errors import (
     ChannelNotFoundHttpError,
     ChannelProviderBadRequestHttpError,
     ChannelProviderConfigurationUpdatedHttpError,
+    ChannelProviderFailureDetails,
     ChannelReplacementRequiredHttpError,
 )
 from .provider_updates import EmailProviderCredentialsUpdateInput, IMProviderCredentialsUpdateInput, UnchangedInput
@@ -115,6 +121,7 @@ class ConnectionMode(StrEnum):
 class ChannelTestResponse(ResponseModel):
     status: ChannelStatus
     status_description: str
+    details: ChannelProviderFailureDetails | None = Field(default=None, exclude_if=lambda value: value is None)
 
 
 class ChannelDeleteResponse(ResponseModel):
@@ -349,6 +356,52 @@ def _workspace_im_channel_service(tenant_id: str, account: Account) -> Workspace
     return build_workspace_im_channel_service(TenantId(tenant_id), _actor_id(account))
 
 
+def _provider_failure_response(error: ChannelProviderError | IMProviderError) -> ChannelTestResponse:
+    """Map a safe provider failure at the API boundary, retaining actual provider diagnostics."""
+    if isinstance(error, CredentialTestRejectedError):
+        failure = error.failure
+        details = ChannelProviderFailureDetails(
+            provider_error_code=failure.provider_error_code,
+            provider_request_id=failure.provider_request_id,
+            http_status=failure.http_status,
+            missing_permissions=failure.missing_permissions,
+        )
+        description = failure.reason
+        if failure.http_status is not None:
+            description += f" HTTP status: {failure.http_status}."
+        if failure.provider_error_code is not None:
+            description += f" API error code: {failure.provider_error_code}."
+        if failure.missing_permissions:
+            description += f" Missing permissions: {', '.join(failure.missing_permissions)}."
+        if failure.provider_request_id is not None:
+            description += f" Request ID: {failure.provider_request_id}."
+        return ChannelTestResponse(
+            status=(
+                ChannelStatus.INVALID_CREDENTIALS
+                if failure.kind is CredentialTestFailureKind.AUTHENTICATION_REJECTED
+                else ChannelStatus.CONNECTION_FAILURE
+            ),
+            status_description=description,
+            details=details,
+        )
+    if isinstance(error, ChannelProviderError):
+        details = (
+            ChannelProviderFailureDetails(
+                provider_error_code=error.provider_error_code,
+                provider_request_id=error.provider_request_id,
+                http_status=error.http_status,
+            )
+            if any(
+                value is not None for value in (error.provider_error_code, error.provider_request_id, error.http_status)
+            )
+            else None
+        )
+        return ChannelTestResponse(
+            status=ChannelStatus(error.kind.value), status_description=error.status_description, details=details
+        )
+    return ChannelTestResponse(status=ChannelStatus.CONNECTION_FAILURE, status_description=str(error))
+
+
 @console_ns.route("/workspaces/current/human-input/v2/channel-providers")
 class ListChannelProvidersApi(WorkspaceChannelResource):
     @console_ns.response(200, "Success", console_ns.models[ListChannelProvidersResponse.__name__])
@@ -545,11 +598,8 @@ class IMChannelTestApi(WorkspaceChannelResource):
         request_body = IMChannelTestPayload.model_validate(console_ns.payload or {})
         try:
             _workspace_im_channel_service(tenant_id, current_user).test(request_body.credentials.to_owner_credentials())
-        except ChannelProviderError as error:
-            return ChannelTestResponse(
-                status=ChannelStatus(error.kind.value),
-                status_description=error.status_description,
-            ).model_dump(mode="json")
+        except (ChannelProviderError, IMProviderError) as error:
+            return _provider_failure_response(error).model_dump(mode="json")
         return ChannelTestResponse(
             status=ChannelStatus.CONNECTED,
             status_description="",
@@ -580,11 +630,8 @@ class IMChannelSavedTestApi(WorkspaceChannelResource):
             raise ChannelProviderConfigurationUpdatedHttpError() from error
         except ReplacementRequiredError as error:
             raise ChannelProviderBadRequestHttpError("The test provider must match the saved IM Channel.") from error
-        except ChannelProviderError as error:
-            return ChannelTestResponse(
-                status=ChannelStatus(error.kind.value),
-                status_description=error.status_description,
-            ).model_dump(mode="json")
+        except (ChannelProviderError, IMProviderError) as error:
+            return _provider_failure_response(error).model_dump(mode="json")
         return ChannelTestResponse(status=ChannelStatus.CONNECTED, status_description="").model_dump(mode="json")
 
 
@@ -603,8 +650,9 @@ class IMChannelCreateApi(WorkspaceChannelResource):
             )
         except ChannelAlreadyConfiguredError as error:
             raise ChannelAlreadyConfiguredHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(failure.status_description, details=failure.details) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
 
@@ -645,8 +693,9 @@ class IMChannelApi(WorkspaceChannelResource):
             raise ChannelReplacementRequiredHttpError() from error
         except ProviderConfigurationUpdatedError as error:
             raise ChannelProviderConfigurationUpdatedHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(failure.status_description, details=failure.details) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
     @console_ns.doc(params=query_params_from_model(ChannelDeleteQuery))
@@ -691,8 +740,9 @@ class IMChannelReplacementApi(WorkspaceChannelResource):
             raise ChannelNotFoundHttpError() from error
         except ProviderConfigurationUpdatedError as error:
             raise ChannelProviderConfigurationUpdatedHttpError() from error
-        except ChannelProviderError as error:
-            raise ChannelProviderBadRequestHttpError(error.status_description) from error
+        except (ChannelProviderError, IMProviderError) as error:
+            failure = _provider_failure_response(error)
+            raise ChannelProviderBadRequestHttpError(failure.status_description, details=failure.details) from error
         return IMChannelMutationResponse(summary=_im_channel_summary_response(snapshot)).model_dump(mode="json")
 
 

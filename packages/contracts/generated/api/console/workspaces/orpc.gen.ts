@@ -1302,12 +1302,17 @@ export const evaluationWorkflows = {
   byWorkflowId,
 }
 
+/**
+ * List supported providers for the admitted administrator without accessing disabled owners
+ */
 export const get14 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2ChannelProviders',
     path: '/workspaces/current/human-input/v2/channel-providers',
+    summary:
+      'List supported providers for the admitted administrator without accessing disabled owners',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse)
@@ -1541,12 +1546,17 @@ export const im = {
   byChannelId: byChannelId2,
 }
 
+/**
+ * List supported configured channels for the admitted administrator without reading disabled owners
+ */
 export const get17 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getWorkspacesCurrentHumanInputV2Channels',
     path: '/workspaces/current/human-input/v2/channels',
+    summary:
+      'List supported configured channels for the admitted administrator without reading disabled owners',
     tags: ['console'],
   })
   .output(zGetWorkspacesCurrentHumanInputV2ChannelsResponse)

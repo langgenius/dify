@@ -15310,6 +15310,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channel-providers
+**List supported providers for the admitted administrator without accessing disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -15318,6 +15320,8 @@ Update a plugin endpoint
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /workspaces/current/human-input/v2/channels
+**List supported configured channels for the admitted administrator without reading disabled owners**
+
 #### Responses
 
 | Code | Description | Schema |
@@ -24111,6 +24115,15 @@ You cannot transfer ownership to yourself.
 | connection_mode | string, <br>**Default:** custom_app |  | No |
 | provider | [EmailProviderType](#emailprovidertype)<br>[IMProvider](#improvider) |  | Yes |
 
+#### ChannelProviderFailureDetails
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| http_status | integer |  | No |
+| missing_permissions | [ string ], <br>**Default:**  |  | No |
+| provider_error_code | string |  | No |
+| provider_request_id | string |  | No |
+
 #### ChannelStatus
 
 | Name | Type | Description | Required |
@@ -24136,6 +24149,7 @@ You cannot transfer ownership to yourself.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| details | [ChannelProviderFailureDetails](#channelproviderfailuredetails) |  | No |
 | status | [ChannelStatus](#channelstatus) |  | Yes |
 | status_description | string |  | Yes |
 

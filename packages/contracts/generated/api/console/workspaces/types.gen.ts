@@ -215,6 +215,7 @@ export type EmailChannelTestPayload = {
 }
 
 export type ChannelTestResponse = {
+  details?: ChannelProviderFailureDetails | null
   status: ChannelStatus
   status_description: string
 }
@@ -1966,6 +1967,13 @@ export type ChannelSummary = {
 export type EmailProviderCredentials = ResendCredentials
 
 export type SenderName = string
+
+export type ChannelProviderFailureDetails = {
+  http_status?: number | null
+  missing_permissions?: Array<string>
+  provider_error_code?: string | null
+  provider_request_id?: string | null
+}
 
 export type ChannelStatus =
   | 'configured'
