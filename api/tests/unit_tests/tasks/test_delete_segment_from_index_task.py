@@ -340,7 +340,7 @@ def test_delete_disabled_segment_with_no_index_node_ids_preserves_other_segments
     vector_factory_instance = _VectorFactory(vector_backend)
     with (
         patch(
-            "core.rag.datasource.vdb.vector_factory.Vector.get_vector_factory",
+            "services.knowledge.summaries.adapters.Vector.get_vector_factory",
             return_value=lambda: vector_factory_instance,
         ),
         patch("core.rag.datasource.keyword.keyword_factory.Keyword.delete") as keyword_delete,
