@@ -4,6 +4,7 @@ import json
 from datetime import UTC, datetime
 from unittest.mock import MagicMock
 
+from pydantic import JsonValue
 from sqlalchemy.orm import Session, sessionmaker
 
 from domain.workflow.retry_history import (
@@ -23,7 +24,7 @@ def _retry_attempt(
     retry_index: int,
     *,
     error: str | None = None,
-    outputs: dict[str, object] | None = None,
+    outputs: dict[str, JsonValue] | None = None,
 ) -> WorkflowNodeRetryAttemptPayload:
     """Build one persisted retry attempt; ``None`` keeps the attempt's own value."""
     return {

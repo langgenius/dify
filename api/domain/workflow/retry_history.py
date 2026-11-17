@@ -3,7 +3,7 @@
 from collections.abc import Mapping
 from typing import Any, Final, Literal, NotRequired
 
-from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, TypeAdapter, ValidationError
 from typing_extensions import TypedDict
 
 RETRY_HISTORY_PROCESS_DATA_KEY: Final[Literal["__dify_retry_history"]] = "__dify_retry_history"
@@ -16,15 +16,19 @@ class WorkflowNodeRetryAttemptPayload(TypedDict):
     Producers build it with :meth:`WorkflowNodeRetryAttempt.to_payload` and
     consumers parse it back with :meth:`WorkflowNodeRetryAttempt.model_validate`;
     both sides use this type instead of an untyped ``dict``.
+
+    The variable mappings hold node-specific JSON that is opaque to this domain,
+    so their values are pinned to :data:`pydantic.JsonValue` (JSON-serializable
+    values) rather than ``Any``; no node-specific keys are invented here.
     """
 
     retry_index: int
-    inputs: dict[str, Any]
-    process_data: dict[str, Any]
-    outputs: dict[str, Any]
+    inputs: dict[str, JsonValue]
+    process_data: dict[str, JsonValue]
+    outputs: dict[str, JsonValue]
     error: str
     elapsed_time: float
-    execution_metadata: dict[str, Any]
+    execution_metadata: dict[str, JsonValue]
     created_at: int
     finished_at: int
 

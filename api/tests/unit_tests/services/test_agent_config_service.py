@@ -1118,7 +1118,7 @@ def test_manifest_preserves_missing_config_assets_and_download_rejects_them(sqli
     )
 
     with patch(f"{MODULE}.SkillManagementService") as skill_management_service:
-        skill_management_service.return_value.list_runtime_agent_skills.return_value = list[dict[str, object]]()
+        skill_management_service.return_value.list_runtime_agent_skills.return_value = list[RuntimeAgentSkillPayload]()
         manifest = service._manifest_for_target(target)
 
     assert manifest["skills"]["items"][0]["is_missing"] is True
