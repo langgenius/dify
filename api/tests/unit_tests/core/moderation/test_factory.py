@@ -10,6 +10,7 @@ from core.extension.extensible import ExtensionModule
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
 from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
 from extensions.ext_code_based_extension import code_based_extension
+from models.agent_config_entities import AgentModerationIOConfig, AgentModerationProviderConfig
 from models.api_based_extension import APIBasedExtension
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_moderation_service import (
@@ -263,11 +264,11 @@ class TestModerationFactoryIntegration:
 
     def test_factory_validate_config_delegates(self) -> None:
         """Run the actual provider's form rules through factory class validation."""
-        valid: dict[str, object] = {
-            "inputs_config": {"enabled": True, "preset_response": "Blocked"},
-            "outputs_config": {"enabled": False},
-            "keywords": "bad",
-        }
+        valid = AgentModerationProviderConfig(
+            inputs_config=AgentModerationIOConfig(enabled=True, preset_response="Blocked"),
+            outputs_config=AgentModerationIOConfig(enabled=False),
+            keywords="bad",
+        ).model_dump(exclude_none=True)
         ModerationFactory.validate_config("keywords", _TENANT_ID, valid)
         invalid = dict(valid)
         del invalid["keywords"]

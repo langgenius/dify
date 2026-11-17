@@ -14,7 +14,13 @@ API_MODERATION_EXTENSION_KEY = "api_moderation"
 
 @dataclass(frozen=True, slots=True)
 class APIModerationCallbacks:
-    """Required API capabilities bound by the composition root to one Flask app."""
+    """Service admission methods bound by the composition root to one Flask app.
+
+    Config mappings contain unparsed persisted or form data. The bound methods
+    parse the selected operation into typed settings before lookup or outbound I/O.
+    Runtime admission inspects only its direction; disabled settings skip ID and
+    payload validation. Complete authored settings are not required at this boundary.
+    """
 
     validate_config: Callable[[str, Mapping[str, object]], None]
     moderate_inputs: Callable[[str, str, Mapping[str, object] | None, dict[str, object], str], JsonValue]
