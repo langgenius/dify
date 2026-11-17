@@ -2066,16 +2066,20 @@ def _metric_identity(metric: EvaluationMetric) -> _MetricIdentity:
 def _metric_columns(results: Sequence[EvaluationItemResult]) -> dict[_MetricIdentity, str]:
     """Assign unique display labels to result identities in first-seen order.
 
-    The first title seen for an identity is retained. Unambiguous labels keep
-    their existing format; duplicate labels gain the node ID and, if needed,
-    a numeric suffix. Neither user labels nor generated labels can overwrite
-    another metric in the summary or XLSX, and input results remain unchanged.
+    Preconditions: results contain validated metrics with optional node info.
+    Postconditions: each node/metric identity has one unique label; ordinary
+    labels retain the first title seen, customized evaluator labels use the
+    ``Custom Evaluator : `` prefix, and results are unchanged. Duplicate labels
+    gain the node ID and, if needed, a suffix.
     """
     labels: dict[_MetricIdentity, str] = {}
     for result in results:
         for metric in result.metrics:
             node = metric.node_info
-            label = f"{node.title or node.node_id} : {metric.name}" if node is not None else metric.name
+            if node is not None and node.type == "customized":
+                label = f"Custom Evaluator : {metric.name}"
+            else:
+                label = f"{node.title or node.node_id} : {metric.name}" if node is not None else metric.name
             labels.setdefault(_metric_identity(metric), label)
 
     label_counts = Counter(labels.values())

@@ -42,7 +42,11 @@ const PipelineResultsPreview = ({
       ? runDetailQuery.data
       : undefined
   const items = runDetail?.items.data ?? []
-  const metricColumns = getMetricColumns(resource, items)
+  const metricColumns = getMetricColumns(
+    resource,
+    items,
+    t(($) => $['metrics.custom.title']),
+  )
   const isLoading = runDetailQuery.isPending || (!runDetail && runDetailQuery.isFetching)
   const totalPages = Math.ceil((runDetail?.items.total ?? 0) / PAGE_SIZE)
 
