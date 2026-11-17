@@ -4,6 +4,8 @@ allowBuilds:
   '@swc/core': false
   esbuild: false
   sharp: false
+  # workerd ships its binary through platform-specific optional dependencies.
+  workerd: false
 autoDedupe: true
 autoInstallPeers: false
 blockExoticSubdeps: true
@@ -86,6 +88,7 @@ catalog:
   '@base-ui/react': 1.9.0
   '@base-ui/utils': 0.5.0
   '@chromatic-com/storybook': 5.6.0
+  '@cloudflare/vite-plugin': 2.0.0-beta.v.17
   '@cucumber/cucumber': 13.3.0
   '@date-fns/tz': 1.5.0
   '@daypicker/react': 10.0.2
@@ -161,6 +164,7 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.72.2
   '@typescript-eslint/utils': 8.72.2
+  '@vinext/cloudflare': 1.4.0
   '@vitejs/plugin-react': 6.3.0
   '@vitejs/plugin-rsc': 0.5.39
   '@vitest/browser-playwright': 5.1.0
@@ -173,6 +177,7 @@ catalog:
   axe-core: 4.14.0
   bowser: 2.15.0
   c12: 4.0.0-rc.4
+  cf: 1.0.0-rc.0
   chokidar: 6.0.0
   class-variance-authority: 0.7.1
   cn: 0.5.2
@@ -283,7 +288,7 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.3
   verkit: 0.5.0
-  vinext: 1.4.5
+  vinext: 1.4.6
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
