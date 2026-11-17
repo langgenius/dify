@@ -17,6 +17,7 @@ from machinery.context import RequestContext
 from models.agent import Agent, AgentKind, AgentScope, AgentSource, AgentStatus
 from models.enums import AppStatus
 from models.model import App, AppMode, AppModelConfig
+from repositories.app.agent_app_repository import AgentAppRepository
 from services.app.agent_app_contracts import AgentAppNotFoundError
 from services.app.agent_app_feature_gateway import AgentAppFeatureValidator
 from tests.helpers.unit.rbac_fakes import RBACDomain
@@ -112,7 +113,9 @@ def test_feature_save_is_atomic(
     agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
     ).features
     context = RequestContext("request", None, ACCOUNT_ID, TENANT_ID)
     calls: list[str] = []
@@ -148,7 +151,9 @@ def test_feature_validation_failure_does_not_write(
     agent_app: App, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session], rbac_domain: RBACDomain
 ) -> None:
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
     ).features
     with pytest.raises(ValueError, match="opening_statement"):
         service.update_features(
@@ -181,7 +186,9 @@ def test_features_require_owned_active_agent_app(
         agent.status = AgentStatus.ARCHIVED
     sqlite_session.commit()
     service = build_agent_app_services(
-        database_client=sqlite_session_factory, rbac_members=rbac_domain.rbac.members
+        database_client=sqlite_session_factory,
+        rbac_members=rbac_domain.rbac.members,
+        apps=AgentAppRepository(session_factory=sqlite_session_factory),
     ).features
     with pytest.raises(AgentAppNotFoundError):
         service.update_features(RequestContext("request", None, ACCOUNT_ID, TENANT_ID), "agent", {})

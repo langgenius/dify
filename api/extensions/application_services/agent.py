@@ -16,6 +16,7 @@ from repositories.app.agent_app_repository import AgentAppRepository
 from repositories.app.agent_sandbox_repository import AgentSandboxRepository
 from services.agent.app_composer import AgentAppComposer
 from services.agent.composer_tools import list_workspace_dify_tools
+from services.agent.console_runtime import AgentConsoleRuntime
 from services.agent.home_snapshot_service import create_home_snapshot_client
 from services.agent.invite_options import AgentInviteOptionsService
 from services.agent.knowledge_spaces import (
@@ -68,6 +69,7 @@ class AgentAppServices:
     build_session: AgentBuildSessionService
     composer: AgentAppComposer
     config_assets: AgentConfigService
+    runtime: AgentConsoleRuntime
 
 
 def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan: Callable[[str], CloudPlan]) -> bool:
@@ -75,14 +77,18 @@ def _can_restore_version(tenant_id: str, *, edition: DeploymentEdition, get_plan
     return edition != DeploymentEdition.CLOUD or get_plan(tenant_id).is_paid
 
 
-def build_agent_app_services(
-    *, database_client: sessionmaker[Session], rbac_members: MemberService
-) -> AgentAppServices:
-    """Wire Agent App use cases to the shared repository and their post-commit effects."""
-    apps = AgentAppRepository(
+def build_agent_app_repository(*, database_client: sessionmaker[Session]) -> AgentAppRepository:
+    """Build the shared Agent App repository with its publication transaction participant."""
+    return AgentAppRepository(
         session_factory=database_client,
         stage_publication_bindings=partial(stage_published_agent_knowledge_bindings, session_maker=database_client),
     )
+
+
+def build_agent_app_services(
+    *, database_client: sessionmaker[Session], rbac_members: MemberService, apps: AgentAppRepository
+) -> AgentAppServices:
+    """Wire Agent App use cases to the shared repository and their post-commit effects."""
     deletion_service = AgentAppDeletionService(store=apps, notify_deleted=notify_app_deleted)
     detail = AgentAppDetailService(
         store=apps,
@@ -108,6 +114,7 @@ def build_agent_app_services(
             inherit_webapp_access=inherit_agent_webapp_access,
         ),
         features=AgentAppFeatureConfigService(features=apps, validator=AgentAppFeatureValidator()),
+        runtime=AgentConsoleRuntime(session_factory=database_client),
         config_assets=AgentConfigService(session_factory=database_client),
         composer=AgentAppComposer(
             store=apps,
