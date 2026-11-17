@@ -15,6 +15,7 @@ from controllers.openapi._catalog import current_catalog
 from controllers.openapi._mcp_call import OpCall, OpResult
 from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS
 from controllers.openapi.auth import router as router_module
+from controllers.openapi.mcp import MCP_MAX_BODY_BYTES
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext
@@ -309,3 +310,38 @@ def test_the_mcp_route_is_not_in_the_catalog(openapi_app: Flask) -> None:
         raw, _ = current_catalog()
 
     assert all("mcp" not in entry["path"] for entry in json.loads(raw)["ops"].values())
+
+
+class _OpRecorder:
+    def __init__(self) -> None:
+        self.calls: list[OpCall] = []
+
+    def __call__(self, call: OpCall) -> OpResult:
+        self.calls.append(call)
+        return OpResult(status=200, body={}, headers={}, is_json=True)
+
+
+@JSON_RPC_ERROR_BODY
+def test_a_body_over_the_cap_is_413_and_runs_no_op(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    recorder = _OpRecorder()
+    monkeypatch.setattr(mcp_module, "call_op", recorder)
+    padding = "x" * MCP_MAX_BODY_BYTES
+    body = _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {"p": padding}}})
+    response = _post(openapi_app.test_client(), body, {"Authorization": "Bearer dfoa_x"})
+
+    assert response.status_code == 413
+    payload = response.get_json()
+    assert payload["id"] is None
+    assert payload["error"]["code"] == mcp_types.INVALID_REQUEST
+    assert payload["error"]["message"] == "Request body too large"
+    assert recorder.calls == []
+
+
+def test_a_body_just_under_the_cap_still_parses(openapi_app: Flask) -> None:
+    overhead = len(json.dumps(_rpc("ping", {"pad": ""})))
+    body = _rpc("ping", {"pad": "x" * (MCP_MAX_BODY_BYTES - overhead - 1)})
+    assert len(json.dumps(body)) < MCP_MAX_BODY_BYTES
+    response = _post(openapi_app.test_client(), body)
+
+    assert response.status_code == 200
+    assert response.get_json()["result"] == {}

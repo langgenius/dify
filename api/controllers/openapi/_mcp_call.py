@@ -48,6 +48,21 @@ _PLACEHOLDER_RE: Final = re.compile(r"\{(\w+)\}")
 _PATH_SAFE: Final = "/"
 _RULES_EXT_KEY: Final = "openapi_mcp_op_rules"
 
+# Keys of a catalog entry (``current_catalog()`` JSON) and of the ``input`` schema inside it.
+OPS_KEY: Final = "ops"
+PATH_KEY: Final = "path"
+METHOD_KEY: Final = "method"
+BIND_KEY: Final = "bind"
+KIND_KEY: Final = "kind"
+INTERNAL_KEY: Final = "internal"
+DEPRECATED_KEY: Final = "deprecated"
+INPUT_KEY: Final = "input"
+EXAMPLES_KEY: Final = "examples"
+SUMMARY_KEY: Final = "summary"
+EFFECT_KEY: Final = "effect"
+PROPERTIES_KEY: Final = "properties"
+REQUIRED_KEY: Final = "required"
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class OpCall:
@@ -88,6 +103,8 @@ class RouteMismatch(Exception):  # noqa: N818
 
 @dataclass(frozen=True, slots=True)
 class _Request:
+    """The inner request split by bind: the filled path, the query and the JSON body (None for query-bound methods)."""
+
     path: str
     query: dict[str, Any]
     body: dict[str, Any] | None
@@ -101,7 +118,7 @@ def op_entry(op: str) -> Mapping[str, Any]:
     caller may keep or change it; raises ``UnknownOp`` when the catalog has no such op.
     """
     raw, _ = current_catalog()
-    entry = json.loads(raw)["ops"].get(op)
+    entry = json.loads(raw)[OPS_KEY].get(op)
     if entry is None:
         raise UnknownOp(op)
     return entry
@@ -117,7 +134,7 @@ def call_op(call: OpCall) -> OpResult:
     untouched either way.
     """
     entry = op_entry(call.op)
-    method = HTTPMethod(entry["method"])
+    method = HTTPMethod(entry[METHOD_KEY])
     built = _split_input(entry, method, call.input)
     _prove_route(call.op, method, built.path)
     environ = _environ(call, method, built)
@@ -136,14 +153,14 @@ def _split_input(entry: Mapping[str, Any], method: HTTPMethod, input: Mapping[st
     """
     body_bound = method not in _QUERY_METHODS
     default = Bind.BODY if body_bound else Bind.QUERY
-    bind: Mapping[str, str] = entry["bind"]
+    bind: Mapping[str, str] = entry[BIND_KEY]
     parts: dict[Bind, dict[str, Any]] = {kind: {} for kind in Bind}
     for name, value in input.items():
         parts[Bind(bind.get(name, default))][name] = value
     if parts[Bind.FILE]:
         raise FileInputUnsupported(sorted(parts[Bind.FILE]))
     path_values = parts[Bind.PATH]
-    path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry["path"])
+    path = _PLACEHOLDER_RE.sub(lambda match: _safe_path_value(match.group(1), path_values), entry[PATH_KEY])
     _check_query_text(parts[Bind.QUERY])
     body = parts[Bind.BODY] if body_bound else None
     return _Request(path=path, query=parts[Bind.QUERY], body=body)
@@ -230,6 +247,8 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
     value becomes a repeated parameter; the body, when present, is JSON;
     ``REMOTE_ADDR`` is the outer request's, as already resolved by any proxy
     middleware (forwarding headers are not copied, so nothing resolves twice).
+    The inner request carries the outer request's scheme and host, so links an op builds
+    from ``request.url_root`` point at the server the caller reached.
     Headers: the caller's Authorization and trace id when given, the current
     catalog fingerprint, and ``Accept: application/json``.
     """
@@ -240,6 +259,7 @@ def _environ(call: OpCall, method: HTTPMethod, built: _Request) -> dict[str, Any
     if call.trace_id is not None:
         headers[TRACE_ID_HEADER] = call.trace_id
     builder = EnvironBuilder(
+        base_url=request.host_url,
         path=quote(built.path, safe=_PATH_SAFE),
         method=method,
         query_string=built.query,
