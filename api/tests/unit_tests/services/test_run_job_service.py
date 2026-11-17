@@ -759,6 +759,7 @@ def test_a_finished_chatflow_job_returns_the_saved_answer_and_the_run_outputs():
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
+    harness.store.settle(job.id, JobEnding(status=JobStatus.SUCCEEDED))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"answer": "from run"})
     harness.results.messages[("a1", "m1")] = MessageResult(answer="from message", error="ignored")
 
@@ -779,3 +780,52 @@ def test_a_running_chatflow_job_has_no_answer_yet():
     view = harness.service.view(OWNER, job.id)
 
     assert view.answer is None
+
+
+def test_a_chatflow_whose_run_finished_but_whose_reader_is_still_saving_the_answer_keeps_running():
+    harness = _harness()
+    job = _job(harness, AppMode.ADVANCED_CHAT)
+    harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"answer": "x"})
+    harness.results.messages[("a1", "m1")] = MessageResult(answer="", error=None)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert (view.status, view.answer, view.outputs) == (JobStatus.RUNNING, None, None)
+
+
+def test_a_chatflow_that_resumed_after_a_pause_reads_the_answer_as_soon_as_its_reader_ended():
+    harness = _harness()
+    job = _job(harness, AppMode.ADVANCED_CHAT)
+    harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"answer": "x"})
+    harness.results.messages[("a1", "m1")] = MessageResult(answer="saved", error=None)
+    harness.store.drop_alive(job.id)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert (view.status, view.answer, view.outputs) == (JobStatus.SUCCEEDED, "saved", {"answer": "x"})
+
+
+def test_a_message_job_failed_as_interrupted_has_no_answer_even_when_a_message_row_exists():
+    harness = _harness()
+    job = _job(harness, AppMode.CHAT)
+    harness.store.record_ids(job.id, JobIds(message_id="m1"))
+    harness.results.messages[("a1", "m1")] = MessageResult(answer="", error=None)
+    _lapse_alive_key(harness, job.id)
+
+    view = harness.service.view(OWNER, job.id)
+
+    assert (view.status, view.error, view.answer) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message, None)
+
+
+def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_nothing():
+    harness = _harness()
+    job = _job(harness, AppMode.CHAT)
+    harness.store.record_ids(job.id, JobIds(task_id="task-1"))
+    _lapse_alive_key(harness, job.id)
+
+    view = harness.service.stop(OWNER, job.id)
+
+    assert (view.status, view.error) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED.message)
+    assert harness.tasks.message_stops == []
