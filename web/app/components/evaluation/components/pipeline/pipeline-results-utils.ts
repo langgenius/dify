@@ -179,17 +179,24 @@ export const getMetricColumns = (
 
   return Array.from(metricsByName.entries()).flatMap(([normalizedName, { name, nodes }]) => {
     const label = configLabels.get(normalizedName) ?? humanizeMetricName(name)
-    const displayLabel = (node?: MetricNode) =>
-      node?.isCustomEvaluator ? `${customEvaluatorLabel} : ${label}` : label
-    if (nodes.size < 2)
-      return [{ id: name, metricName: name, label: displayLabel(nodes.values().next().value) }]
+    if (nodes.size < 2) {
+      const node = nodes.values().next().value
+      return [
+        {
+          id: name,
+          metricName: name,
+          label,
+          ...(node?.isCustomEvaluator && { nodeLabel: customEvaluatorLabel }),
+        },
+      ]
+    }
 
     return Array.from(nodes.entries()).map(([nodeId, node]) => ({
       id: `${name}:${nodeId}`,
       metricName: name,
-      label: displayLabel(node),
+      label,
       nodeId,
-      nodeLabel: node.isCustomEvaluator ? undefined : node.title,
+      nodeLabel: node.isCustomEvaluator ? customEvaluatorLabel : node.title,
     }))
   })
 }
