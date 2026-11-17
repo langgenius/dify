@@ -79,6 +79,40 @@ class PersonalAccessTokenScopes:
     workspace_ids: tuple[str, ...] = ()
 
 
+def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> frozenset[str] | None:
+    """Project the workspace scope alone to grant IDs.
+
+    Precondition: ``scopes`` is a validated scope value. Postcondition: ``all``
+    returns ``None`` (unrestricted), ``selected`` returns exactly the selected
+    IDs and ``none`` returns an empty set. Pure; no state is read or mutated.
+    """
+    if scopes.workspace_mode == "all":
+        return None
+    if scopes.workspace_mode == "selected":
+        return frozenset(scopes.workspace_ids)
+    return frozenset()
+
+
+def workspace_discovery_ids(
+    scopes: PersonalAccessTokenScopes, resource_workspace_ids: frozenset[str]
+) -> frozenset[str] | None:
+    """Return the workspaces a PAT may discover through workspace listing.
+
+    Preconditions: ``scopes`` is a validated scope value and
+    ``resource_workspace_ids`` holds the trusted owner workspaces of the
+    token's persisted resource rows. Postconditions: ``None`` (unrestricted)
+    when either the resource scope or the workspace scope is ``all``; otherwise
+    the workspace-scope IDs unioned with the resource owner workspaces when the
+    resource scope is ``selected``, so a resource-only PAT can still find the
+    workspace its resources live in. Account membership still filters the
+    result downstream. Pure; no state is read or mutated.
+    """
+    scoped = workspace_scope_ids(scopes)
+    if scopes.resource_mode == "all" or scoped is None:
+        return None
+    return scoped | resource_workspace_ids if scopes.resource_mode == "selected" else scoped
+
+
 @dataclass(frozen=True, slots=True)
 class PersonalAccessTokenResourceView:
     resource_type: str
@@ -401,16 +435,11 @@ class PersonalAccessTokenService:
         if record.summary.expires_at is not None and record.summary.expires_at <= naive_utc_now():
             raise PersonalAccessTokenInvalidError()
         if policy is PersonalAccessTokenPolicy.IDENTITY_DISCOVERY:
-            return PersonalAccessTokenGrant(
-                workspace_ids=self._workspace_scope_ids(record.scopes.workspace_mode, record.scopes.workspace_ids)
-            )
+            return PersonalAccessTokenGrant(workspace_ids=workspace_scope_ids(record.scopes))
         if policy is PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY:
-            scopes = record.scopes
-            scoped = self._workspace_scope_ids(scopes.workspace_mode, scopes.workspace_ids)
-            if scopes.resource_mode == "all" or scoped is None:
-                return PersonalAccessTokenGrant(workspace_ids=None)
-            resource_workspaces = record.resource_workspace_ids if scopes.resource_mode == "selected" else frozenset()
-            return PersonalAccessTokenGrant(workspace_ids=scoped | resource_workspaces)
+            return PersonalAccessTokenGrant(
+                workspace_ids=workspace_discovery_ids(record.scopes, record.resource_workspace_ids)
+            )
         if policy is PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS:
             scopes = record.scopes
             if scopes.workspace_mode == "none" or (
@@ -439,17 +468,6 @@ class PersonalAccessTokenService:
                 else frozenset()
             )
         raise PersonalAccessTokenAccessDeniedError("Unsupported PAT operation.")
-
-    @staticmethod
-    def _workspace_scope_ids(
-        mode: Literal["all", "selected", "none"], workspace_ids: tuple[str, ...]
-    ) -> frozenset[str] | None:
-        """Project a workspace scope mode to grant IDs; ``all`` leaves discovery unrestricted."""
-        if mode == "all":
-            return None
-        if mode == "selected":
-            return frozenset(workspace_ids)
-        return frozenset()
 
     def revoke(self, context: AccountRequestContext, *, token_id: str) -> None:
         self._tokens.revoke(context.account_id, token_id)
