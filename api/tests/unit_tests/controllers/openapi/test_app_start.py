@@ -32,8 +32,10 @@ from controllers.openapi.app_start import (
     START_MODES,
     START_OP_PREFIX,
     WORKFLOW_START_OP,
+    AdvancedChatStartApi,
     ChatStartApi,
     CompletionStartApi,
+    WorkflowStartApi,
 )
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from extensions.ext_application_services import ApplicationServices
@@ -316,6 +318,23 @@ def test_a_failing_audit_discards_the_job(world: World, monkeypatch: pytest.Monk
     assert not [name for name in world.redis.values if "k2" in name]
 
 
+def test_chat_start_passes_query_and_conversation_and_drops_start_fields(world: World, sqlite_session: Session) -> None:
+    _set_mode(world, sqlite_session, AppMode.CHAT)
+    world.generator.frames = CHAT_FRAMES
+    conversation_id = "11111111-1111-4111-8111-111111111111"
+
+    response = world.start(
+        CHAT_ROUTE, query="hi", conversation_id=conversation_id, wait_seconds=0, idempotency_key="k4"
+    )
+
+    assert response.status_code == 200
+    args = world.generator.calls[0]["args"]
+    assert args["query"] == "hi"
+    assert args["conversation_id"] == conversation_id
+    assert "wait_seconds" not in args
+    assert "idempotency_key" not in args
+
+
 def test_start_does_not_pass_wait_or_key_to_the_run_service(world: World) -> None:
     world.start(wait_seconds=5, idempotency_key="k3", inputs={"a": 1})
 
@@ -399,10 +418,13 @@ def _set_mode(world: World, sqlite_session: Session, mode: AppMode) -> None:
     sqlite_session.commit()
 
 
-def test_a_chat_run_is_read_to_the_end_after_the_response_is_sent(world: World, sqlite_session: Session) -> None:
+def test_a_chat_run_is_read_to_the_end_after_the_response_is_sent(
+    world: World, sqlite_session: Session, request: pytest.FixtureRequest
+) -> None:
     _set_mode(world, sqlite_session, AppMode.CHAT)
     world.results.messages[(world.client.app_id, MESSAGE_ID)] = MessageResult(answer="hello", error=None)
     gate = threading.Event()
+    request.addfinalizer(gate.set)
     frames = RecordingFrames(CHAT_FRAMES, gate)
     world.generator.stream = frames
 
@@ -467,13 +489,19 @@ def test_completion_start_serves_completion_apps_only(world: World, sqlite_sessi
 
 def test_the_four_start_ops_are_separate_resource_classes(openapi_app: Flask) -> None:
     ops = (WORKFLOW_START_OP, ADVANCED_CHAT_START_OP, CHAT_START_OP, COMPLETION_START_OP)
-    handlers: dict[str, object] = {}
+    handlers: dict[str, Callable[..., object]] = {}
     for _, _, fn in iter_handlers(openapi_app):
         spec = spec_of(fn)
         if spec is not None and spec.catalog.op in ops:
             handlers[spec.catalog.op] = fn
 
     assert set(handlers) == set(ops)
-    assert len({id(fn) for fn in handlers.values()}) == 4
-    assert handlers[CHAT_START_OP] is ChatStartApi.post
-    assert handlers[COMPLETION_START_OP] is CompletionStartApi.post
+    expected = {
+        WORKFLOW_START_OP: WorkflowStartApi,
+        ADVANCED_CHAT_START_OP: AdvancedChatStartApi,
+        CHAT_START_OP: ChatStartApi,
+        COMPLETION_START_OP: CompletionStartApi,
+    }
+    for op, resource in expected.items():
+        assert handlers[op] is resource.post
+        assert handlers[op].__qualname__ == f"{resource.__name__}.post"
