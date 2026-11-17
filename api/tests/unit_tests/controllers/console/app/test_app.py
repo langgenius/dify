@@ -1133,17 +1133,11 @@ class TestAppResponseModelsCases:
             app_model_config={"model": {"provider": "openai", "name": "gpt-4o"}},
         )
         without_config = replace(configured, id="00000000-0000-0000-0000-000000000113", app_model_config=None)
-        page = PaginatedResult(
-            page=1,
-            per_page=20,
-            total=3,
-            items=[configured, without_config, app_record(app_obj, session=sqlite_session)],
-        )
         detail = app_record(app_obj, session=sqlite_session, projection="detail-with-site")
-        service = SimpleNamespace(list_apps=lambda *_: page, get=lambda *_: detail)
-        monkeypatch.setattr(
-            controller, "application_services", lambda: SimpleNamespace(apps=SimpleNamespace(console=service))
+        service = AppBoundary(
+            record=detail, records=[configured, without_config, app_record(app_obj, session=sqlite_session)]
         )
+        monkeypatch.setattr(controller, "application_services", lambda: Services(AppServices(service)))
 
         with app.test_request_context("/"):
             data, status = unwrap(controller.AppListApi.get)(controller.AppListApi(), CONTEXT)
@@ -1372,10 +1366,11 @@ class AppBoundary:
     status: ImportStatus = ImportStatus.COMPLETED
     exported: str | RosterAgentPackageExport = "dsl"
     record: AppRecord = RECORD
+    records: list[AppRecord] = app_field(default_factory=lambda: [RECORD])
 
     def list_apps(self, context: RequestContext, params: AppListParams | StarredAppListParams) -> AppPage:
         self.calls.append(("list", context, params))
-        return AppPage(params.page, params.limit, 1, False, [RECORD])
+        return AppPage(params.page, params.limit, len(self.records), False, self.records)
 
     def create(self, context: RequestContext, params: CreateAppParams) -> AppRecord:
         self.calls.append(("create", context, params))
