@@ -141,17 +141,30 @@ def test_dify_agent_backend_run_client_maps_validation_error() -> None:
     assert exc_info.value.detail == {"field": "bad"}
 
 
-def test_dify_agent_backend_run_client_maps_http_error() -> None:
+@pytest.mark.parametrize(
+    ("status", "detail", "message"),
+    [
+        (503, "unavailable", "Agent backend HTTP 503: unavailable"),
+        (429, {"code": "rate_limit_error", "message": "Too many runs"}, "Agent backend HTTP 429: Too many runs"),
+        (500, {"message": ""}, "Agent backend HTTP 500"),
+        (500, {"message": None}, "Agent backend HTTP 500"),
+        (500, "", "Agent backend HTTP 500"),
+        (200, [], "Agent backend HTTP 200"),
+    ],
+)
+def test_dify_agent_backend_run_client_maps_http_error(status: int, detail: object, message: str) -> None:
     class HTTPErrorClient(_SuccessfulClient):
         @override
         def create_run_sync(self, request: CreateRunRequest) -> CreateRunResponse:
-            raise DifyAgentHTTPError(status_code=503, detail="unavailable")
+            raise DifyAgentHTTPError(status_code=status, detail=detail)
 
     with pytest.raises(AgentBackendHTTPError) as exc_info:
         DifyAgentBackendRunClient(HTTPErrorClient()).create_run(_request())
 
-    assert exc_info.value.status_code == 503
-    assert exc_info.value.detail == "unavailable"
+    assert exc_info.value.status_code == status
+    assert exc_info.value.detail == detail
+    assert str(exc_info.value) == message
+    assert isinstance(exc_info.value.__cause__, DifyAgentHTTPError)
 
 
 def test_dify_agent_backend_run_client_maps_timeout_error() -> None:

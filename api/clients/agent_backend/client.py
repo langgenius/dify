@@ -34,6 +34,8 @@ from clients.agent_backend.errors import (
     AgentBackendStreamError,
     AgentBackendTransportError,
     AgentBackendValidationError,
+    backend_error_detail,
+    backend_reported_failure,
 )
 
 
@@ -176,8 +178,13 @@ def _normalize_dify_agent_error(exc: Exception) -> AgentBackendError:
                 "Agent backend request or response validation failed", detail=error.detail
             )
         case DifyAgentHTTPError() as error:
+            message = f"Agent backend HTTP {error.status_code}"
+            if backend_reported_failure(error):
+                _, backend_message = backend_error_detail(error)
+                if backend_message and backend_message != str(error):
+                    message += f": {backend_message}"
             return AgentBackendHTTPError(
-                f"Agent backend HTTP {error.status_code}",
+                message,
                 status_code=error.status_code,
                 detail=error.detail,
             )

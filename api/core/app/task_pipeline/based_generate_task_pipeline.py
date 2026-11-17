@@ -48,6 +48,7 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         self.stream = stream
 
     def handle_error(self, *, event: QueueErrorEvent, session: Session | None = None, message_id: str = ""):
+        """Normalize a queue error without losing its cause; mark the supplied message as failed if found."""
         logger.debug("error: %s", event.error)
         e = event.error
         err: Exception
@@ -55,11 +56,13 @@ class BasedGenerateTaskPipeline[AppGenerateEntityT: AppGenerateEntity]:
         match e:
             case InvokeAuthorizationError():
                 err = InvokeAuthorizationError("Incorrect API key provided")
+                err.__cause__ = e
             case InvokeError() | ValueError() | AgentBackendError():
                 err = e
             case _:
                 description = getattr(e, "description", None)
                 err = Exception(description if description is not None else str(e))
+                err.__cause__ = e
 
         if not message_id or not session:
             return err

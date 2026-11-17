@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import Generator
 
 from flask import Response, stream_with_context
@@ -16,6 +17,8 @@ from core.errors.error import QuotaExceededError
 from libs.exception import BaseHTTPException
 from services.agent_llm_inner_service import AgentLLMInnerService, AgentLLMInnerServiceError
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
+
+logger = logging.getLogger(__name__)
 
 
 class AgentLLMInvokeHttpError(BaseHTTPException):
@@ -42,6 +45,7 @@ class AgentLLMInvokeApi(Resource):
     @inner_api_ns.expect(inner_api_ns.models[AgentLLMInvokeRequest.__name__])
     @inner_api_ns.produces(["text/event-stream"])
     def post(self) -> Response:
+        """Validate an Agent request and stream model envelopes, logging unexpected prepare/invoke failures."""
         try:
             payload = AgentLLMInvokeRequest.model_validate(inner_api_ns.payload or {})
         except ValidationError as exc:
@@ -72,6 +76,18 @@ class AgentLLMInvokeApi(Resource):
                 description=str(exc),
                 status_code=400,
             ) from exc
+        except Exception:
+            logger.exception(
+                "Unexpected Agent LLM preparation failure: agent_run_id=%s invocation_id=%s "
+                "app_id=%s provider=%s model=%s trace_id=%s",
+                payload.caller.agent_run_id,
+                payload.caller.invocation_id,
+                payload.caller.app_id,
+                payload.target.provider,
+                payload.target.model,
+                payload.caller.trace_id,
+            )
+            raise
 
         def generate() -> Generator[str]:
             try:
@@ -98,6 +114,16 @@ class AgentLLMInvokeApi(Resource):
                 }
                 yield f"data: {json.dumps(envelope, ensure_ascii=False, separators=(',', ':'))}\n\n"
             except Exception as exc:
+                logger.exception(
+                    "Unexpected Agent LLM invocation failure: agent_run_id=%s invocation_id=%s "
+                    "app_id=%s provider=%s model=%s trace_id=%s",
+                    payload.caller.agent_run_id,
+                    payload.caller.invocation_id,
+                    payload.caller.app_id,
+                    payload.target.provider,
+                    payload.target.model,
+                    payload.caller.trace_id,
+                )
                 error = {
                     "error_type": type(exc).__name__,
                     "message": str(exc) or "Agent LLM invocation failed.",

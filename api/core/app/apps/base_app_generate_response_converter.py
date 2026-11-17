@@ -6,7 +6,16 @@ from typing import Any, cast
 from dify_agent.protocol import RunFailureType
 from pydantic import JsonValue
 
-from clients.agent_backend.errors import AgentBackendError, AgentBackendRunFailedError
+from clients.agent_backend.errors import (
+    AgentBackendError,
+    AgentBackendHTTPError,
+    AgentBackendRunFailedError,
+    AgentBackendStreamError,
+    AgentBackendTransportError,
+    AgentBackendValidationError,
+    backend_error_detail,
+    backend_reported_failure,
+)
 from core.app.apps.exc import AppGenerateError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
@@ -118,17 +127,24 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
 
     @classmethod
     def _error_to_stream_response(cls, e: Exception) -> dict[str, JsonValue]:
-        """
-        Error to stream response.
-        :param e: exception
-        :return:
-        """
+        """Return a fresh public error body, retaining backend status and logging unexpected causes."""
         if isinstance(e, AgentBackendRunFailedError) and e.error_type == RunFailureType.AGENT_RUN_LIMIT_EXCEEDED:
             return {
                 "code": RunFailureType.AGENT_RUN_LIMIT_EXCEEDED.value,
                 "status": 400,
                 "message": str(e),
             }
+
+        if isinstance(e, AgentBackendHTTPError):
+            reported_failure = backend_reported_failure(e)
+            return {
+                "code": backend_error_detail(e)[0] if reported_failure else "agent_backend_error",
+                "status": e.status_code if reported_failure else 502,
+                "message": str(e),
+            }
+
+        if isinstance(e, AgentBackendTransportError | AgentBackendStreamError | AgentBackendValidationError):
+            return {"code": "agent_backend_error", "status": 502, "message": str(e)}
 
         if isinstance(e, AppGenerateError):
             return {
@@ -156,12 +172,12 @@ class AppGenerateResponseConverter[TBlockingResponse: AppBlockingResponse](ABC):
         data: dict[str, JsonValue] | None = None
         for k, v in error_responses.items():
             if isinstance(e, k):
-                data = v
+                data = v.copy()
 
         if data:
-            data.setdefault("message", getattr(e, "description", str(e)))
+            data.setdefault("message", getattr(e, "description", None) or str(e))
         else:
-            logger.error(e)
+            logger.error("Unhandled error in app generate stream", exc_info=e.__cause__ or e)
             data = {
                 "code": "internal_server_error",
                 "message": "Internal Server Error, please contact support.",
