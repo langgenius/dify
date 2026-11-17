@@ -1,6 +1,6 @@
 # HITL v2：EE 调用 Dify 的内部 API 设计
 
-状态：供审阅的设计与 Python Stub，handler body 留空，HITL controller 尚未加入运行时加载列表。CE 基线为 `b59f83f78a4305c4b76579885b4bed789fa4c76f`。EE 参考工作区 HEAD 为 `adef5231063029e8b7830a1f777a706f5209051a`；其当前工作区中的 Proto 和 `docs/human-input-admin-api.md` 也作为只读输入。
+状态：Dify 的 17 个 inner API 已实现并注册，部署 Encryptor 与同步 worker 已接线；EE Go façade 的注册与端到端转发由独立变更交付。实现日期：2026-11-11。CE 基线为 `b59f83f78a4305c4b76579885b4bed789fa4c76f`。EE 参考工作区 HEAD 为 `adef5231063029e8b7830a1f777a706f5209051a`；其当前工作区中的 Proto 和 `docs/human-input-admin-api.md` 也作为只读输入。
 
 ## 1. 责任与范围
 
@@ -22,6 +22,8 @@ sequenceDiagram
 ```
 
 EE Console 仅负责 EE 鉴权、已有 EE 审计、协议转换和 HTTP 转发。Dify 独占 Channel 配置、凭据合并与加密、provider 调用、Contact 投影与可用性、同步与调度、identity 和 binding 的业务与持久化。CE Console 继续直接调用相同的 Dify Service，不绕经 EE。
+
+Contact Directory、OrganizationContact、Member Contact、PlatformContact 和 workspace override 沿用规范 `contact-directory-governance` 的定义。EE 后台使用 deployment 的 Organization Directory；Console 管理和 HITL 节点选择使用当前 Workspace Directory。Member / Platform 是同一 OrganizationContact 的 workspace 可见投影，共享 Contact ID；ExternalContact 只属于其拥有者的 Workspace Directory。
 
 本设计覆盖现有 EE Proto 的 17 个操作。排除 Email Channel、workspace override、Platform/External Contact CRUD、member/workspace CRUD、自动同步、历史 run、取消同步和 binding 连通性测试。
 
@@ -46,7 +48,7 @@ EE Console 仅负责 EE 鉴权、已有 EE 审计、协议转换和 HTTP 转发�
 - CE `api/controllers/inner_api/{runtime_credentials.py,app/file_grants.py}` 已使用这个 EE decorator。
 - EE `server/pkg/difyclient/client.go:NewForConfig` 已把 `DifyConfig.ApiKey` 放进 `X-Inner-Api-Key`；`utils/net.go` 将相同 transport/header 交给 typed generated Inner client，基址为 `/inner/api`。
 
-所有 Stub 方法均引用 `enterprise_inner_api_only`。本设计不新增密钥、JWT、签名或配置项；不使用 plugin/agent key、EE 的 `Enterprise-Api-Secret-Key` 或面向 EndUser 的 `enterprise_inner_api_user_auth`。EE Dashboard 的 cookie/JWT 不向 Dify 透传，也不构造 Console 登录态。
+所有 handler 均引用 `enterprise_inner_api_only`。本设计不新增密钥、JWT、签名或配置项；不使用 plugin/agent key、EE 的 `Enterprise-Api-Secret-Key` 或面向 EndUser 的 `enterprise_inner_api_user_auth`。EE Dashboard 的 cookie/JWT 不向 Dify 透传，也不构造 Console 登录态。
 
 该机制是共享内部主密钥，**不能证明持有者只能是 EE**。旧 OpenSpec 要求的 caller-scoped service identity 无法由现有 wrapper 保证。本次依据用户明确的“已有 EE 调用 CE 鉴权则沿用”要求保留现状，不将其描述成更强的身份隔离。
 
@@ -106,7 +108,7 @@ saved test 直接复用 `IMChannelUpdatePayload`，`credentials` 必填且不能
 | SetContactIMBinding | PUT `/contacts/{contact_id}/bindings` | PUT `/contacts/{contact_id}/bindings` | CE `CreateIMBindingRequest` | `SetOrganizationIMBindingResponse` |
 | DeleteContactIMBinding | DELETE `/contacts/{contact_id}/bindings` | DELETE `/contacts/{contact_id}/bindings` | 无 | Inner `DeleteIMBindingResponse`（`{binding_id}`） |
 
-`OrganizationContact`、binding 摘要与详情字段以 Stub 为准。它与 CE workspace Contact 的必要差异是：没有 workspace-relative `type`、`group` 或 override，`joined_at` 取代以 Contact 创建时间表达加入时间的错误做法。`email` 保留 CE 的 nullable 语义，EE 在非 optional Protobuf string 上转成空串。
+`OrganizationContact`、binding 摘要与详情字段以 controller 的 Pydantic 模型为准。它与 CE workspace Contact 的必要差异是：没有 workspace-relative `type`、`group` 或 override，`joined_at` 取代以 Contact 创建时间表达加入时间的错误做法。`email` 保留 CE 的 nullable 语义，EE 在非 optional Protobuf string 上转成空串。
 
 Contact list/detail 查询当前可用 Account-backed projection；不可用 Account 从列表省略、按 ID 返回 404。单个 workspace 的加入/退出不改变 Contact ID。读和同步均不执行初始化或修复；这些属于已有升级与 Contact 生命周期维护。
 
@@ -191,7 +193,7 @@ Pydantic `SecretStr` 的默认 JSON serialization 会掩码。EE 实现必须显
 
 ## 5. 错误契约
 
-所有非成功响应复用 Stub `contracts.APIErrorResponse`（继承现有 `libs.external_api.ErrorResponse`），核心字段为 `{code, message, status}`；既有通用校验错误的可选 params/details 继续沿用。未来 handler 抛出或转换 HTTP exception，由现有 ExternalApi 输出该模型；本次不实现异常转换器。EE 根据 **operation + code + status** 映射 `enterprise_error.proto`，不解析 message 文本。
+所有非成功响应复用 `contracts.APIErrorResponse`（继承现有 `libs.external_api.ErrorResponse`），核心字段为 `{code, message, status}`；既有通用校验错误的可选 params/details 继续沿用。各 API 构造具体 Pydantic DTO，直接调用 `model_dump(mode="json")` 返回 JSON 数据，并在对应 Service 调用处将预期业务异常转换为 HTTP exception，由既有 ExternalApi 输出错误模型。`parse_request` 在输入解析处处理校验失败并返回安全的 400。响应构造和序列化直接执行，异常沿用框架的通用处理。数据库异常不在各 handler 中捕获或包装，由现有全局异常处理返回通用 500 响应。EE 根据 **operation + code + status** 映射 `enterprise_error.proto`，不解析 message 文本。
 
 | 内部 HTTP / code | 适用操作 | EE reason / 行为 |
 | --- | --- | --- |
@@ -210,7 +212,7 @@ Pydantic `SecretStr` 的默认 JSON serialization 会掩码。EE 实现必须显
 | 404 `im_sync_run_not_found` | latest summary/results | `HUMAN_INPUT_IM_SYNC_RUN_NOT_FOUND` |
 | 409 `im_sync_revision_changed` | sync create | `HUMAN_INPUT_IM_SYNC_REVISION_CHANGED` |
 | 503 `im_sync_dispatch_unavailable` | sync create | `HUMAN_INPUT_IM_SYNC_DISPATCH_UNAVAILABLE`；queued run 可能已提交 |
-| 503 `im_write_unavailable` | 既有 CE controller 的保护性捕获 | 保留内部错误，EE 使用既有上游故障映射；当前生产代码没有抛出路径，不分配新的 HITL reason |
+| 503 `credential_unavailable` | 部署 key 未初始化、丢失、不兼容或凭据不可解密 | 由显式初始化或恢复处理；运行时不创建或替换 key |
 | 422 `invalid_im_binding_scope` | 既有 workspace-only binding service | 是部署级入口尚未适配的实现缺口；不能让 EE 增加 tenant 参数绕过，不作为该部署 API 的合法业务结果 |
 | 其他 5xx、timeout、网络错误、响应解码失败 | 全部 | EE 既有 sanitized upstream failure；不泄露 body、secret 或内部异常 |
 
@@ -218,57 +220,50 @@ Pydantic `SecretStr` 的默认 JSON serialization 会掩码。EE 实现必须显
 
 GET 可以按现有 client policy 有限重试。写操作的 timeout 不等于未提交；没有 operation 去重契约时不自动重放，先读 current/latest，再由调用方决定。相同 binding 赋值保留 ID、同步 active-run 复用不构成任意 HTTP mutation 的通用重试保证。
 
-## 6. 文件、接线与实施依赖
+## 6. 文件与业务接线
 
-Python Stub 位于现有的 `api/controllers/inner_api/human_input_v2/`：`contracts.py` 声明请求/错误模型；`im_channel.py`、`contact.py`、`im_sync.py` 直接使用 `controllers.inner_api.inner_api_ns` 声明 Flask-RESTX `Resource`、路由和 schema。17 个 handler 均引用既有鉴权 decorator，body 只有 docstring 和 `...`。
+实现位于 `api/controllers/inner_api/human_input_v2/`。`im_channel.py`、`contact.py`、`im_sync.py` 使用既有 Namespace；`inner_api._register_controllers()` 已加载三个模块。handler 参数仅包含实际 Flask URL 参数；body/query 在 handler 内经 Pydantic 解析。`response` 声明具体 DTO；handler 返回注解为 `dict[str, object]`，直接调用 DTO 的 `model_dump(mode="json")`。各 API 继承标准 `Resource`，并在具体 Service 调用旁转换预期业务异常。
 
-Console 与 Inner 共用的完整凭据、编辑凭据、脱敏响应及严格请求基类位于 `api/controllers/common/human_input_v2/{providers,provider_updates,provider_views,_common}.py`。原 Console 模块已迁移，调用方直接引用 common；不保留旧位置的转发或重导出。各入口的路由、鉴权和入口专用 envelope 仍由自己的 controller 拥有。
+共用完整凭据、字段编辑与脱敏 DTO 仍位于 `controllers/common/human_input_v2/`。Opaque revision codec 和 sync snapshot 序列化已移到同包的 `config_version.py`、`im_sync.py`，Console 与 Inner 直接依赖 common；原 Console 位置不留转发模块。
 
-handler 参数只接收 Flask URL converter 实际传入的路径变量，例如 `get(self, contact_id: UUID) -> GetOrganizationContactResponse`；没有路径变量的方法只接收 `self`。body/query DTO 通过 `expect`、`query_params_from_model` 声明，不放进 handler 参数伪装成自动注入。Stub 的返回注解直接使用具体 Pydantic 响应 DTO，并与 `response` 声明一致。类型注解不执行序列化；实际实现需要完成请求解析及 HTTP 响应序列化。
-
-复用现有 `controllers.inner_api` Blueprint 和 `inner_api_ns`，不创建另一套 controller 根包或 Namespace。Blueprint 已提供 `/inner/api` 前缀，HITL route decorator 直接声明 `/enterprise/human-input/v2/...`。`human_input_v2/__init__.py` 不重导出或自动导入 handler；`inner_api._register_controllers()` 暂不加载这些 Stub。方法实现完整后只需将这三个 controller 模块加入现有加载列表。
-
-上线前必须补齐的实际依赖，不在本次设计任务中实现：
-
-| 依赖 | 代码证据与边界 |
+| 业务 | 实现与边界 |
 | --- | --- |
-| Deployment Channel service / cipher | `IMChannelService` 已有公共实现，具体 composition 仅有 `WorkspaceIMChannelService`；已有 `DeploymentIMChannelReader/Writer` 不等于部署 service/cipher 已就绪。`human-input-v2-im-control-plane-core` 明确要求显式注入 deployment-bounded cipher，不允许从 `SECRET_KEY`、instance ID 或假 tenant 推导 |
-| Organization Contact list/detail | `ContactManagementService`、Contact repository 当前依赖 tenant/workspace 查询；需要 Dify-owned 部署投影与 Account 加入时间，不可在 EE join shared DB 或用某个 workspace 查询代替 |
-| Deployment binding command / response | `ContactIMBindingService` 的 `_tenant_id(DeploymentScope())` 明确拒绝，PUT 也要求 tenant 并读取 effective workspace binding；部署实现必须返回 Organization 默认绑定，不能伪造 tenant 或误返 override |
-| Deployment sync composition | `im_contact_sync/composition.py` 需要 deployment Contact reader/adapter 注入；只有通用 sync Service 不代表 deployment runtime 已配置。sys_user initiator 持久化和互斥约束已经存在，无需为本 API 新增持久化字段 |
-| EE Saved test 的无编辑输入 | EE Proto 原先允许同时省略 credentials 与 mask；需同步为能明确 provider 与字段级保留指令的请求，不给 Dify DTO 增加外层省略或 null 分支 |
-| EE façade wiring | Proto/generated handler 已存在，当前没有 HITL service registration/实现。EE typed client、鉴权接线与上述 DTO 转换须后续完成 |
+| Channel | `DeploymentIMChannelService` 复用 `IMChannelService` 的创建、更新、显式替换、CAS 和测试，使用部署 reader/writer，不伪造 Tenant/Account。保存先加密完整凭据以确认部署 key 可用，再做 provider 验证；全部远程 I/O 位于事务外 |
+| 部署 cipher | `services/deployment_credential_{service,composition}.py` 管理独立初始化/只读构造；本地与 Azure backend 由 `KEY_PROVIDER_TYPE` 选择，详见部署凭据设计 |
+| Organization Directory | `ContactManagementService.list_organization_contacts/count_organization_contacts/get_organization_contact_details` 与现有 Workspace Directory 查询共用绑定与详情组装。两类目录查询、Contact lifecycle 与 Platform entry 操作统一属于 `ContactRepository` / `SQLAlchemyContactRepository`，不按 edition 或 scope 拆 port。Organization Directory 属于所有 edition；Platform candidate 用例复用 `OrganizationContact` 的查询与读取类型，candidate 保留为传输表达；EE 的 `DeploymentScope()` 不要求 membership 或 Platform entry，CE/SaaS 的 `WorkspaceScope` 将 Organization 限制为当前 Tenant 的成员，均排除 ExternalContact。Account.created_at 与 Contact identity.created_at 分别保留 |
+| 默认 binding | 同一 `ContactManagementService` 执行 Organization 默认绑定命令；Inner controller 持有事务，composition 先锁定当前部署 Channel，Service 再锁定目标 Account/Contact，并通过既有 `IMBindingRepository.replace/delete` 完成写入。默认值从只读 `ContactIMBindingRepository` 获取，Workspace Directory 读取 override 优先的有效绑定；失败回滚，删除返回实际 ID，workspace override 不受影响 |
+| Sync | 复用现有 `IMSyncService`、active-run/revision guard 和 post-commit dispatcher；默认 worker reader 使用全局 Account-backed Contact，adapter 使用独立部署 cipher；不初始化或修复 projection |
 
-本任务遵循用户指定的 HITLv2 Session 规则：Service/Controller 拥有事务生命周期，Repository 使用注入的 Session，不创建/关闭/commit/rollback。基线通用架构文档中相反的 repository-owned Session 默认值不覆盖用户明确规则。Stub 不访问任何数据库，也不为便利新增 Repository operation。
+Service 或使用 `with_session` 的 Controller 拥有 Session/事务，Repository 只使用注入的 Session。Contact 查询与写入共用 caller 的 Session；所有 edition 使用同一个 Contact repository，Organization 查询不再需要额外的可选 port。Platform 管理的开放与鉴权由 API / application operation 控制。API、runtime builder 与 worker 不隐式 provision key。Provider discovery 和无凭据的 Channel summary 读取不需要解密。
 
-## 7. OpenSpec 依据、冲突及设计待决点
+## 7. 规范与上线前置条件
 
-已通过 `openspec store list --json`、`context/list --store dify-specs` 和 `status --store dify-specs --change implement-ee-human-input-admin-api --json` 解析规范位置，读取相应 main spec 及 active change。规范库位于 `/Users/qg/workspace/langgenius/dify-specs`。
+规范库为 `dify-specs`。本次实现使用：
 
-| 来源 | 本设计处理 |
-| --- | --- |
-| main `human-input-ee-admin-api`、`human-input-v2-im-control-plane-core` | 采用当前显式 create/update/replacement、latest-only、Organization Contact 与 Dify 唯一业务 owner；同步发起人遵循已有 sys_user 模型与主规范 |
-| main `human-input-v2-im-channel-service`、CE channel/provider/config_version 代码 | 复用完整/编辑 credential、opaque CAS、纯测试和 deployment-owned transport；不加 mode 字段 |
-| main `human-input-console-management-api`、CE common contracts/contact controller | 复用分页、identity、sync result、默认绑定语义；workspace-relative Contact 与鉴权不套到部署入口 |
-| main `human-input-channel-management-console-api` 的 provider DTO ownership 条款 | 已同步为 `controllers/common/human_input_v2/` 拥有共用契约，Console 与 Inner 直接依赖 common。字段、校验、转换和脱敏语义不变；该规范更新随本次代码重构一并提交 |
-| active `implement-ee-human-input-admin-api` 的旧 proposal/design/transport delta | 仍写十二个 RPC、旧 `/human-input/*`、Upsert、optional-secret omission、禁止传播 EE User ID、要求独立 caller identity。与当前 Proto、主规范和用户复用鉴权指令冲突；不采用这些旧约束 |
-| 同 active change 的 contact-binding delta | 仍要求 provider query、name/email 独立过滤与 TestIMBinding；当前 EE Proto 和 CE 能力都不支持，不增加这些接口 |
-| 同 active change 的 sync-adapter delta | 已更新为传递并返回 `started_by_sys_user_id`，与现有 domain/model/service 一致；采用该条，而不是同 change 的过时禁止条款 |
-| EE `docs/human-input-admin-api.md` | FieldMask/空串/脱敏语义仍有效；其中路由示例已落后于当前 Proto，路由以 Proto 为准 |
+- 主规范 `human-input-ee-admin-api`、`human-input-v2-im-control-plane-core`、`human-input-v2-im-channel-service`、Contact/Console 查询契约。
+- `add-deployment-credential-cipher`：部署 key reference、可重试 provisioning、local/Azure cipher、新安装与旧安装初始化。
+- `implement-dify-ee-human-input-inner-api`：本次 Python HTTP、Organization 查询/绑定和部署同步接线，以及 control-plane 的 deployment cipher 条款更新。
 
-代码与设计产物位于本次独立工作区；提交时一并同步外部规范库中的共用 DTO 归属条款。其余未实现的 API 设计不写成现行 main spec；上述冲突已记录，实施该 API 时需一并修订相应 OpenSpec，不能沿用旧 checklist 直接声称已完成。
+`implement-ee-human-input-admin-api` 继续拥有 EE Go typed client、Kratos façade、Dashboard 鉴权和审计。本次没有修改 EE checkout，也不把 Python 测试通过当作 EE façade 已发布。
 
-没有需要扩展业务范围才能完成本次 Stub 的待决点。后续实现必须解决的设计选择只有 deployment-bounded cipher 的提供方式；其余表中项是已知实现依赖。共享 Inner key 的身份隔离限制是用户已指定复用机制的实际边界，若将来要求 EE 独占调用身份，应单独变更鉴权契约。
+部署先执行数据库 migration。新安装在稳定 setup identity 提交后 provision；旧安装在启用部署凭据之前显式运行：
 
-## 8. 验证范围
+```bash
+uv run --project api flask provision-deployment-credential-key
+```
 
-已完成以下检查，均通过：
+API 与 worker 共享数据库 reference 和同一个 Storage/Vault。Account projection 的历史初始化继续通过既有 `flask data-migrate human-input-contacts --apply` 完成；读取和同步不能替代这一步。EE façade 的后续接线使用本文路径与 DTO。其他工作流交付/事件入口现有的部署 credential 接入约束继续有效，不由本次新增管理接口扩大业务范围。
 
-- Ruff lint/format 覆盖 `api/controllers/common/human_input_v2/`、Console `channel.py`、Inner `human_input_v2/`，11 个 Python 文件通过。
-- `uv run --project api --active --no-sync pyrefly check --threads 2 --config api/pyproject.toml api/controllers/common/human_input_v2 api/controllers/console/human_input_v2/channel.py api/controllers/inner_api/human_input_v2`：0 diagnostics。
-- 通过同一 `uv run --project api ... python` 执行内联检查：Python 语法、模块导入和 Pydantic validation/serialization JSON Schema 均可解析。
-- 24 个凭据 DTO 的 validation/serialization Schema 与迁移前完全相同；迁移后的 class/function/type alias 定义保持不变。Console 和 Inner 引用同一份 common 类型，共用模块和 Inner 均没有 Console import，旧 Console 模块引用已清理。
-- 检查 17 个 Resource handler 的实际路由变量与 Python 参数一一对应、请求/响应 schema 声明完整、body 留空，且 HTTP 方法及相对路径与 EE Proto 一致；所有模块使用既有 `inner_api_ns`，默认 controller 加载列表不加载 HITL Stub。
-- 使用 `uv run --project api --active --no-sync pytest -q` 运行现有的 channel provider/API/wire/OpenAPI、Feishu/Lark credentials/SDK boundary、Teams/WeCom credential alignment 和 IM Channel service 单元测试：242 passed。
+## 8. 验证
 
-检查以 `VIRTUAL_ENV=/Users/qg/.codex/worktrees/5ab7/dify/api/.venv` 只读复用现有 Python 3.13/dependencies，使用 `--active --no-sync`，没有安装或同步依赖；导入检查设置 `PYTHONDONTWRITEBYTECODE=1`、`PYTHONPATH=api` 和 `HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE=WEBHOOK`，没有修改部署配置。上述后置条件仅是设计 Stub 的类型/Schema 可解析和未接线，不表示 provider、数据库、鉴权 HTTP 响应或端到端业务已验证。未运行集成测试，也未为未实现方法添加业务测试。
+2026-11-12 按用户要求移除响应包装器及响应构造、序列化处的异常捕获，改为各 API 直接 dump。同步删除专门测试这层异常捕获的故障注入用例，19 项 Inner HTTP 测试通过，覆盖既有成功响应、输入校验、鉴权及业务错误契约。本次序列化简化未重跑 box 集成测试。
+
+本次已执行：
+
+- 新增真实 Flask HTTP -> Service -> SQLite repository 测试，覆盖 17 个操作、既有 inner key 鉴权、输入脱敏、CAS、无副作用测试、provider 失败状态、Account join time、默认绑定替换/删除与 override 保留、同步 active-run 原始发起人、dispatch 失败后的 queued run，以及部署 worker 的结果读取。
+- 部署 key 生命周期测试覆盖并发初始化、外部成功/DB commit 失败后恢复、缺失身份、丢失/损坏 key、错误 key、随机化与篡改拒绝；新安装测试确认 key 失败不删除已提交身份。
+- 相关 HITLv2 Service/repository、Console、Tenant RSA/Azure、setup 和新接口单元测试：1177 passed；另运行原 encrypter/SystemEncrypter 回归 74 项，全部通过。
+- 修改范围 Ruff 与 Pyrefly 通过；两个 OpenSpec change 的 strict validation 通过。导出的 Inner OpenAPI 包含全部 17 个操作，所有成功响应为 200；89 条导入契约全部通过。新增 nullable migration 的 PostgreSQL/MySQL offline ALTER SQL 均可生成；没有运行数据库升级或新增 migration-only 测试。
+- 使用真实 Azure SDK 对现有测试 Vault 验证加解密、幂等初始化、手动轮换、新旧版本解密和篡改拒绝。临时 key 已软删除，本次临时增加的 scoped Crypto Officer assignment 已撤回；没有创建应用密码或把凭据写入代码库。
+
+本机单元验证通过 `uv run --project api --active --no-sync` 复用已有环境。按用户后续指令，已在 box 的独立 Python 3.13 与真实 PostgreSQL/MySQL/Redis 环境执行 33 项集成测试，全部通过，并验证空库迁移与真实 HTTP/Celery 流程；Azure backend 也已从 box 完成真实 Vault 验证。详见 [box 集成报告](hitl-v2-ee-inner-api-box-integration-report.md)。EE Go façade 的跨仓端到端验证不属于本次结果。

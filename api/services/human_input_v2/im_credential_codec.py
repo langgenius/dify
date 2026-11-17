@@ -1,21 +1,14 @@
 from base64 import b64decode, b64encode
-from typing import Protocol
 
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration.adapters.credentials import (
     IMProviderCredentials,
     IMProviderCredentialsAdapter,
 )
+from libs.credential_cipher import BoundCredentialCipher
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 
 _SAFE_ERROR = "IM credential configuration is unavailable"
-
-
-class BoundCredentialCipher(Protocol):
-    """A credential cipher bounded to a tenant or the whole deployment."""
-
-    def encrypt(self, plaintext: str) -> bytes: ...
-    def decrypt(self, ciphertext: bytes) -> str: ...
 
 
 class IMCredentialError(ValueError): ...

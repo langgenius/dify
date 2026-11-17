@@ -13,15 +13,17 @@ from core.human_input_v2.im_integration.adapters.factory import build_im_provide
 from core.human_input_v2.shared import DeploymentScope, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from extensions.ext_database import db
 from extensions.ext_key_provider import key_provider_manager
+from libs.credential_cipher import BoundCredentialCipher, CredentialCipherError
 from repositories.account.repository import SQLAlchemyAccountRepository
-from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType
+from repositories.human_input_v2.contact import Contact, ContactQuery, ContactType, OrganizationContact
 from repositories.human_input_v2.im_channel_repository import IMChannel
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import (
     DeploymentIMChannelReader,
     WorkspaceIMChannelReader,
 )
-from services.human_input_v2.im_credential_codec import BoundCredentialCipher, IMCredentialCodec, IMCredentialError
+from services.deployment_credential_composition import build_deployment_credential_cipher
+from services.human_input_v2.im_credential_codec import IMCredentialCodec, IMCredentialError
 from services.human_input_v2.im_tenant_credential_cipher import TenantBoundCredentialCipher
 
 from .binding_service import ContactIMBindingService
@@ -94,6 +96,19 @@ class _WorkspaceContactReader:
                 page += 1
         self._contacts = tuple(contacts)
         return self._contacts
+
+
+class _DeploymentContactReader:
+    """Read available Account-backed Contacts without workspace scoping or projection repair."""
+
+    def __init__(self, session: Session) -> None:
+        self._repository = SQLAlchemyContactRepository(session)
+
+    def list_contacts(self, page: int, limit: int) -> Sequence[OrganizationContact]:
+        return self._repository.list_organization_contacts(DeploymentScope(), page, limit)
+
+    def get_contact(self, contact_id) -> OrganizationContact | None:
+        return self._repository.get_organization_contact(DeploymentScope(), contact_id)
 
 
 def build_im_contact_sync_application(
@@ -172,9 +187,9 @@ def _reconciliation_factory(
             adapter_factory = workspace_adapter_factory or DifyIMChannelAdapterFactory(
                 TenantBoundCredentialCipher(key_provider_manager.provider, str(owner_scope.id))
             )
-        elif isinstance(owner_scope, DeploymentScope) and deployment_contacts is not None:
-            contact_reader_factory = deployment_contacts
-            adapter_factory = deployment_adapter_factory or _unavailable_deployment_adapter
+        elif isinstance(owner_scope, DeploymentScope):
+            contact_reader_factory = deployment_contacts or _DeploymentContactReader
+            adapter_factory = deployment_adapter_factory or (lambda channel: _deployment_adapter(sessions, channel))
         else:
             raise IMChannelNotConfiguredError("Deployment Contact reader is unavailable")
         return IMChannelReconciliationService(
@@ -203,8 +218,11 @@ def _dispatch(sync_run_id: IMSyncRunId, scope: DirectoryScope) -> None:
     )
 
 
-def _unavailable_deployment_adapter(_channel: IMChannel) -> IMProviderAdapter:
-    raise IMCredentialError(_CREDENTIAL_UNAVAILABLE_MESSAGE)
+def _deployment_adapter(sessions: sessionmaker[Session], channel: IMChannel) -> IMProviderAdapter:
+    try:
+        return DifyIMChannelAdapterFactory(build_deployment_credential_cipher(session_maker=sessions))(channel)
+    except CredentialCipherError:
+        raise IMCredentialError(_CREDENTIAL_UNAVAILABLE_MESSAGE) from None
 
 
 __all__ = [

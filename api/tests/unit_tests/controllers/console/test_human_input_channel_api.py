@@ -13,9 +13,9 @@ from flask import Flask, g
 from flask_login import LoginManager
 
 from configs import dify_config
+from controllers.common.human_input_v2.config_version import encode_email_config_version
 from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
-from controllers.console.human_input_v2.config_version import encode_email_config_version
 from controllers.console.wraps import _is_setup_completed
 from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.shared import AccountId, DirectoryScope, EmailProviderId, WorkspaceScope
@@ -300,7 +300,7 @@ def test_im_update_translates_conflicts_with_cause(
     expected_description: str,
 ) -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
-    config_version = importlib.import_module("controllers.console.human_input_v2.config_version")
+    config_version = importlib.import_module("controllers.common.human_input_v2.config_version")
     channel_id = IMChannelId("00000000-0000-0000-0000-000000000001")
 
     class IMOwner:
@@ -348,7 +348,7 @@ def test_im_update_decodes_the_opaque_version_before_calling_the_owner(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     module = importlib.import_module("controllers.console.human_input_v2.channel")
-    config_version = importlib.import_module("controllers.console.human_input_v2.config_version")
+    config_version = importlib.import_module("controllers.common.human_input_v2.config_version")
     channel_id = IMChannelId("00000000-0000-0000-0000-000000000001")
     expected_config_version = 7
 

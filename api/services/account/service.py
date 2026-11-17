@@ -259,6 +259,10 @@ class InstallationTelemetry(Protocol):
     def report(self) -> None: ...
 
 
+class InstallationCredentialKeys(Protocol):
+    def provision(self) -> str: ...
+
+
 class AccountSetupProvisioner:
     def __init__(
         self,
@@ -267,11 +271,13 @@ class AccountSetupProvisioner:
         workspaces: AccountWorkspaceProvisioner,
         installation: InstallationStore,
         telemetry: InstallationTelemetry,
+        credential_keys: InstallationCredentialKeys,
     ) -> None:
         self._accounts = accounts
         self._workspaces = workspaces
         self._installation = installation
         self._telemetry = telemetry
+        self._credential_keys = credential_keys
 
     def provision(self, setup: SetupInput) -> None:
         account_id: str | None = None
@@ -291,4 +297,7 @@ class AccountSetupProvisioner:
         except Exception as exc:
             self._installation.reset_setup(account_id)
             raise ValueError(f"Setup failed: {exc}") from exc
+        # Keep the committed installation identity on KMS/storage failure. An
+        # explicit provisioning retry must recover the same external key.
+        self._credential_keys.provision()
         self._telemetry.report()

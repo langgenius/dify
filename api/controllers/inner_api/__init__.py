@@ -35,6 +35,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     from . import datasource_credentials, mail, runtime_credentials
     from .agent import files, knowledge, llm, runtime_usage, tools, tracing
     from .app import app, dsl, file_grants
+    from .human_input_v2 import contact as human_input_contact
+    from .human_input_v2 import im_channel as human_input_channel
+    from .human_input_v2 import im_sync as human_input_sync
     from .knowledge import retrieval
     from .knowledge_fs import background, storage, texts, vectors
     from .plugin import agent_config, plugin, skills
@@ -62,6 +65,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
         plugin,
         skills,
         workspace,
+        human_input_contact,
+        human_input_channel,
+        human_input_sync,
     )
 
 
@@ -87,6 +93,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     _plugin,
     _skills,
     _workspace,
+    _human_input_contact,
+    _human_input_channel,
+    _human_input_sync,
 ) = _register_controllers()
 
 api.add_namespace(inner_api_ns)

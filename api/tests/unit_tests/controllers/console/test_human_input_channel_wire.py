@@ -9,9 +9,9 @@ from flask_login import LoginManager
 from werkzeug.local import LocalProxy
 
 from configs import dify_config
+from controllers.common.human_input_v2.config_version import encode_im_config_version
 from controllers.console import bp as console_bp
 from controllers.console.human_input_v2 import channel as channel_controller
-from controllers.console.human_input_v2.config_version import encode_im_config_version
 from controllers.console.wraps import _is_setup_completed
 from core.human_input_v2.im_integration.adapters.entities import (
     CredentialTestFailure,
@@ -478,7 +478,7 @@ def test_workspace_editions_continue_to_the_existing_authentication_stack(
 def test_saved_connection_test_accepts_retention_without_saving(
     wire_app: Flask, monkeypatch: pytest.MonkeyPatch, kind: str
 ) -> None:
-    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from controllers.common.human_input_v2.config_version import encode_email_config_version
     from core.human_input_v2.shared import EmailProviderId
     from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 
@@ -539,7 +539,7 @@ def test_saved_connection_test_translates_failures_safely(
     expected_status: int,
     expected_code: str | None,
 ) -> None:
-    from controllers.console.human_input_v2.config_version import encode_email_config_version
+    from controllers.common.human_input_v2.config_version import encode_email_config_version
     from core.human_input_v2.shared import EmailProviderId
     from repositories.human_input_v2.email_channel import EmailConfigurationSnapshot
 
