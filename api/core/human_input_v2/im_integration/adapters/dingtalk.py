@@ -17,7 +17,6 @@ from typing import Literal, Protocol, override
 from urllib import error as urllib_error
 from urllib import parse as urllib_parse
 from urllib import request as urllib_request
-from uuid import UUID
 
 from alibabacloud_dingtalk.oauth2_1_0.client import Client as OAuthClient
 from alibabacloud_dingtalk.oauth2_1_0.models import GetTokenRequest
@@ -25,7 +24,15 @@ from alibabacloud_dingtalk.robot_1_0.client import Client as RobotClient
 from alibabacloud_dingtalk.robot_1_0.models import BatchSendOTOHeaders, BatchSendOTORequest
 from alibabacloud_tea_openapi.models import Config
 from alibabacloud_tea_util.models import RuntimeOptions
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    ValidationError,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 from requests.exceptions import Timeout as RequestsTimeout
 from Tea.exceptions import TeaException
 
@@ -68,6 +75,7 @@ _HTTP_TIMEOUT_SECONDS = 5.0
 _SDK_TIMEOUT_MILLISECONDS = 5000
 _HTTP_SUCCESS_STATUS_MIN = 200
 _HTTP_SUCCESS_STATUS_MAX_EXCLUSIVE = 300
+_PROVIDER_REQUEST_ID_MAX_LENGTH = 256
 
 _CREDENTIAL_REJECTED = "DingTalk rejected the credential test."
 _AUTHORIZATION_SCOPE_UNVERIFIED = "DingTalk could not verify complete member authorization."
@@ -152,16 +160,39 @@ class _DirectoryHTTPError(Exception):
 
 
 class _DirectoryProviderRejectedError(_DirectoryHTTPError):
-    def __init__(self, provider_error_code: int | None, *, http_status: int) -> None:
+    def __init__(self, provider_error_code: int | None, *, http_status: int, provider_request_id: str | None) -> None:
         super().__init__()
         self.provider_error_code = str(provider_error_code) if provider_error_code is not None else None
         self.http_status = http_status
+        self.provider_request_id = provider_request_id
 
 
-class _OAuthErrorData(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
+class _ProviderRequestMetadata(BaseModel):
+    """Parse optional opaque request IDs without changing provider failure semantics."""
 
+    model_config = ConfigDict(extra="ignore", strict=True, hide_input_in_errors=True)
+
+    request_id: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("requestid", "RequestId", "requestId", "request_id"),
+        min_length=1,
+        max_length=_PROVIDER_REQUEST_ID_MAX_LENGTH,
+        pattern=r"^[^\s\x00-\x1f\x7f]+$",
+    )
+
+    @field_validator("request_id", mode="wrap")
+    @classmethod
+    def _parse_optional_request_id(cls, value: object, handler: ValidatorFunctionWrapHandler) -> str | None:
+        """Retain valid IDs verbatim; ignore malformed optional diagnostic fields."""
+        try:
+            return handler(value)
+        except ValidationError:
+            return None
+
+
+class _OAuthErrorData(_ProviderRequestMetadata):
     status_code: int | None = Field(default=None, alias="statusCode")
+    errcode: int | None = None
 
 
 class _OAuthErrorResponse(BaseModel):
@@ -171,15 +202,7 @@ class _OAuthErrorResponse(BaseModel):
     data: _OAuthErrorData | None = None
 
 
-class _OAuthErrorRequestId(BaseModel):
-    model_config = ConfigDict(extra="ignore", hide_input_in_errors=True)
-
-    request_id: UUID = Field(validation_alias=AliasChoices("requestid", "RequestId"))
-
-
-class _ProviderResponse(BaseModel):
-    model_config = ConfigDict(extra="ignore", strict=True)
-
+class _ProviderResponse(_ProviderRequestMetadata):
     errcode: int | None = None
     errmsg: str | None = None
 
@@ -420,10 +443,16 @@ class DingTalkIMProviderAdapter:
                 rejection = _ProviderResponse.model_validate_json(error.read())
             except ValidationError:
                 provider_error_code = None
+                provider_request_id = None
             else:
                 provider_error_code = str(rejection.errcode) if rejection.errcode is not None else None
+                provider_request_id = rejection.request_id
             return CredentialTestFailure(
-                CredentialTestFailureKind.UNKNOWN, _CREDENTIAL_REJECTED, provider_error_code, http_status=error.code
+                CredentialTestFailureKind.UNKNOWN,
+                _CREDENTIAL_REJECTED,
+                provider_error_code,
+                http_status=error.code,
+                provider_request_id=provider_request_id,
             )
         except urllib_error.URLError as error:
             if isinstance(error.reason, TimeoutError):
@@ -441,21 +470,33 @@ class DingTalkIMProviderAdapter:
         except TeaException as error:
             rejection = _OAuthErrorResponse.model_validate({"code": error.code, "data": error.data})
             status_code = rejection.data.status_code if rejection.data is not None else None
-            if rejection.code is None and status_code is None:
+            provider_error_code = (
+                str(rejection.data.errcode)
+                if rejection.data is not None and rejection.data.errcode is not None
+                else rejection.code
+            )
+            provider_request_id = rejection.data.request_id if rejection.data is not None else None
+            if provider_error_code is None and status_code is None:
                 raise
             logger.warning(
                 "DingTalk credential test token request failed: operation=get_token "
                 "http_status=%s provider_error_code=%r request_id=%s",
                 status_code,
-                rejection.code,
-                _oauth_error_request_id(error),
+                provider_error_code,
+                provider_request_id,
             )
             kind = (
                 CredentialTestFailureKind.AUTHENTICATION_REJECTED
                 if status_code in {400, 401, 403}
                 else CredentialTestFailureKind.UNKNOWN
             )
-            return CredentialTestFailure(kind, _CREDENTIAL_REJECTED, rejection.code, http_status=status_code)
+            return CredentialTestFailure(
+                kind,
+                _CREDENTIAL_REJECTED,
+                provider_error_code,
+                http_status=status_code,
+                provider_request_id=provider_request_id,
+            )
 
         try:
             complete_authorization = _has_complete_member_authorization(self._http_client, access_token)
@@ -465,6 +506,7 @@ class DingTalkIMProviderAdapter:
                 _AUTHORIZATION_SCOPE_UNVERIFIED,
                 error.provider_error_code,
                 http_status=error.http_status,
+                provider_request_id=error.provider_request_id,
             )
         if not complete_authorization:
             return CredentialTestFailure(
@@ -505,18 +547,6 @@ class DingTalkIMProviderAdapter:
 
 def _new_oauth_client() -> OAuthClient:
     return OAuthClient(_sdk_config())
-
-
-def _oauth_error_request_id(error: TeaException) -> UUID | None:
-    """Project a UUID request ID from SDK error data without exposing its payload.
-
-    Missing or malformed identifiers return None and do not change the token
-    rejection's failure classification.
-    """
-    try:
-        return _OAuthErrorRequestId.model_validate(error.data).request_id
-    except ValidationError:
-        return None
 
 
 def _new_robot_client() -> RobotClient:
@@ -564,6 +594,7 @@ def _verify_root_boundary(http_client: _DirectoryHTTPClient, access_token: str) 
             _TENANT_BOUNDARY_UNAVAILABLE,
             error.provider_error_code,
             http_status=error.http_status,
+            provider_request_id=error.provider_request_id,
         )
     return None
 
@@ -616,7 +647,11 @@ def _parse_response[ResponseT: _ProviderResponse](
 ) -> ResponseT:
     rejection = _ProviderResponse.model_validate_json(response_body.body)
     if rejection.errcode != 0:
-        raise _DirectoryProviderRejectedError(rejection.errcode, http_status=response_body.http_status)
+        raise _DirectoryProviderRejectedError(
+            rejection.errcode,
+            http_status=response_body.http_status,
+            provider_request_id=rejection.request_id,
+        )
     return response_type.model_validate_json(response_body.body)
 
 
