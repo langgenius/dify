@@ -30,6 +30,7 @@ from core.human_input_v2.im_integration.adapters import (
     IMWebhookHandler,
     ProviderUserId,
 )
+from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator, SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from libs.datetime_utils import naive_utc_now
 from models.human_input_v2 import (
@@ -41,6 +42,7 @@ from models.human_input_v2 import (
     HumanInputIMSyncResult,
     HumanInputIMSyncRun,
 )
+from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.channel_credentials import ChannelEncryptedCredentials
 from repositories.human_input_v2.contact import Contact
 from repositories.human_input_v2.im_channel_repository import IMChannel, IMChannelId, IMChannelStatus, WebhookId
@@ -151,7 +153,12 @@ class _SyncContext:
         return WorkspaceIMChannelReader(session, self.scope.id).get()
 
     def service(self) -> IMSyncService:
-        return IMSyncService(self.sessions, self.resolve_channel, lambda _run, _scope: None)
+        return IMSyncService(
+            self.sessions,
+            self.resolve_channel,
+            lambda _run, _scope: None,
+            account_query=SQLAlchemyAccountRepository(self.sessions),
+        )
 
     def worker(self, directory: _Directory | None = None) -> IMContactSyncWorker:
         def reconciliation(scope: DirectoryScope) -> IMChannelReconciliationService:
@@ -201,7 +208,7 @@ def sync_context(sync_engine: Engine) -> _SyncContext:
 def test_revision_rotation_retires_old_run_and_new_worker_succeeds(
     sync_context: _SyncContext, status: IMSyncRunStatus, recovery: str
 ) -> None:
-    old = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+    old = sync_context.service().create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID)).run
     with sync_context.sessions.begin() as session:
         session.get_one(HumanInputIMSyncRun, str(old.id)).status = status
     sync_context.rotate()
@@ -209,7 +216,9 @@ def test_revision_rotation_retires_old_run_and_new_worker_succeeds(
         terminal = sync_context.worker().execute(old.id, sync_context.scope)
         assert terminal.status is IMSyncRunStatus.FAILED
         assert terminal.error_code == "stale_revision"
-    current = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+    current = (
+        sync_context.service().create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID)).run
+    )
     assert current.id != old.id
     assert current.channel_revision.config_version == 2
     assert current.status is IMSyncRunStatus.QUEUED
@@ -233,14 +242,18 @@ def test_revision_rotation_retires_old_run_and_new_worker_succeeds(
 
 
 def test_concurrent_old_workers_and_triggers_leave_one_new_active_run(sync_context: _SyncContext) -> None:
-    old = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+    old = sync_context.service().create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID)).run
     sync_context.rotate()
     barrier = Barrier(4)
 
     def execute(trigger: bool) -> IMSyncRun:
         barrier.wait(timeout=10)
         if trigger:
-            return sync_context.service().create_or_get_active_run(sync_context.scope, None)
+            return (
+                sync_context.service()
+                .create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID))
+                .run
+            )
         return sync_context.worker().execute(old.id, sync_context.scope)
 
     with ThreadPoolExecutor(max_workers=4) as executor:
@@ -267,14 +280,18 @@ def test_concurrent_old_workers_and_triggers_leave_one_new_active_run(sync_conte
 
 
 def test_late_old_apply_cannot_overwrite_new_revision_state(sync_context: _SyncContext) -> None:
-    old = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+    old = sync_context.service().create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID)).run
     entered, resume = Event(), Event()
     with ThreadPoolExecutor(max_workers=1) as executor:
         pending = executor.submit(sync_context.worker(_Directory(entered, resume)).execute, old.id, sync_context.scope)
         try:
             assert entered.wait(timeout=10)
             sync_context.rotate()
-            current = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+            current = (
+                sync_context.service()
+                .create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID))
+                .run
+            )
             assert sync_context.worker().execute(current.id, sync_context.scope).status is IMSyncRunStatus.SUCCEEDED
         finally:
             resume.set()
@@ -296,7 +313,7 @@ def test_late_old_apply_cannot_overwrite_new_revision_state(sync_context: _SyncC
 
 
 def test_stale_completion_is_scoped_current_and_caller_rollback_owned(sync_context: _SyncContext) -> None:
-    old = sync_context.service().create_or_get_active_run(sync_context.scope, None)
+    old = sync_context.service().create_or_get_active_run(sync_context.scope, AccountIMSyncInitiator(_ACCOUNT_ID)).run
     current = sync_context.rotate()
     with sync_context.sessions() as session:
         assert (
@@ -307,7 +324,9 @@ def test_stale_completion_is_scoped_current_and_caller_rollback_owned(sync_conte
         )
     with sync_context.sessions() as session:
         replacement = SQLAlchemyIMControlPlaneRepository(session, current).create_or_get_active_run(
-            sync_run_id=IMSyncRunId(str(uuid4())), started_by_account_id=None, now=naive_utc_now()
+            sync_run_id=IMSyncRunId(str(uuid4())),
+            started_by=SysUserIMSyncInitiator(SysUserId("00000000-0000-0000-0000-000000000999")),
+            now=naive_utc_now(),
         )
         assert replacement.run is not None
         assert replacement.run.id != old.id

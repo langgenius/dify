@@ -25,6 +25,7 @@
   "enterYourName": "Prosimo, vnesite svoje uporabniško ime",
   "error.emailEmpty": "E-poštni naslov je obvezen",
   "error.emailInValid": "Prosimo, vnesite veljaven e-poštni naslov",
+  "error.initPasswordIncorrect": "Inicializacijsko geslo ni pravilno.",
   "error.invalidEmailOrPassword": "Neveljaven e-poštni naslov ali geslo.",
   "error.invalidSSOProtocol": "Neveljaven protokol SSO",
   "error.nameEmpty": "Ime je obvezno",

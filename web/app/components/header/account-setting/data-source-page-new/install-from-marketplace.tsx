@@ -3,7 +3,6 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceLinks } from '@/features/marketplace/links'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Separator } from '@langgenius/dify-ui/separator'
-import { useTheme } from 'next-themes'
 import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { LoadingPlaceholder } from '@/app/components/base/loading-placeholder'
@@ -11,6 +10,7 @@ import List from '@/app/components/plugins/marketplace/list'
 import { usePluginSettingsAccess } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import Link from '@/next/link'
 import { useMarketplaceAllPlugins } from './hooks'
 
@@ -27,7 +27,7 @@ const InstallFromMarketplace = ({
   searchText,
 }: InstallFromMarketplaceProps) => {
   const { t } = useTranslation(['plugin', 'modelProvider'])
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const { canInstallPlugin } = usePluginSettingsAccess()
   const [collapse, setCollapse] = useState(false)
   const { plugins: allPlugins, isLoading: isAllPluginsLoading } = useMarketplaceAllPlugins(

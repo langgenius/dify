@@ -84,7 +84,7 @@ it('closes from the dialog shell close button', async () => {
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
 })
 
-it('imports the selected template with the edited name and closes the picker', async () => {
+it('imports the selected template with the edited name and keeps the picker for navigation', async () => {
   const user = userEvent.setup()
   function Scenario() {
     const [show, setShow] = useState(true)
@@ -96,7 +96,9 @@ it('imports the selected template with the edited name and closes the picker', a
   await user.clear(name)
   await user.type(name, 'My assistant')
   await user.click(screen.getByRole('button', { name: /common.operation.create/ }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+  // The naming form closes; the picker stays until the new app replaces the page.
+  await waitFor(() => expect(name).not.toBeInTheDocument())
+  expect(screen.getByRole('dialog', { name: 'app.newApp.startFromTemplate' })).toBeInTheDocument()
   expect(importApp).toHaveBeenCalledExactlyOnceWith({
     body: expect.objectContaining({ name: 'My assistant', yaml_content: 'template-dsl' }),
   })

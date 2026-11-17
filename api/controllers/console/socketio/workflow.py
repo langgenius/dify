@@ -11,7 +11,8 @@ from extensions.otel.workflow_collaboration import observe_workflow_event
 from libs.passport import PassportService
 from libs.token import extract_access_token
 from repositories.workflow_collaboration_repository import WorkflowCollaborationRepository
-from services.workflow_collaboration_service import WorkflowCollaborationService
+from services.errors.billing import BillingUpstreamError
+from services.workflow_collaboration_service import WorkflowCollaborationNotEntitledError, WorkflowCollaborationService
 
 repository = WorkflowCollaborationRepository()
 collaboration_service = WorkflowCollaborationService(repository, sio)
@@ -72,8 +73,14 @@ def handle_user_connect(sid, data):
     if not workflow_id:
         return {"msg": "workflow_id is required"}, 400
 
-    with sio.app.app_context(), session_factory.create_session() as session:
-        result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    try:
+        with sio.app.app_context(), session_factory.create_session() as session:
+            result = collaboration_service.authorize_and_join_workflow_room(workflow_id, sid, session=session)
+    except BillingUpstreamError:
+        logging.exception("Failed to check collaboration entitlement (workflow_id=%s)", workflow_id)
+        return {"msg": "collaboration_unavailable"}, 503
+    except WorkflowCollaborationNotEntitledError:
+        return {"msg": "not_entitled"}, 403
     if not result:
         return {"msg": "unauthorized"}, 401
 

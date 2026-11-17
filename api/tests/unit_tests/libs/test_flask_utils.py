@@ -102,12 +102,13 @@ def test_current_user_accessible_with_preserve_flask_contexts(login_app: Flask, 
 
         # Define a function to run in a separate thread
         def check_user_in_thread_with_manager() -> None:
+            """Given preserved Flask contexts in a thread, record access to the authenticated current user."""
             try:
                 # Use preserve_flask_contexts to access current_user in a different thread
                 with preserve_flask_contexts(login_app, context_vars):
                     from flask_login import current_user
 
-                    if current_user:
+                    if current_user.is_authenticated:
                         result["user_accessible"] = True
                         result["user_id"] = current_user.id
                     else:

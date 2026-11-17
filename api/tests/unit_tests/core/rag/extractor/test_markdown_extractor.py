@@ -1,5 +1,6 @@
 from pathlib import Path
 from types import SimpleNamespace
+from typing import NoReturn
 
 import pytest
 
@@ -8,7 +9,7 @@ from core.rag.extractor.markdown_extractor import MarkdownExtractor
 
 
 class TestMarkdownExtractor:
-    def test_markdown_to_tups(self):
+    def test_markdown_to_tups(self) -> None:
         markdown = """
 this is some text without header
 
@@ -22,15 +23,16 @@ this is more specific text.
         updated_output = extractor.markdown_to_tups(markdown)
 
         assert len(updated_output) == 3
-        key, header_value = updated_output[0]
-        assert key is None
-        assert header_value.strip() == "this is some text without header"
+        first = updated_output[0]
+        assert first[0] is None
+        assert first[1].strip() == "this is some text without header"
 
         title_1, value = updated_output[1]
+        assert title_1 is not None
         assert title_1.strip() == "title 1"
         assert value.strip() == "this is balabala text"
 
-    def test_markdown_to_tups_keeps_code_block_headers_literal(self):
+    def test_markdown_to_tups_keeps_code_block_headers_literal(self) -> None:
         markdown = """# Header
 before
 ```python
@@ -56,7 +58,7 @@ after
             "~~~python\n```\n# example comment\n~~~",
         ],
     )
-    def test_extract_ignores_headings_inside_fenced_code(self, fence: str, tmp_path: Path):
+    def test_extract_ignores_headings_inside_fenced_code(self, fence: str, tmp_path: Path) -> None:
         markdown = f"# Intro\nbefore\n{fence}\n# Next\nafter"
         markdown_file = tmp_path / "example.md"
         markdown_file.write_text(markdown, encoding="utf-8")
@@ -71,14 +73,14 @@ after
         assert "# example comment" in nonempty_documents[0]
         assert nonempty_documents[1].startswith("\n\nNext\n")
 
-    def test_markdown_to_tups_does_not_open_backtick_fence_with_backtick_in_info(self):
+    def test_markdown_to_tups_does_not_open_backtick_fence_with_backtick_in_info(self) -> None:
         markdown = "# Intro\n```py`thon\n# Next\nafter"
 
         tups = MarkdownExtractor(file_path="dummy_path").markdown_to_tups(markdown)
 
         assert [header for header, _ in tups if header is not None] == ["Intro", "Next"]
 
-    def test_remove_images_and_hyperlinks(self):
+    def test_remove_images_and_hyperlinks(self) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path")
 
         with_images = "before ![[image.png]] after"
@@ -87,7 +89,7 @@ after
         assert extractor.remove_images(with_images) == "before  after"
         assert extractor.remove_hyperlinks(with_links) == "OpenAI"
 
-    def test_parse_tups_reads_file_and_applies_options(self, tmp_path: Path):
+    def test_parse_tups_reads_file_and_applies_options(self, tmp_path: Path) -> None:
         markdown_file = tmp_path / "doc.md"
         markdown_file.write_text("# Header\nText with [link](https://example.com) and ![[img.png]]", encoding="utf-8")
 
@@ -105,12 +107,12 @@ after
         assert "[link]" not in tups[1][1]
         assert "img.png" not in tups[1][1]
 
-    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_autodetects_encoding_after_decode_error(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=True)
 
         calls: list[str | None] = []
 
-        def fake_read_text(self, encoding=None):
+        def fake_read_text(_self, encoding: str | None = None) -> str:
             calls.append(encoding)
             if encoding is None:
                 raise UnicodeDecodeError("utf-8", b"x", 0, 1, "fail")
@@ -130,10 +132,10 @@ after
         assert len(tups) == 2
         assert calls == [None, "bad-encoding", "utf-8"]
 
-    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_decode_error_with_autodetect_disabled_raises(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path", autodetect_encoding=False)
 
-        def raise_decode(self, encoding=None):
+        def raise_decode(_self, encoding: str | None = None) -> NoReturn:
             raise UnicodeDecodeError("utf-8", b"x", 0, 1, "fail")
 
         monkeypatch.setattr(Path, "read_text", raise_decode, raising=True)
@@ -141,10 +143,10 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch):
+    def test_parse_tups_other_exceptions_are_wrapped(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path")
 
-        def raise_other(self, encoding=None):
+        def raise_other(_self, encoding: str | None = None) -> NoReturn:
             raise OSError("disk error")
 
         monkeypatch.setattr(Path, "read_text", raise_other, raising=True)
@@ -152,7 +154,7 @@ after
         with pytest.raises(RuntimeError, match="Error loading dummy_path"):
             extractor.parse_tups("dummy_path")
 
-    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch: pytest.MonkeyPatch):
+    def test_extract_builds_documents_for_header_and_non_header(self, monkeypatch: pytest.MonkeyPatch) -> None:
         extractor = MarkdownExtractor(file_path="dummy_path")
         monkeypatch.setattr(extractor, "parse_tups", lambda _: [(None, "plain"), ("Header", "value")])
 

@@ -25,6 +25,7 @@
   "enterYourName": "请输入用户名",
   "error.emailEmpty": "邮箱不能为空",
   "error.emailInValid": "请输入有效的邮箱地址",
+  "error.initPasswordIncorrect": "初始化密码不正确。",
   "error.invalidEmailOrPassword": "邮箱或密码错误",
   "error.invalidSSOProtocol": "无效的 SSO 协议",
   "error.nameEmpty": "用户名不能为空",

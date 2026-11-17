@@ -232,7 +232,7 @@ export function AgentWorkingDirectoryPanel({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         backdropProps={{ forceRender: true, className: 'fixed' }}
-        className="h-[min(720px,calc(100dvh-2rem))] w-[min(960px,calc(100vw-2rem))] overflow-hidden"
+        className="h-180 w-240 overflow-hidden"
       >
         <AgentWorkingDirectoryContent source={source} open={open} />
       </DialogContent>
@@ -581,7 +581,7 @@ function AgentWorkingDirectoryContent({
                   </Infotip>
                 </div>
                 <TabsIndicator
-                  className="pointer-events-none absolute bottom-0 left-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
+                  className="pointer-events-none absolute inset-s-0 bottom-0 h-0 border-b-2 border-components-tab-active transition-[translate,width] duration-150 ease-in-out motion-reduce:transition-none"
                   style={{
                     translate: 'var(--active-tab-left)',
                     width: 'var(--active-tab-width)',

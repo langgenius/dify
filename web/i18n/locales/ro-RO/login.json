@@ -25,6 +25,7 @@
   "enterYourName": "Vă rugăm să introduceți numele de utilizator",
   "error.emailEmpty": "Adresa de email este obligatorie",
   "error.emailInValid": "Te rugăm să introduci o adresă de email validă",
+  "error.initPasswordIncorrect": "Parola de inițializare este incorectă.",
   "error.invalidEmailOrPassword": "Email sau parolă invalidă.",
   "error.invalidSSOProtocol": "Protocol SSO invalid",
   "error.nameEmpty": "Numele este obligatoriu",

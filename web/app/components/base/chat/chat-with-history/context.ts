@@ -32,7 +32,7 @@ export type ChatWithHistoryContextValue = {
   handleRenameConversation: (conversationId: string, newName: string, callback: Callback) => void
   handleNewConversationCompleted: (newConversationId: string) => void
   chatShouldReloadKey: string
-  isMobile: boolean
+  isBelowSm: boolean
   isInstalledApp: boolean
   appId?: string
   handleFeedback: OnFeedback
@@ -74,7 +74,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   handleRenameConversation: noop,
   handleNewConversationCompleted: noop,
   chatShouldReloadKey: '',
-  isMobile: false,
+  isBelowSm: false,
   isInstalledApp: false,
   handleFeedback: () => Promise.resolve(),
   currentChatInstanceRef: { current: { handleStop: noop } },

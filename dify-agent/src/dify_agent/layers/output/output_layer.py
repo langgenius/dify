@@ -6,32 +6,37 @@ exposes the schema and validates the result in Pydantic AI's retry pipeline.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Iterable, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Any, Final, cast
+from urllib.parse import unquote
 
 from jsonschema import SchemaError
 from jsonschema.exceptions import ValidationError as JsonSchemaValidationError
 from jsonschema.protocols import Validator as JsonSchemaValidator
 from jsonschema.validators import validator_for
-from pydantic import GetCoreSchemaHandler, GetJsonSchemaHandler, JsonValue
+from pydantic import BaseModel, ConfigDict, GetCoreSchemaHandler, GetJsonSchemaHandler, JsonValue
 from pydantic.json_schema import JsonSchemaValue
+from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.output import OutputSpec, ToolOutput
 from pydantic_core import PydanticCustomError, core_schema
 from typing_extensions import assert_never
 
-
-from pydantic import BaseModel, ConfigDict
-from pydantic_ai.capabilities import AbstractCapability
-from dify_agent.runtime.context import Deps
 from dify_agent.layers.output.configs import DifyOutputLayerConfig
-
+from dify_agent.runtime.context import Deps
 
 _FINAL_OUTPUT_TOOL_NAME: Final[str] = "final_output"
 _VALIDATED_OUTPUT_TYPE_NAME: Final[str] = f"DifyValidatedOutput_{_FINAL_OUTPUT_TOOL_NAME}"
-_LOCAL_DEFS_REF_PREFIX: Final[str] = "#/$defs/"
 _NON_SCHEMA_VALUE_KEYWORDS: Final[frozenset[str]] = frozenset({"const", "default", "enum", "example", "examples"})
+# Keywords whose values are name-to-schema maps. Entry names inside these maps
+# are user-chosen data (property names, definition names, ...), never keywords,
+# so every entry value is traversed as a schema.
+_SCHEMA_MAP_KEYWORDS: Final[frozenset[str]] = frozenset(
+    {"$defs", "definitions", "dependencies", "dependentSchemas", "patternProperties", "properties"}
+)
+_INVALID_JSON_POINTER_ESCAPE_RE: Final[re.Pattern[str]] = re.compile(r"~(?![01])")
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,25 +191,53 @@ def _build_exposed_json_schema(
 
 
 def _reject_non_local_refs(schema: JsonValue) -> None:
-    """Reject references that would require external fetching or non-local state.
+    """Raise ``ValueError`` for refs outside direct root ``#/$defs/<name>`` entries.
 
     JSON Schema allows ordinary instance values under keywords such as ``const``
     and ``examples``. Those values may themselves contain ``{"$ref": ...}`` as
     plain data, so the traversal only inspects positions that still represent
     schema documents rather than blindly recursing into every JSON object. This
-    first version only supports local refs under ``#/$defs/`` so every schema
-    accepted here can be materialized into the dynamic output type's exposed JSON
-    schema without needing general-purpose root rewriting.
+    first version supports a single JSON Pointer name token under root ``$defs``
+    so every schema accepted here can be materialized into the dynamic output
+    type's exposed JSON schema without needing general-purpose root rewriting.
     """
     for ref in _iter_schema_refs(schema):
-        if not ref.startswith("#"):
-            raise ValueError(
-                "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
-            )
-        if not ref.startswith(_LOCAL_DEFS_REF_PREFIX):
-            raise ValueError(
-                f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
-            )
+        _local_defs_ref_name(ref)
+
+
+def _local_defs_ref_name(ref: str) -> str:
+    """Return the decoded name of a direct root ``#/$defs/<name>`` reference.
+
+    Raise ``ValueError`` for remote, unsupported, or malformed refs. To match
+    RFC 6901 section 6 and ``referencing``, check the raw fragment's literal
+    leading ``/``, percent-decode, split on ``/``, then unescape ``~1`` before
+    ``~0``. This keeps percent-encoded slashes as separators and ``~1`` within
+    the single name token. Percent-decoding requires valid UTF-8.
+    """
+    if not ref.startswith("#"):
+        raise ValueError(
+            "Remote $ref values are not supported; only local fragment refs beginning with '#' are allowed."
+        )
+    raw_fragment = ref[1:]
+    if not raw_fragment.startswith("/"):
+        raise ValueError(
+            f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
+        )
+    try:
+        segments = unquote(raw_fragment[1:], errors="strict").split("/")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"Invalid percent-encoded JSON Pointer in local $ref {ref!r}.") from exc
+    if len(segments) < 2 or segments[0] != "$defs":
+        raise ValueError(
+            f"Only local refs under '#/$defs/' are supported in this version; got unsupported local ref {ref!r}."
+        )
+    if len(segments) > 2:
+        raise ValueError(f"Nested local $ref paths are not supported for structured output: {ref!r}.")
+
+    token = segments[1]
+    if _INVALID_JSON_POINTER_ESCAPE_RE.search(token):
+        raise ValueError(f"Invalid JSON Pointer escape in local $ref {ref!r}.")
+    return token.replace("~1", "/").replace("~0", "~")
 
 
 def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue]:
@@ -213,54 +246,58 @@ def _inline_local_defs_refs(schema: dict[str, JsonValue]) -> dict[str, JsonValue
     ``jsonschema`` can validate a schema that keeps local refs, but Pydantic's
     JSON schema generation cannot safely preserve custom root ``$defs`` in this
     integration. Inlining keeps the model-facing schema equivalent while still
-    letting runtime validation use the original schema document.
+    letting runtime validation use the original schema document. Schema
+    containers are rebuilt and literal keyword values are deep-copied, so the
+    exposed schema stays independent of the validation schema. Unresolvable or
+    recursive references raise ``ValueError`` during contract construction.
     """
-    root_defs = schema.get("$defs")
-    if not isinstance(root_defs, dict):
-        return deepcopy(schema)
+    raw_defs = schema.get("$defs")
+    root_defs = raw_defs if isinstance(raw_defs, dict) else {}
 
     def resolve(node: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
         if isinstance(node, dict):
             ref = node.get("$ref")
             if isinstance(ref, str):
-                ref_name = ref.removeprefix(_LOCAL_DEFS_REF_PREFIX)
+                ref_name = _local_defs_ref_name(ref)
                 if ref_name in ref_stack:
                     raise ValueError("Recursive $defs refs are not supported for structured output exposure.")
                 target = root_defs.get(ref_name)
                 if not isinstance(target, dict):
                     raise ValueError(f"Local $ref {ref!r} could not be resolved from $defs.")
-                resolved_target = resolve(deepcopy(target), ref_stack=(*ref_stack, ref_name))
-                merged = cast(dict[str, JsonValue], deepcopy(resolved_target))
+                resolved_target = resolve(target, ref_stack=(*ref_stack, ref_name))
+                merged = cast(dict[str, JsonValue], resolved_target)
                 for key, value in node.items():
                     if key == "$ref":
                         continue
-                    if key in _NON_SCHEMA_VALUE_KEYWORDS:
-                        merged[key] = deepcopy(value)
-                    else:
-                        merged[key] = _resolve_or_copy(value, ref_stack=ref_stack)
+                    merged[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
                 return merged
 
             resolved_node: dict[str, JsonValue] = {}
             for key, value in node.items():
                 if key == "$defs":
                     continue
-                if key in _NON_SCHEMA_VALUE_KEYWORDS:
-                    resolved_node[key] = deepcopy(value)
-                else:
-                    resolved_node[key] = _resolve_or_copy(value, ref_stack=ref_stack)
+                resolved_node[key] = _resolve_schema_keyword(key, value, ref_stack=ref_stack)
             return resolved_node
 
         if isinstance(node, list):
-            return [_resolve_or_copy(item, ref_stack=ref_stack) for item in node]
+            return [resolve(item, ref_stack=ref_stack) for item in node]
 
-        return deepcopy(node)
+        return node
 
-    def _resolve_or_copy(value: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
-        if isinstance(value, dict | list):
-            return resolve(value, ref_stack=ref_stack)
-        return deepcopy(value)
+    def _resolve_schema_keyword(key: str, value: JsonValue, *, ref_stack: tuple[str, ...]) -> JsonValue:
+        """Resolve one keyword value of a schema object according to its position.
 
-    resolved_schema = resolve(deepcopy(schema), ref_stack=())
+        Values of literal-data keywords stay untouched. Values of name-to-schema
+        map keywords are resolved entry by entry, so an entry named like a
+        keyword (for example a property named ``default``) is still a schema.
+        """
+        if key in _NON_SCHEMA_VALUE_KEYWORDS:
+            return deepcopy(value)
+        if key in _SCHEMA_MAP_KEYWORDS and isinstance(value, dict):
+            return {name: resolve(entry, ref_stack=ref_stack) for name, entry in value.items()}
+        return resolve(value, ref_stack=ref_stack)
+
+    resolved_schema = resolve(schema, ref_stack=())
     return cast(dict[str, JsonValue], resolved_schema)
 
 
@@ -271,12 +308,16 @@ def _iter_schema_refs(schema: JsonValue) -> Iterable[str]:
                 yield value
             elif key in _NON_SCHEMA_VALUE_KEYWORDS:
                 continue
-            elif isinstance(value, dict | list):
+            elif key in _SCHEMA_MAP_KEYWORDS and isinstance(value, dict):
+                # Map entry names are user data, not keywords, so every entry
+                # value is a schema regardless of what the entry is called.
+                for entry in value.values():
+                    yield from _iter_schema_refs(entry)
+            else:
                 yield from _iter_schema_refs(value)
     elif isinstance(schema, list):
         for item in schema:
-            if isinstance(item, dict | list):
-                yield from _iter_schema_refs(item)
+            yield from _iter_schema_refs(item)
     elif isinstance(schema, str | int | float | bool) or schema is None:
         return
     else:  # pragma: no cover - JsonValue exhaustiveness guard

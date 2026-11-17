@@ -25,6 +25,7 @@
   "enterYourName": "कृपया अपना उपयोगकर्ता नाम दर्ज करें",
   "error.emailEmpty": "ईमेल पता आवश्यक है",
   "error.emailInValid": "कृपया एक मान्य ईमेल पता दर्ज करें",
+  "error.initPasswordIncorrect": "आरंभीकरण पासवर्ड गलत है।",
   "error.invalidEmailOrPassword": "अमान्य ईमेल या पासवर्ड।",
   "error.invalidSSOProtocol": "अमान्य SSO प्रोटोकॉल",
   "error.nameEmpty": "नाम आवश्यक है",

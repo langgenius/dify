@@ -43,6 +43,18 @@ export type InvalidRequestError = ErrorResponse & {
   status: 400
 }
 
+export type AvailableEvaluationWorkflowPaginationResponse = {
+  has_more: boolean
+  items: Array<AvailableEvaluationWorkflowResponse>
+  limit: number
+  page: number
+}
+
+export type PaidPlanRequiredError = ErrorResponse & {
+  code: 'paid_plan_required'
+  status: 403
+}
+
 export type SnippetPaginationResponse = {
   data: Array<SnippetListItemResponse>
   has_more: boolean
@@ -171,6 +183,10 @@ export type EndpointUpdatePayload = {
   settings: {
     [key: string]: unknown
   }
+}
+
+export type EvaluationAssociatedTargetListResponse = {
+  items: Array<EvaluationAssociatedTargetResponse>
 }
 
 export type ListChannelProvidersResponse = {
@@ -714,11 +730,6 @@ export type NetworkAccessGroupMutationResponse = {
 export type NetworkAccessInvalidInputError = ErrorResponse & {
   code: 'network_access_invalid_input'
   status: 400
-}
-
-export type PaidPlanRequiredError = ErrorResponse & {
-  code: 'paid_plan_required'
-  status: 403
 }
 
 export type NetworkAccessGroupNameConflictError = ErrorResponse & {
@@ -1614,6 +1625,21 @@ export type TriggerSubscriptionBuilderUpdatePayload = {
   } | null
 }
 
+export type TriggerSubscriptionLimitReachedError = ErrorResponse & {
+  code: 'trigger_subscription_limit_reached'
+  status: 400
+}
+
+export type TriggerSubscriptionNameConflictError = ErrorResponse & {
+  code: 'trigger_subscription_name_conflict'
+  status: 409
+}
+
+export type TriggerSubscriptionProviderError = ErrorResponse & {
+  code: 'trigger_subscription_provider_error'
+  status: 502
+}
+
 export type TriggerSubscriptionBuilderCreatePayload = {
   credential_type?: string
 }
@@ -1665,10 +1691,30 @@ export type TriggerOAuthAuthorizeResponse = {
   subscription_builder_id: string
 }
 
+export type TriggerOauthProviderError = ErrorResponse & {
+  code: 'trigger_oauth_provider_error'
+  status: 502
+}
+
 export type TriggerSubscriptionVerifyPayload = {
   credentials: {
     [key: string]: unknown
   }
+}
+
+export type TriggerSubscriptionInvalidError = ErrorResponse & {
+  code: 'trigger_subscription_invalid'
+  status: 400
+}
+
+export type TriggerSubscriptionNotFoundError = ErrorResponse & {
+  code: 'trigger_subscription_not_found'
+  status: 404
+}
+
+export type TriggerSubscriptionChangedError = ErrorResponse & {
+  code: 'trigger_subscription_changed'
+  status: 409
 }
 
 export type TriggerProviderListResponse = Array<TriggerProviderApiEntity>
@@ -1764,6 +1810,22 @@ export type AgentSkillBindingItemResponse = {
   status: string
   tags?: Array<string>
   updated_at: number
+}
+
+export type AvailableEvaluationWorkflowResponse = {
+  app_id: string
+  app_name: string
+  created_at: number
+  created_by?: SimpleAccountResponse | null
+  hash: string
+  id: string
+  kind: string
+  marked_comment: string
+  marked_name: string
+  type: string
+  updated_at: number
+  updated_by?: SimpleAccountResponse | null
+  version: string
 }
 
 export type SnippetListItemResponse = {
@@ -1875,6 +1937,12 @@ export type EndpointListItemResponse = {
   tenant_id: string
   updated_at: string
   url: string
+}
+
+export type EvaluationAssociatedTargetResponse = {
+  target_id: string
+  target_name: string
+  target_type: string
 }
 
 export type ChannelProvider = {
@@ -1999,6 +2067,7 @@ export type HumanInputContact = {
 export type HumanInputContactSummary = {
   avatar_url?: string
   created_at: number
+  email?: string | null
   id: string
   name: string
 }
@@ -2025,6 +2094,7 @@ export type ImSyncRun = {
   error_message?: string | null
   finished_at?: number | null
   id: string
+  initiator_display_name: string
   provider: ImProvider
   result_counts: ImSyncRunResultCounts
   started_at?: number | null
@@ -4372,6 +4442,34 @@ export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponses = {
 export type PutWorkspacesCurrentAgentsByAgentIdSkillsResponse =
   PutWorkspacesCurrentAgentsByAgentIdSkillsResponses[keyof PutWorkspacesCurrentAgentsByAgentIdSkillsResponses]
 
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsData = {
+  body?: never
+  path?: never
+  query?: {
+    keyword?: string
+    limit?: number
+    named_only?: boolean
+    page?: number
+    user_id?: string
+  }
+  url: '/workspaces/current/available-evaluation-workflows'
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsError =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsErrors]
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses = {
+  200: AvailableEvaluationWorkflowPaginationResponse
+}
+
+export type GetWorkspacesCurrentAvailableEvaluationWorkflowsResponse =
+  GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses[keyof GetWorkspacesCurrentAvailableEvaluationWorkflowsResponses]
+
 export type GetWorkspacesCurrentCustomizedSnippetsData = {
   body?: never
   path?: never
@@ -4910,6 +5008,30 @@ export type PatchWorkspacesCurrentEndpointsByIdResponses = {
 
 export type PatchWorkspacesCurrentEndpointsByIdResponse =
   PatchWorkspacesCurrentEndpointsByIdResponses[keyof PatchWorkspacesCurrentEndpointsByIdResponses]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsData = {
+  body?: never
+  path: {
+    workflow_id: string
+  }
+  query?: never
+  url: '/workspaces/current/evaluation-workflows/{workflow_id}/associated-targets'
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors = {
+  403: PaidPlanRequiredError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsError =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsErrors]
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses = {
+  200: EvaluationAssociatedTargetListResponse
+}
+
+export type GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponse =
+  GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses[keyof GetWorkspacesCurrentEvaluationWorkflowsByWorkflowIdAssociatedTargetsResponses]
 
 export type GetWorkspacesCurrentHumanInputV2ChannelProvidersData = {
   body?: never
@@ -10542,6 +10664,9 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBu
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsBuilderBuildBySubscriptionBuilderIdErrors =
   {
+    400: TriggerSubscriptionLimitReachedError | ErrorResponse
+    409: TriggerSubscriptionNameConflictError | ErrorResponse
+    502: TriggerSubscriptionProviderError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -10721,6 +10846,8 @@ export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAutho
 }
 
 export type GetWorkspacesCurrentTriggerProviderByProviderSubscriptionsOauthAuthorizeErrors = {
+  500: TriggerOauthClientConfigInvalidError | ErrorResponse
+  502: TriggerOauthProviderError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -10747,6 +10874,9 @@ export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyByS
 
 export type PostWorkspacesCurrentTriggerProviderByProviderSubscriptionsVerifyBySubscriptionIdErrors =
   {
+    400: TriggerSubscriptionInvalidError | ErrorResponse
+    404: TriggerSubscriptionNotFoundError | ErrorResponse
+    502: TriggerSubscriptionProviderError | ErrorResponse
     default: ErrorResponse
   }
 
@@ -10771,6 +10901,9 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDel
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsDeleteErrors = {
+  404: TriggerSubscriptionNotFoundError | ErrorResponse
+  409: TriggerSubscriptionChangedError | ErrorResponse
+  502: TriggerSubscriptionProviderError | ErrorResponse
   default: ErrorResponse
 }
 
@@ -10794,6 +10927,9 @@ export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpd
 }
 
 export type PostWorkspacesCurrentTriggerProviderBySubscriptionIdSubscriptionsUpdateErrors = {
+  404: TriggerSubscriptionNotFoundError | ErrorResponse
+  409: TriggerSubscriptionChangedError | TriggerSubscriptionNameConflictError | ErrorResponse
+  502: TriggerSubscriptionProviderError | ErrorResponse
   default: ErrorResponse
 }
 

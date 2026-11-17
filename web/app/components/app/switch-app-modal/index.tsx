@@ -4,7 +4,6 @@ import type {
   AppPartial,
   ConvertToWorkflowPayload,
 } from '@dify/contracts/api/console/apps/types.gen'
-import type { DialogActions, DialogProps } from '@langgenius/dify-ui/dialog'
 import { zIconType } from '@dify/contracts/api/console/apps/zod.gen'
 import {
   AlertDialog,
@@ -50,16 +49,17 @@ import { consoleQuery } from '@/service/console'
 import { getRedirection } from '@/utils/app-redirection'
 import { getErrorMessage } from '@/utils/error-message'
 
-type SwitchAppModalProps = Pick<DialogProps, 'open' | 'onOpenChange'> & {
+type SwitchAppModalProps = {
+  open: boolean
+  onClose: () => void
   sourceApp: Pick<
     AppPartial,
     'icon' | 'icon_background' | 'icon_type' | 'icon_url' | 'id' | 'mode' | 'name'
   >
 }
 
-const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) => {
+const SwitchAppModal = ({ open, sourceApp, onClose }: SwitchAppModalProps) => {
   const nameInputRef = useRef<HTMLInputElement>(null)
-  const actionsRef = useRef<DialogActions>(null)
   const { t } = useTranslation(['app'])
   const { push, replace } = useRouter()
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -81,7 +81,7 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
           ),
         onSuccess: ({ new_app_id, permission_keys }) => {
           const finish = (removed: boolean) => {
-            actionsRef.current?.close()
+            onClose()
             getRedirection(
               {
                 id: new_app_id,
@@ -110,15 +110,14 @@ const SwitchAppModal = ({ open, sourceApp, onOpenChange }: SwitchAppModalProps) 
   }
   return (
     <Dialog
-      actionsRef={actionsRef}
       open={open}
       disablePointerDismissal
       onOpenChange={(nextOpen, details) => {
-        if (!nextOpen && isPending && details.reason !== 'imperative-action') details.cancel()
-        else onOpenChange?.(nextOpen, details)
+        if (!nextOpen && isPending) details.cancel()
+        else if (!nextOpen) onClose()
       }}
     >
-      <DialogContent initialFocus={nameInputRef} className="w-150 max-w-150">
+      <DialogContent initialFocus={nameInputRef} className="w-150">
         <SwitchAppSession
           nameInputRef={nameInputRef}
           sourceApp={sourceApp}
@@ -272,7 +271,7 @@ function SwitchAppSession({
                   if (checked) setShowConfirmDelete(true)
                 }}
               />
-              <span className="ml-2 text-left text-sm/5 text-text-secondary">
+              <span className="ms-2 text-start text-sm/5 text-text-secondary">
                 {t(($) => $.removeOriginal, { ns: 'app' })}
               </span>
             </label>

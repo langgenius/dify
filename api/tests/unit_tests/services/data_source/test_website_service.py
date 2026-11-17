@@ -463,7 +463,12 @@ def test_get_crawl_status_typed_rejects_invalid_provider(monkeypatch: pytest.Mon
 
 def test_get_firecrawl_status_adds_time_consuming_when_completed_and_cached(monkeypatch: pytest.MonkeyPatch) -> None:
     firecrawl_instance = MagicMock()
-    firecrawl_instance.check_crawl_status.return_value = {"status": "completed", "total": 2, "current": 2, "data": []}
+    firecrawl_instance.check_crawl_status.return_value = {
+        "status": "completed",
+        "total": 2,
+        "current": 2,
+        "data": list[dict[str, Any]](),
+    }
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
 
     redis_mock = MagicMock()
@@ -481,7 +486,12 @@ def test_get_firecrawl_status_adds_time_consuming_when_completed_and_cached(monk
 
 def test_get_firecrawl_status_completed_without_cache_does_not_add_time(monkeypatch: pytest.MonkeyPatch) -> None:
     firecrawl_instance = MagicMock()
-    firecrawl_instance.check_crawl_status.return_value = {"status": "completed", "total": 1, "current": 1, "data": []}
+    firecrawl_instance.check_crawl_status.return_value = {
+        "status": "completed",
+        "total": 1,
+        "current": 1,
+        "data": list[dict[str, Any]](),
+    }
     monkeypatch.setattr(website_service_module, "FirecrawlApp", MagicMock(return_value=firecrawl_instance))
 
     redis_mock = MagicMock()
@@ -536,8 +546,8 @@ def test_get_jinareader_status_completed_formats_processed_items(monkeypatch: py
         "data": {
             "status": "completed",
             "urls": ["u1"],
-            "processed": {"u1": {}},
-            "failed": {},
+            "processed": {"u1": dict[str, Any]()},
+            "failed": dict[str, Any](),
             "duration": 1000,
         }
     }
@@ -687,7 +697,7 @@ def test_get_jinareader_url_data_without_job_id_failure(monkeypatch: pytest.Monk
 
 
 def test_get_jinareader_url_data_with_job_id_completed_returns_matching_item(monkeypatch: pytest.MonkeyPatch) -> None:
-    status_payload = {"data": {"status": "completed", "processed": {"u1": {}}}}
+    status_payload = {"data": {"status": "completed", "processed": {"u1": dict[str, Any]()}}}
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "u", "title": "t"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])
@@ -708,7 +718,7 @@ def test_get_jinareader_url_data_with_job_id_not_completed_raises(monkeypatch: p
 def test_get_jinareader_url_data_with_job_id_completed_but_not_found_returns_none(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    status_payload = {"data": {"status": "completed", "processed": {"u1": {}}}}
+    status_payload = {"data": {"status": "completed", "processed": {"u1": dict[str, Any]()}}}
     processed_payload = {"data": {"processed": {"u1": {"data": {"url": "other"}}}}}
 
     post_mock = MagicMock(side_effect=[_DummyHttpxResponse(status_payload), _DummyHttpxResponse(processed_payload)])

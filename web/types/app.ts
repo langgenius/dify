@@ -13,13 +13,6 @@ import type {
   PromptMode,
 } from '@/models/debug'
 
-export type Theme = 'light' | 'dark' | 'system'
-export const Theme = {
-  light: 'light' as Theme,
-  dark: 'dark' as Theme,
-  system: 'system' as Theme,
-} as const
-
 export type ModelModeType = 'chat' | 'completion' | ''
 export const ModelModeType = {
   chat: 'chat' as ModelModeType,

@@ -1142,6 +1142,9 @@ GET /api/workflow/<task_id>/events
 
 Returns Server-Sent Events stream.
 
+Requires a run owned by the current app and end user. Pending V1 forms
+expose only Web App recipient tokens; invalid ownership returns 404.
+
 #### Parameters
 
 | Name | Located in | Description | Required | Schema |
@@ -2399,7 +2402,6 @@ Non-sensitive bootstrap snapshot exposed before Console or Web authentication.
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |
-| enable_collaboration_mode | boolean, <br>**Default:** true |  | Yes |
 | enable_creators_platform | boolean |  | Yes |
 | enable_email_code_login | boolean |  | Yes |
 | enable_email_password_login | boolean, <br>**Default:** true |  | Yes |

@@ -84,7 +84,7 @@ export default function MarketplaceDetailDialogFrame({
             an invisible cross-origin frame. */}
       <DialogContent
         initialFocus={closeButtonRef}
-        className="h-[min(800px,calc(100dvh-48px))] w-[min(1200px,calc(100vw-48px))] overflow-hidden"
+        className="h-200 max-h-[calc(100dvh-3rem)] w-300 max-w-[calc(100vw-3rem)] overflow-hidden"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <div
@@ -134,7 +134,7 @@ export default function MarketplaceDetailDialogFrame({
                 ref={closeButtonRef}
                 aria-label={t(($) => $['operation.close'], { ns: 'common' })}
                 size="lg"
-                className="absolute top-5 right-5 z-10"
+                className="absolute inset-e-5 top-5 z-10"
               >
                 <span aria-hidden className="i-ri-close-line size-4" />
               </IconButton>

@@ -134,7 +134,7 @@ type RenderSenderOptions = {
   controlRetry?: number
   controlSend?: number
   inputs?: Record<string, ResultInputValue>
-  isPC?: boolean
+  isBelowMd?: boolean
   isWorkflow?: boolean
   taskId?: number
 }
@@ -144,7 +144,7 @@ const renderSender = ({
   controlRetry = 0,
   controlSend = 0,
   inputs = { name: 'Alice' },
-  isPC = true,
+  isBelowMd = false,
   isWorkflow = true,
   taskId,
 }: RenderSenderOptions = {}) => {
@@ -179,7 +179,7 @@ const renderSender = ({
         controlSend: props.controlSend,
         inputs,
         isCallBatchAPI: false,
-        isPC,
+        isBelowMd,
         isWorkflow,
         notify,
         onCompleted,

@@ -271,7 +271,6 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
-    // oxlint-disable-next-line eslint-react/set-state-in-effect -- This handler intentionally syncs derived input defaults when called from the reset effect below.
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -365,6 +364,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledAppResponse) => {
     inputsForms.forEach((item: any) => {
       conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
   const { data: newConversation } = useShareConversationName(

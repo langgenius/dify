@@ -246,7 +246,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
         <DrawerBackdrop />
         <DrawerViewport>
           <DrawerPopup className="data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-full data-[swipe-direction=right]:max-w-105">
-            <DrawerContent className="flex min-h-0 flex-1 flex-col p-0 pb-0">
+            <DrawerContent>
               <div className="flex shrink-0 justify-between px-4 pt-6 pb-4">
                 <DrawerTitle className="text-lg/6 font-medium text-text-primary">
                   {t(($) => $['metadata.metadata'], { ns: 'dataset' })}

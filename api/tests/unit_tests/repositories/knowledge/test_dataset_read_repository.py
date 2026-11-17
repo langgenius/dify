@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import parse_qs, urlsplit
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import event
@@ -35,7 +36,11 @@ from models.dataset import (
 from models.enums import CreatorUserRole, DataSourceType, DocumentCreatedFrom, IndexingStatus, ProcessRuleMode
 from models.model import UploadFile
 from models.tools import ToolFile
-from repositories.knowledge.dataset_read_repository import get_external_api_bindings_batch, load_segment_read_batch
+from repositories.knowledge.dataset_read_repository import (
+    get_external_api_bindings_batch,
+    get_query_upload_files,
+    load_segment_read_batch,
+)
 from repositories.knowledge.segment_read_adapter import sign_segment_content
 from services.knowledge.dataset_read_service import (
     get_dataset_queries,
@@ -444,3 +449,75 @@ def test_dataset_models_have_no_infrastructure_dependencies_or_relative_imports(
             assert not any(alias.name in {"Session", "scoped_session"} for alias in node.names)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             assert ast.unparse(node.func.value) not in {"session", "db.session", "storage"}
+
+
+def _image_query(content: str) -> DatasetQuery:
+    return DatasetQuery(
+        dataset_id="dataset-1",
+        content=content,
+        source="hit_testing",
+        source_app_id=None,
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="account-1",
+    )
+
+
+@pytest.mark.parametrize("file_ids", [set(), {"", " ", "not-a-uuid"}])
+def test_query_file_lookup_skips_all_invalid_ids(sqlite_session: Session, file_ids: set[str]) -> None:
+    with _queries(sqlite_session) as statements:
+        assert get_query_upload_files(_image_query(""), file_ids, session=sqlite_session) == {}
+    assert statements == []
+
+
+def test_query_file_lookup_binds_only_canonical_ids(sqlite_session: Session) -> None:
+    upload = _upload()
+    sqlite_session.add_all([_dataset(), upload])
+    sqlite_session.flush()
+    aliases = {upload.id, upload.id.upper(), upload.id.replace("-", "")}
+    parameters: list[object] = []
+
+    def capture(
+        _conn: object, _cursor: object, _statement: str, values: object, _context: object, _executemany: bool
+    ) -> None:
+        parameters.append(values)
+
+    engine = sqlite_session.get_bind()
+    event.listen(engine, "before_cursor_execute", capture)
+    try:
+        files = get_query_upload_files(_image_query(""), aliases | {"", " ", "bad-id"}, session=sqlite_session)
+    finally:
+        event.remove(engine, "before_cursor_execute", capture)
+    assert parameters == [("dataset-1", upload.id)]
+    assert files == dict.fromkeys(aliases, upload)
+
+
+def test_query_history_keeps_mixed_records_with_invalid_file_ids(sqlite_session: Session) -> None:
+    upload = _upload()
+    foreign = _upload("tenant-2")
+    sqlite_session.add_all([_dataset(), upload, foreign])
+    sqlite_session.flush()
+    ids = [upload.id, upload.id.upper(), upload.id.replace("-", ""), "", " ", "not-a-uuid", foreign.id, str(uuid4())]
+    records = [{"content_type": "text_query", "content": "example"}] + [
+        {"content_type": "image_query", "content": file_id} for file_id in ids
+    ]
+    query = _image_query(json.dumps(records))
+    with _queries(sqlite_session) as statements:
+        result = get_dataset_queries(query, session=sqlite_session)
+    assert len(statements) == 1
+    assert [{"content_type": row["content_type"], "content": row["content"]} for row in result] == records
+    assert result[0]["file_info"] is None
+    assert all(row["file_info"]["id"] == upload.id for row in result[1:4])
+    assert all(row["file_info"] is None for row in result[4:])
+    assert query.content == json.dumps(records)
+
+
+def test_query_file_lookup_preserves_caller_transaction(sqlite_session: Session) -> None:
+    upload = _upload()
+    sqlite_session.add_all([_dataset(), upload])
+    sqlite_session.flush()
+    transaction = sqlite_session.get_transaction()
+    assert get_query_upload_files(_image_query(""), {upload.id, ""}, session=sqlite_session) == {upload.id: upload}
+    assert sqlite_session.get_transaction() is transaction
+    assert sqlite_session.get(UploadFile, upload.id) is upload
+    sqlite_session.rollback()
+    assert sqlite_session.get(UploadFile, upload.id) is None

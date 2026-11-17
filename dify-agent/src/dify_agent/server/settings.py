@@ -31,7 +31,6 @@ from dify_agent.runtime_backend import RuntimeBackendProfile
 from dify_agent.runtime_backend.e2b import E2B_MAX_ACTIVE_TIMEOUT_SECONDS
 from dify_agent.runtime_backend.openshell import (
     DEFAULT_OPENSHELL_SANDBOX_IMAGE,
-    DEFAULT_OPENSHELL_SHARED_MOUNT_PATH,
 )
 from dify_agent.runtime_backend.profile import (
     DEFAULT_LOCAL_HOME_SNAPSHOT_ROOT,
@@ -110,7 +109,6 @@ class ServerSettings(BaseSettings):
     openshell_insecure: bool = False
     openshell_sandbox_image: str = DEFAULT_OPENSHELL_SANDBOX_IMAGE
     openshell_driver_config: str | None = None
-    openshell_shared_mount_path: str = DEFAULT_OPENSHELL_SHARED_MOUNT_PATH
     openshell_egress_allow: str = ""
     openshell_shellctl_auth_token: str = ""
     openshell_shellctl_port: int = Field(default=5004, ge=1, le=65535)
@@ -321,7 +319,6 @@ class ServerSettings(BaseSettings):
                 openshell_insecure=self.openshell_insecure,
                 openshell_sandbox_image=self.openshell_sandbox_image,
                 openshell_driver_config=self.openshell_driver_config,
-                openshell_shared_mount_path=self.openshell_shared_mount_path,
                 openshell_egress_allow=self.openshell_egress_allow,
                 openshell_shellctl_auth_token=self.openshell_shellctl_auth_token,
                 openshell_shellctl_port=self.openshell_shellctl_port,

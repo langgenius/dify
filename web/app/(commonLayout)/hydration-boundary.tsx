@@ -2,7 +2,10 @@ import type { ReactNode } from 'react'
 import { ORPCError } from '@orpc/client'
 import { dehydrate, HydrationBoundary, noop } from '@tanstack/react-query'
 import { getQueryClient } from '@/app/get-query-client'
-import { serverUserProfileQueryOptions } from '@/features/account-profile/server'
+import {
+  redirectForBootstrapError,
+  serverUserProfileQueryOptions,
+} from '@/features/account-profile/server'
 import { headers } from '@/next/headers'
 import { redirect } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
@@ -28,8 +31,7 @@ const redirectToAuthRefresh = async () => {
 const handleProfileError = async (error: unknown) => {
   if (!(error instanceof ORPCError)) throw error
 
-  if (error.code === 'not_setup') redirect('/install')
-  if (error.code === 'not_init_validated') redirect('/init')
+  redirectForBootstrapError(error)
   if (error.status === 401) await redirectToAuthRefresh()
 
   throw error

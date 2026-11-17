@@ -12,25 +12,23 @@ from uuid import UUID, uuid4
 
 import httpx
 import pytest
-from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 import core.tools.tool_file_manager as tool_file_manager_module
 from core.tools.tool_file_manager import ToolFileManager
 from graphon.file import FileTransferMethod, FileType
-from models.base import TypeBase
 from models.enums import CreatorUserRole
 from models.model import MessageFile
 from models.tools import ToolFile
 
 
 @pytest.fixture
-def sqlite_tool_file_session(monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine) -> Iterator[Session]:
-    """Bind manager-owned sessions to SQLite and expose a setup/assertion session."""
-    TypeBase.metadata.create_all(sqlite_engine, tables=[ToolFile.__table__, MessageFile.__table__])
-    factory = sessionmaker(bind=sqlite_engine, expire_on_commit=False)
-    monkeypatch.setattr(tool_file_manager_module.session_factory, "create_session", factory)
-    with factory() as session:
+def sqlite_tool_file_session(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session_factory: sessionmaker[Session]
+) -> Iterator[Session]:
+    """Bind manager-owned sessions to the shared full-schema SQLite database."""
+    monkeypatch.setattr(tool_file_manager_module.session_factory, "create_session", sqlite_session_factory)
+    with sqlite_session_factory() as session:
         yield session
 
 

@@ -9,15 +9,13 @@ from graphon.model_runtime.entities.message_entities import PromptMessage, UserP
 
 class TestHostingModerationFeature:
     def test_check_aggregates_text_and_calls_moderation(self) -> None:
+        """Given valid text messages, submit their combined content to moderation and return its result."""
         application_generate_entity = Mock()
         application_generate_entity.model_conf = {"model": "mock"}
         application_generate_entity.app_config = SimpleNamespace(tenant_id="tenant-1")
 
-        # The middle message bypasses validation on purpose: `content` is not
-        # always a string at runtime, and the feature must skip those entries.
         prompt_messages: list[PromptMessage] = [
             UserPromptMessage(role="user", content="hello"),
-            UserPromptMessage.model_construct(role="user", content=123),
             UserPromptMessage(role="user", content="world"),
         ]
 

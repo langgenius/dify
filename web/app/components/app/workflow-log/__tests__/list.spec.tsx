@@ -28,14 +28,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-vi.mock('@/hooks/use-breakpoints', () => ({
-  default: () => 'pc', // Return desktop by default
-  MediaType: {
-    mobile: 'mobile',
-    pc: 'pc',
-  },
-}))
-
 const { fetchRunDetail, fetchTracingList } = vi.hoisted(() => ({
   fetchRunDetail: vi.fn(),
   fetchTracingList: vi.fn(),

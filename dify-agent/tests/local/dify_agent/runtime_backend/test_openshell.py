@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import hmac
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import cast
 
+import grpc
 import httpx2 as httpx
 import pytest
 from httpx2 import AsyncClient
@@ -22,13 +25,11 @@ from dify_agent.runtime_backend import (
     WorkspacePreservationUnsupportedError,
 )
 from dify_agent.runtime_backend import openshell as openshell_module
-from dify_agent.runtime_backend.errors import HomeSnapshotCreateError
+from dify_agent.runtime_backend.noop import NoopHomeSnapshotBackend
 from dify_agent.runtime_backend.openshell import (
     OpenShellExecutionBindingBackend,
-    OpenShellHomeSnapshotBackend,
     OpenShellNotFoundError,
     OpenShellRuntimeLease,
-    _SshSessionTokenSupplier,  # pyright: ignore[reportPrivateUsage]
 )
 from dify_agent.runtime_backend.protocols import RuntimeLayout
 from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
@@ -38,60 +39,51 @@ from dify_agent.runtime_backend.shellctl import ShellctlRuntimeLease
 # sha256 digest of the Binding id; restated here independently of the
 # implementation to pin the naming contract.
 _BINDING_NAME = f"dify-{hashlib.sha256(b'binding-1').hexdigest()[:14]}"
+_BINDING_NAME_2 = f"dify-{hashlib.sha256(b'binding-2').hexdigest()[:14]}"
+_SHELLCTL_MASTER = "shellctl-token"
+_SHELLCTL_TOKEN = "14a48efcf8bbf86f7634183598653f071c2ea87f132d52f987d012bed5548551"
 _OPAQUE_TENANT = hashlib.sha256(b"tenant-1").hexdigest()[:14]
 _OPAQUE_AGENT = hashlib.sha256(b"agent-1").hexdigest()[:14]
 _OPAQUE_BINDING = hashlib.sha256(b"binding-1").hexdigest()[:14]
 _OPAQUE_WORKSPACE = hashlib.sha256(b"workspace-1").hexdigest()[:14]
 _SNAPSHOT_REF = f"{_OPAQUE_TENANT}--home-snap-1"
-_TENANT_SNAPSHOT_ROOT = f"/mnt/dify-agent-shared/home-snapshots/{_OPAQUE_TENANT}"
-_SNAPSHOT_DIR = f"{_TENANT_SNAPSHOT_ROOT}/home-snap-1"
-
-
-@dataclass(slots=True)
-class _FakeTunnel:
-    base_url: str = "http://tunnel.invalid"
-    closed: int = 0
-    close_error: BaseException | None = None
-
-    async def close(self) -> None:
-        self.closed += 1
-        if self.close_error is not None:
-            raise self.close_error
 
 
 @dataclass(slots=True)
 class _ControlPlane:
     created: list[tuple[str, dict[str, str]]] = field(default_factory=list)
-    extra_read_write: list[tuple[str, ...]] = field(default_factory=list)
     exec_calls: list[tuple[str, str]] = field(default_factory=list)
     started: list[str] = field(default_factory=list)
     stopped: list[str] = field(default_factory=list)
     deleted: list[str] = field(default_factory=list)
-    tunnels: list[_FakeTunnel] = field(default_factory=list)
+    exposed: list[tuple[str, int]] = field(default_factory=list)
+    service_url: str = "http://dify-test--shellctl.openshell.localhost:17670/"
+    expose_error: BaseException | None = None
+    ready_names: dict[str, str] = field(default_factory=dict)
     generation: dict[str, int] = field(default_factory=dict)
     missing: set[str] = field(default_factory=set)
     exec_results: list[tuple[int, str]] = field(default_factory=list)
     stop_error: Exception | None = None
+    service_clients: list[httpx.AsyncClient] = field(default_factory=list)
 
     async def create_sandbox(
         self,
         *,
         name: str,
         labels: dict[str, str],
-        extra_read_write: tuple[str, ...] = (),
     ) -> None:
         self.created.append((name, labels))
-        self.extra_read_write.append(extra_read_write)
         self.generation[name] = 1
 
     async def wait_ready(self, name: str) -> str:
         self._require(name)
-        return f"{name}-id-{self.generation[name]}"
+        # Sandbox ids churn across restarts; exec and exposure address the
+        # sandbox by its stable canonical name.
+        return self.ready_names.get(name, name)
 
     async def start_sandbox(self, name: str) -> None:
         self._require(name)
         self.started.append(name)
-        # Ids change across stop/start cycles; acquire must re-resolve them.
         self.generation[name] += 1
 
     async def stop_sandbox(self, name: str) -> None:
@@ -105,17 +97,33 @@ class _ControlPlane:
         self.deleted.append(name)
         self.generation.pop(name, None)
 
-    async def exec_script(self, sandbox_id: str, script: str) -> tuple[int, str]:
-        self.exec_calls.append((sandbox_id, script))
+    async def exec_script(self, sandbox_name: str, script: str) -> tuple[int, str]:
+        self.exec_calls.append((sandbox_name, script))
         if self.exec_results:
             return self.exec_results.pop(0)
         return (0, "")
 
-    async def open_tunnel(self, sandbox_id: str, port: int) -> _FakeTunnel:
-        del sandbox_id, port
-        tunnel = _FakeTunnel()
-        self.tunnels.append(tunnel)
-        return tunnel
+    async def expose_service(self, name: str, port: int) -> str:
+        self._require(name)
+        if self.expose_error is not None:
+            raise self.expose_error
+        self.exposed.append((name, port))
+        return self.service_url
+
+    def create_service_http_client(self, base_url: str) -> httpx.AsyncClient:
+        # Going through the module attribute lets _mock_http inject its
+        # MockTransport, matching how the SDK plane builds the real client.
+        # The deployment gateway credential never leaves the gRPC control
+        # plane, so the service client starts with no auth headers; the
+        # shellctl bearer is attached per request by the shellctl SDK.
+        client = openshell_module.httpx.AsyncClient(
+            base_url=base_url,
+            follow_redirects=False,
+            trust_env=False,
+            timeout=httpx.Timeout(60.0),
+        )
+        self.service_clients.append(client)
+        return client
 
     def _require(self, name: str) -> None:
         if name in self.missing or name not in self.generation:
@@ -145,7 +153,7 @@ def _healthy_handler(request: httpx.Request) -> httpx.Response:
 def _backend(control: _ControlPlane) -> OpenShellExecutionBindingBackend:
     return OpenShellExecutionBindingBackend(
         control_plane=control,
-        shellctl_auth_token="shellctl-token",
+        shellctl_auth_token=_SHELLCTL_MASTER,
     )
 
 
@@ -229,7 +237,7 @@ def _source_lease(commands: _RecordingCommands) -> OpenShellRuntimeLease:
         client=_FakeShellctlClient(),  # pyright: ignore[reportArgumentType]
         commands=commands,  # pyright: ignore[reportArgumentType]
     )
-    return OpenShellRuntimeLease(tunnel=_FakeTunnel(), data_plane=data_plane)
+    return OpenShellRuntimeLease(data_plane=data_plane)
 
 
 @pytest.mark.anyio
@@ -248,9 +256,8 @@ async def test_openshell_binding_create_initializes_layout_then_stops() -> None:
         "dify.tenant": _OPAQUE_TENANT,
         "dify.agent": _OPAQUE_AGENT,
     }
-    assert control.extra_read_write == [(_TENANT_SNAPSHOT_ROOT,)]
-    ((sandbox_id, script),) = control.exec_calls
-    assert sandbox_id == f"{_BINDING_NAME}-id-1"
+    ((exec_name, script),) = control.exec_calls
+    assert exec_name == _BINDING_NAME
     assert "rm -rf -- /home/dify/workspace" in script
     assert "mkdir -p /home/dify/workspace" in script
     assert "cp -a" not in script
@@ -259,17 +266,16 @@ async def test_openshell_binding_create_initializes_layout_then_stops() -> None:
 
 
 @pytest.mark.anyio
-async def test_openshell_binding_create_materializes_snapshot_without_fallback() -> None:
+async def test_openshell_binding_create_ignores_supplied_snapshot_ref() -> None:
+    # The backend has no snapshot capability: a supplied ref must produce an
+    # image-fresh Home — no copy step, no maintenance sandbox, no extra grants.
     control = _ControlPlane()
     _ = await _backend(control).create_binding(_create_spec(home_snapshot_ref=_SNAPSHOT_REF))
 
     ((_, script),) = control.exec_calls
-    lines = script.splitlines()
-    snapshot_dir = _SNAPSHOT_DIR
-    # The snapshot existence check must precede the copy: missing snapshots
-    # fail the whole create instead of falling back to a default Home.
-    assert lines.index(f"test -d {snapshot_dir}") < lines.index(f"cp -a {snapshot_dir}/. /home/dify/")
-    assert "rm -rf -- /home/dify/.local/share/shellctl" in lines
+    assert "cp -a" not in script
+    assert "test -d" not in script
+    assert control.created[0][0] == _BINDING_NAME
 
 
 @pytest.mark.anyio
@@ -290,7 +296,9 @@ async def test_openshell_binding_create_deletes_sandbox_when_initialization_fail
 
 
 @pytest.mark.anyio
-async def test_openshell_acquire_bootstraps_shellctl_and_opens_tunnel(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_openshell_acquire_bootstraps_shellctl_and_exposes_service(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     _mock_http(monkeypatch, _healthy_handler)
     control = _ControlPlane()
     backend = _backend(control)
@@ -300,20 +308,212 @@ async def test_openshell_acquire_bootstraps_shellctl_and_opens_tunnel(monkeypatc
 
     assert isinstance(lease, OpenShellRuntimeLease)
     assert control.started == [_BINDING_NAME]
-    # start bumps the sandbox generation; the bootstrap must target the new id.
-    bootstrap_sandbox_id, bootstrap = control.exec_calls[-1]
-    assert bootstrap_sandbox_id == f"{_BINDING_NAME}-id-2"
+    # Exec addresses the sandbox by its stable canonical name.
+    bootstrap_name, bootstrap = control.exec_calls[-1]
+    assert bootstrap_name == _BINDING_NAME
     assert "shellctl serve --listen 127.0.0.1:5004" in bootstrap
-    assert "SHELLCTL_AUTH_TOKEN=shellctl-token" in bootstrap
+    assert f"SHELLCTL_AUTH_TOKEN={_SHELLCTL_TOKEN}" in bootstrap
+    assert _SHELLCTL_MASTER not in bootstrap
     assert "SHELLCTL_ENABLE_PATH_ISOLATION=false" in bootstrap
-    assert len(control.tunnels) == 1
+    # Exposure is keyed by the stable sandbox name, not the changing id.
+    assert control.exposed == [(_BINDING_NAME, 5004)]
     assert lease.layout.home_dir == "/home/dify"
 
     await backend.release(lease)
     assert isinstance(lease.data_plane.owned_transport, AsyncClient)
     assert lease.data_plane.owned_transport.is_closed
-    assert control.tunnels[0].closed == 1
     assert control.stopped == [_BINDING_NAME]
+
+
+@pytest.mark.anyio
+async def test_openshell_data_plane_sends_shellctl_bearer_only(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen_headers: list[httpx.Headers] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen_headers.append(request.headers)
+        if request.url.path.startswith("/v1/jobs/"):
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "job-1",
+                    "status": "running",
+                    "done": False,
+                    "created_at": "2026-01-01T00:00:00Z",
+                    "offset": 0,
+                },
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+
+    lease = await backend.acquire(_BINDING_NAME)
+
+    assert isinstance(lease, OpenShellRuntimeLease)
+    # /healthz is unauthenticated; an authenticated endpoint proves the SDK
+    # attaches the shellctl bearer. Bearer passthrough means Authorization
+    # reaches shellctl unchanged, so it must carry the shellctl token — never
+    # the deployment gateway credential (a gRPC control-plane credential) or
+    # a custom header.
+    _ = await lease.data_plane.client.status("job-1")
+    authed = [headers for headers in seen_headers if "authorization" in headers]
+    assert authed
+    for headers in authed:
+        assert headers["authorization"] == f"Bearer {_SHELLCTL_TOKEN}"
+        assert "x-shellctl-token" not in headers
+    await backend.release(lease)
+
+
+def _exported_token(script: str) -> str:
+    line = next(line for line in script.splitlines() if "SHELLCTL_AUTH_TOKEN" in line)
+    return line.split("=", 1)[1]
+
+
+def _expected_token(master: str, sandbox_name: str) -> str:
+    return hmac.new(
+        master.encode(),
+        f"dify-agent/openshell/shellctl/v1:{sandbox_name}".encode(),
+        hashlib.sha256,
+    ).hexdigest()
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_stable_across_leases_and_backends(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    first_backend = _backend(control)
+    _ = await first_backend.create_binding(_create_spec())
+
+    first = await first_backend.acquire(_BINDING_NAME)
+    await first_backend.release(first)
+    second = await first_backend.acquire(_BINDING_NAME)
+    await first_backend.release(second)
+
+    other_backend = _backend(control)
+    third = await other_backend.acquire(_BINDING_NAME)
+    await other_backend.release(third)
+
+    tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+    assert tokens == [_SHELLCTL_TOKEN] * 3
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_depends_on_canonical_sandbox_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    _ = await backend.create_binding(_create_spec(binding_id="binding-2", workspace_id="workspace-2"))
+
+    control.ready_names[_BINDING_NAME_2] = "dify-canonical2"
+    first = await backend.acquire(_BINDING_NAME)
+    second = await backend.acquire(_BINDING_NAME_2)
+    try:
+        tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+        assert tokens == [
+            _SHELLCTL_TOKEN,
+            _expected_token(_SHELLCTL_MASTER, "dify-canonical2"),
+        ]
+        assert tokens[0] != tokens[1]
+    finally:
+        await backend.release(first)
+        await backend.release(second)
+
+
+@pytest.mark.anyio
+async def test_openshell_shellctl_token_changes_with_master(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _mock_http(monkeypatch, _healthy_handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    rotated = OpenShellExecutionBindingBackend(
+        control_plane=control,
+        shellctl_auth_token="rotated-master",
+    )
+    _ = await backend.create_binding(_create_spec())
+
+    lease = await backend.acquire(_BINDING_NAME)
+    await backend.release(lease)
+    rotated_lease = await rotated.acquire(_BINDING_NAME)
+    await rotated.release(rotated_lease)
+
+    tokens = [_exported_token(script) for _, script in control.exec_calls if "SHELLCTL_AUTH_TOKEN" in script]
+    assert tokens == [_SHELLCTL_TOKEN, _expected_token("rotated-master", _BINDING_NAME)]
+    assert tokens[0] != tokens[1]
+
+
+@pytest.mark.anyio
+async def test_openshell_distinct_bindings_reject_cross_sandbox_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from shellctl.client import ShellctlClient, ShellctlClientError
+
+    token_b = _expected_token(_SHELLCTL_MASTER, _BINDING_NAME_2)
+    url_a = "http://svc-a.openshell.localhost:17670/"
+    url_b = "http://svc-b.openshell.localhost:17670/"
+    expected_by_host = {
+        "svc-a.openshell.localhost": _SHELLCTL_TOKEN,
+        "svc-b.openshell.localhost": token_b,
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/jobs/probe":
+            if request.headers.get("authorization") == f"Bearer {expected_by_host[request.url.host]}":
+                return httpx.Response(
+                    200,
+                    json={
+                        "job_id": "probe",
+                        "status": "running",
+                        "done": False,
+                        "created_at": "2026-01-01T00:00:00Z",
+                        "offset": 0,
+                    },
+                )
+            return httpx.Response(
+                401,
+                json={"error": {"code": "unauthorized", "message": "invalid token"}},
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    _ = await backend.create_binding(_create_spec(binding_id="binding-2", workspace_id="workspace-2"))
+
+    control.service_url = url_a
+    lease_a = await backend.acquire(_BINDING_NAME)
+    control.service_url = url_b
+    lease_b = await backend.acquire(_BINDING_NAME_2)
+    assert isinstance(lease_a, OpenShellRuntimeLease)
+    assert isinstance(lease_b, OpenShellRuntimeLease)
+    try:
+        assert isinstance(lease_a.data_plane.client, ShellctlClient)
+        assert isinstance(lease_b.data_plane.client, ShellctlClient)
+        _ = await lease_a.data_plane.client.status("probe")
+        _ = await lease_b.data_plane.client.status("probe")
+
+        foreign_transport = control.create_service_http_client(url_b)
+        foreign_client = ShellctlClient(url_b, token=_SHELLCTL_TOKEN, client=foreign_transport)
+        try:
+            with pytest.raises(ShellctlClientError) as exc_info:
+                _ = await foreign_client.status("probe")
+            assert exc_info.value.status_code == 401
+        finally:
+            await foreign_client.close()
+            await foreign_transport.aclose()
+    finally:
+        await backend.release(lease_a)
+        await backend.release(lease_b)
 
 
 @pytest.mark.anyio
@@ -332,9 +532,122 @@ async def test_openshell_acquire_cleans_up_when_bootstrap_fails() -> None:
 
     with pytest.raises(BindingAcquireError, match="no shellctl"):
         _ = await backend.acquire(_BINDING_NAME)
-    # Sandbox is stopped again after the failed acquisition; no tunnel leaks.
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
-    assert control.tunnels == []
+    # A failed acquisition leaves the shared sandbox running; no data plane leaks.
+    assert control.stopped == [_BINDING_NAME]
+    assert control.exposed == []
+
+
+@pytest.mark.anyio
+async def test_openshell_acquire_leaves_sandbox_running_when_expose_fails() -> None:
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    control.expose_error = RuntimeError("service store unavailable")
+
+    with pytest.raises(BindingAcquireError, match="service store unavailable"):
+        _ = await backend.acquire(_BINDING_NAME)
+    assert control.stopped == [_BINDING_NAME]
+    assert control.exposed == []
+
+
+@pytest.mark.anyio
+async def test_openshell_failed_acquire_refresh_does_not_interrupt_running_lease(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output_path = "/tmp/job-1/output"
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "POST" and request.url.path == "/v1/jobs/run":
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "job-1",
+                    "status": "running",
+                    "done": False,
+                    "exit_code": None,
+                    "output_path": output_path,
+                    "output": "",
+                    "offset": 0,
+                    "truncated": False,
+                },
+            )
+        if request.method == "POST" and request.url.path == "/v1/jobs/job-1/wait":
+            if len(control.stopped) > 1:
+                return httpx.Response(
+                    500,
+                    json={"error": {"code": "job_lost", "message": "sandbox stopped"}},
+                )
+            return httpx.Response(
+                200,
+                json={
+                    "job_id": "job-1",
+                    "status": "exited",
+                    "done": True,
+                    "exit_code": 0,
+                    "output_path": output_path,
+                    "output": "done",
+                    "offset": 4,
+                    "truncated": False,
+                },
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+    first = await backend.acquire(_BINDING_NAME)
+    try:
+        assert isinstance(first, OpenShellRuntimeLease)
+        started = await first.commands.run("sleep 30; printf done", timeout=0.01, mode="stdio")
+        assert not started.done
+
+        control.expose_error = RuntimeError("service store unavailable")
+        with pytest.raises(BindingAcquireError, match="service store unavailable"):
+            _ = await backend.acquire(_BINDING_NAME)
+
+        assert control.stopped == [_BINDING_NAME]
+        assert control.deleted == []
+        assert control.exposed == [(_BINDING_NAME, 5004)]
+        assert isinstance(first.data_plane.owned_transport, AsyncClient)
+        assert not first.data_plane.owned_transport.is_closed
+
+        finished = await first.commands.wait(started.job_id, offset=0, timeout=0.01)
+        assert finished.done
+        assert finished.exit_code == 0
+        assert finished.output == "done"
+        assert finished.offset == 4
+    finally:
+        await backend.release(first)
+
+    assert isinstance(first.data_plane.owned_transport, AsyncClient)
+    assert first.data_plane.owned_transport.is_closed
+
+
+@pytest.mark.anyio
+async def test_openshell_failed_acquire_closes_attempt_transport_when_readiness_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/healthz":
+            return httpx.Response(
+                401,
+                json={"error": {"code": "unauthorized", "message": "invalid token"}},
+            )
+        return _healthy_handler(request)
+
+    _mock_http(monkeypatch, handler)
+    control = _ControlPlane()
+    backend = _backend(control)
+    _ = await backend.create_binding(_create_spec())
+
+    with pytest.raises(BindingAcquireError):
+        _ = await backend.acquire(_BINDING_NAME)
+
+    assert len(control.service_clients) == 1
+    assert control.service_clients[0].is_closed
+    assert control.stopped == [_BINDING_NAME]
+    assert control.deleted == []
 
 
 @pytest.mark.anyio
@@ -346,19 +659,22 @@ async def test_openshell_release_leaves_other_leases_open(monkeypatch: pytest.Mo
     first = await backend.acquire(_BINDING_NAME)
     second = await backend.acquire(_BINDING_NAME)
     assert isinstance(second, OpenShellRuntimeLease)
+    # Each acquire refreshes the shared name-keyed endpoint; the fake records
+    # one call per acquire.
+    assert control.exposed == [(_BINDING_NAME, 5004), (_BINDING_NAME, 5004)]
 
     await backend.release(first)
 
     assert control.stopped == [_BINDING_NAME]
-    assert control.tunnels[0].closed == 1
-    assert control.tunnels[1].closed == 0
+    assert isinstance(first.data_plane.owned_transport, AsyncClient)
+    assert first.data_plane.owned_transport.is_closed
     assert isinstance(second.data_plane.owned_transport, AsyncClient)
     assert not second.data_plane.owned_transport.is_closed
     await second.data_plane.client.health()
     await backend.release(second)
     assert second.data_plane.owned_transport.is_closed
-    assert control.tunnels[1].closed == 1
     assert control.stopped == [_BINDING_NAME]
+    assert control.deleted == []
 
 
 @pytest.mark.anyio
@@ -375,61 +691,46 @@ async def test_openshell_release_does_not_require_existing_sandbox(monkeypatch: 
 
     assert isinstance(lease.data_plane.owned_transport, AsyncClient)
     assert lease.data_plane.owned_transport.is_closed
-    assert control.tunnels[0].closed == 1
     assert control.stopped == [_BINDING_NAME]
+    # Release never deletes the shared exposed endpoint or the sandbox.
+    assert control.deleted == []
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("failure_stage", ["client", "tunnel", "both"])
-async def test_openshell_release_closes_both_resources_on_error(failure_stage: str) -> None:
+async def test_openshell_release_closes_transport_on_client_error() -> None:
     control = _ControlPlane()
     lease = _source_lease(_RecordingCommands())
     client = lease.data_plane.client
-    tunnel = lease.tunnel
     assert isinstance(client, _FakeShellctlClient)
-    assert isinstance(tunnel, _FakeTunnel)
     transport = httpx.AsyncClient(transport=httpx.MockTransport(_healthy_handler))
     lease.data_plane.owned_transport = transport
-    if failure_stage in {"client", "both"}:
-        client.close_error = RuntimeError("client close failed")
-    if failure_stage in {"tunnel", "both"}:
-        tunnel.close_error = RuntimeError("tunnel close failed")
-    expected_error = client.close_error or tunnel.close_error
+    client.close_error = RuntimeError("client close failed")
 
-    with pytest.raises(BindingAcquireError, match=str(expected_error)) as exc_info:
+    with pytest.raises(BindingAcquireError, match="client close failed") as exc_info:
         await _backend(control).release(lease)
 
-    assert exc_info.value.__cause__ is expected_error
+    assert exc_info.value.__cause__ is client.close_error
     assert client.closed == 1
-    assert tunnel.closed == 1
     assert transport.is_closed
     assert control.stopped == []
 
 
 @pytest.mark.anyio
-@pytest.mark.parametrize("failure_stage", ["client", "tunnel"])
-async def test_openshell_release_preserves_cancellation_and_closes_resources(failure_stage: str) -> None:
+async def test_openshell_release_preserves_cancellation_and_closes_transport() -> None:
     control = _ControlPlane()
     lease = _source_lease(_RecordingCommands())
     client = lease.data_plane.client
-    tunnel = lease.tunnel
     assert isinstance(client, _FakeShellctlClient)
-    assert isinstance(tunnel, _FakeTunnel)
     transport = httpx.AsyncClient(transport=httpx.MockTransport(_healthy_handler))
     lease.data_plane.owned_transport = transport
     cancellation = asyncio.CancelledError()
-    if failure_stage == "client":
-        client.close_error = cancellation
-        tunnel.close_error = RuntimeError("tunnel close failed")
-    else:
-        tunnel.close_error = cancellation
+    client.close_error = cancellation
 
     with pytest.raises(asyncio.CancelledError) as exc_info:
         await _backend(control).release(lease)
 
     assert exc_info.value is cancellation
     assert client.closed == 1
-    assert tunnel.closed == 1
     assert transport.is_closed
     assert control.stopped == []
 
@@ -484,81 +785,22 @@ async def test_openshell_destroy_requires_workspace_destruction_and_is_idempoten
 
 
 @pytest.mark.anyio
-async def test_openshell_snapshot_copies_home_to_shared_volume() -> None:
+async def test_noop_home_snapshot_backend_reports_unsupported() -> None:
+    # The OpenShell profile wires NoopHomeSnapshotBackend: create returns the
+    # explicit "no snapshot captured" result and delete is a no-op, both with
+    # no command I/O against the lease.
     commands = _RecordingCommands()
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=_ControlPlane())
+    snapshots = NoopHomeSnapshotBackend()
 
-    snapshot_ref = await snapshots.create_from_runtime(
-        spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="snap-1"),
-        source=_source_lease(commands),
-    )
-
-    assert snapshot_ref == _SNAPSHOT_REF
-    (script,) = commands.scripts
-    assert f"cp -a /home/dify/. {_SNAPSHOT_DIR}/" in script
-    assert f"chmod 700 {_SNAPSHOT_DIR}" in script
-
-
-@pytest.mark.anyio
-async def test_openshell_snapshot_failure_removes_partial_copy() -> None:
-    commands = _RecordingCommands(exit_codes=[1])
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=_ControlPlane())
-
-    with pytest.raises(HomeSnapshotCreateError):
-        _ = await snapshots.create_from_runtime(
+    assert (
+        await snapshots.create_from_runtime(
             spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="snap-1"),
             source=_source_lease(commands),
         )
-
-    assert len(commands.scripts) == 2
-    assert commands.scripts[1].startswith("rm -rf -- ")
-
-
-@pytest.mark.anyio
-async def test_openshell_snapshot_rejects_foreign_lease() -> None:
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=_ControlPlane())
-    foreign = _source_lease(_RecordingCommands()).data_plane
-    with pytest.raises(HomeSnapshotCreateError):
-        _ = await snapshots.create_from_runtime(
-            spec=HomeSnapshotCreateSpec(tenant_id="tenant-1", agent_id="agent-1", home_snapshot_id="snap-1"),
-            source=foreign,
-        )
-
-
-@pytest.mark.anyio
-async def test_openshell_snapshot_delete_uses_short_lived_maintenance_sandbox() -> None:
-    control = _ControlPlane()
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=control)
-
+        is None
+    )
     await snapshots.delete(_SNAPSHOT_REF)
-
-    ((name, labels),) = control.created
-    assert name.startswith("gc-")
-    assert labels == {"dify.resource": "snapshot-gc"}
-    # Unlinking the snapshot dir itself needs write on its parent under
-    # Landlock, so the sandbox is granted the tenant's snapshot root.
-    assert control.extra_read_write == [(_TENANT_SNAPSHOT_ROOT,)]
-    ((_, script),) = control.exec_calls
-    assert script == f"rm -rf -- {_SNAPSHOT_DIR}"
-    assert control.deleted == [name]
-
-
-@pytest.mark.anyio
-async def test_openshell_snapshot_delete_still_removes_maintenance_sandbox_on_failure() -> None:
-    control = _ControlPlane()
-    control.exec_results = [(1, "device busy")]
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=control)
-
-    with pytest.raises(BindingDestroyError, match="device busy"):
-        await snapshots.delete(_SNAPSHOT_REF)
-    assert len(control.deleted) == 1
-
-
-@pytest.mark.anyio
-async def test_openshell_snapshot_refs_must_be_safe_path_segments() -> None:
-    snapshots = OpenShellHomeSnapshotBackend(control_plane=_ControlPlane())
-    with pytest.raises(BindingDestroyError, match="safe path segment"):
-        await snapshots.delete("../escape")
+    assert commands.scripts == []
 
 
 @pytest.mark.anyio
@@ -581,107 +823,339 @@ async def test_openshell_acquire_maps_missing_layout_to_binding_lost(
 
     with pytest.raises(BindingLostError, match="Home or Workspace"):
         _ = await backend.acquire(_BINDING_NAME)
-    assert control.tunnels == []
-    assert control.stopped == [_BINDING_NAME, _BINDING_NAME]
+    assert control.exposed == []
+    assert control.stopped == [_BINDING_NAME]
 
 
-def test_ssh_session_token_supplier_renews_ahead_of_expiry() -> None:
-    minted: list[str] = []
-    clock = {"now": 0}
+class _FakeRpcError(grpc.RpcError, grpc.Call):
+    """Stands in for a failed stub call at the SDK boundary.
 
-    def mint() -> tuple[str, int]:
-        token = f"token-{len(minted)}"
-        minted.append(token)
-        # every token expires 100_000 ms after it is minted
-        return token, clock["now"] + 100_000
+    ``isinstance(exc, grpc.Call)`` gates ``code()`` reads in the adapter, so
+    the fake must be both ``grpc.RpcError`` and ``grpc.Call`` like real call
+    errors.
+    """
 
-    supplier = _SshSessionTokenSupplier(mint=mint, clock_ms=lambda: clock["now"], renewal_margin_ms=60_000)
+    def __init__(self, code: grpc.StatusCode) -> None:
+        super().__init__(f"rpc failed: {code}")
+        self._code = code
 
-    assert supplier() == "token-0"
-    clock["now"] = 30_000
-    assert supplier() == "token-0"  # well before the renewal window
-    clock["now"] = 45_000
-    assert supplier() == "token-1"  # inside expiry - margin: re-minted
-    clock["now"] = 50_000
-    assert supplier() == "token-1"  # new token still fresh
-    assert minted == ["token-0", "token-1"]
+    def code(self) -> grpc.StatusCode:
+        return self._code
+
+    def trailing_metadata(self) -> tuple[()]:
+        # openshell.GatewayError decodes rich status from trailing metadata.
+        return ()
 
 
-def test_ssh_session_token_supplier_keeps_token_without_expiry() -> None:
-    minted: list[str] = []
+def _sdk_plane_with_stub(stub: object, **kwargs: object) -> "openshell_module.OpenShellSDKControlPlane":
+    from openshell import SandboxClient
+    from openshell._proto import openshell_pb2_grpc
 
-    def mint() -> tuple[str, int]:
-        minted.append("x")
-        return "token", 0  # gateway set no expiry
-
-    supplier = _SshSessionTokenSupplier(mint=mint, clock_ms=lambda: 10**15)
-    assert supplier() == "token"
-    assert supplier() == "token"
-    assert len(minted) == 1
+    plane = openshell_module.OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True, **kwargs)
+    client = SandboxClient("localhost:1")
+    client.close()
+    client._stub = cast("openshell_pb2_grpc.OpenShellStub", stub)  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    plane._client_cache = client  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    return plane
 
 
-def test_ssh_session_token_supplier_fails_closed_when_renewal_fails() -> None:
-    clock = {"now": 0}
-    fail = {"on": False}
+def _expose_response(
+    url: str = "http://dify-a--shellctl.openshell.localhost:17670/",
+    *,
+    authorization_mode: object = "passthrough",
+) -> object:
+    from openshell._proto import openshell_pb2
 
-    def mint() -> tuple[str, int]:
-        if fail["on"]:
-            raise RuntimeError("gateway unavailable")
-        return "token-0", 100_000
+    if authorization_mode == "passthrough":
+        mode = openshell_pb2.SERVICE_AUTHORIZATION_MODE_BEARER_PASSTHROUGH
+    else:
+        mode = cast("openshell_pb2.ServiceAuthorizationMode", authorization_mode)
+    return openshell_pb2.ServiceEndpointResponse(
+        endpoint=openshell_pb2.ServiceEndpoint(authorization_mode=mode),
+        url=url,
+    )
 
-    supplier = _SshSessionTokenSupplier(mint=mint, clock_ms=lambda: clock["now"], renewal_margin_ms=60_000)
-    assert supplier() == "token-0"
 
-    fail["on"] = True
-    clock["now"] = 45_000
-    with pytest.raises(RuntimeError, match="gateway unavailable"):
-        _ = supplier()
+@pytest.mark.anyio
+async def test_openshell_sdk_expose_service_request_shape() -> None:
+    # The fake pins the adapter's outgoing ExposeService call shape on the real
+    # generated message: the endpoint is upserted by sandbox *name* (ids churn
+    # across restarts) under the fixed "shellctl" service name, with a routed
+    # domain URL, the deployment workspace, and bearer passthrough so the
+    # shellctl token reaches the sandbox on Authorization.
+    from openshell._proto import openshell_pb2
+
+    calls: list[dict[str, object]] = []
+
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            calls.append({"request": request, "timeout": timeout})
+            return _expose_response()
+
+    plane = _sdk_plane_with_stub(_Stub(), workspace="tenant-a")
+    url = await plane.expose_service("dify-a", 5004)
+
+    assert url == "http://dify-a--shellctl.openshell.localhost:17670/"
+    (call,) = calls
+    request = call["request"]
+    assert isinstance(request, openshell_pb2.ExposeServiceRequest)
+    assert request.sandbox == "dify-a"
+    assert request.name == "shellctl"
+    assert request.target_port == 5004
+    assert request.workspace_scope.workspace == "tenant-a"
+    assert request.domain is True
+    assert request.authorization_mode == openshell_pb2.SERVICE_AUTHORIZATION_MODE_BEARER_PASSTHROUGH
+    assert call["timeout"] == 30.0
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize(
+    "bad_url",
+    [
+        "",
+        "   ",
+        "not-a-url",
+        "ftp://dify-a--shellctl.openshell.localhost:17670/",
+        "http:///missing-host",
+        "http://user:pw@dify-a--shellctl.openshell.localhost:17670/",
+        "http://dify-a--shellctl.openshell.localhost:17670/subpath",
+        "http://dify-a--shellctl.openshell.localhost:17670/?q=1",
+        "http://dify-a--shellctl.openshell.localhost:17670/#frag",
+    ],
+)
+async def test_openshell_sdk_expose_service_rejects_malformed_urls(bad_url: str) -> None:
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            return _expose_response(bad_url)
+
+    plane = _sdk_plane_with_stub(_Stub())
+    with pytest.raises(ValueError):
+        await plane.expose_service("dify-a", 5004)
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("field", ["strip", "unspecified", "absent"])
+async def test_openshell_sdk_expose_service_rejects_unapplied_auth_mode(field: str) -> None:
+    # A gateway predating authorization_mode leaves it UNSPECIFIED or applies
+    # STRIP; silently proceeding would drop the shellctl bearer in transit.
+    from openshell._proto import openshell_pb2
+
+    if field == "strip":
+        response = _expose_response(authorization_mode=openshell_pb2.SERVICE_AUTHORIZATION_MODE_STRIP)
+    elif field == "unspecified":
+        response = _expose_response(authorization_mode=openshell_pb2.SERVICE_AUTHORIZATION_MODE_UNSPECIFIED)
+    else:
+        response = openshell_pb2.ServiceEndpointResponse(url="http://dify-a--shellctl.openshell.localhost:17670/")
+
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            return response
+
+    plane = _sdk_plane_with_stub(_Stub())
+    with pytest.raises(RuntimeError, match="endpoint|bearer-passthrough"):
+        await plane.expose_service("dify-a", 5004)
+
+
+@pytest.mark.anyio
+async def test_openshell_sdk_expose_service_normalizes_not_found() -> None:
+    # SDK surfaces wrap raw call errors in GatewayError, which is an RpcError
+    # but not a grpc.Call; the adapter must still read its code.
+    from openshell import GatewayError
+
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            raise GatewayError(_FakeRpcError(grpc.StatusCode.NOT_FOUND))
+
+    plane = _sdk_plane_with_stub(_Stub())
+    with pytest.raises(OpenShellNotFoundError):
+        await plane.expose_service("dify-gone", 5004)
+
+
+@pytest.mark.anyio
+async def test_openshell_sdk_expose_service_retries_aborted_and_is_bounded() -> None:
+    from openshell import GatewayError
+
+    attempts = {"count": 0}
+
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            attempts["count"] += 1
+            if attempts["count"] <= 2:
+                raise GatewayError(_FakeRpcError(grpc.StatusCode.ABORTED))
+            return _expose_response()
+
+    plane = _sdk_plane_with_stub(_Stub())
+    assert await plane.expose_service("dify-a", 5004) == "http://dify-a--shellctl.openshell.localhost:17670/"
+    assert attempts["count"] == 3
+
+    exhausted = {"count": 0}
+
+    class _AlwaysAborted:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            exhausted["count"] += 1
+            raise GatewayError(_FakeRpcError(grpc.StatusCode.ABORTED))
+
+    plane = _sdk_plane_with_stub(_AlwaysAborted())
+    with pytest.raises(grpc.RpcError):
+        await plane.expose_service("dify-a", 5004)
+    assert exhausted["count"] == 3
+
+
+@pytest.mark.anyio
+async def test_openshell_sdk_expose_service_does_not_retry_other_codes() -> None:
+    attempts = {"count": 0}
+
+    class _Stub:
+        def ExposeService(self, request: object, timeout: float | None = None) -> object:
+            attempts["count"] += 1
+            raise _FakeRpcError(grpc.StatusCode.UNAVAILABLE)
+
+    plane = _sdk_plane_with_stub(_Stub())
+    with pytest.raises(grpc.RpcError):
+        await plane.expose_service("dify-a", 5004)
+    assert attempts["count"] == 1
+
+
+@pytest.mark.anyio
+async def test_openshell_service_client_dials_loopback_and_preserves_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # *.openshell.localhost relies on wildcard DNS the OS resolver does not
+    # reliably provide: the client dials 127.0.0.1 on the returned port and
+    # pins the original authority on Host for gateway routing.
+    captured: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured.append(request)
+        return httpx.Response(200, json={"status": "ok"})
+
+    original_async_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    monkeypatch.setattr(
+        openshell_module.httpx,
+        "AsyncClient",
+        lambda *a, **kw: original_async_client(*a, transport=transport, **kw),
+    )
+    plane = openshell_module.OpenShellSDKControlPlane(
+        endpoint="localhost:1", insecure=True, bearer_token="gateway-token"
+    )
+
+    client = plane.create_service_http_client("http://dify-a--shellctl.openshell.localhost:17670/")
+
+    assert client.base_url == httpx.URL("http://127.0.0.1:17670/")
+    assert client.headers["host"] == "dify-a--shellctl.openshell.localhost:17670"
+    # Bearer passthrough means Authorization reaches the sandbox, so the
+    # deployment gateway credential stays off service HTTP entirely.
+    assert "authorization" not in client.headers
+    assert client.follow_redirects is False
+    assert client.trust_env is False
+    response = await client.get("/healthz")
+    assert response.status_code == 200
+    (request,) = captured
+    assert request.url.host == "127.0.0.1"
+    assert request.headers["host"] == "dify-a--shellctl.openshell.localhost:17670"
+    await client.aclose()
+
+
+def test_openshell_service_client_keeps_https_host_and_tls_material(monkeypatch: pytest.MonkeyPatch) -> None:
+    # HTTPS keeps the returned host for SNI and host routing; the deployment
+    # TLS material is applied through a real SSLContext built from the
+    # configured paths (the insecure gRPC flag never disables verification).
+    contexts: list[dict[str, object]] = []
+
+    class _FakeContext:
+        def load_cert_chain(self, certfile: str, keyfile: str | None = None) -> None:
+            contexts.append({"cert": certfile, "key": keyfile})
+
+    created: list[str | None] = []
+    fake_context = _FakeContext()
+    monkeypatch.setattr(
+        openshell_module.ssl,
+        "create_default_context",
+        lambda cafile=None: created.append(cafile) or fake_context,
+    )
+    clients: dict[str, object] = {}
+
+    def fake_async_client(*args: object, **kwargs: object) -> object:
+        clients.update(kwargs)
+        return object()
+
+    monkeypatch.setattr(openshell_module.httpx, "AsyncClient", fake_async_client)
+    plane = openshell_module.OpenShellSDKControlPlane(
+        endpoint="localhost:1",
+        bearer_token="gateway-token",
+        tls_ca_path="/ca/ca.pem",
+        tls_client_cert_path="/ca/client.pem",
+        tls_client_key_path="/ca/client.key",
+    )
+
+    _ = plane.create_service_http_client("https://dify-a--shellctl.openshell.example.com:443/")
+
+    assert clients["base_url"] == "https://dify-a--shellctl.openshell.example.com:443/"
+    headers = cast("dict[str, str]", clients["headers"])
+    assert "Authorization" not in headers
+    assert "Host" not in headers
+    assert clients["verify"] is fake_context
+    assert created == ["/ca/ca.pem"]
+    assert contexts == [{"cert": "/ca/client.pem", "key": "/ca/client.key"}]
+
+
+def test_openshell_service_client_rejects_plaintext_http_to_nonlocal_host() -> None:
+    plane = openshell_module.OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True)
+    with pytest.raises(ValueError, match="local"):
+        plane.create_service_http_client("http://shellctl.sandbox.example.com:8080/")
 
 
 @pytest.mark.anyio
 async def test_openshell_sdk_exec_script_sends_script_via_stdin_not_argv() -> None:
-    # The fake pins the adapter's own outgoing call shape (a security
-    # contract: no script text in argv), not gateway behavior — the real
-    # gateway is exercised by the integration contract in
+    # The fake pins the adapter's outgoing exec shape through the REAL SDK
+    # client: exec addresses the sandbox's canonical *name* inside the
+    # deployment workspace, and the script travels via stdin because the
+    # gateway logs a preview of the assembled argv (scripts can embed the
+    # shellctl token, so argv must stay secret-free). The real gateway is
+    # exercised by the integration contract in
     # tests/integration/.../test_working_environment.py.
-    from types import SimpleNamespace
     from typing import cast
+
+    from openshell import SandboxClient
+    from openshell._proto import openshell_pb2
 
     from dify_agent.runtime_backend.openshell import OpenShellSDKControlPlane
 
     calls: dict[str, object] = {}
 
-    class _FakeSdkClient:
-        def exec(
-            self,
-            sandbox_id: str,
-            command: list[str],
-            *,
-            stdin: bytes | None = None,
-            timeout_seconds: int | None = None,
-        ) -> SimpleNamespace:
-            calls["sandbox_id"] = sandbox_id
-            calls["command"] = list(command)
-            calls["stdin"] = stdin
-            calls["timeout_seconds"] = timeout_seconds
-            return SimpleNamespace(exit_code=3, stdout="out", stderr="err")
+    class _Stub:
+        def ExecSandbox(self, request: object, timeout: float | None = None) -> object:
+            calls["request"] = request
+            calls["timeout"] = timeout
+            return iter(
+                [
+                    openshell_pb2.ExecSandboxEvent(stdout=openshell_pb2.ExecSandboxStdout(data=b"out")),
+                    openshell_pb2.ExecSandboxEvent(stderr=openshell_pb2.ExecSandboxStderr(data=b"err")),
+                    openshell_pb2.ExecSandboxEvent(exit=openshell_pb2.ExecSandboxExit(exit_code=3)),
+                ]
+            )
 
-    plane = OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True)
-    plane._client_cache = cast(  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
-        "openshell_module.SandboxClient", cast(object, _FakeSdkClient())
-    )
-    script = "set -eu\nexport SHELLCTL_AUTH_TOKEN=super-secret\n"
+    client = SandboxClient("localhost:1")
+    client._stub = _Stub()  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+    try:
+        plane = OpenShellSDKControlPlane(endpoint="localhost:1", insecure=True, workspace="tenant-a")
+        plane._client_cache = client  # noqa: SLF001  # pyright: ignore[reportPrivateUsage]
+        script = "set -eu\nexport SHELLCTL_AUTH_TOKEN=super-secret\n"
 
-    exit_code, output = await plane.exec_script("sb-1", script)
+        exit_code, output = await plane.exec_script("dify-a", script)
+    finally:
+        client.close()
 
     assert exit_code == 3
     assert output == "outerr"
-    assert calls["sandbox_id"] == "sb-1"
-    # The gateway logs a preview of the assembled exec argv; scripts can embed
-    # the shellctl token, so they must travel only via stdin (never logged).
-    assert calls["command"] == ["/bin/sh", "-s"]
-    assert calls["stdin"] == script.encode()
-    assert calls["timeout_seconds"] == plane.exec_timeout_seconds
+    request = cast("openshell_pb2.ExecSandboxRequest", calls["request"])
+    assert request.sandbox == "dify-a"
+    assert request.workspace_scope.workspace == "tenant-a"
+    assert list(request.command) == ["/bin/sh", "-s"]
+    assert request.stdin == script.encode()
+    assert request.no_login_shell is True
+    assert request.execution_timeout.seconds == plane.exec_timeout_seconds
 
 
 @pytest.mark.anyio
@@ -693,6 +1167,8 @@ async def test_openshell_sdk_create_sends_enforced_egress_allowlist() -> None:
     # covered by the opt-in integration contract.
     from types import SimpleNamespace
     from typing import cast
+
+    from openshell._proto import sandbox_pb2
 
     from dify_agent.runtime_backend.openshell import OpenShellSDKControlPlane
 
@@ -728,7 +1204,8 @@ async def test_openshell_sdk_create_sends_enforced_egress_allowlist() -> None:
         assert rule.name == key
         endpoint = rule.endpoints[0]
         assert endpoint.protocol == "rest"
-        assert endpoint.enforcement == "enforce"
+        assert endpoint.enforcement == sandbox_pb2.NETWORK_ENFORCEMENT_MODE_ENFORCE
+        assert sandbox_pb2.NetworkEnforcementMode.Name(endpoint.enforcement) == "NETWORK_ENFORCEMENT_MODE_ENFORCE"
         assert endpoint.rules[0].allow.method == "*"
         assert endpoint.rules[0].allow.path == "/**"
         # Endpoints are the allowlist; any in-sandbox binary may connect.

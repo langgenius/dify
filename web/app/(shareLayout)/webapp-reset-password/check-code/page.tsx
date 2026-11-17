@@ -5,6 +5,7 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { focusOnArrival } from '@/app/components/auth-shell/focus-on-arrival'
 import Countdown from '@/app/components/signin/countdown'
 import { toast } from '@/app/notifications'
 import useDocumentTitle from '@/hooks/use-document-title'
@@ -83,6 +84,7 @@ export default function CheckCode() {
           {t(($) => $['checkCode.verificationCode'], { ns: 'login' })}
         </label>
         <Input
+          ref={focusOnArrival}
           id="code"
           name="code"
           inputMode="numeric"
@@ -110,7 +112,7 @@ export default function CheckCode() {
         <span className="inline-block rounded-full p-1">
           <RiArrowLeftLine aria-hidden size={12} />
         </span>
-        <span className="ml-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
+        <span className="ms-2 system-xs-regular">{t(($) => $.back, { ns: 'login' })}</span>
       </button>
     </div>
   )

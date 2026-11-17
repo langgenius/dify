@@ -1,0 +1,484 @@
+"""Short SQL transactions and Redis serialization for trigger subscriptions."""
+
+import logging
+import sqlite3
+from collections.abc import Generator, Mapping, Sequence
+from contextlib import AbstractContextManager, contextmanager
+from copy import deepcopy
+from threading import Event, Thread
+from typing import Any, override
+from uuid import uuid4
+
+from psycopg2.errors import UniqueViolation
+from pymysql.err import IntegrityError as MySQLIntegrityError
+from redis.exceptions import LockError, RedisError
+from redis.lock import Lock
+from sqlalchemy import and_, delete, func, or_, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, sessionmaker
+
+from extensions.ext_redis import RedisClientWrapper
+from models.enums import AppTriggerStatus
+from models.provider_ids import TriggerProviderID
+from models.trigger import AppTrigger, TriggerSubscription, WorkflowPluginTrigger
+from services.trigger.subscription_binding_service import TriggerSubscriber, TriggerSubscriptionBinding
+from services.trigger.subscription_refresh_service import TriggerSubscriptionRefreshJob, TriggerSubscriptionRefreshRef
+from services.trigger.subscription_service import (
+    TriggerSubscriptionChangedError,
+    TriggerSubscriptionLease,
+    TriggerSubscriptionLeaseLostError,
+    TriggerSubscriptionLimitError,
+    TriggerSubscriptionLocks,
+    TriggerSubscriptionNameConflictError,
+    TriggerSubscriptionSnapshot,
+    TriggerSubscriptionStore,
+)
+
+logger = logging.getLogger(__name__)
+
+
+def _is_name_conflict(error: IntegrityError) -> bool:
+    original = error.orig
+    constraint = "unique_trigger_provider"
+    if isinstance(original, UniqueViolation):
+        return original.diag.constraint_name == constraint
+    if isinstance(original, MySQLIntegrityError):
+        if len(original.args) != 2 or original.args[0] != 1062 or not isinstance(original.args[1], str):
+            return False
+        key = original.args[1].rsplit(" for key ", 1)[-1]
+        return key in (
+            f"'{constraint}'",
+            f"'trigger_subscriptions.{constraint}'",
+            f"`{constraint}`",
+            f"`trigger_subscriptions.{constraint}`",
+        )
+    if isinstance(original, sqlite3.IntegrityError):
+        return original.sqlite_errorcode == sqlite3.SQLITE_CONSTRAINT_UNIQUE and str(original) == (
+            "UNIQUE constraint failed: trigger_subscriptions.tenant_id, "
+            "trigger_subscriptions.provider_id, trigger_subscriptions.name"
+        )
+    return False
+
+
+class TriggerSubscriptionRepository(TriggerSubscriptionStore):
+    def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
+        self._session_factory = session_factory
+
+    def list_due_for_refresh(
+        self,
+        *,
+        credential_due_at: int,
+        subscription_due_at: int,
+        after_id: str | None,
+        limit: int,
+    ) -> tuple[TriggerSubscriptionRefreshRef, ...]:
+        """Scan all workspaces for the scheduler, releasing SQL before reservation or publishing."""
+        statement = select(TriggerSubscription.tenant_id, TriggerSubscription.id).where(
+            or_(
+                and_(
+                    TriggerSubscription.credential_expires_at != -1,
+                    TriggerSubscription.credential_expires_at <= credential_due_at,
+                ),
+                and_(TriggerSubscription.expires_at != -1, TriggerSubscription.expires_at <= subscription_due_at),
+            )
+        )
+        if after_id is not None:
+            statement = statement.where(TriggerSubscription.id > after_id)
+        with self._session_factory() as session:
+            rows = session.execute(statement.order_by(TriggerSubscription.id).limit(limit)).all()
+            return tuple(
+                TriggerSubscriptionRefreshRef(tenant_id=tenant_id, subscription_id=subscription_id)
+                for tenant_id, subscription_id in rows
+            )
+
+    def sync_workflow_bindings(
+        self,
+        *,
+        session: Session,
+        tenant_id: str,
+        app_id: str,
+        bindings: Sequence[TriggerSubscriptionBinding],
+    ) -> None:
+        """Write the binding delta without committing the caller's publication transaction.
+
+        Publication already serializes versions for an app and updates its workflow pointer
+        in this session. Opening a second transaction here would leave bindings committed
+        when publication rolls back. TODO: Remove this session parameter when the publisher
+        owns an injected unit of work covering workflows and their subscription bindings.
+        """
+        rows = session.scalars(
+            select(WorkflowPluginTrigger).where(
+                WorkflowPluginTrigger.tenant_id == tenant_id, WorkflowPluginTrigger.app_id == app_id
+            )
+        ).all()
+        existing = {row.node_id: row for row in rows}
+        desired_node_ids = {binding.node_id for binding in bindings}
+        for row in rows:
+            if row.node_id not in desired_node_ids:
+                session.delete(row)
+        for binding in bindings:
+            row = existing.get(binding.node_id)
+            if row is None:
+                session.add(
+                    WorkflowPluginTrigger(
+                        tenant_id=tenant_id,
+                        app_id=app_id,
+                        node_id=binding.node_id,
+                        provider_id=binding.provider_id,
+                        event_name=binding.event_name,
+                        subscription_id=binding.subscription_id,
+                    )
+                )
+            else:
+                row.provider_id = binding.provider_id
+                row.event_name = binding.event_name
+                row.subscription_id = binding.subscription_id
+
+    def get_subscriber_triggers(
+        self, *, tenant_id: str, subscription_id: str, event_name: str
+    ) -> tuple[TriggerSubscriber, ...]:
+        with self._session_factory() as session:
+            rows = session.scalars(
+                select(WorkflowPluginTrigger)
+                .join(
+                    AppTrigger,
+                    (AppTrigger.tenant_id == WorkflowPluginTrigger.tenant_id)
+                    & (AppTrigger.app_id == WorkflowPluginTrigger.app_id)
+                    & (AppTrigger.node_id == WorkflowPluginTrigger.node_id),
+                )
+                .where(
+                    WorkflowPluginTrigger.tenant_id == tenant_id,
+                    WorkflowPluginTrigger.subscription_id == subscription_id,
+                    WorkflowPluginTrigger.event_name == event_name,
+                    AppTrigger.status == AppTriggerStatus.ENABLED,
+                )
+            ).all()
+            return tuple(
+                TriggerSubscriber(id=row.id, tenant_id=row.tenant_id, app_id=row.app_id, node_id=row.node_id)
+                for row in rows
+            )
+
+    @override
+    def get(self, *, tenant_id: str, subscription_id: str) -> TriggerSubscriptionSnapshot | None:
+        with self._session_factory() as session:
+            row = session.scalar(
+                select(TriggerSubscription).where(
+                    TriggerSubscription.tenant_id == tenant_id, TriggerSubscription.id == subscription_id
+                )
+            )
+            return self._snapshot(row) if row is not None else None
+
+    def get_by_endpoint(self, *, endpoint_id: str) -> TriggerSubscriptionSnapshot | None:
+        """Resolve a public endpoint capability, deriving its owner from the stored row."""
+        with self._session_factory() as session:
+            row = session.scalar(select(TriggerSubscription).where(TriggerSubscription.endpoint_id == endpoint_id))
+            return self._snapshot(row) if row is not None else None
+
+    def get_for_provider(
+        self, *, tenant_id: str, provider_id: TriggerProviderID, subscription_id: str | None
+    ) -> TriggerSubscriptionSnapshot | None:
+        """Load a provider subscription; an absent or empty ID preserves the legacy first-match lookup."""
+        query = select(TriggerSubscription).where(
+            TriggerSubscription.tenant_id == tenant_id, TriggerSubscription.provider_id == str(provider_id)
+        )
+        if subscription_id:
+            query = query.where(TriggerSubscription.id == subscription_id)
+        with self._session_factory() as session:
+            row = session.scalar(query.limit(1))
+            return self._snapshot(row) if row is not None else None
+
+    @override
+    def create(self, *, subscription: TriggerSubscriptionSnapshot, max_count: int) -> None:
+        try:
+            with self._session_factory.begin() as session:
+                owner = (
+                    TriggerSubscription.tenant_id == subscription.tenant_id,
+                    TriggerSubscription.provider_id == subscription.provider_id,
+                )
+                count = session.scalar(select(func.count(TriggerSubscription.id)).where(*owner)) or 0
+                if count >= max_count:
+                    raise TriggerSubscriptionLimitError(
+                        f"Maximum number of subscriptions ({max_count}) reached "
+                        f"for provider {subscription.provider_id}."
+                    )
+                self._require_available_name(session, subscription)
+                row = TriggerSubscription(
+                    name=subscription.name,
+                    tenant_id=subscription.tenant_id,
+                    user_id=subscription.user_id,
+                    provider_id=subscription.provider_id,
+                    endpoint_id=subscription.endpoint_id,
+                    credential_type=subscription.credential_type,
+                    parameters=deepcopy(dict(subscription.parameters)),
+                    properties=deepcopy(dict(subscription.properties)),
+                    credentials=deepcopy(dict(subscription.credentials)),
+                    credential_expires_at=subscription.credential_expires_at,
+                    expires_at=subscription.expires_at,
+                    visibility=subscription.visibility,
+                )
+                row.id = subscription.id
+                session.add(row)
+        except IntegrityError as error:
+            if not _is_name_conflict(error):
+                raise
+            raise self._name_conflict(subscription) from error
+
+    @override
+    def update(self, *, expected: TriggerSubscriptionSnapshot, replacement: TriggerSubscriptionSnapshot) -> None:
+        try:
+            with self._session_factory.begin() as session:
+                row = self._require_unchanged(session, expected)
+                if replacement.name != expected.name:
+                    self._require_available_name(session, replacement)
+                row.name = replacement.name
+                row.parameters = deepcopy(dict(replacement.parameters))
+                row.properties = deepcopy(dict(replacement.properties))
+                row.credentials = deepcopy(dict(replacement.credentials))
+                row.credential_expires_at = replacement.credential_expires_at
+                row.expires_at = replacement.expires_at
+        except IntegrityError as error:
+            if not _is_name_conflict(error):
+                raise
+            raise self._name_conflict(replacement) from error
+
+    def update_renewed_credentials(
+        self,
+        *,
+        expected: TriggerSubscriptionSnapshot,
+        credentials: Mapping[str, object],
+        credential_expires_at: int,
+    ) -> None:
+        with self._session_factory.begin() as session:
+            row = self._require_renewal_credentials(session, expected)
+            if row.credential_expires_at != expected.credential_expires_at:
+                raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+            # A concurrent rename or subscription edit must not discard a successfully rotated token.
+            row.credentials = deepcopy(dict(credentials))
+            row.credential_expires_at = credential_expires_at
+
+    def update_renewed_subscription(
+        self,
+        *,
+        expected: TriggerSubscriptionSnapshot,
+        properties: Mapping[str, Any],
+        expires_at: int,
+    ) -> None:
+        with self._session_factory.begin() as session:
+            row = self._require_renewal_credentials(session, expected)
+            if (
+                row.endpoint_id != expected.endpoint_id
+                or row.parameters != expected.parameters
+                or row.properties != expected.properties
+                or row.expires_at != expected.expires_at
+            ):
+                raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+            # Only the provider inputs participate in CAS; preserve concurrent name/visibility edits.
+            row.properties = deepcopy(dict(properties))
+            row.expires_at = expires_at
+
+    @override
+    def delete(self, *, expected: TriggerSubscriptionSnapshot) -> None:
+        with self._session_factory.begin() as session:
+            row = self._require_unchanged(session, expected)
+            session.execute(
+                delete(WorkflowPluginTrigger).where(
+                    WorkflowPluginTrigger.tenant_id == expected.tenant_id,
+                    WorkflowPluginTrigger.subscription_id == expected.id,
+                )
+            )
+            session.delete(row)
+
+    @classmethod
+    def _require_unchanged(cls, session: Session, expected: TriggerSubscriptionSnapshot) -> TriggerSubscription:
+        row = cls._get_locked(session, expected)
+        # Compare in Python so database JSON/text collations cannot consider
+        # different ciphertext or nested configuration values equivalent.
+        if cls._snapshot(row) != expected:
+            raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+        return row
+
+    @classmethod
+    def _require_renewal_credentials(
+        cls, session: Session, expected: TriggerSubscriptionSnapshot
+    ) -> TriggerSubscription:
+        row = cls._get_locked(session, expected)
+        if (
+            row.user_id != expected.user_id
+            or row.provider_id != expected.provider_id
+            or row.credential_type != expected.credential_type
+            or row.credentials != expected.credentials
+        ):
+            raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+        return row
+
+    @staticmethod
+    def _get_locked(session: Session, expected: TriggerSubscriptionSnapshot) -> TriggerSubscription:
+        row = session.scalar(
+            select(TriggerSubscription)
+            .where(TriggerSubscription.tenant_id == expected.tenant_id, TriggerSubscription.id == expected.id)
+            .with_for_update()
+        )
+        if row is None:
+            raise TriggerSubscriptionChangedError(f"Trigger subscription {expected.id} changed. Reload and retry.")
+        return row
+
+    @classmethod
+    def _require_available_name(cls, session: Session, subscription: TriggerSubscriptionSnapshot) -> None:
+        exists = session.scalar(
+            select(TriggerSubscription.id)
+            .where(
+                TriggerSubscription.tenant_id == subscription.tenant_id,
+                TriggerSubscription.provider_id == subscription.provider_id,
+                TriggerSubscription.name == subscription.name,
+                TriggerSubscription.id != subscription.id,
+            )
+            .limit(1)
+        )
+        if exists is not None:
+            raise cls._name_conflict(subscription)
+
+    @staticmethod
+    def _name_conflict(subscription: TriggerSubscriptionSnapshot) -> TriggerSubscriptionNameConflictError:
+        return TriggerSubscriptionNameConflictError(
+            f"Subscription name '{subscription.name}' already exists for provider {subscription.provider_id}."
+        )
+
+    @staticmethod
+    def _snapshot(row: TriggerSubscription) -> TriggerSubscriptionSnapshot:
+        return TriggerSubscriptionSnapshot(
+            id=row.id,
+            name=row.name,
+            tenant_id=row.tenant_id,
+            user_id=row.user_id,
+            provider_id=row.provider_id,
+            endpoint_id=row.endpoint_id,
+            credential_type=row.credential_type,
+            parameters=deepcopy(row.parameters),
+            properties=deepcopy(row.properties),
+            credentials=deepcopy(row.credentials),
+            credential_expires_at=row.credential_expires_at,
+            expires_at=row.expires_at,
+            visibility=row.visibility,
+        )
+
+
+class _SubscriptionLease:
+    """Renew a Redis lease, failing closed when ownership can no longer be confirmed."""
+
+    def __init__(self, lock: Lock, lost: Event) -> None:
+        self._lock = lock
+        self._lost = lost
+
+    def ensure_owned(self) -> None:
+        """Reset the lease TTL if owned; raise before further work if ownership is lost."""
+        if self._lost.is_set():
+            raise TriggerSubscriptionLeaseLostError(
+                "Trigger subscription lock was lost; check the provider state before retrying."
+            )
+        try:
+            self._lock.reacquire()
+        except RedisError as error:
+            self._lost.set()
+            raise TriggerSubscriptionLeaseLostError(
+                "Trigger subscription lock was lost; check the provider state before retrying."
+            ) from error
+
+
+class RedisTriggerSubscriptionLocks(TriggerSubscriptionLocks):
+    def __init__(self, *, redis: RedisClientWrapper) -> None:
+        self._redis = redis
+
+    @override
+    def for_provider(self, *, tenant_id: str, provider_id: TriggerProviderID) -> AbstractContextManager[None]:
+        return self._hold(f"trigger_provider_create_lock:{tenant_id}_{provider_id}")
+
+    @override
+    @contextmanager
+    def for_subscription(self, *, tenant_id: str, subscription_id: str) -> Generator[TriggerSubscriptionLease]:
+        """Serialize the subscription mutation and renew its lease during provider I/O.
+
+        The caller must check ownership between remote operations and before the SQL write.
+        Release errors cannot replace the outcome of a completed or failed mutation.
+        """
+        key = f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}"
+        lock: Lock = self._redis.lock(key, timeout=60, thread_local=False)
+        if not lock.acquire():
+            raise LockError(f"Unable to acquire trigger subscription lock {key}")
+        stopped, lost = Event(), Event()
+        lease = _SubscriptionLease(lock, lost)
+
+        def renew() -> None:
+            while not stopped.wait(20):
+                try:
+                    lease.ensure_owned()
+                except Exception:
+                    lost.set()
+                    logger.warning("Lost trigger subscription lock %s", key, exc_info=True)
+                    return
+
+        heartbeat = Thread(target=renew, name=f"TriggerSubscriptionLock({subscription_id})", daemon=True)
+        try:
+            heartbeat.start()
+            yield lease
+        finally:
+            stopped.set()
+            if heartbeat.ident is not None:
+                heartbeat.join(timeout=2)
+            try:
+                lock.release()
+            except RedisError:
+                logger.exception("Failed to release trigger subscription lock %s", key)
+
+    @contextmanager
+    def _hold(self, key: str) -> Generator[None]:
+        lock = self._redis.lock(key, timeout=20)
+        if not lock.acquire():
+            raise LockError(f"Unable to acquire trigger subscription lock {key}")
+        try:
+            yield
+        finally:
+            # SQL may already be committed; cleanup must not replace its outcome.
+            try:
+                lock.release()
+            except RedisError:
+                logger.exception("Failed to release trigger subscription lock %s", key)
+
+
+def build_trigger_refresh_lock_key(tenant_id: str, subscription_id: str) -> str:
+    """Build the Redis lock key for trigger subscription refresh in-flight protection."""
+    return f"trigger_provider_refresh_lock:{tenant_id}_{subscription_id}"
+
+
+class RedisTriggerSubscriptionRefreshReservations:
+    _RELEASE = """
+        if redis.call('GET', KEYS[1]) == ARGV[1] then
+            return redis.call('DEL', KEYS[1])
+        end
+        return 0
+    """
+
+    def __init__(self, *, redis: RedisClientWrapper) -> None:
+        self._redis = redis
+
+    def reserve(
+        self, *, subscriptions: Sequence[TriggerSubscriptionRefreshRef], ttl: int
+    ) -> tuple[TriggerSubscriptionRefreshJob, ...]:
+        jobs = tuple(
+            TriggerSubscriptionRefreshJob(subscription=subscription, token=str(uuid4()))
+            for subscription in subscriptions
+        )
+        with self._redis.pipeline(transaction=False) as pipe:
+            for job in jobs:
+                pipe.set(self._key(job), job.token, ex=ttl, nx=True)
+            acquired = pipe.execute()
+        return tuple(job for job, owned in zip(jobs, acquired, strict=True) if owned)
+
+    def owns(self, job: TriggerSubscriptionRefreshJob) -> bool:
+        return self._redis.get(self._key(job)) in (job.token, job.token.encode())
+
+    def release(self, job: TriggerSubscriptionRefreshJob) -> None:
+        self._redis.eval(self._RELEASE, 1, self._key(job), job.token)
+
+    @staticmethod
+    def _key(job: TriggerSubscriptionRefreshJob) -> str:
+        return build_trigger_refresh_lock_key(job.subscription.tenant_id, job.subscription.subscription_id)

@@ -15,6 +15,7 @@ import {
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import {
   ScrollArea,
@@ -24,6 +25,7 @@ import {
   ScrollAreaViewport,
 } from '@langgenius/dify-ui/scroll-area'
 import { Separator } from '@langgenius/dify-ui/separator'
+import { useMediaQuery } from '@langgenius/dify-ui/use-media-query'
 import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
@@ -36,14 +38,15 @@ import { toast } from '@/app/notifications'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { ChunkingMode, DisplayStatusList, isDocumentDisplayStatus } from '@/models/datasets'
 import { useRouter, useSearchParams } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
+import { documentRenameFilter } from '@/service/datasets'
 import { isSegmentImportStatus, segmentImportStatus } from '@/types/dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 import Operations from '../components/operations'
+import { RenameDocumentForm } from '../components/rename-document-form'
 import StatusItem from '../status-item'
 import BatchModal from './batch-modal'
 import Completed from './completed'
@@ -72,8 +75,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
   const searchParams = useSearchParams()
   const { t } = useTranslation(['common', 'datasetDocuments', 'navigation'])
 
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
+  const isBelowSm = useMediaQuery('(width < 40rem)', {})
 
   const dataset = useDatasetDetailContextWithSelector((s) => s.dataset)
   const { data: currentUserId } = useSuspenseQuery({
@@ -92,7 +94,10 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [dataset?.maintainer, dataset?.permission_keys, currentUserId, workspacePermissionKeys],
   )
   const canEditDocument = datasetACLCapabilities.canEdit
-  const [showMetadata, setShowMetadata] = useState(!isMobile)
+  const [isMetadataPanelOpen, setIsMetadataPanelOpen] = useState(true)
+  const [isMetadataDrawerOpen, setIsMetadataDrawerOpen] = useState(false)
+  const showMetadata = isBelowSm ? isMetadataDrawerOpen : isMetadataPanelOpen
+  const setShowMetadata = isBelowSm ? setIsMetadataDrawerOpen : setIsMetadataPanelOpen
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
   const [importStatus, setImportStatus] = useState<SegmentImportStatus>()
@@ -210,6 +215,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     [datasetId, queryClient],
   )
 
+  const [renameOpen, setRenameOpen] = useState(false)
   const handleOperate = useCallback(
     (operateName?: string) => {
       invalidDocumentList()
@@ -307,7 +313,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const metadataPanel = docDetail && (
     <Metadata
-      className={cn(isMobile && 'mt-3 mr-2')}
+      className={cn(isBelowSm && 'me-2 mt-3')}
       datasetId={datasetId}
       documentId={documentId}
       docDetail={docDetail}
@@ -326,7 +332,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
     // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts are not React 19 context components.
     <DocumentContext.Provider value={contextValue}>
       <div className="flex h-full flex-col bg-background-default">
-        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pr-4 pl-3">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 ps-3 pe-4">
           <button
             type="button"
             aria-label={backButtonLabel}
@@ -374,7 +380,25 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                 canEdit={canEditDocument}
               />
             )}
+            <Dialog
+              open={renameOpen}
+              onOpenChange={(open, details) => {
+                if (!open && queryClient.isMutating(documentRenameFilter(datasetId, documentId)))
+                  details.cancel()
+                else setRenameOpen(open)
+              }}
+            >
+              <DialogContent>
+                <RenameDocumentForm
+                  key={documentId}
+                  document={operationsDetail}
+                  datasetId={datasetId}
+                  onRenamed={() => setRenameOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
             <Operations
+              onRename={() => setRenameOpen(true)}
               scene="detail"
               embeddingAvailable={embeddingAvailable}
               detail={operationsDetail}
@@ -393,7 +417,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               aria-label={metadataToggleLabel}
               aria-expanded={showMetadata}
               title={metadataToggleLabel}
-              className="ml-2"
+              className="ms-2"
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {showMetadata ? (
@@ -418,7 +442,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               className={cn(
                 'flex h-full min-w-0 grow flex-col',
                 !embedding && isFullDocMode && 'relative px-11 pt-4',
-                !embedding && !isFullDocMode && 'relative pt-3 pr-11 pl-5',
+                !embedding && !isFullDocMode && 'relative ps-5 pe-11 pt-3',
               )}
             >
               {embedding ? (
@@ -442,11 +466,11 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
             showClose
             isOpen={showMetadata}
             onClose={() => setShowMetadata(false)}
-            isMobile={isMobile}
+            presentation={isBelowSm ? 'drawer' : 'inline'}
             panelClassName="justify-start!"
           >
             {metadataPanel &&
-              (isMobile ? (
+              (isBelowSm ? (
                 metadataPanel
               ) : (
                 <ScrollArea className="relative mt-3 min-h-0 shrink-0 overflow-hidden">

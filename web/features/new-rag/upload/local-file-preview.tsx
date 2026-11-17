@@ -98,7 +98,7 @@ export function LocalFilePreview({
             }}
           />
         ) : (
-          <DialogContent className="h-[80dvh] max-h-180 w-240 overflow-hidden">
+          <DialogContent className="h-180 max-h-[80dvh] w-240 overflow-hidden">
             <LocalTextFilePreviewBody file={file} />
           </DialogContent>
         ))}

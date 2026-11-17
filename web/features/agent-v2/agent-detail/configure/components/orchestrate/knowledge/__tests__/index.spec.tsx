@@ -1,10 +1,12 @@
 import type { KnowledgeFsSpaceListItemResponse } from '@dify/contracts/api/console/knowledge-fs/types.gen'
+import type { Node, Var } from '@/app/components/workflow/types'
 import type { AgentKnowledgeRetrievalItem } from '@/features/agent-v2/agent-composer/form-state'
 import { zKnowledgeFsSpaceListResponse } from '@dify/contracts/api/console/knowledge-fs/zod.gen'
 import { ORPCError } from '@orpc/client'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useAtomValue } from 'jotai'
+import { ReactFlowProvider } from 'reactflow'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import {
   ComparisonOperator,
@@ -12,6 +14,7 @@ import {
   MetadataFilteringModeEnum,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 import {
   agentSoulConfigToFormState,
   formStateToAgentSoulConfig,
@@ -38,6 +41,29 @@ import {
   AgentOrchestrateViewingVersionContext,
 } from '../../read-only-context'
 import { AgentKnowledgeRetrieval } from '../index'
+
+vi.mock('@/app/components/workflow/nodes/_base/hooks/use-available-var-list', () => ({
+  default: (_nodeId: string, { filterVar }: { filterVar: (value: Var) => boolean }) => ({
+    availableVars: [
+      {
+        nodeId: 'start',
+        title: 'Start',
+        isStartNode: true,
+        vars: [
+          { variable: 'program_input', type: VarType.number },
+          { variable: 'item_input', type: VarType.string },
+        ].filter(filterVar),
+      },
+    ],
+    availableNodesWithParent: [
+      {
+        id: 'start',
+        position: { x: 0, y: 0 },
+        data: { type: BlockEnum.Start, title: 'Start', desc: '' },
+      } satisfies Node,
+    ],
+  }),
+}))
 
 const render = createNuqsTestRenderer(renderWithConsoleQuery)
 
@@ -153,6 +179,7 @@ function setup(
     label = 'snapshot',
     spaces = [space(), space(SECOND, 'Engineering')],
     hasMore = false,
+    workflowNodeId = undefined as string | undefined,
   } = {},
 ) {
   const queryClient = createConsoleQueryClient()
@@ -178,7 +205,9 @@ function setup(
     >
       <AgentOrchestrateViewingVersionContext value={viewingVersion}>
         <AgentOrchestrateReadOnlyContext value={readOnly}>
-          <AgentKnowledgeRetrieval />
+          <ReactFlowProvider>
+            <AgentKnowledgeRetrieval workflowNodeId={workflowNodeId} />
+          </ReactFlowProvider>
         </AgentOrchestrateReadOnlyContext>
       </AgentOrchestrateViewingVersionContext>
       <Snapshot label={label} />
@@ -233,6 +262,62 @@ async function toggleDatasets(
 }
 
 describe('shared knowledge binding dialog', () => {
+  it.each([
+    ['string', 'item_input', 'program_input', ComparisonOperator.is],
+    ['number', 'program_input', 'item_input', ComparisonOperator.equal],
+  ] as const)(
+    'saves a matching workflow variable for %s metadata in the shared dialog',
+    async (metadataType, variableName, otherTypeVariable, comparisonOperator) => {
+      const user = userEvent.setup()
+      const dataset = createDatasetFixture({
+        doc_metadata: [{ id: 'guide-metadata', name: 'guide_id', type: metadataType }],
+      })
+      getDataset.mockResolvedValue(dataset)
+      setup(
+        [
+          {
+            id: 'classic',
+            name: 'Guide retrieval',
+            selectedDatasets: [dataset],
+            metadataFilterMode: MetadataFilteringModeEnum.manual,
+            metadataFilteringConditions: {
+              logical_operator: LogicalOperator.and,
+              conditions: [
+                {
+                  id: 'condition-1',
+                  metadata_id: 'guide-metadata',
+                  name: 'guide_id',
+                  comparison_operator: comparisonOperator,
+                  value: metadataType === 'number' ? 1 : 'previous',
+                },
+              ],
+            },
+          },
+        ],
+        { enabled: false, workflowNodeId: 'agent-node' },
+      )
+      const dialog = await open(user)
+      await advanced(user, dialog)
+      await user.click(await screen.findByRole('button', { name: /metadata.panel.conditions/ }))
+      await user.click(screen.getByRole('button', { name: 'Constant' }))
+      await user.click(screen.getByText('Variable', { exact: true }))
+      await user.click(
+        screen.getByText('workflowModels.nodes.knowledgeRetrieval.metadata.panel.select'),
+      )
+      expect(screen.queryByText(otherTypeVariable)).not.toBeInTheDocument()
+      await user.click(screen.getByText(variableName))
+      await user.keyboard('{Escape}')
+      await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      expect(
+        snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions[0],
+      ).toMatchObject({
+        name: 'guide_id',
+        value: `{{#start.${variableName}#}}`,
+      })
+    },
+  )
+
   beforeEach(() => getDatasets.mockResolvedValue(datasetPage()))
 
   it.each([false, true])(
@@ -680,6 +765,22 @@ describe('shared knowledge binding dialog', () => {
       valid: false,
     },
     {
+      title: 'retains numeric workflow variable conditions',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.equal,
+      value: '{{#start.program_input#}}',
+      valid: true,
+    },
+    {
+      title: 'rejects interpolated text on numeric fields',
+      from: MetadataFilteringVariableType.number,
+      to: MetadataFilteringVariableType.number,
+      operator: ComparisonOperator.equal,
+      value: 'prefix-{{#start.program_input#}}',
+      valid: false,
+    },
+    {
       title: 'retains compatible numeric conditions',
       from: MetadataFilteringVariableType.number,
       to: MetadataFilteringVariableType.number,
@@ -746,6 +847,7 @@ describe('shared knowledge binding dialog', () => {
       await confirmDatasetPicker(user, picker)
       await user.click(within(dialog).getByRole('button', { name: /operation.confirm/ }))
       if (valid) {
+        expect(dialog).not.toBeInTheDocument()
         expect(snapshot().knowledge.sets[0].metadata_filtering.conditions.conditions).toEqual([
           {
             id: 'condition',

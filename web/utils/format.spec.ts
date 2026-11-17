@@ -1,4 +1,11 @@
-import { formatFileSize, formatNumber, formatNumberAbbreviated, formatTime } from './format'
+import dayjs from 'dayjs'
+import {
+  formatFileSize,
+  formatNumber,
+  formatNumberAbbreviated,
+  formatTime,
+  formatToLocalTime,
+} from './format'
 
 describe('formatNumber', () => {
   it.each([
@@ -46,5 +53,15 @@ describe('formatNumberAbbreviated', () => {
     [2300000000, '2.3B'],
   ])('abbreviates %s as %s', (input, expected) => {
     expect(formatNumberAbbreviated(input)).toBe(expected)
+  })
+})
+
+describe('formatToLocalTime', () => {
+  it.each([
+    ['ar-TN', 'يناير'],
+    ['lo-LA', 'ມັງກອນ'],
+    ['en-US', 'January'],
+  ] as const)('formats month names in %s', (locale, expectedMonth) => {
+    expect(formatToLocalTime(dayjs('2026-01-15'), locale, 'MMMM')).toBe(expectedMonth)
   })
 })
