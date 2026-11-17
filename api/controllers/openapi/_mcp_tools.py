@@ -21,6 +21,17 @@ from flask import Flask, current_app
 from constants.oauth_bearer import Scope, TokenType
 from controllers.openapi._catalog import Bind, current_catalog, iter_handlers
 from controllers.openapi._mcp_call import (
+    BIND_KEY,
+    DEPRECATED_KEY,
+    EFFECT_KEY,
+    EXAMPLES_KEY,
+    INPUT_KEY,
+    INTERNAL_KEY,
+    KIND_KEY,
+    OPS_KEY,
+    PROPERTIES_KEY,
+    REQUIRED_KEY,
+    SUMMARY_KEY,
     FileInputUnsupported,
     OpCall,
     OpResult,
@@ -37,32 +48,45 @@ from core.mcp.server.streamable_http import STRUCTURED_OUTPUT_MIN_VERSION
 FIND_LIMIT: Final = 20
 FIND_TOOL: Final = "dify_find"
 TOOL_RESULT_MAX_CHARS: Final = 40_000
-_BEARER_SCHEME: Final = "bearer"
 _PASSED_HEADERS: Final = ("WWW-Authenticate", "Cache-Control")
 _TEXT_TYPE: Final = "text"
 _HINTS_KEY: Final = "hints"
 _OP_KEY: Final = "op"
-_INPUT_KEY: Final = "input"
+_TOOL_KEY: Final = "tool"
+_TOTAL_KEY: Final = "total"
 _QUERY_KEY: Final = "query"
 _SPECS_EXT_KEY: Final = "openapi_mcp_op_specs"
 _HIDDEN_KINDS: Final = frozenset({Kind.SSE.value, Kind.FILE.value})
 _ID_SEPARATOR: Final = "."
+_ABSENT_OP_VALUES: Final = (None, "")
 
 
 class CallTool(StrEnum):
     """The tool that calls an op of a given effect."""
 
     effect: Effect
+    caution: str
 
-    READ = ("dify_read", Effect.READ)
-    WRITE = ("dify_write", Effect.WRITE)
-    DESTRUCTIVE = ("dify_destructive", Effect.DESTRUCTIVE)
+    READ = ("dify_read", Effect.READ, "")
+    WRITE = ("dify_write", Effect.WRITE, "")
+    DESTRUCTIVE = (
+        "dify_destructive",
+        Effect.DESTRUCTIVE,
+        " These operations cannot be undone: confirm with the human first.",
+    )
 
-    def __new__(cls, value: str, effect: Effect) -> CallTool:
+    def __new__(cls, value: str, effect: Effect, caution: str) -> CallTool:
+        """Postcondition: a str member whose value is the tool name, carrying its effect and caution text."""
         obj = str.__new__(cls, value)
         obj._value_ = value
         obj.effect = effect
+        obj.caution = caution
         return obj
+
+    @property
+    def description(self) -> str:
+        """Postcondition: the tool description a host may show the model: names the effect and how to call."""
+        return _CALL_DESCRIPTION.format(effect=self.effect.value) + self.caution
 
     @classmethod
     def for_effect(cls, effect: Effect) -> CallTool:
@@ -75,12 +99,16 @@ class CallTool(StrEnum):
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class FoundOps:
+    """The result of ``find_ops``: ``total`` matches before the cut, and the listed ``ops`` after it."""
+
     total: int
     ops: list[dict[str, Any]]  # each: {"op", "summary", "effect", "tool"}; "tool" is the call tool for that effect
 
 
 @dataclass(frozen=True, slots=True)
 class _Candidate:
+    """One catalog entry, its handler spec and the caller's token kind (None if unknown)."""
+
     entry: Mapping[str, Any]
     spec: EndpointSpec
     token_type: TokenType | None
@@ -91,19 +119,19 @@ type _HiddenWhen = Callable[[_Candidate], bool]
 
 def _hides_streams_and_files(candidate: _Candidate) -> bool:
     """Hides ops whose response is a stream or a file: a tool call returns one JSON-text result."""
-    return candidate.entry["kind"] in _HIDDEN_KINDS
+    return candidate.entry[KIND_KEY] in _HIDDEN_KINDS
 
 
 def _hides_flagged_ops(candidate: _Candidate) -> bool:
     """Hides internal and deprecated ops: they are not part of the surface agents should use."""
-    if candidate.entry["internal"]:
+    if candidate.entry[INTERNAL_KEY]:
         return True
-    return bool(candidate.entry["deprecated"])
+    return bool(candidate.entry[DEPRECATED_KEY])
 
 
 def _hides_required_file_input(candidate: _Candidate) -> bool:
     """Hides ops that cannot run without a file upload: a tool call carries JSON only."""
-    required = set(candidate.entry["input"]["required"])
+    required = set(candidate.entry[INPUT_KEY][REQUIRED_KEY])
     return bool(required & _file_names(candidate.entry))
 
 
@@ -112,26 +140,20 @@ def _hides_other_subjects(candidate: _Candidate) -> bool:
     token_type = candidate.token_type
     if token_type is None:
         return False
-    for requirement in candidate.spec.requirements:
-        if isinstance(requirement, CheckSubject) and not _admits(requirement, token_type):
-            return True
-    return False
+    checks = [requirement for requirement in candidate.spec.requirements if isinstance(requirement, CheckSubject)]
+    return any(not _admits(check, token_type) for check in checks)
 
 
 def _hides_out_of_scope(candidate: _Candidate) -> bool:
-    """Hides ops that need a scope the token kind's subject lacks (not for PATs, which carry no OAuth scopes)."""
+    """Hides ops that need a scope the token kind's subject lacks (a subject with ``Scope.FULL`` lacks none)."""
     token_type = candidate.token_type
     if token_type is None:
-        return False
-    if token_type is TokenType.PERSONAL_ACCESS:
         return False
     scopes = token_type.subject.scopes
     if Scope.FULL in scopes:
         return False
-    for requirement in candidate.spec.requirements:
-        if isinstance(requirement, CheckScope) and requirement.scope not in scopes:
-            return True
-    return False
+    checks = [requirement for requirement in candidate.spec.requirements if isinstance(requirement, CheckScope)]
+    return any(check.scope not in scopes for check in checks)
 
 
 def _hides_without_pat_policy(candidate: _Candidate) -> bool:
@@ -155,11 +177,13 @@ _RULES: Final[tuple[_HiddenWhen, ...]] = (*_ENTRY_RULES, *_CALLER_RULES)
 
 
 def _admits(requirement: CheckSubject, token_type: TokenType) -> bool:
+    """Postcondition: True when one of the subject classes the check allows is the token kind's subject."""
     return any(subject.subject_type == token_type.subject for subject in requirement.allowed)
 
 
 def _file_names(entry: Mapping[str, Any]) -> set[str]:
-    return {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
+    """Postcondition: the input names the entry binds as file uploads."""
+    return {name for name, bind in entry[BIND_KEY].items() if bind == Bind.FILE}
 
 
 def _op_specs(app: Flask) -> Mapping[str, EndpointSpec]:
@@ -177,6 +201,7 @@ def _op_specs(app: Flask) -> Mapping[str, EndpointSpec]:
 
 
 def _token_type(token: str | None) -> TokenType | None:
+    """Postcondition: the token kind for the token's prefix; None when there is no token or the prefix is unknown."""
     if token is None:
         return None
     return TokenType.for_token(token)
@@ -192,7 +217,7 @@ def callable_ops(token: str | None) -> dict[str, Mapping[str, Any]]:
     raw, _ = current_catalog()
     specs = _op_specs(current_app._get_current_object())  # type: ignore[attr-defined]
     token_type = _token_type(token)
-    entries: dict[str, Mapping[str, Any]] = json.loads(raw)["ops"]
+    entries: dict[str, Mapping[str, Any]] = json.loads(raw)[OPS_KEY]
     return {
         op: entry
         for op, entry in entries.items()
@@ -201,11 +226,13 @@ def callable_ops(token: str | None) -> dict[str, Mapping[str, Any]]:
 
 
 def _tool_for(entry: Mapping[str, Any]) -> str:
-    return CallTool.for_effect(Effect(entry["effect"])).value
+    """Postcondition: the name of the call tool for the entry's effect."""
+    return CallTool.for_effect(Effect(entry[EFFECT_KEY])).value
 
 
 def _matches(words: list[str], op: str, entry: Mapping[str, Any]) -> bool:
-    haystack = f"{op.replace(_ID_SEPARATOR, ' ')} {entry['summary']}".lower()
+    """Postcondition: True when every lowercase word is in the op id (dots as spaces) or the summary."""
+    haystack = f"{op.replace(_ID_SEPARATOR, ' ')} {entry[SUMMARY_KEY]}".lower()
     return all(word in haystack for word in words)
 
 
@@ -221,10 +248,10 @@ def find_ops(query: str, *, token: str | None) -> FoundOps:
     matched = sorted(op for op, entry in entries.items() if _matches(words, op, entry))
     ops = [
         {
-            "op": op,
-            "summary": entries[op]["summary"],
-            "effect": entries[op]["effect"],
-            "tool": _tool_for(entries[op]),
+            _OP_KEY: op,
+            SUMMARY_KEY: entries[op][SUMMARY_KEY],
+            EFFECT_KEY: entries[op][EFFECT_KEY],
+            _TOOL_KEY: _tool_for(entries[op]),
         }
         for op in matched[:FIND_LIMIT]
     ]
@@ -241,17 +268,17 @@ def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
     entry = callable_ops(token).get(op)
     if entry is None:
         raise UnknownOp(op)
-    schema = copy.deepcopy(entry["input"])
+    schema = copy.deepcopy(entry[INPUT_KEY])
     for name in _file_names(entry):
-        schema["properties"].pop(name, None)
-    schema["required"] = [name for name in schema["required"] if name in schema["properties"]]
+        schema[PROPERTIES_KEY].pop(name, None)
+    schema[REQUIRED_KEY] = [name for name in schema[REQUIRED_KEY] if name in schema[PROPERTIES_KEY]]
     return {
-        "op": op,
-        "summary": entry["summary"],
-        "effect": entry["effect"],
-        "tool": _tool_for(entry),
-        "input": schema,
-        "examples": entry["examples"],
+        _OP_KEY: op,
+        SUMMARY_KEY: entry[SUMMARY_KEY],
+        EFFECT_KEY: entry[EFFECT_KEY],
+        _TOOL_KEY: _tool_for(entry),
+        INPUT_KEY: schema,
+        EXAMPLES_KEY: entry[EXAMPLES_KEY],
     }
 
 
@@ -266,16 +293,24 @@ MCP_INSTRUCTIONS: Final = """This server runs operations of a Dify server. Four 
 7. A file variable of an app takes a file mapping with a URL in "inputs": {"transfer_method": "remote_url", "url": "https://...", "type": "document"}.
 8. An operation that dify_find does not list is not available to this login."""  # noqa: E501
 
+FIND_DESCRIPTION: Final = (
+    "Search Dify operations by a few words, or pass op to get one operation's input schema and examples. "
+    "Call this before calling an operation; operation ids can change between server versions."
+)
+_CALL_DESCRIPTION: Final = (
+    "Run a Dify operation whose effect is {effect}. op is an id from dify_find and input is its input object; "
+    "pass workspace_id yourself where the operation takes it."
+)
 _STRING: Final = {"type": "string"}
 _CALL_SCHEMA: Final = {
     "type": "object",
-    "properties": {_OP_KEY: _STRING, _INPUT_KEY: {"type": "object"}},
-    "required": [_OP_KEY, _INPUT_KEY],
+    PROPERTIES_KEY: {_OP_KEY: _STRING, INPUT_KEY: {"type": "object"}},
+    REQUIRED_KEY: [_OP_KEY, INPUT_KEY],
     "additionalProperties": False,
 }
 _FIND_SCHEMA: Final = {
     "type": "object",
-    "properties": {_QUERY_KEY: _STRING, _OP_KEY: _STRING},
+    PROPERTIES_KEY: {_QUERY_KEY: _STRING, _OP_KEY: _STRING},
     "additionalProperties": False,
 }
 
@@ -284,6 +319,7 @@ class Unauthenticated(Exception):  # noqa: N818
     """An operation answered 401: the whole MCP request must answer 401 with these headers."""
 
     def __init__(self, headers: Mapping[str, str]) -> None:
+        """Postcondition: keeps a copy of the challenge ``headers`` to send with the 401."""
         super().__init__("unauthenticated")
         self.headers = dict(headers)
 
@@ -297,14 +333,14 @@ def tool_list() -> list[mcp_types.Tool]:
     """Postcondition: the four tools, fixed; needs no request, database or catalog."""
     find = mcp_types.Tool(
         name=FIND_TOOL,
-        description="List the operations this login can call, or describe one operation by id.",
+        description=FIND_DESCRIPTION,
         inputSchema=_FIND_SCHEMA,
         annotations=mcp_types.ToolAnnotations(readOnlyHint=True),
     )
     calls = [
         mcp_types.Tool(
             name=tool.value,
-            description=f"Call an operation whose effect is {tool.effect.value}.",
+            description=tool.description,
             inputSchema=_CALL_SCHEMA,
             annotations=mcp_types.ToolAnnotations(
                 readOnlyHint=tool.effect is Effect.READ,
@@ -317,10 +353,12 @@ def tool_list() -> list[mcp_types.Tool]:
 
 
 def _error(message: str) -> mcp_types.CallToolResult:
+    """Postcondition: a tool error result holding ``message`` as its one text block."""
     return mcp_types.CallToolResult(isError=True, content=[mcp_types.TextContent(type=_TEXT_TYPE, text=message)])
 
 
 def _compact(body: Any) -> str:
+    """Postcondition: ``body`` as compact JSON text with non-ASCII characters kept."""
     return json.dumps(body, separators=(",", ":"), ensure_ascii=False)
 
 
@@ -349,17 +387,8 @@ def _json_result(body: Any, *, protocol_version: str, is_error: bool = False) ->
     return result
 
 
-def _bearer_token(authorization: str | None) -> str | None:
-    """Postcondition: the token after the ``Bearer`` scheme (any case), or None."""
-    if authorization is None:
-        return None
-    scheme, _, value = authorization.partition(" ")
-    if scheme.lower() != _BEARER_SCHEME:
-        return None
-    return value.strip() or None
-
-
 def _unknown_op(op: str) -> mcp_types.CallToolResult:
+    """Postcondition: a tool error saying ``op`` is not an operation this login can call, pointing at ``dify_find``."""
     return _error(f"No operation `{op}`. Use {FIND_TOOL} to search.")
 
 
@@ -372,11 +401,17 @@ def _string_argument(arguments: Mapping[str, Any], name: str) -> str | None:
 
 
 def _run_find(arguments: Mapping[str, Any], *, token: str | None, protocol_version: str) -> mcp_types.CallToolResult:
-    """Precondition: inside a Flask request. Postcondition: ``describe_op`` when ``op`` is given, else a search."""
-    if _OP_KEY in arguments:
+    """Precondition: inside a Flask request.
+
+    Postcondition: ``describe_op`` when ``op`` is a non-empty string, else a search.
+
+    An ``op`` that is null or empty counts as absent (models fill every schema field); any other
+    non-string ``op``, or a non-string ``query``, is a tool error.
+    """
+    if arguments.get(_OP_KEY) not in _ABSENT_OP_VALUES:
         op = _string_argument(arguments, _OP_KEY)
         if op is None:
-            return _error("`op` must be a non-empty string.")
+            return _error("`op` must be a string.")
         try:
             return _json_result(describe_op(op, token=token), protocol_version=protocol_version)
         except UnknownOp:
@@ -385,7 +420,7 @@ def _run_find(arguments: Mapping[str, Any], *, token: str | None, protocol_versi
     if not isinstance(query, str):
         return _error("`query` must be a string.")
     found = find_ops(query, token=token)
-    return _json_result({"total": found.total, "ops": found.ops}, protocol_version=protocol_version)
+    return _json_result({_TOTAL_KEY: found.total, OPS_KEY: found.ops}, protocol_version=protocol_version)
 
 
 _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] = {
@@ -398,6 +433,7 @@ _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] =
 
 
 def _is_callable_hint(hint: Any, allowed: Mapping[str, Any]) -> bool:
+    """Postcondition: True when ``hint`` is an object whose ``op`` is one of the ``allowed`` ops."""
     if not isinstance(hint, dict):
         return False
     return hint.get(_OP_KEY) in allowed
@@ -434,21 +470,25 @@ def _run_call(
     arguments: Mapping[str, Any],
     *,
     authorization: str | None,
+    token: str | None,
     trace_id: str | None,
     protocol_version: str,
 ) -> mcp_types.CallToolResult:
-    """Precondition: inside a Flask request. Postcondition: the op ran, or a tool error says why it did not."""
+    """Precondition: inside a Flask request; ``token`` is the bearer token of ``authorization``, if any.
+
+    Postcondition: the op ran, or a tool error says why it did not.
+    """
     op = _string_argument(arguments, _OP_KEY)
     if op is None:
         return _error("`op` must be a non-empty string.")
-    op_input = arguments.get(_INPUT_KEY)
+    op_input = arguments.get(INPUT_KEY)
     if not isinstance(op_input, dict):
         return _error("`input` must be a JSON object.")
-    allowed = callable_ops(_bearer_token(authorization))
+    allowed = callable_ops(token)
     entry = allowed.get(op)
     if entry is None:
         return _unknown_op(op)
-    effect = Effect(entry["effect"])
+    effect = Effect(entry[EFFECT_KEY])
     if effect != tool.effect:
         return _error(f"`{op}` is a {effect.value} operation. Call it with {CallTool.for_effect(effect).value}.")
     try:
@@ -463,19 +503,25 @@ def run_tool(
     arguments: Mapping[str, Any],
     *,
     authorization: str | None,
+    token: str | None,
     trace_id: str | None,
     protocol_version: str,
 ) -> mcp_types.CallToolResult:
     """Run one tool call.
 
-    Precondition: inside a Flask request. Postcondition: a result for the call, with
-    ``isError`` set for every failure except a 401 from the op, which raises
-    ``Unauthenticated``. A name that is not one of the four tools is a tool error.
+    Precondition: inside a Flask request; ``name`` is one of the four tool names (the route
+    answers any other name with INVALID_PARAMS); ``authorization`` is the raw Authorization
+    header, forwarded to the op; ``token`` is the bearer token taken from it (``extract_bearer``).
+    Postcondition: a result for the call, with ``isError`` set for every failure except a 401
+    from the op, which raises ``Unauthenticated``.
     """
     if name == FIND_TOOL:
-        return _run_find(arguments, token=_bearer_token(authorization), protocol_version=protocol_version)
-    try:
-        tool = CallTool(name)
-    except ValueError:
-        return _error(f"Unknown tool `{name}`.")
-    return _run_call(tool, arguments, authorization=authorization, trace_id=trace_id, protocol_version=protocol_version)
+        return _run_find(arguments, token=token, protocol_version=protocol_version)
+    return _run_call(
+        CallTool(name),
+        arguments,
+        authorization=authorization,
+        token=token,
+        trace_id=trace_id,
+        protocol_version=protocol_version,
+    )
