@@ -6,6 +6,7 @@ from core.app.entities.task_entities import (
     AppStreamResponse,
     ErrorStreamResponse,
     NodeFinishStreamResponse,
+    NodeRetryStreamResponse,
     NodeStartStreamResponse,
     PingStreamResponse,
     WorkflowAppBlockingResponse,
@@ -88,7 +89,9 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             if isinstance(sub_stream_response, ErrorStreamResponse):
                 data = cls._error_to_stream_response(sub_stream_response.err)
                 response_chunk.update(data)
-            elif isinstance(sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse):
+            elif isinstance(
+                sub_stream_response, NodeStartStreamResponse | NodeFinishStreamResponse | NodeRetryStreamResponse
+            ):
                 response_chunk.update(sub_stream_response.to_ignore_detail_dict())
             else:
                 response_chunk.update(sub_stream_response.model_dump(mode="json"))
