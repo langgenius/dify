@@ -44,13 +44,17 @@ function listFiles(dir: string): string[] {
 // Negative run_worker_first rules win over `/*`, so a directory rule such as `!/education/*`
 // would also hide the /education pages from the Worker. Directories that share their name with a
 // route are therefore excluded file by file.
+// With a basePath the build puts _next/static under the prefix but public/ at the asset root, so
+// /base/embed.js has no matching asset path, and `assets.basePath` would strip the prefix from
+// _next/static too. The Worker maps those requests itself, so they keep going through it.
 function staticPublicRoutes(basePath: string) {
+  if (basePath) return []
   const routes = appTopLevelSegments()
   return fs.readdirSync(publicDir, { withFileTypes: true }).flatMap((entry) => {
-    if (!entry.isDirectory()) return [`!${basePath}/${entry.name}`]
-    if (!routes.dynamic && !routes.names.has(entry.name)) return [`!${basePath}/${entry.name}/*`]
+    if (!entry.isDirectory()) return [`!/${entry.name}`]
+    if (!routes.dynamic && !routes.names.has(entry.name)) return [`!/${entry.name}/*`]
     return listFiles(path.join(publicDir, entry.name)).map(
-      (file) => `!${basePath}/${path.relative(publicDir, file).split(path.sep).join('/')}`,
+      (file) => `!/${path.relative(publicDir, file).split(path.sep).join('/')}`,
     )
   })
 }
