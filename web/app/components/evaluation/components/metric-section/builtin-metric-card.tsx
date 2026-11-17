@@ -4,10 +4,12 @@ import type { NodeInfo } from '@dify/contracts/api/console/evaluate-target-type/
 import type { EvaluationMetric, EvaluationResourceProps } from '../../types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { Infotip, InfotipContent, InfotipTrigger } from '@langgenius/dify-ui/infotip'
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { getTranslatedMetricDescription } from '../../default-metric-descriptions'
 import { useEvaluationStore } from '../../store'
 import {
   dedupeNodeInfoList,
@@ -34,6 +36,7 @@ const BuiltinMetricCard = ({
   const [isExpanded, setIsExpanded] = useState(true)
   const metricVisual = getMetricVisual(metric.optionId)
   const metricToneClasses = getToneClasses(metricVisual.tone)
+  const metricDescription = getTranslatedMetricDescription(t, metric.optionId, metric.description)
   const selectedNodeInfoList = metric.nodeInfoList ?? []
   const selectedNodeIdSet = new Set(selectedNodeInfoList.map((nodeInfo) => nodeInfo.node_id))
   const selectableNodeInfoList =
@@ -86,15 +89,23 @@ const BuiltinMetricCard = ({
           </div>
         </button>
 
-        <Button
-          size="small"
-          variant="ghost"
-          aria-label={t(($) => $['metrics.remove'])}
-          className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 pointer-coarse:opacity-100"
-          onClick={() => removeMetric(resourceType, resourceId, metric.id)}
-        >
-          <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
-        </Button>
+        <div className="flex shrink-0 items-center gap-1">
+          <Button
+            size="small"
+            variant="ghost"
+            aria-label={t(($) => $['metrics.remove'])}
+            className="h-6 w-6 shrink-0 rounded-md p-0 text-text-quaternary opacity-0 transition-opacity group-hover:opacity-100 hover:text-text-secondary focus-visible:opacity-100 pointer-coarse:opacity-100"
+            onClick={() => removeMetric(resourceType, resourceId, metric.id)}
+          >
+            <span aria-hidden="true" className="i-ri-delete-bin-line h-4 w-4" />
+          </Button>
+          {metricDescription && (
+            <Infotip>
+              <InfotipTrigger aria-label={metric.label} />
+              <InfotipContent className="max-w-[260px]">{metricDescription}</InfotipContent>
+            </Infotip>
+          )}
+        </div>
       </div>
 
       {isExpanded && (
