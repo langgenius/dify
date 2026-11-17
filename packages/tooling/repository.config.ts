@@ -1,6 +1,11 @@
 import { defineConfig } from 'vite-plus'
 import { lintConfig } from './lint.config.ts'
 
+// Type-aware lint runs on tsrs-lint, which rejects tsconfig files that declare
+// `contentMappers` unless external code may run. Match `dify-web#type-check`,
+// which passes `--runExternalCode` for the workspace OpenAPI content mapper.
+process.env.TSRS_LINT_RUN_EXTERNAL_CODE ??= '1'
+
 const lintFiles = '*.{js,cjs,mjs,jsx,ts,cts,mts,tsx}'
 const eslintFiles = '*.{json,jsonc,json5,md,yml,yaml}'
 const formatOnlyFiles = '*.{mdx,css,scss,less,html,vue,svelte,gql,graphql,hbs,handlebars}'
