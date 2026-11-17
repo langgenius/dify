@@ -1,6 +1,8 @@
-"""Which catalog operations a bearer's token can call, found and described over MCP.
+"""The MCP tools over the op catalog: which ops a bearer can find and call, and how a call's result maps.
 
-Every test runs against the real app's catalog and handler specs.
+Tests run against the real app's catalog, handler specs and in-process calls. A few replace
+`call_op` or `callable_ops` on the tools module with plain functions, to prove nothing ran or to
+feed a response no fixture can produce.
 """
 
 from __future__ import annotations
@@ -18,7 +20,7 @@ from sqlalchemy.orm import Session
 
 from controllers.openapi import _mcp_tools, jobs
 from controllers.openapi._catalog import Bind
-from controllers.openapi._mcp_call import UnknownOp, op_entry
+from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, op_entry
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
@@ -449,3 +451,92 @@ def test_a_workspace_token_does_not_see_the_form_ops() -> None:
 
     assert _SUBMIT_FORM_OP not in listed
     assert _WAIT_JOB_OP in listed
+
+
+_JSON_HEADERS = {"Content-Type": "application/json"}
+_CALLABLE_HINT = {"summary": "wait", "op": _WAIT_JOB_OP, "input": {}, "form": None}
+_UNCALLABLE_HINT = {"summary": "gone", "op": "no.such.op", "input": {}, "form": None}
+
+
+def _canned(status: int, body: dict[str, object]) -> Callable[[OpCall], OpResult]:
+    def answer(_call: OpCall) -> OpResult:
+        return OpResult(status=status, body=body, headers=_JSON_HEADERS, is_json=True)
+
+    return answer
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_hints_the_token_cannot_call_are_dropped_from_an_error_body(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = {
+        "code": "service_api_disabled",
+        "message": "off",
+        "status": 403,
+        "hints": [_UNCALLABLE_HINT, _CALLABLE_HINT],
+    }
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(403, error))
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert result.isError is True
+    assert result.structuredContent is None
+    assert json.loads(_text(result))["hints"] == [_CALLABLE_HINT]
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_a_403_is_a_tool_error_not_an_exception(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(403, {"code": "forbidden", "message": "no", "status": 403}))
+    with openapi_app.test_request_context():
+        result = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert result.isError is True
+    assert json.loads(_text(result))["status"] == 403
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+def test_an_oversize_error_body_is_capped_after_hint_dropping(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    error = {"code": "x", "message": "m" * 100, "hints": [_UNCALLABLE_HINT]}
+    monkeypatch.setattr(_mcp_tools, "call_op", _canned(422, error))
+    monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 200)
+    with openapi_app.test_request_context():
+        kept = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+        monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 50)
+        capped = _run(CallTool.READ, {"op": "get.workspace", "input": {}})
+
+    assert json.loads(_text(kept))["hints"] == []
+    assert capped.isError is True
+    assert _text(capped).startswith("The result is ")
+    assert "above the 50 limit" in _text(capped)
+
+
+@pytest.fixture
+def op_calls(monkeypatch: pytest.MonkeyPatch) -> list[OpCall]:
+    seen: list[OpCall] = []
+    real = _mcp_tools.call_op
+
+    def recording(call: OpCall) -> OpResult:
+        seen.append(call)
+        return real(call)
+
+    monkeypatch.setattr(_mcp_tools, "call_op", recording)
+    return seen
+
+
+@pytest.mark.usefixtures("admitted_bearer")
+@pytest.mark.parametrize(
+    ("tool", "op"),
+    [
+        (CallTool.READ, "no.such.op"),
+        (CallTool.READ, _NEEDS_ACCOUNT_SCOPE),
+        (CallTool.WRITE, _INTERNAL),
+    ],
+)
+def test_a_refused_lookup_runs_nothing(openapi_app: Flask, op_calls: list[OpCall], tool: CallTool, op: str) -> None:
+    with openapi_app.test_request_context():
+        result = _run(tool, {"op": op, "input": {}})
+
+    assert result.isError is True
+    assert op_calls == []
