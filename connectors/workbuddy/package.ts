@@ -10,7 +10,7 @@ import {
   statSync,
   writeFileSync,
 } from 'node:fs'
-import { join } from 'node:path'
+import { join, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
@@ -33,6 +33,14 @@ const META_FILE = 'connector-meta.json'
 const USAGE = 'usage: node package.ts <connector> [--tag <tag> | --worktree]'
 const WORKTREE_LABEL = 'worktree'
 const SKILL_INTRO_FILE = 'skill-intro.md'
+const SKILLS_DIR = 'skills'
+const SKILL_FILE = 'SKILL.md'
+const SKILL_META_FILE = 'skill-meta.json'
+const WORKBUDDY_MAX_PACKAGE_BYTES = 20 * 1024 * 1024
+const BYTES_PER_MIB = 1024 * 1024
+const HIDDEN_SEGMENT_PREFIX = '.'
+const MARKDOWN_LINK = /\[[^\]]*\]\(([^)\s]+)\)/g
+const ABSOLUTE_OR_ANCHOR = /^(?:[a-z][a-z0-9+.-]*:|#|\/)/i
 
 function run(command: string, args: string[], cwd = REPO_ROOT): string {
   return execFileSync(command, args, { cwd, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
@@ -52,12 +60,39 @@ function resolveTag(tag: string | undefined): string {
   return resolved
 }
 
+function isVisiblePath(root: string): (source: string) => boolean {
+  return (source) =>
+    !relative(root, source)
+      .split(sep)
+      .some((segment) => segment.startsWith(HIDDEN_SEGMENT_PREFIX))
+}
+
+function relativeLinkTargets(markdown: string): string[] {
+  return [...markdown.matchAll(MARKDOWN_LINK)]
+    .map((match) => match[1]!)
+    .filter((target) => !ABSOLUTE_OR_ANCHOR.test(target))
+    .map((target) => target.split('#')[0]!)
+    .filter(Boolean)
+}
+
+function assertIntroLinksExist(intro: string, skillDir: string, source: string) {
+  const missing = relativeLinkTargets(intro).filter((target) => !existsSync(join(skillDir, target)))
+  if (missing.length > 0)
+    throw new Error(
+      `${SKILL_INTRO_FILE} links to ${missing.join(', ')}, which ${source} does not contain in ${SKILLS_DIR}/; build from a newer tag or use --worktree`,
+    )
+}
+
 function extractSkill(tag: string | null, skill: string, outDir: string) {
   if (tag === null) {
-    cpSync(join(REPO_ROOT, 'skills', skill), join(outDir, 'skills', skill), { recursive: true })
+    const skillRoot = join(REPO_ROOT, SKILLS_DIR, skill)
+    cpSync(skillRoot, join(outDir, SKILLS_DIR, skill), {
+      recursive: true,
+      filter: isVisiblePath(skillRoot),
+    })
     return
   }
-  const archive = execFileSync('git', ['archive', tag, `skills/${skill}`], {
+  const archive = execFileSync('git', ['archive', tag, `${SKILLS_DIR}/${skill}`], {
     cwd: REPO_ROOT,
     maxBuffer: ARCHIVE_MAX_BYTES,
   })
@@ -71,8 +106,9 @@ function main() {
   })
   const connector = positionals[0]
   if (!connector || positionals.length > 1) throw new Error(USAGE)
-  if (values.tag !== undefined && values.worktree)
-    throw new Error(`${USAGE}\n--tag and --worktree cannot be combined`)
+  if (values.tag !== undefined) {
+    if (values.worktree) throw new Error(`${USAGE}\n--tag and --worktree cannot be combined`)
+  }
 
   if (!CONNECTOR_NAME.test(connector))
     throw new Error(
@@ -93,7 +129,7 @@ function main() {
     throw new Error(
       `${sourceDir}: missing ${missing.join(', ')} for a "${connectorInfo.type}" connector`,
     )
-  const meta = readJson<SkillMeta>(join(sourceDir, 'skill-meta.json'))
+  const meta = readJson<SkillMeta>(join(sourceDir, SKILL_META_FILE))
 
   const tag = values.worktree ? null : resolveTag(values.tag)
 
@@ -105,11 +141,18 @@ function main() {
 
   extractSkill(tag, meta.skill, outDir)
 
-  const skillPath = join(outDir, 'skills', meta.skill, 'SKILL.md')
+  const skillPath = join(outDir, SKILLS_DIR, meta.skill, SKILL_FILE)
   let skillMd = insertFrontmatter(readFileSync(skillPath, 'utf8'), skillFields(meta, version))
   const introPath = join(sourceDir, SKILL_INTRO_FILE)
-  if (existsSync(introPath))
-    skillMd = insertAfterFrontmatter(skillMd, readFileSync(introPath, 'utf8'))
+  if (existsSync(introPath)) {
+    const intro = readFileSync(introPath, 'utf8')
+    assertIntroLinksExist(
+      intro,
+      join(outDir, SKILLS_DIR, meta.skill),
+      tag === null ? WORKTREE_LABEL : `tag ${tag}`,
+    )
+    skillMd = insertAfterFrontmatter(skillMd, intro)
+  }
   writeFileSync(skillPath, skillMd)
 
   const icon = ICON_FILES.find((name) => existsSync(join(sourceDir, name)))
@@ -117,7 +160,14 @@ function main() {
   for (const name of [...copiedFiles, icon]) copyFileSync(join(sourceDir, name), join(outDir, name))
 
   run('zip', ['-r', '-X', `../${connector}.zip`, '.'], outDir)
-  process.stdout.write(`${tag === null ? WORKTREE_LABEL : `tag ${tag}`}\n${zipPath}\n`)
+  const { size } = statSync(zipPath)
+  if (size > WORKBUDDY_MAX_PACKAGE_BYTES)
+    throw new Error(
+      `${zipPath} is ${(size / BYTES_PER_MIB).toFixed(1)} MiB; WorkBuddy accepts at most ${WORKBUDDY_MAX_PACKAGE_BYTES / BYTES_PER_MIB} MiB`,
+    )
+  process.stdout.write(
+    `${tag === null ? WORKTREE_LABEL : `tag ${tag}`}\n${zipPath}\n${size} bytes\n`,
+  )
 }
 
 try {
