@@ -39,6 +39,7 @@ from models.account import Account
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot
 from repositories.human_input_v2.email_channel.entities import ResendCandidate
 from repositories.human_input_v2.im_channel_repository import IMChannelId, IMChannelStatus
+from services.feature_service import FeatureService
 from services.human_input_v2.credential_update import ResendChannelUpdate, Unchanged
 from services.human_input_v2.email_channel_management_composition import (
     build_human_input_email_channel_management_service,
@@ -56,7 +57,11 @@ from services.human_input_v2.im_channel_service_composition import (
 )
 
 from ._common import StrictModel
-from ._decorators import require_admin_or_owner, workspace_channel_api_admission
+from ._decorators import (
+    require_admin_or_owner,
+    workspace_channel_api_admission,
+    workspace_email_channel_api_admission,
+)
 from .config_version import (
     InvalidConfigVersionError,
     decode_email_config_version,
@@ -88,6 +93,12 @@ class WorkspaceChannelResource(Resource):
     """Apply the edition gate outside every canonical handler decorator stack."""
 
     method_decorators = [workspace_channel_api_admission]
+
+
+class _WorkspaceEmailChannelResource(WorkspaceChannelResource):
+    """Admit tenant Email management before invoking any canonical handler."""
+
+    method_decorators = [*WorkspaceChannelResource.method_decorators, workspace_email_channel_api_admission]
 
 
 class ChannelStatus(StrEnum):
@@ -345,7 +356,12 @@ class ListChannelProvidersApi(WorkspaceChannelResource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
-        email_providers = build_human_input_email_channel_management_service().available_providers()
+        """List supported providers for the admitted administrator without accessing disabled owners."""
+        email_providers = (
+            build_human_input_email_channel_management_service().available_providers()
+            if FeatureService.use_tenant_scoped_email_config()
+            else ()
+        )
         im_providers = _workspace_im_channel_service(tenant_id, current_user).available_providers()
         return ListChannelProvidersResponse(
             email_providers=[_channel_provider_response(provider) for provider in email_providers],
@@ -360,8 +376,13 @@ class ListChannelsApi(WorkspaceChannelResource):
     @with_current_user
     @with_current_tenant_id
     def get(self, tenant_id: str, current_user: Account) -> ResponseReturnValue:
+        """List supported configured channels for the admitted administrator without reading disabled owners."""
         workspace_scope = _workspace_scope(tenant_id)
-        email = build_human_input_email_channel_management_service().get_current(workspace_scope)
+        email = (
+            build_human_input_email_channel_management_service().get_current(workspace_scope)
+            if FeatureService.use_tenant_scoped_email_config()
+            else None
+        )
         im = _workspace_im_channel_service(tenant_id, current_user).get_current()
         channels: list[ChannelSummary] = []
         if email is not None:
@@ -372,7 +393,7 @@ class ListChannelsApi(WorkspaceChannelResource):
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/test")
-class EmailChannelTestApi(WorkspaceChannelResource):
+class EmailChannelTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelTestPayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @require_admin_or_owner
@@ -397,7 +418,7 @@ class EmailChannelTestApi(WorkspaceChannelResource):
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>/test")
-class EmailChannelSavedTestApi(WorkspaceChannelResource):
+class EmailChannelSavedTestApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelUpdatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[ChannelTestResponse.__name__])
     @console_ns.response(409, "Configuration conflict", console_ns.models[ChannelConflictResponse.__name__])
@@ -426,7 +447,7 @@ class EmailChannelSavedTestApi(WorkspaceChannelResource):
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email")
-class EmailChannelCreateApi(WorkspaceChannelResource):
+class EmailChannelCreateApi(_WorkspaceEmailChannelResource):
     @console_ns.expect(console_ns.models[EmailChannelCreatePayload.__name__])
     @console_ns.response(200, "Success", console_ns.models[EmailChannelMutationResponse.__name__])
     @require_admin_or_owner
@@ -448,7 +469,7 @@ class EmailChannelCreateApi(WorkspaceChannelResource):
 
 
 @console_ns.route("/workspaces/current/human-input/v2/channels/email/<uuid:channel_id>")
-class EmailChannelApi(WorkspaceChannelResource):
+class EmailChannelApi(_WorkspaceEmailChannelResource):
     @console_ns.response(200, "Success", console_ns.models[EmailChannelDetailResponse.__name__])
     @require_admin_or_owner
     @with_current_tenant_id

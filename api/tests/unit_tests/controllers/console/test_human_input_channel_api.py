@@ -16,6 +16,7 @@ from controllers.console.human_input_v2.config_version import encode_email_confi
 from controllers.console.wraps import _is_setup_completed
 from core.human_input_v2.entities import EmailProviderType, IMProvider
 from core.human_input_v2.shared import AccountId, DirectoryScope, EmailProviderId, WorkspaceScope
+from enums import DeploymentEdition
 from libs.exception import BaseHTTPException
 from models.account import Account, AccountStatus, TenantAccountRole
 from repositories.human_input_v2.email_channel import EmailChannelView, EmailConfigurationSnapshot, ResendCandidate
@@ -513,6 +514,7 @@ def test_email_candidate_test_delegates_the_submitted_candidate_without_a_recipi
 def test_channel_collection_aggregates_configured_owner_snapshots(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     email_snapshot = EmailChannelView(
         id=EmailProviderId("email-1"),
@@ -563,6 +565,7 @@ def test_channel_collection_aggregates_configured_owner_snapshots(
 def test_channel_collection_omits_unconfigured_owner_snapshots(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
 
     class EmailOwner:
@@ -620,6 +623,7 @@ def test_composite_guard_allows_a_workspace_owner(
     app: Flask,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setattr("configs.dify_config.DEPLOYMENT_EDITION", DeploymentEdition.CLOUD)
     module = importlib.import_module("controllers.console.human_input_v2.channel")
     account = Account(name="Owner", email="owner@example.com", status=AccountStatus.ACTIVE)
     account._current_tenant = make_tenant(tenant_id="workspace-1", name="Workspace")
