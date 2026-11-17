@@ -19,6 +19,7 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 from machinery.context import AccountRequestContext, RequestContext
+from machinery.scope import UNRESTRICTED, IdScope
 from services.app.console_service import ConsoleAppService
 from services.entities.app_entities import AppListParams
 from services.knowledge.datasets.application import DatasetApplicationService, DatasetListFilter
@@ -56,13 +57,13 @@ class PersonalAccessTokenSigningKeyUnavailableError(Exception):
 
 @dataclass(frozen=True, slots=True)
 class PersonalAccessTokenGrant:
-    """Discovery filters: None leaves that domain unrestricted by the PAT;
-    an empty set denies every object; a nonempty set permits only those IDs.
+    """Discovery filters: ``UNRESTRICTED`` leaves that domain unrestricted by the
+    PAT; an empty set denies every object; a nonempty set permits only those IDs.
     Current account permissions remain mandatory for all three cases.
     """
 
-    app_ids: frozenset[str] | None = None
-    workspace_ids: frozenset[str] | None = None
+    app_ids: IdScope = UNRESTRICTED
+    workspace_ids: IdScope = UNRESTRICTED
 
 
 @dataclass(frozen=True, slots=True)
@@ -79,37 +80,35 @@ class PersonalAccessTokenScopes:
     workspace_ids: tuple[str, ...] = ()
 
 
-def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> frozenset[str] | None:
+def workspace_scope_ids(scopes: PersonalAccessTokenScopes) -> IdScope:
     """Project the workspace scope alone to grant IDs.
 
     Precondition: ``scopes`` is a validated scope value. Postcondition: ``all``
-    returns ``None`` (unrestricted), ``selected`` returns exactly the selected
+    returns ``UNRESTRICTED``, ``selected`` returns exactly the selected
     IDs and ``none`` returns an empty set. Pure; no state is read or mutated.
     """
     if scopes.workspace_mode == "all":
-        return None
+        return UNRESTRICTED
     if scopes.workspace_mode == "selected":
         return frozenset(scopes.workspace_ids)
     return frozenset()
 
 
-def workspace_discovery_ids(
-    scopes: PersonalAccessTokenScopes, resource_workspace_ids: frozenset[str]
-) -> frozenset[str] | None:
+def workspace_discovery_ids(scopes: PersonalAccessTokenScopes, resource_workspace_ids: frozenset[str]) -> IdScope:
     """Return the workspaces a PAT may discover through workspace listing.
 
     Preconditions: ``scopes`` is a validated scope value and
     ``resource_workspace_ids`` holds the trusted owner workspaces of the
-    token's persisted resource rows. Postconditions: ``None`` (unrestricted)
-    when either the resource scope or the workspace scope is ``all``; otherwise
+    token's persisted resource rows. Postconditions: ``UNRESTRICTED`` when
+    either the resource scope or the workspace scope is ``all``; otherwise
     the workspace-scope IDs unioned with the resource owner workspaces when the
     resource scope is ``selected``, so a resource-only PAT can still find the
     workspace its resources live in. Account membership still filters the
     result downstream. Pure; no state is read or mutated.
     """
     scoped = workspace_scope_ids(scopes)
-    if scopes.resource_mode == "all" or scoped is None:
-        return None
+    if scopes.resource_mode == "all" or scoped is UNRESTRICTED:
+        return UNRESTRICTED
     return scoped | resource_workspace_ids if scopes.resource_mode == "selected" else scoped
 
 
@@ -421,7 +420,7 @@ class PersonalAccessTokenService:
         context and are only consulted by resource and workspace operation policies.
 
         Postconditions: the returned ``PersonalAccessTokenGrant`` carries
-        ``workspace_ids``/``app_ids`` where ``None`` leaves that domain
+        ``workspace_ids``/``app_ids`` where ``UNRESTRICTED`` leaves that domain
         unrestricted, an empty set denies every object, and a nonempty set permits
         only those IDs; current account permissions still apply downstream. No
         state is mutated. ``WORKSPACE_DISCOVERY`` admits every workspace when the
@@ -461,7 +460,7 @@ class PersonalAccessTokenService:
             # Endpoint guards own account RBAC, WebApp access and API switches.
             # A PAT only restricts the resources those existing guards may admit.
             return PersonalAccessTokenGrant(
-                app_ids=None
+                app_ids=UNRESTRICTED
                 if scopes.resource_mode == "all"
                 else selected
                 if scopes.resource_mode == "selected"
