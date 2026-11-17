@@ -136,7 +136,7 @@ class _SlackLocatorPayload(_Base64JSONLocatorPayload):
 class _SlackCardCodec(IMCardEventDecoder):
     """Own the complete sender-owned Slack card wire contract without I/O."""
 
-    _MAX_MARKDOWN_TEXT_LENGTH: ClassVar[int] = MarkdownBlock.text_max_length
+    _MAX_TOTAL_MARKDOWN_TEXT_LENGTH: ClassVar[int] = MarkdownBlock.text_max_length
     _MAX_HEADER_TEXT_LENGTH: ClassVar[int] = 150
     _MAX_BLOCK_COUNT: ClassVar[int] = 50
     _MAX_ACTION_COUNT: ClassVar[int] = 25
@@ -607,6 +607,11 @@ class _SlackCardCodec(IMCardEventDecoder):
 
     @classmethod
     def _unrepresentable_reason(cls, intent: ResolvedForm) -> str | None:
+        """Return a reason for an unsupported resolved form, or None, without I/O.
+
+        Slack's Markdown text limit covers all Markdown blocks in one payload;
+        input labels, defaults, the header and action text do not count toward it.
+        """
         if not intent.parts and not intent.actions:
             return "Slack cannot preserve an empty card."
         if len(intent.title) > cls._MAX_HEADER_TEXT_LENGTH:
@@ -618,11 +623,13 @@ class _SlackCardCodec(IMCardEventDecoder):
             return "Slack cannot preserve this number of card actions."
 
         input_names: set[str] = set()
+        total_markdown_text_length = 0
         for block in intent.parts:
             match block:
                 case MarkdownFragment(text=text):
-                    if not text or len(text) > cls._MAX_MARKDOWN_TEXT_LENGTH:
-                        return "Slack cannot preserve one Markdown block of this length."
+                    total_markdown_text_length += len(text)
+                    if not text or total_markdown_text_length > cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH:
+                        return "Slack cannot preserve Markdown blocks of this total length."
                     continue
                 case FileInput() | FileListInput():
                     return "Slack cards cannot represent file inputs."
