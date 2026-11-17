@@ -32,11 +32,27 @@ class AgentNodeBindingDict(TypedDict, total=False):
     package_ref: str
 
 
+class AgentNodeDataDict(TypedDict, total=False):
+    """The ``data`` payload one Dify Agent node carries inside a workflow graph.
+
+    ``type``/``version``/``agent_node_kind`` mirror the identification contract of
+    :func:`domain.workflow.agent_node.is_dify_agent_node_data` (``BuiltinNodeTypes.AGENT``,
+    ``AGENT_NODE_VERSION``, ``AGENT_NODE_KIND``); ``agent_binding`` and ``agent_job``
+    are the portable fields this module's export/import helpers read and rewrite.
+    """
+
+    type: str
+    version: str
+    agent_node_kind: str
+    agent_binding: AgentNodeBindingDict
+    agent_job: dict[str, object]
+
+
 class AgentNodeGraphNodeDict(TypedDict):
     """One workflow graph node whose ``data`` may carry an :class:`AgentNodeBindingDict`."""
 
     id: str
-    data: dict[str, object]
+    data: AgentNodeDataDict
 
 
 class AgentNodeGraphDict(TypedDict):
