@@ -325,6 +325,7 @@ import {
   zPostAppsByAppIdWorkflowStartBody,
   zPostAppsByAppIdWorkflowStartPath,
   zPostAppsByAppIdWorkflowStartResponse,
+  zPostMcpResponse,
   zPostOauthDeviceApproveBody,
   zPostOauthDeviceApproveResponse,
   zPostOauthDeviceCodeBody,
@@ -1908,6 +1909,32 @@ export const apps = {
   byAppId,
 }
 
+/**
+ * Serve one MCP JSON-RPC message
+ *
+ * Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+ * (result, or error for an unsupported protocol version or tool name); 202 with no body for
+ * a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
+ * any other unparsable message; 401 when the token is not real; the login check's own status
+ * when it answers a server error.
+ */
+export const post23 = oc
+  .route({
+    description:
+      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 401 when the token is not real; the login check's own status\nwhen it answers a server error.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMcp',
+    path: '/mcp',
+    summary: 'Serve one MCP JSON-RPC message',
+    tags: ['openapi'],
+  })
+  .output(zPostMcpResponse)
+
+export const mcp = {
+  post: post23,
+}
+
 export const get36 = oc
   .route({
     inputStructure: 'detailed',
@@ -1938,7 +1965,7 @@ export const nodeTypes = {
   byNodeType,
 }
 
-export const post23 = oc
+export const post24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1950,10 +1977,10 @@ export const post23 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post23,
+  post: post24,
 }
 
-export const post24 = oc
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1965,10 +1992,10 @@ export const post24 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post24,
+  post: post25,
 }
 
-export const post25 = oc
+export const post26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1980,7 +2007,7 @@ export const post25 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post25,
+  post: post26,
 }
 
 export const get38 = oc
@@ -1998,7 +2025,7 @@ export const lookup = {
   get: get38,
 }
 
-export const post26 = oc
+export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2010,7 +2037,7 @@ export const post26 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post26,
+  post: post27,
 }
 
 export const device = {
@@ -2167,7 +2194,7 @@ export const get42 = oc
  * Answers 400 for a duplicate name, an invalid schema, or invalid
  * credentials. The response masks credential values.
  */
-export const post27 = oc
+export const post28 = oc
   .route({
     description:
       "`schema` is an OpenAPI schema of `schema_type` that defines the\nprovider's tools; `credentials` configures how calls authenticate.\nAnswers 400 for a duplicate name, an invalid schema, or invalid\ncredentials. The response masks credential values.",
@@ -2189,11 +2216,11 @@ export const post27 = oc
 
 export const apiToolProviders = {
   get: get42,
-  post: post27,
+  post: post28,
   byProviderName,
 }
 
-export const post28 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2211,10 +2238,10 @@ export const post28 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse)
 
 export const advancedChat5 = {
-  post: post28,
+  post: post29,
 }
 
-export const post29 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2226,14 +2253,14 @@ export const post29 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post29,
+  post: post30,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post30 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2250,10 +2277,10 @@ export const post30 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse)
 
 export const check3 = {
-  post: post30,
+  post: post31,
 }
 
-export const post31 = oc
+export const post32 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2270,12 +2297,12 @@ export const post31 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post31,
+  post: post32,
   byImportId,
   check: check3,
 }
 
-export const post32 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2293,7 +2320,7 @@ export const post32 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
 
 export const workflow5 = {
-  post: post32,
+  post: post33,
 }
 
 export const apps2 = {
@@ -2336,7 +2363,7 @@ export const documentBatches = {
  * Poll the document by ID
  * to track indexing; its original import batch does not track this update.
  */
-export const post33 = oc
+export const post34 = oc
   .route({
     description:
       'Poll the document by ID\nto track indexing; its original import batch does not track this update.',
@@ -2356,7 +2383,7 @@ export const post33 = oc
   .output(zPostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsByDocumentIdUpdateByTextResponse)
 
 export const updateByText = {
-  post: post33,
+  post: post34,
 }
 
 /**
@@ -2407,7 +2434,7 @@ export const byDocumentId = {
  * Indexing runs asynchronously; track
  * it with the document's `display_status` or the batch indexing-status op.
  */
-export const post34 = oc
+export const post35 = oc
   .route({
     description:
       "Indexing runs asynchronously; track\nit with the document's `display_status` or the batch indexing-status op.",
@@ -2427,7 +2454,7 @@ export const post34 = oc
   .output(zPostWorkspacesByWorkspaceIdDatasetsByDatasetIdDocumentsCreateByTextResponse)
 
 export const createByText = {
-  post: post34,
+  post: post35,
 }
 
 /**
@@ -2547,7 +2574,7 @@ export const get47 = oc
  * `provider=external` binds an external
  * knowledge API instead of indexing documents locally.
  */
-export const post35 = oc
+export const post36 = oc
   .route({
     description:
       '`provider=external` binds an external\nknowledge API instead of indexing documents locally.',
@@ -2569,7 +2596,7 @@ export const post35 = oc
 
 export const datasets = {
   get: get47,
-  post: post35,
+  post: post36,
   byDatasetId,
 }
 
@@ -2678,7 +2705,7 @@ export const cat = {
  *
  * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description:
       'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
@@ -2698,7 +2725,7 @@ export const post36 = oc
   .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
 
 export const diff = {
-  post: post36,
+  post: post37,
 }
 
 /**
@@ -2894,7 +2921,7 @@ export const marketplace = {
  * list; the response reports the result. Answers 404 when `provider_id`
  * names no provider.
  */
-export const post37 = oc
+export const post38 = oc
   .route({
     description:
       'Reconnects to the stored server URL and replaces the cached tool\nlist; the response reports the result. Answers 404 when `provider_id`\nnames no provider.',
@@ -2909,7 +2936,7 @@ export const post37 = oc
   .output(zPostWorkspacesByWorkspaceIdMcpProvidersByProviderIdRefreshResponse)
 
 export const refresh = {
-  post: post37,
+  post: post38,
 }
 
 /**
@@ -2997,7 +3024,7 @@ export const byProviderId = {
  * Answers 400 for an invalid URL or a duplicate name, identifier, or
  * server URL.
  */
-export const post38 = oc
+export const post39 = oc
   .route({
     description:
       "The provider is saved with user-identity forwarding off, then the API\nmakes a best-effort connection to fetch the server's tools; a server\nthat cannot be reached yet still answers 201, just without tools.\nAnswers 400 for an invalid URL or a duplicate name, identifier, or\nserver URL.",
@@ -3018,7 +3045,7 @@ export const post38 = oc
   .output(zPostWorkspacesByWorkspaceIdMcpProvidersResponse)
 
 export const mcpProviders = {
-  post: post38,
+  post: post39,
   byProviderId,
 }
 
@@ -3070,7 +3097,7 @@ export const get58 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post39 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3089,7 +3116,7 @@ export const post39 = oc
 
 export const members = {
   get: get58,
-  post: post39,
+  post: post40,
   byMemberId,
 }
 
@@ -3099,7 +3126,7 @@ export const members = {
  * Answers 404 when `credential_id` is not among the credentials that
  * `describe.model_provider` lists for this provider.
  */
-export const post40 = oc
+export const post41 = oc
   .route({
     description:
       'Answers 404 when `credential_id` is not among the credentials that\n`describe.model_provider` lists for this provider.',
@@ -3122,7 +3149,7 @@ export const post40 = oc
   )
 
 export const activate = {
-  post: post40,
+  post: post41,
 }
 
 /**
@@ -3171,7 +3198,7 @@ export const byCredentialId = {
   activate,
 }
 
-export const post41 = oc
+export const post42 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3189,7 +3216,7 @@ export const post41 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post41,
+  post: post42,
   byCredentialId,
 }
 
@@ -3199,7 +3226,7 @@ export const credentials = {
  * Answers 404 when `credential_id` is not among the credentials this
  * model lists.
  */
-export const post42 = oc
+export const post43 = oc
   .route({
     description: 'Answers 404 when `credential_id` is not among the credentials this\nmodel lists.',
     inputStructure: 'detailed',
@@ -3222,7 +3249,7 @@ export const post42 = oc
   )
 
 export const activate2 = {
-  post: post42,
+  post: post43,
 }
 
 /**
@@ -3281,7 +3308,7 @@ export const byCredentialId2 = {
   activate: activate2,
 }
 
-export const post43 = oc
+export const post44 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3299,7 +3326,7 @@ export const post43 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post43,
+  post: post44,
   byCredentialId: byCredentialId2,
 }
 
@@ -3470,7 +3497,7 @@ export const byPluginId = {
   delete: delete14,
 }
 
-export const post44 = oc
+export const post45 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3487,7 +3514,7 @@ export const post44 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post44,
+  post: post45,
 }
 
 export const get63 = oc
@@ -3519,7 +3546,7 @@ export const plugins2 = {
  * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
  * so an edit made in the same second as the export is not detected.
  */
-export const post45 = oc
+export const post46 = oc
   .route({
     description:
       "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
@@ -3539,7 +3566,7 @@ export const post45 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsImportsResponse)
 
 export const imports2 = {
-  post: post45,
+  post: post46,
 }
 
 export const get64 = oc
@@ -3582,7 +3609,7 @@ export const versions2 = {
   get: get65,
 }
 
-export const post46 = oc
+export const post47 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3599,7 +3626,7 @@ export const post46 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse)
 
 export const publish2 = {
-  post: post46,
+  post: post47,
 }
 
 export const get66 = oc
@@ -3687,7 +3714,7 @@ export const byCredentialId3 = {
   patch: patch19,
 }
 
-export const post47 = oc
+export const post48 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3705,7 +3732,7 @@ export const post47 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post47,
+  post: post48,
   byCredentialId: byCredentialId3,
 }
 
@@ -3831,7 +3858,7 @@ export const byWorkflowToolId = {
  * the tool. Answers 400 for a duplicate name or app id, an unknown app,
  * or an app without a published workflow.
  */
-export const post48 = oc
+export const post49 = oc
   .route({
     description:
       '`workflow_app_id` names a workflow app whose published workflow backs\nthe tool. Answers 400 for a duplicate name or app id, an unknown app,\nor an app without a published workflow.',
@@ -3852,11 +3879,11 @@ export const post48 = oc
   .output(zPostWorkspacesByWorkspaceIdWorkflowToolsResponse)
 
 export const workflowTools = {
-  post: post48,
+  post: post49,
   byWorkflowToolId,
 }
 
-export const post49 = oc
+export const post50 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -3868,7 +3895,7 @@ export const post49 = oc
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post49,
+  post: post50,
 }
 
 export const get71 = oc
@@ -3926,6 +3953,7 @@ export const contract = {
   version,
   account,
   apps,
+  mcp,
   nodeTypes,
   oauth,
   permittedExternalApps,

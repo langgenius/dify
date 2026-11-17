@@ -1406,6 +1406,22 @@ job is missing, expired or not the caller's for this app.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /mcp
+**Serve one MCP JSON-RPC message**
+
+Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+(result, or error for an unsupported protocol version or tool name); 202 with no body for
+a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
+any other unparsable message; 401 when the token is not real; the login check's own status
+when it answers a server error.
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success |  |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /node-types
 #### Responses
 
