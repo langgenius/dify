@@ -353,11 +353,11 @@ _START_OPS: Final = "; ".join(
 )
 _STEPS_BEFORE_FILES: Final = f"""This server runs operations of a Dify server. Four tools: dify_find, dify_read, dify_write, dify_destructive.
 
-1. First call dify_read with op "get.workspace" and input {{}}. It confirms the login and lists workspaces with their ids. If the list is empty, this token has no workspace access: ask the human to give the token access to the workspace, or to tell you the workspace id. Do not guess an id.
-2. Many operations take workspace_id. Nothing fills it in for you: pass the id from step 1.
+1. First call dify_read with op "get.workspace" and input {{}}. It confirms the login and lists the workspaces this login can manage, with their ids. The list may be empty: app operations still work. To find apps, call get.console_app: it needs no workspace and lists every app this login may use.
+2. Operations on a workspace, such as plugins, model providers and tool credentials, take workspace_id. Nothing fills it in for you: pass an id from the workspace list in step 1, and do not guess one.
 3. Before calling an operation, look it up: dify_find with a few words lists operations; dify_find with op "<id>" returns its input schema and examples. Operation ids can change between server versions, so do not guess them.
 4. Call an operation with the tool that dify_find names for it. dify_destructive operations cannot be undone: confirm with the human first.
-5. To run an app, call the start operation for its mode ({_START_OPS}), then wait.job with the returned job id until the status is final. A status of "paused" means the run needs human input: follow the hints. Repeating an idempotency_key returns the same job, also when it failed (for example as interrupted or not confirmed): to run again, use a new key.
+5. To run an app, call the start operation for its mode ({_START_OPS}), then wait.job with the returned job id until the status is final. To stop a job, call stop.job. A status of "paused" means the run needs human input: follow the hints. Repeating an idempotency_key returns the same job, also when it failed (for example as interrupted or not confirmed): to run again, use a new key.
 6. Every result may carry "hints": ready-made next calls. Prefer them over building a call yourself."""  # noqa: E501
 # Step 7, keyed by whether file transfers are on.
 _FILE_STEPS: Final[Mapping[bool, str]] = {
