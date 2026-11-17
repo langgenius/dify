@@ -268,6 +268,7 @@ import {
   zPostAppsByAppIdWorkflowStartBody,
   zPostAppsByAppIdWorkflowStartPath,
   zPostAppsByAppIdWorkflowStartResponse,
+  zPostMcpResponse,
   zPostOauthDeviceApproveBody,
   zPostOauthDeviceApproveResponse,
   zPostOauthDeviceCodeBody,
@@ -1719,6 +1720,32 @@ export const apps = {
   byAppId,
 }
 
+/**
+ * Serve one MCP JSON-RPC message
+ *
+ * Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply
+ * (result, or error for an unsupported protocol version or tool name); 202 with no body for
+ * a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
+ * any other unparsable message; 401 when the token is not real; the login check's own status
+ * when it answers a server error.
+ */
+export const post22 = oc
+  .route({
+    description:
+      "Precondition: a POST to the openapi blueprint. Postcondition: 200 with a JSON-RPC reply\n(result, or error for an unsupported protocol version or tool name); 202 with no body for\na notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for\nany other unparsable message; 401 when the token is not real; the login check's own status\nwhen it answers a server error.",
+    inputStructure: 'detailed',
+    method: 'POST',
+    operationId: 'postMcp',
+    path: '/mcp',
+    summary: 'Serve one MCP JSON-RPC message',
+    tags: ['openapi'],
+  })
+  .output(zPostMcpResponse)
+
+export const mcp = {
+  post: post22,
+}
+
 export const get35 = oc
   .route({
     inputStructure: 'detailed',
@@ -1749,7 +1776,7 @@ export const nodeTypes = {
   byNodeType,
 }
 
-export const post22 = oc
+export const post23 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1761,10 +1788,10 @@ export const post22 = oc
   .output(zPostOauthDeviceApproveResponse)
 
 export const approve = {
-  post: post22,
+  post: post23,
 }
 
-export const post23 = oc
+export const post24 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1776,10 +1803,10 @@ export const post23 = oc
   .output(zPostOauthDeviceCodeResponse)
 
 export const code = {
-  post: post23,
+  post: post24,
 }
 
-export const post24 = oc
+export const post25 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1791,7 +1818,7 @@ export const post24 = oc
   .output(zPostOauthDeviceDenyResponse)
 
 export const deny = {
-  post: post24,
+  post: post25,
 }
 
 export const get37 = oc
@@ -1809,7 +1836,7 @@ export const lookup = {
   get: get37,
 }
 
-export const post25 = oc
+export const post26 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1821,7 +1848,7 @@ export const post25 = oc
   .output(zPostOauthDeviceTokenResponse)
 
 export const token = {
-  post: post25,
+  post: post26,
 }
 
 export const device = {
@@ -1872,7 +1899,7 @@ export const permittedExternalApps = {
   byAppId: byAppId2,
 }
 
-export const post26 = oc
+export const post27 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1890,10 +1917,10 @@ export const post26 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsAdvancedChatResponse)
 
 export const advancedChat5 = {
-  post: post26,
+  post: post27,
 }
 
-export const post27 = oc
+export const post28 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1905,14 +1932,14 @@ export const post27 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsByImportIdConfirmResponse)
 
 export const confirm = {
-  post: post27,
+  post: post28,
 }
 
 export const byImportId = {
   confirm,
 }
 
-export const post28 = oc
+export const post29 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1929,10 +1956,10 @@ export const post28 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsCheckResponse)
 
 export const check3 = {
-  post: post28,
+  post: post29,
 }
 
-export const post29 = oc
+export const post30 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1949,12 +1976,12 @@ export const post29 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsImportsResponse)
 
 export const imports = {
-  post: post29,
+  post: post30,
   byImportId,
   check: check3,
 }
 
-export const post30 = oc
+export const post31 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -1972,7 +1999,7 @@ export const post30 = oc
   .output(zPostWorkspacesByWorkspaceIdAppsWorkflowResponse)
 
 export const workflow5 = {
-  post: post30,
+  post: post31,
 }
 
 export const apps2 = {
@@ -2034,7 +2061,7 @@ export const cat = {
  *
  * Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.
  */
-export const post31 = oc
+export const post32 = oc
   .route({
     description:
       'Performs a side-effect-free comparison, equivalent to difyctl fs diff. POST is used because this is a structured query and an optional semantic summary can consume model quota. Automatic retries are not safe when include_semantic_summary=true because each retry can consume quota again. Requires an OAuth account bearer with WORKSPACE_READ. Authentication and workspace scope are checked before request validation, and Agent Knowledge Base membership is revalidated for every call. A hidden or missing Agent Knowledge Base or entry uses the same 404 response. These operations are read-only and do not emit mutation audit events.',
@@ -2054,7 +2081,7 @@ export const post31 = oc
   .output(zPostWorkspacesByWorkspaceIdKnowledgeFsKnowledgeSpacesByKnowledgeSpaceIdFsDiffResponse)
 
 export const diff = {
-  post: post31,
+  post: post32,
 }
 
 /**
@@ -2291,7 +2318,7 @@ export const get48 = oc
   )
   .output(zGetWorkspacesByWorkspaceIdMembersResponse)
 
-export const post32 = oc
+export const post33 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2310,7 +2337,7 @@ export const post32 = oc
 
 export const members = {
   get: get48,
-  post: post32,
+  post: post33,
   byMemberId,
 }
 
@@ -2334,7 +2361,7 @@ export const byCredentialId = {
   patch: patch16,
 }
 
-export const post33 = oc
+export const post34 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2352,7 +2379,7 @@ export const post33 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsResponse)
 
 export const credentials = {
-  post: post33,
+  post: post34,
   byCredentialId,
 }
 
@@ -2380,7 +2407,7 @@ export const byCredentialId2 = {
   patch: patch17,
 }
 
-export const post34 = oc
+export const post35 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2398,7 +2425,7 @@ export const post34 = oc
   .output(zPostWorkspacesByWorkspaceIdModelProvidersByProviderModelsCredentialsResponse)
 
 export const credentials2 = {
-  post: post34,
+  post: post35,
   byCredentialId: byCredentialId2,
 }
 
@@ -2481,7 +2508,7 @@ export const byPluginId = {
   delete: delete5,
 }
 
-export const post35 = oc
+export const post36 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2498,7 +2525,7 @@ export const post35 = oc
   .output(zPostWorkspacesByWorkspaceIdPluginsInstallResponse)
 
 export const install = {
-  post: post35,
+  post: post36,
 }
 
 export const get52 = oc
@@ -2530,7 +2557,7 @@ export const plugins2 = {
  * Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
  * so an edit made in the same second as the export is not detected.
  */
-export const post36 = oc
+export const post37 = oc
   .route({
     description:
       "Creates a draft (201) or overwrites it (200), relaying archive and service errors.\nImport never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,\nso an edit made in the same second as the export is not detected.",
@@ -2550,7 +2577,7 @@ export const post36 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsImportsResponse)
 
 export const imports2 = {
-  post: post36,
+  post: post37,
 }
 
 export const get53 = oc
@@ -2593,7 +2620,7 @@ export const versions2 = {
   get: get54,
 }
 
-export const post37 = oc
+export const post38 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2610,7 +2637,7 @@ export const post37 = oc
   .output(zPostWorkspacesByWorkspaceIdSkillsBySkillIdPublishResponse)
 
 export const publish2 = {
-  post: post37,
+  post: post38,
 }
 
 export const get55 = oc
@@ -2673,7 +2700,7 @@ export const byCredentialId3 = {
   patch: patch18,
 }
 
-export const post38 = oc
+export const post39 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2691,7 +2718,7 @@ export const post38 = oc
   .output(zPostWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsResponse)
 
 export const credentials3 = {
-  post: post38,
+  post: post39,
   byCredentialId: byCredentialId3,
 }
 
@@ -2735,7 +2762,7 @@ export const tools = {
   get: get58,
 }
 
-export const post39 = oc
+export const post40 = oc
   .route({
     inputStructure: 'detailed',
     method: 'POST',
@@ -2747,7 +2774,7 @@ export const post39 = oc
   .output(zPostWorkspacesByWorkspaceIdSwitchResponse)
 
 export const switch_ = {
-  post: post39,
+  post: post40,
 }
 
 export const get59 = oc
@@ -2800,6 +2827,7 @@ export const contract = {
   version,
   account,
   apps,
+  mcp,
   nodeTypes,
   oauth,
   permittedExternalApps,
