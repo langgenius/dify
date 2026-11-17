@@ -611,6 +611,7 @@ class _SlackCardCodec(IMCardEventDecoder):
 
         Slack's Markdown text limit covers all Markdown blocks in one payload;
         input labels, defaults, the header and action text do not count toward it.
+        Oversized Markdown diagnostics include the complete total and the limit.
         """
         if not intent.parts and not intent.actions:
             return "Slack cannot preserve an empty card."
@@ -623,13 +624,20 @@ class _SlackCardCodec(IMCardEventDecoder):
             return "Slack cannot preserve this number of card actions."
 
         input_names: set[str] = set()
-        total_markdown_text_length = 0
+        total_markdown_text_length = sum(
+            len(block.text) for block in intent.parts if isinstance(block, MarkdownFragment)
+        )
         for block in intent.parts:
             match block:
                 case MarkdownFragment(text=text):
-                    total_markdown_text_length += len(text)
-                    if not text or total_markdown_text_length > cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH:
-                        return "Slack cannot preserve Markdown blocks of this total length."
+                    if not text:
+                        return "Slack cannot preserve an empty Markdown block (length: 0 characters)."
+                    if total_markdown_text_length > cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH:
+                        return (
+                            f"Slack cannot preserve Markdown blocks with a total text length of "
+                            f"{total_markdown_text_length} characters "
+                            f"(maximum: {cls._MAX_TOTAL_MARKDOWN_TEXT_LENGTH} characters per payload)."
+                        )
                     continue
                 case FileInput() | FileListInput():
                     return "Slack cards cannot represent file inputs."
