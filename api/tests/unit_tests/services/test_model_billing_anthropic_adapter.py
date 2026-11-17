@@ -297,6 +297,136 @@ def runtime_contract(index: int = 0) -> AnthropicSourceContract:
     return contract
 
 
+def latest_opus45_contract() -> tuple[AnthropicSourceContract, AIModelEntity]:
+    """Actual SYSTEM schema; this fixture is not upstream alias/cost evidence."""
+    payload = json.loads((FIXTURES / "model_billing_anthropic0341_opus45_source.json").read_text())
+    schema = AIModelEntity.model_validate(payload["sourceSchema"])
+    profile = payload["profile"]
+    contract = build_anthropic_source_contract(
+        adapter_id=ANTHROPIC_SOURCE_ADAPTER_ID,
+        adapter_revision="2",
+        expected_rules_digest=payload["rulesDigest"],
+        source_provider=ANTHROPIC_SOURCE_PROVIDER,
+        source_model=profile["source_model"],
+        source_plugin_unique_identifier=payload["sourceUid"],
+        source_schema=schema,
+        expected_source_schema_digest=payload["sourceSchemaDigest"],
+        target_model=profile["target_model"],
+    )
+    return contract, schema
+
+
+def test_latest_bare_opus45_uses_actual_system_dynamic_schema_not_dated_catalog() -> None:
+    contract, schema = latest_opus45_contract()
+    assert schema.model == contract.source_model == "claude-opus-4-5"
+    assert schema.pricing is None
+    assert [rule.name for rule in schema.parameter_rules] == [
+        "max_tokens",
+        "thinking",
+        "temperature",
+        "top_p",
+        "top_k",
+        "thinking_budget",
+    ]
+    assert schema.parameter_rules[0].max == 128000
+    assert schema.parameter_rules[0].default == 4096
+    assert not schema.parameter_rules[0].required
+    assert contract.source_schema_digest == contract.source_runtime_schema_digest == model_schema_digest(schema)
+    assert contract.target_model == "claude-opus-4-5-20251101"
+    assert contract.profile_id == "anthropic-0341-runtime-v2:claude-opus-4-5"
+
+
+def test_latest_bare_opus45_normal_marker_restore_preserves_exact_source_identity() -> None:
+    contract, _ = latest_opus45_contract()
+    marker = anthropic_source_marker(
+        contract,
+        source_provider=ANTHROPIC_SOURCE_PROVIDER,
+        source_model=contract.source_model,
+        model_type=ModelType.LLM,
+        target_model=contract.target_model,
+    )
+    assert len(marker) == 6
+    assert (
+        restore_anthropic_source_contract(
+            marker,
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=contract.source_model,
+            model_type=ModelType.LLM,
+            target_model=contract.target_model,
+        )
+        == contract
+    )
+
+
+def test_latest_bare_opus45_existing_prepare_lookup_retains_dynamic_credits_identity() -> None:
+    from core.entities.provider_entities import (
+        ProviderQuotaType,
+        QuotaConfiguration,
+        QuotaUnit,
+        RestrictModel,
+        SystemConfiguration,
+    )
+    from services.model_billing_mapping_service import hosted_migration_sources
+
+    _, schema = latest_opus45_contract()
+    system = SystemConfiguration(
+        enabled=True,
+        current_quota_type=ProviderQuotaType.PAID,
+        credentials={"anthropic_api_key": "offline-schema-only-no-real-key"},
+        quota_configurations=[
+            QuotaConfiguration(
+                quota_type=ProviderQuotaType.PAID,
+                quota_unit=QuotaUnit.CREDITS,
+                quota_limit=5000,
+                quota_used=0,
+                is_valid=True,
+                restrict_models=[RestrictModel(model=schema.model, model_type=ModelType.LLM)],
+            )
+        ],
+    )
+    lookups: list[tuple[ModelType, str]] = []
+
+    def recorded_source_snapshot(kind: ModelType, model: str, credentials: dict[str, object]) -> AIModelEntity:
+        assert (kind, model) == (ModelType.LLM, "claude-opus-4-5")
+        assert set(credentials) == {"anthropic_api_key"}
+        lookups.append((kind, model))
+        return schema.model_copy(deep=True)
+
+    result = hosted_migration_sources(system, [source_schema(3)], [ModelType.LLM], recorded_source_snapshot)
+    assert set(result) == {(ModelType.LLM, "claude-opus-4-5")}
+    assert result[(ModelType.LLM, schema.model)].pool_types == {ProviderQuotaType.PAID}
+    assert model_schema_digest(result[(ModelType.LLM, schema.model)].schema) == model_schema_digest(schema)
+    assert lookups == [(ModelType.LLM, schema.model)]
+
+
+@pytest.mark.parametrize("changed", ["dated_schema", "range", "uid", "rules", "target"])
+def test_latest_bare_opus45_does_not_accept_dated_schema_or_other_source_binding(changed: str) -> None:
+    contract, schema = latest_opus45_contract()
+    source_uid, rules, target = contract.source_plugin_unique_identifier, contract.rules_digest, contract.target_model
+    if changed == "dated_schema":
+        schema = source_schema(3)
+    elif changed == "range":
+        schema.parameter_rules[0].max = 64000
+    elif changed == "uid":
+        source_uid = runtime_binding(2)["marker"]["source_plugin_uid"]
+    elif changed == "rules":
+        rules = runtime_binding(2)["marker"]["rules_digest"]
+    else:
+        target = "claude-opus-4-6"
+    with pytest.raises(AnthropicSourceAdapterError):
+        build_anthropic_source_contract(
+            adapter_id=ANTHROPIC_SOURCE_ADAPTER_ID,
+            adapter_revision="2",
+            expected_rules_digest=rules,
+            source_provider=ANTHROPIC_SOURCE_PROVIDER,
+            source_model=contract.source_model,
+            source_plugin_unique_identifier=source_uid,
+            source_schema=schema,
+            expected_source_schema_digest=contract.source_schema_digest,
+            target_model=target,
+        )
+
+
 def runtime_legacy_index(index: int) -> int:
     return index + 8 if index < 8 else index - 8
 

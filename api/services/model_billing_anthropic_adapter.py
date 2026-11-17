@@ -1,6 +1,6 @@
 """Exact source Anthropic semantics for opt-in managed Tokener redirects.
 
-Sixteen original and eight appended 0.3.39 runtime-bound profiles are supported. Schema validation
+Original and additional exact-source runtime profiles are append-only. Schema validation
 occurs before a plan is frozen; transport validates the frozen binding again
 before adding its private marker to managed target credentials. No provider,
 App, parameter dictionary or BYOK credential can opt itself into routing here.
@@ -373,6 +373,16 @@ _REVIEWED_LATEST_CONTRACTS = (
         "sha256:a7352e9631c9b21e92305a8e60aff8c601bdb15701f552848f827946d44787a3",
         algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
         source_runtime_schema_digest="sha256:1ac0fea1adc86b9667e1ba1fce687bf586ba345a1a8078d02c6fd65f58e03a92",
+    ),
+    AnthropicSourceContract(
+        "anthropic-0341-runtime-v2:claude-opus-4-5",
+        "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+        "claude-opus-4-5",
+        "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+        "claude-opus-4-5-20251101",
+        "sha256:d4040a0ea2960d5eb763f31d636819b328f25794801515f3f2896c5ac8b37e70",
+        algorithm_revision=ANTHROPIC_SOURCE_RUNTIME_ADAPTER_REVISION,
+        source_runtime_schema_digest="sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
     ),
 )
 

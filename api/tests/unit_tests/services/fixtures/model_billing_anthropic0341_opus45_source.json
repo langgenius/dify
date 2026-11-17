@@ -1,0 +1,342 @@
+{
+  "actualTargetPackageUid": null,
+  "packageCreated": false,
+  "plannedTargetModel": "claude-opus-4-5-20251101",
+  "profile": {
+    "context_size": 200000,
+    "parameter_rules": [
+      {
+        "default": 4096,
+        "max": 128000.0,
+        "min": 1.0,
+        "name": "max_tokens",
+        "options": [],
+        "precision": 0,
+        "required": false,
+        "type": "int",
+        "use_template": "max_tokens"
+      },
+      {
+        "default": false,
+        "max": null,
+        "min": null,
+        "name": "thinking",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "boolean",
+        "use_template": null
+      },
+      {
+        "default": 0,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "temperature",
+        "options": [],
+        "precision": 2,
+        "required": false,
+        "type": "float",
+        "use_template": "temperature"
+      },
+      {
+        "default": 1,
+        "max": 1.0,
+        "min": 0.0,
+        "name": "top_p",
+        "options": [],
+        "precision": 2,
+        "required": false,
+        "type": "float",
+        "use_template": "top_p"
+      },
+      {
+        "default": null,
+        "max": null,
+        "min": null,
+        "name": "top_k",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "int",
+        "use_template": null
+      },
+      {
+        "default": 1024,
+        "max": 128000.0,
+        "min": 1024.0,
+        "name": "thinking_budget",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "int",
+        "use_template": null
+      }
+    ],
+    "profile_id": "anthropic-0341-runtime-v2:claude-opus-4-5",
+    "schema_boundary_revision": 2,
+    "source_codec_profile_id": "anthropic-0341:claude-opus-4-5",
+    "source_codec_rules_digest": "sha256:2f37ae72233892d9eedd2984b5755a1a8fbbf156c0f8744fa829360d58212a50",
+    "source_inventory_schema_origin": "exact_dynamic_source_runtime_schema_rpc",
+    "source_model": "claude-opus-4-5",
+    "source_plugin_uid": "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+    "source_runtime_evidence": {
+      "artifact_sha256": "6ace153b389becc0b381e290322f417ffa1c5872383a8bd183544c8e9d3cfc64",
+      "owner": "normal_source341_system_paid_model_manager_rpc",
+      "runtime_rpc_observed": true,
+      "source_plugin_uid": "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+      "upstream_alias_identity": {
+        "artifact_sha256": "9ea9080b6f2cffb64e89fbf16397d9398aa002be49ad2d742c9359e362fcefae",
+        "canonical_model": "claude-opus-4-5-20251101",
+        "http_status": 200,
+        "inference_or_price_proof": false,
+        "requested_model": "claude-opus-4-5"
+      }
+    },
+    "source_runtime_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+    "source_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+    "target_model": "claude-opus-4-5-20251101"
+  },
+  "publishAllowed": false,
+  "rulesDigest": "sha256:d4040a0ea2960d5eb763f31d636819b328f25794801515f3f2896c5ac8b37e70",
+  "semanticRuleContract": {
+    "implementation": {
+      "adapter_id": "anthropic_source_v1",
+      "adapter_revision": "1",
+      "auth_policy": "managed-tokener-key-x-api-key-only",
+      "codec_state_scope": "invocation",
+      "controlled_headers": [
+        "anthropic-version",
+        "anthropic-beta"
+      ],
+      "follow_redirects": false,
+      "model_retries": 0,
+      "native_codec_version": "0.3.41",
+      "native_path": "/v1/messages",
+      "native_protocol": "anthropic-messages-v1",
+      "pdf_beta_header": "not-added-pdf-support-is-GA",
+      "source_codec_archive_sha256": "7993441ad897369423498eba9111bafa58bfcfe133d9455019ffdc2c10fa9d5f",
+      "source_codec_module_sha256": "aa555fcf204c203fb58ebcec9100cca94ab51abbfd033e8c8c8cf718149e60e5",
+      "source_logging": "debug-guarded in original; disabled module-local in managed copy",
+      "source_optional_workspace_header": "source SDK supports anthropic-workspace-id; managed facade never copies vendor workspace/key/URL",
+      "source_parameter_defaults": "sdk-0.10.2-required-only",
+      "telemetry": false,
+      "token_count": "fixed-native-messages-count-tokens",
+      "token_count_approximation_fallback": false,
+      "token_count_path": "/v1/messages/count_tokens"
+    },
+    "source": {
+      "context_size": 200000,
+      "parameter_rules": [
+        {
+          "default": 4096,
+          "max": 128000.0,
+          "min": 1.0,
+          "name": "max_tokens",
+          "options": [],
+          "precision": 0,
+          "required": false,
+          "type": "int",
+          "use_template": "max_tokens"
+        },
+        {
+          "default": false,
+          "max": null,
+          "min": null,
+          "name": "thinking",
+          "options": [],
+          "precision": null,
+          "required": false,
+          "type": "boolean",
+          "use_template": null
+        },
+        {
+          "default": 0,
+          "max": 1.0,
+          "min": 0.0,
+          "name": "temperature",
+          "options": [],
+          "precision": 2,
+          "required": false,
+          "type": "float",
+          "use_template": "temperature"
+        },
+        {
+          "default": 1,
+          "max": 1.0,
+          "min": 0.0,
+          "name": "top_p",
+          "options": [],
+          "precision": 2,
+          "required": false,
+          "type": "float",
+          "use_template": "top_p"
+        },
+        {
+          "default": null,
+          "max": null,
+          "min": null,
+          "name": "top_k",
+          "options": [],
+          "precision": null,
+          "required": false,
+          "type": "int",
+          "use_template": null
+        },
+        {
+          "default": 1024,
+          "max": 128000.0,
+          "min": 1024.0,
+          "name": "thinking_budget",
+          "options": [],
+          "precision": null,
+          "required": false,
+          "type": "int",
+          "use_template": null
+        }
+      ],
+      "schema_boundary_revision": 2,
+      "source_codec_rules_digest": "sha256:2f37ae72233892d9eedd2984b5755a1a8fbbf156c0f8744fa829360d58212a50",
+      "source_inventory_schema_origin": "exact_dynamic_source_runtime_schema_rpc",
+      "source_model": "claude-opus-4-5",
+      "source_runtime_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+      "source_schema_digest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+      "target_model": "claude-opus-4-5-20251101"
+    },
+    "source_sdk_version": "0.10.2"
+  },
+  "sourceRuntimeArtifactSha256": "6ace153b389becc0b381e290322f417ffa1c5872383a8bd183544c8e9d3cfc64",
+  "sourceRuntimeSchemaDigest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+  "sourceSchema": {
+    "deprecated": false,
+    "features": [
+      "agent-thought",
+      "vision",
+      "tool-call",
+      "stream-tool-call"
+    ],
+    "fetch_from": "customizable-model",
+    "label": {
+      "en_US": "claude-opus-4-5",
+      "zh_Hans": "claude-opus-4-5"
+    },
+    "model": "claude-opus-4-5",
+    "model_properties": {
+      "context_size": 200000,
+      "mode": "chat"
+    },
+    "model_type": "llm",
+    "parameter_rules": [
+      {
+        "default": 4096,
+        "help": {
+          "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+          "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。"
+        },
+        "label": {
+          "en_US": "Max Tokens",
+          "zh_Hans": "最大标记"
+        },
+        "max": 128000.0,
+        "min": 1.0,
+        "name": "max_tokens",
+        "options": [],
+        "precision": 0,
+        "required": false,
+        "type": "int",
+        "use_template": "max_tokens"
+      },
+      {
+        "default": false,
+        "help": null,
+        "label": {
+          "en_US": "Thinking Mode",
+          "zh_Hans": "推理模式"
+        },
+        "max": null,
+        "min": null,
+        "name": "thinking",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "boolean",
+        "use_template": null
+      },
+      {
+        "default": 0,
+        "help": {
+          "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+          "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。"
+        },
+        "label": {
+          "en_US": "Temperature",
+          "zh_Hans": "温度"
+        },
+        "max": 1.0,
+        "min": 0.0,
+        "name": "temperature",
+        "options": [],
+        "precision": 2,
+        "required": false,
+        "type": "float",
+        "use_template": "temperature"
+      },
+      {
+        "default": 1,
+        "help": {
+          "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+          "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。"
+        },
+        "label": {
+          "en_US": "Top P",
+          "zh_Hans": "Top P"
+        },
+        "max": 1.0,
+        "min": 0.0,
+        "name": "top_p",
+        "options": [],
+        "precision": 2,
+        "required": false,
+        "type": "float",
+        "use_template": "top_p"
+      },
+      {
+        "default": null,
+        "help": null,
+        "label": {
+          "en_US": "Top K",
+          "zh_Hans": "取样数量"
+        },
+        "max": null,
+        "min": null,
+        "name": "top_k",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "int",
+        "use_template": null
+      },
+      {
+        "default": 1024,
+        "help": null,
+        "label": {
+          "en_US": "Thinking Budget",
+          "zh_Hans": "推理预算"
+        },
+        "max": 128000.0,
+        "min": 1024.0,
+        "name": "thinking_budget",
+        "options": [],
+        "precision": null,
+        "required": false,
+        "type": "int",
+        "use_template": null
+      }
+    ],
+    "pricing": null
+  },
+  "sourceSchemaDigest": "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09",
+  "sourceSystemEvidenceObserved": true,
+  "sourceUid": "langgenius/anthropic:0.3.41@8cf64e60ff25e58d5624bb54938fbe06ee7ab062b499a7124c48b100125f0378",
+  "upstreamAliasArtifactSha256": "9ea9080b6f2cffb64e89fbf16397d9398aa002be49ad2d742c9359e362fcefae",
+  "upstreamAliasIdentityProven": true
+}
