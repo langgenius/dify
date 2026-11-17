@@ -16,7 +16,7 @@ from controllers.common.errors import (
     UnsupportedFileTypeError,
 )
 from controllers.openapi._errors import InvalidFilePart
-from controllers.openapi._files import discard_uploaded_files, merge_files
+from controllers.openapi._files import discard_uploaded_files, materialize, merge_files
 from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
@@ -189,6 +189,25 @@ def test_merge_files_discards_earlier_upload_when_a_later_part_is_invalid(
     service.delete_file.assert_called_once_with(_upload_result().id)
 
 
+def test_materialize_discards_earlier_upload_when_a_later_list_item_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from werkzeug.datastructures import FileStorage
+
+    service = _file_service(monkeypatch)
+    service.upload_file.side_effect = [_upload_result(), RuntimeError("storage unavailable")]
+    parts = [
+        FileStorage(BytesIO(b"first"), filename="first.txt", content_type="text/plain"),
+        FileStorage(BytesIO(b"second"), filename="second.txt", content_type="text/plain"),
+    ]
+
+    with pytest.raises(RuntimeError, match="storage unavailable"):
+        materialize(parts, _caller())
+
+    assert service.upload_file.call_count == 2
+    service.delete_file.assert_called_once_with(_upload_result().id)
+
+
 def test_discard_uploaded_files_continues_after_cleanup_failure(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -202,3 +221,32 @@ def test_discard_uploaded_files_continues_after_cleanup_failure(
         ("second-upload",),
     ]
     assert "Failed to discard rejected OpenAPI upload file first-upload" in caplog.text
+
+
+def test_discard_uploaded_files_does_not_resolve_services_for_empty_uploads(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from controllers.openapi import _files as module
+
+    def unexpected_service_lookup():
+        raise AssertionError("no service lookup expected for an empty upload list")
+
+    monkeypatch.setattr(module, "application_services", unexpected_service_lookup)
+
+    discard_uploaded_files([])
+
+
+def test_discard_uploaded_files_preserves_rejection_when_service_lookup_fails(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    from controllers.openapi import _files as module
+
+    def unavailable_services():
+        raise RuntimeError("application services unavailable")
+
+    monkeypatch.setattr(module, "application_services", unavailable_services)
+
+    discard_uploaded_files(["rejected-upload"])
+
+    assert "Failed to resolve file service while discarding rejected OpenAPI uploads" in caplog.text
+    assert "application services unavailable" in caplog.text

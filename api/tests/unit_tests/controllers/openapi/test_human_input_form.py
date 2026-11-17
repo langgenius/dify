@@ -49,7 +49,7 @@ from models.enums import CreatorUserRole, EndUserType
 from models.human_input import RecipientType
 from models.model import App, AppMode, EndUser, UploadFile
 from services.file_service import FileService
-from services.human_input_service import InvalidFormDataError
+from services.human_input_service import FormNotFoundError, InvalidFormDataError
 from tests.helpers.unit.model_factories import make_upload_file
 
 _MODULE = "controllers.openapi.human_input_form"
@@ -326,6 +326,38 @@ class TestOpenApiHumanInputFormPost:
         api = OpenApiWorkflowHumanInputFormSubmitApi()
         with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
             with pytest.raises(InvalidFormDataError):
+                api.post.__handler__(
+                    api,
+                    _context(_make_account(), CreatorUserRole.ACCOUNT),
+                    app_id="app-1",
+                    form_token="tok-1",
+                    body=body,
+                )
+
+        assert upload_service.deleted_file_ids == ["uploaded-file"]
+
+    def test_legacy_post_discards_upload_when_form_is_not_found(
+        self, app: Flask, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from werkzeug.datastructures import FileStorage
+
+        from controllers.openapi import _files
+
+        service = _mock_service(monkeypatch, _make_form())
+        service.submit_form_by_token.side_effect = FormNotFoundError()
+        upload_service = _FileServiceStub(
+            lambda **_: make_upload_file(file_id="uploaded-file", extension="txt", mime_type="text/plain")
+        )
+        monkeypatch.setattr(_files, "application_services", lambda: _ApplicationServicesStub(files=upload_service))
+
+        body = OpenApiFormSubmitPayload(
+            action="approve",
+            inputs={},
+            files={"attachment": FileStorage(BytesIO(b"proof"), filename="proof.txt", content_type="text/plain")},
+        )
+        api = OpenApiWorkflowHumanInputFormSubmitApi()
+        with app.test_request_context("/openapi/v1/apps/app-1/human-input-forms/tok-1:submit", method="POST"):
+            with pytest.raises(HumanInputFormNotFound):
                 api.post.__handler__(
                     api,
                     _context(_make_account(), CreatorUserRole.ACCOUNT),
