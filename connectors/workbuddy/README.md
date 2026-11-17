@@ -8,12 +8,12 @@ Needs git, tar, zip and Node 22.18 or newer (to run `.ts` files directly).
 
 ```sh
 git fetch --tags origin
-node connectors/workbuddy/package.ts dify            # newest stable tag
-node connectors/workbuddy/package.ts dify --tag 1.18.0
-node connectors/workbuddy/package.ts dify --worktree     # skill from the working tree, no tag
+node connectors/workbuddy/package.ts dify                    # newest stable tag
+node connectors/workbuddy/package.ts dify --tag <release>  # a given release tag
+node connectors/workbuddy/package.ts dify --worktree       # skill from the working tree, no tag
 ```
 
-The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used, or `worktree` with `--worktree`; check it is the source you expect. `--tag` and `--worktree` cannot be combined.
+The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used, or `worktree` with `--worktree`; check it is the source you expect. `--tag` and `--worktree` cannot be combined. The tag must be a release that contains the MCP flow (`skills/difyctl/references/mcp.md`). Older tags build a package whose intro points at a missing file.
 
 Use `--worktree` for a test build before a release, so the zip contains skill changes that no tag has yet. Packages submitted to WorkBuddy are always built from a release tag, never with `--worktree`.
 
@@ -22,13 +22,13 @@ Use `--worktree` for a test build before a release, so the zip contains skill ch
 - A Dify release that includes the `/openapi/v1/mcp` endpoint.
 - `OPENAPI_ENABLED=true` on the Dify server.
 - The Dify host name. WorkBuddy always connects to `https://<host>/openapi/v1/mcp` on port 443 and cannot take a port, so the server must be reachable over HTTPS on 443.
-- A personal access token (prefix `dpat_`, recommended) or a workspace access token. A personal token can find and run apps, answer human-input forms, and manage plugins, model providers and tool credentials. It cannot create, change or publish apps. A workspace token can list and run apps, but cannot answer a human-input pause and cannot reach plugins, model providers or tool credentials.
+- A personal access token (prefix `dpat_`, recommended) or a workspace access token. A personal token can find and run apps within the workspaces and apps chosen for the token, answer human-input forms, and manage plugins, model providers and tool credentials. It cannot create, change or publish apps. A workspace token can list and run apps, but cannot answer a human-input pause and cannot reach plugins, model providers or tool credentials.
 
 File upload is not available over MCP. A file is passed to an app as a URL in its inputs. A bad token gets a 401, and WorkBuddy then asks the user to reconnect.
 
 ## Notes
 
-- An MCP connector has `connector-meta.json`, `mcp.json`, `token-schema.json` and `skill-meta.json`. `cli.json` is only for CLI connectors.
+- An MCP connector ships `connector-meta.json`, `mcp.json` and an icon (`icon.svg`, `icon.png` or `icon.jpg`), plus `token-schema.json` when `auth_mode` is `token`. `cli.json` is only for CLI connectors.
 - `skill-meta.json` holds the skill header fields only WorkBuddy reads. The script adds them to the packaged `SKILL.md`. Keep them out of the skill in `skills/`.
 - `skill-intro.md` (optional) is text only for this connector's agent, such as how to log in. The script inserts it at the top of the packaged `SKILL.md` body.
 - Bump `version` in `connector-meta.json` on every submission.
