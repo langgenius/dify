@@ -7,6 +7,7 @@ type CreateAppDialogProps = {
   show: boolean
   onClose: () => void
   onCreateFromBlank?: () => void
+  onCreated?: () => void
   templateMode?: 'agent'
 }
 
@@ -14,6 +15,7 @@ const CreateAppTemplateDialog = ({
   show,
   onClose,
   onCreateFromBlank,
+  onCreated,
   templateMode,
 }: CreateAppDialogProps) => {
   const { t } = useTranslation(['app'])
@@ -26,7 +28,7 @@ const CreateAppTemplateDialog = ({
     >
       <AppList
         onCreateFromBlank={onCreateFromBlank}
-        onClose={onClose}
+        onCreated={onCreated}
         templateMode={templateMode}
       />
     </CreateAppDialogShell>

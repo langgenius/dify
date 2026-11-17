@@ -1,0 +1,7 @@
+# Defaults for certbot. Copy this file to certbot.env to customize it.
+# Edit the settings below in the copy; docker/.env takes precedence.
+# Optional application settings are commented to retain their application defaults.
+
+CERTBOT_EMAIL=${CERTBOT_EMAIL:-}
+CERTBOT_DOMAIN=${CERTBOT_DOMAIN:-}
+CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}

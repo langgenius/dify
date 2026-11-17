@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
-from collections.abc import Callable, Generator, Iterator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -180,6 +180,29 @@ def _raise_on_execution_insert(engine: Engine) -> Generator[None]:
         yield
     finally:
         event.remove(engine, "before_cursor_execute", raise_error)
+
+
+@contextmanager
+def _record_execution_statements(engine: Engine) -> Generator[list[str]]:
+    """Collect the statements issued against the node execution table, as the driver receives them."""
+    statements: list[str] = []
+
+    def record(
+        _conn: Any,
+        _cursor: Any,
+        statement: str,
+        _parameters: Any,
+        _context: Any,
+        _executemany: Any,
+    ) -> None:
+        if "workflow_node_executions" in statement:
+            statements.append(" ".join(statement.split()))
+
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        yield statements
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
 
 
 class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
@@ -374,6 +397,46 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
             assert persisted.outputs_dict == {"result": "second"}
         assert execution.node_execution_id is not None
         assert repo._node_execution_cache[execution.node_execution_id].id == execution.id
+
+    @staticmethod
+    def test_save_update_reads_only_the_stored_process_data(
+        monkeypatch: pytest.MonkeyPatch, sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
+    ) -> None:
+        """Updating a record needs one fact from the stored row: its process data and the ids in it.
+
+        The update therefore selects that one column and writes with a single UPDATE. It does not
+        load the row with its inputs and outputs, which only cost time to fetch and hydrate.
+        """
+        repo = _repository(monkeypatch, sqlite_session_factory)
+        execution = _sqlalchemy_workflow_node_execution_repository_execution(
+            status=_RepositoryExecutionStatus.RUNNING,
+            inputs={"value": 1},
+            process_data={"workflow_agent_binding_id": "binding-1"},
+        )
+        repo.save(execution)
+        execution.status = _RepositoryExecutionStatus.SUCCEEDED
+        execution.outputs = {"result": "done"}
+        execution.process_data = {"step": 2}
+
+        with _record_execution_statements(sqlite_engine) as statements:
+            repo.save(execution)
+
+        selects = [statement for statement in statements if statement.startswith("SELECT")]
+        assert len(selects) == 1
+        selected_columns = selects[0].split(" FROM ")[0]
+        assert "process_data" in selected_columns
+        assert "inputs" not in selected_columns
+        assert "outputs" not in selected_columns
+        assert [statement.split()[0] for statement in statements] == ["SELECT", "UPDATE"]
+        with sqlite_session_factory() as session:
+            persisted = session.get(
+                _sqlalchemy_workflow_node_execution_repository_WorkflowNodeExecutionModel, execution.id
+            )
+            assert persisted is not None
+            assert persisted.status == _RepositoryExecutionStatus.SUCCEEDED
+            assert persisted.inputs_dict == {"value": 1}
+            assert persisted.outputs_dict == {"result": "done"}
+            assert persisted.process_data_dict == {"step": 2, "workflow_agent_binding_id": "binding-1"}
 
     @staticmethod
     def test_save_owned_session_rolls_back_failed_insert(
@@ -877,11 +940,18 @@ def _fail_inserts(
     *,
     failure_count: int,
     duplicate: bool,
-) -> Iterator[ConflictEvents]:
+) -> Generator[ConflictEvents]:
     insert_attempts: list[str] = []
     rollbacks: list[bool] = []
 
-    def fail_insert(_connection, _cursor, statement, parameters, _context, _executemany) -> None:
+    def fail_insert(
+        _connection: Any,
+        _cursor: Any,
+        statement: str,
+        parameters: Any,
+        _context: Any,
+        _executemany: Any,
+    ) -> None:
         if not statement.lstrip().upper().startswith("INSERT INTO WORKFLOW_NODE_EXECUTIONS"):
             return
         insert_attempts.append(statement)
@@ -1157,7 +1227,7 @@ class TestWorkflowNodeExecutionTruncationCases:
                 assert session.get_bind() is sqlite_engine
             return repository
 
-        def test_to_domain_model_without_offload_data(self, sqlite_engine: Engine):
+        def test_to_domain_model_without_offload_data(self, sqlite_engine: Engine) -> None:
             """Test _to_domain_model correctly handles models without offload data."""
             repo = self.create_repository(sqlite_engine)
 
@@ -1193,7 +1263,7 @@ class TestWorkflowNodeExecutionTruncationCases:
     class TestWorkflowNodeExecutionModelTruncatedProperties:
         """Test the truncated properties on WorkflowNodeExecutionModel."""
 
-        def test_inputs_truncated_with_offload_data(self):
+        def test_inputs_truncated_with_offload_data(self) -> None:
             """Test inputs_truncated property when offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             offload = create_offload(ExecutionOffLoadType.INPUTS)
@@ -1203,7 +1273,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.process_data_truncated is False
             assert model.outputs_truncated is False
 
-        def test_outputs_truncated_with_offload_data(self):
+        def test_outputs_truncated_with_offload_data(self) -> None:
             """Test outputs_truncated property when offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
 
@@ -1215,7 +1285,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.process_data_truncated is False
             assert model.outputs_truncated is True
 
-        def test_process_data_truncated_with_offload_data(self):
+        def test_process_data_truncated_with_offload_data(self) -> None:
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             offload = create_offload(ExecutionOffLoadType.PROCESS_DATA)
             model.offload_data = [offload]
@@ -1223,7 +1293,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.inputs_truncated is False
             assert model.outputs_truncated is False
 
-        def test_truncated_properties_without_offload_data(self):
+        def test_truncated_properties_without_offload_data(self) -> None:
             """Test truncated properties when no offload data exists."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             model.offload_data = []
@@ -1232,7 +1302,7 @@ class TestWorkflowNodeExecutionTruncationCases:
             assert model.outputs_truncated is False
             assert model.process_data_truncated is False
 
-        def test_truncated_properties_without_offload_attribute(self):
+        def test_truncated_properties_without_offload_attribute(self) -> None:
             """Test truncated properties when offload_data attribute doesn't exist."""
             model = _workflow_node_execution_truncation_WorkflowNodeExecutionModel()
             # Don't set offload_data attribute at all

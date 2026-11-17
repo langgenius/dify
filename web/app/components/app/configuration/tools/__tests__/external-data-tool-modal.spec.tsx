@@ -1,7 +1,22 @@
+import type { ComponentProps } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { mockEmojiData, renderWithEmoji as render } from '@/test/emoji-picker'
-import ExternalDataToolModal from '../external-data-tool-modal'
+import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
+import { createNuqsTestRenderer } from '@/test/nuqs-testing'
+import FormContent from '../external-data-tool-modal'
+
+function ExternalDataToolModal(props: Omit<ComponentProps<typeof FormContent>, 'isVariableUsed'>) {
+  return (
+    <Dialog defaultOpen>
+      <DialogContent>
+        <FormContent {...props} isVariableUsed={() => false} />
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+const render = createNuqsTestRenderer(renderWithEmoji)
 
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
@@ -9,6 +24,15 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'apiBasedExtension.get': () =>
+        Promise.resolve([
+          {
+            id: 'extension-1',
+            name: 'Search endpoint',
+            api_endpoint: 'https://search.example.com',
+            api_key: 'secret',
+          },
+        ]),
       'codeBasedExtension.get': () =>
         Promise.resolve({
           module: 'external_data_tool',
@@ -52,29 +76,32 @@ vi.mock('#i18n', async (importOriginal) => ({
   useLocale: () => mockLocale,
 }))
 
-vi.mock('@/app/components/header/account-setting/api-based-extension-page/selector', () => ({
-  ApiBasedExtensionSelector: ({
-    onChange,
-    value,
-  }: {
-    onChange: (value: string) => void
-    value: string
-  }) => <button onClick={() => onChange('extension-1')}>{value || 'pick-extension'}</button>,
-}))
-
 describe('ExternalDataToolModal', () => {
-  const mockOnCancel = vi.fn()
   const mockOnSave = vi.fn()
-  const mockOnValidateBeforeSave = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
     mockLocale = 'en-US'
+  })
+
+  it('keeps an unavailable provider configuration intact when editing', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExternalDataToolModal
+        data={{ type: 'unavailable', label: 'Search', variable: 'search', config: { limit: 7 } }}
+        onSave={mockOnSave}
+      />,
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.feature.tools.modal.name.title' }),
+      ' 2',
+    )
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(mockOnSave).not.toHaveBeenCalled()
   })
 
   it('should require an API extension before saving api-based tools', async () => {
     const user = userEvent.setup()
-    render(<ExternalDataToolModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+    render(<ExternalDataToolModal data={{}} onSave={mockOnSave} />)
 
     await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
@@ -96,16 +123,8 @@ describe('ExternalDataToolModal', () => {
 
   it('should save api-based tools after selecting extension and emoji', async () => {
     const user = userEvent.setup()
-    mockOnValidateBeforeSave.mockReturnValue(true)
 
-    render(
-      <ExternalDataToolModal
-        data={{}}
-        onCancel={mockOnCancel}
-        onSave={mockOnSave}
-        onValidateBeforeSave={mockOnValidateBeforeSave}
-      />,
-    )
+    render(<ExternalDataToolModal data={{}} onSave={mockOnSave} />)
 
     await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
@@ -117,7 +136,15 @@ describe('ExternalDataToolModal', () => {
       ),
       'search_api',
     )
-    await user.click(screen.getByText('pick-extension'))
+    await user.click(
+      screen.getByRole('button', { name: 'common.apiBasedExtension.selector.placeholder' }),
+    )
+    await user.click(
+      await screen.findByRole('button', { name: 'Search endpoint https://search.example.com' }),
+    )
+    expect(
+      screen.getByRole('button', { name: 'Search endpoint https://search.example.com' }),
+    ).toHaveAttribute('aria-expanded', 'false')
     await user.click(screen.getByRole('button', { name: 'app.iconPicker.title' }))
     await waitFor(() => {
       expect(screen.getByPlaceholderText('app.iconPicker.search')).toBeInTheDocument()
@@ -127,22 +154,6 @@ describe('ExternalDataToolModal', () => {
     await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await user.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
-
-    await waitFor(() => {
-      expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          config: {
-            api_based_extension_id: 'extension-1',
-          },
-          enabled: true,
-          icon: expect.any(String),
-          icon_background: '#F3FEE7',
-          label: 'Search',
-          type: 'api',
-          variable: 'search_api',
-        }),
-      )
-    })
 
     expect(mockOnSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -177,7 +188,7 @@ describe('ExternalDataToolModal', () => {
             api_key: 'default-key',
           },
         }}
-        onCancel={mockOnCancel}
+
         onSave={mockOnSave}
       />,
     )
@@ -212,7 +223,7 @@ describe('ExternalDataToolModal', () => {
     })
 
     await user.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
-    expect(mockOnCancel).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
 

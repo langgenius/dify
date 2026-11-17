@@ -6,22 +6,25 @@ This inventory records non-JSON runtime responses and their schema intent. Legac
 
 ## Binary And Audio
 
-| Spec    | Method | Path                                                                    | Runtime response                               | Schema                |
-| ------- | ------ | ----------------------------------------------------------------------- | ---------------------------------------------- | --------------------- |
-| console | POST   | `/apps/{app_id}/text-to-audio`                                          | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| console | POST   | `/installed-apps/{installed_app_id}/text-to-audio`                      | Supported provider audio media types           | `string (binary)`     |
-| console | POST   | `/trial-apps/{app_id}/text-to-audio`                                    | Supported provider audio media types           | `string (binary)`     |
-| web     | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| service | POST   | `/text-to-audio`                                                        | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
-| console | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
-| service | POST   | `/datasets/{dataset_id}/documents/download-zip`                         | `application/zip` attachment                   | `BinaryFileResponse`  |
-| service | GET    | `/files/{file_id}/preview`                                              | Original file MIME type, optionally attachment | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/plugin/icon`                                       | Plugin asset MIME type                         | `string (binary)`     |
-| console | GET    | `/workspaces/current/plugin/asset`                                      | `application/octet-stream`                     | `string (binary)`     |
-| console | GET    | `/workspaces/current/skills/{skill_id}/files/content`                   | Skill file MIME type, optionally attachment    | `string (binary)`     |
-| console | GET    | `/workspaces/current/tool-provider/builtin/{provider}/icon`             | Tool icon MIME type                            | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/current/trigger-provider/{provider}/icon`                  | Trigger icon response                          | `BinaryFileResponse`  |
-| console | GET    | `/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}` | Model provider icon MIME type                  | `BinaryFileResponse`  |
+| Spec    | Method | Path                                                                     | Runtime response                               | Schema                |
+| ------- | ------ | ------------------------------------------------------------------------ | ---------------------------------------------- | --------------------- |
+| console | POST   | `/apps/{app_id}/text-to-audio`                                           | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| console | POST   | `/installed-apps/{installed_app_id}/text-to-audio`                       | Supported provider audio media types           | `string (binary)`     |
+| console | POST   | `/trial-apps/{app_id}/text-to-audio`                                     | Supported provider audio media types           | `string (binary)`     |
+| web     | POST   | `/text-to-audio`                                                         | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| service | POST   | `/text-to-audio`                                                         | Audio stream, usually `audio/mpeg`             | `AudioBinaryResponse` |
+| console | POST   | `/datasets/{dataset_id}/documents/download-zip`                          | `application/zip` attachment                   | `BinaryFileResponse`  |
+| console | POST   | `/datasets/{dataset_id}/evaluation/template/download`                    | XLSX attachment                                | `BinaryFileResponse`  |
+| console | POST   | `/{evaluate_target_type}/{evaluate_target_id}/dataset-template/download` | XLSX attachment                                | `BinaryFileResponse`  |
+| service | POST   | `/datasets/{dataset_id}/documents/download-zip`                          | `application/zip` attachment                   | `BinaryFileResponse`  |
+| service | GET    | `/files/{file_id}/preview`                                               | Original file MIME type, optionally attachment | `BinaryFileResponse`  |
+| openapi | GET    | `/workspaces/{workspace_id}/skills/{skill_id}/archive`                   | `application/zip` attachment                   | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/plugin/icon`                                        | Plugin asset MIME type                         | `string (binary)`     |
+| console | GET    | `/workspaces/current/plugin/asset`                                       | `application/octet-stream`                     | `string (binary)`     |
+| console | GET    | `/workspaces/current/skills/{skill_id}/files/content`                    | Skill file MIME type, optionally attachment    | `string (binary)`     |
+| console | GET    | `/workspaces/current/tool-provider/builtin/{provider}/icon`              | Tool icon MIME type                            | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/current/trigger-provider/{provider}/icon`                   | Trigger icon response                          | `BinaryFileResponse`  |
+| console | GET    | `/workspaces/{tenant_id}/model-providers/{provider}/{icon_type}/{lang}`  | Model provider icon MIME type                  | `BinaryFileResponse`  |
 
 ## Text File Exports
 
@@ -37,7 +40,7 @@ This inventory records non-JSON runtime responses and their schema intent. Legac
 | console | GET    | `/apps/{app_id}/workflows/draft/runs/{run_id}/node-outputs/events`     | `text/event-stream` | `EventStreamResponse` |
 | console | GET    | `/apps/{app_id}/workflows/published/runs/{run_id}/node-outputs/events` | `text/event-stream` | `EventStreamResponse` |
 | openapi | POST   | `/apps/{app_id}/run`                                                   | `text/event-stream` | `EventStreamResponse` |
-| openapi | GET    | `/apps/{app_id}/tasks/{task_id}/events`                                | `text/event-stream` | `EventStreamResponse` |
+| openapi | GET    | `/apps/{app_id}/runs/{run_id}/events`                                  | `text/event-stream` | `EventStreamResponse` |
 | service | GET    | `/workflow/{task_id}/events`                                           | `text/event-stream` | `EventStreamResponse` |
 | web     | GET    | `/workflow/{task_id}/events`                                           | `text/event-stream` | `EventStreamResponse` |
 

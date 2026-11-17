@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 //
 // Generated from: https://raw.githubusercontent.com/langgenius/dify-docs/refs/heads/main/docs.json
-// Generated at: 2026-08-27T05:58:11.503Z
+// Generated at: 2026-11-12T09:35:27.330Z
 
 // Language prefixes
 export type DocLanguage = 'en' | 'zh' | 'ja'
@@ -28,6 +28,8 @@ type CloudPath =
   | '/cloud/use-dify/debug/step-run'
   | '/cloud/use-dify/debug/variable-inspect'
   | '/cloud/use-dify/getting-started/introduction'
+  | '/cloud/use-dify/knowledge-base/overview'
+  | '/cloud/use-dify/knowledge-base/upgrade-from-classic'
   | '/cloud/use-dify/knowledge/connect-external-knowledge-base'
   | '/cloud/use-dify/knowledge/create-knowledge/chunking-and-cleaning-text'
   | '/cloud/use-dify/knowledge/create-knowledge/import-text-data/readme'
@@ -198,6 +200,13 @@ type UseDifyPath =
   | '/use-dify/workspace/api-extension/external-data-tool-api-extension'
   | '/use-dify/workspace/api-extension/moderation-api-extension'
   | '/use-dify/workspace/app-management'
+  | '/use-dify/workspace/channels/dingtalk'
+  | '/use-dify/workspace/channels/email'
+  | '/use-dify/workspace/channels/feishu-lark'
+  | '/use-dify/workspace/channels/ms-teams'
+  | '/use-dify/workspace/channels/overview'
+  | '/use-dify/workspace/channels/slack'
+  | '/use-dify/workspace/channels/wecom'
   | '/use-dify/workspace/model-providers'
   | '/use-dify/workspace/personal-account-management'
   | '/use-dify/workspace/plugins'
@@ -246,6 +255,7 @@ type ApiReferencePath =
   | '/api-reference/guides/get-started'
   | '/api-reference/guides/human-input-flow'
   | '/api-reference/guides/knowledge'
+  | '/api-reference/guides/knowledge-base'
   | '/api-reference/guides/streaming'
   | '/api-reference/guides/workflow'
 
@@ -648,6 +658,13 @@ export const docPathProductAvailability = {
   '/use-dify/workspace/api-extension/external-data-tool-api-extension': ['cloud', 'self-host'],
   '/use-dify/workspace/api-extension/moderation-api-extension': ['cloud', 'self-host'],
   '/use-dify/workspace/app-management': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/dingtalk': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/email': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/feishu-lark': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/ms-teams': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/overview': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/slack': ['cloud', 'self-host'],
+  '/use-dify/workspace/channels/wecom': ['cloud', 'self-host'],
   '/use-dify/workspace/model-providers': ['cloud', 'self-host'],
   '/use-dify/workspace/personal-account-management': ['cloud', 'self-host'],
   '/use-dify/workspace/plugins': ['cloud', 'self-host'],

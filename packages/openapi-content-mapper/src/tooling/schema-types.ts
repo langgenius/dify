@@ -84,6 +84,15 @@ export function schemaTypes(root: unknown): string {
     for (const child of Object.values(value)) collect(child)
   }
   collect(root)
+  // Public models include components that no operation references. Keep their
+  // original names, escaping only the JSON Pointer used to resolve each alias.
+  const schemas = Object.keys(record(record(record(root).components).schemas)).map((name) => ({
+    name,
+    type: reference(
+      `#/components/schemas/${name.replaceAll('~', '~0').replaceAll('/', '~1')}`,
+      true,
+    ),
+  }))
   for (const [path, index] of references) {
     const schema = pointer(root, path)
     const ordinary = render(schema, false)
@@ -102,5 +111,8 @@ export function schemaTypes(root: unknown): string {
     declarations.push('};')
   }
   declarations.push('}>;')
+  declarations.push('export type Schemas = {')
+  for (const schema of schemas) declarations.push(`${JSON.stringify(schema.name)}: ${schema.type};`)
+  declarations.push('};')
   return `${declarations.join('\n')}\n`
 }

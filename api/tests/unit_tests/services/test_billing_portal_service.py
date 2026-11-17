@@ -8,6 +8,7 @@ from machinery.context import RequestContext
 from models.account import Account
 from repositories.account.repository import SQLAlchemyAccountRepository
 from services.account_errors import AccountNotFoundError
+from services.billing_client import billing
 from services.billing_portal_service import BillingPortalService
 from tests.helpers.unit.model_factories import make_account
 
@@ -52,7 +53,8 @@ def test_get_subscription_loads_email_and_delegates(
     mocker: MockerFixture,
 ) -> None:
     lookup = mocker.spy(accounts, "get")
-    get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
+    link = billing.GetSubscriptionPaymentLinkReply(url="https://billing.example.com/checkout")
+    get_subscription.return_value = link
 
     result = service.get_subscription(
         _context(),
@@ -60,7 +62,7 @@ def test_get_subscription_loads_email_and_delegates(
         interval="month",
     )
 
-    assert result == {"url": "https://billing.example.com/checkout"}
+    assert result is link
     lookup.assert_called_once_with("account-1")
     get_subscription.assert_called_once_with("professional", "month", "owner@example.com", "workspace-1")
 
@@ -72,11 +74,12 @@ def test_get_invoices_loads_email_and_delegates(
     mocker: MockerFixture,
 ) -> None:
     lookup = mocker.spy(accounts, "get")
-    get_invoices.return_value = {"url": "https://billing.example.com/portal"}
+    link = billing.GetInvoicesReply(url="https://billing.example.com/portal")
+    get_invoices.return_value = link
 
     result = service.get_invoices(_context())
 
-    assert result == {"url": "https://billing.example.com/portal"}
+    assert result is link
     lookup.assert_called_once_with("account-1")
     get_invoices.assert_called_once_with("owner@example.com", "workspace-1")
 

@@ -45,6 +45,7 @@ from services.message_suggested_questions_service import (
 )
 from services.resource_access_token_service import ResourceAccessTokenService
 from tests.helpers.unit.model_factories import make_app, make_conversation, make_end_user, make_message
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @dataclass(frozen=True)
@@ -186,7 +187,9 @@ def harness(
     queries = SuggestedQuestionsQuery(
         session_factory=query_factory, repository=MessageRepository(session_factory=query_factory)
     )
-    service = MessageSuggestedQuestionsService(queries=queries, generator=SuggestedQuestionsGenerator())
+    service = MessageSuggestedQuestionsService(
+        queries=queries, generator=SuggestedQuestionsGenerator(trace_scopes=untraced_scopes())
+    )
     app.extensions["application_services"] = _Services(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory), builtin_icon_url_prefix=""
@@ -227,6 +230,7 @@ def harness(
 def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_config(
     harness: _Harness, mode: AppMode, caplog: pytest.LogCaptureFixture
 ) -> None:
+    """Given an admitted caller and invalid saved provider settings, return no questions and log the cause."""
     with harness.factory.begin() as session:
         target = session.get(App, harness.target.id)
         assert target is not None
@@ -251,7 +255,7 @@ def test_admitted_identity_and_mode_return_empty_questions_for_invalid_provider_
     failures = [
         record.exc_info[1]
         for record in caplog.records
-        if record.name == "services.message_suggested_questions_generator" and record.exc_info is not None
+        if record.name == "services.message_suggested_questions_generator" and isinstance(record.exc_info, tuple)
     ]
     assert len(failures) == 1
     assert isinstance(failures[0], ValueError)

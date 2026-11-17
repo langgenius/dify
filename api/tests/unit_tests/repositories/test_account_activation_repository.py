@@ -1,11 +1,12 @@
 from typing import cast
 
+import pytest
 from sqlalchemy import event, select
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import ORMExecuteState, Session, sessionmaker
 from sqlalchemy.sql.elements import ClauseElement
 
-from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
+from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
 from services.entities.account_activation_entities import AccountInvitation, AccountSetup, InvitationToken
 
@@ -73,6 +74,113 @@ class TestResolveInvitation:
 
 
 class TestPersistActivation:
+    @pytest.mark.parametrize("invalidated", ["workspace", "email"])
+    def test_revalidates_invitation_state_before_creating_membership(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+        invalidated: str,
+    ) -> None:
+        """An invitation invalidated after lookup must not initialize an account or create membership."""
+        with sqlite_session_factory() as session:
+            _persist_invitation_state(session)
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        invitation = repository.resolve(
+            InvitationToken(account_id="account-1", email="invitee@example.com", workspace_id="workspace-1")
+        )
+        assert invitation is not None
+        with sqlite_session_factory.begin() as session:
+            if invalidated == "workspace":
+                tenant = session.get(Tenant, "workspace-1")
+                assert tenant is not None
+                tenant.status = TenantStatus.ARCHIVE
+            else:
+                account = session.get(Account, "account-1")
+                assert account is not None
+                account.email = "changed@example.com"
+
+        result = repository.activate(
+            invitation,
+            role="admin",
+            setup=AccountSetup(name="Accepted", interface_language="en-US", timezone="UTC"),
+        )
+
+        assert result is None
+        with sqlite_session_factory() as session:
+            assert session.scalars(select(TenantAccountJoin)).all() == []
+            account = session.get(Account, "account-1")
+            assert account is not None
+            assert (account.name, account.status, account.initialized_at) == ("Invited", AccountStatus.PENDING, None)
+
+    def test_failed_activation_rolls_back_setup_and_workspace_switch_then_retries(
+        self,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        """A failed commit preserves setup and memberships; retry changes only the invited account."""
+        with sqlite_session_factory() as session:
+            _persist_invitation_state(session)
+        with sqlite_session_factory.begin() as session:
+            previous_workspace = Tenant(name="Previous workspace")
+            previous_workspace.id = "workspace-2"
+            other_account = Account(name="Other", email="other@example.com", status=AccountStatus.ACTIVE)
+            other_account.id = "account-2"
+            session.add_all(
+                [
+                    previous_workspace,
+                    other_account,
+                    TenantAccountJoin(
+                        tenant_id="workspace-2", account_id="account-1", role=TenantAccountRole.NORMAL, current=True
+                    ),
+                    TenantAccountJoin(
+                        tenant_id="workspace-2", account_id="account-2", role=TenantAccountRole.NORMAL, current=True
+                    ),
+                ]
+            )
+        repository = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+        setup = AccountSetup(name="Accepted", interface_language="en-US", timezone="UTC")
+
+        def reject_commit(session: Session) -> None:
+            """Flush real pending writes, then fail before they can commit."""
+            session.flush()
+            raise RuntimeError("activation commit failed")
+
+        event.listen(sqlite_session_factory.class_, "before_commit", reject_commit)
+        try:
+            with pytest.raises(RuntimeError, match="activation commit failed"):
+                repository.activate(_invitation(), role="admin", setup=setup)
+        finally:
+            event.remove(sqlite_session_factory.class_, "before_commit", reject_commit)
+
+        with sqlite_session_factory() as session:
+            account = session.get(Account, "account-1")
+            assert account is not None
+            assert (account.name, account.status, account.initialized_at) == ("Invited", AccountStatus.PENDING, None)
+            memberships = session.scalars(select(TenantAccountJoin).order_by(TenantAccountJoin.account_id)).all()
+            assert [(row.account_id, row.tenant_id, row.current) for row in memberships] == [
+                ("account-1", "workspace-2", True),
+                ("account-2", "workspace-2", True),
+            ]
+
+        first = repository.activate(_invitation(), role="admin", setup=setup)
+        repeated = repository.activate(_invitation(), role="normal", setup=None)
+
+        assert first is not None
+        assert first.membership_created is True
+        assert repeated is not None
+        assert repeated.membership_created is False
+        with sqlite_session_factory() as session:
+            account = session.get(Account, "account-1")
+            assert account is not None
+            assert (account.name, account.status) == ("Accepted", AccountStatus.ACTIVE)
+            assert account.initialized_at is not None
+            memberships = session.scalars(
+                select(TenantAccountJoin).order_by(TenantAccountJoin.account_id, TenantAccountJoin.tenant_id)
+            ).all()
+            assert [(row.account_id, row.tenant_id, row.role, row.current) for row in memberships] == [
+                ("account-1", "workspace-1", TenantAccountRole.ADMIN, True),
+                ("account-1", "workspace-2", TenantAccountRole.NORMAL, False),
+                ("account-2", "workspace-2", TenantAccountRole.NORMAL, True),
+            ]
+
     def test_locks_account_while_switching_current_workspace(
         self,
         sqlite_session: Session,

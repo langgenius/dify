@@ -102,6 +102,9 @@ function StateMatrixDemo() {
     { label: 'Unchecked', checked: false },
     { label: 'Checked', checked: true },
     { label: 'Indeterminate', checked: false, indeterminate: true },
+    { label: 'Read-only unchecked', checked: false, readOnly: true },
+    { label: 'Read-only checked', checked: true, readOnly: true },
+    { label: 'Read-only indeterminate', checked: false, indeterminate: true, readOnly: true },
     { label: 'Disabled unchecked', checked: false, disabled: true },
     { label: 'Disabled checked', checked: true, disabled: true },
     { label: 'Disabled indeterminate', checked: false, indeterminate: true, disabled: true },
@@ -117,6 +120,7 @@ function StateMatrixDemo() {
           <Checkbox
             checked={state.checked}
             indeterminate={state.indeterminate}
+            readOnly={state.readOnly}
             disabled={state.disabled}
           />
           {state.label}
@@ -136,7 +140,7 @@ export const StateMatrix: Story = {
     docs: {
       description: {
         story:
-          'The full visual matrix for Dify checkbox states. State styling comes from Base UI data attributes such as data-checked, data-indeterminate, and data-disabled.',
+          'The full visual matrix for Dify checkbox states. State styling comes from Base UI data attributes such as data-checked, data-indeterminate, data-readonly, and data-disabled.',
       },
     },
   },

@@ -7,6 +7,7 @@ from typing import override
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session, sessionmaker
 
+from core.human_input_v2.shared import AccountId
 from libs.datetime_utils import naive_utc_now
 from libs.pagination import paginate_query
 from models import TenantCreditPool
@@ -26,6 +27,7 @@ from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthWorkspaceQuery
 from services.account_ports import AccountWorkspaceMembershipQuery, AccountWorkspaceSnapshotQuery
@@ -120,6 +122,8 @@ class WorkspaceRepository(
             session.add(tenant)
             if owner_id is not None:
                 session.add(TenantAccountJoin(tenant_id=tenant.id, account_id=owner_id, role=TenantAccountRole.OWNER))
+                if account is None:
+                    SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(owner_id))
             for category, setting in creation.plugin_upgrade_settings.items():
                 session.add(
                     TenantPluginAutoUpgradeStrategy(
@@ -477,6 +481,8 @@ class WorkspaceRepository(
                 session.add(TenantAccountJoin(tenant_id=workspace_id, account_id=account_id, role=role))
             else:
                 membership.role = role
+            # Membership writes repair missing Contact identities for existing accounts.
+            SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account_id))
             if previous_role is not role:
                 from services.knowledge_fs.membership_changes import (
                     KnowledgeFSWorkspaceMembershipChange,

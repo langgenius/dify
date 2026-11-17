@@ -13,7 +13,8 @@ jobs:
   openapi-sdk-test:
     name: OpenAPI SDK and Next.js adapters
     runs-on: depot-ubuntu-24.04-4
-    timeout-minutes: 15
+    # Leave time for contract checks after a cold toolchain installation.
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -21,10 +22,13 @@ jobs:
           persist-credentials: false
 
       - name: Setup web environment
+        timeout-minutes: 15
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Setup Python for in-memory Console schema export
-        uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+        uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
         with:
           enable-cache: true
           python-version: '3.13'
@@ -43,7 +47,7 @@ jobs:
         run: pnpm --filter @dify/openapi-content-mapper test:next
 
       - name: Verify standalone Console imports, error maps and editor support
-        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs
+        run: pnpm --filter @dify/openapi-content-mapper exec node --test --test-concurrency=1 integration/knowledge-fs-console.test.mjs integration/orpc-errors.test.mjs integration/console-preparation.test.mjs integration/console-editor.test.mjs integration/type-navigation.test.mjs
 
       - name: Check all Console types against the reviewed migration differences
         run: pnpm --filter @dify/openapi-content-mapper check:console
@@ -67,8 +71,11 @@ jobs:
         with:
           persist-credentials: false
 
+      # All Web jobs restore the same dependency cache; only one shard saves it.
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: ${{ matrix.shardIndex == 1 }}
 
       - name: Run tests
         run: vp test run --project unit --reporter=minimal --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
@@ -86,9 +93,14 @@ jobs:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   browser-test:
-    name: Web Browser Tests
+    name: Web Browser Tests (${{ matrix.shardIndex }}/${{ matrix.shardTotal }})
     runs-on: depot-ubuntu-24.04-4
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shardIndex: [1, 2]
+        shardTotal: [2]
     defaults:
       run:
         shell: bash
@@ -102,13 +114,18 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15
         run: vp exec playwright install --with-deps --only-shell chromium
 
       - name: Run browser tests
-        run: vp test run --project browser --silent=passed-only --coverage
+        env:
+          # Unit uploads already include all authored sources, including untested modules.
+          DIFY_TEST_COVERAGE_ONLY_EXECUTED: 'true'
+        run: vp test run --project browser --silent=passed-only --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }} --coverage
 
       - name: Report browser coverage
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
@@ -117,7 +134,7 @@ jobs:
           disable_search: true
           fail_ci_if_error: true
           flags: web
-          name: web-browser
+          name: web-browser-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
@@ -125,7 +142,7 @@ jobs:
         if: ${{ failure() && !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: browser-test-failures
+          name: browser-test-failures-${{ matrix.shardIndex }}-${{ matrix.shardTotal }}
           path: web/.vitest-browser/
           if-no-files-found: ignore
           include-hidden-files: true
@@ -148,6 +165,8 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15
@@ -196,6 +215,8 @@ jobs:
 
       - name: Setup web environment
         uses: ./.github/actions/setup-web
+        with:
+          cache-save: 'false'
 
       - name: Install Chromium for Browser Mode
         timeout-minutes: 15

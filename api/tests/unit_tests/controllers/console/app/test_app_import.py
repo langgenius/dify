@@ -3,7 +3,7 @@ import zipfile
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from inspect import unwrap
-from typing import BinaryIO, Protocol, cast
+from typing import BinaryIO, Never, Protocol, cast
 from unittest.mock import Mock
 from uuid import UUID, uuid4
 
@@ -39,7 +39,7 @@ from services.agent.roster_package_importer import RosterAgentPackageImportResul
 from services.app.console_gateway import AppTransferGateway, EnterpriseConsoleAppAccess
 from services.app_dsl_service import AppDslService, PendingData
 from services.app_package_service import AppPackageService, PreparedAppPackage
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_client import transport
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities.dsl_entities import AppImportPackage, AppImportParams, DslImportWarning, Import, ImportStatus
 from services.entities.feature_entities import FeatureModel, LimitationModel
@@ -105,7 +105,7 @@ class TestAppImportApiCases:
         import_context: RequestContext,
         connections: set[object],
         monkeypatch: pytest.MonkeyPatch,
-        config_overrides,
+        config_overrides: Callable[..., None],
         status: ImportStatus,
         overwrite: bool,
         confirm: bool,
@@ -129,10 +129,12 @@ class TestAppImportApiCases:
             assert not connections, "Actor lookup must release its connection before starting the DSL operation"
             assert account.id == import_context.account_id
             assert account.current_tenant_id == import_context.active_workspace_id
+            tenant_id = account.current_tenant_id
+            assert tenant_id is not None
             dsl._session.add(
                 App(
                     id=app_id,
-                    tenant_id=account.current_tenant_id,
+                    tenant_id=tenant_id,
                     name="Imported",
                     mode=AppMode.WORKFLOW,
                     enable_site=True,
@@ -213,11 +215,11 @@ class TestAppImportApiCases:
         monkeypatch.setattr(redis_client, "get", lambda _key: '{"dependencies":[]}')
         called = []
 
-        def check(*, tenant_id: str, dependencies):
+        def check(*, tenant_id: str, dependencies: list[object]) -> list[object]:
             assert not connections
             assert tenant_id == import_context.active_workspace_id
             called.append(dependencies)
-            return []
+            return list[object]()
 
         monkeypatch.setattr(DependenciesAnalysisService, "get_leaked_dependencies", check)
         api = controller.AppImportCheckDependenciesApi()
@@ -235,9 +237,9 @@ class TestAppImportApiCases:
     @staticmethod
     @pytest.mark.parametrize("confirm", [False, True])
     def test_permission_errors_are_mapped_at_http_boundary(
-        app_query_services, app: Flask, monkeypatch, confirm: bool
+        app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch, confirm: bool
     ) -> None:
-        def denied(*_args, **_kwargs):
+        def denied(*_args: object, **_kwargs: object) -> Never:
             raise NoPermissionError("Import denied")
 
         monkeypatch.setattr(app_query_services.apps.console, "confirm_import" if confirm else "import_app", denied)
@@ -254,11 +256,11 @@ class TestAppImportApiCases:
 
     @staticmethod
     def test_confirming_an_import_whose_draft_changed_is_a_conflict(
-        app_query_services, app: Flask, monkeypatch
+        app_query_services: ControllerTestServices, app: Flask, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A pending openapi import carries a draft_hash; a console confirm after the draft changed must not 500."""
 
-        def changed(*_args, **_kwargs):
+        def changed(*_args: object, **_kwargs: object) -> Never:
             raise DraftChangedError()
 
         monkeypatch.setattr(app_query_services.apps.console, "confirm_import", changed)
@@ -869,14 +871,14 @@ class TestAppImportQuotaCases:
             )
         else:
 
-            def failed_billing(*_args: object, **_kwargs: object) -> dict[str, str]:
+            def failed_billing(*_args: object, **_kwargs: object) -> httpx.Response:
                 if failure == "timeout":
                     raise httpx.ReadTimeout("Private billing timeout details")
                 if failure == "upstream_503":
-                    raise _BillingHTTPStatusError("Private billing failure details", 503)
-                return {"subscription": "Private invalid billing response"}
+                    return httpx.Response(503, text="Private billing failure details")
+                return httpx.Response(200, json={"subscription": "Private invalid billing response"})
 
-            monkeypatch.setattr(BillingService, "_send_request", failed_billing)
+            monkeypatch.setattr(transport, "_send", failed_billing)
 
         app = Flask(__name__)
         app.config["TESTING"] = True

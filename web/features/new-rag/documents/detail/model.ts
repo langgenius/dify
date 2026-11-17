@@ -290,7 +290,17 @@ function buildOutlineBackedDocumentModel(
   ): DocumentChunkTreeNode | undefined => {
     const explicitPath = normalizedSectionPath(outlineNode.section_path ?? [])
     const path = explicitPath.length ? explicitPath : [...parentPath, outlineNode.title.trim()]
-    const exactChunks = chunksBySection.get(sectionPathKey(path)) ?? []
+    const sourceNodeIds = outlineNode.source_node_ids ?? []
+    // Source identities survive fallback outlines and section-path changes.
+    // Only legacy outlines without them need to be joined by section path.
+    const exactChunks = sourceNodeIds.length
+      ? [...new Set(sourceNodeIds)]
+          .flatMap((id) => {
+            const chunk = contentChunksById.get(id)
+            return chunk ? [chunk] : []
+          })
+          .sort(compareChunks)
+      : (chunksBySection.get(sectionPathKey(path)) ?? [])
     for (const chunk of exactChunks) {
       matchedChunkIds.add(chunk.id)
       if (!outlineNodesByChunkId.has(chunk.id)) outlineNodesByChunkId.set(chunk.id, outlineNode)
@@ -302,7 +312,9 @@ function buildOutlineBackedDocumentModel(
       const node = buildNode(child, outlineNode.id, path)
       return node ? [node] : []
     })
-    const descendantChunk = firstChunkBySectionPrefix.get(sectionPathKey(path))
+    const descendantChunk = sourceNodeIds.length
+      ? undefined
+      : firstChunkBySectionPrefix.get(sectionPathKey(path))
     const childChunk = children[0] ? contentChunksById.get(children[0].targetChunkId) : undefined
     const chunk = exactChunks[0] ?? childChunk ?? descendantChunk
     if (!chunk) return undefined
@@ -408,8 +420,12 @@ function createDocumentDetailModel(
     summariesByChunkId?: ReadonlyMap<string, string>
   },
 ): DocumentDetailModel {
+  const firstChunkIdByOutline = new Map<string, string>()
   const firstChunkIdBySection = new Map<string, string>()
   for (const chunk of contentChunks) {
+    const outlineNode = options.outlineNodesByChunkId?.get(chunk.id)
+    if (outlineNode && !firstChunkIdByOutline.has(outlineNode.id))
+      firstChunkIdByOutline.set(outlineNode.id, chunk.id)
     const sectionPath = normalizedSectionPath(chunk.sectionPath)
     if (!sectionPath.length) continue
     const key = sectionPathKey(sectionPath)
@@ -419,9 +435,10 @@ function createDocumentDetailModel(
   const contentBlocks: DocumentContentBlock[] = contentChunks.map((chunk) => {
     const content = chunkContentParts(chunk)
     const sectionPath = normalizedSectionPath(chunk.sectionPath)
-    const ownsSectionHeading =
-      !sectionPath.length || firstChunkIdBySection.get(sectionPathKey(sectionPath)) === chunk.id
     const outlineNode = options.outlineNodesByChunkId?.get(chunk.id)
+    const ownsSectionHeading = outlineNode
+      ? firstChunkIdByOutline.get(outlineNode.id) === chunk.id
+      : !sectionPath.length || firstChunkIdBySection.get(sectionPathKey(sectionPath)) === chunk.id
     const headingText = outlineNode?.title.trim() || content.heading || undefined
     return {
       body: content.body,

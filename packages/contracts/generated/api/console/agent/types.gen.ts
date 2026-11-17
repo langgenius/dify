@@ -73,6 +73,8 @@ export type AgentAppDetailWithSite = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentNameConflictError = ErrorResponse & {
@@ -340,6 +342,15 @@ export type AgentConfigFileUploadPayload = {
 export type AgentConfigFileUploadResponse = {
   config_version: AgentConfigVersionResponse
   file: AgentConfigFileItemResponse
+}
+
+export type AgentConfigFilesUploadPayload = {
+  upload_file_ids: Array<string>
+}
+
+export type AgentConfigFilesUploadResponse = {
+  config_version: AgentConfigVersionResponse
+  files: Array<AgentConfigFileItemResponse>
 }
 
 export type AgentConfigDeleteResponse = {
@@ -642,6 +653,7 @@ export type AppNotFoundError = ErrorResponse & {
 
 export type TraceAppConfigResponse = {
   app_id?: string | null
+  configured_secrets?: Array<string> | null
   created_at?: string | null
   error?: string | null
   has_not_configured?: boolean | null
@@ -795,6 +807,8 @@ export type AgentAppPartial = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentPublicationCountsResponse = {
@@ -899,6 +913,8 @@ export type WorkflowPartial = {
   created_at?: number | null
   created_by?: string | null
   id: string
+  kind?: string | null
+  type: string
   updated_at?: number | null
   updated_by?: string | null
 }
@@ -1571,6 +1587,7 @@ export type AgentSoulAppFeaturesConfig = {
   opening_statement?: string | null
   retriever_resource?: AgentFeatureToggleConfig | null
   sensitive_word_avoidance?: AgentSensitiveWordAvoidanceFeatureConfig | null
+  show_thoughts?: AgentFeatureToggleConfig | null
   speech_to_text?: AgentFeatureToggleConfig | null
   suggested_questions?: Array<string> | null
   suggested_questions_after_answer?: AgentSuggestedQuestionsAfterAnswerFeatureConfig | null
@@ -1813,6 +1830,7 @@ export type HumanInputFormDefinition = {
   form_content: string
   form_id: string
   form_token?: string | null
+  form_version?: '1' | '2'
   inputs?: Array<FormInputConfig>
   node_id: string
   node_title: string
@@ -2578,6 +2596,8 @@ export type AgentAppDetailWithSiteWritable = {
   updated_by: string | null
   use_icon_as_answer_icon: boolean
   workflow: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AgentAppPartialWritable = {
@@ -2614,6 +2634,8 @@ export type AgentAppPartialWritable = {
   updated_by?: string | null
   use_icon_as_answer_icon?: boolean | null
   workflow?: WorkflowPartial | null
+  workflow_kind?: string | null
+  workflow_type?: string | null
 }
 
 export type AppDetailSiteResponseWritable = {
@@ -3375,6 +3397,33 @@ export type PostAgentByAgentIdConfigFilesResponses = {
 
 export type PostAgentByAgentIdConfigFilesResponse =
   PostAgentByAgentIdConfigFilesResponses[keyof PostAgentByAgentIdConfigFilesResponses]
+
+export type PostAgentByAgentIdConfigFilesBatchData = {
+  body: AgentConfigFilesUploadPayload
+  path: {
+    agent_id: string
+  }
+  query?: {
+    draft_type?: 'debug_build' | 'draft'
+    version_id?: string
+  }
+  url: '/agent/{agent_id}/config/files/batch'
+}
+
+export type PostAgentByAgentIdConfigFilesBatchErrors = {
+  404: AgentNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchError =
+  PostAgentByAgentIdConfigFilesBatchErrors[keyof PostAgentByAgentIdConfigFilesBatchErrors]
+
+export type PostAgentByAgentIdConfigFilesBatchResponses = {
+  201: AgentConfigFilesUploadResponse
+}
+
+export type PostAgentByAgentIdConfigFilesBatchResponse =
+  PostAgentByAgentIdConfigFilesBatchResponses[keyof PostAgentByAgentIdConfigFilesBatchResponses]
 
 export type DeleteAgentByAgentIdConfigFilesByNameData = {
   body?: never
@@ -4263,7 +4312,7 @@ export type GetAgentByAgentIdTraceCapabilitiesData = {
 }
 
 export type GetAgentByAgentIdTraceCapabilitiesErrors = {
-  400: UnsupportedTracingProviderError | ErrorResponse
+  400: TracingProviderUnavailableError | UnsupportedTracingProviderError | ErrorResponse
   default: ErrorResponse
 }
 

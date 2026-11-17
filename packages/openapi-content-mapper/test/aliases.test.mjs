@@ -82,7 +82,12 @@ test('explicit client paths preserve HTTP methods, defaults, error maps, query k
       join(directory, 'consumer.ts'),
       `
 import { api, query } from './spec.openapi';
+import type { Inputs, Outputs } from './spec.openapi';
 import { safe } from '@orpc/client';
+const input: Inputs['enterprise']['access']['getEnvironmentApi'] = { params: { id: 'a' } };
+const output: Outputs['enterprise']['access']['getEnvironmentApi'] = { id: 'a' };
+// @ts-expect-error type maps follow the explicit client path too
+type OriginalPath = Outputs['environments']['byId']['get'];
 const [error, data, defined] = await safe(api.enterprise.access.getEnvironmentApi({ params: { id: 'a' } }));
 if (defined) { const code: 'DENIED' = error.code; }
 if (data) { const id: string = data.id; }

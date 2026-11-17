@@ -1,4 +1,6 @@
 import logging
+from copy import deepcopy
+from datetime import UTC, datetime
 from unittest.mock import Mock
 
 import pytest
@@ -6,10 +8,16 @@ from sqlalchemy import inspect
 from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_generator import BaseAppGenerator
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
+from core.app.file_access import FileAccessScope, bind_file_access_scope, get_current_file_access_scope
+from core.workflow.file_reference import resolve_file_record_id
+from extensions.storage.storage_type import StorageType
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
+from graphon.file import File
 from graphon.variables.input_entities import VariableEntity, VariableEntityType
-from models import CreatorUserRole, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
+from models import CreatorUserRole, UploadFile, Workflow, WorkflowRun, WorkflowRunTriggeredFrom
 from models.workflow import WorkflowType as ModelWorkflowType
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _workflow_run(*, graph: str | None) -> WorkflowRun:
@@ -593,7 +601,6 @@ class TestBaseAppGeneratorExtras:
         assert converted[1] == "event: ping\n\n"
 
     def test_get_draft_var_saver_factory_debugger(self):
-        from core.app.entities.app_invoke_entities import InvokeFrom
         from models import Account
 
         base_app_generator = BaseAppGenerator()
@@ -614,3 +621,193 @@ class TestBaseAppGeneratorExtras:
         )
 
         assert saver is not None
+
+
+DEFAULT_FILE_TENANT_ID = "tenant-1"
+DEFAULT_FILE_END_USER_ID = "end-user-1"
+
+
+@pytest.fixture
+def default_upload_file(sqlite_session: Session) -> UploadFile:
+    file = UploadFile(
+        tenant_id=DEFAULT_FILE_TENANT_ID,
+        storage_type=StorageType.LOCAL,
+        key="default-file.gif",
+        name="default.gif",
+        size=5798,
+        extension="gif",
+        mime_type="image/gif",
+        created_by_role=CreatorUserRole.ACCOUNT,
+        created_by="author-1",
+        created_at=datetime(2026, 1, 1, tzinfo=UTC),
+        used=False,
+    )
+    sqlite_session.add(file)
+    sqlite_session.commit()
+    return file
+
+
+def _file_input_variable(file: UploadFile, *, multiple: bool = False, required: bool = True) -> VariableEntity:
+    default = {
+        "id": "editor-id",
+        "uploadedId": file.id,
+        "transferMethod": "local_file",
+        "supportFileType": "image",
+        "type": "image/gif",
+        "name": "untrusted-name.gif",
+        "size": 1,
+        "base64Url": "https://expired.example/preview",
+    }
+    return VariableEntity(
+        variable="file",
+        label="File",
+        type=VariableEntityType.FILE_LIST if multiple else VariableEntityType.FILE,
+        required=required,
+        default=[default] if multiple else default,
+        allowed_file_types=["image"],
+        allowed_file_upload_methods=["local_file", "remote_url"],
+        max_length=2,
+    )
+
+
+def _prepare_file_inputs(
+    variable: VariableEntity, inputs: dict[str, object], invoke_from: InvokeFrom = InvokeFrom.SERVICE_API
+):
+    return BaseAppGenerator()._prepare_user_inputs(
+        user_inputs=inputs,
+        variables=[variable],
+        tenant_id=DEFAULT_FILE_TENANT_ID,
+        strict_type_validation=invoke_from == InvokeFrom.SERVICE_API,
+    )["file"]
+
+
+def _file_access_scope(invoke_from: InvokeFrom = InvokeFrom.SERVICE_API):
+    return bind_file_access_scope(
+        FileAccessScope(
+            tenant_id=DEFAULT_FILE_TENANT_ID,
+            user_id=DEFAULT_FILE_END_USER_ID,
+            user_from=UserFrom.END_USER,
+            invoke_from=invoke_from,
+        )
+    )
+
+
+@pytest.mark.parametrize("required", [True, False])
+@pytest.mark.parametrize("multiple", [True, False])
+@pytest.mark.parametrize("invoke_from", [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API])
+def test_omitted_file_uses_author_default(
+    default_upload_file: UploadFile, required: bool, multiple: bool, invoke_from: InvokeFrom
+):
+    variable = _file_input_variable(default_upload_file, multiple=multiple, required=required)
+    original_default = deepcopy(variable.default)
+    with _file_access_scope(invoke_from):
+        result = _prepare_file_inputs(variable, {}, invoke_from)
+    file = result[0] if multiple else result
+    assert isinstance(file, File)
+    assert resolve_file_record_id(file.reference) == default_upload_file.id
+    assert (file.filename, file.size) == (default_upload_file.name, default_upload_file.size)
+    assert variable.default == original_default
+    assert get_current_file_access_scope() is None
+
+
+@pytest.mark.parametrize("multiple", [False, True])
+def test_webapp_can_submit_configured_default_explicitly(default_upload_file: UploadFile, multiple: bool):
+    value = {"type": "image", "transfer_method": "local_file", "upload_file_id": default_upload_file.id}
+    with _file_access_scope(InvokeFrom.WEB_APP):
+        result = _prepare_file_inputs(
+            _file_input_variable(default_upload_file, multiple=multiple), {"file": [value] if multiple else value}
+        )
+    file = result[0] if multiple else result
+    assert resolve_file_record_id(file.reference) == default_upload_file.id
+
+
+def test_explicit_user_file_overrides_default(default_upload_file: UploadFile, sqlite_session: Session):
+    variable = _file_input_variable(default_upload_file)
+    variable.default["uploadedId"] = "00000000-0000-0000-0000-000000000000"
+    default_upload_file.created_by_role = CreatorUserRole.END_USER
+    default_upload_file.created_by = DEFAULT_FILE_END_USER_ID
+    sqlite_session.commit()
+    with _file_access_scope():
+        result = _prepare_file_inputs(
+            variable,
+            {"file": {"type": "image", "transfer_method": "local_file", "upload_file_id": default_upload_file.id}},
+        )
+    assert resolve_file_record_id(result.reference) == default_upload_file.id
+
+
+@pytest.mark.parametrize("role", [CreatorUserRole.ACCOUNT, CreatorUserRole.END_USER])
+def test_caller_cannot_grant_unconfigured_file(
+    default_upload_file: UploadFile, sqlite_session: Session, role: CreatorUserRole
+):
+    variable = _file_input_variable(default_upload_file)
+    variable.default["uploadedId"] = "00000000-0000-0000-0000-000000000000"
+    default_upload_file.created_by_role = role
+    sqlite_session.commit()
+    with _file_access_scope(), pytest.raises(ValueError, match="Invalid upload file"):
+        _prepare_file_inputs(
+            variable,
+            {"file": {"type": "image", "transfer_method": "local_file", "upload_file_id": default_upload_file.id}},
+        )
+
+
+def test_default_cannot_grant_cross_tenant_file(default_upload_file: UploadFile, sqlite_session: Session):
+    default_upload_file.tenant_id = "other-tenant"
+    sqlite_session.commit()
+    with _file_access_scope(), pytest.raises(ValueError, match="Invalid upload file"):
+        _prepare_file_inputs(_file_input_variable(default_upload_file), {})
+
+
+def test_single_file_default_obeys_strict_file_type_validation(default_upload_file: UploadFile):
+    variable = _file_input_variable(default_upload_file)
+    variable.default["supportFileType"] = "document"
+    with _file_access_scope(), pytest.raises(ValueError, match="Detected file type does not match"):
+        _prepare_file_inputs(variable, {})
+
+
+@pytest.mark.parametrize("multiple", [False, True])
+def test_default_obeys_allowed_file_types(default_upload_file: UploadFile, multiple: bool):
+    variable = _file_input_variable(default_upload_file, multiple=multiple)
+    variable.allowed_file_types = ["document"]
+    with _file_access_scope(), pytest.raises(ValueError, match="File validation failed"):
+        _prepare_file_inputs(variable, {})
+
+
+def test_explicit_empty_file_list_stays_empty(default_upload_file: UploadFile):
+    with _file_access_scope():
+        assert (
+            _prepare_file_inputs(_file_input_variable(default_upload_file, multiple=True, required=False), {"file": []})
+            == []
+        )
+
+
+def test_explicitly_cleared_optional_file_stays_empty(default_upload_file: UploadFile):
+    with _file_access_scope():
+        assert _prepare_file_inputs(_file_input_variable(default_upload_file, required=False), {"file": ""}) is None
+
+
+def test_empty_file_list_default_does_not_satisfy_required_input(default_upload_file: UploadFile):
+    variable = _file_input_variable(default_upload_file, multiple=True)
+    variable.default = []
+    with _file_access_scope(), pytest.raises(ValueError, match="file is required"):
+        _prepare_file_inputs(variable, {})
+    variable.required = False
+    with _file_access_scope():
+        assert _prepare_file_inputs(variable, {}) == []
+
+
+@pytest.mark.parametrize("multiple", [False, True])
+def test_missing_file_without_default_is_still_required(default_upload_file: UploadFile, multiple: bool):
+    variable = _file_input_variable(default_upload_file, multiple=multiple)
+    variable.default = None
+    with _file_access_scope(), pytest.raises(ValueError, match="file is required"):
+        _prepare_file_inputs(variable, {})
+
+
+def test_api_shaped_and_remote_upload_defaults(default_upload_file: UploadFile, monkeypatch: pytest.MonkeyPatch):
+    apply_config_overrides(monkeypatch, FILES_URL="https://files.example.com")
+    variable = _file_input_variable(default_upload_file)
+    variable.default = {"type": "image", "transfer_method": "remote_url", "upload_file_id": default_upload_file.id}
+    with _file_access_scope():
+        result = _prepare_file_inputs(variable, {})
+    assert resolve_file_record_id(result.reference) == default_upload_file.id
+    assert result.transfer_method == "remote_url"

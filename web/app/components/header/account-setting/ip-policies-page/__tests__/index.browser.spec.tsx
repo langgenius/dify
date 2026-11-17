@@ -1,6 +1,12 @@
+import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
+import { I18nextProvider } from 'react-i18next'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
+import accountSettings from '@/i18n/locales/en-US/account-settings.json'
+import common from '@/i18n/locales/en-US/common.json'
+import deployments from '@/i18n/locales/en-US/deployments.json'
+import navigation from '@/i18n/locales/en-US/navigation.json'
 import {
   createNetworkAccessGroupFixture,
   seedNetworkAccessGroups,
@@ -10,42 +16,39 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { ACCOUNT_SETTING_TAB } from '../../constants'
 import AccountSetting from '../../index'
 
+vi.unmock('react-i18next')
+
 const request = vi.hoisted(() => vi.fn<(path: string) => unknown>())
 
+// boundary: IP-policy reads and writes stop at the generated console transport.
 vi.mock('@/service/console/browser', () => ({
   consoleBrowserLink: {
     call: (path: readonly string[]) => request(path.join('.')),
   },
 }))
+// boundary: analytics must not emit product telemetry from a browser test.
 vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }))
-vi.mock('#i18n', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('#i18n')>()),
-  useLocale: () => 'en-US',
+// boundary: Next's app router is unavailable in the standalone Vitest browser page.
+vi.mock('@/next/navigation', () => ({
+  useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/account/settings',
+  useParams: () => ({}),
+  useSearchParams: () => new URLSearchParams(),
 }))
-vi.mock('@/i18n/client', () => ({ setLocaleOnClient: vi.fn().mockResolvedValue(undefined) }))
+// boundary: next-themes requires a Next document and persisted browser theme outside this journey.
 vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
 }))
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  const { createReactI18nextMock } = await import('@/test/i18n-mock')
-  const namespaces = {
-    accountSettings: (await import('@/i18n/locales/en-US/account-settings.json')).default,
-    common: (await import('@/i18n/locales/en-US/common.json')).default,
-    navigation: (await import('@/i18n/locales/en-US/navigation.json')).default,
-    deployments: (await import('@/i18n/locales/en-US/deployments.json')).default,
-  }
-  const translations = Object.fromEntries(
-    Object.entries(namespaces).flatMap(([namespace, messages]) =>
-      Object.entries(messages).map(([key, value]) => [`${namespace}.${key}`, value]),
-    ),
-  )
-  return { ...actual, ...createReactI18nextMock(translations) }
-})
 
 async function renderPoliciesSettings(width = 320) {
   await page.viewport(width, 800)
+  const i18n = createInstance()
+  await i18n.init({
+    lng: 'en-US',
+    fallbackLng: 'en-US',
+    keySeparator: false,
+    resources: { 'en-US': { accountSettings, common, navigation, deployments } },
+  })
   const { queryClient } = createConsoleQueryWrapper({
     currentWorkspace: { role: 'owner', plan: 'team' },
     accountProfile: { timezone: 'Asia/Shanghai', interface_language: 'en-US' },
@@ -69,13 +72,15 @@ async function renderPoliciesSettings(width = 320) {
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
-      <NuqsTestingAdapter>
-        <AccountSetting
-          activeTab={ACCOUNT_SETTING_TAB.IP_POLICIES}
-          onCancelAction={vi.fn()}
-          onTabChangeAction={vi.fn()}
-        />
-      </NuqsTestingAdapter>
+      <I18nextProvider i18n={i18n}>
+        <NuqsTestingAdapter>
+          <AccountSetting
+            activeTab={ACCOUNT_SETTING_TAB.IP_POLICIES}
+            onCancelAction={vi.fn()}
+            onTabChangeAction={vi.fn()}
+          />
+        </NuqsTestingAdapter>
+      </I18nextProvider>
     </QueryClientTestProvider>,
   )
   await expect.element(screen.getByRole('table', { name: 'IP Policies' })).toBeVisible()

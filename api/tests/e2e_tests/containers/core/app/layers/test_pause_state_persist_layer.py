@@ -55,6 +55,7 @@ class WorkflowCase:
         pause: bool = True,
     ) -> tuple[PreparedWorkflowRun, WorkflowRunAgg]:
         entity = WorkflowAppGenerateEntity(
+            user_from=UserFrom.ACCOUNT,
             task_id=str(uuid4()),
             app_config=WorkflowUIBasedAppConfig(
                 tenant_id=self.workflow.tenant_id,
@@ -210,9 +211,9 @@ def test_state_persistence_and_retrieval(workflow_case: WorkflowCase) -> None:
     pause = repository.get_workflow_pause(workflow_case.run_id)
     assert pause is not None
     assert pause.workflow_execution_id == workflow_case.run_id
-    assert pause.get_pause_reasons() == events[-1].reasons
     snapshot = WorkflowResumptionContext.loads(pause.get_state().decode())
     restored = RuntimeState.from_snapshot(snapshot.serialized_graph_runtime_state)
+    assert restored.graph_execution.pause_reasons == events[-1].reasons
     assert restored.outputs == outputs
     assert restored.total_tokens == 250
     assert restored.node_run_steps == prepared.entry.graph_engine.runtime_state.node_run_steps

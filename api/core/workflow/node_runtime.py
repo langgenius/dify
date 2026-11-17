@@ -59,7 +59,7 @@ from graphon.model_runtime.entities.llm_entities import (
     LLMUsage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from graphon.model_runtime.entities.model_entities import AIModelEntity
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelFeature
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.nodes.llm.runtime_protocols import (
     LLMPollingCapableProtocol,
@@ -215,6 +215,15 @@ class DifyPreparedLLM(LLMProtocol):
 
     @override
     def get_model_schema(self) -> AIModelEntity:
+        model_schema = self._get_provider_model_schema()
+        if model_schema.features is None or ModelFeature.STRUCTURED_OUTPUT in model_schema.features:
+            return model_schema
+        # Graphon checks this adapter's capabilities before invocation. Dify can
+        # supply structured output through a schema prompt without native support.
+        # Copy the schema so provider metadata still selects the correct path.
+        return model_schema.model_copy(update={"features": [*model_schema.features, ModelFeature.STRUCTURED_OUTPUT]})
+
+    def _get_provider_model_schema(self) -> AIModelEntity:
         model_schema = cast(LargeLanguageModel, self._model_instance.model_type_instance).get_model_schema(
             self._model_instance.model_name,
             self._model_instance.credentials,
@@ -302,7 +311,7 @@ class DifyPreparedLLM(LLMProtocol):
     ) -> LLMResultWithStructuredOutput | Generator[LLMResultChunkWithStructuredOutput]:
         return invoke_llm_with_structured_output(
             provider=self.provider,
-            model_schema=self.get_model_schema(),
+            model_schema=self._get_provider_model_schema(),
             model_instance=self._model_instance,
             prompt_messages=prompt_messages,
             json_schema=json_schema,
@@ -322,6 +331,11 @@ class DifyPreparedLLM(LLMProtocol):
 
 class DifyPreparedPollingLLM(DifyPreparedLLM, LLMPollingCapableProtocol):
     """Prepared workflow LLM adapter that exposes Graphon's polling protocol."""
+
+    @override
+    def get_model_schema(self) -> AIModelEntity:
+        # Polling passes the schema directly to the plugin and has no prompt fallback.
+        return self._get_provider_model_schema()
 
     def __init__(self, model_instance: ModelInstance, request_metadata: Mapping[str, object] | None = None) -> None:
         super().__init__(model_instance, request_metadata=request_metadata)

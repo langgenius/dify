@@ -69,12 +69,17 @@ test('packed SDK installs and works outside the workspace with npm and official 
         '--package-lock=false',
         tarball,
         'typescript@7.1.0-beta',
-        'vite@8.3.5',
+        'vite@8.3.6',
       ],
       directory,
     )
     const installed = join(directory, 'node_modules', manifest.name)
     const packed = JSON.parse(await readFile(join(installed, 'package.json'), 'utf8'))
+    assert(!packed.exports['./console/*'], 'Dify-only subpaths must stay out of the standalone SDK')
+    assert(
+      !packed.exports['./enterprise'],
+      'Dify-only subpaths must stay out of the standalone SDK',
+    )
     assert.equal(packed.name, manifest.name)
     assert.equal(packed.version, manifest.version)
     assert(!packed.private)

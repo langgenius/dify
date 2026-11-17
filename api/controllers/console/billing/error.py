@@ -21,6 +21,12 @@ class ComplianceRateLimitErrorResponse(ResponseModel):
     status: Literal[429]
 
 
+class AnnualDiscountActiveErrorResponse(ResponseModel):
+    code: Literal["annual_discount_active"]
+    message: str
+    status: Literal[409]
+
+
 class BillingOperationFailedErrorResponse(ResponseModel):
     code: Literal["billing_operation_failed"]
     message: str
@@ -37,6 +43,30 @@ class ComplianceRateLimitError(BaseHTTPException):
     error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."
     code = 429
+
+
+class ComplianceDocumentNotFoundError(BaseHTTPException):
+    error_code = "compliance_document_not_found"
+    description = "The compliance document was not found."
+    code = 404
+
+
+class ComplianceDownloadForbiddenError(BaseHTTPException):
+    error_code = "compliance_download_forbidden"
+    description = "Your current plan does not allow downloading this compliance document."
+    code = 403
+
+
+class BillingRequestInProgressError(BaseHTTPException):
+    error_code = "billing_request_in_progress"
+    description = "A previous request is still being processed. Please try again shortly."
+    code = 429
+
+
+class AnnualDiscountActiveError(BaseHTTPException):
+    error_code = "annual_discount_active"
+    description = "You can switch to annual billing after your current discount ends."
+    code = 409
 
 
 class BillingOperationFailedError(BaseHTTPException):

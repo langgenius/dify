@@ -1,3 +1,4 @@
+import type { CreatePetBody, GetPetInput, ListQuery, Pet, PetList } from './types.js'
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { createServer } from 'node:http'
@@ -6,7 +7,7 @@ import { api as jsonApi } from './pets.openapi'
 import { api } from './pets.openapi.yaml'
 
 async function main() {
-  const pets = [{ id: 1, name: 'Mochi', status: 'available' }]
+  const pets: Pet[] = [{ id: 1, name: 'Mochi', status: 'available' }]
   const server = createServer(async (req, res) => {
     const url = new URL(req.url!, 'http://localhost')
     res.setHeader('Content-Type', 'application/json')
@@ -44,16 +45,20 @@ async function main() {
     const address = server.address()
     assert(address && typeof address !== 'string')
     const client = createClient({ baseUrl: `http://127.0.0.1:${address.port}` })
+    const input: GetPetInput = { params: { petId: 1 } }
+    const body: CreatePetBody = { name: '雪团' }
+    const query: ListQuery = { status: 'available' }
     assert.equal(
       (await jsonApi.pets.byPetId.get({ params: { petId: 1 } }, { client })).name,
       'Mochi',
     )
     // oxlint-disable-next-line no-console -- The executable demo reports HTTP results.
-    console.log('GET:', await api.pets.byPetId.get({ params: { petId: 1 } }, { client }))
+    console.log('GET:', await api.pets.byPetId.get(input, { client }))
     // oxlint-disable-next-line no-console -- The executable demo reports HTTP results.
-    console.log('POST:', await api.pets.post({ body: { name: '雪团' } }, { client }))
+    console.log('POST:', await api.pets.post({ body }, { client }))
+    const available: PetList = await api.pets.get({ query }, { client })
     // oxlint-disable-next-line no-console -- The executable demo reports HTTP results.
-    console.log('QUERY:', await api.pets.get({ query: { status: 'available' } }, { client }))
+    console.log('QUERY:', available)
     assert.equal(await api.pets.byPetId.delete({ params: { petId: 2 } }, { client }), undefined)
     try {
       await api.pets.byPetId.get({ params: { petId: 404 } }, { client })

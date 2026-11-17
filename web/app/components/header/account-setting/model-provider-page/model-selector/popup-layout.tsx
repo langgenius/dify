@@ -24,8 +24,8 @@ export function ModelSelectorSearchHeader({
   return (
     <div className="shrink-0 bg-components-panel-bg px-2 pt-2 pb-1">
       <SearchInput
-        aria-label={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
-        placeholder={t(($) => $['form.searchModel'], { ns: 'modelProvider' }) || ''}
+        aria-label={t(($) => $['form.searchModel'], { ns: 'modelProvider' })}
+        placeholder={t(($) => $['form.searchModel'], { ns: 'modelProvider' })}
         value={inputValue}
         onValueChange={onInputValueChange}
       />

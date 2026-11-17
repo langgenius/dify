@@ -84,7 +84,8 @@ async function setup(ids: string[]) {
   })
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'ENTERPRISE' },
-    knowledgeFsFeatures: { enabled: true, upload_enabled: true },
+    features: { enable_knowledge_fs: true },
+    knowledgeFsFeatures: { upload_enabled: true },
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -145,6 +146,7 @@ describe('Knowledge document deletion', () => {
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     expect(api.remove).toHaveBeenCalledWith(
       expect.objectContaining({ body: { expectedRevision: 2 } }),
+      { context: { silent: true } },
     )
   })
 
@@ -183,9 +185,9 @@ describe('Knowledge document deletion', () => {
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(new Error('Failed'))
+    request.reject(new Error('Deletion service unavailable'))
     await expect
-      .element(screen.getByText('knowledgeSpace.documentsErrorDescription', { exact: true }))
+      .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
@@ -193,4 +195,17 @@ describe('Knowledge document deletion', () => {
       .element(screen.getByRole('region', { name: 'knowledgeSpace.documents', exact: true }))
       .toHaveFocus()
   })
+})
+
+it('returns focus to the row menu button after cancelling a rename', async () => {
+  const { screen, actions } = await setup(['Alpha'])
+  const trigger = actions('Alpha')
+  await trigger.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.rename' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'common.operation.rename' })
+  await expect.element(dialog.getByRole('textbox')).toHaveValue('Alpha')
+  await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
 })

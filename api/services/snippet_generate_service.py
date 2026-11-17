@@ -38,6 +38,7 @@ from models.model import App, AppMode, EndUser
 from models.snippet import CustomizedSnippet
 from models.workflow import Workflow, WorkflowNodeExecutionModel
 from services.snippet_service import SnippetService
+from services.workflow_execution_identity import build_workflow_execution_identity
 from services.workflow_run_agg import WorkflowRunAgg
 from services.workflow_service import WorkflowService
 
@@ -57,6 +58,7 @@ class _SnippetAsApp:
     - mode: hardcoded to AppMode.WORKFLOW since snippets always run as workflows
     - max_active_requests: defaults to 0 (no limit) for snippet debugging
     - app_model_config_id: None (snippets don't have app model configs)
+    - tracing: None (snippets have no app-level tracing configuration)
     """
 
     id: str
@@ -64,6 +66,7 @@ class _SnippetAsApp:
     mode: str
     max_active_requests: int
     app_model_config_id: str | None
+    tracing: str | None
 
     def __init__(self, snippet: CustomizedSnippet) -> None:
         self.id = snippet.id
@@ -71,6 +74,7 @@ class _SnippetAsApp:
         self.mode = AppMode.WORKFLOW.value
         self.max_active_requests = 0
         self.app_model_config_id = None
+        self.tracing = None
 
 
 class SnippetGenerateService:
@@ -173,6 +177,7 @@ class SnippetGenerateService:
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=streaming,
@@ -189,6 +194,9 @@ class SnippetGenerateService:
         args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         session_maker: sessionmaker[Session] | None = None,
+        workflow_id: str | None = None,
+        task_id: str | None = None,
+        capture_agent_evaluation_trace: bool = False,
     ) -> Mapping[str, Any]:
         """
         Run a snippet's published workflow in non-streaming (blocking) mode.
@@ -205,7 +213,11 @@ class SnippetGenerateService:
         :raises ValueError: If the snippet has no published workflow
         """
         snippet_service = SnippetService(session_maker)
-        workflow = snippet_service.get_published_workflow(snippet)
+        workflow = (
+            snippet_service.get_published_workflow_by_id(snippet, workflow_id)
+            if workflow_id
+            else snippet_service.get_published_workflow(snippet)
+        )
         if not workflow:
             raise ValueError("No published workflow found for snippet")
 
@@ -218,10 +230,13 @@ class SnippetGenerateService:
             app_model=app_proxy,
             workflow=workflow,
             user=user,
+            execution_identity=build_workflow_execution_identity(user),
             args=args,
             invoke_from=invoke_from,
             streaming=False,
             call_depth=0,
+            task_id=task_id,
+            capture_agent_evaluation_trace=capture_agent_evaluation_trace,
         )
         return response
 
@@ -416,6 +431,7 @@ class SnippetGenerateService:
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,
                     streaming=streaming,
                     session=session,
@@ -463,6 +479,7 @@ class SnippetGenerateService:
                     workflow=workflow,
                     node_id=node_id,
                     user=user,
+                    execution_identity=build_workflow_execution_identity(user),
                     args=args,  # type: ignore[arg-type]
                     streaming=streaming,
                     session=session,

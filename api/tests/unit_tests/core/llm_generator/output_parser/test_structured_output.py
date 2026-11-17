@@ -1,12 +1,14 @@
 import inspect
 import json
 from collections.abc import Iterator
+from copy import deepcopy
 from decimal import Decimal
 from types import SimpleNamespace
 from typing import Literal, NotRequired
 from unittest.mock import MagicMock, patch
 
 import pytest
+from jsonschema import Draft7Validator
 from typing_extensions import TypedDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
@@ -17,7 +19,6 @@ from core.llm_generator.output_parser.structured_output import (
     _parse_structured_output,
     _prepare_schema_for_model,
     _set_response_format,
-    convert_boolean_to_string,
     invoke_llm_with_structured_output,
     remove_additional_properties,
 )
@@ -62,9 +63,11 @@ class _ModelInstance(ModelInstance):
 
     def __init__(self, response: LLMResult | Iterator[LLMResultChunk | SimpleNamespace]) -> None:
         self.response = response
+        self.invocations: list[dict[str, object]] = []
 
     def invoke_llm(self, **kwargs: object):
         inspect.signature(ModelInstance.invoke_llm).bind(self, **kwargs)
+        self.invocations.append(kwargs)
         return self.response
 
 
@@ -86,23 +89,125 @@ class TestStructuredOutput:
         remove_additional_properties(None)  # Should not raise
         remove_additional_properties([])  # Should not raise
 
-    def test_convert_boolean_to_string(self):
+    @pytest.mark.parametrize("streamed", [False, True], ids=["blocking", "streaming"])
+    @pytest.mark.parametrize(
+        ("provider", "model", "native"),
+        [
+            ("openai", "gpt-4.1", True),
+            ("google", "gemini-1.5-pro", True),
+            ("ollama", "llama3", True),
+            ("anthropic", "claude-3", False),
+        ],
+        ids=["openai-native", "gemini-native", "ollama-native", "prompt-fallback"],
+    )
+    def test_invoke_preserves_boolean_schema_and_values(
+        self, provider: str, model: str, native: bool, streamed: bool
+    ) -> None:
         schema = {
             "type": "object",
             "properties": {
-                "is_active": {"type": "boolean"},
+                "is_active": {"type": "boolean", "enum": [True, False], "default": False},
+                "nested": {
+                    "type": "object",
+                    "properties": {"visible": {"type": "boolean"}},
+                    "required": ["visible"],
+                    "additionalProperties": False,
+                },
                 "tags": {"type": "array", "items": {"type": "boolean"}},
-                "list_schema": [{"type": "boolean"}],
+                "optional": {"anyOf": [{"type": "boolean"}, {"type": "null"}]},
+                "nullable": {"type": ["boolean", "null"]},
             },
+            "required": ["is_active", "nested", "tags", "optional", "nullable"],
+            "additionalProperties": False,
         }
-        convert_boolean_to_string(schema)
-        assert schema["properties"]["is_active"]["type"] == "string"
-        assert schema["properties"]["tags"]["items"]["type"] == "string"
-        assert schema["properties"]["list_schema"][0]["type"] == "string"
+        original_schema = deepcopy(schema)
+        response = {
+            "is_active": False,
+            "nested": {"visible": True},
+            "tags": [True, False],
+            "optional": None,
+            "nullable": False,
+        }
+        model_schema = make_model_schema(model)
+        model_schema.features = [ModelFeature.STRUCTURED_OUTPUT] if native else []
+        model_schema.parameter_rules = [
+            ParameterRule(
+                name="response_format",
+                label=I18nObject(en_US="Response format"),
+                type=ParameterType.STRING,
+                options=[ResponseFormat.JSON_SCHEMA, ResponseFormat.JSON_OBJECT],
+            )
+        ]
+        text = json.dumps(response)
+        if streamed:
+            llm_response = iter(
+                [
+                    LLMResultChunk(
+                        model=model,
+                        delta=LLMResultChunkDelta(index=index, message=AssistantPromptMessage(content=part)),
+                    )
+                    for index, part in enumerate((text[: len(text) // 2], text[len(text) // 2 :]))
+                ]
+            )
+        else:
+            llm_response = LLMResult(
+                model=model,
+                message=AssistantPromptMessage(content=text),
+                usage=LLMUsage.empty_usage(),
+            )
+        model_instance = _ModelInstance(llm_response)
 
-        # Test with non-dict input
-        convert_boolean_to_string(None)  # Should not raise
-        convert_boolean_to_string([])  # Should not raise
+        result = invoke_llm_with_structured_output(
+            provider=provider,
+            model_schema=model_schema,
+            model_instance=model_instance,
+            prompt_messages=[UserPromptMessage(content="Return the account state")],
+            json_schema=schema,
+            stream=streamed,
+        )
+
+        output = (
+            result.structured_output
+            if isinstance(result, LLMResultWithStructuredOutput)
+            else list(result)[-1].structured_output
+        )
+        assert output is not None
+        assert output == response
+        assert output["is_active"] is False
+        Draft7Validator(schema).validate(output)
+        assert schema == original_schema
+        assert len(model_instance.invocations) == 1
+        invocation = model_instance.invocations[0]
+        parameters = invocation["model_parameters"]
+        assert isinstance(parameters, dict)
+        if native:
+            prepared = json.loads(parameters["json_schema"])
+            expected_schema = deepcopy(schema)
+            if provider == "google":
+                expected_schema.pop("additionalProperties")
+                expected_schema["properties"]["nested"].pop("additionalProperties")
+            elif provider == "openai":
+                assert prepared["name"] == "llm_response"
+                prepared = prepared["schema"]
+            assert prepared == expected_schema
+            assert parameters["response_format"] == ResponseFormat.JSON_SCHEMA
+            Draft7Validator(prepared).validate(output)
+        else:
+            assert "json_schema" not in parameters
+            assert parameters["response_format"] == ResponseFormat.JSON_OBJECT
+            prompts = invocation["prompt_messages"]
+            assert isinstance(prompts, list)
+            assert isinstance(prompts[0], SystemPromptMessage)
+            assert isinstance(prompts[0].content, str)
+            assert json.dumps(schema) in prompts[0].content
+            assert "Use JSON true or false for boolean values, never strings." in prompts[0].content
+            assert "Do not output boolean value" not in prompts[0].content
+
+    @pytest.mark.parametrize("value", [False, True, None, "false", "true"])
+    def test_parse_structured_output_preserves_value_types(self, value: bool | str | None) -> None:
+        result = _parse_structured_output(json.dumps({"value": value}))
+        assert result["value"] == value
+        assert type(result["value"]) is type(value)
 
     def test_parse_structured_output_valid(self):
         text = '{"key": "value"}'
@@ -972,7 +1077,7 @@ def test_model_specific_schema_preparation() -> None:
     model_instance = get_model_instance()
     model_instance.invoke_llm.return_value = LLMResult(
         model="gemini-pro",
-        message=AssistantPromptMessage(content='{"result": "true"}'),
+        message=AssistantPromptMessage(content='{"result": true}'),
         usage=create_mock_usage(prompt_tokens=10, completion_tokens=5),
     )
 
@@ -993,5 +1098,10 @@ def test_model_specific_schema_preparation() -> None:
     model_instance.invoke_llm.assert_called_once()
     call_args = model_instance.invoke_llm.call_args
 
-    # For Gemini, the schema should not have additionalProperties and boolean should be converted to string
+    # Gemini omits additionalProperties while retaining the requested boolean type.
     assert "json_schema" in call_args.kwargs["model_parameters"]
+    prepared_schema = json.loads(call_args.kwargs["model_parameters"]["json_schema"])
+    assert "additionalProperties" not in prepared_schema
+    assert prepared_schema["properties"]["result"]["type"] == "boolean"
+    assert result.structured_output is not None
+    assert result.structured_output["result"] is True

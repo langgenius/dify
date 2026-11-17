@@ -5,7 +5,6 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Any, Concatenate, Protocol, cast, overload
 
-import httpx
 from flask import abort, request
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select
@@ -15,19 +14,22 @@ from configs import dify_config
 from controllers.common.rbac import RBACPermission, RBACResourceScope
 from controllers.common.wraps import rbac_permission_required
 from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums import CloudPlan, DeploymentEdition
 from extensions.ext_application_services import application_services
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.encryption import FieldEncryption
+from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models import Account
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
-from services.billing_service import BillingService, _BillingHTTPStatusError
+from services.billing_service import BillingService
 from services.entities.feature_entities import LicenseStatus
+from services.errors.billing import BillingError
 from services.feature_service import FeatureService
 from services.operation_service import OperationService, UtmInfo
 from services.system_feature_service import SystemFeatureService
@@ -168,19 +170,38 @@ def is_cloud_edition_billing_paid_plan(tenant_id: str) -> bool:
     """
 
     try:
-        billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
-    except (
-        _BillingHTTPStatusError,
-        httpx.RequestError,
-        json.JSONDecodeError,
-        UnicodeDecodeError,
-        ValidationError,
-    ) as exc:
+        return BillingService.is_cloud_paid_plan(tenant_id)
+    except BillingError as exc:
         raise ServiceUnavailable("Billing entitlement is temporarily unavailable.") from exc
-    return billing_info["subscription"]["plan"] in (
-        CloudPlan.PROFESSIONAL,
-        CloudPlan.TEAM,
-    )
+
+
+def evaluation_edition_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        if not SystemFeatureService.is_evaluation_enabled():
+            abort(404)
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def evaluation_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+    """Admit an authenticated Evaluation request only for Cloud paid or self-hosted workspaces.
+
+    The caller must authenticate and initialize the account first. On success the
+    view runs unchanged; Cloud Sandbox raises 403, and billing failures raise 503.
+    """
+
+    @wraps(view)
+    def evaluation_plan_decorated(*args: P.args, **kwargs: P.kwargs):
+        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            _, tenant_id = current_account_with_tenant()
+            if not is_cloud_edition_billing_paid_plan(tenant_id):
+                raise PaidPlanRequiredError()
+        return view(*args, **kwargs)
+
+    return document_errors(evaluation_plan_decorated, PaidPlanRequiredError)
 
 
 def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Callable[P, R]:
@@ -188,7 +209,7 @@ def cloud_edition_billing_paid_plan_required[**P, R](view: Callable[P, R]) -> Ca
     def decorated(*args: P.args, **kwargs: P.kwargs):
         _, current_tenant_id = current_account_with_tenant()
         if not is_cloud_edition_billing_paid_plan(current_tenant_id):
-            abort(403, "This feature requires a paid plan.")
+            raise PaidPlanRequiredError()
         return view(*args, **kwargs)
 
     return decorated

@@ -230,7 +230,10 @@ describe('IpPoliciesPage', () => {
         return Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
       putBodies.push(JSON.parse(await request.clone().text()))
       if (requests.filter((item) => item.method === 'PUT').length === 1)
-        return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+        return Response.json(
+          { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+          { status: 409 },
+        )
       return Response.json({ group: remote, entitled: true })
     })
     renderWithConsoleQuery(
@@ -280,7 +283,10 @@ describe('IpPoliciesPage', () => {
       if (request.method === 'PUT') {
         saves += 1
         return saves === 1
-          ? Response.json({ code: 'network_access_conflict' }, { status: 409 })
+          ? Response.json(
+              { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+              { status: 409 },
+            )
           : Response.json({ group, entitled: true })
       }
       return Response.json({
@@ -391,7 +397,10 @@ describe('IpPoliciesPage', () => {
           ? Response.json({ message: 'Unavailable' }, { status: 500 })
           : Response.json({ tenant_id: 'workspace-1', entitled: true, groups: [remote] })
       }
-      return Response.json({ code: 'network_access_conflict' }, { status: 409 })
+      return Response.json(
+        { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+        { status: 409 },
+      )
     })
     renderWithConsoleQuery(
       <NuqsTestingAdapter>
@@ -427,7 +436,10 @@ describe('IpPoliciesPage', () => {
       if (request.url.endsWith('/current-ip')) return Response.json({ client_ip: '203.0.113.42' })
       return request.method === 'GET'
         ? reload
-        : Response.json({ code: 'network_access_conflict' }, { status: 409 })
+        : Response.json(
+            { code: 'network_access_version_conflict', message: 'Changed', status: 409 },
+            { status: 409 },
+          )
     })
     renderWithConsoleQuery(
       <NuqsTestingAdapter>

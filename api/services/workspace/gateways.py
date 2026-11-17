@@ -329,7 +329,7 @@ class DeploymentWorkspacePlanGateway(WorkspacePlanGateway):
         for workspace_id in ids:
             tenant_plan = bulk_plans.get(workspace_id)
             if tenant_plan:
-                resolved[workspace_id] = tenant_plan["plan"] or CloudPlan.SANDBOX
+                resolved[workspace_id] = tenant_plan.plan or CloudPlan.SANDBOX
                 continue
 
             features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
@@ -354,21 +354,13 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return EffectiveCreditPool()
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
-        return self._credit_pool(
-            workspace_id, CloudPlan(billing["subscription"]["plan"]), billing.get("next_credit_reset_date")
-        )
+        return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
 
     @staticmethod
     def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:
         # In Cloud, CreditPoolService reads the billing quota API, without an ORM Session.
-        pool = None
-        pool_type: Literal["paid", "trial"] = "trial"
-        if plan != CloudPlan.SANDBOX:
-            paid = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="paid")
-            if paid is not None and (paid.quota_limit == -1 or paid.quota_limit > paid.quota_used):
-                pool, pool_type = paid, "paid"
-        if pool is None:
-            pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type="trial")
+        pool_type: Literal["paid", "trial"] = "trial" if plan == CloudPlan.SANDBOX else "paid"
+        pool = CreditPoolService.get_pool(tenant_id=workspace_id, pool_type=pool_type)
         if pool is None:
             return EffectiveCreditPool(plan=plan, next_credit_reset_date=reset_date)
         exhausted_at = pool.exhausted_at if isinstance(pool, CreditPoolBalance) else None

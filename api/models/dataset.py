@@ -234,9 +234,9 @@ class Dataset(TypeBase, kw_only=True):
     def retrieval_model_dict(self):
         """Return a normalized retrieval model payload for API responses.
 
-        Older rows may only persist a partial retrieval model dict. Merge the
-        stored value over the current defaults so response validation still sees
-        the required baseline fields.
+        Older rows may persist partial settings or blank values for disabled
+        options. Fill missing or blank baseline fields without rewriting stored
+        settings; leave other values for response validation.
         """
         default_retrieval_model = {
             "search_method": RetrievalMethod.SEMANTIC_SEARCH,
@@ -248,7 +248,11 @@ class Dataset(TypeBase, kw_only=True):
         if not self.retrieval_model:
             return default_retrieval_model
 
-        return {**default_retrieval_model, **self.retrieval_model}
+        retrieval_model = {**default_retrieval_model, **self.retrieval_model}
+        for key in ("search_method", "reranking_enable", "reranking_model", "score_threshold_enabled"):
+            if retrieval_model[key] is None or retrieval_model[key] == "":
+                retrieval_model[key] = default_retrieval_model[key]
+        return retrieval_model
 
     @staticmethod
     def build_external_knowledge_info(

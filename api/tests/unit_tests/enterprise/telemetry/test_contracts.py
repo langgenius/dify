@@ -107,37 +107,45 @@ class TestTelemetryEnvelope:
     def test_missing_required_case(self) -> None:
         """Verify missing case field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                tenant_id="tenant-123",
-                event_id="event-456",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "tenant_id": "tenant-123",
+                    "event_id": "event-456",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_tenant_id(self) -> None:
         """Verify missing tenant_id field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                event_id="event-456",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "event_id": "event-456",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_event_id(self) -> None:
         """Verify missing event_id field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                tenant_id="tenant-123",
-                payload={"key": "value"},
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "tenant_id": "tenant-123",
+                    "payload": {"key": "value"},
+                }
             )
 
     def test_missing_required_payload(self) -> None:
         """Verify missing payload field is rejected."""
         with pytest.raises(ValidationError):
-            TelemetryEnvelope(
-                case=TelemetryCase.WORKFLOW_RUN,
-                tenant_id="tenant-123",
-                event_id="event-456",
+            TelemetryEnvelope.model_validate(
+                {
+                    "case": TelemetryCase.WORKFLOW_RUN,
+                    "tenant_id": "tenant-123",
+                    "event_id": "event-456",
+                }
             )
 
     def test_metadata_none(self) -> None:
@@ -161,7 +169,7 @@ class TestEventRoutingMetadata:
         for cls in (DraftNodeExecutionTraceEvent, PromptGenerationEvent):
             assert cls.signal_type is SignalType.TRACE  # type: ignore[attr-defined]
             assert cls.ce_eligible is False  # type: ignore[attr-defined]
-            assert cls.trace_task_name is not None  # type: ignore[attr-defined]
+            assert hasattr(cls, "trace_payload")
 
     def test_metric_log_events(self) -> None:
         from core.telemetry.events import (
@@ -174,4 +182,4 @@ class TestEventRoutingMetadata:
         for cls in (AppCreatedEvent, AppUpdatedEvent, AppDeletedEvent, FeedbackCreatedEvent):
             assert cls.signal_type is SignalType.METRIC_LOG  # type: ignore[attr-defined]
             assert cls.ce_eligible is False  # type: ignore[attr-defined]
-            assert cls.trace_task_name is None  # type: ignore[attr-defined]
+            assert not hasattr(cls, "trace_payload")

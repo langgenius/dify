@@ -59,6 +59,15 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.
 
+## Opening overlays
+
+Use a Trigger under its Root for a dedicated opener. Child components and portals preserve that
+React relationship. When a Trigger must live outside the Root, connect it with the Root’s shared
+handle. A [menu command] opens a sibling dialog from its action. Use local controlled `open`
+when the Root already knows the target, or `openWithPayload` when the action supplies the target
+to a shared dialog. For an anchored overlay such as a [`Popover`], an imperative `open(triggerId)`
+identifies its registered Trigger.
+
 ## Primitive semantics
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
@@ -71,6 +80,8 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
   `DialogHeaderCloseButton` is the optional standard close icon inside `DialogHeader`; the header
   reserves inline-end space when it contains the button. Without it, the header keeps its normal
   gutters. Use the unstyled `DialogClose` with `render` for footer actions and custom close controls.
+  A dialog that submits a form cancels user-initiated closes while the submission is pending and
+  closes itself when it succeeds; a failure keeps the dialog open with the draft intact.
 - Use `AlertDialog` only for a destructive or must-confirm decision requiring an explicit answer.
   It blocks outside-press dismissal but still closes on Escape; cancel that close in
   `onOpenChange` when the answer must be explicit. `AlertDialogHeader` holds the title and
@@ -102,3 +113,4 @@ renders a non-button element, set `nativeButton={false}`.
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card
 [`Tooltip`]: https://base-ui.com/react/components/tooltip
+[menu command]: https://base-ui.com/react/components/dialog#open-from-a-menu

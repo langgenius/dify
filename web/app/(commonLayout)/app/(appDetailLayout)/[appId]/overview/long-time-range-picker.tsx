@@ -26,8 +26,6 @@ type Props = Readonly<{
   queryDateFormat: string
 }>
 
-const today = dayjs()
-
 const LongTimeRangePicker: FC<Props> = ({ periodMapping, onSelect, queryDateFormat }) => {
   const { t } = useTranslation(['appLog', 'common'])
   const items = React.useMemo<TimePeriodOption[]>(() => {
@@ -46,6 +44,7 @@ const LongTimeRangePicker: FC<Props> = ({ periodMapping, onSelect, queryDateForm
       const id = item.value
       const value = periodMapping[id]?.value ?? '-1'
       const name = item.name || t(($) => $['filter.period.allTime'], { ns: 'appLog' })
+      const today = dayjs()
       if (value === -1) {
         onSelect({ name: t(($) => $['filter.period.allTime'], { ns: 'appLog' }), query: undefined })
       } else if (value === 0) {

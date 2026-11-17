@@ -17,6 +17,7 @@ import {
 } from '@langgenius/dify-ui/alert-dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { isDefinedError } from '@orpc/client'
 import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useQueryState } from 'nuqs'
@@ -36,7 +37,6 @@ import {
   getProtectedAccessPoints,
   trackNetworkAccessEvent,
 } from '@/features/network-access/analytics'
-import { getNetworkAccessErrorStatus } from '@/features/network-access/errors'
 import {
   canManageNetworkAccessPoliciesAtom,
   canReadNetworkAccessAtom,
@@ -179,14 +179,7 @@ function AccessControlSession({
   )
   const saveCheck = useMutation(checkCurrentIp.mutationOptions({ context: { silent: true } }))
 
-  const bindingErrorStatus = getNetworkAccessErrorStatus(bindingQuery.error)
-  const hideForUnsupportedApp =
-    canFetchNetworkAccess &&
-    Boolean(appId) &&
-    (bindingErrorStatus === 400 || bindingErrorStatus === 403 || bindingErrorStatus === 404)
-
   if (!canFetchNetworkAccess) return null
-  if (hideForUnsupportedApp) return null
   if (groupsQuery.isPending || bindingQuery.isPending) return null
   if (groupsQuery.isError || bindingQuery.isError || !groupsQuery.data || !bindingQuery.data)
     return null
@@ -365,7 +358,7 @@ function AccessControlSession({
             onSuccess?.()
           },
           onError: (error) => {
-            if (getNetworkAccessErrorStatus(error) !== 409) return
+            if (!isDefinedError(error) || error.code !== 'network_access_version_conflict') return
             void queryClient.invalidateQueries({
               queryKey: consoleQuery.apps.byAppId.networkAccessGroup.get.queryKey({
                 input: { params: { app_id: appId } },
@@ -382,12 +375,12 @@ function AccessControlSession({
           if (analytics)
             trackNetworkAccessEvent('access_control_save', { ...analytics, result: 'success' })
         },
-        async (error: unknown) => {
+        (error: unknown) => {
           if (analytics)
             trackNetworkAccessEvent('access_control_save', {
               ...analytics,
               result: 'failed',
-              fail_reason: await getAccessControlFailReason(error),
+              fail_reason: getAccessControlFailReason(error),
             })
         },
       )
@@ -663,11 +656,11 @@ function AccessControlSession({
                     result: 'success',
                     policy_id: data.group.id,
                   }),
-                async (error: unknown) =>
+                (error: unknown) =>
                   trackNetworkAccessEvent('ip_policy_save', {
                     ...analytics,
                     result: 'failed',
-                    fail_reason: await getIpPolicyFailReason(error),
+                    fail_reason: getIpPolicyFailReason(error),
                   }),
               )
           }}

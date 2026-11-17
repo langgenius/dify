@@ -9,8 +9,8 @@ from uuid import uuid4
 
 import httpx
 import pytest
+from dify_trace_sdk.events import SuggestedQuestionsGenerated, TraceEvent
 from flask import Flask, current_app
-from pydantic import ValidationError
 from sqlalchemy import Connection, Engine, event, select
 from sqlalchemy.exc import IntegrityError, PendingRollbackError
 from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
@@ -19,8 +19,6 @@ from yarl import URL
 import core.plugin.impl.base as plugin_base
 import core.plugin.impl.model_runtime as model_runtime_module
 from core.llm_generator.llm_generator import _normalize_completion_params
-from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
-from core.llm_generator.prompts import DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 from core.memory.token_buffer_memory import HistoryPrompt, PreparedHistory
 from core.model_context import get_credit_usage_metadata
 from core.plugin.entities.plugin_daemon import PluginDaemonInnerError
@@ -30,6 +28,7 @@ from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.message_entities import ImagePromptMessageContent
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.provider import Provider, TenantDefaultModel
+from repositories.app.tracing_config_repository import SQLAlchemyAppTracingConfigRepository
 from services.entities.message_entities import MessageEndUser
 from services.message_suggested_questions_generator import (
     PreparedSuggestedQuestionsModel,
@@ -37,8 +36,10 @@ from services.message_suggested_questions_generator import (
     _default_suggested_questions_model_parameters,
 )
 from services.message_suggested_questions_service import SuggestedQuestionsContext
+from services.tracing.scopes import TraceScopes
 from tests.helpers.unit.core.model_fixtures import make_model_instance
 from tests.helpers.unit.model_factories import make_app
+from tests.helpers.unit.services.tracing_ports import untraced_scopes
 
 
 @pytest.fixture
@@ -84,7 +85,9 @@ def test_prepare_preserves_caller_transaction_when_stored_provider_is_invalid(
     caller = db.session()
     provider = caller.scalars(select(Provider).where(Provider.tenant_id == invalid_provider_tenant)).one()
     provider.quota_limit = 27
-    with SuggestedQuestionsGenerator().prepare(context=context, instruction_prompt=None, model_config=None) as generate:
+    with SuggestedQuestionsGenerator(trace_scopes=untraced_scopes()).prepare(
+        context=context, instruction_prompt=None, model_config=None
+    ) as generate:
         assert generate is None
     assert db.session() is caller
     assert caller.in_transaction()
@@ -165,7 +168,7 @@ def test_token_transport_failure_propagates_before_best_effort_generation(
     metadata = get_credit_usage_metadata()
     timeout = _get_plugin_daemon_request_timeout()
     with pytest.raises(PluginDaemonInnerError) as failure:
-        SuggestedQuestionsGenerator().generate(
+        SuggestedQuestionsGenerator(trace_scopes=untraced_scopes()).generate(
             history,
             history_model=make_model_instance(provider="langgenius/openai/openai", model="history-model"),
             context=context,
@@ -175,34 +178,6 @@ def test_token_transport_failure_propagates_before_best_effort_generation(
     assert isinstance(failure.value.__context__, httpx.UnsupportedProtocol)
     assert get_credit_usage_metadata() == metadata
     assert _get_plugin_daemon_request_timeout() == timeout
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [
-        ('["Question 1?", "还有吗？"]', ["Question 1?", "还有吗？"]),
-        ('Here are questions:\n["Next?"]', ["Next?"]),
-        ('["Next?", 1, null, true]', ["Next?"]),
-        ("[]", []),
-        ("", []),
-        ("not a question array", []),
-        ('["unfinished]', []),
-    ],
-)
-def test_response_parser_handles_question_arrays(text: str, expected: list[str]) -> None:
-    assert SuggestedQuestionsAfterAnswerOutputParser().parse(text) == expected
-
-
-@pytest.mark.parametrize("instruction", [None, "", " "])
-def test_empty_instruction_uses_default_prompt(instruction: str | None) -> None:
-    parser = SuggestedQuestionsAfterAnswerOutputParser(instruction_prompt=instruction)
-    assert parser.get_format_instructions() == DEFAULT_SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
-
-
-def test_custom_instruction_preserves_json_output_requirement() -> None:
-    instructions = SuggestedQuestionsAfterAnswerOutputParser("Ask a follow-up").get_format_instructions()
-    assert instructions.startswith("Ask a follow-up\n")
-    assert 'JSON array like ["question1", "question2", "question3"]' in instructions
 
 
 @pytest.mark.parametrize("limit", [0, -1, -0.5])
@@ -226,11 +201,28 @@ def test_configured_parameters_keep_positive_limits() -> None:
     )
 
 
-@pytest.mark.parametrize("tracing", ["invalid trace JSON", '{"enabled":{"invalid":"type"}}'])
-def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
+class _TraceRecorder:
+    def __init__(self) -> None:
+        self.events: list[TraceEvent] = []
+
+    def emit(self, event: TraceEvent) -> None:
+        self.events.append(event)
+
+
+@pytest.mark.parametrize(
+    ("tracing", "traced"),
+    [
+        ("invalid trace JSON", False),
+        ('{"enabled":{"invalid":"type"}}', False),
+        ('{"enabled":true,"tracing_provider":"langfuse"}', True),
+    ],
+    ids=["unparsable", "invalid-policy", "enabled"],
+)
+def test_tracing_reads_its_policy_in_its_own_session_and_never_fails_generation(
     invalid_provider_tenant: str,
     sqlite_session_factory: sessionmaker[Session],
     tracing: str,
+    traced: bool,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     app_record = make_app(app_id=str(uuid4()), tenant_id=invalid_provider_tenant)
@@ -257,13 +249,21 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
         sessions.append(session)
 
     factory = db.session.session_factory
+    recorder = _TraceRecorder()
+    generator = SuggestedQuestionsGenerator(
+        trace_scopes=TraceScopes(
+            emitter=recorder,
+            policies=SQLAlchemyAppTracingConfigRepository(session_factory=sqlite_session_factory),
+            enterprise_enabled=lambda: False,
+        )
+    )
     event.listen(factory, "after_begin", record_session)
+    event.listen(sqlite_session_factory, "after_begin", record_session)
     try:
         # Empty detached history needs no token-counting call. The real failed
-        # model lookup returns [], then trace construction reads the malformed
-        # stored config before it could create a timer or dispatch telemetry.
-        with pytest.raises(ValidationError), current_app.app_context():
-            SuggestedQuestionsGenerator().generate(
+        # model lookup returns [], then the trace scope reads the stored policy.
+        with current_app.app_context():
+            questions = generator.generate(
                 PreparedHistory(prompts=()),
                 history_model=make_model_instance(provider="invalid/provider", model="unused"),
                 context=context,
@@ -272,7 +272,17 @@ def test_trace_config_failure_escapes_generation_and_closes_its_sessions(
             )
     finally:
         event.remove(factory, "after_begin", record_session)
+        event.remove(sqlite_session_factory, "after_begin", record_session)
 
+    assert questions == []
+    if traced:
+        (trace_event,) = recorder.events
+        assert (trace_event.tenant_id, trace_event.app_id) == (invalid_provider_tenant, app_record.id)
+        assert isinstance(trace_event.payload, SuggestedQuestionsGenerated)
+        assert (trace_event.payload.message_id, trace_event.payload.questions) == (context.message_id, [])
+        assert trace_event.payload.started_at <= trace_event.payload.ended_at
+    else:
+        assert recorder.events == []
     assert "invalid/provider" in caplog.text
     assert len(sessions) == 2
     assert sessions[0] is not sessions[1]
@@ -311,7 +321,9 @@ def test_prepare_isolates_a_caller_transaction_failed_by_a_real_constraint(
     assert failed_transaction is not None
     assert not caller.is_active
 
-    with SuggestedQuestionsGenerator().prepare(context=context, instruction_prompt=None, model_config=None) as generate:
+    with SuggestedQuestionsGenerator(trace_scopes=untraced_scopes()).prepare(
+        context=context, instruction_prompt=None, model_config=None
+    ) as generate:
         assert generate is None
 
     # Model resolution used an independent usable session. It must neither

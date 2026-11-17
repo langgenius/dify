@@ -12,7 +12,7 @@ from models.workflow import Workflow, WorkflowType
 def test_missing_tool_provider_does_not_log_error_traceback(
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
-):
+) -> None:
     app = App(
         id="workflow-id",
         tenant_id="tenant-id",

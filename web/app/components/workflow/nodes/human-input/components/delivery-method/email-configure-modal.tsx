@@ -106,7 +106,7 @@ const EmailConfigureModal = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[calc(100dvh-64px)] w-180">
+      <DialogContent className="max-h-[calc(100dvh-4rem)] w-180">
         <DialogHeader>
           <DialogTitle>
             {t(($) => $[`${i18nPrefix}.deliveryMethod.emailConfigure.title`], {
@@ -166,7 +166,7 @@ const EmailConfigureModal = ({
             </div>
             <Recipient data={recipients} onChange={setRecipients} />
           </div>
-          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 pl-2.5 shadow-xs">
+          <div className="flex items-start justify-between gap-2 rounded-[10px] border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-3 ps-2.5 shadow-xs">
             <div className="rounded-sm border border-divider-regular bg-components-icon-bg-orange-dark-solid p-0.5">
               <RiBugLine className="size-3.5 text-text-primary-on-surface" />
             </div>

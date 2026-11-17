@@ -26,6 +26,15 @@ def test_get_system_features_excludes_app_dsl_version() -> None:
 
 
 @pytest.mark.parametrize("enabled", [False, True])
+def test_get_system_features_excludes_collaboration_deployment_flag(
+    config_overrides: Callable[..., None], enabled: bool
+) -> None:
+    config_overrides(ENABLE_COLLABORATION_MODE=enabled)
+
+    assert "enable_collaboration_mode" not in SystemFeatureService.get_public_system_features().model_dump()
+
+
+@pytest.mark.parametrize("enabled", [False, True])
 def test_get_system_features_reads_enable_change_email(
     config_overrides: Callable[..., None],
     enabled: bool,
@@ -115,6 +124,21 @@ def test_get_system_features_uses_configured_deployment_edition(
         fulfill_from_enterprise.assert_called_once_with(result)
     else:
         fulfill_from_enterprise.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("edition", "expected"),
+    [
+        (DeploymentEdition.COMMUNITY, False),
+        (DeploymentEdition.ENTERPRISE, True),
+        (DeploymentEdition.CLOUD, True),
+    ],
+)
+def test_evaluation_policy_is_limited_to_enterprise_and_cloud(
+    edition: DeploymentEdition,
+    expected: bool,
+) -> None:
+    assert SystemFeatureService.is_evaluation_enabled(deployment_edition=edition) is expected
 
 
 @pytest.mark.parametrize(

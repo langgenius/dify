@@ -5,14 +5,17 @@ from uuid import UUID
 from flask import Response, after_this_request, request
 from flask_restx import Resource
 from pydantic import AliasChoices, BaseModel, Field, ValidationError, model_validator
-from werkzeug.exceptions import BadGateway, BadRequest, Conflict, Forbidden, NotFound, ServiceUnavailable
+from werkzeug.exceptions import BadGateway, ServiceUnavailable
 
 from configs import dify_config
 from controllers.common.rbac import RBACCheck, Workspace
 from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
+from controllers.console.billing.error import BillingOperationFailedError, BillingUnavailableError
+from controllers.console.error import PaidPlanRequiredError
 from controllers.console.flask_admission import console_account_admission
+from controllers.console.workspace import error as console_errors
 from controllers.console.wraps import RBACPermission, cloud_edition_billing_paid_plan_required, model_validate
 from core.network_access.client_ip import NetworkAccessClientIPUnavailableError, resolve_network_access_client_ip
 from enums import DeploymentEdition
@@ -24,13 +27,20 @@ from machinery.context import RequestContext
 from services.network_access_group_service import (
     NetworkAccessGroupAccessDeniedError,
     NetworkAccessGroupAppNotFoundError,
+    NetworkAccessGroupBoundError,
     NetworkAccessGroupEntitlementUnavailableError,
     NetworkAccessGroupError,
+    NetworkAccessGroupForbiddenError,
+    NetworkAccessGroupInvalidInputError,
     NetworkAccessGroupInvalidPolicyError,
     NetworkAccessGroupInvalidResponseError,
+    NetworkAccessGroupNameConflictError,
+    NetworkAccessGroupNotEntitledError,
+    NetworkAccessGroupNotFoundError,
     NetworkAccessGroupUnsupportedAccessPointsError,
     NetworkAccessGroupUnsupportedAppModeError,
     NetworkAccessGroupUpstreamError,
+    NetworkAccessGroupVersionConflictError,
     NetworkAccessPoint,
 )
 
@@ -200,44 +210,48 @@ register_response_schema_models(
 )
 
 
-def _translate_upstream_error(exc: NetworkAccessGroupUpstreamError) -> Exception:
-    if exc.reason == "INVALID_SECRET_KEY":
-        return ServiceUnavailable("Network access group service authentication failed.")
-    if exc.status_code in (400, 422):
-        return BadRequest("Invalid network access group request.")
-    if exc.status_code == 401:
-        return ServiceUnavailable("Network access group service authentication failed.")
-    if exc.status_code == 403:
-        return Forbidden("Network access groups are not available for this workspace.")
-    if exc.status_code == 404:
-        return NotFound("Network access group was not found.")
-    if exc.status_code == 409:
-        message_by_reason = {
-            "NETWORK_ACCESS_VERSION_CONFLICT": "The network access resource changed. Refresh it and try again.",
-            "NETWORK_ACCESS_GROUP_NAME_CONFLICT": "An IP policy with this name already exists.",
-            "NETWORK_ACCESS_GROUP_LIMIT": "This workspace has reached the network access group limit.",
-        }
-        return Conflict(message_by_reason.get(exc.reason or "", "The network access resource is in conflict."))
-    if exc.status_code >= 500:
-        return ServiceUnavailable("Network access group service is unavailable.")
-    return BadGateway("Unexpected response from the network access group service.")
+_CONTROL_PLANE_ERRORS = (
+    BillingOperationFailedError,
+    BillingUnavailableError,
+    console_errors.NetworkAccessForbiddenError,
+    console_errors.NetworkAccessNotEntitledError,
+    console_errors.NetworkAccessRoleDeniedError,
+)
 
 
 def _translate_service_error(exc: NetworkAccessGroupError) -> Exception:
     if isinstance(exc, NetworkAccessGroupInvalidResponseError):
         return BadGateway("Invalid response from the network access group service.")
     if isinstance(exc, NetworkAccessGroupUpstreamError):
-        return _translate_upstream_error(exc)
+        return BillingUnavailableError() if exc.unavailable else BillingOperationFailedError()
+    if isinstance(exc, NetworkAccessGroupInvalidInputError):
+        return console_errors.NetworkAccessInvalidInputError()
+    if isinstance(exc, NetworkAccessGroupForbiddenError):
+        return console_errors.NetworkAccessForbiddenError()
+    if isinstance(exc, NetworkAccessGroupNotEntitledError):
+        return console_errors.NetworkAccessNotEntitledError()
+    if isinstance(exc, NetworkAccessGroupNotFoundError):
+        return console_errors.NetworkAccessGroupNotFoundError()
+    if isinstance(exc, NetworkAccessGroupVersionConflictError):
+        return console_errors.NetworkAccessVersionConflictError()
+    if isinstance(exc, NetworkAccessGroupNameConflictError):
+        return console_errors.NetworkAccessGroupNameConflictError()
+    if isinstance(exc, NetworkAccessGroupBoundError):
+        return console_errors.NetworkAccessGroupBoundError()
     if isinstance(exc, NetworkAccessGroupAccessDeniedError):
-        return Forbidden("Your workspace role does not allow this network access operation.")
+        return console_errors.NetworkAccessRoleDeniedError()
     if isinstance(exc, NetworkAccessGroupEntitlementUnavailableError):
         return ServiceUnavailable("Billing entitlement is temporarily unavailable.")
     if isinstance(exc, NetworkAccessGroupAppNotFoundError):
         return AppNotFoundError()
     if isinstance(exc, NetworkAccessGroupUnsupportedAppModeError):
-        return BadRequest(f"Network access control is not supported for app mode '{exc.app_mode}'.")
+        return console_errors.NetworkAccessUnsupportedAppModeError(
+            f"Network access control is not supported for app mode '{exc.app_mode}'."
+        )
     if isinstance(exc, NetworkAccessGroupUnsupportedAccessPointsError):
-        return BadRequest(f"Unsupported access points for this app: {', '.join(exc.access_points)}.")
+        return console_errors.NetworkAccessUnsupportedAccessPointsError(
+            f"Unsupported access points for this app: {', '.join(exc.access_points)}."
+        )
     if isinstance(exc, NetworkAccessGroupInvalidPolicyError):
         return ServiceUnavailable("Network access policy cannot be evaluated.")
     raise TypeError(f"Unsupported network access group error: {type(exc).__name__}")
@@ -261,6 +275,7 @@ def _resolve_current_network_access_client_ip() -> str:
 
 @console_ns.route("/workspaces/current/network-access-groups")
 class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
+    @error_responses(*_CONTROL_PLANE_ERRORS)
     @console_ns.response(
         200,
         "Workspace network access groups retrieved successfully",
@@ -277,6 +292,12 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
             raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupListResponse, payload)
 
+    @error_responses(
+        *_CONTROL_PLANE_ERRORS,
+        console_errors.NetworkAccessGroupNameConflictError,
+        console_errors.NetworkAccessInvalidInputError,
+        PaidPlanRequiredError,
+    )
     @console_ns.expect(console_ns.models[NetworkAccessGroupCreatePayload.__name__])
     @console_ns.response(
         201,
@@ -308,6 +329,7 @@ class CurrentWorkspaceNetworkAccessGroupsApi(Resource):
 
 @console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>")
 class CurrentWorkspaceNetworkAccessGroupApi(Resource):
+    @error_responses(*_CONTROL_PLANE_ERRORS, console_errors.NetworkAccessGroupNotFoundError)
     @console_ns.response(
         200,
         "Workspace network access group retrieved successfully",
@@ -324,6 +346,14 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
             raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupMutationResponse, {"group": payload})
 
+    @error_responses(
+        *_CONTROL_PLANE_ERRORS,
+        console_errors.NetworkAccessGroupNameConflictError,
+        console_errors.NetworkAccessGroupNotFoundError,
+        console_errors.NetworkAccessInvalidInputError,
+        console_errors.NetworkAccessVersionConflictError,
+        PaidPlanRequiredError,
+    )
     @console_ns.expect(console_ns.models[NetworkAccessGroupUpdatePayload.__name__])
     @console_ns.response(
         200,
@@ -355,6 +385,13 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
             raise _translate_service_error(exc) from exc
         return _serialize_response(NetworkAccessGroupMutationResponse, {"group": payload})
 
+    @error_responses(
+        *_CONTROL_PLANE_ERRORS,
+        console_errors.NetworkAccessGroupBoundError,
+        console_errors.NetworkAccessGroupNotFoundError,
+        console_errors.NetworkAccessVersionConflictError,
+        PaidPlanRequiredError,
+    )
     @console_ns.doc(params=query_params_from_model(NetworkAccessGroupDeleteQuery))
     @console_ns.response(
         200,
@@ -386,6 +423,7 @@ class CurrentWorkspaceNetworkAccessGroupApi(Resource):
 
 @console_ns.route("/workspaces/current/network-access-groups/current-ip")
 class CurrentWorkspaceNetworkAccessGroupCurrentIPApi(Resource):
+    @error_responses(console_errors.NetworkAccessRoleDeniedError)
     @console_ns.response(
         200,
         "Trusted current client IP retrieved without requiring an existing network access group",
@@ -414,6 +452,7 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPApi(Resource):
 
 @console_ns.route("/workspaces/current/network-access-groups/<uuid:group_id>/check-current-ip")
 class CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi(Resource):
+    @error_responses(*_CONTROL_PLANE_ERRORS, console_errors.NetworkAccessGroupNotFoundError)
     @console_ns.response(
         200,
         "Current client IP checked against the workspace network access group",
@@ -441,7 +480,7 @@ class CurrentWorkspaceNetworkAccessGroupCurrentIPCheckApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/network-access-group")
 class AppNetworkAccessGroupApi(Resource):
-    @error_responses(AppNotFoundError)
+    @error_responses(AppNotFoundError, *_CONTROL_PLANE_ERRORS, console_errors.NetworkAccessUnsupportedAppModeError)
     @console_ns.response(
         200,
         "App network access group binding retrieved successfully",
@@ -458,7 +497,16 @@ class AppNetworkAccessGroupApi(Resource):
             raise _translate_service_error(exc) from exc
         return _serialize_response(AppNetworkAccessGroupResponse, payload)
 
-    @error_responses(AppNotFoundError)
+    @error_responses(
+        AppNotFoundError,
+        *_CONTROL_PLANE_ERRORS,
+        console_errors.NetworkAccessGroupNotFoundError,
+        console_errors.NetworkAccessInvalidInputError,
+        console_errors.NetworkAccessUnsupportedAccessPointsError,
+        console_errors.NetworkAccessUnsupportedAppModeError,
+        console_errors.NetworkAccessVersionConflictError,
+        PaidPlanRequiredError,
+    )
     @console_ns.expect(console_ns.models[AppNetworkAccessGroupUpdatePayload.__name__])
     @console_ns.response(
         200,
@@ -490,7 +538,7 @@ class AppNetworkAccessGroupApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/network-access-group/status")
 class AppNetworkAccessGroupStatusApi(Resource):
-    @error_responses(AppNotFoundError)
+    @error_responses(AppNotFoundError, *_CONTROL_PLANE_ERRORS, console_errors.NetworkAccessUnsupportedAppModeError)
     @console_ns.response(
         200,
         "App network access control entry status retrieved successfully",

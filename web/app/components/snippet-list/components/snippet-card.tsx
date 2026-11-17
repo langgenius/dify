@@ -31,6 +31,7 @@ import {
   useUpdateSnippetMutation,
 } from '@/service/use-snippets'
 import { downloadBlob } from '@/utils/download'
+import { getErrorMessage } from '@/utils/error-message'
 import { formatTime } from '@/utils/time'
 
 type Props = Readonly<{
@@ -54,9 +55,9 @@ const SnippetCard = ({
   )
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const updateSnippetMutation = useUpdateSnippetMutation()
-  const exportSnippetMutation = useExportSnippetMutation()
-  const deleteSnippetMutation = useDeleteSnippetMutation()
+  const updateSnippetMutation = useUpdateSnippetMutation({ silent: true })
+  const exportSnippetMutation = useExportSnippetMutation({ silent: true })
+  const deleteSnippetMutation = useDeleteSnippetMutation({ silent: true })
   const canCreateAndModifySnippet = canCreateAndModifySnippets(workspacePermissionKeys)
   const canManageSnippet = canManageSnippets(workspacePermissionKeys)
   const canShowOperations = canCreateAndModifySnippet || canManageSnippet
@@ -94,8 +95,8 @@ const SnippetCard = ({
       const data = await exportSnippetMutation.mutateAsync({ snippetId: snippet.id })
       const file = new Blob([data], { type: 'application/yaml' })
       downloadBlob({ data: file, fileName: `${snippet.name}.yml` })
-    } catch {
-      toast.error(t(($) => $.exportFailed))
+    } catch (error) {
+      toast.error(getErrorMessage(error) ?? t(($) => $.exportFailed))
     }
   }
 

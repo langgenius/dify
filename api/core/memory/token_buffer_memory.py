@@ -21,10 +21,13 @@ from graphon.model_runtime.entities import (
     UserPromptMessage,
 )
 from graphon.model_runtime.entities.message_entities import PromptMessageContentUnionTypes
+from models.agent_config_entities import AgentSoulConfig
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation, Message, MessageFile
 from models.workflow import Workflow
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+from services.agent.runtime_config_service import AgentRuntimeConfigService
 
 _file_access_controller = DatabaseFileAccessController()
 
@@ -154,7 +157,25 @@ class TokenBufferMemory:
         session: Session,
         workflow_run_repo: APIWorkflowRunRepository | None,
     ) -> FileUploadConfig | None:
+        """Read attachment settings using the caller's session without file I/O.
+
+        Agent and workflow modes require the owning app. Agent settings come
+        from the conversation's Soul, never the legacy model configuration.
+        Disabled uploads return None; missing required records raise ValueError
+        and unsupported modes raise AssertionError. No records are changed.
+        """
         match conversation.mode:
+            case AppMode.AGENT:
+                if not app_record:
+                    raise ValueError("App not found for conversation")
+                soul = AgentRuntimeConfigService(session).resolve_conversation_soul(
+                    app_model=app_record,
+                    conversation=conversation,
+                    account_id=conversation.from_account_id,
+                    use_debug_draft=conversation.from_source == ConversationFromSource.CONSOLE,
+                )
+                features = (soul or AgentSoulConfig()).app_features.model_dump(mode="json", exclude_none=True)
+                return FileUploadConfigManager.convert(features)
             case AppMode.AGENT_CHAT | AppMode.COMPLETION | AppMode.CHAT:
                 return FileUploadConfigManager.convert(conversation.model_config_with_session(session=session))
             case AppMode.ADVANCED_CHAT | AppMode.WORKFLOW:
@@ -211,7 +232,7 @@ class TokenBufferMemory:
         """Read ordered history and attachment configuration without provider or file I/O.
 
         ``None`` for message_limit uses the existing 500-message ceiling. A missing
-        app keeps text-only legacy history available; workflow attachments still
+        app keeps text-only legacy history available; Agent and workflow attachments still
         require the app. An omitted workflow repository uses the configured factory.
         """
         # fetch limited messages, and return reversed

@@ -95,7 +95,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setUserId(user_id)
       setConversationId(conversation_id)
     })
-  }, [])
+  }, [isTryApp])
   useEffect(() => {
     setUserId(embeddedUserId || undefined)
   }, [embeddedUserId])
@@ -123,7 +123,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       }
     }
     setLanguageFromParams()
-  }, [appInfo])
+  }, [appInfo, isTryApp])
   const allowResetChat = !conversationId
   const conversationScopeId = getWebAppConversationScopeId(resolveWebAppAddress(), appId)
   const endUserId = (appInfo as AppData | undefined)?.end_user_id
@@ -177,7 +177,6 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
   const [initUserVariables, setInitUserVariables] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
-    // oxlint-disable-next-line eslint-react/set-state-in-effect
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
@@ -266,12 +265,13 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
       setInitInputs(inputs)
       setInitUserVariables(userVariables)
     })()
-  }, [])
+  }, [isTryApp])
   useEffect(() => {
     const conversationInputs: Record<string, InputValueTypes> = {}
     inputsForms.forEach((item) => {
       conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
     })
+    // oxlint-disable-next-line eslint-react/set-state-in-effect -- New input definitions reset the editable conversation defaults.
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
   const { data: newConversation } = useShareConversationName(
@@ -332,7 +332,7 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     if (currentConversationItem && !isTryApp)
       // oxlint-disable-next-line eslint-react/set-state-in-effect
       setCurrentConversationInputs(currentConversationLatestInputs || {})
-  }, [currentConversationItem, currentConversationLatestInputs])
+  }, [currentConversationItem, currentConversationLatestInputs, isTryApp])
   const checkInputsRequired = useCallback(
     (silent?: boolean) => {
       if (allInputsHidden) return true
@@ -346,7 +346,13 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
           if (hasEmptyInput) return
           if (fileIsUploading) return
           const inputValue = newConversationInputsRef.current[variable]
-          if ((inputValue === undefined || inputValue === null || inputValue === '') && !silent)
+          if (
+            (inputValue === undefined ||
+              inputValue === null ||
+              inputValue === '' ||
+              (Array.isArray(inputValue) && inputValue.length === 0)) &&
+            !silent
+          )
             hasEmptyInput = label as string
           if (
             (type === InputVarType.singleFile || type === InputVarType.multiFiles) &&
@@ -399,21 +405,27 @@ export const useEmbeddedChatbot = (appSourceType: AppSourceType, tryAppId?: stri
     },
     [handleConversationIdInfoChange, setClearChatList],
   )
-  const handleNewConversation = useCallback(async () => {
+  const handleNewConversation = useCallback(() => {
     if (isTryApp) {
       setClearChatList(true)
       return
     }
     currentChatInstanceRef.current.handleStop()
+    const conversationInputs: Record<string, InputValueTypes> = {}
+    inputsForms.forEach((item) => {
+      conversationInputs[item.variable] = item.default === '' ? null : (item.default ?? null)
+    })
+    handleNewConversationInputsChange(conversationInputs)
     setShowNewConversationItemInList(true)
     handleChangeConversation('')
-    handleNewConversationInputsChange(await getProcessedInputsFromUrlParams())
     setClearChatList(true)
   }, [
     isTryApp,
     setShowNewConversationItemInList,
+    handleChangeConversation,
     handleNewConversationInputsChange,
     setClearChatList,
+    inputsForms,
   ])
   const handleNewConversationCompleted = useCallback(
     (newConversationId: string) => {

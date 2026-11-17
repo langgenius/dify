@@ -269,7 +269,11 @@ describe('Embedded chatbot orchestration', () => {
       await waitFor(() =>
         expect(
           installed ? submitInstalledHumanInput : submitHumanInputForm,
-        ).toHaveBeenCalledExactlyOnceWith('form-token', { inputs: {}, action: 'approve' }),
+        ).toHaveBeenCalledExactlyOnceWith(
+          'form-token',
+          { inputs: {}, action: 'approve' },
+          undefined,
+        ),
       )
       expect(installed ? submitHumanInputForm : submitInstalledHumanInput).not.toHaveBeenCalled()
     },

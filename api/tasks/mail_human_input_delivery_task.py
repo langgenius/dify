@@ -1,125 +1,41 @@
+"""Celery entrypoints for delivering persisted human input forms.
+
+The generic form-delivery task must stay independent from email availability so
+non-email providers can run even when mail is not configured. The legacy email
+task keeps its historical mail and feature gates for callers that still need
+email-only semantics. The generic task only checks email availability after
+loading persisted delivery contexts and only when an email context is present.
+"""
+
 import logging
 import time
-from dataclasses import dataclass
+from collections.abc import Sequence
 
 import click
 from celery import shared_task
-from pydantic import BaseModel, ConfigDict
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from configs import dify_config
 from core.app.layers.pause_state_persist_layer import WorkflowResumptionContext
-from core.workflow.human_input_adapter import EmailDeliveryConfig, EmailDeliveryMethod
+from core.workflow.human_input_adapter import DeliveryMethodType
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from graphon.runtime import RuntimeState, VariablePool
-from models.human_input import (
-    DeliveryMethodType,
-    HumanInputDelivery,
-    HumanInputForm,
-    HumanInputFormRecipient,
-    RecipientType,
-)
+from models.human_input import HumanInputForm
 from repositories.factory import DifyAPIRepositoryFactory
 from services.feature_service import FeatureService
+from services.human_input_form_delivery_provider import (
+    HumanInputFormDeliveryContext,
+    HumanInputFormDeliveryDispatcher,
+    HumanInputFormDeliveryProviderRegistry,
+)
 
 logger = logging.getLogger(__name__)
 
-
-@dataclass(frozen=True)
-class _EmailRecipient:
-    email: str
-    token: str
+FORM_DELIVERY_METHOD_TYPES = (DeliveryMethodType.EMAIL, DeliveryMethodType.IM)
 
 
-@dataclass(frozen=True)
-class _EmailDeliveryJob:
-    form_id: str
-    subject: str
-    body: str
-    form_content: str
-    recipients: list[_EmailRecipient]
-
-
-def _build_form_link(token: str) -> str:
-    base_url = dify_config.APP_WEB_URL
-    return f"{base_url.rstrip('/')}/form/{token}"
-
-
-class _RecipientPayload(BaseModel):
-    """Shape of HumanInputFormRecipient.recipient_payload written by the recipients layer."""
-
-    model_config = ConfigDict(extra="ignore")
-
-    email: str
-    TYPE: RecipientType
-
-
-def _parse_recipient_payload(payload: str) -> tuple[str | None, RecipientType | None]:
-    try:
-        recipient = _RecipientPayload.model_validate_json(payload)
-    except Exception:
-        logger.exception("Failed to parse recipient payload")
-        return None, None
-
-    return recipient.email, recipient.TYPE
-
-
-def _load_email_jobs(session: Session, form: HumanInputForm) -> list[_EmailDeliveryJob]:
-    deliveries = session.scalars(
-        select(HumanInputDelivery).where(
-            HumanInputDelivery.form_id == form.id,
-            HumanInputDelivery.delivery_method_type == DeliveryMethodType.EMAIL,
-        )
-    ).all()
-    jobs: list[_EmailDeliveryJob] = []
-    for delivery in deliveries:
-        delivery_config = EmailDeliveryMethod.model_validate_json(delivery.channel_payload)
-
-        recipients = session.scalars(
-            select(HumanInputFormRecipient).where(HumanInputFormRecipient.delivery_id == delivery.id)
-        ).all()
-
-        recipient_entities: list[_EmailRecipient] = []
-        for recipient in recipients:
-            email, recipient_type = _parse_recipient_payload(recipient.recipient_payload)
-            if recipient_type not in {RecipientType.EMAIL_MEMBER, RecipientType.EMAIL_EXTERNAL}:
-                continue
-            if not email:
-                continue
-            token = recipient.access_token
-            if not token:
-                continue
-            recipient_entities.append(_EmailRecipient(email=email, token=token))
-
-        if not recipient_entities:
-            continue
-
-        jobs.append(
-            _EmailDeliveryJob(
-                form_id=form.id,
-                subject=delivery_config.config.subject,
-                body=delivery_config.config.body,
-                form_content=form.rendered_content,
-                recipients=recipient_entities,
-            )
-        )
-    return jobs
-
-
-def _render_body(
-    body_template: str,
-    form_link: str,
-    *,
-    variable_pool: VariablePool | None,
-) -> str:
-    body = EmailDeliveryConfig.render_body_template(
-        body=body_template,
-        url=form_link,
-        variable_pool=variable_pool,
-    )
-    return EmailDeliveryConfig.render_markdown_body(body)
+def _has_email_context(contexts: Sequence[HumanInputFormDeliveryContext]) -> bool:
+    return any(context.delivery_method_type == DeliveryMethodType.EMAIL for context in contexts)
 
 
 def _load_variable_pool(workflow_run_id: str | None) -> VariablePool | None:
@@ -151,12 +67,62 @@ def _open_session(session_factory: sessionmaker | Session | None):
     return session_factory()
 
 
-@shared_task(queue="mail")
-def dispatch_human_input_email_task(form_id: str, node_title: str | None = None, session_factory=None):
-    if not mail.is_inited():
+def _filter_unavailable_email_contexts(
+    *,
+    contexts: Sequence[HumanInputFormDeliveryContext],
+    tenant_id: str,
+    form_id: str,
+) -> tuple[HumanInputFormDeliveryContext, ...]:
+    contexts_tuple = tuple(contexts)
+    if not _has_email_context(contexts_tuple):
+        return contexts_tuple
+
+    email_delivery_enabled = False
+    if mail.is_inited():
+        try:
+            features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+            email_delivery_enabled = features.human_input_email_delivery_enabled
+        except Exception:
+            logger.exception(
+                "Failed to check human input email delivery availability; skipping email contexts, "
+                "tenant=%s, form_id=%s",
+                tenant_id,
+                form_id,
+            )
+
+    if email_delivery_enabled:
+        return contexts_tuple
+
+    return tuple(context for context in contexts_tuple if context.delivery_method_type != DeliveryMethodType.EMAIL)
+
+
+def _is_email_delivery_enabled(*, tenant_id: str, form_id: str) -> bool:
+    features = FeatureService.get_features(tenant_id, exclude_vector_space=True)
+    email_delivery_enabled = features.human_input_email_delivery_enabled
+    if not email_delivery_enabled:
+        logger.info(
+            "Human input email delivery is not available for tenant=%s, form_id=%s",
+            tenant_id,
+            form_id,
+        )
+    return email_delivery_enabled
+
+
+def _load_and_dispatch_form_delivery(
+    *,
+    form_id: str,
+    node_title: str | None,
+    session_factory,
+    delivery_method_types: Sequence[DeliveryMethodType] | None,
+    require_mail_inited: bool,
+    require_email_feature: bool,
+    filter_unavailable_email: bool,
+    log_label: str,
+) -> None:
+    if require_mail_inited and not mail.is_inited():
         return
 
-    logger.info(click.style(f"Start human input email delivery for form {form_id}", fg="green"))
+    logger.info(click.style(f"Start human input {log_label} delivery for form {form_id}", fg="green"))
     start_at = time.perf_counter()
 
     try:
@@ -165,35 +131,67 @@ def dispatch_human_input_email_task(form_id: str, node_title: str | None = None,
             if form is None:
                 logger.warning("Human input form not found, form_id=%s", form_id)
                 return
-            features = FeatureService.get_features(form.tenant_id, exclude_vector_space=True)
-            if not features.human_input_email_delivery_enabled:
-                logger.info(
-                    "Human input email delivery is not available for tenant=%s, form_id=%s",
-                    form.tenant_id,
-                    form_id,
-                )
+
+            if require_email_feature and not _is_email_delivery_enabled(tenant_id=form.tenant_id, form_id=form_id):
                 return
-            jobs = _load_email_jobs(session, form)
 
-        variable_pool = _load_variable_pool(form.workflow_run_id)
+            variable_pool = _load_variable_pool(form.workflow_run_id)
+            registry = HumanInputFormDeliveryProviderRegistry.default(mail_client=mail)
+            dispatcher = HumanInputFormDeliveryDispatcher(registry=registry)
+            contexts = dispatcher.load_form_contexts(
+                session=session,
+                form=form,
+                variable_pool=variable_pool,
+                delivery_method_types=delivery_method_types,
+            )
 
-        for job in jobs:
-            for recipient in job.recipients:
-                form_link = _build_form_link(recipient.token)
-                body = _render_body(job.body, form_link, variable_pool=variable_pool)
-                subject = EmailDeliveryConfig.sanitize_subject(job.subject)
-
-                mail.send(
-                    to=recipient.email,
-                    subject=subject,
-                    html=body,
-                )
+        if filter_unavailable_email:
+            contexts = _filter_unavailable_email_contexts(
+                contexts=contexts,
+                tenant_id=form.tenant_id,
+                form_id=form_id,
+            )
+        dispatcher.dispatch_contexts(contexts)
 
         end_at = time.perf_counter()
         logger.info(
             click.style(
-                f"Human input email delivery succeeded for form {form_id}: latency: {end_at - start_at}", fg="green"
+                f"Human input {log_label} delivery succeeded for form {form_id}: latency: {end_at - start_at}",
+                fg="green",
             )
         )
     except Exception:
-        logger.exception("Send human input email failed, form_id=%s", form_id)
+        logger.exception(
+            "Dispatch human input %s delivery failed, form_id=%s, node_title=%s",
+            log_label,
+            form_id,
+            node_title,
+        )
+
+
+@shared_task(queue="mail")
+def dispatch_human_input_form_delivery_task(form_id: str, node_title: str | None = None, session_factory=None):
+    _load_and_dispatch_form_delivery(
+        form_id=form_id,
+        node_title=node_title,
+        session_factory=session_factory,
+        delivery_method_types=FORM_DELIVERY_METHOD_TYPES,
+        require_mail_inited=False,
+        require_email_feature=False,
+        filter_unavailable_email=True,
+        log_label="form",
+    )
+
+
+@shared_task(queue="mail")
+def dispatch_human_input_email_task(form_id: str, node_title: str | None = None, session_factory=None):
+    _load_and_dispatch_form_delivery(
+        form_id=form_id,
+        node_title=node_title,
+        session_factory=session_factory,
+        delivery_method_types=(DeliveryMethodType.EMAIL,),
+        require_mail_inited=True,
+        require_email_feature=True,
+        filter_unavailable_email=False,
+        log_label="email",
+    )

@@ -69,9 +69,66 @@
     "./errors": {
       "types": "./dist/errors.d.ts",
       "default": "./dist/errors.js"
+    },
+    "./console/*": {
+      "types": "./contracts/console/*.d.ts"
+    },
+    "./service": {
+      "types": "./contracts/service.d.ts"
+    },
+    "./web": {
+      "types": "./contracts/web.d.ts"
+    },
+    "./openapi": {
+      "types": "./contracts/openapi.d.ts"
+    },
+    "./enterprise": {
+      "types": "./contracts/enterprise.d.ts"
+    },
+    "./enterprise-app-deploy": {
+      "types": "./contracts/enterprise-app-deploy.d.ts"
     }
   },
   "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "./vite": {
+        "types": "./dist/tooling/vite.d.ts",
+        "default": "./dist/tooling/vite.js"
+      },
+      "./loader": {
+        "types": "./dist/tooling/loader.d.ts",
+        "default": "./dist/tooling/loader.js"
+      },
+      "./namespace": {
+        "types": "./dist/tooling/openapi-namespace.d.ts",
+        "default": "./dist/tooling/openapi-namespace.js"
+      },
+      "./register": {
+        "types": "./dist/tooling/register.d.ts",
+        "default": "./dist/tooling/register.js"
+      },
+      "./mapper": {
+        "types": "./dist/tooling/mapper.d.ts",
+        "default": "./dist/tooling/mapper.js"
+      },
+      "./runtime": {
+        "types": "./dist/client.d.ts",
+        "default": "./dist/client.js"
+      },
+      "./query-runtime": {
+        "types": "./dist/query-runtime.d.ts",
+        "default": "./dist/query-runtime.js"
+      },
+      "./package.json": "./package.json",
+      "./errors": {
+        "types": "./dist/errors.d.ts",
+        "default": "./dist/errors.js"
+      }
+    },
     "access": "public",
     "registry": "https://registry.npmjs.org/",
     "tag": "beta"
@@ -80,10 +137,12 @@
     "build": "vp pack",
     "prepare": "pnpm run build",
     "type-check": "tsc -p tsconfig.json --noEmit && tsc --runExternalCode --noEmit -p examples/petstore/tsconfig.json",
+    "type-check:contracts": "tsc --runExternalCode --noEmit -p examples/repository/tsconfig.json",
     "test": "node --test --test-concurrency=1 test/*.test.mjs",
     "demo": "node --import ./dist/tooling/register.js examples/petstore/demo.ts",
     "test:next": "node --test integration/next.mjs",
     "test:repository": "node --test integration/*.test.mjs",
+    "test:contracts": "node --test integration/contracts-types.test.mjs",
     "compare:orpc": "node integration/compare-orpc.mjs",
     "check:orpc": "node integration/compare-orpc.mjs --check",
     "prepack": "pnpm run build",
@@ -100,6 +159,7 @@
     "yaml": "catalog:"
   },
   "devDependencies": {
+    "@dify/contracts": "workspace:*",
     "@tanstack/query-core": "catalog:",
     "@types/node": "catalog:",
     "typescript": "catalog:ts71",

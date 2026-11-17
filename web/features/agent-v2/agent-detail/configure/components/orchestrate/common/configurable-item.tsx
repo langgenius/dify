@@ -1,6 +1,9 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
+import { useTranslation } from 'react-i18next'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
 export function ConfigureSectionConfigurableItem({
@@ -20,6 +23,7 @@ export function ConfigureSectionConfigurableItem({
   onEdit?: () => void
   onRemove: () => void
 }) {
+  const { t } = useTranslation(['common'])
   const readOnly = useAgentOrchestrateReadOnly()
   const hasBadge = badge !== undefined && badge !== null
 
@@ -32,23 +36,27 @@ export function ConfigureSectionConfigurableItem({
       {!readOnly && (
         <div className="pointer-events-none absolute inset-e-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1 bg-components-panel-on-panel-item-bg-hover opacity-0 group-focus-within:pointer-events-auto group-focus-within:opacity-100 group-hover:pointer-events-auto group-hover:opacity-100">
           {onEdit && (
-            <button
-              type="button"
-              aria-label={editAriaLabel}
-              onClick={onEdit}
-              className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary focus-visible:bg-state-base-hover focus-visible:text-text-secondary focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-            >
-              <span aria-hidden className="i-ri-equalizer-2-line size-4" />
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <IconButton aria-label={editAriaLabel} onClick={onEdit}>
+                    <span aria-hidden className="i-ri-equalizer-2-line size-4" />
+                  </IconButton>
+                }
+              />
+              <TooltipContent>{t(($) => $['operation.edit'])}</TooltipContent>
+            </Tooltip>
           )}
-          <button
-            type="button"
-            aria-label={removeAriaLabel}
-            onClick={onRemove}
-            className="flex size-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive focus-visible:bg-state-destructive-hover focus-visible:text-text-destructive focus-visible:ring-2 focus-visible:ring-state-accent-solid focus-visible:outline-hidden"
-          >
-            <span aria-hidden className="i-ri-delete-bin-line size-4" />
-          </button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <IconButton aria-label={removeAriaLabel} tone="destructive" onClick={onRemove}>
+                  <span aria-hidden className="i-ri-delete-bin-line size-4" />
+                </IconButton>
+              }
+            />
+            <TooltipContent>{t(($) => $['operation.remove'])}</TooltipContent>
+          </Tooltip>
         </div>
       )}
       {hasBadge && (

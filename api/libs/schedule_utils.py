@@ -1,8 +1,7 @@
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 from croniter import croniter
-from pytz.exceptions import UnknownTimeZoneError
 
 
 def calculate_next_run_at(
@@ -41,10 +40,8 @@ def calculate_next_run_at(
 
     try:
         tz = ZoneInfo(timezone)
-    except ZoneInfoNotFoundError as exc:
-        # Preserve the public error contract: callers and tests expect the same
-        # exception type pytz raised for unknown timezone names.
-        raise UnknownTimeZoneError(timezone) from exc
+    except (ValueError, OSError):
+        raise ValueError(f"Invalid timezone: {timezone!r}") from None
 
     if base_time is None:
         base_time = datetime.now(UTC)

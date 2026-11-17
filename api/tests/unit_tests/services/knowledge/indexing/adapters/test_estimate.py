@@ -17,6 +17,7 @@ from extensions.storage.storage_type import StorageType
 from models.dataset import Dataset, DatasetProcessRule
 from models.enums import CreatorUserRole, ProcessRuleMode
 from models.model import UploadFile
+from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.knowledge.indexing.adapters.estimate import (
     IndexingEstimateAdapter,
     SQLAlchemyProcessRuleReader,
@@ -198,6 +199,7 @@ def test_estimate_selects_dataset_embedding_and_rejects_foreign_tenant(
 @pytest.mark.parametrize(
     ("processor_error", "expected_error"),
     [
+        (CredentialRefreshUnavailableError(), CredentialRefreshUnavailableError),
         (LLMBadRequestError("provider unavailable"), IndexingEstimateProviderUnavailableError),
         (ProviderTokenNotInitError("provider unavailable"), IndexingEstimateProviderUnavailableError),
         (PluginDaemonClientSideError("provider unavailable"), IndexingEstimateProviderUnavailableError),
@@ -212,7 +214,7 @@ def test_estimate_translates_infrastructure_errors(
     adapter = IndexingEstimateAdapter(session_factory=sqlite_session_factory)
     with (
         patch("services.knowledge.indexing.adapters.estimate.IndexProcessorFactory", side_effect=processor_error),
-        pytest.raises(expected_error, match="provider unavailable|processor failed"),
+        pytest.raises(expected_error, match="provider unavailable|processor failed|temporarily unavailable"),
     ):
         adapter.run(
             "workspace-1",

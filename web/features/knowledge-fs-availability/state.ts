@@ -6,10 +6,8 @@ import { knowledgeFsFeaturesQueryOptions } from './client'
 
 const knowledgeFsFeaturesQueryAtom = atomWithQuery(() => knowledgeFsFeaturesQueryOptions())
 
-// Every surface stays unavailable until the authenticated query resolves, and after it fails.
+// Every capability stays unavailable until the authenticated query resolves, and after it fails.
 const knowledgeFsFeaturesAtom = atom((get) => get(knowledgeFsFeaturesQueryAtom).data)
-
-export const knowledgeFsEnabledAtom = atom((get) => get(knowledgeFsFeaturesAtom)?.enabled ?? false)
 
 export const knowledgeFsUploadEnabledAtom = atom(
   (get) => get(knowledgeFsFeaturesAtom)?.upload_enabled ?? false,

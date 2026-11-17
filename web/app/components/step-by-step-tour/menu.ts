@@ -1,4 +1,4 @@
-import type { MenuContentProps } from '@langgenius/dify-ui/menu'
+import type { MenuChangeEventDetails, MenuContentProps } from '@langgenius/dify-ui/menu'
 import type { SyntheticEvent } from 'react'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useCallback, useState } from 'react'
@@ -103,10 +103,14 @@ export const useStepByStepTourControlledMenu = ({
   if (normalizedState !== state) setState(normalizedState)
 
   const onOpenChange = useCallback(
-    (nextOpen: boolean) => {
+    (nextOpen: boolean, eventDetails: Pick<MenuChangeEventDetails, 'reason'>) => {
       setState((currentState) => {
         const nextState = getNextMenuStateForControlledOpen(currentState, controlledOpen)
-        if (nextState.controlledOpen && !allowTriggerCloseWhileControlled && !nextOpen)
+        if (
+          nextState.controlledOpen &&
+          !nextOpen &&
+          (!allowTriggerCloseWhileControlled || eventDetails.reason !== 'trigger-press')
+        )
           return nextState
 
         return {

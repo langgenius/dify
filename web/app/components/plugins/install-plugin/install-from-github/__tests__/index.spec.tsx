@@ -1,4 +1,5 @@
 import type { ComponentProps } from 'react'
+import { Dialog } from '@langgenius/dify-ui/dialog'
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createHttpError } from '@/service/http-error'
@@ -6,7 +7,33 @@ import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { createPluginDeclarationFixture, createPluginEntity } from '@/test/fixtures/plugin'
 import { TaskStatus } from '../../../types'
-import InstallFromGitHub from '../index'
+import useHideLogic from '../../hooks/use-hide-logic'
+import { GitHubInstallContent } from '../dialog'
+import Installer from '../index'
+
+function InstallFromGitHub(
+  props: Omit<ComponentProps<typeof Installer>, 'onStartInstalling' | 'onFinishInstalling'>,
+) {
+  const { popupRef, foldAnimInto, handleStartToInstall, setIsInstalling } = useHideLogic(
+    props.onClose,
+  )
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) foldAnimInto()
+      }}
+    >
+      <GitHubInstallContent popupRef={popupRef}>
+        <Installer
+          {...props}
+          onStartInstalling={handleStartToInstall}
+          onFinishInstalling={() => setIsInstalling(false)}
+        />
+      </GitHubInstallContent>
+    </Dialog>
+  )
+}
 
 const { fetchReleases, upload, install, pollTask, refresh, notify, installed, upgrade } =
   vi.hoisted(() => ({
@@ -116,7 +143,9 @@ it('submits the URL with Enter, installs the selected release, and waits for asy
   expect(nextButton()).toBeDisabled()
   const button = await loadPackage(user)
   expect(fetchReleases).toHaveBeenCalledExactlyOnceWith('https://ungh.cc/repos/owner/repo/releases')
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
+    silent: true,
+  })
   await user.click(button)
   await waitFor(() => expect(onSuccess).toHaveBeenCalledOnce())
   const pendingButton = screen.getByRole('button', { name: 'plugin.installModal.installing' })
@@ -217,8 +246,11 @@ it.each(['empty', 'error'])(
       'https://github.com/owner/repo',
     )
     await user.click(nextButton())
-    await waitFor(() => expect(notify).toHaveBeenCalledWith('plugin.error.noReleasesFound'))
-    if (response === 'error') expect(notify).toHaveBeenCalledWith('Release service unavailable')
+    await waitFor(() =>
+      expect(notify).toHaveBeenCalledExactlyOnceWith(
+        response === 'empty' ? 'plugin.error.noReleasesFound' : 'plugin.error.fetchReleasesError',
+      ),
+    )
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
     await user.click(nextButton())
     await screen.findByRole('combobox', { name: 'plugin.installFromGitHub.selectVersion' })
@@ -241,7 +273,7 @@ it.each([
   await selectPackage(user)
   await user.click(nextButton())
   await screen.findByText(message)
-  expect(notify).toHaveBeenCalledWith('Error uploading package')
+  expect(notify).not.toHaveBeenCalled()
   expect(screen.queryByRole('combobox')).not.toBeInTheDocument()
   expect(install).not.toHaveBeenCalled()
   expect(onSuccess).not.toHaveBeenCalled()
@@ -321,7 +353,9 @@ it('blocks repeated upload and backward navigation until the selected package fi
   expect(back).toBeDisabled()
   await user.click(next)
   await user.click(back)
-  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg')
+  expect(upload).toHaveBeenCalledExactlyOnceWith('owner/repo', 'v1.0.0', 'plugin.difypkg', {
+    silent: true,
+  })
   expect(
     screen.queryByRole('button', { name: 'plugin.installModal.install' }),
   ).not.toBeInTheDocument()

@@ -10,6 +10,7 @@ from models.agent import (
     AgentWorkspaceBinding,
     AgentWorkspaceOwnerType,
 )
+from models.enums import ConversationFromSource
 from models.model import App, AppMode, Conversation
 from services.agent.workspace_service import AgentWorkspaceNotFoundError, AgentWorkspaceService
 
@@ -81,7 +82,7 @@ def _persist_conversation(session: Session, *, binding_id: str | None = None) ->
         introduction="",
         system_instruction="",
         invoke_from=None,
-        from_source="api",
+        from_source=ConversationFromSource.API,
         from_end_user_id="user-1",
         from_account_id=None,
         read_at=None,

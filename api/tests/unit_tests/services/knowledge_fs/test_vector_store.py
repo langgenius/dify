@@ -26,6 +26,7 @@ from services.knowledge_fs.vector_store import (
 )
 from services.knowledge_fs.vector_store_elasticsearch import ElasticsearchVectorStore
 from services.knowledge_fs.vector_store_weaviate import WeaviateVectorStore
+from tests.helpers import billing_builders as builders
 
 if TYPE_CHECKING:
     from elasticsearch import Elasticsearch
@@ -34,6 +35,7 @@ if TYPE_CHECKING:
 _KNOWLEDGE_FS_VECTOR_BACKENDS_A, _KNOWLEDGE_FS_VECTOR_BACKENDS_B, _KNOWLEDGE_FS_VECTOR_BACKENDS_GENERATION = (
     f"00000000-0000-4000-8000-{n:012d}" for n in (1, 2, 3)
 )
+
 _KNOWLEDGE_FS_VECTOR_BACKENDS_SCOPE: dict[str, object] = {
     "tenant_id": _KNOWLEDGE_FS_VECTOR_BACKENDS_A,
     "knowledge_space_id": _KNOWLEDGE_FS_VECTOR_BACKENDS_B,
@@ -1382,7 +1384,7 @@ class TestKnowledgeFsVectorStoreCases:
             patch.object(service, "_get_plan", return_value=CloudPlan.SANDBOX),
             patch(
                 "services.vector_space_admission_service.BillingService.get_vector_space",
-                return_value={"size": 0, "limit": limit, "usage_unknown": True},
+                return_value=builders.vector_space(size=0, limit=limit, usage_unknown=True),
             ),
             patch.object(service, "_reserve_projected_usage") as reserve,
         ):

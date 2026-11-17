@@ -1,7 +1,9 @@
 import logging
 from datetime import datetime, timedelta
 from enum import StrEnum
+from functools import cache
 from typing import Final, Literal
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError, available_timezones
 
 from pydantic import (
     AliasChoices,
@@ -26,13 +28,24 @@ MIN_OAUTH_TTL_DAYS: Final = 1
 MAX_OAUTH_TTL_DAYS: Final = 365
 
 
+@cache
+def _timezone_names_by_casefold() -> dict[str, str]:
+    """Return a cached case-insensitive index of available IANA timezone names.
+
+    The index is built only after a direct ``ZoneInfo`` lookup fails. Every
+    returned value remains a key accepted by the current runtime's timezone
+    database.
+    """
+    return {timezone_name.casefold(): timezone_name for timezone_name in available_timezones()}
+
+
 class SecurityConfig(BaseSettings):
     """
     Security-related configurations for the application
     """
 
     SECRET_KEY: str = Field(
-        description="Secret key for secure session cookie signing. "
+        description="Secret key for session cookie signing and account-bound personal access token verification. "
         "Leave empty to let Dify generate a persistent key in the storage directory, "
         "or set a strong value via the `SECRET_KEY` environment variable.",
         default="",
@@ -425,6 +438,23 @@ class EndpointConfig(BaseSettings):
     )
 
     TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
+
+    BILLING_API_URL: str = Field(
+        description="Internal billing and SaaS API base URL, including the API version path; Cloud edition only. "
+        "Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_API_SECRET_KEY: str = Field(
+        description="Shared secret sent to the billing and SaaS APIs. Only services.billing_client may read it",
+        default="",
+    )
+
+    BILLING_QUOTA_API_URL: str = Field(
+        description="Optional billing API base URL for quota requests; falls back to BILLING_API_URL. "
+        "Only services.billing_client may read it",
+        default="",
+    )
 
     NETWORK_ACCESS_API_URL: str = Field(
         description="Optional internal SaaS API base URL for network access policy requests; "
@@ -868,6 +898,29 @@ class LoggingConfig(BaseSettings):
         description="Timezone for log timestamps (e.g., 'America/New_York')",
         default="UTC",
     )
+
+    @field_validator("LOG_TZ")
+    @classmethod
+    def validate_log_timezone(cls, timezone_name: str | None) -> str | None:
+        """Validate and normalize the logging timezone at the configuration boundary.
+
+        ``None`` and the legacy empty string remain unchanged. A name accepted
+        directly by ``ZoneInfo`` is returned verbatim, including valid aliases.
+        A case-only mismatch is normalized to an available IANA key. Any other
+        non-empty value raises a validation error and is never replaced by UTC.
+        """
+        if not timezone_name:
+            return timezone_name
+
+        try:
+            ZoneInfo(timezone_name)
+        except (OSError, ValueError, ZoneInfoNotFoundError):
+            canonical_name = _timezone_names_by_casefold().get(timezone_name.casefold())
+            if canonical_name is None:
+                raise ValueError(f"LOG_TZ must be a valid IANA timezone name, got {timezone_name!r}") from None
+            return canonical_name
+
+        return timezone_name
 
 
 class ModelLoadBalanceConfig(BaseSettings):
@@ -1338,6 +1391,11 @@ class DataSetConfig(BaseSettings):
     Configuration for dataset management
     """
 
+    DATASET_DESCRIPTION_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters in a knowledge base description",
+        default=400,
+    )
+
     PLAN_SANDBOX_CLEAN_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for dataset cleanup operations - plan: sandbox",
         default=30,
@@ -1421,6 +1479,11 @@ class MultiModalTransferConfig(BaseSettings):
 
 
 class OpsTraceConfig(BaseSettings):
+    OPS_TRACE_QUEUE: str = Field(
+        default="ops_trace_v2",
+        pattern=r"^[A-Za-z0-9_.-]+$",
+        description="Celery queue for tracing and sandbox metering; isolate new workers during rolling upgrades.",
+    )
     OPS_AGENT_TRACE_ENABLED: bool = Field(
         default=False, description="Enable application-scoped Agent tracing collection and delivery."
     )
@@ -1446,36 +1509,10 @@ class OpsTraceConfig(BaseSettings):
         default=7, description="Retention of trace payloads and encrypted destination snapshots."
     )
 
-    OPS_TRACE_UNIFIED_ENABLED: bool = Field(
-        description="Enable unified ops tracing for providers registered in the unified registry.",
-        default=False,
+    OPS_TRACE_EXPORT_MAX_ATTEMPTS: PositiveInt = Field(
+        default=6,
+        description="Attempts to send one trace to its provider when the provider is temporarily unavailable.",
     )
-
-    # Include scheduling and export grace after the parent workflow's maximum execution time.
-    # Recommended: max_retries >= ceil((WORKFLOW_MAX_EXECUTION_TIME + grace_seconds) / delay_seconds).
-    OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES: PositiveInt = Field(
-        description="Maximum retry attempts for transient ops trace provider dispatch failures.",
-        default=780,
-    )
-
-    OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS: PositiveInt = Field(
-        description="Delay in seconds between transient ops trace provider dispatch retry attempts.",
-        default=5,
-    )
-
-    OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS: PositiveInt = Field(
-        description="Retention in seconds for unified tracing parent contexts.",
-        default=3900,
-    )
-
-    @model_validator(mode="after")
-    def validate_parent_context_retention(self) -> "OpsTraceConfig":
-        if not self.OPS_TRACE_UNIFIED_ENABLED:
-            return self
-        retry_window = self.OPS_TRACE_RETRYABLE_DISPATCH_MAX_RETRIES * self.OPS_TRACE_RETRYABLE_DISPATCH_DELAY_SECONDS
-        if retry_window > self.OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS:
-            raise ValueError("OPS_TRACE_PARENT_CONTEXT_TTL_SECONDS must cover the retry window")
-        return self
 
 
 class CeleryBeatConfig(BaseSettings):
@@ -1486,8 +1523,16 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class CeleryScheduleTasksConfig(BaseSettings):
+    ENABLE_TRACE_PAYLOAD_SWEEP_TASK: bool = Field(
+        description="Enable the daily cleanup of trace payloads that an interrupted delivery left in storage",
+        default=True,
+    )
     ENABLE_APPLICATION_TRACE_RECONCILE_TASK: bool = Field(
         description="Enable periodic application trace recovery and retention cleanup when Agent tracing is enabled",
+        default=True,
+    )
+    ENABLE_EVALUATION_RUN_RECONCILER: bool = Field(
+        description="Enable periodic recovery of running evaluations whose heartbeat lease has expired",
         default=True,
     )
     ENABLE_CONVERSATION_CLEANUP_TASK: bool = Field(
@@ -1768,6 +1813,45 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class EvaluationConfig(BaseSettings):
+    """Configuration for the evaluation runtime."""
+
+    EVALUATION_MAX_CONCURRENT_RUNS: PositiveInt = Field(
+        description="Maximum active evaluation runs per tenant.",
+        default=3,
+    )
+    EVALUATION_MAX_DATASET_ROWS: PositiveInt = Field(
+        description="Maximum number of rows in an evaluation dataset.",
+        default=500,
+    )
+    EVALUATION_RUN_HEARTBEAT_INTERVAL: PositiveInt = Field(
+        description="Interval in seconds between evaluation run heartbeat renewals.",
+        default=30,
+    )
+    EVALUATION_RUN_LEASE_TIMEOUT: PositiveInt = Field(
+        description="Maximum seconds without an evaluation run heartbeat before recovery.",
+        default=180,
+    )
+    EVALUATION_RUN_MAX_RETRIES: NonNegativeInt = Field(
+        description="Maximum retries after an evaluation task fails with a retryable error.",
+        default=3,
+    )
+    EVALUATION_RUN_RETRY_DELAY: PositiveInt = Field(
+        description="Base delay in seconds for exponential evaluation task retries.",
+        default=30,
+    )
+    EVALUATION_MAX_PARALLEL_TARGETS: PositiveInt = Field(
+        description="Maximum target executions performed in parallel by one evaluation task.",
+        default=5,
+    )
+
+    @model_validator(mode="after")
+    def validate_heartbeat_lease(self) -> "EvaluationConfig":
+        if self.EVALUATION_RUN_HEARTBEAT_INTERVAL >= self.EVALUATION_RUN_LEASE_TIMEOUT:
+            raise ValueError("Evaluation heartbeat interval must be shorter than the lease timeout")
+        return self
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1780,6 +1864,7 @@ class FeatureConfig(
     MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
+    EvaluationConfig,
     FileAccessConfig,
     FileUploadConfig,
     HomepageConfig,

@@ -606,6 +606,8 @@ class AgentSoulAppFeaturesConfig(AgentFlexibleConfig):
     speech_to_text: AgentFeatureToggleConfig | None = None
     text_to_speech: AgentTextToSpeechFeatureConfig | None = None
     retriever_resource: AgentFeatureToggleConfig | None = None
+    # Missing or null preserves the default of hiding model thoughts in chat.
+    show_thoughts: AgentFeatureToggleConfig | None = None
     sensitive_word_avoidance: AgentSensitiveWordAvoidanceFeatureConfig | None = None
     file_upload: AgentFileUploadFeatureConfig = Field(default_factory=AgentFileUploadFeatureConfig)
 
@@ -873,7 +875,7 @@ class DeclaredOutputFileConfig(BaseModel):
 class DeclaredArrayItem(BaseModel):
     """Per-item shape for an ``array``-typed declared output.
 
-    PRD §OUTPUT 配置框 keeps arrays one level deep on first version; nested arrays
+    The PRD output configuration section limits arrays to one level; nested arrays
     are rejected so the runtime type checker and JSON Schema stay easy to reason
     about. Stage 4 §4.2.
     """
@@ -937,7 +939,7 @@ class DeclaredOutputChildConfig(BaseModel):
 class DeclaredOutputCheckConfig(BaseModel):
     """File-output content check via a model-based comparison against a benchmark file.
 
-    Per PRD §OUTPUT 配置框, output check is **file-only** and optional. Stage 4 §4.3.
+    Per the PRD output configuration section, output checks are **file-only** and optional. Stage 4 §4.3.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -1048,7 +1050,7 @@ class DeclaredOutputConfig(BaseModel):
         if self.children and self.type != DeclaredOutputType.OBJECT:
             raise ValueError("children is only allowed for object outputs")
 
-        # Per PRD §OUTPUT 配置框: output check is file-only.
+        # Per the PRD output configuration section, output checks apply only to files.
         if self.check is not None and self.check.enabled and self.type != DeclaredOutputType.FILE:
             raise ValueError("output check is only allowed for file outputs")
 

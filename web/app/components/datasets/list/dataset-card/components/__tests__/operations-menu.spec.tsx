@@ -7,8 +7,10 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { KnowledgeUpgradeProvider } from '@/features/new-rag/upgrade/knowledge-upgrade-context'
 import { consoleQuery } from '@/service/console'
+import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DatasetACLPermission } from '@/utils/permission'
 import OperationsMenu from '../operations-menu'
 
@@ -16,6 +18,7 @@ let mockIsRbacEnabled = true
 
 const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
   const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient)
   const discoveryOptions = consoleQuery.datasets.byDatasetId.knowledgeFsUpgrades.get.queryOptions({
     input: { params: { dataset_id: 'dataset-1' } },
   })
@@ -26,7 +29,7 @@ const render = (ui: Parameters<typeof renderWithConsoleQuery>[0]) => {
     job: null,
   })
 
-  return renderWithConsoleQuery(ui, {
+  return renderWithConsoleQuery(<QueryTestingAdapter>{ui}</QueryTestingAdapter>, {
     queryClient,
     accountProfile: { id: 'user-1' },
     workspacePermissionKeys: [],

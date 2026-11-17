@@ -27,6 +27,7 @@ from core.rag.index_processor.constant.index_type import (
 )
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
+from core.workflow.file_reference import build_file_reference
 from enums import DeploymentEdition
 from graphon.model_runtime.entities.model_entities import ModelFeature, ModelType
 from models import Account as _dataset_service_dataset_Account
@@ -55,6 +56,7 @@ from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, Pr
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
+from services.auth.resource_access_token_contracts import DatasetServiceApiGrant
 from services.enterprise import rbac_service
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
@@ -647,8 +649,9 @@ class TestDatasetServiceDatasetCases:
             assert total == 2
             assert {dataset.id for dataset in datasets} == {creator_one.id, creator_two.id}
 
+        @pytest.mark.parametrize("include_all", [False, True])
         def test_get_datasets_applies_rbac_resource_scope_and_maintainer_override(
-            self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session
+            self, application_tags, config_overrides: Callable[..., None], sqlite_session: Session, include_all: bool
         ) -> None:
             user = _dataset_service_dataset_account(role=TenantAccountRole.NORMAL)
             accessible = _dataset_service_dataset_dataset(
@@ -665,7 +668,7 @@ class TestDatasetServiceDatasetCases:
             with (
                 _dataset_service_dataset_patch(
                     "services.knowledge.dataset_service.enterprise_rbac_service.RBACService.MyPermissions.get",
-                    return_value=SimpleNamespace(workspace=SimpleNamespace(permission_keys=[])),
+                    side_effect=AssertionError("List queries must reuse the caller-resolved RBAC scope"),
                 ),
             ):
                 datasets, total = _dataset_service_dataset_DatasetService.get_datasets(
@@ -675,6 +678,7 @@ class TestDatasetServiceDatasetCases:
                     tenant_id="tenant-1",
                     user=user,
                     accessible_dataset_ids=[accessible.id],
+                    include_all=include_all,
                     tags=application_tags,
                 )
 
@@ -700,6 +704,86 @@ class TestDatasetServiceDatasetCases:
 
             assert total == 1
             assert [dataset.id for dataset in datasets] == [shared.id]
+
+        @pytest.mark.parametrize("rbac_enabled", [False, True])
+        def test_get_datasets_workspace_scope_skips_account_acl_and_honors_resource_scope(
+            self,
+            application_tags,
+            config_overrides: Callable[..., None],
+            sqlite_session: Session,
+            rbac_enabled: bool,
+        ) -> None:
+            user = _dataset_service_dataset_account(role=TenantAccountRole.NORMAL)
+            shared = _dataset_service_dataset_dataset(
+                dataset_id="shared", name="Shared", permission=DatasetPermissionEnum.ALL_TEAM
+            )
+            private = _dataset_service_dataset_dataset(
+                dataset_id="private",
+                name="Private",
+                maintainer="other",
+                permission=DatasetPermissionEnum.ONLY_ME,
+            )
+            partial = _dataset_service_dataset_dataset(
+                dataset_id="partial",
+                name="Partial",
+                maintainer="other",
+                permission=DatasetPermissionEnum.PARTIAL_TEAM,
+            )
+            foreign = _dataset_service_dataset_dataset(dataset_id="foreign", tenant_id="tenant-2", name="Foreign")
+            sqlite_session.add_all([shared, private, partial, foreign])
+            sqlite_session.commit()
+
+            config_overrides(RBAC_ENABLED=rbac_enabled)
+            workspace_grant = DatasetServiceApiGrant(
+                token_id="workspace-token",
+                tenant_id="tenant-1",
+                dataset_ids=None,
+            )
+            datasets, total = _dataset_service_dataset_DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                tags=application_tags,
+                service_api_grant=workspace_grant,
+            )
+
+            assert total == 3
+            assert {dataset.id for dataset in datasets} == {"shared", "private", "partial"}
+
+            restricted, restricted_total = _dataset_service_dataset_DatasetService.get_datasets(
+                page=1,
+                per_page=20,
+                session=sqlite_session,
+                tenant_id="tenant-1",
+                user=user,
+                include_all=True,
+                tags=application_tags,
+                service_api_grant=DatasetServiceApiGrant(
+                    token_id="resource-token",
+                    tenant_id="tenant-1",
+                    dataset_ids=frozenset({private.id, foreign.id}),
+                ),
+            )
+
+            assert restricted_total == 1
+            assert [dataset.id for dataset in restricted] == [private.id]
+
+            with pytest.raises(ValueError, match="does not match"):
+                _dataset_service_dataset_DatasetService.get_datasets(
+                    page=1,
+                    per_page=20,
+                    session=sqlite_session,
+                    tenant_id="tenant-1",
+                    user=user,
+                    tags=application_tags,
+                    service_api_grant=DatasetServiceApiGrant(
+                        token_id="foreign-token",
+                        tenant_id="tenant-2",
+                        dataset_ids=None,
+                    ),
+                )
 
         def test_get_datasets_by_ids_intersects_requested_and_accessible_ids(
             self, config_overrides: Callable[..., None], sqlite_session: Session
@@ -1836,6 +1920,76 @@ class _RetryFlagStore:
         assert timeout == 600
         assert thread_local is False
         return _RetryFlagLock(self, key)
+
+
+class TestDocumentServiceDownloads:
+    @pytest.mark.parametrize("sqlite_session", [(_dataset_service_document_Document, UploadFile)], indirect=True)
+    @pytest.mark.parametrize(
+        ("source_type", "source_info"),
+        [
+            (DataSourceType.UPLOAD_FILE, {"upload_file_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"real_file_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"related_id": "file-1"}),
+            (DataSourceType.LOCAL_FILE, {"reference": build_file_reference(record_id="file-1")}),
+        ],
+    )
+    def test_single_and_zip_download_resolve_tenant_file(
+        self,
+        sqlite_session: Session,
+        source_type: DataSourceType,
+        source_info: dict[str, str],
+    ) -> None:
+        document = make_document(data_source_type=source_type, data_source_info=json.dumps(source_info))
+        upload_file = make_upload_file(file_id="file-1")
+        sqlite_session.add_all([document, upload_file])
+        sqlite_session.flush()
+
+        with _dataset_service_document_patch(
+            "services.knowledge.dataset_service.file_helpers.get_signed_file_url", return_value="signed-url"
+        ) as get_signed_url:
+            assert (
+                _dataset_service_document_DocumentService.get_document_download_url(document, sqlite_session)
+                == "signed-url"
+            )
+        get_signed_url.assert_called_once_with(upload_file_id=upload_file.id, as_attachment=True)
+
+        files = _dataset_service_document_DocumentService._get_upload_files_by_document_id_for_zip_download(
+            dataset_id=document.dataset_id,
+            document_ids=[document.id],
+            tenant_id=document.tenant_id,
+            session=sqlite_session,
+        )
+        assert files == {document.id: upload_file}
+
+    @pytest.mark.parametrize("sqlite_session", [(_dataset_service_document_Document, UploadFile)], indirect=True)
+    @pytest.mark.parametrize(
+        ("source_type", "source_info", "file_tenant_id"),
+        [
+            (DataSourceType.LOCAL_FILE, {}, "tenant-1"),
+            (DataSourceType.LOCAL_FILE, {"real_file_id": "file-1"}, "other-tenant"),
+            (DataSourceType.NOTION_IMPORT, {"real_file_id": "file-1"}, "tenant-1"),
+        ],
+    )
+    def test_download_rejects_missing_foreign_or_non_file_source(
+        self,
+        sqlite_session: Session,
+        source_type: DataSourceType,
+        source_info: dict[str, str],
+        file_tenant_id: str,
+    ) -> None:
+        document = make_document(data_source_type=source_type, data_source_info=json.dumps(source_info))
+        sqlite_session.add_all([document, make_upload_file(file_id="file-1", tenant_id=file_tenant_id)])
+        sqlite_session.flush()
+
+        with pytest.raises(NotFound):
+            _dataset_service_document_DocumentService.get_document_download_url(document, sqlite_session)
+        with pytest.raises(NotFound):
+            _dataset_service_document_DocumentService._get_upload_files_by_document_id_for_zip_download(
+                dataset_id=document.dataset_id,
+                document_ids=[document.id],
+                tenant_id=document.tenant_id,
+                session=sqlite_session,
+            )
 
 
 class TestDatasetServiceDocumentCases:

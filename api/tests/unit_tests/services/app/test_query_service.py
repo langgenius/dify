@@ -84,12 +84,13 @@ def test_list_and_uuid_search_apply_same_visibility(
     tenant = Tenant(name="Workspace")
     tenant.id = tenant_id
     sqlite_session.add(tenant)
-    app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer=context.account_id)
+    app_id = persist_app(
+        sqlite_session, tenant_id=tenant_id, maintainer="other" if visibility == "denied" else context.account_id
+    )
     persist_app(sqlite_session, tenant_id=tenant_id, enable_api=False)
     persist_app(sqlite_session, tenant_id=str(uuid4()))
     access.access_filter = AppAccessFilter(
         None if visibility == "unrestricted" else {app_id} if visibility == "whitelisted" else set(),
-        visibility == "own",
     )
     query = AppDiscoveryQuery(3 if uuid_search else 1, 20, None, app_id.upper() if uuid_search else None)
     result = service.list_apps(context, query)
@@ -135,7 +136,7 @@ def test_resource_bindings_replace_account_visibility(
     tenant_id = str(uuid4())
     app_id = persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
     persist_app(sqlite_session, tenant_id=tenant_id, maintainer="token-id")
-    access.access_filter = AppAccessFilter(set(), can_manage_own_apps=True)
+    access.access_filter = AppAccessFilter(set())
     context = RequestContext(
         "req", None, "token-id", tenant_id, resource_app_ids=frozenset({app_id}) if bound else frozenset()
     )
@@ -246,3 +247,36 @@ def test_description_materializes_only_owned_config_and_closes_session(
     finally:
         event.remove(sqlite_engine, "checkout", checkout)
         event.remove(sqlite_engine, "checkin", checkin)
+
+
+@pytest.mark.parametrize("uuid_search", [False, True])
+@pytest.mark.parametrize("visibility", ["unrestricted", "whitelisted", "own", "denied"])
+@pytest.mark.parametrize("selected", [False, True])
+def test_personal_token_scope_intersects_account_visibility_before_pagination(
+    sqlite_session: Session,
+    service: AppDiscoveryService,
+    access: DiscoveryAccess,
+    uuid_search: bool,
+    visibility: str,
+    selected: bool,
+) -> None:
+    tenant_id = str(uuid4())
+    app_id = persist_app(
+        sqlite_session, tenant_id=tenant_id, maintainer="account-id" if visibility == "own" else "other"
+    )
+    persist_app(sqlite_session, tenant_id=tenant_id, maintainer="account-id")
+    access.access_filter = AppAccessFilter(
+        None if visibility == "unrestricted" else {app_id} if visibility == "whitelisted" else set(),
+    )
+    context = RequestContext(
+        "req",
+        None,
+        "account-id",
+        tenant_id,
+        personal_app_ids=frozenset({app_id}) if selected else frozenset(),
+    )
+    result = service.list_apps(context, AppDiscoveryQuery(1, 1, None, app_id if uuid_search else None))
+    expected = [app_id] if selected and visibility != "denied" else []
+    assert access.contexts == [context]
+    assert result.total == len(expected)
+    assert [entry.app.id for entry in result.items] == expected

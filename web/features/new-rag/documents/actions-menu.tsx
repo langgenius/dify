@@ -6,6 +6,7 @@ import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -25,7 +26,7 @@ import {
   taskCanRetry,
 } from './model'
 import {
-  useDocumentRowActionBusy,
+  useDocumentRowPendingAction,
   useDownloadDocumentAction,
   useReindexDocumentAction,
   useRenameDocumentAction,
@@ -54,7 +55,7 @@ function RenameDocumentMenuItem({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
-  const busy = useDocumentRowActionBusy(document.id)
+  const busy = Boolean(useDocumentRowPendingAction(document.id))
 
   return (
     <MenuItem
@@ -70,10 +71,10 @@ function RenameDocumentMenuItem({
 
 function RenameDocumentForm({
   document,
-  onClose,
+  onSaved,
 }: {
   document: LogicalDocument
-  onClose: () => void
+  onSaved: () => void
 }) {
   const { t } = useTranslation(['knowledgeSpace', 'dataset'])
   const { t: tCommon } = useTranslation(['common'])
@@ -83,7 +84,7 @@ function RenameDocumentForm({
   const submit = async () => {
     const title = nextTitle.trim()
     if (!title || title === document.title || busy) return
-    if (await run(title)) onClose()
+    if (await run(title)) onSaved()
   }
 
   return (
@@ -112,9 +113,9 @@ function RenameDocumentForm({
         />
       </DialogBody>
       <DialogFooter>
-        <Button disabled={pending} onClick={onClose} type="button">
+        <DialogClose render={<Button disabled={pending} />}>
           {tCommon(($) => $['operation.cancel'])}
-        </Button>
+        </DialogClose>
         <Button
           disabled={!nextTitle.trim() || nextTitle.trim() === document.title}
           loading={pending}
@@ -235,7 +236,7 @@ function RemoveDocumentMenuItem({
 }) {
   const { t: tCommon } = useTranslation(['common'])
   const canEdit = useDocumentCanEdit(document.id)
-  const busy = useDocumentRowActionBusy(document.id)
+  const busy = Boolean(useDocumentRowPendingAction(document.id))
   const disabled = !canEdit || document.status === 'deleting'
 
   return (
@@ -262,7 +263,8 @@ export function DocumentActionsMenu({
   document: LogicalDocument
 }) {
   const { t } = useTranslation(['dataset', 'knowledgeDocuments'])
-  const busy = useDocumentRowActionBusy(document.id)
+  const pendingAction = useDocumentRowPendingAction(document.id)
+  const busy = Boolean(pendingAction)
   const [renameDialogOpen, setRenameDialogOpen] = useState(false)
   const unavailableReasonId = `new-document-${document.id}-actions-unavailable`
 
@@ -276,7 +278,7 @@ export function DocumentActionsMenu({
           })}
           disabled={busy}
           className={cn(
-            'ml-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
+            'ms-auto flex size-7 items-center justify-center rounded-md text-text-tertiary outline-hidden hover:bg-state-base-hover focus-visible:ring-2 focus-visible:ring-state-accent-solid disabled:cursor-not-allowed disabled:text-text-disabled',
             className,
           )}
         >
@@ -302,9 +304,15 @@ export function DocumentActionsMenu({
       <span id={unavailableReasonId} className="sr-only">
         {t(($) => $.documentActionsUnavailable, { ns: 'knowledgeDocuments' })}
       </span>
-      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+      <Dialog
+        open={renameDialogOpen}
+        onOpenChange={(open, details) => {
+          if (!open && pendingAction === 'rename') details.cancel()
+          else setRenameDialogOpen(open)
+        }}
+      >
         <DialogContent>
-          <RenameDocumentForm document={document} onClose={() => setRenameDialogOpen(false)} />
+          <RenameDocumentForm document={document} onSaved={() => setRenameDialogOpen(false)} />
         </DialogContent>
       </Dialog>
     </>

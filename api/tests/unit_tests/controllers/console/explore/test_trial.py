@@ -969,6 +969,7 @@ class TestTrialAudioCases:
     def test_usage_write_failure_closes_stream_without_hiding_database_error(
         harness: _TrialAudioHarness, cleanup_fails: bool, caplog: pytest.LogCaptureFixture
     ) -> None:
+        """Given a failed usage write, close the audio stream and retain the database exception."""
         stream = _TrialAudioStream(close_error=RuntimeError("cleanup failed") if cleanup_fails else None)
         harness.runtime.output = AudioOutput(data=stream, mime_type="audio/mpeg")
         failure = RuntimeError("usage database unavailable")
@@ -988,7 +989,7 @@ class TestTrialAudioCases:
         assert stream.reads == 1
         assert stream.close_calls == 1
         assert harness.usage() is None
-        assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+        assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
 
     @staticmethod
     def test_partial_http_consumption_closes_provider_stream(harness: _TrialAudioHarness) -> None:
@@ -2189,6 +2190,7 @@ class TestTrialGenerationCases:
         cleanup_fails: bool,
         caplog: pytest.LogCaptureFixture,
     ) -> None:
+        """Given a failed usage write, close the unread stream and retain the database exception."""
         harness.set_mode(mode)
         stream = _TrialGenerationStream(close_error=RuntimeError("cleanup failed") if cleanup_fails else None)
         harness.runtime.response = stream
@@ -2211,7 +2213,7 @@ class TestTrialGenerationCases:
         assert stream.close_calls == 1
         assert stream.reads == 0
         assert harness.usage() is None
-        assert any(record.exc_info is not None and record.exc_info[1] is failure for record in caplog.records)
+        assert any(isinstance(record.exc_info, tuple) and record.exc_info[1] is failure for record in caplog.records)
 
     @staticmethod
     def test_later_stream_failure_does_not_refund_trial_usage(harness: _TrialGenerationHarness) -> None:
@@ -2490,6 +2492,7 @@ class TestTrialPreviewCases:
             "retriever_resource": {"enabled": False},
             "annotation_reply": {"enabled": False},
             "more_like_this": {"enabled": False},
+            "show_thoughts": {"enabled": False},
             "user_input_form": _INPUT_FORM,
             "sensitive_word_avoidance": {"enabled": False, "type": "", "configs": []},
             "file_upload": {"enabled": False, "number_limits": 0},

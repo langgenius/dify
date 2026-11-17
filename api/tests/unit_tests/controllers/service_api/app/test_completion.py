@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, Mock, patch
 import pytest
 from flask import Flask
 from pydantic import ValidationError
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
@@ -47,6 +48,7 @@ from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.llm import InvokeRateLimitError
+from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_app, make_end_user
 
@@ -620,14 +622,15 @@ class TestCompletionCases:
             assert exc_info.value.description == "rate limit reached"
 
         def test_rejects_sandbox_plan_workflow_version(
-            self, app: Flask, monkeypatch: pytest.MonkeyPatch, orm_session: Session
+            self, app: Flask, monkeypatch: pytest.MonkeyPatch, mocker: MockerFixture, orm_session: Session
         ) -> None:
             sys.modules["controllers.service_api.app.completion"]
             apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": CloudPlan.SANDBOX}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info("sandbox")
+            )
             generate = Mock()
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
 
             api = ChatApi()
@@ -662,6 +665,7 @@ class TestCompletionCases:
             self,
             app: Flask,
             monkeypatch: pytest.MonkeyPatch,
+            mocker: MockerFixture,
             orm_session: Session,
             deployment_edition: DeploymentEdition,
             plan: CloudPlan,
@@ -670,9 +674,10 @@ class TestCompletionCases:
             completion_module = sys.modules["controllers.service_api.app.completion"]
             apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=deployment_edition)
 
-            billing_get_info = Mock(return_value={"subscription": {"plan": plan}})
+            billing_get_info = mocker.patch.object(
+                BillingService, "get_info", return_value=builders.subscription_info(plan)
+            )
             generate = Mock(return_value={"result": "ok"})
-            monkeypatch.setattr(BillingService, "get_info", billing_get_info)
             monkeypatch.setattr(AppGenerateService, "generate", generate)
             monkeypatch.setattr(completion_module.helper, "compact_generate_response", lambda response: response)
 

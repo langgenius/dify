@@ -39,6 +39,13 @@ Machine-readable catalog of every op on this surface
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /account
+**Return account details with workspace visibility bounded by PAT scope**
+
+The account snapshot supplies current memberships and the default workspace.
+A PAT's admitted workspace IDs narrow that snapshot; the returned default is
+present only when its workspace remains visible. Non-PAT requests have no
+workspace filter. This handler is read-only and does not change membership.
+
 #### Responses
 
 | Code | Description | Schema |
@@ -672,6 +679,24 @@ Upload a file to use as an input variable when running the app
 | 200 | Run detail | **application/json**: [WorkflowRunDetailResponse](#workflowrundetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /apps/{app_id}/runs/{run_id}/events
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
+| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /apps/{app_id}/runs/{run_id}/nodes
 #### Parameters
 
@@ -685,6 +710,21 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Node steps | **application/json**: [WorkflowRunNodeExecutionListResponse](#workflowrunnodeexecutionlistresponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/runs/{run_id}:stop
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+| run_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Run stopped | **application/json**: [TaskStopResponse](#taskstopresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/service-api
@@ -754,24 +794,6 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Service API | **application/json**: [AgentServiceApi](#agentserviceapi)<br> |
-| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
-| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
-
-### [GET] /apps/{app_id}/tasks/{task_id}/events
-#### Parameters
-
-| Name | Located in | Description | Required | Schema |
-| ---- | ---------- | ----------- | -------- | ------ |
-| continue_on_pause | query | Whether to keep the event stream open on pause | No | boolean |
-| include_state_snapshot | query | Whether to include workflow state snapshots | No | boolean |
-| app_id | path |  | Yes | string |
-| task_id | path |  | Yes | string |
-
-#### Responses
-
-| Code | Description | Schema |
-| ---- | ----------- | ------ |
-| 200 | SSE event stream | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1170,6 +1192,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -1967,6 +1990,125 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [GET] /workspaces/{workspace_id}/skills
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| keyword | query | Words to match in the name, display name or description | No | string |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| tag | query | Only skills with every one of these tags; repeat to give several | No | [ string ] |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skills | **application/json**: [SkillListResponse](#skilllistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/imports
+**Import an admitted editor's validated folder, returning a count of file entries only**
+
+Creates a draft (201) or overwrites it (200), relaying archive and service errors.
+Import never publishes. ``draft_hash`` is the draft's ``updated_at`` in whole seconds,
+so an edit made in the same second as the export is not detected.
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [SkillImportPayload](#skillimportpayload)<br>**multipart/form-data**: [SkillImportPayload](#skillimportpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Overwritten | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 201 | Created | **application/json**: [SkillImportResponse](#skillimportresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Skill | **application/json**: [SkillDescribeResponse](#skilldescriberesponse)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/archive
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| version_id | query | Export this published version instead of the draft | No | string (uuid) |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Zip archive | **application/json**: [BinaryFileResponse](#binaryfileresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [GET] /workspaces/{workspace_id}/skills/{skill_id}/versions
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| limit | query |  | No | integer, <br>**Default:** 20 |
+| page | query |  | No | integer, <br>**Default:** 1 |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Versions | **application/json**: [SkillVersionListResponse](#skillversionlistresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}/skills/{skill_id}:publish
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| skill_id | path |  | Yes | string |
+| workspace_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+|  Yes | **application/json**: [SkillPublishPayload](#skillpublishpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Published | **application/json**: [SkillPublishResponse](#skillpublishresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [GET] /workspaces/{workspace_id}/tool-providers/{provider}
 #### Parameters
 
@@ -2045,6 +2187,20 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | ---- | ----------- | ------ |
 | 200 | Tools | **application/json**: [ToolListResponse](#toollistresponse)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /workspaces/{workspace_id}:switch
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Workspace detail | **application/json**: [WorkspaceDetailResponse](#workspacedetailresponse)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ---
@@ -2348,6 +2504,12 @@ mode is a closed enum of listable app types.
 | icon_type | string |  | No |
 | max_active_requests | integer |  | No |
 | name | string |  | Yes |
+
+#### BinaryFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| BinaryFileResponse | string |  |  |
 
 #### ChatAppInfo
 
@@ -3320,6 +3482,14 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
+
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -3573,6 +3743,14 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | base_url | string |  | Yes |
 | enabled | boolean |  | Yes |
 
+#### ServiceApiDisabledError
+
+This app's Service API is turned off.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ServiceApiDisabledError |  | This app's Service API is turned off. |  |
+
 #### ServiceApiPatch
 
 | Name | Type | Description | Required |
@@ -3634,6 +3812,127 @@ Pagination for GET /account/sessions. Strict (extra='forbid').
 | ---- | ---- | ----------- | -------- |
 | result | string | Operation result. | Yes |
 
+#### SkillDescribeResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| draft_hash | string | Opaque; names the draft this was read from | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| latest_version | [SkillVersionRow](#skillversionrow) | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillExportQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| version_id | string | Export this published version instead of the draft | No |
+
+#### SkillImportPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | From describe.skill; rejects the overwrite if the draft changed since | No |
+| files | object | The skill folder, one part per file; SKILL.md at its root | Yes |
+| skill_id | string | Overwrite this skill's draft; omit to create a new skill | No |
+
+#### SkillImportResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| draft_hash | string | Opaque; names the draft this wrote | Yes |
+| file_count | integer |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| name | string |  | Yes |
+
+#### SkillListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| keyword | string | Words to match in the name, display name or description | No |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+| tag | [ string ] | Only skills with every one of these tags; repeat to give several | No |
+
+#### SkillListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillRow](#skillrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillPublishPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| publish_note | string | Note for the new version | No |
+| version_name | string | Name for the new version | No |
+
+#### SkillPublishResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
+#### SkillRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| description | string |  | Yes |
+| display_name | string |  | Yes |
+| icon | string |  | Yes |
+| id | string |  | Yes |
+| latest_published_version_id | string | Null while the skill has never been published | Yes |
+| name | string |  | Yes |
+| tags | [ string ] |  | Yes |
+| updated_at | integer |  | Yes |
+
+#### SkillVersionListQuery
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| limit | integer, <br>**Default:** 20 |  | No |
+| page | integer, <br>**Default:** 1 |  | No |
+
+#### SkillVersionListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| data | [ [SkillVersionRow](#skillversionrow) ] |  | Yes |
+| has_more | boolean |  | Yes |
+| hints | [ [Hint](#hint) ] | Next steps the caller can take | No |
+| limit | integer |  | Yes |
+| page | integer |  | Yes |
+| total | integer |  | Yes |
+
+#### SkillVersionRow
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| created_at | integer |  | Yes |
+| created_by | string | Account id that published it | Yes |
+| id | string |  | Yes |
+| publish_note | string |  | Yes |
+| version_name | string |  | Yes |
+| version_number | integer |  | Yes |
+
 #### SubjectType
 
 | Name | Type | Description | Required |
@@ -3660,8 +3959,8 @@ generated CLI whitelist all derive from it.
 
 #### TaskStopResponse
 
-200 body for POST /apps/<id>/tasks/<task_id>:stop. The handler always returns
-{"result": "success"}, so `result` is required (no default) — the generated contract
+200 body for POST /apps/<id>/runs/<run_id>:stop and POST /apps/<id>/tasks/<task_id>:stop.
+The handlers always return {"result": "success"}, so `result` is required (no default) — the generated contract
 types it as a required `'success'` rather than an optional field.
 
 | Name | Type | Description | Required |

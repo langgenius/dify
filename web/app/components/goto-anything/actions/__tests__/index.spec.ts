@@ -13,8 +13,19 @@ describe('getActionSearchTerm', () => {
   })
 })
 
+describe('createActions', () => {
+  it('offers plugin search only when Marketplace is available', () => {
+    expect(
+      createActions(slash, false, false, { agents: false, plugins: true, skills: false }),
+    ).toHaveProperty('plugin')
+    expect(
+      createActions(slash, false, false, { agents: false, plugins: false, skills: false }),
+    ).not.toHaveProperty('plugin')
+  })
+})
+
 describe('matchAction', () => {
-  const actions = createActions(slash, false, false, { agents: true, skills: true })
+  const actions = createActions(slash, false, false, { agents: true, plugins: true, skills: true })
 
   it.each([
     ['@app query', '@app'],

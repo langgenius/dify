@@ -29,7 +29,7 @@ show_help() {
   echo "  schedule_poller       - Schedule polling tasks"
   echo "  schedule_executor     - Schedule execution tasks"
   echo "  mail                  - Email notifications"
-  echo "  ops_trace             - Operations tracing"
+  echo "  ops_trace_v2          - Operations tracing (override with OPS_TRACE_QUEUE)"
   echo "  app_deletion          - Application cleanup"
   echo "  plugin                - Plugin operations"
   echo "  workflow_storage      - Workflow storage tasks"
@@ -107,10 +107,10 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on product edition
   if [[ "${DEPLOYMENT_EDITION:-COMMUNITY}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,${OPS_TRACE_QUEUE:-ops_trace_v2},app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   else
     # Self-hosted editions: dataset and workflow have separate queues
-    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
+    QUEUES="dataset,dataset_summary,priority_dataset,priority_pipeline,pipeline,mail,${OPS_TRACE_QUEUE:-ops_trace_v2},app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention,workflow_based_app_execution,knowledge_fs_lifecycle"
   fi
 
   echo "No queues specified, using edition-based defaults: ${QUEUES}"

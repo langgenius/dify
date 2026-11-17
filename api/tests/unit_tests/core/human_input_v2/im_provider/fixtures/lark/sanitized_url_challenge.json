@@ -1,0 +1,17 @@
+{
+  "request": {
+    "method": "POST",
+    "received_at": "2026-10-15T00:00:01",
+    "headers": [
+      [
+        "Content-Type",
+        "application/json"
+      ]
+    ],
+    "body": "{\"encrypt\":\"AAECAwQFBgcICQoLDA0ODw3mxchJU2yI2FdfY9pMYMDk2vHMTyXXe9WbNMvBtt+jyvSgF2HpK+9nrJZM0xc3WITlOxUEBqLhKeJ5Bimp/XatqjuLeJrrXn3Jx2ifb1fXWBrV3+cZPtPgWTutWAsJa9CPCRVRDQcW3fiuLNnawOw=\"}"
+  },
+  "response": {
+    "status": 200,
+    "body": "{\"challenge\":\"lark-test-challenge\"}"
+  }
+}

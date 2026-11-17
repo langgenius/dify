@@ -10,7 +10,8 @@ from flask import has_request_context
 from sqlalchemy import Engine, event, func, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
-from fields.app_fields import AppPagination
+from enums import WorkflowKind
+from fields.app_fields import AppDetailWithSite, AppPagination
 from machinery.context import RequestContext
 from models.agent import Agent, AgentScope, AgentSource, AgentStatus
 from models.enums import CustomizeTokenStrategy
@@ -308,6 +309,38 @@ def test_draft_trigger_enrichment_is_tenant_scoped_and_tolerates_bad_graphs(
     assert AppPagination.model_validate(page, from_attributes=True).total == 3
 
 
+def test_detail_exposes_published_workflow_type_and_kind(
+    repository: ConsoleAppRepository, sqlite_session: Session
+) -> None:
+    app = persist_app(sqlite_session, mode=AppMode.WORKFLOW)
+    workflow = Workflow(
+        id=str(uuid4()),
+        tenant_id=WORKSPACE,
+        app_id=app.id,
+        type=WorkflowType.WORKFLOW,
+        kind=WorkflowKind.EVALUATION,
+        version="2026-11-06 00:00:00",
+        graph=json.dumps({"nodes": [], "edges": []}),
+        _features="{}",
+        created_by=ACTOR,
+    )
+    sqlite_session.add(workflow)
+    app.workflow_id = workflow.id
+    sqlite_session.commit()
+
+    record = repository.get(CONTEXT, app.id)
+
+    assert record.workflow is not None
+    assert record.workflow["type"] == "workflow"
+    assert record.workflow["kind"] == "evaluation"
+    assert record.workflow_type == "workflow"
+    assert record.workflow_kind == "evaluation"
+    detail = AppDetailWithSite.model_validate({**asdict(record), "api_base_url": "http://localhost", "app_id": None})
+    assert detail.workflow is not None
+    assert detail.workflow.type == "workflow"
+    assert detail.workflow_kind == "evaluation"
+
+
 def test_writes_use_explicit_actor_and_preserve_omitted_icon_type(
     repository: ConsoleAppRepository, sqlite_session: Session
 ) -> None:
@@ -343,3 +376,20 @@ def test_trace_settings_preserve_stored_json_validation(
 ) -> None:
     app = persist_app(sqlite_session, tracing='{"enabled": "false", "obsolete_field": true}')
     assert repository.get_trace(CONTEXT, app.id) == AppTraceSettings()
+
+
+@pytest.mark.parametrize("empty_whitelist", [True, False])
+def test_app_list_includes_maintained_apps_outside_whitelist(
+    repository: ConsoleAppRepository, sqlite_session: Session, empty_whitelist: bool
+) -> None:
+    own = persist_app(sqlite_session, maintainer=ACTOR, created_by="other")
+    allowed = persist_app(sqlite_session, maintainer="other")
+    persist_app(sqlite_session, maintainer="other", created_by=ACTOR)
+    persist_app(sqlite_session, maintainer=ACTOR, tenant_id=str(uuid4()))
+    params = AppListParams(accessible_app_ids=[] if empty_whitelist else [allowed.id])
+
+    page = repository.list_apps(CONTEXT, params)
+
+    expected = {own.id} if empty_whitelist else {own.id, allowed.id}
+    assert {app.id for app in page.data} == expected
+    assert page.total == len(expected)

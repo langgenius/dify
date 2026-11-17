@@ -2,12 +2,12 @@ import type { DocumentDownloadZipRequest } from '../datasets'
 import { useMutation } from '@tanstack/react-query'
 import { downloadDocumentsZip } from '../datasets'
 
-export const useDocumentDownloadZip = () => {
+export const useDocumentDownloadZip = (options?: { silent?: boolean }) => {
   return useMutation({
     mutationFn: ({ datasetId, documentIds }: DocumentDownloadZipRequest) => {
       if (!datasetId || !documentIds?.length)
         throw new Error('datasetId and documentIds are required')
-      return downloadDocumentsZip({ datasetId, documentIds })
+      return downloadDocumentsZip({ datasetId, documentIds }, options)
     },
   })
 }

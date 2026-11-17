@@ -1,18 +1,9 @@
 import type { DocumentUploadIssue } from '../../upload/policy'
 
-export const DOCUMENT_STAGING_REQUEST_TIMEOUT = 30_000
-
 export class DocumentStagingCanceledError extends Error {
   constructor() {
     super('Document staging was canceled')
     this.name = 'DocumentStagingCanceledError'
-  }
-}
-
-export class DocumentStagingTimeoutError extends Error {
-  constructor() {
-    super('Document staging timed out')
-    this.name = 'DocumentStagingTimeoutError'
   }
 }
 
