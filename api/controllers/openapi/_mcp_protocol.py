@@ -53,7 +53,9 @@ def request_id_of(body: Any) -> int | str | None:
 
 def has_id(body: Any) -> bool:
     """Postcondition: True when ``body`` is an object that carries an ``id`` key."""
-    return isinstance(body, dict) and _ID_KEY in body
+    if not isinstance(body, dict):
+        return False
+    return _ID_KEY in body
 
 
 def parse_message(body: Any) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
@@ -74,10 +76,19 @@ def parse_message(body: Any) -> mcp_types.ClientRequest | mcp_types.ClientNotifi
     method = body.get(_METHOD_KEY)
     if not isinstance(method, str):
         raise McpRequestError(mcp_types.INVALID_REQUEST, "method must be a string")
-    if has_id(body) and not _is_request_id(body[_ID_KEY]):
-        raise McpRequestError(mcp_types.INVALID_REQUEST, "id must be an integer or a string")
+    if has_id(body):
+        _require_request_id(body[_ID_KEY])
     if method not in _MCP_METHODS:
         raise McpRequestError(mcp_types.METHOD_NOT_FOUND, "Method not found")
+    return _read_message(body)
+
+
+def _require_request_id(value: Any) -> None:
+    if not _is_request_id(value):
+        raise McpRequestError(mcp_types.INVALID_REQUEST, "id must be an integer or a string")
+
+
+def _read_message(body: dict[str, Any]) -> mcp_types.ClientRequest | mcp_types.ClientNotification:
     try:
         return mcp_types.ClientRequest.model_validate(body)
     except ValidationError:
