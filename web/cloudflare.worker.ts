@@ -87,6 +87,8 @@ export function createWorker() {
     compatibilityDate: '2026-11-17',
     compatibilityFlags: ['nodejs_compat'],
     placement: placementRegion ? { region: placementRegion } : { mode: 'smart' },
+    // Invocation logs carry per-request CPU and wall time, which the cost estimate depends on.
+    observability: { enabled: true },
     assets: {
       htmlHandling: 'none',
       notFoundHandling: 'none',
