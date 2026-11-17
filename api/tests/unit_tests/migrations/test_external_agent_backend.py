@@ -33,8 +33,8 @@ def migration() -> ModuleType:
     return module
 
 
-def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
-    engine = sa.create_engine("sqlite://")
+def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads(tmp_path: Path) -> None:
+    engine = sa.create_engine(sa.URL.create("sqlite", database=str(tmp_path / "external-agent-migration.db")))
     metadata = sa.MetaData()
     added = {"binding_epoch", "external_job_config", "original_reference"}
     current = WorkflowAgentNodeBinding.__table__
@@ -121,10 +121,16 @@ def test_real_sqlite_upgrade_preserves_native_rows_and_merges_heads() -> None:
         assert not added.intersection(column["name"] for column in sa.inspect(connection).get_columns(legacy.name))
     engine.dispose()
     scripts = ScriptDirectory(str(API / "migrations"))
-    assert scripts.get_heads() == ["c3046merge1115"]
-    current_head = scripts.get_revision("c3046merge1115")
+    assert scripts.get_heads() == ["c3051merge1117"]
+    current_head = scripts.get_revision("c3051merge1117")
     assert current_head is not None
-    assert current_head.down_revision == ("c3025merge1112", "8c2f5d7a1e30")
+    assert current_head.down_revision == ("c3046merge1115", "f8b6e2c4a901")
+    file_scanning_merge = scripts.get_revision("c3046merge1115")
+    assert file_scanning_merge is not None
+    assert file_scanning_merge.down_revision == ("c3025merge1112", "8c2f5d7a1e30")
+    evaluation_merge = scripts.get_revision("f8b6e2c4a901")
+    assert evaluation_merge is not None
+    assert evaluation_merge.down_revision == ("8c2f5d7a1e30", "c7e4a1b2d9f0")
     merged = scripts.get_revision("c3025merge1112")
     assert merged is not None
     assert merged.down_revision == ("c3025dflt1112", "b2e4c6d8a013")

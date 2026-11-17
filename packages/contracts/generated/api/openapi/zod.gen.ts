@@ -1516,6 +1516,18 @@ export const zOpenApiFormSubmitPayload = z.object({
 })
 
 /**
+ * PaidPlanRequiredError
+ *
+ * This feature requires a paid plan.
+ */
+export const zPaidPlanRequiredError = zErrorBody.and(
+  z.object({
+    code: z.literal('paid_plan_required'),
+    status: z.literal(403),
+  }),
+)
+
+/**
  * PermittedExternalAppsListResponse
  */
 export const zPermittedExternalAppsListResponse = z.object({
@@ -1787,6 +1799,18 @@ export const zServiceApi = z.object({
   base_url: z.string(),
   enabled: z.boolean(),
 })
+
+/**
+ * ServiceApiDisabledError
+ *
+ * This app's Service API is turned off.
+ */
+export const zServiceApiDisabledError = zErrorBody.and(
+  z.object({
+    code: z.literal('service_api_disabled'),
+    status: z.literal(403),
+  }),
+)
 
 /**
  * ServiceApiPatch

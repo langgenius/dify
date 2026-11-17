@@ -7,7 +7,7 @@ and both positive and negative test scenarios. Database paths use isolated
 in-memory SQLite sessions with persisted ORM rows.
 """
 
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from unittest.mock import MagicMock
 
 import pytest
@@ -290,3 +290,86 @@ def test_cleanup_keeps_soft_deleted_marker_when_dispatch_fails(
     persisted = sqlite_session.get(Conversation, conversation.id)
     assert persisted is not None
     assert persisted.is_deleted is True
+
+
+@dataclass
+class _RetirementRecorder:
+    """Records the retirement wrapper's commit and collection calls in order."""
+
+    retired_workspace_ids: tuple[str, ...]
+    failure: Exception | None = None
+    events: list[tuple[str, ...]] = field(default_factory=list)
+    retire_kwargs: list[dict[str, object]] = field(default_factory=list)
+
+    def install(self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+        original_commit = sqlite_session.commit
+
+        def commit() -> None:
+            self.events.append(("commit",))
+            original_commit()
+
+        def retire(**kwargs: object) -> tuple[str, ...]:
+            self.retire_kwargs.append(kwargs)
+            if self.failure is not None:
+                raise self.failure
+            return self.retired_workspace_ids
+
+        def enqueue(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
+            self.events.append(("enqueue", tenant_id, *workspace_ids))
+
+        monkeypatch.setattr(sqlite_session, "commit", commit)
+        monkeypatch.setattr(conversation_service, "retire_superseded_debug_conversations", retire)
+        monkeypatch.setattr(conversation_service, "enqueue_agent_resource_collection", enqueue)
+
+
+def _retire_superseded(sqlite_session: Session) -> None:
+    ConversationService.retire_superseded_debug_conversations(
+        session=sqlite_session,
+        tenant_id=TENANT_ID,
+        app_id=APP_ID,
+        account_id=ACCOUNT_ID,
+        current_conversation_id=CONVERSATION_ID,
+    )
+
+
+def test_retire_superseded_debug_conversations_commits_before_enqueue(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    recorder = _RetirementRecorder(retired_workspace_ids=("workspace-1", "workspace-2"))
+    recorder.install(sqlite_session, monkeypatch)
+
+    _retire_superseded(sqlite_session)
+
+    assert recorder.retire_kwargs == [
+        {
+            "session": sqlite_session,
+            "tenant_id": TENANT_ID,
+            "app_id": APP_ID,
+            "account_id": ACCOUNT_ID,
+            "current_conversation_id": CONVERSATION_ID,
+        }
+    ]
+    assert recorder.events == [("commit",), ("enqueue", TENANT_ID, "workspace-1", "workspace-2")]
+
+
+def test_retire_superseded_debug_conversations_skips_enqueue_without_retirements(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    recorder = _RetirementRecorder(retired_workspace_ids=())
+    recorder.install(sqlite_session, monkeypatch)
+
+    _retire_superseded(sqlite_session)
+
+    assert recorder.events == [("commit",)]
+
+
+def test_retire_superseded_debug_conversations_skips_commit_and_enqueue_on_failure(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+) -> None:
+    recorder = _RetirementRecorder(retired_workspace_ids=(), failure=RuntimeError("retire failed"))
+    recorder.install(sqlite_session, monkeypatch)
+
+    with pytest.raises(RuntimeError, match="retire failed"):
+        _retire_superseded(sqlite_session)
+
+    assert recorder.events == []

@@ -2,7 +2,6 @@
   "dialog.addTitle": "Dodaj pregledovalnik",
   "dialog.apiKey": "Ključ API",
   "dialog.apiSecret": "Skrivnost API",
-  "dialog.clamavHint": "ClamAV teče znotraj te namestitve. Njegov naslov nastavi skrbnik namestitve.",
   "dialog.dataNotice": "Vsebina datotek se pošlje tej storitvi.",
   "dialog.editTitle": "Uredi pregledovalnik",
   "dialog.endpoint": "Končna točka (izbirno)",

@@ -31,7 +31,7 @@ COPY packages/graphon /app/packages/graphon
 COPY dify-agent/pyproject.toml dify-agent/README.md /app/dify-agent/
 COPY dify-agent/src /app/dify-agent/src
 # Trust the checked-in lock during image builds; local path sources are copied from the repository context.
-RUN uv sync --frozen --no-dev --no-editable
+RUN uv sync --frozen --no-dev --no-editable --group evaluation
 
 # production stage
 FROM base AS production
@@ -82,6 +82,7 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
     # Install dependencies
     && apt-get install -y --no-install-recommends \
         # basic environment
+        git \
         nodejs=${NODE_PACKAGE_VERSION} \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
@@ -102,6 +103,11 @@ RUN NODE_MAJOR="${NODE_PACKAGE_VERSION%%.*}" \
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Ragas imports GitPython while loading metrics, so git must also be present in
+# the production image shared by API and Celery workers.
+RUN git --version \
+    && python -c "from ragas.metrics import answer_correctness"
 
 RUN mkdir -p /usr/local/share/nltk_data \
     && NLTK_DATA=/usr/local/share/nltk_data python -m nltk.downloader punkt_tab averaged_perceptron_tagger_eng stopwords \

@@ -65,6 +65,14 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .evaluation import (
+    EvaluationConfiguration,
+    EvaluationRun,
+    EvaluationRunItem,
+    EvaluationRunItemStatus,
+    EvaluationRunStatus,
+    EvaluationTargetType,
+)
 from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .external_agent import (
     ExternalAgentCommand,
@@ -334,6 +342,12 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "EvaluationConfiguration",
+    "EvaluationRun",
+    "EvaluationRunItem",
+    "EvaluationRunItemStatus",
+    "EvaluationRunStatus",
+    "EvaluationTargetType",
     "ExecutionExtraContent",
     "ExporleBanner",
     "ExternalAgentCommand",

@@ -1,8 +1,20 @@
+import type { ComponentProps } from 'react'
+import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { mockEmojiData, renderWithEmoji } from '@/test/emoji-picker'
 import { createNuqsTestRenderer } from '@/test/nuqs-testing'
-import ExternalDataToolModal from '../external-data-tool-modal'
+import FormContent from '../external-data-tool-modal'
+
+function ExternalDataToolModal(props: Omit<ComponentProps<typeof FormContent>, 'isVariableUsed'>) {
+  return (
+    <Dialog defaultOpen>
+      <DialogContent>
+        <FormContent {...props} isVariableUsed={() => false} />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const render = createNuqsTestRenderer(renderWithEmoji)
 
@@ -65,17 +77,31 @@ vi.mock('#i18n', async (importOriginal) => ({
 }))
 
 describe('ExternalDataToolModal', () => {
-  const mockOnCancel = vi.fn()
   const mockOnSave = vi.fn()
-  const mockOnValidateBeforeSave = vi.fn()
 
   beforeEach(() => {
     mockLocale = 'en-US'
   })
 
+  it('keeps an unavailable provider configuration intact when editing', async () => {
+    const user = userEvent.setup()
+    render(
+      <ExternalDataToolModal
+        data={{ type: 'unavailable', label: 'Search', variable: 'search', config: { limit: 7 } }}
+        onSave={mockOnSave}
+      />,
+    )
+    await user.type(
+      screen.getByRole('textbox', { name: 'appDebug.feature.tools.modal.name.title' }),
+      ' 2',
+    )
+    expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeDisabled()
+    expect(mockOnSave).not.toHaveBeenCalled()
+  })
+
   it('should require an API extension before saving api-based tools', async () => {
     const user = userEvent.setup()
-    render(<ExternalDataToolModal data={{}} onCancel={mockOnCancel} onSave={mockOnSave} />)
+    render(<ExternalDataToolModal data={{}} onSave={mockOnSave} />)
 
     await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
@@ -97,16 +123,8 @@ describe('ExternalDataToolModal', () => {
 
   it('should save api-based tools after selecting extension and emoji', async () => {
     const user = userEvent.setup()
-    mockOnValidateBeforeSave.mockReturnValue(true)
 
-    render(
-      <ExternalDataToolModal
-        data={{}}
-        onCancel={mockOnCancel}
-        onSave={mockOnSave}
-        onValidateBeforeSave={mockOnValidateBeforeSave}
-      />,
-    )
+    render(<ExternalDataToolModal data={{}} onSave={mockOnSave} />)
 
     await user.type(
       screen.getByPlaceholderText(/(?:^|\.)feature\.tools\.modal\.name\.placeholder(?=$|:)/),
@@ -136,22 +154,6 @@ describe('ExternalDataToolModal', () => {
     await user.click(screen.getByRole('radio', { name: 'app.iconPicker.color.green' }))
     await user.click(screen.getByRole('button', { name: /iconPicker\.ok/ }))
     await user.click(screen.getByText(/(?:^|\.)operation\.save(?=$|:)/))
-
-    await waitFor(() => {
-      expect(mockOnValidateBeforeSave).toHaveBeenCalledWith(
-        expect.objectContaining({
-          config: {
-            api_based_extension_id: 'extension-1',
-          },
-          enabled: true,
-          icon: expect.any(String),
-          icon_background: '#F3FEE7',
-          label: 'Search',
-          type: 'api',
-          variable: 'search_api',
-        }),
-      )
-    })
 
     expect(mockOnSave).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -186,7 +188,7 @@ describe('ExternalDataToolModal', () => {
             api_key: 'default-key',
           },
         }}
-        onCancel={mockOnCancel}
+
         onSave={mockOnSave}
       />,
     )
@@ -221,7 +223,7 @@ describe('ExternalDataToolModal', () => {
     })
 
     await user.click(screen.getByText(/(?:^|\.)operation\.cancel(?=$|:)/))
-    expect(mockOnCancel).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
   })
 })
 

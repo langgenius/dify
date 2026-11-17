@@ -1,9 +1,11 @@
 import type { FileScanProviderResponse } from '@dify/contracts/api/console/file-scan/types.gen'
 import { ORPCError } from '@orpc/client'
+import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { FileScanSetting } from '../file-scan-setting'
+import { useFileScanPolicyController } from '../use-file-scan-policy'
 
 const api = vi.hoisted(() => ({
   getPolicy: vi.fn(),
@@ -48,6 +50,30 @@ const disabledPolicy = {
   on_unscannable: 'block',
 }
 
+/** Stands in for a settings page: it owns the only Save and Cancel buttons. */
+function SettingsPage({ readonly }: { readonly: boolean }) {
+  const fileScan = useFileScanPolicyController({
+    product: 'dataset',
+    readonly,
+    resourceId: 'dataset-1',
+  })
+  const [result, setResult] = useState('')
+
+  return (
+    <div>
+      <FileScanSetting controller={fileScan} />
+      <button type="button" onClick={() => void fileScan.save().then(setResult)}>
+        page save
+      </button>
+      <button type="button" onClick={fileScan.reset}>
+        page cancel
+      </button>
+      <output aria-label="draft">{fileScan.dirty ? 'dirty' : 'clean'}</output>
+      <output aria-label="result">{result}</output>
+    </div>
+  )
+}
+
 async function renderSetting({
   enabled = true,
   providers = [scanner()],
@@ -68,13 +94,16 @@ async function renderSetting({
   })
   await render(
     <ConsoleProvider>
-      <FileScanSetting product="dataset" resourceId="dataset-1" readonly={readonly} />
+      <SettingsPage readonly={readonly} />
     </ConsoleProvider>,
   )
 }
 
 const enableSwitch = () => page.getByRole('switch', { name: 'fileScan.policy.enable' })
-const saveButton = () => page.getByRole('button', { name: 'common.operation.save' })
+const ownSaveButton = () => page.getByRole('button', { name: 'common.operation.save' })
+const pageSave = () => page.getByRole('button', { name: 'page save' })
+const draftState = () => page.getByRole('status', { name: 'draft' })
+const saveResult = () => page.getByRole('status', { name: 'result' })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -95,9 +124,18 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
   await expect.element(enableSwitch()).not.toBeChecked()
   await expect.element(enableSwitch()).toBeEnabled()
   await expect.element(page.getByText('fileScan.policy.onUnavailable')).not.toBeInTheDocument()
-  await expect.element(saveButton()).not.toBeInTheDocument()
+  await expect.element(draftState()).toHaveTextContent('clean')
+
+  // Saving an untouched section sends nothing.
+  await pageSave().click()
+  await expect.element(draftState()).toHaveTextContent('clean')
+  await expect.element(saveResult()).toHaveTextContent('unchanged')
+  expect(api.putPolicy).not.toHaveBeenCalled()
 
   await enableSwitch().click()
+  // The section has no Save button of its own: the page saves it.
+  await expect.element(ownSaveButton()).not.toBeInTheDocument()
+  await expect.element(draftState()).toHaveTextContent('dirty')
   const unavailable = page.getByRole('radiogroup', { name: 'fileScan.policy.onUnavailable' })
   const unscannable = page.getByRole('radiogroup', { name: 'fileScan.policy.onUnscannable' })
   await expect
@@ -108,8 +146,10 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
     .toBeChecked()
 
   // Turning scanning on without a scanner is stopped before it reaches the backend.
-  await saveButton().click()
+  await pageSave().click()
   await expect.element(page.getByText('fileScan.policy.scannerRequired')).toBeVisible()
+  await expect.element(draftState()).toHaveTextContent('dirty')
+  await expect.element(saveResult()).toHaveTextContent('invalid')
   expect(api.putPolicy).not.toHaveBeenCalled()
 
   await page.getByRole('combobox', { name: 'fileScan.policy.scanner' }).click()
@@ -119,7 +159,13 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
     .toBeVisible()
   await page.getByRole('option', { name: /Office scanner/ }).click()
   await unscannable.getByRole('radio', { name: 'fileScan.policy.allow' }).click()
-  await saveButton().click()
+  api.getPolicy.mockResolvedValue({
+    enabled: true,
+    provider_id: 'scanner-1',
+    on_unavailable: 'block',
+    on_unscannable: 'allow',
+  })
+  await pageSave().click()
 
   await expect
     .poll(() => api.putPolicy.mock.calls.at(-1)?.[0])
@@ -132,8 +178,21 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
       },
       params: { dataset_id: 'dataset-1' },
     })
-  await expect.element(saveButton()).not.toBeInTheDocument()
+  await expect.element(draftState()).toHaveTextContent('clean')
+  await expect.element(saveResult()).toHaveTextContent('saved')
   await expect.element(enableSwitch()).toBeChecked()
+})
+
+it('drops the unsaved changes when the page cancels', async () => {
+  await renderSetting()
+
+  await enableSwitch().click()
+  await expect.element(draftState()).toHaveTextContent('dirty')
+  await page.getByRole('button', { name: 'page cancel' }).click()
+
+  await expect.element(enableSwitch()).not.toBeChecked()
+  await expect.element(draftState()).toHaveTextContent('clean')
+  expect(api.putPolicy).not.toHaveBeenCalled()
 })
 
 it('shows the reason the backend gives when the policy is rejected', async () => {
@@ -145,12 +204,14 @@ it('shows the reason the backend gives when the policy is rejected', async () =>
   await enableSwitch().click()
   await page.getByRole('combobox', { name: 'fileScan.policy.scanner' }).click()
   await page.getByRole('option', { name: /Office scanner/ }).click()
-  await saveButton().click()
+  await pageSave().click()
 
   await expect
     .element(page.getByRole('alert'))
     .toHaveTextContent('Scanner "Office scanner" is gone.')
-  await expect.element(saveButton()).toBeEnabled()
+  // The draft is kept so the page can save again.
+  await expect.element(draftState()).toHaveTextContent('dirty')
+  await expect.element(saveResult()).toHaveTextContent('failed')
 })
 
 it('tells a member without admin rights to ask an admin when no scanner exists', async () => {
@@ -180,5 +241,8 @@ it('cannot be changed by a member who may only view the settings', async () => {
   await renderSetting({ readonly: true })
 
   await expect.element(enableSwitch()).toBeDisabled()
-  await expect.element(saveButton()).not.toBeInTheDocument()
+  await pageSave().click()
+  await expect.element(draftState()).toHaveTextContent('clean')
+  await expect.element(saveResult()).toHaveTextContent('unchanged')
+  expect(api.putPolicy).not.toHaveBeenCalled()
 })

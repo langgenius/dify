@@ -1,6 +1,7 @@
 import { ORPCError } from '@orpc/client'
-import { page } from 'vite-plus/test/browser'
+import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
@@ -61,6 +62,24 @@ it('retains the edited name after validation failure and saves the loaded versio
   await expect.element(screen.getByRole('button', { name: 'Edit', exact: true })).toHaveFocus()
 })
 
+it('returns to the edit trigger when cancelling during a background list refresh', async () => {
+  const { screen, queryClient } = await renderTokenPage()
+  const edit = screen.getByRole('button', { name: 'Edit', exact: true })
+  await edit.click()
+  const dialog = screen.getByRole('dialog')
+  await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toBeVisible()
+  const refresh = createDeferred<ReturnType<typeof tokenList>>()
+  api.list.mockReturnValueOnce(refresh.promise)
+  const refetch = queryClient.invalidateQueries({
+    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+  })
+  await vi.waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
+  await userEvent.keyboard('{Escape}')
+  await expect.element(edit).toHaveFocus()
+  refresh.resolve(tokenList([token]))
+  await refetch
+})
+
 it('preserves a draft through a background refresh and reloads the new version only after a conflict', async () => {
   const latest = { ...saved, token: { ...saved.token, name: 'changed elsewhere', version: 2 } }
   api.update.mockImplementation(async ({ body }) => {
@@ -107,15 +126,21 @@ it('keeps an expired editing draft readable and blocks further saving after the 
 })
 
 it('keeps deletion open after failure and removes the row after retry', async () => {
-  api.remove
-    .mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR'))
-    .mockImplementation(async () => {
-      api.list.mockResolvedValue(tokenList())
-    })
+  const pending = createDeferred()
+  api.remove.mockReturnValueOnce(pending.promise).mockImplementation(async () => {
+    api.list.mockResolvedValue(tokenList())
+  })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')
-  await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+  const confirm = dialog.getByRole('button', { name: 'Delete', exact: true })
+  await confirm.click()
+  await expect.element(confirm).toBeDisabled()
+  await expect.element(dialog.getByRole('button', { name: 'Close' })).toBeDisabled()
+  await expect.element(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).toBeVisible()
+  pending.reject(new ORPCError('INTERNAL_SERVER_ERROR'))
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Action failed')
   await expect.element(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
@@ -123,5 +148,44 @@ it('keeps deletion open after failure and removes the row after retry', async ()
   await expect
     .element(screen.getByRole('row', { name: /release-pipeline/ }))
     .not.toBeInTheDocument()
+  await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
+})
+
+it('clears the previous deletion error and returns focus to the current row on cancel', async () => {
+  const other = { ...token, id: '019a0000-0000-7000-8000-000000000002', name: 'other-token' }
+  api.list.mockResolvedValue(tokenList([token, other]))
+  api.remove.mockRejectedValueOnce(new ORPCError('INTERNAL_SERVER_ERROR'))
+  const { screen } = await renderTokenPage()
+  const first = screen
+    .getByRole('row', { name: /release-pipeline/ })
+    .getByRole('button', { name: 'Delete' })
+  const second = screen
+    .getByRole('row', { name: /other-token/ })
+    .getByRole('button', { name: 'Delete' })
+  await first.click()
+  const dialog = screen.getByRole('alertdialog')
+  await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
+  await expect.element(dialog.getByRole('alert')).toBeVisible()
+  await dialog.getByRole('button', { name: 'Cancel' }).click()
+  await expect.element(first).toHaveFocus()
+  await second.click()
+  await expect.element(dialog.getByRole('heading')).toMatchTextContent(/other-token/)
+  await expect.element(dialog.getByRole('alert')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(second).toHaveFocus()
+})
+
+it('returns to Create token if a refresh removes the row while deletion is open', async () => {
+  const { screen, queryClient } = await renderTokenPage()
+  await screen.getByRole('button', { name: 'Delete', exact: true }).click()
+  const dialog = screen.getByRole('alertdialog')
+  await expect.element(dialog).toBeVisible()
+  api.list.mockResolvedValue(tokenList())
+  await queryClient.invalidateQueries({
+    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+  })
+  await expect.element(screen.getByText(token.name, { exact: true })).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Create token' })).toHaveFocus()
 })
