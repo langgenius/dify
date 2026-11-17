@@ -17,6 +17,7 @@ from typing import ClassVar, Literal
 from dify_agent.layers.config import DifyConfigLayerConfig
 from dify_agent.layers.dify_core_tools import DifyCoreToolsLayerConfig
 from dify_agent.layers.dify_plugin import (
+    DifyModelModality,
     DifyPluginLLMLayerConfig,
     DifyPluginToolsLayerConfig,
 )
@@ -27,6 +28,7 @@ from dify_agent.layers.knowledge import DifyKnowledgeBaseLayerConfig
 from dify_agent.layers.knowledge_fs import DifyKnowledgeFsLayerConfig
 from dify_agent.layers.output import DifyOutputLayerConfig
 from dify_agent.layers.prompt import Config as PromptConfig
+from dify_agent.layers.read_media import DifyReadMediaLayerConfig
 from dify_agent.layers.runtime import DifyRuntimeLayerConfig
 from dify_agent.layers.shell import DifyShellLayerConfig
 from dify_agent.layers.user_prompt import (
@@ -57,6 +59,7 @@ DIFY_CORE_TOOLS_LAYER_ID = "core_tools"
 DIFY_KNOWLEDGE_BASE_LAYER_ID = "knowledge"
 DIFY_KNOWLEDGE_FS_LAYER_ID = "knowledge_fs"
 DIFY_SHELL_LAYER_ID = "shell"
+DIFY_READ_MEDIA_LAYER_ID = "read_media"
 type AgentConfigVersionKind = Literal["snapshot", "draft", "build_draft"]
 
 
@@ -130,6 +133,7 @@ class AgentBackendModelConfig(BaseModel):
     model: str
     model_settings: dict[str, JsonValue] = Field(default_factory=dict)
     context_window_tokens: int | None = Field(default=None, gt=0)
+    supported_modalities: list[DifyModelModality] = Field(default_factory=list)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
@@ -269,7 +273,7 @@ class AgentBackendRunRequestBuilder:
 
         Layer graph: optional Agent Soul system prompt → user prompt →
         execution context → optional shell / config / history
-        (multi-turn) → LLM → optional plugin-direct tools / core-routed tools /
+        (multi-turn) → LLM → read_media → optional plugin-direct tools / core-routed tools /
         knowledge search / structured output. Mirrors the
         workflow-node layer ordering minus the workflow-job / previous-node
         prompt.
@@ -338,19 +342,26 @@ class AgentBackendRunRequestBuilder:
                 )
             )
 
-        layers.append(
-            RunLayerSpec(
-                name=DIFY_AGENT_MODEL_LAYER_ID,
-                config=(
-                    DifyPluginLLMLayerConfig(
+        layers.extend(
+            [
+                RunLayerSpec(
+                    name=DIFY_AGENT_MODEL_LAYER_ID,
+                    config=DifyPluginLLMLayerConfig(
                         plugin_id=run_input.model.plugin_id,
                         model_provider=run_input.model.model_provider,
                         model=run_input.model.model,
                         model_settings=_agent_model_settings(run_input.model.model_settings),
                         context_window_tokens=run_input.model.context_window_tokens,
-                    )
-                ).model_dump(mode="json"),
-            )
+                        supported_modalities=run_input.model.supported_modalities,
+                    ).model_dump(mode="json"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_READ_MEDIA_LAYER_ID,
+                    config=DifyReadMediaLayerConfig(shell=DIFY_SHELL_LAYER_ID if include_shell else None).model_dump(
+                        mode="json"
+                    ),
+                ),
+            ]
         )
 
         if run_input.tools is not None and run_input.tools.tools:
@@ -406,7 +417,7 @@ class AgentBackendRunRequestBuilder:
         """Build a workflow Agent Node run request without defining another wire schema.
 
         Layer graph mirrors the workflow surface: prompts → execution context →
-        optional shell / config / history → LLM → optional
+        optional shell / config / history → LLM → read_media → optional
         plugin-direct tools / core-routed tools / knowledge search /
         structured output.
         """
@@ -493,8 +504,15 @@ class AgentBackendRunRequestBuilder:
                             model=run_input.model.model,
                             model_settings=_agent_model_settings(run_input.model.model_settings),
                             context_window_tokens=run_input.model.context_window_tokens,
+                            supported_modalities=run_input.model.supported_modalities,
                         )
                     ).model_dump(mode="json"),
+                ),
+                RunLayerSpec(
+                    name=DIFY_READ_MEDIA_LAYER_ID,
+                    config=DifyReadMediaLayerConfig(shell=DIFY_SHELL_LAYER_ID if include_shell else None).model_dump(
+                        mode="json"
+                    ),
                 ),
             ]
         )

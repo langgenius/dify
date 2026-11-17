@@ -158,6 +158,16 @@ export const zKnowledgeFsExternalAccessPayload = z.object({
 })
 
 /**
+ * FileScanPolicyResponse
+ */
+export const zFileScanPolicyResponse = z.object({
+  enabled: z.boolean(),
+  on_unavailable: z.string(),
+  on_unscannable: z.string(),
+  provider_id: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSGoldenQuestionPayload
  */
 export const zKnowledgeFsGoldenQuestionPayload = z.object({
@@ -667,6 +677,8 @@ export const zKnowledgeFsPublicFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -966,6 +978,8 @@ export const zKnowledgeFsSourceWorkflowResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -1115,6 +1129,8 @@ export const zKnowledgeFsSourceCredentialTestResponse = z.object({
       'DOCUMENT_PARSER_UNAVAILABLE',
       'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
       'DOCUMENT_PDF_RENDER_FAILED',
+      'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+      'DOCUMENT_SOURCE_NOT_FOUND',
       'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
       'EMBEDDING_DIMENSION_INVALID',
       'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -1736,6 +1752,21 @@ export const zKnowledgeFsDocumentOutlineResponse = z.object({
 })
 
 /**
+ * FileScanFallbackAction
+ */
+export const zFileScanFallbackAction = z.enum(['allow', 'block'])
+
+/**
+ * FileScanPolicyPayload
+ */
+export const zFileScanPolicyPayload = z.object({
+  enabled: z.boolean(),
+  on_unavailable: zFileScanFallbackAction.optional().default('block'),
+  on_unscannable: zFileScanFallbackAction.optional().default('block'),
+  provider_id: z.string().nullish(),
+})
+
+/**
  * KnowledgeFSGoldenQuestionBulkImportRowPayload
  */
 export const zKnowledgeFsGoldenQuestionBulkImportRowPayload = z.object({
@@ -2273,6 +2304,8 @@ export const zKnowledgeFsSourceImportFailureResponse = z.object({
     'DOCUMENT_PARSER_UNAVAILABLE',
     'DOCUMENT_PARSER_UNSUPPORTED_TYPE',
     'DOCUMENT_PDF_RENDER_FAILED',
+    'DOCUMENT_SEMANTIC_GROUNDING_FAILED',
+    'DOCUMENT_SOURCE_NOT_FOUND',
     'DURABLE_DELETION_IDEMPOTENCY_CONFLICT',
     'EMBEDDING_DIMENSION_INVALID',
     'EMBEDDING_DIMENSION_UNSUPPORTED',
@@ -3944,6 +3977,26 @@ export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessPath = z.object(
  */
 export const zPutKnowledgeFsSpacesByControlSpaceIdExternalAccessResponse =
   zKnowledgeFsExternalAccessResponse
+
+export const zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Success
+ */
+export const zGetKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse = zFileScanPolicyResponse
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyBody = zFileScanPolicyPayload
+
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyPath = z.object({
+  control_space_id: z.string(),
+})
+
+/**
+ * Policy saved
+ */
+export const zPutKnowledgeFsSpacesByControlSpaceIdFileScanPolicyResponse = zFileScanPolicyResponse
 
 export const zGetKnowledgeFsSpacesByControlSpaceIdGoldenQuestionsPath = z.object({
   control_space_id: z.string(),
