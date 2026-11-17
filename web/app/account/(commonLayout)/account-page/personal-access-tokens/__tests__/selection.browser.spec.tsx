@@ -175,15 +175,12 @@ it('pages app resources and preserves selections across search and load more', a
     available: true,
     reason: null,
   }
-  const apps: PersonalAccessTokenResourceResponse[] = Array.from(
-    { length: 21 },
-    (_, index) => ({
-      ...base,
-      resource_id: `019a0000-0000-7000-8000-${String(index + 10).padStart(12, '0')}`,
-      resource_type: 'app',
-      display_name: `Assistant ${index + 1}`,
-    }),
-  )
+  const apps: PersonalAccessTokenResourceResponse[] = Array.from({ length: 21 }, (_, index) => ({
+    ...base,
+    resource_id: `019a0000-0000-7000-8000-${String(index + 10).padStart(12, '0')}`,
+    resource_type: 'app',
+    display_name: `Assistant ${index + 1}`,
+  }))
   apps[0] = {
     ...apps[0]!,
     app_deployments: [
@@ -244,9 +241,7 @@ it('pages app resources and preserves selections across search and load more', a
   const resourceCalls = responses.call.mock.calls.filter(([operation]) =>
     operation.includes('personalAccessTokenResources'),
   )
-  expect(
-    resourceCalls.every(([, input]) => input.query.resource_type === 'app'),
-  ).toBe(true)
+  expect(resourceCalls.every(([, input]) => input.query.resource_type === 'app')).toBe(true)
   expect(resourceCalls).toContainEqual([
     'account.personalAccessTokenResources.get',
     { query: { cursor: 20, limit: 20, keyword: '', resource_type: 'app' } },
