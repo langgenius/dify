@@ -3,7 +3,9 @@
 Prerequisites:
 - Sync the server runtime dependencies first: `uv sync --project dify-agent --extra server`.
 - Run the Dify API with its inner Agent LLM endpoint enabled.
-- Set `DIFY_AGENT_INNER_API_URL` and `DIFY_AGENT_INNER_API_KEY` in `dify-agent/.env`.
+- Set `DIFY_AGENT_INNER_API_URL` and `DIFY_AGENT_INNER_API_KEY` in `dify-agent/.env`. Use literal values
+  because this example does not expand environment variable references. Set the key to the Dify
+  API/worker's `INNER_API_KEY_FOR_PLUGIN` (in Docker Compose, `PLUGIN_DIFY_INNER_API_KEY`).
 - Fill the same file with a real tenant, user, app, plugin, provider, and model.
 
 This example is meant to be run from a source checkout because
