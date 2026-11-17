@@ -100,7 +100,7 @@ workspace filter. This handler is read-only and does not change membership.
 | mode | query | App types the ``app`` usage face (``get app``) lists and filters.  A curated subset of :class:`AppMode`: the real, user-facing app categories. Excludes runtime-only mode tags that are not standalone apps (``rag-pipeline`` is a knowledge ``Pipeline``; ``channel`` is unused) and the roster-owned ``agent`` type (surfaced through the roster, not this list).  Members reference ``AppMode.*.value`` so the subset relationship is type-checked: dropping a member from ``AppMode`` breaks this at import. This is the single source for the listable set — params, filters, and the generated CLI whitelist all derive from it. | No | string, <br>**Available values:** "advanced-chat", "agent-chat", "chat", "completion", "workflow" |
 | name | query | Filter by a name substring; an app id returns that one app and ignores `mode` | No | string |
 | page | query |  | No | integer, <br>**Default:** 1 |
-| workspace_id | query |  | Yes | string (uuid) |
+| workspace_id | query | Only the apps of this workspace; leave it out to list the apps of every workspace | No | string (uuid) |
 
 #### Responses
 
@@ -3686,7 +3686,7 @@ mode is a closed enum of listable app types.
 | mode | [SupportedAppType](#supportedapptype) |  | No |
 | name | string | Filter by a name substring; an app id returns that one app and ignores `mode` | No |
 | page | integer, <br>**Default:** 1 |  | No |
-| workspace_id | string (uuid) |  | Yes |
+| workspace_id | string | Only the apps of this workspace; leave it out to list the apps of every workspace | No |
 
 #### AppListResponse
 
