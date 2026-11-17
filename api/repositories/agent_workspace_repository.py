@@ -6,8 +6,10 @@ from sqlalchemy.orm import Session
 from core.agent.workspace import AgentWorkspaceBindingGenerationMismatchError, WorkspaceOwnerScope
 from libs.datetime_utils import naive_utc_now
 from models.agent import (
+    Agent,
     AgentConfigVersionKind,
     AgentHomeSnapshot,
+    AgentStatus,
     AgentWorkingResourceStatus,
     AgentWorkspace,
     AgentWorkspaceBinding,
@@ -52,6 +54,23 @@ def workflow_tool_workspace_owned_by_app(tenant_id: str, app_id: str) -> ColumnE
             AgentWorkspaceBinding.workspace_id == AgentWorkspace.id,
         )
         .exists()
+    )
+
+
+def has_owned_home_snapshot(session: Session, *, agent: Agent, home_snapshot_id: str) -> bool:
+    """Check whether the active Agent owns the active Home snapshot referenced by its configuration."""
+    if agent.status != AgentStatus.ACTIVE:
+        return False
+    return (
+        session.scalar(
+            select(AgentHomeSnapshot.id).where(
+                AgentHomeSnapshot.id == home_snapshot_id,
+                AgentHomeSnapshot.tenant_id == agent.tenant_id,
+                AgentHomeSnapshot.agent_id == agent.id,
+                AgentHomeSnapshot.status == AgentWorkingResourceStatus.ACTIVE,
+            )
+        )
+        is not None
     )
 
 

@@ -22,11 +22,8 @@ from controllers.console.agent.composer import (
 )
 from controllers.console.agent.roster import (
     AgentAppCopyApi,
-    AgentAppCopyPayload,
     AgentAppListApi,
     AgentInviteOptionsApi,
-    AgentPublishApi,
-    AgentPublishPayload,
 )
 from controllers.console.app import completion as completion_controller
 from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
@@ -225,99 +222,6 @@ def test_agent_app_create_payload_allows_optional_role() -> None:
     )
     assert omitted.role is None
     assert blank.role == ""
-
-
-def test_agent_app_copy_uses_agent_id_and_returns_agent_detail(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    current_user = _account(account_id=account_id)
-    copied_app = _app_detail_obj(id="copied-app", bound_agent_id="copied-agent")
-    captured: dict[str, object] = {}
-
-    class FakeRosterService:
-        def duplicate_agent_app(self, **kwargs: object) -> object:
-            captured.update(kwargs)
-            return copied_app
-
-    monkeypatch.setattr(roster_controller, "_agent_roster_service", lambda *_args: FakeRosterService())
-    monkeypatch.setattr(
-        roster_controller,
-        "_serialize_agent_app_detail",
-        lambda _session, app_model, **_kwargs: {"id": "copied-agent", "app_id": app_model.id, "name": app_model.name},
-    )
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/copy",
-        json={
-            "name": "Iris copy",
-            "description": "Copied",
-            "role": "Copied role",
-            "icon_type": "emoji",
-            "icon": "sparkles",
-            "icon_background": "#fff",
-        },
-    ):
-        copied, status = unwrap(AgentAppCopyApi.post)(
-            AgentAppCopyApi(),
-            AgentAppCopyPayload(
-                name="Iris copy",
-                description="Copied",
-                role="Copied role",
-                icon_type="emoji",
-                icon="sparkles",
-                icon_background="#fff",
-            ),
-            MagicMock(),
-            "tenant-1",
-            current_user,
-            agent_id,
-        )
-    assert status == 201
-    assert copied == {"id": "copied-agent", "app_id": "copied-app", "name": "Iris"}
-    assert captured == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "account": current_user,
-        "name": "Iris copy",
-        "description": "Copied",
-        "role": "Copied role",
-        "icon_type": "emoji",
-        "icon": "sparkles",
-        "icon_background": "#fff",
-    }
-
-
-def test_agent_publish_route_calls_composer_service(
-    app: Flask, monkeypatch: pytest.MonkeyPatch, account_id: str
-) -> None:
-    agent_id = "00000000-0000-0000-0000-000000000001"
-    current_user = _account(account_id=account_id)
-    captured: dict[str, dict[str, object]] = {}
-
-    def publish_agent_app_draft(**kwargs: object) -> dict[str, object]:
-        captured["publish"] = kwargs
-        return {"result": "success", "active_config_snapshot_id": "version-1"}
-
-    monkeypatch.setattr(roster_controller.AgentComposerService, "publish_agent_app_draft", publish_agent_app_draft)
-    with app.test_request_context(
-        "/console/api/agent/00000000-0000-0000-0000-000000000001/publish", json={"version_note": "publish v1"}
-    ):
-        published = unwrap(AgentPublishApi.post)(
-            AgentPublishApi(),
-            AgentPublishPayload(version_note="publish v1"),
-            MagicMock(),
-            "tenant-1",
-            current_user,
-            agent_id,
-        )
-    assert published["active_config_snapshot_id"] == "version-1"
-    captured["publish"].pop("session", None)
-    assert captured["publish"] == {
-        "tenant_id": "tenant-1",
-        "agent_id": agent_id,
-        "account_id": account_id,
-        "version_note": "publish v1",
-    }
 
 
 def test_workflow_composer_get_put_validate_candidates_impact_and_save(

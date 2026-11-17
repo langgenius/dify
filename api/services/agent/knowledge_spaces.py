@@ -167,6 +167,55 @@ def sync_agent_app_knowledge_bindings(
     )
 
 
+def authorize_published_agent_knowledge_bindings(
+    *, session_maker: sessionmaker[Session], tenant_id: str, account_id: str, soul: AgentSoulConfig
+) -> None:
+    """Apply both the authoring policy and the product binding policy before the publish transaction."""
+    authorize_composer_knowledge(session_factory=session_maker, tenant_id=tenant_id, account_id=account_id, soul=soul)
+    if soul.knowledge.spaces:
+        from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+
+        get_knowledge_fs_runtime(session_maker).app_bindings.authorize_agent_bindings(
+            tenant_id=tenant_id,
+            actor_account_id=account_id,
+            control_space_ids=[binding.control_space_id for binding in soul.knowledge.spaces],
+        )
+
+
+def stage_published_agent_knowledge_bindings(
+    session: Session,
+    *,
+    session_maker: sessionmaker[Session],
+    tenant_id: str,
+    account_id: str,
+    app_id: str,
+    control_space_ids: list[str],
+) -> None:
+    """Reconcile authorized KnowledgeFS bindings inside the publication transaction."""
+    from services.knowledge_fs.runtime import get_knowledge_fs_runtime
+
+    if (
+        control_space_ids
+        or session.scalar(
+            select(AppKnowledgeFSSpaceJoin.id)
+            .where(
+                AppKnowledgeFSSpaceJoin.tenant_id == tenant_id,
+                AppKnowledgeFSSpaceJoin.app_id == app_id,
+                AppKnowledgeFSSpaceJoin.join_type == KnowledgeFSAppSpaceJoinType.AGENT,
+            )
+            .limit(1)
+        )
+        is not None
+    ):
+        get_knowledge_fs_runtime(session_maker).app_bindings.stage_authorized_agent_bindings(
+            session=session,
+            tenant_id=tenant_id,
+            actor_account_id=account_id,
+            app_id=app_id,
+            control_space_ids=control_space_ids,
+        )
+
+
 def collect_workflow_agent_knowledge_space_ids(*, session: Session, workflow: Workflow) -> tuple[str, ...]:
     """Read frozen, tenant/app/workflow-scoped Agent snapshots, never graph-supplied Soul JSON."""
     snapshots = session.scalars(

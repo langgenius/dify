@@ -75,6 +75,22 @@ class AgentAppComposerStore(Protocol):
         """Return requested dataset IDs absent from the tenant."""
         ...
 
+    def prepare_publication(self, *, tenant_id: str, agent_id: str) -> AgentPublicationSource:
+        """Read the shared draft or active snapshot for publication without writing."""
+        ...
+
+    def publish_composer(
+        self,
+        *,
+        tenant_id: str,
+        agent_id: str,
+        account_id: str,
+        source: AgentPublicationSource,
+        version_note: str | None,
+    ) -> AgentPublication:
+        """Publish the validated source only if it still matches under the Agent write lock."""
+        ...
+
     def get_composer_candidates(self, *, tenant_id: str, agent_id: str) -> AgentComposerCandidateSource:
         """Read the effective Soul and its tenant-scoped dataset labels, without writing."""
         ...
@@ -90,3 +106,33 @@ class AgentComposerDatasetLabel:
 class AgentComposerCandidateSource:
     soul: AgentSoulConfig | None
     datasets: dict[str, AgentComposerDatasetLabel]
+
+
+class AgentPublicationChangedError(Exception):
+    """The prepared shared draft changed during publication validation."""
+
+
+class AgentPublicationHomeUnavailableError(Exception):
+    """The draft references a retired or foreign Home snapshot."""
+
+
+class AgentPublicationModelMissingError(Exception):
+    """The shared draft does not select a model."""
+
+
+@dataclass(frozen=True, slots=True)
+class AgentPublicationSource:
+    knowledge_app_id: str | None
+    draft_id: str | None
+    active_snapshot_id: str | None
+    home_snapshot_id: str | None
+    soul: dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class AgentPublication:
+    publication_kind: Literal["first", "update"]
+    active_config_snapshot_id: str
+    active_config_snapshot: AgentComposerSnapshot
+    draft: AgentDraftSummary
+    result: Literal["success"] = "success"

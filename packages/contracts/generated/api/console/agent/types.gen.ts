@@ -4009,6 +4009,7 @@ export type PostAgentByAgentIdPublishErrors = {
     | ErrorResponse
   403: ErrorResponse
   404: AgentNotFoundError | AgentVersionNotFoundError | ErrorResponse
+  409: AgentVersionConflictError | ErrorResponse
   default: ErrorResponse
 }
 

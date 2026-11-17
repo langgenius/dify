@@ -2,18 +2,17 @@ import logging
 from dataclasses import asdict
 from typing import Any
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from core.agent.publish_visibility import agent_has_workflow_callable_active_snapshot
-from models import Account, App
+from models import Account
 from models.agent import (
     APP_BACKED_AGENT_SOURCES,
     Agent,
     AgentConfigDraft,
     AgentConfigDraftType,
-    AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentIconType,
@@ -33,7 +32,9 @@ from models.workflow import Workflow
 from repositories.agent_app_composer_queries import composer_identity, composer_snapshot, read_composer_state
 from repositories.agent_drafts import (
     agent_soul_matches_active_config,
+    create_composer_snapshot,
     get_or_create_agent_draft,
+    next_composer_revision,
     preserve_omitted_config_files,
     rebase_workflow_only_normal_draft,
     save_agent_draft,
@@ -45,15 +46,11 @@ from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
 from services.agent.dsl_entities import make_portable_agent_soul
 from services.agent.errors import (
-    AgentModelNotConfiguredError,
     AgentNameConflictError,
     AgentNotFoundError,
     AgentVersionConflictError,
     AgentVersionNotFoundError,
     InvalidComposerConfigError,
-)
-from services.agent.home_snapshot_service import (
-    validate_home_snapshot_binding,
 )
 from services.agent.knowledge_datasets import (
     get_tenant_knowledge_dataset_rows,
@@ -598,101 +595,6 @@ class AgentComposerService:
         state = cls.load_agent_composer(session=session, tenant_id=tenant_id, agent_id=agent.id)
         state["validation"] = cls.collect_validation_findings(payload=payload)
         return state
-
-    @classmethod
-    def publish_agent_app_draft(
-        cls, *, session: Session, tenant_id: str, agent_id: str, account_id: str, version_note: str | None = None
-    ) -> dict[str, Any]:
-        agent = cls._require_agent(session=session, tenant_id=tenant_id, agent_id=agent_id)
-        if agent.scope != AgentScope.ROSTER or agent.source not in APP_BACKED_AGENT_SOURCES:
-            raise AgentNotFoundError()
-        access_was_ready = agent_has_workflow_callable_active_snapshot(session=session, agent=agent)
-        draft = cls._get_or_create_agent_draft(
-            session=session,
-            tenant_id=tenant_id,
-            agent=agent,
-            draft_type=AgentConfigDraftType.DRAFT,
-            account_id=None,
-            created_by=account_id,
-        )
-        agent_soul = AgentSoulConfig.model_validate(draft.config_snapshot_dict)
-        ComposerConfigValidator.validate_publish_payload(
-            ComposerSavePayload(
-                variant=ComposerVariant.AGENT_APP,
-                agent_soul=agent_soul,
-                save_strategy=ComposerSaveStrategy.SAVE_AS_NEW_VERSION,
-                version_note=version_note,
-            )
-        )
-        if not agent_soul_has_model(agent_soul):
-            raise AgentModelNotConfiguredError()
-        cls.validate_knowledge_datasets(session=session, tenant_id=tenant_id, agent_soul=agent_soul)
-        validate_agent_knowledge_spaces(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=account_id,
-            agent_soul=agent_soul,
-        )
-        sync_agent_app_knowledge_bindings(
-            session=session,
-            tenant_id=tenant_id,
-            account_id=account_id,
-            agent=agent,
-            agent_soul=agent_soul,
-        )
-        validate_home_snapshot_binding(
-            session=session,
-            agent=agent,
-            home_snapshot_id=draft.home_snapshot_id,
-        )
-        version = cls._create_config_version(
-            session=session,
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            account_id=account_id,
-            agent_soul=agent_soul,
-            operation=AgentConfigRevisionOperation.PUBLISH_DRAFT,
-            version_note=version_note,
-            previous_snapshot_id=agent.active_config_snapshot_id,
-            home_snapshot_id=draft.home_snapshot_id,
-        )
-        agent.active_config_snapshot_id = version.id
-        agent.active_config_has_model = agent_soul_has_model(agent_soul)
-        agent.active_config_is_published = True
-        agent.updated_by = account_id
-        draft.base_snapshot_id = version.id
-        draft.updated_by = account_id
-
-        SkillManagementService(session=session).publish_agent_bindings(
-            tenant_id=tenant_id,
-            agent_id=agent.id,
-            snapshot_id=version.id,
-            user_id=account_id,
-        )
-        if not access_was_ready:
-            if not agent.app_id:
-                raise AgentNotFoundError()
-            app = session.scalar(
-                select(App)
-                .where(
-                    App.tenant_id == tenant_id,
-                    App.id == agent.app_id,
-                )
-                .limit(1)
-            )
-            if app is None:
-                raise AgentNotFoundError()
-            app.enable_site = True
-            app.enable_api = True
-            app.updated_by = account_id
-        session.flush()
-        return {
-            "result": "success",
-            "publication_kind": "update" if access_was_ready else "first",
-            "active_config_snapshot_id": version.id,
-            "active_config_snapshot": cls._serialize_version(version),
-            "draft": cls._serialize_draft(draft),
-        }
 
     @classmethod
     def load_agent_app_build_draft(
@@ -1428,53 +1330,7 @@ class AgentComposerService:
         )
         return agent
 
-    @classmethod
-    def _create_config_version(
-        cls,
-        *,
-        session: Session,
-        tenant_id: str,
-        agent_id: str,
-        account_id: str,
-        agent_soul: AgentSoulConfig,
-        operation: AgentConfigRevisionOperation,
-        version_note: str | None,
-        home_snapshot_id: str | None,
-        previous_snapshot_id: str | None = None,
-    ) -> AgentConfigSnapshot:
-        next_version = (
-            session.scalar(
-                select(func.max(AgentConfigSnapshot.version)).where(
-                    AgentConfigSnapshot.tenant_id == tenant_id,
-                    AgentConfigSnapshot.agent_id == agent_id,
-                )
-            )
-            or 0
-        ) + 1
-        version = AgentConfigSnapshot(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            version=next_version,
-            config_snapshot=agent_soul,
-            home_snapshot_id=home_snapshot_id,
-            version_note=version_note,
-            created_by=account_id,
-        )
-        session.add(version)
-        session.flush()
-        revision = AgentConfigRevision(
-            tenant_id=tenant_id,
-            agent_id=agent_id,
-            previous_snapshot_id=previous_snapshot_id,
-            current_snapshot_id=version.id,
-            revision=cls._next_revision(session=session, tenant_id=tenant_id, agent_id=agent_id),
-            operation=operation,
-            version_note=version_note,
-            created_by=account_id,
-        )
-        session.add(revision)
-        session.flush()
-        return version
+    _create_config_version = staticmethod(create_composer_snapshot)
 
     @classmethod
     def _update_current_version(
@@ -1499,17 +1355,7 @@ class AgentComposerService:
             home_snapshot_id=current_snapshot.home_snapshot_id,
         )
 
-    @classmethod
-    def _next_revision(cls, *, session: Session, tenant_id: str, agent_id: str) -> int:
-        return (
-            session.scalar(
-                select(func.max(AgentConfigRevision.revision)).where(
-                    AgentConfigRevision.tenant_id == tenant_id,
-                    AgentConfigRevision.agent_id == agent_id,
-                )
-            )
-            or 0
-        ) + 1
+    _next_revision = staticmethod(next_composer_revision)
 
     @classmethod
     def _get_agent_app_agent(cls, *, session: Session, tenant_id: str, app_id: str) -> Agent | None:
