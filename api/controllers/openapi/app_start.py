@@ -13,7 +13,13 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._errors import JobCapacityReached
 from controllers.openapi._files import end_read_transaction
-from controllers.openapi._models import AdvancedChatStartPayload, JobState, WorkflowStartPayload
+from controllers.openapi._models import (
+    AdvancedChatStartPayload,
+    ChatStartPayload,
+    CompletionStartPayload,
+    JobState,
+    WorkflowStartPayload,
+)
 from controllers.openapi.app_run import RUN_GUARDS, emit_run_audit, generate_args, require_mode, run_stream
 from controllers.openapi.auth.context import Context
 from controllers.openapi.jobs import JOB_STATE_RESPONSE, job_owner, job_state_from
@@ -25,17 +31,21 @@ from services.run_job_service import JobCapacityError, JobOpening
 START_OP_PREFIX: Final = "start.console_app."
 WORKFLOW_START_OP: Final = f"{START_OP_PREFIX}workflow"
 ADVANCED_CHAT_START_OP: Final = f"{START_OP_PREFIX}advanced_chat"
+CHAT_START_OP: Final = f"{START_OP_PREFIX}chat"
+COMPLETION_START_OP: Final = f"{START_OP_PREFIX}completion"
 # The app modes each start op runs: every mode a job can run has exactly one.
 START_MODES: Final[Mapping[str, tuple[AppMode, ...]]] = MappingProxyType(
     {
         WORKFLOW_START_OP: (AppMode.WORKFLOW,),
         ADVANCED_CHAT_START_OP: (AppMode.ADVANCED_CHAT,),
+        CHAT_START_OP: (AppMode.CHAT, AppMode.AGENT_CHAT),
+        COMPLETION_START_OP: (AppMode.COMPLETION,),
     }
 )
 _START_FIELDS: Final = frozenset({"wait_seconds", "idempotency_key"})
 
 
-type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload
+type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload | ChatStartPayload | CompletionStartPayload
 
 
 def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
@@ -101,3 +111,41 @@ class AdvancedChatStartApi(Resource):
     )
     def post(self, ctx: Context, app_id: str, *, body: AdvancedChatStartPayload):
         return start_job(ctx, body, op=ADVANCED_CHAT_START_OP)
+
+
+@openapi_ns.route("/apps/<string:app_id>/chat:start")
+class ChatStartApi(Resource):
+    @endpoint(
+        op=CHAT_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Start a chat or agent-chat app as a background job and wait for its reply",
+        requirements=RUN_GUARDS,
+        body=ChatStartPayload,
+        examples=(
+            Example(
+                title="Start a new conversation", input={"app_id": "<app_id>", "query": "Summarise the latest release"}
+            ),
+        ),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: ChatStartPayload):
+        return start_job(ctx, body, op=CHAT_START_OP)
+
+
+@openapi_ns.route("/apps/<string:app_id>/completion:start")
+class CompletionStartApi(Resource):
+    @endpoint(
+        op=COMPLETION_START_OP,
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
+        kind=Kind.OBJECT,
+        effect=Effect.WRITE,
+        summary="Start a completion app as a background job and wait for its result",
+        requirements=RUN_GUARDS,
+        body=CompletionStartPayload,
+        examples=(Example(title="Start a completion", input={"app_id": "<app_id>", "inputs": {"topic": "report"}}),),
+        returns=JOB_STATE_RESPONSE,
+    )
+    def post(self, ctx: Context, app_id: str, *, body: CompletionStartPayload):
+        return start_job(ctx, body, op=COMPLETION_START_OP)
