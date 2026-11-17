@@ -52,7 +52,7 @@ class PreparedTextToAudio:
     voice: str | None
 
 
-def _create_tts_response(
+def create_tts_response(
     audio: Iterable[bytes] | bytes | bytearray | memoryview, declared_mime_type: str | None
 ) -> Response:
     """Create a response whose Content-Type matches the returned audio container."""
@@ -115,7 +115,7 @@ class AudioService:
                 app_id=app_model.id,
             )
             if agent_soul is not None:
-                cls._prepare_agent_asr(
+                cls.prepare_agent_asr(
                     app_model=app_model,
                     agent_soul=agent_soul,
                     session=session,
@@ -153,7 +153,7 @@ class AudioService:
         Raises:
             SpeechToTextDisabledServiceError: If the merged Agent feature configuration disables STT.
         """
-        cls._prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
+        cls.prepare_agent_asr(app_model=app_model, agent_soul=agent_soul, session=session)
         return cls.invoke_speech_to_text(
             app_model=app_model,
             audio=AudioUpload(stream=file.stream, mime_type=file.mimetype) if file is not None else None,
@@ -161,7 +161,8 @@ class AudioService:
         )
 
     @staticmethod
-    def _prepare_agent_asr(app_model: App, agent_soul: AgentSoulConfig, *, session: Session) -> None:
+    def prepare_agent_asr(app_model: App, agent_soul: AgentSoulConfig, *, session: Session) -> None:
+        """Validate effective Soul-first ASR settings before contacting the provider."""
         app_model_config = app_model.app_model_config_with_session(session=session)
         annotation_reply = load_annotation_reply_config(session, app_model.id) if app_model_config else None
         features = merge_agent_app_features(
@@ -217,7 +218,7 @@ class AudioService:
         if prepared is None:
             return None
         output = cls.invoke_tts(app_model, text=prepared.text, voice=prepared.voice, end_user=end_user)
-        return _create_tts_response(output.data, output.mime_type)
+        return create_tts_response(output.data, output.mime_type)
 
     @classmethod
     def prepare_tts(

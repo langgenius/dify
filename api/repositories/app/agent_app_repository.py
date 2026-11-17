@@ -71,6 +71,7 @@ from repositories.app.agent_debug_conversations import (
 from repositories.app.agent_runtime_app import (
     create_backing_agent_for_app,
     ensure_workflow_agent_backing_app,
+    find_existing_agent_runtime_app,
     resolve_agent_runtime_app,
 )
 from repositories.app.console_repository import (
@@ -1323,25 +1324,20 @@ class AgentAppRepository:
             return self._resolve_roster_app(session, tenant_id=tenant_id, agent_id=agent_id).id
 
     def resolve_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
+        """Resolve the Agent runtime App and materialize a missing hidden App when permitted."""
         with self._session_factory() as session:
-            try:
-                return (
-                    AgentRosterService(session).get_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id).id
-                )
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
+            app = resolve_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            return app.id
 
     def resolve_existing_runtime_app_id(self, *, tenant_id: str, agent_id: str) -> str:
         """Read persisted runtime state without creating a hidden app during a GET."""
         with self._session_factory() as session:
-            try:
-                return (
-                    AgentRosterService(session)
-                    .get_existing_agent_runtime_app_model(tenant_id=tenant_id, agent_id=agent_id)
-                    .id
-                )
-            except AgentNotFoundError as exc:
-                raise AgentAppNotFoundError from exc
+            app = find_existing_agent_runtime_app(session, tenant_id=tenant_id, agent_id=agent_id)
+            if app is None:
+                raise AgentAppNotFoundError
+            return app.id
 
     def list_referencing_workflows(self, *, tenant_id: str, agent_id: str) -> list[AgentReferencingWorkflow]:
         with self._session_factory() as session:
