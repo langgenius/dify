@@ -25,7 +25,7 @@ def test_mlflow_config_reads_stored_configurations() -> None:
             "retired_field": "ignored",
         }
     )
-    assert config.tracking_uri == "https://mlflow.example/proxy/"
+    assert config.tracking_uri == "https://mlflow.example/proxy"
     assert config.experiment_id == "42"
     assert (config.username, config.password) == ("admin", "s3cret")
 

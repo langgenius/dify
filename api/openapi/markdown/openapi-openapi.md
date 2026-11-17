@@ -1192,6 +1192,7 @@ Upload a file to use as an input variable when running the app
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Published | **application/json**: [PublishResponse](#publishresponse)<br> |
+| 403 | Forbidden | **application/json**: [PaidPlanRequiredError](#paidplanrequirederror)<br>[ServiceApiDisabledError](#serviceapidisablederror)<br>[ErrorBody](#errorbody)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -3481,6 +3482,14 @@ The console payload plus local file parts; `_files.merge_files` sets them on `in
 | files | object | Local file paths keyed by the form's file input name, same convention as the run ops' `files` | No |
 | inputs | object | Submitted human input values keyed by output variable name. Use a string for paragraph or select input values, a file mapping for file inputs, and a list of file mappings for file-list inputs. Local file mappings use `transfer_method=local_file` with `upload_file_id`; remote file mappings use `transfer_method=remote_url` with `url` or `remote_url`. | Yes |
 
+#### PaidPlanRequiredError
+
+This feature requires a paid plan.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| PaidPlanRequiredError |  | This feature requires a paid plan. |  |
+
 #### PermittedExternalAppsListQuery
 
 Strict (extra='forbid').
@@ -3733,6 +3742,14 @@ Meta endpoint payload for `GET /openapi/v1/_version` — no auth required.
 | ---- | ---- | ----------- | -------- |
 | base_url | string |  | Yes |
 | enabled | boolean |  | Yes |
+
+#### ServiceApiDisabledError
+
+This app's Service API is turned off.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ServiceApiDisabledError |  | This app's Service API is turned off. |  |
 
 #### ServiceApiPatch
 

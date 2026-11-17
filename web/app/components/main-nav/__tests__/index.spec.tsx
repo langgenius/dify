@@ -1,3 +1,4 @@
+import type { CloudPlan } from '@dify/contracts/api/console/features/types.gen'
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
 import type { GetVersionResponse } from '@dify/contracts/api/console/version/types.gen'
 import type {
@@ -138,7 +139,7 @@ vi.mock('@/config', async (importOriginal) => {
       return mockConfig.ENABLE_HITL_IM
     },
     SUPPORT_EMAIL_ADDRESS: '',
-    ZENDESK_WIDGET_KEY: '',
+    ZENDESK_WIDGET_KEY: 'test-key',
   }
 })
 
@@ -280,6 +281,7 @@ const renderMainNav = (
     extra?: ReactNode
     educationStatus?: NonNullable<Parameters<typeof renderWithoutPricing>[1]>['educationStatus']
     skipRecoveryVisible?: boolean
+    plan?: CloudPlan
   } = {},
 ) => {
   const queryClient = createConsoleQueryClient()
@@ -335,7 +337,7 @@ const renderMainNav = (
     {
       systemFeatures: resolvedSystemFeatures,
       features: {
-        billing: { subscription: { plan: 'sandbox' } },
+        billing: { subscription: { plan: options.plan ?? 'sandbox' } },
         enable_skill: skillEnabled,
         education: { enabled: educationEnabled },
       },
@@ -955,16 +957,17 @@ describe('MainNav', () => {
   it('closes the help menu from the support upgrade action', async () => {
     const user = userEvent.setup()
     renderMainNav()
+    expect(screen.queryByRole('link', { name: 'common.userProfile.contactSupport' })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
-    const contactUsItem = await screen.findByRole('menuitem', {
-      name: 'common.userProfile.contactUs billing.upgradeBtn.encourageShort',
+    const contactSupportItem = await screen.findByRole('menuitem', {
+      name: 'common.userProfile.contactSupport billing.upgradeBtn.encourageShort',
     })
     expect(
       screen.queryByRole('button', { name: 'billing.upgradeBtn.encourageShort' }),
     ).not.toBeInTheDocument()
 
-    await user.click(contactUsItem)
+    await user.click(contactSupportItem)
 
     await waitFor(() => {
       expect(screen.queryByText('common.userProfile.discord')).not.toBeInTheDocument()
@@ -974,12 +977,30 @@ describe('MainNav', () => {
     )
   })
 
+  it('places paid contact support above the account and removes it from Help', async () => {
+    const user = userEvent.setup()
+    renderMainNav(defaultMainNavSystemFeatures, { plan: 'professional' })
+
+    const contact = screen.getByRole('button', { name: 'common.userProfile.contactSupport' })
+    const account = screen.getByRole('button', { name: accountMenuAccessibleName })
+    expect(contact.compareDocumentPosition(account)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+
+    await user.click(screen.getByRole('button', { name: 'navigation.mainNav.help.openMenu' }))
+    expect(
+      screen.queryByRole('menuitem', { name: 'common.userProfile.contactSupport' }),
+    ).not.toBeInTheDocument()
+  })
+
   it('hides the help menu when branding is enabled', () => {
-    renderMainNav({ branding: { enabled: true } }, { skipRecoveryVisible: true })
+    renderMainNav(
+      { branding: { enabled: true } },
+      { skipRecoveryVisible: true, plan: 'professional' },
+    )
 
     expect(
       screen.queryByRole('button', { name: 'navigation.mainNav.help.openMenu' }),
     ).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'common.userProfile.contactSupport' })).toBeNull()
     expect(
       screen.queryByRole('dialog', { name: 'Step-by-step Tour recovery tip' }),
     ).not.toBeInTheDocument()

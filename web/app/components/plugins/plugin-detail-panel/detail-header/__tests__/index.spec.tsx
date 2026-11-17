@@ -10,7 +10,6 @@ import userEvent from '@testing-library/user-event'
 import { PluginSource } from '@/app/components/plugins/types'
 import { toast } from '@/app/notifications'
 import { AppToaster } from '@/app/notifications/app-toaster'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { normalizeInstalledPluginDetail } from '@/service/use-plugins'
 import { seedModelProviderQueries } from '@/test/console/model-provider'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
@@ -118,10 +117,10 @@ const render = createNuqsTestRenderer((ui: ReactElement, enableMarketplace: bool
 function setup(props: Partial<ComponentProps<typeof DetailHeader>> = {}, enableMarketplace = true) {
   const onUpdate = vi.fn<() => void | Promise<void>>()
   render(
-    <ModalContextProvider>
+    <>
       <DetailHeader detail={detail} onUpdate={onUpdate} {...props} />
       <AppToaster timeout={0} />
-    </ModalContextProvider>,
+    </>,
     enableMarketplace,
   )
   return { user: userEvent.setup(), onUpdate }

@@ -136,7 +136,7 @@ export default function AccountSetting({
       name: t(($) => $['imPlatform.title'], { ns: 'contacts' }),
       description: t(($) => $['imPlatform.description'], { ns: 'contacts' }),
       docLink: {
-        href: docLink('/use-dify/nodes/human-input'),
+        href: docLink('/use-dify/workspace/channels/overview'),
         label: t(($) => $['imPlatform.learnMore'], { ns: 'contacts' }),
       },
       icon: <span className={cn('i-ri-chat-ai-line', iconClassName)} />,

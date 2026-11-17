@@ -358,6 +358,7 @@ class BillingAccountEducationGateway(AccountEducationGateway):
             is_student=result.is_student,
             expire_at=result.expire_at,
             allow_refresh=result.allow_refresh,
+            can_redeem_discount=result.can_redeem_discount,
         )
 
     @override

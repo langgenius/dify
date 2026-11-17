@@ -34,6 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
@@ -1404,7 +1405,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         )
 
     def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
-        return load_form_tokens_by_form_id(form_ids, session=session)
+        """Read Console tokens for an admitted run's form IDs without changing recipients."""
+        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.CONSOLE)
 
     def stop_paused_workflow_task(
         self,
