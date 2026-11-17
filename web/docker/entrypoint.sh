@@ -55,8 +55,4 @@ export NEXT_PUBLIC_MAX_PARALLEL_LIMIT=${MAX_PARALLEL_LIMIT}
 export NEXT_PUBLIC_MAX_ITERATIONS_NUM=${MAX_ITERATIONS_NUM}
 export NEXT_PUBLIC_MAX_TREE_DEPTH=${MAX_TREE_DEPTH}
 
-if [ "${EXPERIMENTAL_ENABLE_VINEXT:-}" = "true" ]; then
-  exec node /app/targets/vinext/server.js
-fi
-
 exec node /app/targets/next/web/server.js
