@@ -2243,6 +2243,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
         {"200", "422", "default"}
     ),
     ("get", "/_health"): frozenset({"200", "default"}),
+    ("post", "/mcp"): frozenset({"200", "default"}),
     ("get", "/_version"): frozenset({"200", "default"}),
     ("get", "/account"): frozenset({"200", "default"}),
     ("get", "/account/sessions"): frozenset({"200", "422", "default"}),
@@ -2595,7 +2596,7 @@ class TestAuthMatrixCases:
         # The remainder is the device-flow, documentation and catalog surface. Its size is
         # pinned rather than enumerated: a list of exemptions rots silently — the one this
         # replaced still named `swagger.json`, a route that is not registered at all.
-        assert len(unguarded) == 14
+        assert len(unguarded) == 15
 
     @staticmethod
     @pytest.mark.parametrize("route", ROUTES, ids=[route.id for route in ROUTES])
