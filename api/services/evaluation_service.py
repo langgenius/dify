@@ -536,7 +536,12 @@ class EvaluationService:
         data: EvaluationConfigData,
         target_workflow: Workflow | None = None,
     ) -> None:
-        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator."""
+        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator.
+
+        Precondition: ``data`` is a parsed configuration for the supplied tenant and target.
+        Postcondition: selected workflow nodes exist in the published target; a missing node
+        raises ``ValueError`` with its submitted title and ID.
+        """
         normalized_target_type = EvaluationTargetType(target_type)
         if not data.default_metrics and data.customized_metrics is None:
             raise ValueError("At least one default or customized metric is required.")
@@ -633,7 +638,9 @@ class EvaluationService:
                 for node in metric.node_info_list:
                     published_node = published_nodes.get(node.node_id)
                     if published_node is None:
-                        raise ValueError(f"Node '{node.node_id}' is not in the published target workflow.")
+                        raise ValueError(
+                            f"Node '{node.title} ({node.node_id})' is not in the published target workflow."
+                        )
                     if is_dify_agent_node_data(published_node) and metric.metric not in {
                         name.value for name in NATIVE_AGENT_METRIC_NAMES
                     }:
