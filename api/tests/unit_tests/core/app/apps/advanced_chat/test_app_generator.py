@@ -5,6 +5,7 @@ import logging
 import time
 from collections.abc import Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from datetime import timedelta
 from decimal import Decimal
 from functools import partial
@@ -204,6 +205,53 @@ def _make_message(
     return message
 
 
+@dataclass(frozen=True)
+class _StubFlaskApp:
+    name: str = "flask"
+
+
+class _StubCurrentApp:
+    def _get_current_object(self) -> _StubFlaskApp:
+        return _StubFlaskApp()
+
+
+@dataclass(frozen=True)
+class _StubDb:
+    engine: _app_generator_Engine
+    session: Session
+
+
+class _StubQueueManager:
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+
+
+class _StubWorkerThread:
+    def __init__(self, *, target: object, kwargs: dict[str, object]) -> None:
+        self.kwargs = kwargs
+
+    def start(self) -> None:
+        pass
+
+    def join(self, timeout: float | None) -> None:
+        pass
+
+    def is_alive(self) -> bool:
+        return False
+
+
+class _UnusedRepository:
+    """Execution repository the stubbed worker thread never reaches."""
+
+
+@dataclass
+class _RetireRecorder:
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def __call__(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
+
+
 def _stub_advanced_chat_generate_pipeline(
     monkeypatch: pytest.MonkeyPatch,
     generator: AdvancedChatAppGenerator,
@@ -213,35 +261,14 @@ def _stub_advanced_chat_generate_pipeline(
 ) -> None:
     """Stub everything in ``_generate`` past conversation initialization."""
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.get_thread_messages_length", MagicMock(return_value=0)
+        "core.app.apps.advanced_chat.app_generator.get_thread_messages_length", lambda *args, **kwargs: 0
     )
-    monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.MessageBasedAppQueueManager",
-        lambda **kwargs: SimpleNamespace(**kwargs),
-    )
-    monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.current_app",
-        SimpleNamespace(_get_current_object=lambda: SimpleNamespace(name="flask")),
-    )
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.MessageBasedAppQueueManager", _StubQueueManager)
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.current_app", _StubCurrentApp())
     monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.contextvars.copy_context", lambda: "ctx")
-
-    class _Thread:
-        def __init__(self, *, target, kwargs):
-            self.kwargs = kwargs
-
-        def start(self):
-            pass
-
-        def join(self, timeout):
-            pass
-
-        def is_alive(self):
-            return False
-
-    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _Thread)
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _StubWorkerThread)
     monkeypatch.setattr(
-        "core.app.apps.advanced_chat.app_generator.db",
-        SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
+        "core.app.apps.advanced_chat.app_generator.db", _StubDb(engine=sqlite_engine, session=sqlite_session)
     )
     monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
     monkeypatch.setattr(generator, "_handle_advanced_chat_response", lambda **kwargs: {"raw": True})
@@ -782,15 +809,14 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.add_all([app, workflow, conversation, message])
         sqlite_session.commit()
 
-        init_records = MagicMock(return_value=(conversation, message))
-        retire_mock = MagicMock()
-        monkeypatch.setattr(generator, "_init_generate_records", init_records)
+        retire_recorder = _RetireRecorder()
+        monkeypatch.setattr(generator, "_init_generate_records", lambda *args, **kwargs: (conversation, message))
         _stub_advanced_chat_generate_pipeline(
             monkeypatch, generator, sqlite_session=sqlite_session, sqlite_engine=sqlite_engine
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.ConversationService.retire_superseded_debug_conversations",
-            retire_mock,
+            retire_recorder,
         )
 
         response = generator._generate(
@@ -799,8 +825,8 @@ class TestAdvancedChatAppGeneratorInternals:
             invoke_from=invoke_from,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
-            workflow_execution_repository=SimpleNamespace(),
-            workflow_node_execution_repository=SimpleNamespace(),
+            workflow_execution_repository=_UnusedRepository(),
+            workflow_node_execution_repository=_UnusedRepository(),
             conversation=None,
             message=None,
             stream=False,
@@ -808,15 +834,17 @@ class TestAdvancedChatAppGeneratorInternals:
 
         assert response == {"raw": True}
         if expect_retire:
-            retire_mock.assert_called_once_with(
-                session=sqlite_session,
-                tenant_id="tenant",
-                app_id="app",
-                account_id="user",
-                current_conversation_id=conversation.id,
-            )
+            assert retire_recorder.calls == [
+                {
+                    "session": sqlite_session,
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "account_id": "user",
+                    "current_conversation_id": conversation.id,
+                }
+            ]
         else:
-            retire_mock.assert_not_called()
+            assert retire_recorder.calls == []
 
     def test_generate_with_existing_records_never_retires_debug_workspaces(
         self,
@@ -847,15 +875,18 @@ class TestAdvancedChatAppGeneratorInternals:
         sqlite_session.add_all([app, workflow, conversation, message])
         sqlite_session.commit()
 
-        init_records = MagicMock()
-        retire_mock = MagicMock()
+        retire_recorder = _RetireRecorder()
+
+        def init_records(*args: object, **kwargs: object) -> None:
+            raise AssertionError("Existing records must not be re-initialized")
+
         monkeypatch.setattr(generator, "_init_generate_records", init_records)
         _stub_advanced_chat_generate_pipeline(
             monkeypatch, generator, sqlite_session=sqlite_session, sqlite_engine=sqlite_engine
         )
         monkeypatch.setattr(
             "core.app.apps.advanced_chat.app_generator.ConversationService.retire_superseded_debug_conversations",
-            retire_mock,
+            retire_recorder,
         )
 
         response = generator._generate(
@@ -864,16 +895,15 @@ class TestAdvancedChatAppGeneratorInternals:
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             session=sqlite_session,
-            workflow_execution_repository=SimpleNamespace(),
-            workflow_node_execution_repository=SimpleNamespace(),
+            workflow_execution_repository=_UnusedRepository(),
+            workflow_node_execution_repository=_UnusedRepository(),
             conversation=conversation,
             message=message,
             stream=False,
         )
 
         assert response == {"raw": True}
-        init_records.assert_not_called()
-        retire_mock.assert_not_called()
+        assert retire_recorder.calls == []
 
     @pytest.mark.parametrize("resuming", [False, True], ids=["file-default", "submitted-hitl-file"])
     def test_generate_internal_flow_with_existing_records_skips_init(
