@@ -66,6 +66,8 @@ from controllers.console.app.agent_config_inspector import (
     AgentConfigManifestByAgentApi,
     AgentConfigSkillFileDownloadByAgentApi,
 )
+from controllers.console.app.audio import AgentChatMessageAudioApi, AgentChatMessageTextApi, AgentTextToSpeechVoicesApi
+from controllers.console.app.completion import AgentBuildChatFinalizeApi, AgentChatMessageApi, AgentChatMessageStopApi
 from controllers.console.wraps import _is_setup_completed
 from core.plugin.impl import base as plugin_http
 from enums import DeploymentEdition
@@ -236,6 +238,12 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(
             AgentConfigSkillFileDownloadByAgentApi, "/agent/<uuid:agent_id>/config/skills/<string:name>/files/download"
         )
+        api.add_resource(AgentChatMessageApi, "/agent/<uuid:agent_id>/chat-messages")
+        api.add_resource(AgentBuildChatFinalizeApi, "/agent/<uuid:agent_id>/build-chat/finalize")
+        api.add_resource(AgentChatMessageStopApi, "/agent/<uuid:agent_id>/chat-messages/<string:task_id>/stop")
+        api.add_resource(AgentChatMessageAudioApi, "/agent/<uuid:agent_id>/audio-to-text")
+        api.add_resource(AgentChatMessageTextApi, "/agent/<uuid:agent_id>/text-to-audio")
+        api.add_resource(AgentTextToSpeechVoicesApi, "/agent/<uuid:agent_id>/text-to-audio/voices")
         api.add_resource(AgentComposerApi, "/agent/<uuid:agent_id>/composer")
         api.add_resource(AgentComposerCandidatesApi, "/agent/<uuid:agent_id>/composer/candidates")
         api.add_resource(AgentComposerValidateApi, "/agent/<uuid:agent_id>/composer/validate")
@@ -1257,6 +1265,41 @@ def test_workflow_config_validates_request_before_resolving_missing_app(harness:
     upload = harness.client.post(f"{path}/files/batch", headers=harness.headers, json={"upload_file_ids": []})
     assert upload.status_code == HTTPStatus.UNPROCESSABLE_ENTITY, upload.get_json()
     assert upload.get_json()["code"] == "unprocessable_entity"
+
+
+def test_agent_chat_checks_conversation_ownership_before_invoking_generation(harness: Harness) -> None:
+    """Send an unowned conversation through real admission and runtime selection."""
+    agent_id, _ = harness.create_agent()
+    response = harness.client.post(
+        f"/console/api/agent/{agent_id}/chat-messages",
+        headers=harness.headers,
+        json={"inputs": {}, "query": "Hello", "conversation_id": str(uuid4())},
+    )
+    assert response.status_code == HTTPStatus.NOT_FOUND
+    assert response.get_json()["message"].startswith("Conversation Not Exists.")
+
+
+def test_agent_asr_uses_account_owned_build_configuration(harness: Harness) -> None:
+    """Reject a missing Build draft and enforce that draft's ASR feature before upload handling."""
+    agent_id, _ = harness.create_agent()
+    path = f"/console/api/agent/{agent_id}/audio-to-text"
+    missing = harness.client.post(path, headers=harness.headers, data={"draft_type": "debug_build"})
+    assert missing.status_code == HTTPStatus.NOT_FOUND
+    assert missing.get_json()["code"] == "agent_version_not_found_error"
+    with harness.sessions.begin() as session:
+        session.add(
+            AgentConfigDraft(
+                tenant_id=harness.tenant_id,
+                agent_id=agent_id,
+                draft_type=AgentConfigDraftType.DEBUG_BUILD,
+                account_id=harness.account_id,
+                draft_owner_key=harness.account_id,
+                config_snapshot=AgentSoulConfig(),
+            )
+        )
+    disabled = harness.client.post(path, headers=harness.headers, data={"draft_type": "debug_build"})
+    assert disabled.status_code == HTTPStatus.BAD_REQUEST
+    assert disabled.get_json()["code"] == "speech_to_text_disabled"
 
 
 def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:

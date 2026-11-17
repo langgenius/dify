@@ -27,7 +27,7 @@ from models.model import AppModelConfig, Message
 from models.workflow import Workflow, WorkflowType
 from services import audio_provider_gateway
 from services.app_ref_service import AppRef, MessageRef
-from services.audio_service import FILE_SIZE_LIMIT, AudioService, _create_tts_response
+from services.audio_service import FILE_SIZE_LIMIT, AudioService, create_tts_response
 from services.audio_types import AudioAppRef, AudioUpload
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -336,7 +336,7 @@ class TestAudioServiceCases:
         source = chunks()
         app = Flask(__name__)
         with app.test_request_context("/text-to-audio", method="POST"):
-            response = _create_tts_response(source, "audio/x-wav")
+            response = create_tts_response(source, "audio/x-wav")
 
         assert response.status_code == 200
         assert dict(response.headers) == {"Content-Type": "audio/wav"}

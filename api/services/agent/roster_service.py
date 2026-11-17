@@ -39,7 +39,6 @@ from repositories.app.agent_runtime_app import (
     create_backing_agent_for_app,
     create_hidden_backing_app,
     ensure_workflow_agent_backing_app,
-    find_runtime_app,
     find_runtime_resolvable_agent,
     resolve_agent_runtime_app,
 )
@@ -544,23 +543,6 @@ class AgentRosterService:
         if agent is None:
             return None
         return agent.app_id
-
-    def get_existing_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
-        """Resolve an existing runtime App without creating or committing state.
-
-        Workflow-only Agents must already have a hidden backing App. Their
-        parent workflow App must never stand in for a missing runtime App.
-        """
-        agent = find_runtime_resolvable_agent(self._session, tenant_id=tenant_id, agent_id=agent_id)
-        if agent is None:
-            raise AgentNotFoundError()
-        app_id = agent.backing_app_id if agent.scope == AgentScope.WORKFLOW_ONLY else self.runtime_backing_app_id(agent)
-        if not app_id:
-            raise AgentNotFoundError()
-        app = find_runtime_app(self._session, tenant_id=tenant_id, app_id=app_id)
-        if app is None:
-            raise AgentNotFoundError()
-        return app
 
     def get_agent_runtime_app_model(self, *, tenant_id: str, agent_id: str) -> App:
         """Resolve the Agent's runtime App, materializing a hidden backing App when required."""
