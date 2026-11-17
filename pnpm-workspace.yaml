@@ -164,7 +164,6 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.72.2
   '@typescript-eslint/utils': 8.72.2
-  '@vinext/cloudflare': 1.4.0
   '@vitejs/plugin-react': 6.3.0
   '@vitejs/plugin-rsc': 0.5.39
   '@vitest/browser-playwright': 5.1.0
@@ -288,7 +287,7 @@ catalog:
   use-context-selector: 2.0.0
   uuid: 14.0.3
   verkit: 0.5.0
-  vinext: 1.4.6
+  vinext: 1.4.5
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
   vite: npm:@voidzero-dev/vite-plus-core@8.3.8000

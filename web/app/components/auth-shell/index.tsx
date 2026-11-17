@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { useState } from 'react'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import Header from './header'
 
@@ -12,10 +11,10 @@ type AuthShellProps = {
   wide?: boolean
 }
 
+const copyrightYear = new Date().getFullYear()
+
 export function AuthShell({ children, header = true, wide = false }: AuthShellProps) {
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  // Read the clock per render: Cloudflare Workers freeze Date at module scope (it reports 1970).
-  const [copyrightYear] = useState(() => new Date().getFullYear())
 
   return (
     <div className="flex min-h-dvh w-full justify-center bg-background-default-subtle sm:bg-background-default-burn sm:p-6">

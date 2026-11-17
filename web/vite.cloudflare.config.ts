@@ -11,7 +11,7 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 // Cloudflare Workers build target (vinext POC). Kept out of vite.config.ts so unit tests,
 // Storybook, and the Node vinext build never load the Cloudflare plugin.
 // The plugin must be a top-level entry (not inside lazyPlugins()): vinext detects it from the
-// raw config, and `vinext-cloudflare deploy` scans this file for a static `cloudflare(` call.
+// raw config before lazy plugins resolve.
 export default defineConfig(async (env: ConfigEnv) => {
   const base: UserConfig =
     typeof baseConfig === 'function' ? await baseConfig(env) : await baseConfig

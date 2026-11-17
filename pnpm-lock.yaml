@@ -404,9 +404,6 @@ catalogs:
     '@typescript-eslint/utils':
       specifier: 8.72.2
       version: 8.72.2
-    '@vinext/cloudflare':
-      specifier: 1.4.0
-      version: 1.4.0
     '@vitejs/plugin-react':
       specifier: 6.3.0
       version: 6.3.0
@@ -768,8 +765,8 @@ catalogs:
       specifier: 0.5.0
       version: 0.5.0
     vinext:
-      specifier: 1.4.6
-      version: 1.4.6
+      specifier: 1.4.5
+      version: 1.4.5
     vite:
       specifier: npm:@voidzero-dev/vite-plus-core@8.3.8000
       version: 8.3.8000
@@ -1879,9 +1876,6 @@ importers:
       '@types/sortablejs':
         specifier: 'catalog:'
         version: 1.15.9
-      '@vinext/cloudflare':
-        specifier: 'catalog:'
-        version: 1.4.0(@cloudflare/vite-plugin@2.0.0-rc.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(workerd@1.20261116.1))(cf@1.0.0-rc.0(@types/node@24.19.2))(vinext@1.4.6(09a592798bee1e4001df784d947daa08))
       '@vitejs/plugin-react':
         specifier: 'catalog:'
         version: 6.3.0(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))
@@ -1941,7 +1935,7 @@ importers:
         version: 3.19.3
       vinext:
         specifier: 'catalog:'
-        version: 1.4.6(09a592798bee1e4001df784d947daa08)
+        version: 1.4.5(09a592798bee1e4001df784d947daa08)
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1)'
@@ -2225,10 +2219,6 @@ packages:
     engines: {node: '>=16'}
     cpu: [x64]
     os: [win32]
-
-  '@cloudflare/workers-response-store@1.2.0':
-    resolution: {integrity: sha512-bFW0NV7i6qThxp6AhVPQ80VMouuO537RPDS+mYCLtJjKlKudgQTt34QE87/plaZBXDjEjxyLCK/+PYYTA5ZD4w==}
-    engines: {node: '>=22'}
 
   '@code-inspector/core@2.0.9':
     resolution: {integrity: sha512-7WkUlXfpwM95+KY5ra3KyivQGy0fUBq9dFcoI481LJKKnZNzwRW6kUkQF2hVP7zTj8TDy5esCMw8YuOwI8HhsQ==}
@@ -5385,20 +5375,6 @@ packages:
   '@vercel/og@1.0.3':
     resolution: {integrity: sha512-/iYJ34PDu4lty1TXdL86qHEw8viveHTllG1PWLuJX8tSFfqKL7kyVJeUORJmQ250bHB0h+alcalXUlza3c/NSA==}
     engines: {node: '>=22'}
-
-  '@vinext/cloudflare@1.4.0':
-    resolution: {integrity: sha512-w18+vC3NeaBZEQ45JzE78o4DlpW1Vaun77GI5CpGM0QLMka+Rr40OZvphA1bOsSK0uC7heuuiOK4dsvm9V1uRg==}
-    engines: {node: '>=22'}
-    hasBin: true
-    peerDependencies:
-      '@cloudflare/vite-plugin': '*'
-      cf: '*'
-      vinext: ^1.4.6
-    peerDependenciesMeta:
-      '@cloudflare/vite-plugin':
-        optional: true
-      cf:
-        optional: true
 
   '@vinext/types@1.0.2':
     resolution: {integrity: sha512-ORcuy4DNiT2EFsLsCh2FtZz1I7Q3HGf1PSu80ALqwlq+en7UJeLKQE7FmKgvW0cJL79GvZuZe4jddzGpqDMw/Q==}
@@ -8797,8 +8773,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vinext@1.4.6:
-    resolution: {integrity: sha512-xMqg/35SeEP8rimU2e7i0k8XhRJRCTbimIeHYKDPIFfmycoxgEkN1z488yGV1D/JsdE2X6cdGqYyW/1gCTH9dA==}
+  vinext@1.4.5:
+    resolution: {integrity: sha512-UI0KPA8tEgJshULtt89xKl854sGyF4AUak6UkNNuzWstXgV/00klmsqtXk3YyCXGicvDaBI2/eJmTpCy0ol++Q==}
     engines: {node: '>=22'}
     hasBin: true
     peerDependencies:
@@ -9497,8 +9473,6 @@ snapshots:
 
   '@cloudflare/workerd-windows-64@1.20261116.1':
     optional: true
-
-  '@cloudflare/workers-response-store@1.2.0': {}
 
   '@code-inspector/core@2.0.9(supports-color@11.0.0)':
     dependencies:
@@ -12206,14 +12180,6 @@ snapshots:
       sharp: 0.35.5(@types/node@24.19.2)
     transitivePeerDependencies:
       - '@types/node'
-
-  '@vinext/cloudflare@1.4.0(@cloudflare/vite-plugin@2.0.0-rc.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(workerd@1.20261116.1))(cf@1.0.0-rc.0(@types/node@24.19.2))(vinext@1.4.6(09a592798bee1e4001df784d947daa08))':
-    dependencies:
-      '@cloudflare/workers-response-store': 1.2.0
-      vinext: 1.4.6(09a592798bee1e4001df784d947daa08)
-    optionalDependencies:
-      '@cloudflare/vite-plugin': 2.0.0-rc.0(@types/node@24.19.2)(@voidzero-dev/vite-plus-core@8.3.8000(@types/node@24.19.2)(@typescript/typescript6@6.0.2)(@volar/typescript@2.4.28(@typescript/typescript6@6.0.2))(esbuild@0.28.2)(jiti@2.7.0)(yaml@2.9.1))(workerd@1.20261116.1)
-      cf: 1.0.0-rc.0(@types/node@24.19.2)
 
   '@vinext/types@1.0.2': {}
 
@@ -16145,7 +16111,7 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.3
 
-  vinext@1.4.6(09a592798bee1e4001df784d947daa08):
+  vinext@1.4.5(09a592798bee1e4001df784d947daa08):
     dependencies:
       '@unpic/react': 1.0.2(next@16.4.6(@babel/core@7.29.7(supports-color@11.0.0))(@playwright/test@1.65.0)(@types/node@24.19.2)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       '@vercel/og': 1.0.3(@types/node@24.19.2)
@@ -16658,7 +16624,6 @@ time:
   '@typescript-eslint/parser@8.72.2': '2026-11-09T17:06:15.865Z'
   '@typescript-eslint/utils@8.72.2': '2026-11-09T17:06:13.865Z'
   '@typescript/typescript6@6.0.2': '2026-07-06T18:06:47.459Z'
-  '@vinext/cloudflare@1.4.0': '2026-11-16T14:03:37.568Z'
   '@vitejs/plugin-react@6.3.0': '2026-11-09T06:12:31.033Z'
   '@vitejs/plugin-rsc@0.5.39': '2026-11-05T05:51:28.046Z'
   '@vitest/browser-playwright@5.1.0': '2026-11-02T16:11:35.669Z'
@@ -16781,7 +16746,7 @@ time:
   use-context-selector@2.0.0: '2024-05-06T11:23:59.259Z'
   uuid@14.0.3: '2026-10-10T00:30:19.423Z'
   verkit@0.5.0: '2026-09-18T17:52:29.936Z'
-  vinext@1.4.6: '2026-11-16T14:10:16.267Z'
+  vinext@1.4.5: '2026-11-10T18:53:50.841Z'
   vite-plugin-inspect@12.1.0: '2026-10-09T06:40:52.283Z'
   vite-plus@1.7.0: '2026-11-17T03:34:01.877Z'
   vitest-browser-react@2.3.0: '2026-09-04T08:00:00.941Z'

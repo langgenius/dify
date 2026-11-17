@@ -48,12 +48,9 @@ const COMMON_COLOR_MAP = {
 
 const commonDateFormat = 'MMM D, YYYY'
 
-export const getDefaultPeriod = () => {
-  const today = dayjs()
-  return {
-    start: today.subtract(7, 'day').format(commonDateFormat),
-    end: today.format(commonDateFormat),
-  }
+export const defaultPeriod = {
+  start: dayjs().subtract(7, 'day').format(commonDateFormat),
+  end: dayjs().format(commonDateFormat),
 }
 
 export const CHART_TYPE_CONFIG: Record<ChartType, ChartConfig> = {
