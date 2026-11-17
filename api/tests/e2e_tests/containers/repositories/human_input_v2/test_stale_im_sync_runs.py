@@ -1,9 +1,7 @@
 """Stale sync lifecycle and serialization on real MySQL and PostgreSQL."""
 
-import os
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import ExitStack
 from dataclasses import dataclass, replace
 from threading import Barrier, Event
 from uuid import uuid4
@@ -58,17 +56,14 @@ from services.human_input_v2.im_contact_sync.worker import IMContactSyncWorker
 
 @pytest.fixture(scope="module", params=["mysql", "postgresql"])
 def sync_engine(request: pytest.FixtureRequest) -> Iterator[Engine]:
-    dialect = request.param
-    external_url = os.environ.get(f"HITL_SYNC_TEST_{dialect.upper()}_URL")
-    with ExitStack() as stack:
-        if external_url is None:
-            container = stack.enter_context(
-                MySqlContainer("mysql:8.0", dialect="pymysql")
-                if dialect == "mysql"
-                else PostgresContainer("postgres:15-alpine")
-            )
-            external_url = container.get_connection_url()
-        engine = sa.create_engine(external_url)
+    """Yield a container engine with the required schema; dispose it before container shutdown."""
+    container = (
+        MySqlContainer("mysql:8.0", dialect="pymysql")
+        if request.param == "mysql"
+        else PostgresContainer("postgres:15-alpine")
+    )
+    with container:
+        engine = sa.create_engine(container.get_connection_url())
         models = (
             HumanInputIMChannel,
             HumanInputIMSyncRun,
@@ -91,10 +86,10 @@ _ACCOUNT_ID = AccountId("00000000-0000-0000-0000-000000000201")
 
 
 class _EmptyContacts:
-    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:
+    def list_contacts(self, page: int, limit: int) -> tuple[Contact, ...]:  # noqa: ARG002
         return ()
 
-    def get_contact(self, contact_id: ContactId) -> Contact | None:
+    def get_contact(self, contact_id: ContactId) -> Contact | None:  # noqa: ARG002
         return None
 
 
@@ -132,10 +127,10 @@ class _Adapter:
     def dynamic_card_messaging(self) -> IMDynamicCardMessaging | None:
         return None
 
-    def create_webhook_handler(self, consumer: IMEventConsumer) -> IMWebhookHandler | None:
+    def create_webhook_handler(self, consumer: IMEventConsumer) -> IMWebhookHandler | None:  # noqa: ARG002
         return None
 
-    def create_stream_handler(self, consumer: IMEventConsumer) -> IMEventStream | None:
+    def create_stream_handler(self, consumer: IMEventConsumer) -> IMEventStream | None:  # noqa: ARG002
         return None
 
     def close(self) -> None:
