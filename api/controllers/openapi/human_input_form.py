@@ -23,7 +23,7 @@ from controllers.common.human_input_v2_errors import (
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
-from controllers.openapi._files import end_read_transaction, merge_files
+from controllers.openapi._files import discard_uploaded_files, end_read_transaction, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
     FormSubmitResponse,
@@ -52,7 +52,14 @@ from libs.external_api import error_responses
 from libs.helper import extract_remote_ip, to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
-from services.human_input_service import FormNotFoundError, HumanInputService
+from services.human_input_service import (
+    FormExpiredError,
+    FormNotFoundError,
+    FormSubmittedError,
+    HumanInputService,
+    InvalidFormDataError,
+    WebAppDeliveryNotEnabledError,
+)
 from services.human_input_v2.submission_service import (
     HumanInputFormError,
     HumanInputFormErrorCode,
@@ -248,10 +255,15 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 _ensure_form_belongs_to_app(v2_form, ctx.app)
                 if body.files:
                     end_read_transaction(ctx.session)
-                inputs = merge_files(body.inputs, body.files, ctx.caller)
-                submitted_form = v2_service.submit_openapi_form(
-                    actor=actor, form_token=form_token, action=body.action, inputs=inputs
-                )
+                uploaded_file_ids: list[str] = []
+                try:
+                    inputs = merge_files(body.inputs, body.files, ctx.caller, uploaded_file_ids=uploaded_file_ids)
+                    submitted_form = v2_service.submit_openapi_form(
+                        actor=actor, form_token=form_token, action=body.action, inputs=inputs
+                    )
+                except HumanInputFormError:
+                    discard_uploaded_files(uploaded_file_ids)
+                    raise
             except HumanInputFormError as error:
                 raise _v2_form_error(error) from error
             return _form_submit_response(app_id=ctx.app.id, workflow_run_id=submitted_form.workflow_run_id)
@@ -271,7 +283,8 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
 
         if body.files:
             end_read_transaction(ctx.session)
-        inputs = merge_files(body.inputs, body.files, ctx.caller)
+        uploaded_file_ids: list[str] = []
+        inputs = merge_files(body.inputs, body.files, ctx.caller, uploaded_file_ids=uploaded_file_ids)
 
         try:
             service.submit_form_by_token(
@@ -282,8 +295,17 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
                 submission_user_id=submission_user_id,
                 submission_end_user_id=submission_end_user_id,
             )
-        except FormNotFoundError as caught_error:
-            raise HumanInputFormNotFound() from caught_error
+        except (
+            FormExpiredError,
+            FormNotFoundError,
+            FormSubmittedError,
+            InvalidFormDataError,
+            WebAppDeliveryNotEnabledError,
+        ) as caught_error:
+            discard_uploaded_files(uploaded_file_ids)
+            if isinstance(caught_error, FormNotFoundError):
+                raise HumanInputFormNotFound() from caught_error
+            raise
 
         return _form_submit_response(app_id=ctx.app.id, workflow_run_id=form.workflow_run_id)
 

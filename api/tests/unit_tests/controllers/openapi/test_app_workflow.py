@@ -408,8 +408,10 @@ def test_run_draft_node_merges_local_files_into_the_inputs(
     _add_draft(sqlite_session, graph=_code_node_graph("n1"))
     merges: list[tuple[object, ...]] = []
 
-    def merge_files(inputs: object, files: object, caller: object) -> dict[str, object]:
-        merges.append((inputs, files, caller))
+    def merge_files(
+        inputs: object, files: object, caller: object, *, uploaded_file_ids: list[str]
+    ) -> dict[str, object]:
+        merges.append((inputs, files, caller, uploaded_file_ids))
         return {"x": 1, "doc": {"id": "file-1"}}
 
     node_runs: list[dict[str, object]] = []
@@ -420,8 +422,40 @@ def test_run_draft_node_merges_local_files_into_the_inputs(
 
     run_draft_node(ctx, "n1", inputs={"x": 1}, query="", files=parts)
 
-    assert merges == [({"x": 1}, parts, ctx.caller)]
+    assert merges == [({"x": 1}, parts, ctx.caller, [])]
     assert [run["user_inputs"] for run in node_runs] == [{"x": 1, "doc": {"id": "file-1"}}]
+
+
+def test_run_draft_node_discards_uploads_when_execution_rejects_inputs(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    service = _workflow_service(monkeypatch, sqlite_session_factory)
+    ctx = _app_context(sqlite_session)
+    _add_draft(sqlite_session, graph=_code_node_graph("n1"))
+    discarded: list[list[str]] = []
+
+    def merge_files(
+        inputs: dict[str, object],
+        _files: object,
+        _caller: object,
+        *,
+        uploaded_file_ids: list[str],
+    ) -> dict[str, object]:
+        uploaded_file_ids.append("uploaded-1")
+        return {**inputs, "doc": {"id": "uploaded-1"}}
+
+    monkeypatch.setattr(app_workflow, "merge_files", merge_files)
+    monkeypatch.setattr(app_workflow, "discard_uploaded_files", lambda ids: discarded.append(list(ids)), raising=False)
+    monkeypatch.setattr(
+        service,
+        "run_draft_workflow_node",
+        lambda **_kwargs: (_ for _ in ()).throw(ValueError("invalid node input")),
+    )
+
+    with pytest.raises(BadRequest, match="invalid node input"):
+        run_draft_node(ctx, "n1", inputs={}, query="", files={"doc": _upload_part()})
+
+    assert discarded == [["uploaded-1"]]
 
 
 def test_node_run_payloads_take_files_as_multipart_parts() -> None:
@@ -443,7 +477,7 @@ def test_run_draft_node_ends_the_read_transaction_before_uploading(
     names: list[str] = []
     monkeypatch.setattr(app_workflow, "end_read_transaction", lambda _session: names.append("end"))
 
-    def merge_files(inputs: dict[str, object], *_args: object) -> dict[str, object]:
+    def merge_files(inputs: dict[str, object], *_args: object, **_kwargs: object) -> dict[str, object]:
         names.append("merge")
         return inputs
 

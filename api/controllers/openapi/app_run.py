@@ -27,7 +27,7 @@ from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
 from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
-from controllers.openapi._files import end_read_transaction, materialize, merge_files
+from controllers.openapi._files import discard_uploaded_files, end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
     AdvancedChatRunPayload,
@@ -158,13 +158,27 @@ def _generate(app: App, caller: Any, args: dict[str, Any], session: Session, inv
     )
 
 
-def _generate_args(ctx: Context, payload: RunPayloadBase, *, exclude: Collection[str] = ()) -> dict[str, Any]:
+def _generate_args(
+    ctx: Context,
+    payload: RunPayloadBase,
+    *,
+    exclude: Collection[str] = (),
+    uploaded_file_ids: list[str] | None = None,
+) -> dict[str, Any]:
+    """Build app-run arguments and optionally track request-created uploads.
+
+    Preconditions: ``payload`` has passed route validation; when provided,
+    ``uploaded_file_ids`` belongs to this request. On success, it contains only
+    IDs created while materializing this payload. If a later setup step rejects
+    the run, the caller must discard those IDs; partial uploads from a failing
+    materialization are compensated by the file helpers.
+    """
     args = payload.model_dump(exclude={"files", "attachments", *exclude}, exclude_none=True)
     if payload.files or payload.attachments:
         end_read_transaction(ctx.session)
-    args["inputs"] = merge_files(payload.inputs, payload.files, ctx.caller)
+    args["inputs"] = merge_files(payload.inputs, payload.files, ctx.caller, uploaded_file_ids=uploaded_file_ids)
     if payload.attachments:
-        args["files"] = materialize(payload.attachments, ctx.caller)
+        args["files"] = materialize(payload.attachments, ctx.caller, uploaded_file_ids)
     return args
 
 
@@ -423,7 +437,13 @@ def _run_api(route: _RunRoute) -> type[Resource]:
     def post(self: Resource, ctx: Context, app_id: str, *, body: RunPayloadBase):
         if not route.draft:
             _require_mode(ctx.app, *route.modes)
-        stream = _stream(ctx, _generate_args(ctx, body), route.invoke_from)
+        uploaded_file_ids: list[str] = []
+        try:
+            args = _generate_args(ctx, body, uploaded_file_ids=uploaded_file_ids)
+            stream = _stream(ctx, args, route.invoke_from)
+        except Exception:
+            discard_uploaded_files(uploaded_file_ids)
+            raise
         for layer in route.hints:
             stream = layer(stream, route.op, ctx.app.id)
         return _respond(ctx, stream)

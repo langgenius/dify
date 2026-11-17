@@ -14,6 +14,7 @@ by every normally configured file variable. The type comes from the core's own
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Mapping
 from typing import Any
 
@@ -29,6 +30,7 @@ from graphon.file import FileTransferMethod, standardize_file_type
 from models.model import UploadFile
 
 FileMapping = dict[str, Any]
+logger = logging.getLogger(__name__)
 
 
 def end_read_transaction(session: Session) -> None:
@@ -63,8 +65,10 @@ def upload(part: FileStorage, caller: Any) -> UploadFile:
         raise BadRequest(str(exc)) from exc
 
 
-def _mapping(part: FileStorage, caller: Any) -> FileMapping:
+def _mapping(part: FileStorage, caller: Any, uploaded_file_ids: list[str] | None = None) -> FileMapping:
     uploaded = upload(part, caller)
+    if uploaded_file_ids is not None:
+        uploaded_file_ids.append(uploaded.id)
     return {
         "transfer_method": FileTransferMethod.LOCAL_FILE,
         "upload_file_id": uploaded.id,
@@ -72,18 +76,70 @@ def _mapping(part: FileStorage, caller: Any) -> FileMapping:
     }
 
 
-def materialize(value: FileStorage | list[FileStorage], caller: Any) -> FileMapping | list[FileMapping]:
-    if isinstance(value, list):
-        return [_mapping(part, caller) for part in value]
-    return _mapping(value, caller)
+def materialize(
+    value: FileStorage | list[FileStorage], caller: Any, uploaded_file_ids: list[str] | None = None
+) -> FileMapping | list[FileMapping]:
+    """Persist all parts in one file field or compensate them if any part fails."""
+    created_ids: list[str] = []
+    try:
+        result = (
+            [_mapping(part, caller, created_ids) for part in value]
+            if isinstance(value, list)
+            else _mapping(value, caller, created_ids)
+        )
+    except Exception:
+        discard_uploaded_files(created_ids)
+        raise
+    if uploaded_file_ids is not None:
+        uploaded_file_ids.extend(created_ids)
+    return result
+
+
+def discard_uploaded_files(uploaded_file_ids: list[str]) -> None:
+    """Best-effort delete request-created files after rejection, preserving the original error.
+
+    Callers must pass only IDs created by the same unaccepted request. Successful cleanup removes
+    both object storage and the database row; failures are logged and may leave an orphan that needs cleanup.
+    """
+    if not uploaded_file_ids:
+        return
+    try:
+        files = application_services().files
+    except Exception:
+        logger.exception("Failed to resolve file service while discarding rejected OpenAPI uploads")
+        return
+    for file_id in uploaded_file_ids:
+        try:
+            files.delete_file(file_id)
+        except Exception:
+            # Preserve the request's original failure; a later lifecycle cleanup can
+            # still remove this unreferenced upload.
+            logger.exception("Failed to discard rejected OpenAPI upload file %s", file_id)
 
 
 def merge_files(
-    inputs: Mapping[str, Any], files: Mapping[str, FileStorage | list[FileStorage]] | None, caller: Any
+    inputs: Mapping[str, Any],
+    files: Mapping[str, FileStorage | list[FileStorage]] | None,
+    caller: Any,
+    *,
+    uploaded_file_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Merge and persist local file parts, compensating uploads if this merge fails.
+
+    On success, `uploaded_file_ids` (when provided) receives only IDs created here so the
+    caller can compensate if a later validation or acceptance step rejects the request.
+    Existing file mappings in `inputs` are never included in that list or deleted.
+    """
     merged = dict(inputs)
-    for name, value in (files or {}).items():
-        if name in merged:
-            raise InvalidFilePart(f"files[{name}]: {name} is also given in inputs")
-        merged[name] = materialize(value, caller)
+    created_ids: list[str] = []
+    try:
+        for name, value in (files or {}).items():
+            if name in merged:
+                raise InvalidFilePart(f"files[{name}]: {name} is also given in inputs")
+            merged[name] = materialize(value, caller, created_ids)
+    except Exception:
+        discard_uploaded_files(created_ids)
+        raise
+    if uploaded_file_ids is not None:
+        uploaded_file_ids.extend(created_ids)
     return merged

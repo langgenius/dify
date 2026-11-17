@@ -15,6 +15,8 @@ from controllers.common.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from controllers.openapi._errors import InvalidFilePart
+from controllers.openapi._files import discard_uploaded_files, merge_files
 from controllers.openapi._models import FileUploadPayload
 from controllers.openapi._multipart import body_from_request
 from controllers.openapi._upload import file_fields
@@ -165,3 +167,38 @@ def test_upload_maps_other_value_errors_to_bad_request(
 
     assert error_info.value.description == str(service_error)
     assert error_info.value.__cause__ is service_error
+
+
+def test_merge_files_discards_earlier_upload_when_a_later_part_is_invalid(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from werkzeug.datastructures import FileStorage
+
+    service = _file_service(monkeypatch)
+    service.upload_file.return_value = _upload_result()
+    caller = _caller()
+    uploads = {
+        "attachment": FileStorage(BytesIO(b"first"), filename="first.txt", content_type="text/plain"),
+        "answer": FileStorage(BytesIO(b"second"), filename="second.txt", content_type="text/plain"),
+    }
+
+    with pytest.raises(InvalidFilePart, match="answer is also given in inputs"):
+        merge_files({"answer": "provided"}, uploads, caller)
+
+    service.upload_file.assert_called_once()
+    service.delete_file.assert_called_once_with(_upload_result().id)
+
+
+def test_discard_uploaded_files_continues_after_cleanup_failure(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    service = _file_service(monkeypatch)
+    service.delete_file.side_effect = [RuntimeError("storage unavailable"), None]
+
+    discard_uploaded_files(["first-upload", "second-upload"])
+
+    assert [call.args for call in service.delete_file.call_args_list] == [
+        ("first-upload",),
+        ("second-upload",),
+    ]
+    assert "Failed to discard rejected OpenAPI upload file first-upload" in caplog.text
