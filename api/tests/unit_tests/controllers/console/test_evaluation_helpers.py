@@ -15,6 +15,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 from controllers.console import evaluation as controller
 from core.evaluation.entities.config_entity import EvaluationFrameworkEnum
 from core.evaluation.entities.evaluation_entity import DefaultMetric, NodeInfo
+from core.evaluation.exceptions import EvaluationErrorCode, new_public_evaluation_error
 from models.account import Account
 from models.dataset import Dataset
 from models.evaluation import (
@@ -244,6 +245,32 @@ def test_run_response_accepts_database_timestamps(sqlite_session: Session) -> No
     sqlite_session.flush()
     response = controller.EvaluationRunResponse.model_validate(run)
     assert response.started_at is not None
+
+
+def test_run_detail_response_masks_legacy_exception_text(sqlite_session: Session) -> None:
+    run = _evaluation_run(sqlite_session)
+    raw_error = "PluginInvokeError: {'args': 'provider-response-secret'}"
+    run.error = raw_error
+    item = EvaluationRunItem(
+        evaluation_run_id=run.id,
+        item_index=1,
+        error=raw_error,
+        judgment=json.dumps({"condition_results": [{"error": raw_error, "passed": False}]}),
+    )
+
+    run_response = controller.EvaluationRunResponse.model_validate(run)
+    item_response = controller.EvaluationRunItemResponse.model_validate(item)
+
+    assert run_response.error == "Evaluation failed. Please retry or contact support."
+    assert item_response.error == run_response.error
+    assert item_response.judgment["condition_results"][0]["error"] == run_response.error
+    assert "provider-response-secret" not in str(item_response.model_dump())
+
+    public_error = new_public_evaluation_error(EvaluationErrorCode.MODEL_REQUEST_FAILED)
+    item.error = public_error.text
+    assert controller.EvaluationRunItemResponse.model_validate(item).error == public_error.text
+    item.error = f"{public_error.text} {raw_error}"
+    assert controller.EvaluationRunItemResponse.model_validate(item).error == run_response.error
 
 
 def test_available_workflow_response_requires_a_timestamp() -> None:

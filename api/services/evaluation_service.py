@@ -41,7 +41,11 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
-from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.exceptions import (
+    EvaluationErrorCode,
+    EvaluationWorkflowVersionNotFoundError,
+    new_public_evaluation_error,
+)
 from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -1040,6 +1044,10 @@ class EvaluationService:
         before creating the run. A file-only request reuses the latest saved
         evaluation config, including its framework. A customized evaluator
         must be runnable by the current caller before any run state is written.
+
+        Precondition: caller, target, dataset, and evaluator permissions are validated.
+        Postcondition: a dispatched run is returned, or dispatch failure leaves
+        the run failed with a public diagnostic while re-raising the cause.
         """
         resolved_run_request = cls.resolve_run_request_config(
             session=session,
@@ -1177,9 +1185,11 @@ class EvaluationService:
                 args=(run_data.model_dump(mode="json"),),
                 task_id=celery_task_id,
             )
-        except Exception as exc:
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_DISPATCH_FAILED)
+            logger.exception("Failed to dispatch evaluation run %s (error_id=%s)", evaluation_run.id, failure.error_id)
             evaluation_run.status = EvaluationRunStatus.FAILED
-            evaluation_run.error = f"Failed to dispatch evaluation task: {exc}"[:2000]
+            evaluation_run.error = failure.text
             evaluation_run.completed_at = naive_utc_now()
             session.commit()
             raise
@@ -1203,6 +1213,10 @@ class EvaluationService:
 
         The immutable snapshot and row checkpoints are retained. Denial leaves
         the failed run unchanged and does not enqueue another task.
+
+        Precondition: the caller owns a failed run and may use its evaluator.
+        Postcondition: dispatch succeeds or the failed run retains only a
+        public diagnostic; prior row checkpoints remain unchanged.
         """
         run = cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
         if run.status != EvaluationRunStatus.FAILED:
@@ -1384,9 +1398,11 @@ class EvaluationService:
                 args=(run_data.model_dump(mode="json"),),
                 task_id=celery_task_id,
             )
-        except Exception as exc:
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_DISPATCH_FAILED)
+            logger.exception("Failed to dispatch evaluation run %s (error_id=%s)", locked_run.id, failure.error_id)
             locked_run.status = EvaluationRunStatus.FAILED
-            locked_run.error = f"Failed to dispatch evaluation task: {exc}"[:2000]
+            locked_run.error = failure.text
             locked_run.completed_at = naive_utc_now()
             session.commit()
             raise
@@ -2470,6 +2486,10 @@ class EvaluationService:
             the *i*-th element corresponds to ``input_list[i]``.
             workflow_run_ids: ordered list of workflow_run_id strings (or None)
             for each input item.
+
+        Precondition: each input belongs to the scoped target and supplied tenant.
+        Postcondition: returned per-row failures contain only public diagnostics;
+        provider exception details remain in server logs.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -2518,13 +2538,15 @@ class EvaluationService:
                         return node_results, workflow_run_id, None
                     except EvaluationWorkflowVersionNotFoundError:
                         raise
-                    except Exception as exc:
+                    except Exception:
+                        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
                         logger.exception(
-                            "Target execution failed for item %d (target=%s)",
+                            "Target execution failed for item %d (target=%s, error_id=%s)",
                             item.index,
                             target_id,
+                            failure.error_id,
                         )
-                        return {}, None, str(exc) or type(exc).__name__
+                        return {}, None, failure.text
 
         worker_count = max_workers or dify_config.EVALUATION_MAX_PARALLEL_TARGETS
         executor = ThreadPoolExecutor(max_workers=worker_count)
@@ -2548,9 +2570,12 @@ class EvaluationService:
                         node_result, workflow_run_id, error = future.result()
                     except EvaluationWorkflowVersionNotFoundError:
                         raise
-                    except Exception as exc:
-                        logger.exception("Unexpected error collecting target execution result")
-                        node_result, workflow_run_id, error = {}, None, str(exc) or type(exc).__name__
+                    except Exception:
+                        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
+                        logger.exception(
+                            "Unexpected error collecting target execution result (error_id=%s)", failure.error_id
+                        )
+                        node_result, workflow_run_id, error = {}, None, failure.text
                     ordered_results[position] = node_result
                     ordered_workflow_run_ids[position] = workflow_run_id
                     ordered_errors[position] = error
@@ -3114,6 +3139,10 @@ class EvaluationService:
 
         :returns: Ordered retrieval results and per-row errors. Failed rows
             remain ``None`` and are never scored as a successful empty retrieval.
+
+        Precondition: the account may run hit testing for this tenant's dataset.
+        Postcondition: each failed row has a public error and no provider
+        exception text is returned to the evaluation task.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -3194,10 +3223,16 @@ class EvaluationService:
                     position = future_positions[future]
                     try:
                         results[position] = future.result()
-                    except Exception as exc:
+                    except Exception:
                         item = input_list[position]
-                        logger.exception("Retrieval test failed for item %d (dataset=%s)", item.index, dataset_id)
-                        errors[position] = str(exc) or type(exc).__name__
+                        failure = new_public_evaluation_error(EvaluationErrorCode.RETRIEVAL_FAILED)
+                        logger.exception(
+                            "Retrieval test failed for item %d (dataset=%s, error_id=%s)",
+                            item.index,
+                            dataset_id,
+                            failure.error_id,
+                        )
+                        errors[position] = failure.text
                     completed += 1
                     if progress_callback is not None:
                         progress_callback(completed, len(input_list))

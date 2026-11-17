@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime
 from functools import wraps
 from typing import Any, ParamSpec, TypeVar
@@ -45,6 +45,7 @@ from core.evaluation.entities.evaluation_entity import (
     NodeInfo,
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
+from core.evaluation.exceptions import safe_evaluation_error_text
 from extensions.ext_storage import storage
 from fields.base import ResponseModel
 from fields.member_fields import SimpleAccount
@@ -156,6 +157,16 @@ class EvaluationRunResponse(ResponseModel):
     completed_at: int | None = None
     created_at: int | None = None
 
+    @field_validator("error", mode="before")
+    @classmethod
+    def _safe_error(cls, value: str | None) -> str | None:
+        """Keep only approved diagnostics in run API responses.
+
+        Precondition: value comes from a persisted run and may contain legacy text.
+        Postcondition: the response never returns an unapproved raw exception.
+        """
+        return safe_evaluation_error_text(value)
+
     @field_validator("started_at", "completed_at", "created_at", mode="before")
     @classmethod
     def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
@@ -183,6 +194,38 @@ class EvaluationRunItemResponse(ResponseModel):
     )
     error: str | None = None
     overall_score: float | None = None
+
+    @field_validator("error", mode="before")
+    @classmethod
+    def _safe_error(cls, value: str | None) -> str | None:
+        """Keep only approved diagnostics in item API responses.
+
+        Precondition: value comes from a persisted row and may contain legacy text.
+        Postcondition: the response never returns an unapproved raw exception.
+        """
+        return safe_evaluation_error_text(value)
+
+    @field_validator("judgment", mode="before")
+    @classmethod
+    def _safe_judgment_errors(cls, value: dict[str, Any]) -> dict[str, Any]:
+        """Mask legacy exception text in nested condition diagnostics.
+
+        Precondition: ``value`` is a decoded judgment object from a run item.
+        Postcondition: condition errors contain only approved public text and
+        all other judgment fields retain their original values.
+        """
+        conditions = value.get("condition_results")
+        if not isinstance(conditions, list):
+            return value
+        return {
+            **value,
+            "condition_results": [
+                {**condition, "error": safe_evaluation_error_text(condition.get("error"))}
+                if isinstance(condition, Mapping)
+                else condition
+                for condition in conditions
+            ],
+        }
 
 
 class EvaluationRunPaginationResponse(ResponseModel):
