@@ -2,7 +2,7 @@ import logging
 from dataclasses import asdict
 from typing import Any
 
-from sqlalchemy import or_, select
+from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -40,6 +40,7 @@ from repositories.agent_drafts import (
     save_agent_draft,
 )
 from repositories.agent_roster_queries import find_agent_draft, project_agent_draft_summary
+from repositories.workflow_agent_composer_queries import read_workflow_agent_impact
 from services.agent.app_composer import composer_validation_findings
 from services.agent.app_composer_store import AgentComposerSnapshotMissingError
 from services.agent.composer_tools import list_workspace_dify_tools
@@ -803,44 +804,6 @@ class AgentComposerService:
         return [(variable.name, variable.value_type.value) for variable in variables.variables]
 
     _workspace_dify_tools = staticmethod(list_workspace_dify_tools)
-
-    @classmethod
-    def calculate_impact(cls, *, session: Session, tenant_id: str, current_snapshot_id: str) -> dict[str, Any]:
-        snapshot = session.scalar(
-            select(AgentConfigSnapshot)
-            .where(
-                AgentConfigSnapshot.tenant_id == tenant_id,
-                AgentConfigSnapshot.id == current_snapshot_id,
-            )
-            .limit(1)
-        )
-        agent_id = snapshot.agent_id if snapshot else None
-        predicates = [WorkflowAgentNodeBinding.current_snapshot_id == current_snapshot_id]
-        if agent_id:
-            predicates.append(
-                (WorkflowAgentNodeBinding.agent_id == agent_id)
-                & (WorkflowAgentNodeBinding.binding_type == WorkflowAgentBindingType.ROSTER_AGENT)
-            )
-        bindings = list(
-            session.scalars(
-                select(WorkflowAgentNodeBinding).where(
-                    WorkflowAgentNodeBinding.tenant_id == tenant_id,
-                    or_(*predicates),
-                )
-            ).all()
-        )
-        return {
-            "current_snapshot_id": current_snapshot_id,
-            "workflow_node_count": len(bindings),
-            "bindings": [
-                {
-                    "app_id": binding.app_id,
-                    "workflow_id": binding.workflow_id,
-                    "node_id": binding.node_id,
-                }
-                for binding in bindings
-            ],
-        }
 
     @classmethod
     def _save_node_job_only(
@@ -1679,8 +1642,8 @@ class AgentComposerService:
                 WorkflowNodeJobConfig.model_validate(binding.node_job_config_dict)
             ),
             "save_options": save_options,
-            "impact_summary": cls.calculate_impact(
-                session=session, tenant_id=binding.tenant_id, current_snapshot_id=version.id
+            "impact_summary": read_workflow_agent_impact(
+                session, tenant_id=binding.tenant_id, current_snapshot_id=version.id
             )
             if version
             else None,

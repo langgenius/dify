@@ -630,7 +630,7 @@ def test_publish_and_copy_keep_the_source_and_target_publication_histories_separ
 
 @pytest.mark.parametrize("surface", ["workflow", "snippet"])
 def test_node_composer_resolves_only_the_current_workspace(harness: Harness, surface: str) -> None:
-    """Exercise the mounted workflow and snippet routes against a real draft."""
+    """Read, save and calculate impact through the routes using tenant-scoped draft data."""
     with harness.sessions.begin() as session:
         if surface == "workflow":
             app = App(
@@ -690,12 +690,44 @@ def test_node_composer_resolves_only_the_current_workspace(harness: Harness, sur
         },
     )
     assert saved.status_code == HTTPStatus.OK, saved.get_json()
-    assert saved.get_json()["node_job"]["workflow_prompt"] == "Run this step"
-    with harness.sessions() as session:
-        binding = session.get_one(WorkflowAgentNodeBinding, saved.get_json()["binding"]["id"])
+    saved_state = saved.get_json()
+    assert saved_state["node_job"]["workflow_prompt"] == "Run this step"
+    with harness.sessions.begin() as session:
+        binding = session.get_one(WorkflowAgentNodeBinding, saved_state["binding"]["id"])
         assert binding.tenant_id == harness.tenant_id
         assert binding.app_id == app_id
         assert binding.node_id == "node-1"
+        snapshot_id = binding.current_snapshot_id
+        assert snapshot_id is not None
+        expected_impact = {
+            "current_snapshot_id": snapshot_id,
+            "workflow_node_count": 1,
+            "bindings": [{"app_id": app_id, "workflow_id": binding.workflow_id, "node_id": "node-1"}],
+        }
+        session.add(
+            WorkflowAgentNodeBinding(
+                tenant_id=str(uuid4()),
+                app_id=str(uuid4()),
+                workflow_id=str(uuid4()),
+                workflow_version=Workflow.VERSION_DRAFT,
+                node_id="foreign-node",
+                binding_type=binding.binding_type,
+                current_snapshot_id=snapshot_id,
+                node_job_config=binding.node_job_config,
+            )
+        )
+    assert saved_state["impact_summary"] == expected_impact
+    impact = harness.client.post(
+        f"{path}/impact",
+        headers=harness.headers,
+        json={
+            "variant": "workflow",
+            "save_strategy": "node_job_only",
+            "binding": {"binding_type": "inline_agent", "current_snapshot_id": snapshot_id},
+        },
+    )
+    assert impact.status_code == HTTPStatus.OK, impact.get_json()
+    assert impact.get_json() == expected_impact
 
     with harness.sessions.begin() as session:
         if surface == "workflow":

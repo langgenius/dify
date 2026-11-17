@@ -2,13 +2,16 @@
 
 from typing import Literal, NamedTuple
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from machinery.context import RequestContext
 from models.model import AppMode
-from models.snippet import CustomizedSnippet
 from repositories.app.console_repository import find_console_app
+from repositories.workflow_agent_composer_queries import (
+    WorkflowAgentImpact,
+    find_composer_snippet_id,
+    read_workflow_agent_impact,
+)
 from services.agent.composer_service import AgentComposerService
 from services.agent.composer_tools import list_workspace_dify_tools
 from services.agent.composer_validator import ComposerConfigValidator
@@ -33,7 +36,13 @@ class WorkflowComposerSnippetMissingError(Exception):
 
 
 class WorkflowComposerGateway:
-    """Own sessions around the legacy shared draft engine until Workflow writes migrate."""
+    """Own sessions around the legacy Workflow and Snippet Composer operations.
+
+    TODO: Remove this gateway when the repository owns draft queries and the
+    atomic binding and snapshot writes, and the Composer service owns KnowledgeFS
+    authorization, tool discovery, and post-commit retirement. Preserve inline
+    debug conversation initialization when migrating the read path.
+    """
 
     def __init__(self, *, session_factory: sessionmaker[Session]) -> None:
         """Use the application's session factory for scoped reads and write transactions."""
@@ -43,11 +52,7 @@ class WorkflowComposerGateway:
     def _require_target(session: Session, *, tenant_id: str, target: WorkflowComposerTarget) -> str:
         """Resolve an eligible tenant App or snippet, preserving each surface's owner gate."""
         if target.kind == "snippet":
-            snippet_id = session.scalar(
-                select(CustomizedSnippet.id).where(
-                    CustomizedSnippet.tenant_id == tenant_id, CustomizedSnippet.id == target.id
-                )
-            )
+            snippet_id = find_composer_snippet_id(session, tenant_id=tenant_id, snippet_id=target.id)
             if snippet_id is None:
                 raise WorkflowComposerSnippetMissingError
             return snippet_id
@@ -64,7 +69,7 @@ class WorkflowComposerGateway:
     def get(
         self, context: RequestContext, target: WorkflowComposerTarget, *, node_id: str, snapshot_id: str | None
     ) -> dict[str, object]:
-        """Load the requested Composer state and commit any draft binding repair."""
+        """Load the requested Composer state and commit any inline debug conversation initialization."""
         tenant_id = context.active_workspace_id
         with self._sessions.begin() as session:
             app_id = self._require_target(session, tenant_id=tenant_id, target=target)
@@ -144,13 +149,9 @@ class WorkflowComposerGateway:
 
     def impact(
         self, context: RequestContext, target: WorkflowComposerTarget, *, snapshot_id: str | None
-    ) -> dict[str, object]:
+    ) -> WorkflowAgentImpact:
         """Return affected bindings of the tenant snapshot, or the empty impact for no selection."""
         tenant_id = context.active_workspace_id
         with self._sessions() as session:
             self._require_target(session, tenant_id=tenant_id, target=target)
-            if not snapshot_id:
-                return {"current_snapshot_id": None, "workflow_node_count": 0, "bindings": []}
-            return AgentComposerService.calculate_impact(
-                session=session, tenant_id=tenant_id, current_snapshot_id=snapshot_id
-            )
+            return read_workflow_agent_impact(session, tenant_id=tenant_id, current_snapshot_id=snapshot_id or None)
