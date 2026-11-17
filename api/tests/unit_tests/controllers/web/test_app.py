@@ -18,7 +18,13 @@ from werkzeug.exceptions import Unauthorized
 from controllers.common.errors import InvalidArgumentError
 from controllers.web import app as app_controller
 from controllers.web import bp, wraps
-from controllers.web.app import AppAccessMode, AppMeta, AppParameterApi, AppWebAuthPermission
+from controllers.web.app import (
+    AppAccessMode,
+    AppMeta,
+    AppParameterApi,
+    AppWebAuthPermission,
+    WebAppParametersResponse,
+)
 from controllers.web.error import (
     AgentNotPublishedError,
     AppUnavailableError,
@@ -33,7 +39,7 @@ from extensions.ext_application_services import ApplicationServices
 from libs.exception import BaseHTTPException
 from libs.passport import PassportService
 from models.enums import EndUserType
-from models.model import App, AppMode, EndUser
+from models.model import App, AppMode, AppModelConfig, EndUser
 from models.workflow import Workflow
 from repositories.app_definition_query_repository import AppDefinitionQueryRepository
 from services.app_definition_query_service import (
@@ -91,6 +97,7 @@ def real_application_services(
 # ---------------------------------------------------------------------------
 class TestAppParameterApi:
     @pytest.mark.parametrize("allow_anonymous", [True, False])
+    @pytest.mark.parametrize("login_enabled", [True, False])
     def test_get_returns_public_parameters(
         self,
         real_application_services: ApplicationServices,
@@ -98,11 +105,12 @@ class TestAppParameterApi:
         app: Flask,
         config_overrides: Callable[..., None],
         allow_anonymous: bool,
+        login_enabled: bool,
     ) -> None:
         config_overrides(
             END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
-            WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
-            CONSOLE_WEB_URL="https://console.example.com/base",
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=login_enabled,
+            CONSOLE_WEB_URL="https://console.example.com/base///",
         )
         calls: list[tuple[str, str]] = []
 
@@ -131,8 +139,12 @@ class TestAppParameterApi:
         assert result["requires_end_user_connections"] is False
         assert result["connection_requirements"] == []
         assert result["allow_anonymous_end_user_auth"] is allow_anonymous
-        assert result["account_login_enabled"] is True
-        assert result["account_login_url"] == "https://console.example.com/base/signin"
+        assert result["account_login_enabled"] is login_enabled
+        assert result["account_login_url"] == ("https://console.example.com/base/signin" if login_enabled else None)
+        assert result["console_web_url"] == "https://console.example.com/base"
+        schema = WebAppParametersResponse.model_json_schema(mode="serialization")
+        assert "account_login_url" in schema["required"]
+        assert "console_web_url" in schema["required"]
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),
@@ -162,6 +174,50 @@ class TestAppParameterApi:
         with app.test_request_context("/parameters"):
             with pytest.raises(http_error):
                 AppParameterApi().get(_make_app(), _make_end_user())
+
+    def test_parameters_route_returns_console_web_url(
+        self,
+        account_application_services: ApplicationServices,
+        sqlite_session_factory: sessionmaker[Session],
+        monkeypatch: pytest.MonkeyPatch,
+        config_overrides: Callable[..., None],
+    ) -> None:
+        config_overrides(
+            END_USER_AUTH_ALLOW_ANONYMOUS=False,
+            WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+            CONSOLE_WEB_URL="https://console.example.com/base///",
+        )
+        with sqlite_session_factory.begin() as session:
+            app_model = _make_app()
+            session.add_all([app_model, _make_end_user()])
+            session.flush()
+            config = AppModelConfig(app_id=app_model.id, opening_statement="Hello", user_input_form="[]")
+            session.add(config)
+            session.flush()
+            app_model.app_model_config_id = config.id
+
+        def identity() -> tuple[App, EndUser]:
+            with sqlite_session_factory() as session:
+                app_model = session.get(App, "app-1")
+                end_user = session.get(EndUser, "end-user-1")
+                assert app_model is not None
+                assert end_user is not None
+                return app_model, end_user
+
+        monkeypatch.setattr(wraps, "decode_jwt_token", identity)
+        monkeypatch.setattr(app_controller, "application_services", lambda: account_application_services)
+        flask_app = Flask(__name__)
+        flask_app.config["TESTING"] = True
+        flask_app.register_blueprint(bp)
+
+        response = flask_app.test_client().get("/api/parameters")
+
+        assert response.status_code == 200
+        payload = response.get_json()
+        assert payload["account_login_url"] == "https://console.example.com/base/signin"
+        assert payload["console_web_url"] == "https://console.example.com/base"
+        assert payload["account_login_enabled"] is True
+        assert payload["allow_anonymous_end_user_auth"] is False
 
 
 # ---------------------------------------------------------------------------
