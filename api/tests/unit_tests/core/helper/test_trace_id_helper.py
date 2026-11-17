@@ -424,12 +424,12 @@ class TestParseTraceparentHeader:
             "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01-extra",
         ],
     )
-    def test_returns_none_for_traceparent_the_spec_rejects(self, traceparent: str):
+    def test_returns_none_for_traceparent_the_spec_rejects(self, traceparent: str) -> None:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         assert parse_traceparent_header(traceparent) is None
 
-    def test_accepts_an_upper_bound_flags_byte(self):
+    def test_accepts_an_upper_bound_flags_byte(self) -> None:
         from core.helper.trace_id_helper import parse_traceparent_header
 
         traceparent = "00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-ff"
