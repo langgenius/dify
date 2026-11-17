@@ -216,13 +216,13 @@ catalog:
   postcss: 8.5.26
   qrcode.react: 4.2.0
   qs: 6.16.0
-  react: 19.3.0
-  react-dom: 19.3.0
+  react: 19.3.1
+  react-dom: 19.3.1
   react-easy-crop: 6.2.3
   react-i18next: 17.0.12
   react-papaparse: 4.4.0
   react-pdf-highlighter: 8.0.0-rc.0
-  react-server-dom-webpack: 19.3.0
+  react-server-dom-webpack: 19.3.1
   react-sortablejs: 6.1.4
   react-textarea-autosize: 8.5.9
   reactflow: 11.11.4
