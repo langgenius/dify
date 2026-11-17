@@ -13,6 +13,7 @@ from typing_extensions import TypedDict
 
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import (
+    ModelParameters,
     ResponseFormat,
     _handle_native_json_schema,
     _handle_prompt_based_schema,
@@ -20,6 +21,7 @@ from core.llm_generator.output_parser.structured_output import (
     _prepare_schema_for_model,
     _set_response_format,
     invoke_llm_with_structured_output,
+    parse_model_parameters,
     remove_additional_properties,
 )
 from core.model_manager import ModelInstance
@@ -66,7 +68,8 @@ class _ModelInstance(ModelInstance):
 
     def __init__(self, response: LLMResult | Iterator[LLMResultChunk | SimpleNamespace]) -> None:
         self.response = response
-        self.invocations: list[dict[str, object]] = []
+        self.invoked_model_parameters: list[ModelParameters] = []
+        self.invoked_prompt_messages: list[Sequence[PromptMessage]] = []
 
     @overload
     def invoke_llm(
@@ -125,17 +128,8 @@ class _ModelInstance(ModelInstance):
             callbacks=callbacks,
             request_metadata=request_metadata,
         )
-        self.invocations.append(
-            {
-                "prompt_messages": prompt_messages,
-                "model_parameters": model_parameters,
-                "tools": tools,
-                "stop": stop,
-                "stream": stream,
-                "callbacks": callbacks,
-                "request_metadata": request_metadata,
-            }
-        )
+        self.invoked_prompt_messages.append(prompt_messages)
+        self.invoked_model_parameters.append(parse_model_parameters(model_parameters))
         if isinstance(self.response, LLMResult):
             return self.response
         return (chunk for chunk in self.response)
@@ -246,10 +240,8 @@ class TestStructuredOutput:
         assert output["is_active"] is False
         Draft7Validator(schema).validate(output)
         assert schema == original_schema
-        assert len(model_instance.invocations) == 1
-        invocation = model_instance.invocations[0]
-        parameters = invocation["model_parameters"]
-        assert isinstance(parameters, dict)
+        assert len(model_instance.invoked_model_parameters) == 1
+        parameters = model_instance.invoked_model_parameters[0]
         if native:
             prepared = json.loads(parameters["json_schema"])
             expected_schema = deepcopy(schema)
@@ -265,8 +257,7 @@ class TestStructuredOutput:
         else:
             assert "json_schema" not in parameters
             assert parameters["response_format"] == ResponseFormat.JSON_OBJECT
-            prompts = invocation["prompt_messages"]
-            assert isinstance(prompts, list)
+            prompts = model_instance.invoked_prompt_messages[0]
             assert isinstance(prompts[0], SystemPromptMessage)
             assert isinstance(prompts[0].content, str)
             assert json.dumps(schema) in prompts[0].content
@@ -382,7 +373,7 @@ class TestStructuredOutput:
 
     def test_set_response_format(self) -> None:
         # Test JSON
-        params = {}
+        params: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -396,7 +387,7 @@ class TestStructuredOutput:
         assert params["response_format"] == ResponseFormat.JSON
 
         # Test JSON_OBJECT
-        params = {}
+        params: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -413,7 +404,7 @@ class TestStructuredOutput:
         provider = "openai"
         model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
-        model_parameters = {}
+        model_parameters: ModelParameters = {}
         rules = [
             ParameterRule(
                 name="response_format",
@@ -436,7 +427,7 @@ class TestStructuredOutput:
         provider = "openai"
         model_schema = make_model_schema("gpt-4")
         structured_output_schema = {"type": "object"}
-        model_parameters = {}
+        model_parameters: ModelParameters = {}
         rules = []
 
         updated_params = _handle_native_json_schema(

@@ -1,5 +1,3 @@
-from collections.abc import Mapping
-
 from configs import dify_config
 from graphon.dsl import SandboxCodeExecutor
 from graphon.nodes.base.entities import VariableSelector
@@ -38,17 +36,17 @@ _MINIMAL_NODE_DATA = CodeNodeData(
 )
 
 
-def _build_code_node(data: CodeNodeData | Mapping[str, object] | None = None) -> CodeNode:
+def _build_code_node(data: CodeNodeData | None = None) -> CodeNode:
     """Construct a code node through its public constructor.
 
     The default data carries no code, so validation-only tests never reach the
-    sandbox executor. Callers that exercise data parsing pass their own payload.
+    sandbox executor. Callers that exercise data parsing pass their own payload
+    as the parsed ``CodeNodeData``; raw mappings are rejected so the node never
+    receives data that skipped the production entity.
     """
-    node_data = _MINIMAL_NODE_DATA if data is None else data
-    typed_node_data = node_data if isinstance(node_data, CodeNodeData) else CodeNodeData.model_validate(node_data)
     return CodeNode(
         node_id="test-code-node",
-        data=typed_node_data,
+        data=_MINIMAL_NODE_DATA if data is None else data,
         init_params=build_test_graph_init_params(workflow_id="test_workflow"),
         runtime_state=RuntimeState(workflow_id="test_workflow", variable_pool=VariablePool(), start_at=0),
         code_executor=_CODE_EXECUTOR,
