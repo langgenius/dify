@@ -1,20 +1,15 @@
-import { screen, waitFor } from '@testing-library/react'
+import { screen, waitForElementToBeRemoved, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useRef } from 'react'
+import { AgentPreviewHeader } from '@/features/agent-v2/agent-detail/configure/components/preview/header'
 import { renderWithConsoleQuery as render } from '@/test/console/query-data'
 import { AgentRosterField } from '../agent-roster-field'
 
-vi.mock('@/features/agent-v2/permissions', () => ({
-  useCanCreateAgents: () => true,
-}))
-
-vi.mock('@/app/components/workflow/block-selector/agent-selector', () => ({
-  AgentSelectorMenu: () => null,
-  AgentSelectorMenuContent: () => null,
-  AgentSelectorMenuTrigger: () => null,
-}))
-
-function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {
+function renderDetailRosterField(
+  permissionKeys = ['agent.acl.edit'],
+  role = 'Shared roster agent',
+) {
+  const onMakeCopy = vi.fn()
   function Harness() {
     const portalContainerRef = useRef<HTMLDivElement>(null)
 
@@ -25,55 +20,111 @@ function renderDetailRosterField(permissionKeys = ['agent.acl.edit']) {
             id: 'roster-agent-1',
             name: 'Roster Agent',
             permission_keys: permissionKeys,
-            role: 'Shared roster agent',
+            role,
+            description: 'Agent description',
           }}
           portalContainerRef={portalContainerRef}
           onChange={vi.fn()}
-          onMakeCopy={vi.fn()}
+          onMakeCopy={onMakeCopy}
         />
       </div>
     )
   }
 
   render(<Harness />)
-}
-
-function renderInlineRosterField() {
-  function Harness() {
-    const portalContainerRef = useRef<HTMLDivElement>(null)
-
-    return (
-      <div ref={portalContainerRef}>
-        <AgentRosterField
-          agent={{
-            id: 'inline-agent-1',
-            name: 'Inline Workspace',
-            role: 'Workflow-only agent',
-          }}
-          isInlineSetup
-          panelBody={<button type="button">Inline workspace action</button>}
-          portalContainerRef={portalContainerRef}
-          onChange={vi.fn()}
-        />
-      </div>
-    )
-  }
-
-  render(<Harness />)
+  return { onMakeCopy }
 }
 
 describe('AgentRosterField', () => {
-  it('shows Make Copy in the roster detail panel', async () => {
+  it('keeps inline mode controls independent from the roster field label and identity', async () => {
     const user = userEvent.setup()
-    renderDetailRosterField()
+    render(
+      <AgentRosterField
+        agent={{ id: 'inline-agent', name: 'Inline Agent' }}
+        isInlineSetup
+        portalContainerRef={{ current: null }}
+        onChange={vi.fn()}
+        panelBody={
+          <AgentPreviewHeader
+            mode="build"
+            previewEnabled
+            onModeChange={vi.fn()}
+            onOpenWorkingDirectory={vi.fn()}
+            onRefresh={vi.fn()}
+          />
+        }
+      />,
+    )
+    await user.click(
+      screen.getByRole('button', {
+        name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/,
+      }),
+    )
+    const dialog = within(await screen.findByRole('dialog', { name: 'Inline Agent' }))
+    const modes = within(
+      dialog.getByRole('radiogroup', {
+        name: 'agentV2.agentDetail.configure.rightPanel.modeLabel',
+      }),
+    )
+    const build = modes.getByRole('radio', {
+      name: 'agentV2.agentDetail.configure.rightPanel.build',
+    })
+    const preview = modes.getByRole('radio', {
+      name: 'agentV2.agentDetail.configure.rightPanel.preview',
+    })
+    expect(build.id).not.toBe(preview.id)
+  })
+
+  it('keeps the inline dialog close control available before its workspace loads', async () => {
+    const user = userEvent.setup()
+    function Harness() {
+      const portalContainerRef = useRef<HTMLDivElement>(null)
+      return (
+        <div ref={portalContainerRef}>
+          <AgentRosterField
+            agent={{ id: 'inline-agent', name: 'Inline Agent' }}
+            isInlineSetup
+            portalContainerRef={portalContainerRef}
+            onChange={vi.fn()}
+          />
+        </div>
+      )
+    }
+    render(<Harness />)
+    await user.click(
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    const dialog = await screen.findByRole('dialog', { name: 'Inline Agent' })
+    const closed = waitForElementToBeRemoved(dialog)
+    await user.click(within(dialog).getByRole('button', { name: 'common.operation.close' }))
+    await closed
+  })
+
+  it('copies the roster agent from its detail panel', async () => {
+    const user = userEvent.setup()
+    const { onMakeCopy } = renderDetailRosterField()
 
     await user.click(
       screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
     )
 
-    expect(
+    await user.click(
       await screen.findByRole('button', { name: 'workflowAgent.nodes.agent.roster.makeCopy' }),
-    ).toBeInTheDocument()
+    )
+    expect(onMakeCopy).toHaveBeenCalledTimes(1)
+    expect(
+      screen.getByRole('link', { name: 'workflowAgent.nodes.agent.roster.editInConsole' }),
+    ).toHaveAttribute('href', expect.stringContaining('roster-agent-1'))
+  })
+
+  it('does not substitute the agent description for an empty role', async () => {
+    const user = userEvent.setup()
+    renderDetailRosterField(['agent.acl.edit'], '')
+    expect(screen.queryByText('Agent description')).not.toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/ }),
+    )
+    expect(screen.queryByText('Agent description')).not.toBeInTheDocument()
   })
 
   it('does not offer editing for a preview-only Agent', async () => {
@@ -87,24 +138,5 @@ describe('AgentRosterField', () => {
     expect(
       screen.queryByRole('link', { name: 'workflowAgent.nodes.agent.roster.editInConsole' }),
     ).not.toBeInTheDocument()
-  })
-
-  it('returns focus to the inline setup trigger when the dialog closes with Escape', async () => {
-    const user = userEvent.setup()
-    renderInlineRosterField()
-
-    const trigger = screen.getByRole('button', {
-      name: /^workflowAgent\.nodes\.agent\.roster\.openPanel/,
-    })
-
-    await user.click(trigger)
-    expect(screen.getByRole('dialog', { name: 'Inline Workspace' })).toBeInTheDocument()
-
-    await user.keyboard('{Escape}')
-
-    await waitFor(() => {
-      expect(screen.queryByRole('dialog', { name: 'Inline Workspace' })).not.toBeInTheDocument()
-    })
-    expect(trigger).toHaveFocus()
   })
 })

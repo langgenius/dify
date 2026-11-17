@@ -1,4 +1,4 @@
-import type { Node } from '@/app/components/workflow/types'
+import { createNode as createWorkflowNode } from '@/app/components/workflow/__tests__/fixtures'
 import { BlockEnum } from '@/app/components/workflow/types'
 import {
   buildIterationChildCopy,
@@ -9,15 +9,8 @@ import {
   getRestrictedIterationPosition,
 } from '../use-interactions.helpers'
 
-const createNode = (overrides: Record<string, unknown> = {}) => ({
-  id: 'node',
-  type: 'custom',
-  position: { x: 0, y: 0 },
-  width: 100,
-  height: 80,
-  data: { type: BlockEnum.Code, title: 'Code', desc: '' },
-  ...overrides,
-})
+const createNode = (overrides: Parameters<typeof createWorkflowNode>[0] = {}) =>
+  createWorkflowNode({ width: 100, height: 80, ...overrides })
 
 describe('iteration interaction helpers', () => {
   it('calculates bounds, resize and drag restriction for iteration containers', () => {
@@ -25,12 +18,10 @@ describe('iteration interaction helpers', () => {
       createNode({ id: 'a', position: { x: 20, y: 10 }, width: 80, height: 40 }),
       createNode({ id: 'b', position: { x: 120, y: 60 }, width: 50, height: 30 }),
     ]
-    const bounds = getIterationContainerBounds(children as Node[])
+    const bounds = getIterationContainerBounds(children)
     expect(bounds.rightNode?.id).toBe('b')
     expect(bounds.bottomNode?.id).toBe('b')
-    expect(
-      getIterationContainerResize(createNode({ width: 120, height: 80 }) as Node, bounds),
-    ).toEqual({
+    expect(getIterationContainerResize(createNode({ width: 120, height: 80 }), bounds)).toEqual({
       width: 186,
       height: 110,
     })
@@ -42,7 +33,7 @@ describe('iteration interaction helpers', () => {
           height: 40,
           data: { isInIteration: true },
         }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: 16, y: 120 })
     expect(
@@ -53,7 +44,7 @@ describe('iteration interaction helpers', () => {
           height: 30,
           data: { isInIteration: true },
         }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: 144, y: 65 })
   })
@@ -68,7 +59,7 @@ describe('iteration interaction helpers', () => {
           createNode({ id: 'child', parentId: 'iteration-1' }),
           createNode({ id: 'start', parentId: 'iteration-1', type: 'custom-iteration-start' }),
           createNode({ id: 'other', parentId: 'other-iteration' }),
-        ] as Node[],
+        ],
         'iteration-1',
       ).map((item) => item.id),
     ).toEqual(['child'])
@@ -76,9 +67,7 @@ describe('iteration interaction helpers', () => {
 
   it('keeps bounds, resize and positions empty when no container restriction applies', () => {
     expect(getIterationContainerBounds([])).toEqual({})
-    expect(
-      getIterationContainerResize(createNode({ width: 300, height: 240 }) as Node, {}),
-    ).toEqual({
+    expect(getIterationContainerResize(createNode({ width: 300, height: 240 }), {})).toEqual({
       width: undefined,
       height: undefined,
     })
@@ -88,7 +77,7 @@ describe('iteration interaction helpers', () => {
     expect(
       getRestrictedIterationPosition(
         createNode({ data: { isInIteration: false } }),
-        createNode({ width: 200, height: 180 }) as Node,
+        createNode({ width: 200, height: 180 }),
       ),
     ).toEqual({ x: undefined, y: undefined })
   })
@@ -104,9 +93,9 @@ describe('iteration interaction helpers', () => {
     })
 
     const result = buildIterationChildCopy({
-      child: child as Node,
+      child,
       childNodeType: BlockEnum.Code,
-      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code } as Node['data'],
+      defaultValue: { title: 'Code', desc: '', type: BlockEnum.Code },
       title: 'blocks.code 3',
       newNodeId: 'iteration-2',
     })

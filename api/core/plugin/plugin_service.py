@@ -1,9 +1,9 @@
 """Core plugin service and tenant-scoped plugin metadata cache ownership.
 
-This module owns plugin daemon management calls that are shared by API services
-and core runtimes. Plugin model provider discovery is cached here, alongside
-plugin install, uninstall, and upgrade invalidation, so all cache mutations for
-plugin-owned provider metadata stay tenant-scoped and in one place.
+This module owns plugin daemon metadata calls shared by API services and core
+runtimes. Admitted install/upgrade use cases live in the application layer and
+call this owner's tenant-scoped cache invalidator through their gateway.
+Plugin model provider discovery and uninstall invalidation remain here.
 Provider cache payloads may be stored as prefixed zstd bytes; readers also
 accept legacy plain JSON payloads for rolling upgrades and existing Redis keys.
 
@@ -25,7 +25,7 @@ from threading import Lock
 from typing import Literal, Protocol
 
 import zstandard
-from pydantic import BaseModel, TypeAdapter, ValidationError
+from pydantic import BaseModel, TypeAdapter
 from redis import RedisError
 from redis.exceptions import LockError
 from sqlalchemy import delete, select, update
@@ -59,6 +59,7 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.endpoint import PluginEndpointClient
+from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.impl.plugin import PluginInstaller
 from enums import DeploymentEdition
@@ -329,14 +330,14 @@ class PluginService:
             )
             return None, False
 
-        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries):
+        for cache_key, cached_providers in zip(cache_keys, cached_provider_entries, strict=False):
             if not cached_providers:
                 continue
 
             try:
                 providers = cls._get_or_parse_plugin_model_providers_cache_payload(cached_providers)
                 return providers, True
-            except (TypeError, ValueError, ValidationError):
+            except (TypeError, ValueError):
                 logger.warning(
                     "Invalid cached plugin model providers for tenant %s; deleting cache key %s.",
                     tenant_id,
@@ -1048,81 +1049,24 @@ class PluginService:
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
 
     @staticmethod
-    def upgrade_plugin_with_marketplace(
-        tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
-    ):
+    def _retain_plugin_version_for_enterprise(tenant_id: str, plugin_unique_identifier: str) -> None:
+        """Tell the enterprise plugin manager before a tenant drops a plugin version.
+
+        Uninstalling and upgrading both remove a version from the tenant. When no tenant uses
+        the version any more, the plugin daemon deletes its records, but nothing deletes the
+        version's runtime (on Kubernetes: its DifyPlugin, Deployment and pods). The enterprise
+        plugin manager therefore keeps the version referenced, so it stays listed in the
+        enterprise console and its runtime is removed when an admin uninstalls it there.
+        The call is synchronous and never raises: a failure is logged and the caller goes on.
         """
-        Upgrade plugin with marketplace
-        """
-        if not dify_config.MARKETPLACE_ENABLED:
-            raise ValueError("marketplace is not enabled")
-
-        if original_plugin_unique_identifier == new_plugin_unique_identifier:
-            raise ValueError("you should not upgrade plugin with the same plugin")
-
-        # check if plugin pkg is already downloaded
-        manager = PluginInstaller()
-
-        permission = PluginService._get_plugin_installation_permission()
-
-        try:
-            manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
-        except Exception:
-            # plugin not downloaded yet, download and upload pkg
-            pkg = download_plugin_pkg(new_plugin_unique_identifier)
-            response = manager.upload_pkg(
-                tenant_id,
-                pkg,
-                verify_signature=permission.restrict_to_marketplace_only,
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            return
+        PluginManagerService.try_pre_uninstall_plugin(
+            PreUninstallPluginRequest(
+                tenant_id=tenant_id,
+                plugin_unique_identifier=plugin_unique_identifier,
             )
-
-            # check if the plugin is available to install
-            PluginService._check_plugin_installation_scope(response.verification)
-        else:
-            # already downloaded, the cached pkg still has to satisfy the installation scope
-            decode_response = manager.decode_plugin_from_identifier(tenant_id, new_plugin_unique_identifier)
-            PluginService._check_plugin_installation_scope(decode_response.verification)
-            marketplace.record_install_plugin_event(new_plugin_unique_identifier)
-
-        result = manager.upgrade_plugin(
-            tenant_id,
-            original_plugin_unique_identifier,
-            new_plugin_unique_identifier,
-            PluginInstallationSource.Marketplace,
-            {
-                "plugin_unique_identifier": new_plugin_unique_identifier,
-            },
         )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
-
-    @staticmethod
-    def upgrade_plugin_with_github(
-        tenant_id: str,
-        original_plugin_unique_identifier: str,
-        new_plugin_unique_identifier: str,
-        repo: str,
-        version: str,
-        package: str,
-    ):
-        """
-        Upgrade plugin with github
-        """
-        PluginService._check_marketplace_only_permission()
-        manager = PluginInstaller()
-        result = manager.upgrade_plugin(
-            tenant_id,
-            original_plugin_unique_identifier,
-            new_plugin_unique_identifier,
-            PluginInstallationSource.Github,
-            {
-                "repo": repo,
-                "version": version,
-                "package": package,
-            },
-        )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
 
     @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginDecodeResponse:
@@ -1144,6 +1088,16 @@ class PluginService:
         return response
 
     @staticmethod
+    def _download_plugin_pkg(plugin_unique_identifier: str) -> bytes:
+        """Download a marketplace package, surfacing HTTP failures as client errors."""
+        try:
+            return download_plugin_pkg(plugin_unique_identifier)
+        except ValueError as e:
+            # download_with_size_limit() rejects 4xx/5xx responses. Let the controller translate
+            # the status to the console instead of reporting a generic plugin operation failure.
+            raise PluginDaemonClientSideError(str(e)) from e
+
+    @staticmethod
     def upload_pkg_from_github(
         tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
     ) -> PluginDecodeResponse:
@@ -1152,9 +1106,13 @@ class PluginService:
         returns plugin_unique_identifier
         """
         PluginService._check_marketplace_only_permission()
-        pkg = download_with_size_limit(
-            f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
-        )
+        try:
+            pkg = download_with_size_limit(
+                f"https://github.com/{repo}/releases/download/{version}/{package}",
+                dify_config.PLUGIN_MAX_PACKAGE_SIZE,
+            )
+        except ValueError as e:
+            raise PluginDaemonClientSideError(str(e)) from e
         permission = PluginService._get_plugin_installation_permission()
 
         manager = PluginInstaller()
@@ -1179,55 +1137,6 @@ class PluginService:
         return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
-    def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
-        PluginService._check_marketplace_only_permission()
-
-        manager = PluginInstaller()
-
-        for plugin_unique_identifier in plugin_unique_identifiers:
-            resp = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-            PluginService._check_plugin_installation_scope(resp.verification)
-
-        result = manager.install_from_identifiers(
-            tenant_id,
-            plugin_unique_identifiers,
-            PluginInstallationSource.Package,
-            [
-                {"plugin_unique_identifier": plugin_unique_identifier}
-                for plugin_unique_identifier in plugin_unique_identifiers
-            ],
-        )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
-
-    @staticmethod
-    def install_from_github(tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str):
-        """
-        Install plugin from github release package files,
-        returns plugin_unique_identifier
-        """
-        PluginService._check_marketplace_only_permission()
-
-        manager = PluginInstaller()
-        plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-        PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-
-        result = manager.install_from_identifiers(
-            tenant_id,
-            [plugin_unique_identifier],
-            PluginInstallationSource.Github,
-            [
-                {
-                    "repo": repo,
-                    "version": version,
-                    "package": package,
-                }
-            ],
-        )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
-
-    @staticmethod
     def fetch_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
         """
         Fetch marketplace package
@@ -1241,7 +1150,7 @@ class PluginService:
         try:
             declaration = manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
         except Exception:
-            pkg = download_plugin_pkg(plugin_unique_identifier)
+            pkg = PluginService._download_plugin_pkg(plugin_unique_identifier)
             response = manager.upload_pkg(
                 tenant_id,
                 pkg,
@@ -1252,55 +1161,6 @@ class PluginService:
             declaration = response.manifest
 
         return declaration
-
-    @staticmethod
-    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
-        """
-        Install plugin from marketplace package files,
-        returns installation task id
-        """
-        if not dify_config.MARKETPLACE_ENABLED:
-            raise ValueError("marketplace is not enabled")
-
-        manager = PluginInstaller()
-
-        # collect actual plugin_unique_identifiers
-        actual_plugin_unique_identifiers = []
-        metas = []
-        permission = PluginService._get_plugin_installation_permission()
-
-        # check if already downloaded
-        for plugin_unique_identifier in plugin_unique_identifiers:
-            try:
-                manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
-            except Exception:
-                # plugin not downloaded yet, download and upload pkg
-                pkg = download_plugin_pkg(plugin_unique_identifier)
-                response = manager.upload_pkg(
-                    tenant_id,
-                    pkg,
-                    verify_signature=permission.restrict_to_marketplace_only,
-                )
-                # check if the plugin is available to install
-                PluginService._check_plugin_installation_scope(response.verification)
-                # use response plugin_unique_identifier
-                actual_plugin_unique_identifiers.append(response.unique_identifier)
-                metas.append({"plugin_unique_identifier": response.unique_identifier})
-            else:
-                # already downloaded, the cached pkg still has to satisfy the installation scope
-                plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
-                PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
-                actual_plugin_unique_identifiers.append(plugin_unique_identifier)
-                metas.append({"plugin_unique_identifier": plugin_unique_identifier})
-
-        result = manager.install_from_identifiers(
-            tenant_id,
-            actual_plugin_unique_identifiers,
-            PluginInstallationSource.Marketplace,
-            metas,
-        )
-        PluginService.invalidate_plugin_model_providers_cache(tenant_id)
-        return result
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str, *, preserve_credentials: bool = False) -> bool:
@@ -1317,13 +1177,7 @@ class PluginService:
                 PluginService.invalidate_plugin_model_providers_cache(tenant_id)
             return result
 
-        if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.ENTERPRISE:
-            PluginManagerService.try_pre_uninstall_plugin(
-                PreUninstallPluginRequest(
-                    tenant_id=tenant_id,
-                    plugin_unique_identifier=plugin.plugin_unique_identifier,
-                )
-            )
+        PluginService._retain_plugin_version_for_enterprise(tenant_id, plugin.plugin_unique_identifier)
 
         result = manager.uninstall(tenant_id, plugin_installation_id)
         if not result:

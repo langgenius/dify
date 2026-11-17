@@ -12,7 +12,6 @@ from sqlalchemy.orm import Session
 from configs import dify_config
 from constants import DOCUMENT_EXTENSIONS
 from core.plugin.impl.plugin import PluginInstaller
-from core.plugin.plugin_service import PluginService
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from factories import variable_factory
@@ -23,12 +22,16 @@ from repositories.knowledge.dataset_read_repository import get_dataset_doc_form
 from services.entities.knowledge_entities.rag_pipeline_entities import KnowledgeConfiguration, RetrievalSetting
 from services.errors.rag_pipeline import RagPipelineResourceNotFoundError
 from services.file_service import FileService
+from services.plugin.installation_service import AdmittedPluginInstallationCaller, PluginInstallationService
 from services.plugin.plugin_migration import PluginMigration
 
 logger = logging.getLogger(__name__)
 
 
 class RagPipelineTransformService:
+    def __init__(self, *, installations: PluginInstallationService) -> None:
+        self._installations = installations
+
     def transform_dataset(self, dataset: Dataset, account_id: str, session: Session):
         """Transform a vendor dataset within the caller-owned transaction.
 
@@ -263,26 +266,26 @@ class RagPipelineTransformService:
         draft_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version="draft",
             graph=json.dumps(graph),
             created_by=account_id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         published_workflow = Workflow(
             tenant_id=pipeline.tenant_id,
             app_id=pipeline.id,
-            features="{}",
+            _features="{}",
             type=WorkflowType.RAG_PIPELINE,
             version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=json.dumps(graph),
             created_by=account_id,
-            environment_variables=environment_variables,
-            conversation_variables=conversation_variables,
-            rag_pipeline_variables=rag_pipeline_variables_list,
+            _environment_variables=environment_variables,
+            _conversation_variables=conversation_variables,
+            _rag_pipeline_variables=rag_pipeline_variables_list,
         )
         session.add(draft_workflow)
         session.add(published_workflow)
@@ -319,13 +322,15 @@ class RagPipelineTransformService:
                         package_identifiers_to_install.append(latest_package_identifier)
         if package_identifiers_to_install:
             logger.debug("Installing missing pipeline plugins %s", package_identifiers_to_install)
-            PluginService.install_from_marketplace_pkg(tenant_id, package_identifiers_to_install)
+            self._installations.install_from_marketplace_pkg(
+                AdmittedPluginInstallationCaller(tenant_id), package_identifiers_to_install
+            )
 
     def _transform_to_empty_pipeline(self, dataset: Dataset, *, account_id: str, session: Session):
         pipeline = Pipeline(
             tenant_id=dataset.tenant_id,
             name=dataset.name,
-            description=dataset.description,
+            description=dataset.description or "",
             created_by=account_id,
         )
         session.add(pipeline)

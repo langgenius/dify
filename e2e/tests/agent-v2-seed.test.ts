@@ -21,13 +21,18 @@ const taskIds = (profile: string) => createAgentV2SeedTasks(profile).map((task) 
 
 describe('Agent v2 seed profiles', () => {
   it('prepares every fixture required by prepared behavior', () => {
-    expect(taskIds('prepared')).toEqual([...baseTaskIds, ...preparedFixtureTaskIds])
+    expect(taskIds('prepared')).toEqual([
+      ...baseTaskIds,
+      'workspace-default-models',
+      ...preparedFixtureTaskIds,
+    ])
   })
 
   it('prepares external runtime and prepared behavior in post-merge', () => {
     expect(taskIds('post-merge')).toEqual([
       ...baseTaskIds,
       'speech-to-text-model',
+      'workspace-default-models',
       ...preparedFixtureTaskIds,
     ])
   })

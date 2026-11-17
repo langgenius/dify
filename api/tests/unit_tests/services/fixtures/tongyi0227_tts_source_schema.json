@@ -1,0 +1,188 @@
+{
+  "deprecated": false,
+  "features": null,
+  "fetch_from": "predefined-model",
+  "label": {
+    "en_US": "qwen3-tts-flash",
+    "ja_JP": "qwen3-tts-flash",
+    "pt_BR": "qwen3-tts-flash",
+    "zh_Hans": "qwen3-tts-flash"
+  },
+  "model": "qwen3-tts-flash",
+  "model_properties": {
+    "audio_type": "wav",
+    "default_voice": "Cherry",
+    "max_workers": 5,
+    "voices": [
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Cherry",
+        "name": "芊悦"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Serena",
+        "name": "苏瑶"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Ethan",
+        "name": "晨煦"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Chelsie",
+        "name": "千雪"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Momo",
+        "name": "茉兔"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Vivian",
+        "name": "十三"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Moon",
+        "name": "月白"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Maia",
+        "name": "四月"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Kai",
+        "name": "凯"
+      },
+      {
+        "language": [
+          "zh-Hans",
+          "en-US",
+          "fr-FR",
+          "de-DE",
+          "ru-RU",
+          "it-IT",
+          "es-ES",
+          "pt-PT",
+          "ja-JP",
+          "ko-KR"
+        ],
+        "mode": "Nofish",
+        "name": "不吃鱼"
+      }
+    ],
+    "word_limit": 512
+  },
+  "model_type": "tts",
+  "parameter_rules": [],
+  "pricing": {
+    "currency": "RMB",
+    "input": "1",
+    "output": "0",
+    "unit": "0.0001"
+  }
+}

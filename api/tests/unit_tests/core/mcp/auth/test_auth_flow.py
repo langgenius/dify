@@ -1,5 +1,6 @@
 """Unit tests for MCP OAuth authentication flow."""
 
+import json
 from unittest.mock import patch
 
 import httpx
@@ -41,7 +42,7 @@ from core.mcp.types import (
     OAuthTokens,
     ProtectedResourceMetadata,
 )
-from tests.unit_tests.core.mcp.fixtures import make_provider
+from tests.helpers.unit.core.mcp.fixtures import make_provider
 
 
 @pytest.fixture
@@ -140,7 +141,7 @@ class TestRedisStateManagement:
         """Test retrieving non-existent state from Redis."""
         mock_redis.get.return_value = None
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="State parameter has expired or does not exist") as exc_info:
             _retrieve_redis_state("nonexistent-key")
 
         assert "State parameter has expired or does not exist" in str(exc_info.value)
@@ -150,7 +151,9 @@ class TestRedisStateManagement:
         """Test retrieving invalid JSON state from Redis."""
         mock_redis.get.return_value = '{"invalid": json}'
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Invalid state parameter: 1 validation error for OAuthCallbackState"
+        ) as exc_info:
             _retrieve_redis_state("test-key")
 
         assert "Invalid state parameter" in str(exc_info.value)
@@ -342,7 +345,9 @@ class TestAuthorizationFlow:
         )
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support response type code"
+        ) as exc_info:
             start_authorization(
                 "https://api.example.com",
                 metadata,
@@ -412,7 +417,7 @@ class TestAuthorizationFlow:
 
         client_info = OAuthClientInformation(client_id="test-client-id")
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(ValueError, match="Token exchange failed: HTTP 400") as exc_info:
             exchange_authorization(
                 "https://api.example.com",
                 None,
@@ -462,20 +467,32 @@ class TestAuthorizationFlow:
             },
         )
 
-    @patch("core.helper.ssrf_proxy.post")
-    def test_register_client_success(self, mock_post):
-        """Test successful client registration."""
-        mock_response = httpx.Response(
-            200,
-            json={
-                "client_id": "new-client-id",
-                "client_secret": "new-client-secret",
-                "client_name": "Dify",
-                "redirect_uris": ["https://redirect.example.com"],
-            },
-        )
-        mock_post.return_value = mock_response
-
+    @pytest.mark.parametrize(
+        ("scope", "client_uri", "token_endpoint_auth_method", "expected_optional_fields"),
+        [
+            pytest.param(None, None, None, {}, id="omit-none-metadata"),
+            pytest.param(
+                "read write",
+                "https://client.example.com",
+                "none",
+                {
+                    "scope": "read write",
+                    "client_uri": "https://client.example.com",
+                    "token_endpoint_auth_method": "none",
+                },
+                id="preserve-configured-metadata",
+            ),
+        ],
+    )
+    def test_register_client_success(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        scope: str | None,
+        client_uri: str | None,
+        token_endpoint_auth_method: str | None,
+        expected_optional_fields: dict[str, str],
+    ) -> None:
+        """Registration omits None metadata and preserves configured values in the HTTP JSON body."""
         metadata = OAuthMetadata(
             authorization_endpoint="https://auth.example.com/authorize",
             token_endpoint="https://auth.example.com/token",
@@ -487,20 +504,44 @@ class TestAuthorizationFlow:
             redirect_uris=["https://redirect.example.com"],
             grant_types=["authorization_code"],
             response_types=["code"],
+            scope=scope,
+            client_uri=client_uri,
+            token_endpoint_auth_method=token_endpoint_auth_method,
         )
+        requests: list[httpx.Request] = []
 
-        client_info = register_client("https://api.example.com", metadata, client_metadata)
+        def handle_registration(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(
+                201,
+                json={
+                    "client_id": "new-client-id",
+                    "client_secret": "new-client-secret",
+                    "client_name": "Dify",
+                    "redirect_uris": ["https://redirect.example.com"],
+                },
+            )
+
+        with httpx.Client(transport=httpx.MockTransport(handle_registration)) as client:
+            monkeypatch.setattr(ssrf_proxy, "_get_ssrf_client", lambda _verify: client)
+            client_info = register_client("https://api.example.com", metadata, client_metadata)
 
         assert isinstance(client_info, OAuthClientInformationFull)
         assert client_info.client_id == "new-client-id"
         assert client_info.client_secret == "new-client-secret"
 
-        # Verify request
-        mock_post.assert_called_once_with(
-            "https://auth.example.com/register",
-            json=client_metadata.model_dump(),
-            headers={"Content-Type": "application/json"},
-        )
+        assert len(requests) == 1
+        request = requests[0]
+        assert request.method == "POST"
+        assert str(request.url) == "https://auth.example.com/register"
+        assert request.headers["Content-Type"] == "application/json"
+        assert json.loads(request.content) == {
+            "client_name": "Dify",
+            "redirect_uris": ["https://redirect.example.com"],
+            "grant_types": ["authorization_code"],
+            "response_types": ["code"],
+            **expected_optional_fields,
+        }
 
     @patch("core.helper.ssrf_proxy.post")
     def test_register_client_rejected_by_server(self, mock_post):
@@ -525,7 +566,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=('Client registration failed: HTTP 400, Response: \\{"error":"invalid_redirect_uri"\\}')
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         message = str(exc_info.value)
@@ -542,7 +585,9 @@ class TestAuthorizationFlow:
         )
         client_metadata = OAuthClientMetadata(client_name="Dify", redirect_uris=["https://redirect.example.com"])
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="Incompatible auth server: does not support dynamic client registration"
+        ) as exc_info:
             register_client("https://api.example.com", metadata, client_metadata)
 
         assert "does not support dynamic client registration" in str(exc_info.value)
@@ -709,7 +754,9 @@ class TestAuthOrchestration:
 
         provider.credentials["client_information"] = {"client_id": "existing-client"}
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match="State parameter is required when exchanging authorization code"
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "State parameter is required" in str(exc_info.value)
@@ -780,7 +827,9 @@ class TestAuthOrchestration:
 
         provider.credentials.pop("client_information", None)
 
-        with pytest.raises(ValueError) as exc_info:
+        with pytest.raises(
+            ValueError, match=("Existing OAuth client information is required when exchanging an authorization code")
+        ) as exc_info:
             auth(provider, authorization_code="auth-code")
 
         assert "Existing OAuth client information is required" in str(exc_info.value)

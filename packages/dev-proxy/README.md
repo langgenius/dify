@@ -70,6 +70,24 @@ Config files can be `.ts`, `.mts`, `.js`, or `.mjs`.
 
 `routes` are matched in declaration order. The first matching route wins. Each configured path matches both the exact path and all child paths, so `paths: '/api'` matches `/api`, `/api/apps`, and `/api/apps/123`.
 
+Use route-level `requestHeaders` for upstream gateway service tokens. Configured headers replace incoming values for HTTP requests, WebSocket upgrades, and session imports, before normal proxy header sanitization and cookie rewriting. Keep credentials in an ignored local env file and configure them only on routes for the intended upstream.
+
+`requestHeaders` is optional. In Dify Web, `DEV_PROXY_CF_ACCESS_CLIENT_ID` and `DEV_PROXY_CF_ACCESS_CLIENT_SECRET` are also optional: leave both unset to run the proxy without Cloudflare Access service-token headers. To enable service-token authentication, set both values in `.env.local`. When enabled, Dify Web sends these headers to all configured proxy targets.
+
+```ts
+{
+  paths: '/api',
+  target: 'https://example.com',
+  requestHeaders:
+    process.env.DEV_PROXY_CF_ACCESS_CLIENT_ID && process.env.DEV_PROXY_CF_ACCESS_CLIENT_SECRET
+      ? {
+          'CF-Access-Client-Id': process.env.DEV_PROXY_CF_ACCESS_CLIENT_ID,
+          'CF-Access-Client-Secret': process.env.DEV_PROXY_CF_ACCESS_CLIENT_SECRET,
+        }
+      : undefined,
+}
+```
+
 By default, credentialed CORS is allowed for local development origins such as `localhost`, `127.0.0.1`, and `::1`. To restrict it to specific origins:
 
 ```
@@ -208,6 +226,25 @@ const cookieRewrite: CookieRewriteOptions = {
   },
 }
 ```
+
+## Session Import
+
+Some upstreams cannot be signed in to from a local origin, for example when the login form is protected by a captcha bound to the upstream hostname. `sessionImport` moves an existing upstream session into the local proxy instead.
+
+```ts
+sessionImport: {
+  refreshPath: '/console/api/refresh-token',
+  cookieName: 'refresh_token',
+  redirectTo: 'http://localhost:3000',
+}
+```
+
+The proxy serves an import page at its root, `http://localhost:<port>/`, and prints that URL on startup. Open it on the same host the frontend uses to call the proxy, because the imported cookies belong to that host.
+
+1. Sign in on the upstream site, then in DevTools → Network right-click any API request → Copy → Copy as cURL.
+2. Paste it into the import page. The proxy reads `cookieName` from the pasted text, sends it to `refreshPath` through the route that matches that path, stores the returned cookies with that route's `cookieRewrite`, and redirects to `redirectTo`.
+
+The upstream rotates the pasted refresh token during the import, so only the local session can keep refreshing. The browser session it was copied from stops refreshing once its access token expires.
 
 ## Behavior
 

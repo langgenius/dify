@@ -1,5 +1,5 @@
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Recipient as RecipientItem } from '../../../types'
-import type { Member } from '@/models/common'
 import { cn } from '@langgenius/dify-ui/cn'
 import {
   Popover,
@@ -18,7 +18,7 @@ const i18nPrefix = 'nodes.humanInput'
 type Props = Readonly<{
   email: string
   value: RecipientItem[]
-  list: Member[]
+  list: AccountWithRoleResponse[]
   onDelete: (recipient: RecipientItem) => void
   onSelect: (value: string) => void
   onAdd: (email: string) => void
@@ -133,7 +133,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
           <EmailItem
             key={item.user_id || item.email}
             email={email}
-            data={item as unknown as Member}
+            data={item as unknown as AccountWithRoleResponse}
             onDelete={onDelete}
             disabled={disabled}
             isError={isErrorMember(item)}
@@ -152,12 +152,7 @@ const EmailInput = ({ email, value, list, onDelete, onSelect, onAdd, disabled = 
               onKeyDown={handleKeyDown}
             />
             <PopoverPortal>
-              <PopoverPositioner
-                placement="bottom-start"
-                sideOffset={4}
-                alignOffset={-40}
-                anchor={inputRef}
-              >
+              <PopoverPositioner align="start" sideOffset={4} alignOffset={-40} anchor={inputRef}>
                 <PopoverPopup
                   className="border-none bg-transparent p-0 shadow-none backdrop-blur-none"
                   initialFocus={false}

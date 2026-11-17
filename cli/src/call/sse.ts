@@ -68,6 +68,10 @@ export async function* parseSSE(
     }
   })()
 
+  // Observe background failures even while a yielded event suspends the consumer.
+  // Awaiting the original pump below still propagates the error after the queue drains.
+  void pump.catch(() => {})
+
   try {
     while (true) {
       while (queue.length > 0) {

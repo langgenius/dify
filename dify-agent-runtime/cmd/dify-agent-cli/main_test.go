@@ -1,8 +1,7 @@
 // Tests that `--help` renders correctly for every command and subcommand in
 // the cobra tree, including the hidden singular `config skill|file` aliases.
-// These lock the command surface so it stays identical to the original Python
-// (Typer) CLI: each help output must show the command's usage path, its
-// Short description, and its expected flags/subcommands.
+// These lock the installed command surface: each help output must show the
+// command's usage path, description, and expected flags/subcommands.
 package main
 
 import (
@@ -73,7 +72,7 @@ func TestCommandHelp(t *testing.T) {
 		{
 			name: "config",
 			args: []string{"config", "--help"},
-			want: []string{"dify-agent config", "manifest", "skills", "files", "env", "note"},
+			want: []string{"dify-agent config", "manifest", "skills", "files", "env", "note", "prompt"},
 		},
 		{
 			name: "config manifest",
@@ -144,6 +143,21 @@ func TestCommandHelp(t *testing.T) {
 			name: "config note push",
 			args: []string{"config", "note", "push", "--help"},
 			want: []string{"dify-agent config note push", "Replace the current config note"},
+		},
+		{
+			name: "config prompt",
+			args: []string{"config", "prompt", "--help"},
+			want: []string{"dify-agent config prompt", "pull", "push"},
+		},
+		{
+			name: "config prompt pull",
+			args: []string{"config", "prompt", "pull", "--help"},
+			want: []string{"dify-agent config prompt pull", "./.dify_conf/prompt.md", "--to"},
+		},
+		{
+			name: "config prompt push",
+			args: []string{"config", "prompt", "push", "--help"},
+			want: []string{"dify-agent config prompt push [PATH|-]", "stdin", "already-built run requests keep their prompt"},
 		},
 		{
 			name: "config skill pull (hidden alias)",

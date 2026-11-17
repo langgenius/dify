@@ -2,13 +2,10 @@ import type { AppDetailWithSite } from '@dify/contracts/api/console/apps/types.g
 import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AppDetailSection from '@/app/components/app-sidebar/app-detail-section'
-import { useStore } from '@/app/components/app/store'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
-import { AppDetailPrefetch } from '../app-detail-prefetch'
-import { getAppIdFromPathname } from '../app-detail-route'
 
 function deferredResponse() {
   let resolve!: (response: Response) => void
@@ -33,11 +30,9 @@ vi.mock('@/app/components/app-sidebar/nav-link', () => ({
 }))
 
 function Route() {
-  const appId = getAppIdFromPathname(pathname)
   return (
     <>
       <a href="/apps">Back to Apps</a>
-      {appId && <AppDetailPrefetch appId={appId} />}
       <AppDetailSection />
     </>
   )
@@ -55,7 +50,7 @@ describe('App sidebar route loading', () => {
     request.mockReset()
   })
 
-  it('keeps the shell visible and consumes the in-flight prefetch without an App Store producer', async () => {
+  it('keeps the shell visible while loading the app detail once', async () => {
     const pending = deferredResponse()
     request.mockReturnValue(pending.promise)
     renderWithConsoleQuery(<Route />)
@@ -72,10 +67,9 @@ describe('App sidebar route loading', () => {
       '/app/app-1/overview',
     )
     expect(request).toHaveBeenCalledTimes(1)
-    expect(useStore.getState().appDetail).toBeUndefined()
   })
 
-  it('can load without prefetch and retries a failed query inside the sidebar', async () => {
+  it('retries a failed query inside the sidebar', async () => {
     request.mockRejectedValueOnce(new Error('unavailable'))
     request.mockResolvedValue(Response.json(app('app-1', 'Recovered app')))
     renderWithConsoleQuery(<AppDetailSection />)

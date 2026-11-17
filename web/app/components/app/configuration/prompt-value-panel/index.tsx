@@ -1,5 +1,7 @@
 'use client'
+
 import type { FC } from 'react'
+import type { ConfigurationAppMode } from '@/app/components/app/configuration/hooks/configuration-lifecycle/types'
 import type { Inputs } from '@/models/debug'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Button } from '@langgenius/dify-ui/button'
@@ -25,10 +27,10 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum, ModelModeType } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 
 export type IPromptValuePanelProps = {
-  appType: AppModeEnum
+  appType: ConfigurationAppMode
   onSend?: () => void
   inputs: Inputs
   visionConfig: VisionSettings
@@ -93,7 +95,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }, [promptVariables, inputs, setInputs])
 
   const canNotRun = useMemo(() => {
-    if (mode !== AppModeEnum.COMPLETION) return true
+    if (mode !== 'completion') return true
 
     if (isAdvancedMode) {
       if (modelModeType === ModelModeType.chat)
@@ -137,7 +139,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <button
             type="button"
-            className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-left focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
+            className="flex cursor-pointer items-center gap-0.5 border-none bg-transparent px-0 py-0.5 text-start focus-visible:ring-1 focus-visible:ring-components-input-border-active focus-visible:outline-hidden"
             onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}
           >
             <div className="system-md-semibold-uppercase text-text-secondary">
@@ -229,7 +231,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                       <Input
                         aria-labelledby={`${baseId}-${key}-label`}
                         type="number"
-                        value={inputs[key] ? `${inputs[key]}` : ''}
+                        value={inputs[key] || inputs[key] === 0 ? `${inputs[key]}` : ''}
                         onValueChange={(value) => handleInputValueChange(key, value)}
                         placeholder={name}
                         maxLength={max_length}
@@ -253,7 +255,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 justify-between xl:flex">
-                <div className="mr-1 w-30 shrink-0 py-2 text-sm text-text-primary">
+                <div className="me-1 w-30 shrink-0 py-2 text-sm text-text-primary">
                   {t(($) => $['imageUploader.imageUpload'], { ns: 'common' })}
                 </div>
                 <div className="grow">
@@ -320,7 +322,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       <div className="mx-3">
         <FeatureBar
           showFileUpload={false}
-          isChatMode={appType !== AppModeEnum.COMPLETION}
+          isChatMode={appType !== 'completion'}
           onFeatureBarClick={onOpenFeatures}
           disabled={readonly}
           hideEditEntrance={readonly}

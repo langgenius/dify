@@ -35,11 +35,17 @@ from services.entities.model_billing_migration import (
     ActivateMigrationPayload,
     ContractEventPayload,
     DecideCyclePayload,
+    FreeGrantManifest,
     FundingReceiptsPayload,
     LeasePayload,
     MigrationSourceProviderOwnership,
     OperationPayload,
     PrepareMigrationPayload,
+    StableMigrationSourceProviderOwnership,
+)
+from services.model_billing_migration_inventory import (
+    ModelBillingReadinessQuery,
+    dependency_inventory_uses_saved_policy,
 )
 
 logger = logging.getLogger(__name__)
@@ -119,6 +125,8 @@ class ModelBillingMigrationService:
         for key in (
             "intent_revision",
             "manifest",
+            "free_grant_manifest",
+            "eligibility_policy_version",
             "manifest_hash",
             "preparation_binding_hash",
             "blocked_from",
@@ -291,7 +299,7 @@ class ModelBillingMigrationService:
         )
         if credential is None or not credential.encrypted_config:
             raise MigrationError("readiness_changed")
-        return {
+        binding = {
             "tenant_id": row.tenant_id,
             "migration_id": row.migration_id,
             "plugin_unique_identifier": integration.plugin_unique_identifier or "",
@@ -303,6 +311,20 @@ class ModelBillingMigrationService:
             "billing_preparation_ref": row.state["billing_preparation_ref"],
             "source_ownership_hash": canonical_hash(row.state["source_ownership"]),
         }
+        variant_digest = row.state.get("source_variant_registry_digest")
+        if variant_digest is not None:
+            from services.model_billing_mapping_service import source_mapping_revision
+
+            try:
+                registry = source_mapping_revision(
+                    dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, row.state["model_mapping_version"]
+                )
+                if not registry.has_variants or registry.digest != variant_digest:
+                    raise ValueError("Source variant registry changed")
+            except ValueError:
+                raise MigrationError("readiness_changed") from None
+            binding["source_variant_registry_digest"] = variant_digest
+        return binding
 
     @classmethod
     def complete_preparation(
@@ -312,8 +334,11 @@ class ModelBillingMigrationService:
         *,
         source_ownership: dict[str, Any],
         expected_credential_fingerprint: str,
+        source_variant_registry_digest: str | None = None,
     ) -> None:
-        ownership = TypeAdapter(dict[str, MigrationSourceProviderOwnership]).validate_python(source_ownership)
+        ownership = TypeAdapter(
+            dict[str, MigrationSourceProviderOwnership | StableMigrationSourceProviderOwnership]
+        ).validate_python(source_ownership)
         snapshot = {key: value.model_dump(mode="json") for key, value in ownership.items()}
         with session_factory.create_session() as session, session.begin():
             row = cls._row(session, tenant_id, migration_id)
@@ -321,6 +346,23 @@ class ModelBillingMigrationService:
                 return
             row.state = copy.deepcopy(row.state)
             row.state["source_ownership"] = snapshot
+            from services.model_billing_migration_inventory import saved_dependency_inventory_policy
+
+            if saved_dependency_inventory_policy(
+                dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, row.state["model_mapping_version"]
+            ) in {"saved_system_dependencies_v2", "saved_system_dependencies_v3"}:
+                from services.model_billing_mapping_service import source_mapping_revision
+
+                try:
+                    registry = source_mapping_revision(
+                        dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, row.state["model_mapping_version"]
+                    )
+                    if registry.has_variants != (source_variant_registry_digest is not None):
+                        raise ValueError("Source variant pin is missing or unexpected")
+                except ValueError:
+                    raise MigrationError("readiness_changed") from None
+            if source_variant_registry_digest is not None:
+                row.state["source_variant_registry_digest"] = source_variant_registry_digest
             binding = cls._binding(session, row)
             if binding["credential_fingerprint"] != expected_credential_fingerprint:
                 raise MigrationError("readiness_changed")
@@ -340,6 +382,36 @@ class ModelBillingMigrationService:
             row = cls._row(session, tenant_id, migration_id)
             if row.phase == "preparing":
                 row.state = {**row.state, "last_error_code": code}
+
+    @classmethod
+    def assert_claim_readiness(
+        cls,
+        session: Session,
+        row: TenantModelBillingMigration,
+        now: datetime,
+        preparation_binding_hash: str,
+    ) -> None:
+        """Shared legacy-owner check, called only under its tenant row lock.
+
+        Both paid/free claim adapters use this identical admission and binding
+        gate in the same _mutate transaction; no new independent claim lock.
+        """
+        if row.phase != "prepared" or not cls.admitted(row.tenant_id):
+            raise MigrationError("readiness_changed")
+        paused = session.scalar(
+            select(TenantModelBillingMigration.tenant_id)
+            .where(
+                TenantModelBillingMigration.batch_id == row.batch_id,
+                TenantModelBillingMigration.claimed_at < now - timedelta(minutes=30),
+                TenantModelBillingMigration.phase != "active",
+                TenantModelBillingMigration.state["ever_activated"].as_boolean().is_not(True),
+            )
+            .limit(1)
+        )
+        if paused is not None:
+            raise MigrationError("batch_paused", retryable=True)
+        if canonical_hash(cls._binding(session, row)) != preparation_binding_hash:
+            raise MigrationError("readiness_changed")
 
     @classmethod
     def decide_cycle(cls, tenant_id: str, migration_id: str, payload: DecideCyclePayload) -> dict[str, Any]:
@@ -362,22 +434,7 @@ class ModelBillingMigrationService:
                     raise MigrationError("cycle_decision_conflict")
                 decisions[payload.cycle_key] = decision
                 return
-            if row.phase != "prepared" or not cls.admitted(tenant_id):
-                raise MigrationError("readiness_changed")
-            paused = session.scalar(
-                select(TenantModelBillingMigration.tenant_id)
-                .where(
-                    TenantModelBillingMigration.batch_id == row.batch_id,
-                    TenantModelBillingMigration.claimed_at < now - timedelta(minutes=30),
-                    TenantModelBillingMigration.phase != "active",
-                    TenantModelBillingMigration.state["ever_activated"].as_boolean().is_not(True),
-                )
-                .limit(1)
-            )
-            if paused is not None:
-                raise MigrationError("batch_paused", retryable=True)
-            if canonical_hash(cls._binding(session, row)) != payload.preparation_binding_hash:
-                raise MigrationError("readiness_changed")
+            cls.assert_claim_readiness(session, row, now, payload.preparation_binding_hash)
             manifest = payload.manifest
             if manifest is None:
                 raise MigrationError("invalid_window", 422)
@@ -468,10 +525,13 @@ class ModelBillingMigrationService:
             commands = row.state.setdefault("commands", {})
             event = row.state.get("pending_contract_event")
             terminated = row.state.get("terminated_contract_refs", [])
-            if row.state["manifest"]["contract_ref"] in terminated and not (event and event["terminal"]):
+            free_manifest = row.state.get("free_grant_manifest")
+            if free_manifest is not None and (row.state.get("manifest") is not None or event is not None):
+                raise MigrationError("manifest_conflict")
+            manifest = free_manifest if free_manifest is not None else row.state["manifest"]
+            if manifest.get("contract_ref") in terminated and not (event and event["terminal"]):
                 raise MigrationError("contract_terminated")
             planned = {item["command_id"]: item for item in (event or {}).get("command_payloads", [])}
-            manifest = row.state["manifest"]
             if (
                 manifest["tenant_id"] != tenant_id
                 or manifest["migration_id"] != migration_id
@@ -486,9 +546,27 @@ class ModelBillingMigrationService:
             # old-window correction journal. New reanchor windows intentionally
             # are not in affected_window_ids/command_payloads and must not be
             # rejected simply because that correction event is still pending.
-            manifest_grants = {"grant:" + window["window_id"]: window for window in manifest["windows"]}
+            if free_manifest is not None:
+                free_grant = FreeGrantManifest.model_validate(free_manifest)
+                manifest_grants = {
+                    "grant:" + free_grant.grant_id: {
+                        "remote_id": free_grant.grant_id,
+                        "payload_hash": canonical_hash(free_grant.partner_payload()),
+                    }
+                }
+            else:
+                manifest_grants = {
+                    "grant:" + window["window_id"]: {
+                        "remote_id": window["window_id"],
+                        "payload_hash": canonical_hash(window),
+                    }
+                    for window in manifest["windows"]
+                }
             recovery_grants = {
-                "grant:" + item["window"]["window_id"]: item["window"]
+                "grant:" + item["window"]["window_id"]: {
+                    "remote_id": item["window"]["window_id"],
+                    "payload_hash": canonical_hash(item["window"]),
+                }
                 for item in planned.values()
                 if item["target_amount_usd_micro"] != "0"
             }
@@ -505,11 +583,11 @@ class ModelBillingMigrationService:
                     recovery_window = manifest_grants.get(receipt.command_id) or recovery_grants.get(receipt.command_id)
                     if (
                         recovery_window is None
-                        or receipt.payload_hash != canonical_hash(recovery_window)
-                        or receipt.remote_id != recovery_window["window_id"]
+                        or receipt.payload_hash != recovery_window["payload_hash"]
+                        or receipt.remote_id != recovery_window["remote_id"]
                     ):
                         raise MigrationError("unplanned_command")
-                    if manifest["contract_ref"] in terminated:
+                    if manifest.get("contract_ref") in terminated:
                         raise MigrationError("contract_terminated")
                 old = commands.get(receipt.command_id)
                 if old is not None:
@@ -533,10 +611,10 @@ class ModelBillingMigrationService:
                 for command_id, command in commands.items()
                 if command["state"] == "verified"
                 and command_id in manifest_grants
-                and command["payload_hash"] == canonical_hash(manifest_grants[command_id])
-                and command["remote_id"] == manifest_grants[command_id]["window_id"]
+                and command["payload_hash"] == manifest_grants[command_id]["payload_hash"]
+                and command["remote_id"] == manifest_grants[command_id]["remote_id"]
             }
-            all_windows = {window["window_id"] for window in row.state["manifest"]["windows"]}
+            all_grants = {command["remote_id"] for command in manifest_grants.values()}
             row.state["funding_receipt_hash"] = canonical_hash(sorted(commands.values(), key=itemgetter("command_id")))
             event = row.state.get("pending_contract_event")
             if event is not None:
@@ -571,7 +649,7 @@ class ModelBillingMigrationService:
                     row.phase = "active"
                     row.route_epoch += 1
                     return
-            row.phase = "activating" if not unresolved and all_windows.issubset(verified) else "granting"
+            row.phase = "activating" if not unresolved and all_grants.issubset(verified) else "granting"
 
         return cls._mutate(tenant_id, migration_id, payload, action)
 
@@ -724,7 +802,14 @@ class ModelBillingMigrationService:
         return repaired
 
     @classmethod
-    def activate(cls, tenant_id: str, migration_id: str, payload: ActivateMigrationPayload) -> dict[str, Any]:
+    def activate(
+        cls,
+        tenant_id: str,
+        migration_id: str,
+        payload: ActivateMigrationPayload,
+        *,
+        readiness_query: ModelBillingReadinessQuery | None = None,
+    ) -> dict[str, Any]:
         # Revalidate protocol/mapping outside the transaction, but never make a
         # committed transport replay dependent on today's runtime availability.
         with session_factory.create_session() as session:
@@ -737,11 +822,33 @@ class ModelBillingMigrationService:
             mapping_version = row.state["model_mapping_version"]
             inventory_hash = row.state["inventory_hash"]
             ownership_hash = canonical_hash(row.state["source_ownership"])
-        cls.validate_runtime_readiness(tenant_id, mapping_version, inventory_hash, ownership_hash)
+            eligibility_policy = row.state.get("eligibility_policy_version")
+        if readiness_query is not None:
+            cls.validate_runtime_readiness(
+                tenant_id,
+                mapping_version,
+                inventory_hash,
+                ownership_hash,
+                eligibility_policy_version=eligibility_policy,
+                readiness_query=readiness_query,
+            )
+        elif eligibility_policy == "free-legacy-v1":
+            cls.validate_runtime_readiness(
+                tenant_id,
+                mapping_version,
+                inventory_hash,
+                ownership_hash,
+                eligibility_policy_version=eligibility_policy,
+            )
+        else:
+            cls.validate_runtime_readiness(tenant_id, mapping_version, inventory_hash, ownership_hash)
 
         def action(session: Session, row: TenantModelBillingMigration, now: datetime) -> None:
             cls._require_lease(row, payload.lease_token, now)
             terminal_publication = row.phase == "cancelled"
+            free_manifest = row.state.get("free_grant_manifest")
+            if free_manifest is not None and (terminal_publication or row.state.get("manifest") is not None):
+                raise MigrationError("ineligible_contract", 422)
             if row.state.get("pending_contract_event"):
                 raise MigrationError("contract_event_pending")
             if terminal_publication:
@@ -775,8 +882,24 @@ class ModelBillingMigrationService:
                     raise MigrationError("manifest_conflict")
             if canonical_hash(cls._binding(session, row)) != payload.preparation_binding_hash:
                 raise MigrationError("readiness_changed")
+            if free_manifest is not None:
+                free_grant = FreeGrantManifest.model_validate(free_manifest)
+                command = row.state.get("commands", {}).get("grant:" + free_grant.grant_id, {})
+                if (
+                    free_grant.tenant_id != tenant_id
+                    or free_grant.migration_id != migration_id
+                    or free_grant.model_mapping_version != row.state["model_mapping_version"]
+                    or canonical_hash(free_manifest) != payload.manifest_hash
+                    or command.get("state") != "verified"
+                    or command.get("remote_id") != free_grant.grant_id
+                    or command.get("payload_hash") != canonical_hash(free_grant.partner_payload())
+                    or canonical_hash(sorted(row.state.get("commands", {}).values(), key=itemgetter("command_id")))
+                    != payload.funding_receipt_hash
+                ):
+                    raise MigrationError("manifest_conflict")
             if (
                 not terminal_publication
+                and free_manifest is None
                 and not row.state.get("ever_activated")
                 and not any(
                     window["starts_at"] <= _timestamp(now) < window["ends_at"]
@@ -838,11 +961,30 @@ class ModelBillingMigrationService:
         mapping_version: str,
         inventory_hash: str,
         ownership_hash: str,
+        *,
+        eligibility_policy_version: str | None = None,
+        readiness_query: ModelBillingReadinessQuery | None = None,
     ) -> None:
+        """None preserves the paid gate; free is derived only from persisted policy."""
         from core.model_invocation_routing import validate_migration_readiness
 
         try:
-            readiness = validate_migration_readiness(tenant_id, mapping_version)
+            if readiness_query is not None:
+                readiness = readiness_query.readiness(
+                    tenant_id, mapping_version, eligibility_policy_version=eligibility_policy_version
+                )
+            elif dependency_inventory_uses_saved_policy(
+                dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, mapping_version
+            ):
+                # A missed transport/worker wiring must never validate a new
+                # revision using the old full-HOSTED inventory by accident.
+                raise MigrationError("readiness_changed", retryable=True)
+            elif eligibility_policy_version is None:
+                readiness = validate_migration_readiness(tenant_id, mapping_version)
+            else:
+                readiness = validate_migration_readiness(
+                    tenant_id, mapping_version, eligibility_policy_version=eligibility_policy_version
+                )
             if readiness["inventory_hash"] != inventory_hash:
                 raise MigrationError("readiness_changed")
             if canonical_hash(readiness["source_ownership"]) != ownership_hash:

@@ -8,12 +8,13 @@ import { useAtomValue } from 'jotai'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getAppIdFromPathname } from '@/app/components/app/app-detail-route'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
-import { AppModeEnum } from '@/types/app'
 import { getAppACLCapabilities } from '@/utils/permission'
 import { AppInfoView } from './app-info'
 import AppInfoHeader from './app-info/app-info-header'
@@ -25,6 +26,8 @@ type AppDetailNavItem = {
   href: string
   icon: string
   selectedIcon: string
+  disabled?: boolean
+  disabledReason?: string
 }
 
 const isLogsNavItem = (item: AppDetailNavItem) => item.href.endsWith('/logs')
@@ -52,7 +55,7 @@ const AppDetailSection = ({ expand = true }: AppDetailSectionProps) => {
 }
 
 function AppDetailContent({ appId, expand }: { appId: string; expand: boolean }) {
-  const { t } = useTranslation(['app', 'common', 'navigation'])
+  const { t } = useTranslation(['app', 'common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const [detailQuery, featuresQuery, profileQuery] = useQueries({
     queries: [
@@ -62,6 +65,7 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     ],
   })
   const systemFeatures = featuresQuery.data
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
   const currentUserId = profileQuery.data?.profile.id
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
   const isRbacEnabled = systemFeatures?.rbac_enabled
@@ -71,11 +75,9 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
     if (!appDetail || !systemFeatures || !currentUserId) return []
 
     const appId = appDetail.id
-    const isWorkflowApp =
-      appDetail.mode === AppModeEnum.WORKFLOW || appDetail.mode === AppModeEnum.ADVANCED_CHAT
-    const supportsAnnotations =
-      appDetail.mode !== AppModeEnum.WORKFLOW && appDetail.mode !== AppModeEnum.COMPLETION
-    const supportsResourceAccess = appDetail.mode !== AppModeEnum.AGENT
+    const isWorkflowApp = appDetail.mode === 'workflow' || appDetail.mode === 'advanced-chat'
+    const supportsAnnotations = appDetail.mode !== 'workflow' && appDetail.mode !== 'completion'
+    const supportsResourceAccess = appDetail.mode !== 'agent'
     const appACLCapabilities = getAppACLCapabilities(appDetail.permission_keys, {
       currentUserId,
       resourceMaintainer: appDetail.maintainer,
@@ -91,6 +93,22 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
               href: `/app/${appId}/${isWorkflowApp ? 'workflow' : 'configuration'}`,
               icon: 'i-ri-terminal-window-line',
               selectedIcon: 'i-ri-terminal-window-fill',
+            },
+          ]
+        : []),
+      ...(appDetail.mode === 'workflow' &&
+      appACLCapabilities.canViewLayout &&
+      isEvaluationEdition(systemFeatures.deployment_edition)
+        ? [
+            {
+              name: t(($) => $.title, { ns: 'evaluation' }),
+              href: `/app/${appId}/evaluation`,
+              icon: 'i-ri-flask-line',
+              selectedIcon: 'i-ri-flask-fill',
+              disabled: evaluationRequiresUpgrade || !appDetail.workflow,
+              disabledReason: evaluationRequiresUpgrade
+                ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+                : t(($) => $.unavailableUntilPublished, { ns: 'evaluation' }),
             },
           ]
         : []),
@@ -155,7 +173,15 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
           ]
         : []),
     ]
-  }, [appDetail, t, currentUserId, workspacePermissionKeys, isRbacEnabled, systemFeatures])
+  }, [
+    appDetail,
+    t,
+    currentUserId,
+    workspacePermissionKeys,
+    isRbacEnabled,
+    systemFeatures,
+    evaluationRequiresUpgrade,
+  ])
 
   const failedQuery = [detailQuery, featuresQuery, profileQuery].find(
     (query) => query.isError && !query.data,
@@ -184,12 +210,11 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
           <AppInfoHeader
             expand={expand}
             appName={appTitle}
-            modeLabel={appDetail ? getAppModeLabel(appDetail.mode, t) : undefined}
-            iconType={appDetail?.icon_type}
-            icon={appDetail?.icon ?? undefined}
-            background={appDetail?.icon_background}
-            imageUrl={appDetail?.icon_url}
+            modeLabel={
+              appDetail ? getAppModeLabel(appDetail.mode, t, appDetail.workflow_kind) : undefined
+            }
             operationGroups={[]}
+            icon={appDetail}
           />
         )}
       </div>
@@ -224,6 +249,8 @@ function AppDetailContent({ appId, expand }: { appId: string; expand: boolean })
                 iconMap={{ selected: item.selectedIcon, normal: item.icon }}
                 name={item.name}
                 href={item.href}
+                disabled={item.disabled}
+                disabledReason={item.disabledReason}
                 pathname={pathname}
               />
               {shouldRenderDividerAfter && renderNavDivider(`${item.href}-after`, expand)}

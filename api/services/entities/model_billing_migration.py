@@ -12,6 +12,7 @@ Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 Reference = Annotated[str, Field(min_length=1, max_length=512)]
 Revision = Annotated[int, Field(strict=True, ge=0, le=9007199254740991)]
 Timestamp = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")]
+GrantTimestamp = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$")]
 Boundary = Annotated[str, Field(pattern=r"^\d{4}-\d{2}-\d{2}T00:00:00Z$")]
 
 
@@ -39,6 +40,39 @@ class MigrationSourceQuota(StrictPayload):
 class MigrationSourceProviderOwnership(StrictPayload):
     current_quota_type: Literal["paid", "trial", "free"]
     quotas: dict[Literal["paid", "trial", "free"], MigrationSourceQuota]
+
+
+class StableMigrationSourceQuota(StrictPayload):
+    """`unmetered` preserves only the original -1 sentinel; unit also matters."""
+
+    unit: Literal["credits", "times", "tokens"]
+    unmetered: bool
+
+
+class StableMigrationSourceProviderOwnership(StrictPayload):
+    """V2 capability, not a snapshot of the currently selected wallet."""
+
+    schema_version: Literal[2]
+    shared_pool_types: list[Literal["paid", "trial"]]
+    quotas: dict[Literal["paid", "trial", "free"], StableMigrationSourceQuota] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def stable_shared_capabilities(self) -> Self:
+        if self.shared_pool_types != sorted(set(self.shared_pool_types)):
+            raise ValueError("shared pools must be canonical and unique")
+        priority = {"paid": 0, "free": 1, "trial": 2}
+        permanent = min((priority[kind] for kind, quota in self.quotas.items() if quota.unmetered), default=3)
+        expected = sorted(
+            kind
+            for kind, quota in self.quotas.items()
+            if kind in {"paid", "trial"}
+            and not quota.unmetered
+            and quota.unit in {"credits", "times"}
+            and priority[kind] < permanent
+        )
+        if self.shared_pool_types != expected:
+            raise ValueError("shared capability does not match stable quota structure")
+        return self
 
 
 class PrepareMigrationPayload(OperationPayload):
@@ -129,6 +163,51 @@ class DecideCyclePayload(OperationPayload):
         if self.decision == "legacy_deferred" and (self.manifest is not None or self.manifest_hash is not None):
             raise ValueError("legacy decision cannot include a funding manifest")
         return self
+
+
+class FreeGrantManifest(StrictPayload):
+    """A one-time signup-equivalent grant, never a synthetic paid window.
+
+    Billing freezes occurred_at from TokenerBillingAccount.CreatedAt using the
+    same three-digit UTC millisecond format as its existing GrantTrial request.
+    The stable tenant grant ID is deliberately independent of migration/batch.
+    """
+
+    schema_version: Literal[2]
+    funding_kind: Literal["one_time_trial_grant"]
+    tenant_id: UUIDString
+    migration_id: UUIDString
+    plan_revision: Annotated[int, Field(strict=True, ge=1, le=1)]
+    grant_id: Reference
+    external_ref: UUIDString
+    amount_usd_micro: Annotated[str, Field(pattern=r"^[1-9][0-9]*$")]
+    occurred_at: GrantTimestamp
+    amount_policy_version: Literal["signup-trial-v1"]
+    model_mapping_version: Reference
+
+    @model_validator(mode="after")
+    def valid_grant(self) -> Self:
+        if self.grant_id != f"trial.v1.{self.tenant_id}" or self.external_ref != self.tenant_id:
+            raise ValueError("free grant identity must match tenant")
+        datetime.fromisoformat(self.occurred_at)
+        return self
+
+    def partner_payload(self) -> dict[str, str]:
+        """Exact existing GrantTrial POST body; no inferred status or currency."""
+        return {
+            "eventId": self.grant_id,
+            "externalRef": self.external_ref,
+            "type": "grant",
+            "amountUsdMicro": self.amount_usd_micro,
+            "occurredAt": self.occurred_at,
+        }
+
+
+class ClaimFreeMigrationPayload(OperationPayload):
+    preparation_binding_hash: Digest
+    billing_receipt_refs: Annotated[list[Reference], Field(min_length=1)]
+    free_grant_manifest: FreeGrantManifest
+    manifest_hash: Digest
 
 
 class LeasePayload(OperationPayload):

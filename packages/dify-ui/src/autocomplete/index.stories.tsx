@@ -350,7 +350,7 @@ function TagSuggestionItem({ item }: { item: Suggestion }) {
     <AutocompleteItem value={item}>
       <AutocompleteItemText>{item.label}</AutocompleteItemText>
       {item.description && (
-        <span className="ml-auto max-w-36 truncate system-xs-regular text-text-tertiary">
+        <span className="ms-auto max-w-36 truncate system-xs-regular text-text-tertiary">
           {item.description}
         </span>
       )}
@@ -697,7 +697,7 @@ function VirtualizedSuggestionList({
           return (
             <div
               key={virtualItem.key}
-              className="absolute top-0 left-0 w-full"
+              className="absolute inset-s-0 top-0 w-full"
               style={{
                 height: virtualItem.size,
                 transform: `translateY(${virtualItem.start}px)`,

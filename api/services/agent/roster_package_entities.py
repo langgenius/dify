@@ -202,7 +202,7 @@ class PreparedRosterAgentPackage(PreparedPackageArchive):
 
 @dataclass
 class RosterAgentPackageExport:
-    """Download artifact owning its archive until the response closes."""
+    """Export artifact owning its archive until its consumer closes it."""
 
     archive: BinaryIO
     filename: str

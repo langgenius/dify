@@ -4,8 +4,6 @@ import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import { useStore } from '../store'
 import { useNodesReadOnly } from './use-workflow'
 
-export type SyncCallback = SyncDraftCallback
-
 export const useNodesSyncDraft = () => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const debouncedSyncWorkflowDraft = useStore((s) => s.debouncedSyncWorkflowDraft)

@@ -221,6 +221,7 @@ def _binding_backend(control: _ControlPlane) -> E2BExecutionBindingBackend:
 def _connected_backend(*, pause_error: Exception | None = None) -> tuple[E2BExecutionBindingBackend, _Sandbox]:
     control = _ControlPlane()
     sandbox = _Sandbox(sandbox_id="sandbox-1", pause_error=pause_error)
+    sandbox.files.paths.add("/home/dify")
     sandbox.files.paths.add("/workspace")
     control.sandboxes[sandbox.sandbox_id] = sandbox
     return _binding_backend(control), sandbox
@@ -1000,6 +1001,18 @@ async def test_e2b_acquire_fails_closed_without_traffic_token(
         _ = await backend.acquire(sandbox.sandbox_id)
 
     assert clients == []
+    assert sandbox.pauses == ["full"]
+
+
+@pytest.mark.anyio
+@pytest.mark.parametrize("missing_dir", ["/home/dify", "/workspace"])
+async def test_e2b_acquire_treats_missing_home_or_workspace_as_binding_lost(missing_dir: str) -> None:
+    backend, sandbox = _connected_backend()
+    sandbox.files.paths.discard(missing_dir)
+
+    with pytest.raises(BindingLostError, match="Home or Workspace"):
+        _ = await backend.acquire("sandbox-1")
+
     assert sandbox.pauses == ["full"]
 
 

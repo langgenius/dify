@@ -118,11 +118,28 @@ class WorkspaceMemberStore(Protocol):
 
     def owner_id(self, workspace_id: str) -> str | None: ...
 
-    def upsert_member(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> WorkspaceMemberWrite: ...
+    def upsert_member(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+        actor_account_id: str | None = None,
+    ) -> WorkspaceMemberWrite: ...
 
-    def remove_member(self, *, workspace_id: str, account_id: str, owner_id: str) -> WorkspaceMemberRemoval: ...
+    def remove_member(
+        self, *, workspace_id: str, account_id: str, owner_id: str, actor_account_id: str
+    ) -> WorkspaceMemberRemoval: ...
 
-    def update_member_role(self, *, workspace_id: str, account_id: str, role: TenantAccountRole) -> None: ...
+    def update_member_role(
+        self,
+        *,
+        workspace_id: str,
+        account_id: str,
+        role: TenantAccountRole,
+        actor_account_id: str,
+        previous_owner_account_ids: Sequence[str] = (),
+    ) -> None: ...
 
 
 class WorkspaceMemberAccessGateway(Protocol):
@@ -211,7 +228,12 @@ class WorkspaceMemberService:
             raise AccountNotFoundError()
         if role == TenantAccountRole.OWNER and self._workspaces.owner_id(workspace_id) is not None:
             raise WorkspaceAlreadyHasOwnerError("Tenant already has an owner.")
-        membership = self._workspaces.upsert_member(workspace_id=workspace_id, account_id=account_id, role=role)
+        membership = self._workspaces.upsert_member(
+            workspace_id=workspace_id,
+            account_id=account_id,
+            role=role,
+            actor_account_id=operator_account_id,
+        )
         self._access.membership_changed(membership, operator_account_id)
         return WorkspaceMembership(workspace_id, account_id, role.value)
 
@@ -240,7 +262,12 @@ class WorkspaceMemberService:
         )
         if owner_id is None:
             raise ValueError(f"Workspace owner not found for tenant {workspace_id}.")
-        removal = self._workspaces.remove_member(workspace_id=workspace_id, account_id=account_id, owner_id=owner_id)
+        removal = self._workspaces.remove_member(
+            workspace_id=workspace_id,
+            account_id=account_id,
+            owner_id=owner_id,
+            actor_account_id=operator_id,
+        )
         self._access.member_removed(workspace_id, removal)
 
     def update_role(self, workspace_id: str, member_id: str, new_role: str, operator_id: str) -> None:
@@ -266,12 +293,20 @@ class WorkspaceMemberService:
             raise NoPermissionError("No permission to update member.")
         if previous == role:
             raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+        previous_owner_account_ids: tuple[str, ...] = ()
         if self._access.rbac_enabled:
             if role == TenantAccountRole.OWNER:
+                previous_owner_account_ids = (self._access.owner_id(workspace_id, operator_id),)
                 self._access.transfer_owner(workspace_id, operator_id, member_id)
             else:
                 self._access.change_role(workspace_id, operator_id, member_id, role)
-        self._workspaces.update_member_role(workspace_id=workspace_id, account_id=member_id, role=role)
+        self._workspaces.update_member_role(
+            workspace_id=workspace_id,
+            account_id=member_id,
+            role=role,
+            actor_account_id=operator_id,
+            previous_owner_account_ids=previous_owner_account_ids,
+        )
 
 
 class InvitedAccountRegistration(Protocol):

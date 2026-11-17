@@ -1,22 +1,32 @@
 import json
 import logging
 import operator
-import typing
+import secrets
+import time
+from uuid import uuid4
 
 import click
-from celery import shared_task
+from celery import Task, shared_task
 from pydantic import TypeAdapter
+from redis import RedisError
 
 from core.helper.marketplace import batch_fetch_plugin_manifests, get_plugin_pkg_url
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration, MarketplacePluginSnapshot
 from core.plugin.entities.plugin import PluginInstallation, PluginInstallationSource
 from core.plugin.impl.plugin import PluginInstaller
-from core.plugin.plugin_service import PluginService
+from extensions.ext_application_services import application_services
 from extensions.ext_redis import redis_client
 from models.account import (
     TenantPluginAutoUpgradeCategory,
     TenantPluginAutoUpgradeMode,
     TenantPluginAutoUpgradeStrategySetting,
+)
+from services.plugin.installation_service import AdmittedPluginInstallationCaller
+from tasks.plugin_autoupgrade_coordination import (
+    CHECK_TASK_TIME_LIMIT,
+    AcquireResult,
+    CheckReservation,
+    get_upgrade_check_coordinator,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,9 +35,10 @@ PluginCategory = TenantPluginAutoUpgradeCategory
 RETRY_TIMES_OF_ONE_PLUGIN_IN_ONE_TENANT = 3
 CACHE_REDIS_KEY_PREFIX = "plugin_autoupgrade_check_task:cached_plugin_snapshot:"
 CACHE_REDIS_TTL = 60 * 60  # 1 hour
+COORDINATION_HEADER = "plugin_autoupgrade_check"
 
 # A cached miss is stored as JSON null, so None has to stay a valid payload.
-_CACHED_MANIFEST_ADAPTER = TypeAdapter(typing.Union[MarketplacePluginSnapshot, None])
+_CACHED_MANIFEST_ADAPTER = TypeAdapter(MarketplacePluginSnapshot | None)
 
 
 def _get_redis_cache_key(plugin_id: str) -> str:
@@ -35,7 +46,7 @@ def _get_redis_cache_key(plugin_id: str) -> str:
     return f"{CACHE_REDIS_KEY_PREFIX}{plugin_id}"
 
 
-def _get_cached_manifest(plugin_id: str) -> typing.Union[MarketplacePluginSnapshot, None, bool]:
+def _get_cached_manifest(plugin_id: str) -> MarketplacePluginSnapshot | None | bool:
     """
     Get cached plugin manifest from Redis.
     Returns:
@@ -158,8 +169,16 @@ def _plugin_matches_category(plugin: PluginInstallation, category: str | None) -
     return plugin_category_value == category
 
 
-@shared_task(queue="plugin")
+@shared_task(
+    bind=True,
+    queue="plugin",
+    time_limit=CHECK_TASK_TIME_LIMIT,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    max_retries=None,
+)
 def process_tenant_plugin_autoupgrade_check_task(
+    self: Task,
     tenant_id: str,
     strategy_setting: TenantPluginAutoUpgradeStrategySetting,
     upgrade_time_of_day: int,
@@ -167,7 +186,102 @@ def process_tenant_plugin_autoupgrade_check_task(
     exclude_plugins: list[str],
     include_plugins: list[str],
     category: PluginCategory | str | None = None,
-):
+) -> None:
+    """Admit one scheduled strategy before running any plugin or marketplace work.
+
+    Preconditions: an optional reservation header must match the tenant and category;
+    absent headers support messages queued before this coordination was deployed.
+    Postconditions: only an admitted execution performs work, and all normal exits release
+    its global slot while preserving completed-work deduplication. Busy/failed admission
+    retries until the reservation deadline. A hard-killed worker's lease expires only
+    after the task's hard time limit, allowing bounded recovery without early slot reuse.
+    """
+    if strategy_setting == TenantPluginAutoUpgradeStrategySetting.DISABLED:
+        return
+
+    coordinator = get_upgrade_check_coordinator()
+    category_value = _normalize_category(category)
+    coordination = (self.request.headers or {}).get(COORDINATION_HEADER)
+    if coordination is None:
+        try:
+            reservation = coordinator.reserve_legacy(
+                tenant_id=tenant_id,
+                category=category_value,
+                upgrade_time_of_day=upgrade_time_of_day,
+                now=time.time(),
+                producer_id=f"legacy:{self.request.id}" if self.request.id is not None else None,
+            )
+        except RedisError as exc:
+            # There is no reservation deadline yet. Bound this legacy admission retry.
+            raise self.retry(exc=exc, countdown=30, max_retries=3) from exc
+    else:
+        reservation = CheckReservation.model_validate_json(coordination)
+
+    if reservation is None:
+        return
+    if reservation.tenant_id != tenant_id or reservation.category != category_value:
+        raise ValueError("Plugin upgrade check reservation does not match its strategy")
+
+    execution_token = str(uuid4())
+    try:
+        admission = coordinator.acquire(reservation, execution_token)
+    except RedisError as exc:
+        _retry_admission(self, reservation, exc)
+        return
+
+    if admission == AcquireResult.BUSY:
+        _retry_admission(self, reservation, None)
+    elif admission == AcquireResult.ACQUIRED:
+        try:
+            _process_tenant_plugin_autoupgrade_check(
+                tenant_id,
+                strategy_setting,
+                upgrade_time_of_day,
+                upgrade_mode,
+                exclude_plugins,
+                include_plugins,
+                category,
+            )
+        finally:
+            try:
+                coordinator.finish(reservation, execution_token)
+            except RedisError:
+                logger.exception("failed to finish plugin upgrade check for tenant %s", tenant_id)
+
+
+def _retry_admission(task: Task, reservation: CheckReservation, exc: RedisError | None) -> None:
+    """Retry admission with bounded backoff and the original work deadline.
+
+    Preconditions: no plugin work or execution slot is owned by this invocation.
+    Postconditions: a retry preserves its reservation and cannot create a new daily
+    check; expired work returns without a retry. Celery Retry deliberately escapes
+    the processor's broad business-error handler.
+    """
+    remaining = reservation.deadline - time.time()
+    if remaining > 0:
+        delay = min(60, 2 ** min(task.request.retries, 5) + secrets.randbelow(5) + 1)
+        headers = dict(task.request.headers or {})
+        headers[COORDINATION_HEADER] = reservation.model_dump_json()
+        logger.info("deferring plugin upgrade check for tenant %s until capacity is available", reservation.tenant_id)
+        raise task.retry(exc=exc, headers=headers, countdown=min(delay, remaining), max_retries=None)
+    logger.info("expired deferred plugin upgrade check for tenant %s", reservation.tenant_id)
+
+
+def _process_tenant_plugin_autoupgrade_check(
+    tenant_id: str,
+    strategy_setting: TenantPluginAutoUpgradeStrategySetting,
+    upgrade_time_of_day: int,
+    upgrade_mode: TenantPluginAutoUpgradeMode,
+    exclude_plugins: list[str],
+    include_plugins: list[str],
+    category: PluginCategory | str | None = None,
+) -> None:
+    """Check one admitted strategy using the existing category and upgrade rules.
+
+    Preconditions: the caller owns an execution slot for this tenant/category.
+    Postconditions: eligible upgrades retain their existing download/upload path;
+    failures remain isolated and logged, without changing strategy selection.
+    """
     try:
         manager = PluginInstaller()
         category_value = _normalize_category(category)
@@ -270,8 +384,8 @@ def process_tenant_plugin_autoupgrade_check_task(
                         # Use the service that downloads and uploads the package to the daemon
                         # first; calling manager.upgrade_plugin directly skips that step and the
                         # daemon fails because the package never reaches its local bucket.
-                        _ = PluginService.upgrade_plugin_with_marketplace(
-                            tenant_id,
+                        _ = application_services().plugin_installations.upgrade_plugin_with_marketplace(
+                            AdmittedPluginInstallationCaller(tenant_id),
                             original_unique_identifier,
                             new_unique_identifier,
                         )

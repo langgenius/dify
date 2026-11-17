@@ -12,8 +12,6 @@ export type ColorScheme = {
   failureIcon: () => string
 }
 
-export type Style = ColorScheme
-
 const identity = (s: string): string => s
 
 export function colorScheme(enabled: boolean): ColorScheme {

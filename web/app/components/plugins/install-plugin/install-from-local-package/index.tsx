@@ -1,8 +1,12 @@
 'use client'
 import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dify-ui/dialog'
-import { IconButton } from '@langgenius/dify-ui/icon-button'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogHeaderCloseButton,
+  DialogTitle,
+} from '@langgenius/dify-ui/dialog'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -36,8 +40,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const isBundle = file.name.endsWith('.difybndl')
   const [dependencies, setDependencies] = useState<Dependency[]>([])
 
-  const { modalClassName, foldAnimInto, setIsInstalling, handleStartToInstall } =
-    useHideLogic(onClose)
+  const { popupRef, foldAnimInto, setIsInstalling, handleStartToInstall } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -89,31 +92,13 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn(
-          'w-140 overflow-hidden! text-left align-middle',
-          cn(
-            modalClassName,
-            'flex max-h-[calc(100dvh-48px)] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0',
-          ),
-        )}
+        ref={popupRef}
+        className="max-h-[calc(100dvh-3rem)] w-140"
       >
-        <DialogClose
-          render={
-            <IconButton
-              aria-label={t(($) => $['operation.close'], { ns: 'common' })}
-              size="lg"
-              className="absolute inset-e-6 top-6"
-            >
-              <span aria-hidden className="i-ri-close-line size-4" />
-            </IconButton>
-          }
-        />
-
-        <div className="flex shrink-0 items-start gap-2 self-stretch pt-6 pr-14 pb-3 pl-6">
-          <DialogTitle className="self-stretch title-2xl-semi-bold text-text-primary">
-            {getTitle()}
-          </DialogTitle>
-        </div>
+        <DialogHeader>
+          <DialogTitle>{getTitle()}</DialogTitle>
+          <DialogHeaderCloseButton aria-label={t(($) => $['operation.close'], { ns: 'common' })} />
+        </DialogHeader>
         {step === InstallStep.uploading && (
           <Uploading
             isBundle={isBundle}

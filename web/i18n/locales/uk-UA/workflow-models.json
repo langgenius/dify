@@ -73,7 +73,7 @@
   "nodes.parameterExtractor.addExtractParameterContent.requiredContent": "Обов'язковий використовується лише як посилання для інференції моделі і не для обов'язкової валідації вихідного параметра.",
   "nodes.parameterExtractor.addExtractParameterContent.type": "Тип",
   "nodes.parameterExtractor.advancedSetting": "Розширене налаштування",
-  "nodes.parameterExtractor.extractParametersNotSet": "Параметри витягування не налаштовані",
+  "nodes.parameterExtractor.extractParametersNotSet": "Не налаштовано жодних параметрів витягування",
   "nodes.parameterExtractor.importFromTool": "Імпорт з інструментів",
   "nodes.parameterExtractor.instruction": "Інструкція",
   "nodes.parameterExtractor.instructionTip": "Введіть додаткові інструкції, щоб допомогти екстрактору параметрів зрозуміти, як витягувати параметри.",

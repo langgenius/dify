@@ -15,6 +15,7 @@ import {
 } from '@langgenius/dify-ui/file-tree'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { ScrollArea, ScrollAreaContent, ScrollAreaViewport } from '@langgenius/dify-ui/scroll-area'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -96,14 +97,21 @@ function AgentFileTreeRows({
               {renderFolderSuffix?.({ depth, file })}
             </FileTreeFolderTrigger>
             {onFolderEnter && (
-              <IconButton
-                aria-label={`${t(($) => $['operation.view'])} ${file.name}`}
-                className="shrink-0"
-                size="sm"
-                onClick={() => onFolderEnter({ file, depth })}
-              >
-                <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
-              </IconButton>
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <IconButton
+                      aria-label={`${t(($) => $['operation.view'])} ${file.name}`}
+                      className="shrink-0"
+                      size="sm"
+                      onClick={() => onFolderEnter({ file, depth })}
+                    >
+                      <span aria-hidden className="i-ri-arrow-right-s-line size-4" />
+                    </IconButton>
+                  }
+                />
+                <TooltipContent>{t(($) => $['operation.view'])}</TooltipContent>
+              </Tooltip>
             )}
           </div>
           <FileTreeFolderPanel>

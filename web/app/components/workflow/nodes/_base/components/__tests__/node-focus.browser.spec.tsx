@@ -1,77 +1,20 @@
 import type { NodeProps } from 'reactflow'
 import type { CommonNodeType } from '../../../../types'
 import ReactFlow from 'reactflow'
+import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
-import { render } from 'vitest-browser-react'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import { CanvasNodesCatalogProbe } from '../../../../__tests__/canvas-nodes-catalog-probe'
+import { renderWorkflowBrowserComponent } from '../../../../__tests__/workflow-browser-test-env'
+import { fullWorkflowAccessControl } from '../../../../hooks-store/store'
 import { BlockEnum } from '../../../../types'
 import NodeControl from '../node-control'
 import { NodeSourceHandle, NodeTargetHandle } from '../node-handle'
 import 'reactflow/dist/style.css'
 
-// Plugin installation is outside node trigger and popup focus ownership.
-vi.mock('@/app/components/plugins/install-plugin/install-from-marketplace', () => ({
-  default: () => null,
-}))
-
-vi.mock('../../../../hooks/use-available-blocks', () => ({
-  useAvailableBlocks: () => ({
-    availablePrevBlocks: [BlockEnum.Code],
-    availableNextBlocks: [BlockEnum.Code],
-  }),
-}))
-vi.mock('../../../../hooks/use-nodes-interactions', () => ({
-  useNodesInteractions: () => ({ handleNodeAdd: vi.fn(), handleNodeSelect: vi.fn() }),
-}))
-vi.mock('../../../../hooks/use-workflow', () => ({
-  useIsChatMode: () => false,
-  useNodesReadOnly: () => ({ nodesReadOnly: false, getNodesReadOnly: () => false }),
-}))
-vi.mock('../../../../hooks/use-nodes-meta-data', () => ({
-  useNodeMetaData: () => ({
-    isTypeFixed: true,
-    isUndeletable: false,
-    isSingleton: false,
-    description: 'Code',
-    author: 'Dify',
-  }),
-}))
-vi.mock('@/app/components/workflow/store', () => ({
-  useStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({ nodes: [], dataSourceList: [], shouldAutoOpenStartNodeSelector: false }),
-  useWorkflowStore: () => ({ getState: () => ({}) }),
-}))
-vi.mock('@/app/components/workflow/hooks-store', () => ({
-  useHooksStore: (selector: (state: Record<string, unknown>) => unknown) =>
-    selector({
-      configsMap: { flowType: 'app-flow' },
-      availableNodesMetaData: { nodes: [] },
-      accessControl: { canRun: false },
-    }),
-}))
-vi.mock('@/service/use-plugins', () => ({
-  useInvalidateCheckInstalled: () => vi.fn(),
-  useFeaturedToolsRecommendations: () => ({ plugins: [], isLoading: false }),
-  useFeaturedTriggersRecommendations: () => ({ plugins: [], isLoading: false }),
-}))
-
-vi.mock('@/service/use-triggers', () => ({
-  useAllTriggerPlugins: () => ({ data: [] }),
-  useInvalidateAllTriggerPlugins: () => vi.fn(),
-}))
-
-vi.mock('@/service/use-tools', () => ({
-  useRAGRecommendedPlugins: () => ({ data: [] }),
-  useInvalidateAllToolProviders: () => vi.fn(),
-  useAllBuiltInTools: () => ({ data: [] }),
-  useAllCustomTools: () => ({ data: [] }),
-  useAllWorkflowTools: () => ({ data: [] }),
-  useAllMCPTools: () => ({ data: [] }),
-  useInvalidateAllBuiltInTools: () => vi.fn(),
-}))
-
-vi.mock('@/app/components/plugins/marketplace/query', () => ({
-  useMarketplacePlugins: () => ({ data: undefined }),
-}))
+beforeEach(() => {
+  onTestFinished(guardUnexpectedFetch())
+})
 
 function FocusNode({ id, data }: NodeProps<CommonNodeType>) {
   return (
@@ -86,8 +29,9 @@ function FocusNode({ id, data }: NodeProps<CommonNodeType>) {
 const nodeTypes = { focus: FocusNode }
 async function renderCanvas() {
   await page.viewport(1000, 800)
-  return render(
+  return renderWorkflowBrowserComponent(
     <>
+      <CanvasNodesCatalogProbe />
       <button type="button">Before canvas</button>
 
       <div style={{ width: 800, height: 600 }}>
@@ -106,6 +50,7 @@ async function renderCanvas() {
       </div>
       <input aria-label="Outside editor" />
     </>,
+    { hooksStoreProps: { accessControl: { ...fullWorkflowAccessControl, canRun: false } } },
   )
 }
 
@@ -122,7 +67,13 @@ it.each([0, 1])(
     await userEvent.tab()
     await expect.element(node).toHaveFocus()
     // Click the real React Flow handle: its transparent button intentionally does not receive pointer events.
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await screen.getByRole('dialog').hover()
     await userEvent.keyboard('{Escape}')
@@ -155,7 +106,13 @@ it.each([0, 1])(
     const editor = screen.getByRole('textbox', { name: 'Outside editor' })
     const input = editor.element()
     await expect.element(trigger).toBeInTheDocument()
-    await userEvent.click(trigger.element().parentElement!)
+    const bounds = trigger.element().getBoundingClientRect()
+    const handle = document.elementFromPoint(
+      bounds.left + bounds.width / 2,
+      bounds.top + bounds.height / 2,
+    )
+    if (!handle) throw new Error('The node handle must be hit-testable')
+    await userEvent.click(handle)
     await expect.element(screen.getByRole('dialog')).toBeVisible()
     await userEvent.click(input)
     await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()

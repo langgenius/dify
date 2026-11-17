@@ -114,12 +114,11 @@ function ParameterItem({
     let num = +e.target.value
 
     if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!) {
-      num = parameterRule.max as number
+      num = parameterRule.max
       numberInputRef.current!.value = `${num}`
     }
 
-    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
-      num = parameterRule.min as number
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!) num = parameterRule.min
 
     handleInputChange(num)
   }
@@ -194,7 +193,7 @@ function ParameterItem({
             type="number"
             max={parameterRule.max}
             min={parameterRule.min}
-            step={+`0.${parameterRule.precision || 0}`}
+            step={1}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />
@@ -326,6 +325,7 @@ function ParameterItem({
             <PromptEditor
               compact
               className="min-h-5.5 text-[13px]"
+              placeholderClassName="truncate"
               value={renderValue as string}
               onChange={(text) => {
                 handleInputChange(text)

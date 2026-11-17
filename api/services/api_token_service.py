@@ -6,13 +6,12 @@ Includes Redis cache operations, database queries, and single-flight concurrency
 """
 
 import logging
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, override
 
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Unauthorized
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client, redis_fallback
@@ -20,6 +19,10 @@ from libs.datetime_utils import naive_utc_now
 from models.model import ApiToken
 
 logger = logging.getLogger(__name__)
+
+
+class ApiTokenInvalidError(Exception):
+    """The credential does not identify a valid API token for the requested scope."""
 
 
 # ---------------------------------------------------------------------
@@ -278,6 +281,39 @@ def record_token_usage(auth_token: str, scope: str | None) -> None:
         logger.warning("Failed to record token usage: %s", e)
 
 
+def get_effective_token_last_used_at(
+    auth_token: str,
+    scope: str | None,
+    persisted_last_used_at: datetime | None,
+) -> datetime | None:
+    """Return the newest persisted or pending usage timestamp for a token."""
+    try:
+        value = redis_client.get(ApiTokenCache.make_active_key(auth_token, scope))
+        if value is None:
+            return persisted_last_used_at
+        if isinstance(value, bytes):
+            value = value.decode("utf-8")
+        pending_last_used_at = datetime.fromisoformat(value)
+    except (UnicodeDecodeError, TypeError, ValueError) as e:
+        logger.warning("Failed to parse pending token usage: %s", e)
+        return persisted_last_used_at
+    except Exception as e:
+        logger.warning("Failed to read pending token usage: %s", e)
+        return persisted_last_used_at
+
+    if persisted_last_used_at is None:
+        return pending_last_used_at
+
+    def as_naive_utc(value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value
+        return value.astimezone(UTC).replace(tzinfo=None)
+
+    if as_naive_utc(pending_last_used_at) > as_naive_utc(persisted_last_used_at):
+        return pending_last_used_at
+    return persisted_last_used_at
+
+
 # ---------------------------------------------------------------------
 # Database query + single-flight
 # ---------------------------------------------------------------------
@@ -287,7 +323,7 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
     """
     Query API token from database and cache the result.
 
-    Raises Unauthorized if token is invalid.
+    Raises ApiTokenInvalidError if the token is invalid for the requested scope.
     """
     with Session(db.engine, expire_on_commit=False) as session:
         stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
@@ -295,14 +331,14 @@ def query_token_from_db(auth_token: str, scope: str | None) -> ApiToken:
 
         if not api_token:
             ApiTokenCache.set(auth_token, scope, None)
-            raise Unauthorized("Access token is invalid")
+            raise ApiTokenInvalidError("Access token is invalid")
 
         ApiTokenCache.set(auth_token, scope, api_token)
         record_token_usage(auth_token, scope)
         return api_token
 
 
-def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | Any:
+def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiToken | CachedApiToken:
     """
     Fetch token from DB with single-flight pattern using Redis lock.
 
@@ -328,7 +364,7 @@ def fetch_token_with_single_flight(auth_token: str, scope: str | None) -> ApiTok
         else:
             logger.warning("Lock timeout for token: %s, proceeding with direct query", auth_token[:10])
             return query_token_from_db(auth_token, scope)
-    except Unauthorized:
+    except ApiTokenInvalidError:
         raise
     except Exception as e:
         logger.warning("Redis lock failed for token query: %s, proceeding anyway", e)

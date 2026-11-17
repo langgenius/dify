@@ -1,5 +1,5 @@
 from collections.abc import Generator, Sequence
-from typing import Any, Union
+from typing import Any
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.credit_usage import CreditUsageCreatedBy
@@ -60,7 +60,7 @@ class ReactMultiDatasetRouter:
         model_instance: ModelInstance,
         user_id: str,
         tenant_id: str,
-    ) -> tuple[Union[str, None], LLMUsage]:
+    ) -> tuple[str | None, LLMUsage]:
         """Given input, decided what to do.
         Returns:
             Action specifying what tool to use.
@@ -93,8 +93,8 @@ class ReactMultiDatasetRouter:
         prefix: str = PREFIX,
         suffix: str = SUFFIX,
         format_instructions: str = FORMAT_INSTRUCTIONS,
-    ) -> tuple[Union[str, None], LLMUsage]:
-        prompt: Union[list[ChatModelMessage], CompletionModelPromptTemplate]
+    ) -> tuple[str | None, LLMUsage]:
+        prompt: list[ChatModelMessage] | CompletionModelPromptTemplate
         if model_config.mode == "chat":
             prompt = self.create_chat_prompt(
                 query=query,

@@ -19,6 +19,7 @@ from opentelemetry.trace.status import StatusCode
 from configs import dify_config
 from dify_app import DifyApp
 from extensions.otel.runtime import is_celery_worker
+from extensions.otel.workflow_collaboration import init_workflow_collaboration_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +153,7 @@ def init_httpx_instrumentor() -> None:
 def init_instruments(app: DifyApp) -> None:
     if not is_celery_worker():
         init_flask_instrumentor(app)
+        init_workflow_collaboration_metrics(app)
         _new_celery_instrumentor().instrument(
             tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()
         )

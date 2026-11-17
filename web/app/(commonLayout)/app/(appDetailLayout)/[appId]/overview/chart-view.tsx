@@ -10,28 +10,13 @@ import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { TIME_PERIOD_MAPPING as LONG_TIME_PERIOD_MAPPING } from '@/app/components/app/log/filter'
-import {
-  AvgResponseTime,
-  AvgSessionInteractions,
-  AvgUserInteractions,
-  ConversationsChart,
-  CostChart,
-  EndUsersChart,
-  MessagesChart,
-  TokenPerSecond,
-  UserSatisfactionRate,
-  WorkflowCostChart,
-  WorkflowDailyTerminalsChart,
-  WorkflowMessagesChart,
-} from '@/app/components/app/overview/app-chart'
+import { AppCharts } from '@/app/components/app/overview/app-chart'
 import { useDocLink } from '@/context/i18n'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import LongTimeRangePicker from './long-time-range-picker'
 import TimeRangePicker from './time-range-picker'
 
 dayjs.extend(quarterOfYear)
-
-const today = dayjs()
 
 type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 
@@ -75,10 +60,10 @@ function ChartViewContent({
   const isCloudEdition = deploymentEdition === 'CLOUD'
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
   const docLink = useDocLink()
-  const isChatApp = appMode !== 'completion' && appMode !== 'workflow'
-  const isWorkflow = appMode === 'workflow'
-  const [period, setPeriod] = useState<PeriodParams>(() =>
-    isCloudEdition
+  const [period, setPeriod] = useState<PeriodParams>(() => {
+    // Read the clock per render: a module-scope value goes stale (and is 1970 on Workers).
+    const today = dayjs()
+    return isCloudEdition
       ? {
           name: t(($) => $['filter.period.today'], { ns: 'appLog' }),
           query: {
@@ -92,8 +77,8 @@ function ChartViewContent({
             start: today.subtract(7, 'day').startOf('day').format(queryDateFormat),
             end: today.endOf('day').format(queryDateFormat),
           },
-        },
-  )
+        }
+  })
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -119,7 +104,7 @@ function ChartViewContent({
             </a>
           </div>
         </div>
-        <div className="mt-1 flex h-10 items-center justify-between pr-10 pl-6">
+        <div className="mt-1 flex h-10 items-center justify-between ps-6 pe-10">
           {isCloudEdition && (
             <TimeRangePicker
               ranges={TIME_PERIOD_MAPPING}
@@ -139,31 +124,7 @@ function ChartViewContent({
         </div>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-6">
-        <div className="grid w-full grid-cols-1 gap-3 xl:grid-cols-2">
-          {!isWorkflow && (
-            <>
-              <ConversationsChart period={period} id={appId} />
-              <EndUsersChart period={period} id={appId} />
-              {isChatApp ? (
-                <AvgSessionInteractions period={period} id={appId} />
-              ) : (
-                <AvgResponseTime period={period} id={appId} />
-              )}
-              <TokenPerSecond period={period} id={appId} />
-              <UserSatisfactionRate period={period} id={appId} />
-              <CostChart period={period} id={appId} />
-              {isChatApp && <MessagesChart period={period} id={appId} />}
-            </>
-          )}
-          {isWorkflow && (
-            <>
-              <WorkflowMessagesChart period={period} id={appId} />
-              <WorkflowDailyTerminalsChart period={period} id={appId} />
-              <WorkflowCostChart period={period} id={appId} />
-              <AvgUserInteractions period={period} id={appId} />
-            </>
-          )}
-        </div>
+        <AppCharts id={appId} period={period} appMode={appMode} />
       </div>
     </div>
   )

@@ -3,6 +3,46 @@
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
 import {
+  zAgentVersionNotFoundError,
+  zAppNotFoundError,
+  zAppOwnerUnavailableError,
+  zAppSiteUnavailableError,
+  zAppSuggestedQuestionsAfterAnswerDisabledError,
+  zAppUnavailableError,
+  zAudioTooLargeError,
+  zCompletionRequestError,
+  zFileExtensionBlockedError,
+  zFileTooLargeError,
+  zFilenameNotExistsError,
+  zModelCurrentlyNotSupportError,
+  zNeedAddIdsError,
+  zNoAudioUploadedError,
+  zNoFileUploadedError,
+  zNotChatAppError,
+  zNotCompletionAppError,
+  zNotWorkflowAppError,
+  zProviderNotInitializeError,
+  zProviderNotSupportSpeechToTextError,
+  zProviderNotSupportTextToSpeechError,
+  zProviderQuotaExceededError,
+  zRateLimitError,
+  zRecommendedAppNotFoundError,
+  zRemoteFileAccessDeniedError,
+  zRemoteFileInvalidResponseError,
+  zRemoteFileInvalidUrlError,
+  zRemoteFileNotFoundError,
+  zRemoteFileUnavailableError,
+  zRemoteFileUrlBlockedError,
+  zRosterAgentPackageExportFailedError,
+  zSpeechToTextDisabledError,
+  zTooManyFilesError,
+  zTrialAppFeatureDisabledError,
+  zTrialAppLimitExceededError,
+  zTrialAppNotAllowedError,
+  zUnsupportedAudioTypeError,
+  zUnsupportedFileTypeError,
+} from './zod.gen.ts'
+import {
   zGetTrialAppsByAppIdAgentComposerPath,
   zGetTrialAppsByAppIdAgentComposerResponse,
   zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadPath,
@@ -84,6 +124,10 @@ export const get = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdAgentComposerPath }))
   .output(zGetTrialAppsByAppIdAgentComposerResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const agentComposer = {
   get,
@@ -104,6 +148,10 @@ export const get2 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesByNameDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const download = {
   get: get2,
@@ -124,6 +172,10 @@ export const get3 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesByNamePreviewResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const preview = {
   get: get3,
@@ -149,6 +201,10 @@ export const get4 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigFilesResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const files = {
   get: get4,
@@ -170,6 +226,10 @@ export const get5 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const download2 = {
   get: get5,
@@ -190,6 +250,10 @@ export const get6 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesContentResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const content = {
   get: get6,
@@ -210,6 +274,10 @@ export const get7 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesDownloadResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const download3 = {
   get: get7,
@@ -230,6 +298,10 @@ export const get8 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameFilesPreviewResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const preview2 = {
   get: get8,
@@ -256,6 +328,10 @@ export const get9 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsByNameInspectResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const inspect = {
   get: get9,
@@ -282,6 +358,10 @@ export const get10 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdAgentConfigSkillsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const skills = {
   get: get10,
@@ -307,6 +387,25 @@ export const post = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdAudioToTextPath }))
   .output(zPostTrialAppsByAppIdAudioToTextResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    audio_too_large: { status: 413, data: zAudioTooLargeError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    no_audio_uploaded: { status: 400, data: zNoAudioUploadedError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_speech_to_text: {
+      status: 400,
+      data: zProviderNotSupportSpeechToTextError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    speech_to_text_disabled: { status: 400, data: zSpeechToTextDisabledError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_audio_type: { status: 415, data: zUnsupportedAudioTypeError },
+  })
 
 export const audioToText = {
   post,
@@ -322,6 +421,11 @@ export const post2 = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdChatMessagesByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdChatMessagesByTaskIdStopResponse)
+  .errors({
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const stop = {
   post: post2,
@@ -346,6 +450,18 @@ export const post3 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdChatMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const chatMessages = {
   post: post3,
@@ -367,6 +483,18 @@ export const post4 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdCompletionMessagesResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_completion_app: { status: 400, data: zNotCompletionAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const completionMessages = {
   post: post4,
@@ -387,6 +515,10 @@ export const get11 = oc
     }),
   )
   .output(zGetTrialAppsByAppIdDatasetsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    need_add_ids: { status: 400, data: zNeedAddIdsError },
+  })
 
 export const datasets = {
   get: get11,
@@ -404,6 +536,10 @@ export const get12 = oc
     z.object({ params: zGetTrialAppsByAppIdExportPath, query: zGetTrialAppsByAppIdExportQuery }),
   )
   .output(zGetTrialAppsByAppIdExportResponse)
+  .errors({
+    recommended_app_not_found: { status: 404, data: zRecommendedAppNotFoundError },
+    roster_agent_package_export_failed: { status: 500, data: zRosterAgentPackageExportFailedError },
+  })
 
 export const export_ = {
   get: get12,
@@ -429,6 +565,17 @@ export const post5 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    filename_not_exists_error: { status: 400, data: zFilenameNotExistsError },
+    no_file_uploaded: { status: 400, data: zNoFileUploadedError },
+    too_many_files: { status: 400, data: zTooManyFilesError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload = {
   post: post5,
@@ -448,6 +595,22 @@ export const get13 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsPath }))
   .output(zGetTrialAppsByAppIdMessagesByMessageIdSuggestedQuestionsResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_suggested_questions_after_answer_disabled: {
+      status: 403,
+      data: zAppSuggestedQuestionsAfterAnswerDisabledError,
+    },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_chat_app: { status: 400, data: zNotChatAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const suggestedQuestions = {
   get: get13,
@@ -475,6 +638,10 @@ export const get14 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdParametersPath }))
   .output(zGetTrialAppsByAppIdParametersResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const parameters = {
   get: get14,
@@ -500,6 +667,20 @@ export const post6 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdRemoteFilesUploadResponse)
+  .errors({
+    file_extension_blocked: { status: 400, data: zFileExtensionBlockedError },
+    file_too_large: { status: 413, data: zFileTooLargeError },
+    remote_file_access_denied: { status: 400, data: zRemoteFileAccessDeniedError },
+    remote_file_invalid_response: { status: 502, data: zRemoteFileInvalidResponseError },
+    remote_file_invalid_url: { status: 400, data: zRemoteFileInvalidUrlError },
+    remote_file_not_found: { status: 404, data: zRemoteFileNotFoundError },
+    remote_file_unavailable: { status: 502, data: zRemoteFileUnavailableError },
+    remote_file_url_blocked: { status: 400, data: zRemoteFileUrlBlockedError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+    unsupported_file_type: { status: 415, data: zUnsupportedFileTypeError },
+  })
 
 export const upload2 = {
   post: post6,
@@ -527,6 +708,11 @@ export const get15 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdSitePath }))
   .output(zGetTrialAppsByAppIdSiteResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_owner_unavailable: { status: 403, data: zAppOwnerUnavailableError },
+    app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
+  })
 
 export const site = {
   get: get15,
@@ -547,6 +733,21 @@ export const post7 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdTextToAudioResponse)
+  .errors({
+    agent_version_not_found_error: { status: 404, data: zAgentVersionNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_not_support_text_to_speech: {
+      status: 400,
+      data: zProviderNotSupportTextToSpeechError,
+    },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const textToAudio = {
   post: post7,
@@ -571,6 +772,18 @@ export const post8 = oc
     }),
   )
   .output(zPostTrialAppsByAppIdWorkflowsRunResponse)
+  .errors({
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+    completion_request_error: { status: 400, data: zCompletionRequestError },
+    model_currently_not_support: { status: 400, data: zModelCurrentlyNotSupportError },
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    provider_not_initialize: { status: 400, data: zProviderNotInitializeError },
+    provider_quota_exceeded: { status: 400, data: zProviderQuotaExceededError },
+    rate_limit_error: { status: 429, data: zRateLimitError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const run = {
   post: post8,
@@ -590,6 +803,12 @@ export const post9 = oc
   })
   .input(z.object({ params: zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopPath }))
   .output(zPostTrialAppsByAppIdWorkflowsTasksByTaskIdStopResponse)
+  .errors({
+    not_workflow_app: { status: 400, data: zNotWorkflowAppError },
+    trial_app_feature_disabled: { status: 403, data: zTrialAppFeatureDisabledError },
+    trial_app_limit_exceeded: { status: 403, data: zTrialAppLimitExceededError },
+    trial_app_not_allowed: { status: 403, data: zTrialAppNotAllowedError },
+  })
 
 export const stop2 = {
   post: post9,
@@ -617,6 +836,10 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdWorkflowsPath }))
   .output(zGetTrialAppsByAppIdWorkflowsResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const workflows = {
   get: get16,
@@ -638,6 +861,11 @@ export const get17 = oc
   })
   .input(z.object({ params: zGetTrialAppsByAppIdPath }))
   .output(zGetTrialAppsByAppIdResponse)
+  .errors({
+    app_not_found: { status: 404, data: zAppNotFoundError },
+    app_site_unavailable: { status: 403, data: zAppSiteUnavailableError },
+    app_unavailable: { status: 400, data: zAppUnavailableError },
+  })
 
 export const byAppId = {
   get: get17,

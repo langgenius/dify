@@ -2,15 +2,13 @@ import type { LexicalNode, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import QueryBlockComponent from './component'
 
-type SerializedNode = SerializedLexicalNode
-
 export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
   static override getType(): string {
     return 'query-block'
   }
 
-  static override clone(): QueryBlockNode {
-    return new QueryBlockNode()
+  static override clone(node: QueryBlockNode): QueryBlockNode {
+    return new QueryBlockNode(node.__key)
   }
 
   override isInline(): boolean {
@@ -37,10 +35,10 @@ export class QueryBlockNode extends DecoratorNode<React.JSX.Element> {
     return node
   }
 
-  override exportJSON(): SerializedNode {
+  override exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: 'query-block',
-      version: 1,
     }
   }
 

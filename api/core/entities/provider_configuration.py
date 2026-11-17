@@ -117,6 +117,7 @@ class ProviderConfiguration(BaseModel):
     _bound_model_runtime: ModelRuntime | None = PrivateAttr(default=None)
     _cached_provider_schema: ProviderEntity | None = PrivateAttr(default=None)
     _original_provider_configurate_methods: tuple[ConfigurateMethod, ...] = PrivateAttr(default_factory=tuple)
+    _policy_checked_credential_ids: set[str] = PrivateAttr(default_factory=set)
 
     @model_validator(mode="after")
     def _(self):
@@ -201,8 +202,18 @@ class ProviderConfiguration(BaseModel):
                         raise ValueError(f"Model {model} is disabled.")
 
         if self.using_provider_type == ProviderType.SYSTEM:
-            from core.model_invocation_routing import bind_legacy_credentials, routed_credentials
+            from core.model_invocation_routing import (
+                ModelRouteUnmapped,
+                bind_legacy_credentials,
+                has_compatibility_route,
+                migration_routing_state,
+                routed_credentials,
+            )
 
+            if not self.system_configuration.enabled and has_compatibility_route(
+                migration_routing_state(self.tenant_id)
+            ):
+                raise ModelRouteUnmapped
             managed = routed_credentials(self, model_type, model)
             if managed is not None:
                 return managed
@@ -241,25 +252,33 @@ class ProviderConfiguration(BaseModel):
                 current_credential_id = self.custom_configuration.provider.current_credential_id
 
             if current_credential_id:
-                from core.helper.credential_utils import runtime_check_credential_policy_compliance
-
-                runtime_check_credential_policy_compliance(
-                    credential_id=current_credential_id,
-                    provider=self.provider.provider,
-                    credential_type=PluginCredentialType.MODEL,
-                )
+                self._check_credential_policy_once(current_credential_id)
             else:
                 # no current credential id, check all available credentials
                 if self.custom_configuration.provider:
                     for credential_configuration in self.custom_configuration.provider.available_credentials:
-                        from core.helper.credential_utils import runtime_check_credential_policy_compliance
-
-                        runtime_check_credential_policy_compliance(
-                            credential_id=credential_configuration.credential_id,
-                            provider=self.provider.provider,
-                            credential_type=PluginCredentialType.MODEL,
-                        )
+                        self._check_credential_policy_once(credential_configuration.credential_id)
             return credentials
+
+    def _check_credential_policy_once(self, credential_id: str) -> None:
+        """Check the credential policy the first time this configuration hands a credential out.
+
+        A configuration is the snapshot of a provider's credentials that one request resolved, and a
+        request asks it for the same credentials several times: once for every model instance it
+        builds. In the enterprise edition each check is a round trip to the plugin manager, so only the
+        first one for a credential is made; a credential that fails is checked again every time.
+        """
+        if credential_id in self._policy_checked_credential_ids:
+            return
+
+        from core.helper.credential_utils import runtime_check_credential_policy_compliance
+
+        runtime_check_credential_policy_compliance(
+            credential_id=credential_id,
+            provider=self.provider.provider,
+            credential_type=PluginCredentialType.MODEL,
+        )
+        self._policy_checked_credential_ids.add(credential_id)
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus | None:
         """
@@ -555,7 +574,7 @@ class ProviderConfiguration(BaseModel):
 
         ProviderManager.invalidate_configurations_cache(self.tenant_id, sources=sources)
 
-    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None):
+    def create_provider_credential(self, credentials: dict[str, Any], credential_name: str | None) -> str:
         """
         Add custom provider credentials.
         :param credentials: provider credentials
@@ -583,6 +602,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(new_record)
                 session.flush()
+                new_credential_id = new_record.id
 
                 if not provider_record:
                     provider_record = Provider(
@@ -630,6 +650,7 @@ class ProviderConfiguration(BaseModel):
             preferred_model_providers=preferred_model_providers_changed,
             provider_credentials=True,
         )
+        return new_credential_id
 
     def update_provider_credential(
         self,
@@ -1070,7 +1091,7 @@ class ProviderConfiguration(BaseModel):
 
     def create_custom_model_credential(
         self, model_type: ModelType, model: str, credentials: dict[str, Any], credential_name: str | None
-    ) -> None:
+    ) -> str:
         """
         Create a custom model credential.
 
@@ -1108,6 +1129,7 @@ class ProviderConfiguration(BaseModel):
                 )
                 session.add(credential)
                 session.flush()
+                new_credential_id = credential.id
 
                 if not provider_model_record:
                     provider_model_record = ProviderModel(
@@ -1135,6 +1157,7 @@ class ProviderConfiguration(BaseModel):
             provider_models=True,
             provider_model_credentials=True,
         )
+        return new_credential_id
 
     def update_custom_model_credential(
         self,
@@ -1784,9 +1807,11 @@ class ProviderConfiguration(BaseModel):
         :param model_setting_map: model setting map
         :return:
         """
+        from core.model_invocation_routing import managed_source_schemas
+
         provider_models = []
         for model_type in model_types:
-            for m in provider_schema.models:
+            for m in managed_source_schemas(self.system_configuration, provider_schema):
                 if m.model_type != model_type:
                     continue
                 if model and m.model != model:

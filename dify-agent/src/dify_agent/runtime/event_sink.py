@@ -45,11 +45,30 @@ class RunFinalizationResult:
     event_id: str | None = None
 
 
+class RunStreamSealedError(RuntimeError):
+    """Raised when a non-terminal event arrives after the run stream was sealed.
+
+    The first terminal transition seals the stream: later non-terminal appends
+    must not persist, consume a cursor, or refresh retention. ``status``
+    carries the winning terminal status so callers can coordinate without
+    re-reading the run record.
+    """
+
+    def __init__(self, run_id: str, status: RunStatus) -> None:
+        super().__init__(f"run {run_id} is already {status}; the stream no longer accepts non-terminal events")
+        self.run_id = run_id
+        self.status = status
+
+
 class RunEventSink(Protocol):
     """Boundary used by runtime code to publish observable run progress."""
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
-        """Persist a non-terminal event and return its cursor id."""
+        """Persist a non-terminal event and return its cursor id.
+
+        Raises ``RunStreamSealedError`` when the run already has a terminal
+        status; the sealed stream must not accept further non-terminal events.
+        """
         ...
 
     async def finalize_run(self, event: TerminalRunEvent) -> RunFinalizationResult:
@@ -73,6 +92,9 @@ class InMemoryRunEventSink:
 
     async def append_event(self, event: NonTerminalRunEvent) -> str:
         """Store a non-terminal event and assign a monotonic per-run cursor."""
+        current_status = self.statuses.get(event.run_id, "running")
+        if current_status != "running":
+            raise RunStreamSealedError(event.run_id, current_status)
         event_id = str(len(self.events[event.run_id]) + 1)
         stored = event.model_copy(update={"id": event_id})
         self.events[event.run_id].append(stored)
@@ -196,6 +218,7 @@ __all__ = [
     "NonTerminalRunEvent",
     "RunEventSink",
     "RunFinalizationResult",
+    "RunStreamSealedError",
     "TerminalRunEvent",
     "emit_pydantic_ai_event",
     "emit_run_event",

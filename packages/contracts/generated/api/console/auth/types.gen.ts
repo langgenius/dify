@@ -8,6 +8,16 @@ export type DatasourceProviderAuthListResponse = {
   result: Array<DatasourceProviderAuthResponse>
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type DatasourceCredentialListResponse = {
   result: Array<DatasourceCredentialResponse>
 }
@@ -142,6 +152,13 @@ export type GetAuthPluginDatasourceDefaultListData = {
   url: '/auth/plugin/datasource/default-list'
 }
 
+export type GetAuthPluginDatasourceDefaultListErrors = {
+  default: ErrorResponse
+}
+
+export type GetAuthPluginDatasourceDefaultListError =
+  GetAuthPluginDatasourceDefaultListErrors[keyof GetAuthPluginDatasourceDefaultListErrors]
+
 export type GetAuthPluginDatasourceDefaultListResponses = {
   200: DatasourceProviderAuthListResponse
 }
@@ -155,6 +172,13 @@ export type GetAuthPluginDatasourceListData = {
   query?: never
   url: '/auth/plugin/datasource/list'
 }
+
+export type GetAuthPluginDatasourceListErrors = {
+  default: ErrorResponse
+}
+
+export type GetAuthPluginDatasourceListError =
+  GetAuthPluginDatasourceListErrors[keyof GetAuthPluginDatasourceListErrors]
 
 export type GetAuthPluginDatasourceListResponses = {
   200: DatasourceProviderAuthListResponse
@@ -172,6 +196,13 @@ export type GetAuthPluginDatasourceByProviderIdData = {
   url: '/auth/plugin/datasource/{provider_id}'
 }
 
+export type GetAuthPluginDatasourceByProviderIdErrors = {
+  default: ErrorResponse
+}
+
+export type GetAuthPluginDatasourceByProviderIdError =
+  GetAuthPluginDatasourceByProviderIdErrors[keyof GetAuthPluginDatasourceByProviderIdErrors]
+
 export type GetAuthPluginDatasourceByProviderIdResponses = {
   200: DatasourceCredentialListResponse
 }
@@ -187,6 +218,13 @@ export type PostAuthPluginDatasourceByProviderIdData = {
   query?: never
   url: '/auth/plugin/datasource/{provider_id}'
 }
+
+export type PostAuthPluginDatasourceByProviderIdErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdError =
+  PostAuthPluginDatasourceByProviderIdErrors[keyof PostAuthPluginDatasourceByProviderIdErrors]
 
 export type PostAuthPluginDatasourceByProviderIdResponses = {
   200: SimpleResultResponse
@@ -204,6 +242,13 @@ export type DeleteAuthPluginDatasourceByProviderIdCustomClientData = {
   url: '/auth/plugin/datasource/{provider_id}/custom-client'
 }
 
+export type DeleteAuthPluginDatasourceByProviderIdCustomClientErrors = {
+  default: ErrorResponse
+}
+
+export type DeleteAuthPluginDatasourceByProviderIdCustomClientError =
+  DeleteAuthPluginDatasourceByProviderIdCustomClientErrors[keyof DeleteAuthPluginDatasourceByProviderIdCustomClientErrors]
+
 export type DeleteAuthPluginDatasourceByProviderIdCustomClientResponses = {
   200: SimpleResultResponse
 }
@@ -219,6 +264,13 @@ export type PostAuthPluginDatasourceByProviderIdCustomClientData = {
   query?: never
   url: '/auth/plugin/datasource/{provider_id}/custom-client'
 }
+
+export type PostAuthPluginDatasourceByProviderIdCustomClientErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdCustomClientError =
+  PostAuthPluginDatasourceByProviderIdCustomClientErrors[keyof PostAuthPluginDatasourceByProviderIdCustomClientErrors]
 
 export type PostAuthPluginDatasourceByProviderIdCustomClientResponses = {
   200: SimpleResultResponse
@@ -236,6 +288,13 @@ export type PostAuthPluginDatasourceByProviderIdDefaultData = {
   url: '/auth/plugin/datasource/{provider_id}/default'
 }
 
+export type PostAuthPluginDatasourceByProviderIdDefaultErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdDefaultError =
+  PostAuthPluginDatasourceByProviderIdDefaultErrors[keyof PostAuthPluginDatasourceByProviderIdDefaultErrors]
+
 export type PostAuthPluginDatasourceByProviderIdDefaultResponses = {
   200: SimpleResultResponse
 }
@@ -251,6 +310,13 @@ export type PostAuthPluginDatasourceByProviderIdDeleteData = {
   query?: never
   url: '/auth/plugin/datasource/{provider_id}/delete'
 }
+
+export type PostAuthPluginDatasourceByProviderIdDeleteErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdDeleteError =
+  PostAuthPluginDatasourceByProviderIdDeleteErrors[keyof PostAuthPluginDatasourceByProviderIdDeleteErrors]
 
 export type PostAuthPluginDatasourceByProviderIdDeleteResponses = {
   200: SimpleResultResponse
@@ -268,6 +334,13 @@ export type PostAuthPluginDatasourceByProviderIdUpdateData = {
   url: '/auth/plugin/datasource/{provider_id}/update'
 }
 
+export type PostAuthPluginDatasourceByProviderIdUpdateErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdUpdateError =
+  PostAuthPluginDatasourceByProviderIdUpdateErrors[keyof PostAuthPluginDatasourceByProviderIdUpdateErrors]
+
 export type PostAuthPluginDatasourceByProviderIdUpdateResponses = {
   201: SimpleResultResponse
 }
@@ -283,6 +356,13 @@ export type PostAuthPluginDatasourceByProviderIdUpdateNameData = {
   query?: never
   url: '/auth/plugin/datasource/{provider_id}/update-name'
 }
+
+export type PostAuthPluginDatasourceByProviderIdUpdateNameErrors = {
+  default: ErrorResponse
+}
+
+export type PostAuthPluginDatasourceByProviderIdUpdateNameError =
+  PostAuthPluginDatasourceByProviderIdUpdateNameErrors[keyof PostAuthPluginDatasourceByProviderIdUpdateNameErrors]
 
 export type PostAuthPluginDatasourceByProviderIdUpdateNameResponses = {
   200: SimpleResultResponse

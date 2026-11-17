@@ -9,13 +9,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '.'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '../dropdown-menu'
 import { IconButton } from '../icon-button'
+import { Menu, MenuContent, MenuItem, MenuTrigger } from '../menu'
 
 const meta = {
   title: 'Base/UI/Breadcrumb',
@@ -226,7 +221,7 @@ export const CollapsedAncestors: Story = {
     docs: {
       description: {
         story:
-          'Collapsing is an explicit DropdownMenu composition. Its trigger owns the accessible name; hidden ancestors remain links. Escape restores focus to the trigger.',
+          'Collapsing is an explicit Menu composition. Its trigger owns the accessible name; hidden ancestors remain links. Escape restores focus to the trigger.',
       },
     },
   },
@@ -238,19 +233,19 @@ export const CollapsedAncestors: Story = {
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
-          <DropdownMenu>
-            <DropdownMenuTrigger
+          <Menu>
+            <MenuTrigger
               render={
                 <IconButton aria-label="Show ancestor pages">
                   <span aria-hidden className="i-ri-more-line size-4" />
                 </IconButton>
               }
             />
-            <DropdownMenuContent>
-              <DropdownMenuItem render={<a href="#projects" />}>Projects</DropdownMenuItem>
-              <DropdownMenuItem render={<a href="#knowledge" />}>Knowledge</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+            <MenuContent>
+              <MenuItem render={<a href="#projects" />}>Projects</MenuItem>
+              <MenuItem render={<a href="#knowledge" />}>Knowledge</MenuItem>
+            </MenuContent>
+          </Menu>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>

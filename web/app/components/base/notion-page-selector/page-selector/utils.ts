@@ -6,7 +6,7 @@ import type {
 } from './types'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
-export const recursivePushInParentDescendants = (
+const recursivePushInParentDescendants = (
   pagesMap: DataSourceNotionPageMap,
   listTreeMap: NotionPageTreeMap,
   current: NotionPageTreeItem,

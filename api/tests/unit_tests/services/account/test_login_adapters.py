@@ -25,23 +25,43 @@ from models.account import (
     TenantPluginAutoUpgradeStrategy,
 )
 from models.enums import ProviderQuotaType
+from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.model_billing import TenantModelBillingProfile
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
 from repositories.account.repository import SQLAlchemyAccountRepository
+from repositories.account_activation_repository import SQLAlchemyAccountActivationRepository
+from repositories.human_input_v2.contact import ContactError, ContactErrorCode
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
+from repositories.workspace.workspace_repository import WorkspaceRepository
 from services import account_errors
 from services.account import login_adapters as adapters
+from services.account.adapters import (
+    BillingAccountActivationEligibility,
+    BillingWorkspaceMembershipCache,
+    DeploymentWorkspaceInvitePolicy,
+    RBACWorkspaceMemberAccessSync,
+    RedisInvitationTokenStore,
+)
+from services.account_activation_service import AccountActivationService
 from services.email_code_login_challenge import (
     EmailCodeLoginChallengeResult,
     EmailCodeLoginChallengeStatus,
     EmailCodeLoginChallengeUnavailableError,
 )
+from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSessionTokens
-from services.entities.account_login_entities import EmailCodeChallengeStatus, RefreshAccountStatus
+from services.entities.account_login_entities import (
+    EmailCodeChallengeStatus,
+    PasswordLoginCommand,
+    RefreshAccountStatus,
+)
 from services.turnstile_service import TurnstileChallengeRejectedError, TurnstileUpstreamError
+from services.workspace import gateways
 from services.workspace import gateways as workspace_gateways
 from services.workspace.contracts import CreatedWorkspace
 from services.workspace.provisioning_service import WorkspaceProvisioningService
-from tests.unit_tests.account_domain import AccountDomain
+from tests.helpers.unit.account_domain import AccountDomain
+from tests.unit_tests.services.account.test_login_service import Dependencies
 
 
 class FakeRateLimiter(RateLimiter):
@@ -80,6 +100,134 @@ def _persist_account(session: Session) -> Account:
     session.add(account)
     session.commit()
     return account
+
+
+def test_invitation_gateway_restores_editor_membership_without_revoking_token(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    commands.return_value = (
+        b'{"account_id":"account-1","email":"user@example.com","workspace_id":"workspace-1",'
+        b'"role":"editor","requires_setup":false}'
+    )
+    with sqlite_session_factory.begin() as session:
+        account = Account(name="User", email="user@example.com", status=AccountStatus.ACTIVE)
+        account.id = "account-1"
+        tenant = Tenant(name="Workspace")
+        tenant.id = "workspace-1"
+        session.add_all([account, tenant])
+    tokens = RedisInvitationTokenStore(redis=redis)
+    accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    activation = AccountActivationService(
+        tokens=tokens,
+        accounts=accounts,
+        workspace_policy=DeploymentWorkspaceInvitePolicy(),
+        eligibility=BillingAccountActivationEligibility(enabled=False),
+        membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+        member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+    )
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=accounts,
+        activation=activation,
+    )
+
+    commands.side_effect = lambda command, *_args, **_kwargs: (
+        3600 if command == "PTTL" else b"OK" if command == "SET" else commands.return_value
+    )
+    assert gateway.ensure_membership(account_id="different-account", email="user@example.com", token="token-1") is False
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(TenantAccountJoin)) is None
+    assert gateway.ensure_membership(account_id="account-1", email="user@example.com", token="token-1") is True
+
+    with sqlite_session_factory() as session:
+        persisted = session.get(Account, "account-1")
+        membership = session.scalar(select(TenantAccountJoin))
+        assert persisted is not None
+        assert persisted.id == "account-1"
+        assert persisted.status == AccountStatus.ACTIVE
+        assert persisted.name == "User"
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
+        assert membership.current is True
+    assert not any(command.args and command.args[0] == "DEL" for command in commands.call_args_list)
+
+
+def test_login_restores_membership_when_invitation_is_stored_under_prefixed_key(
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    config_overrides: Callable[..., None],
+) -> None:
+    redis, commands = redis_transport
+    config_overrides(REDIS_KEY_PREFIX="enterprise-a")
+    stored: dict[str, object] = {}
+
+    def execute(command: object, *args: object, **_kwargs: object) -> object:
+        operation, key = str(command).upper(), str(args[0])
+        if operation == "SETEX":
+            stored[key] = args[2]
+            return True
+        if operation == "GET":
+            return stored.get(key)
+        if operation == "PTTL":
+            return 3600 if key in stored else -2
+        if operation == "SET" and "NX" in args and key not in stored:
+            stored[key] = b"1"
+            return True
+        return None
+
+    commands.side_effect = execute
+    with sqlite_session_factory.begin() as session:
+        account = Account(
+            name="User",
+            email="user@example.com",
+            status=AccountStatus.ACTIVE,
+            password="hash",
+            password_salt="salt",
+        )
+        account.id = "account-1"
+        workspace = Tenant(name="Workspace")
+        workspace.id = "workspace-1"
+        session.add_all([account, workspace])
+    tokens = RedisInvitationTokenStore(redis=redis)
+    token = tokens.create(
+        InvitationToken(
+            account_id="account-1",
+            email="user@example.com",
+            workspace_id="workspace-1",
+            role="editor",
+            requires_setup=False,
+        )
+    )
+    activation_accounts = SQLAlchemyAccountActivationRepository(sqlite_session_factory)
+    gateway = adapters.AccountActivationConsoleAuthInvitationGateway(
+        tokens=tokens,
+        accounts=activation_accounts,
+        activation=AccountActivationService(
+            tokens=tokens,
+            accounts=activation_accounts,
+            workspace_policy=DeploymentWorkspaceInvitePolicy(),
+            eligibility=BillingAccountActivationEligibility(enabled=False),
+            membership_cache=BillingWorkspaceMembershipCache(enabled=False),
+            member_access_sync=RBACWorkspaceMemberAccessSync(enabled=False),
+        ),
+    )
+    dependencies = Dependencies()
+    dependencies.accounts = SQLAlchemyAccountRepository(sqlite_session_factory)  # type: ignore[assignment]
+    dependencies.workspaces = WorkspaceRepository(sqlite_session_factory)  # type: ignore[assignment]
+    dependencies.invitations = gateway  # type: ignore[assignment]
+    result = dependencies.service().login_with_password(
+        PasswordLoginCommand(email="user@example.com", password="password", invite_token=token, ip_address="127.0.0.1")
+    )
+
+    assert f"enterprise-a:member_invite:token:{token}" in stored
+    assert result.workspace_found is True
+    assert result.tokens == AccountSessionTokens(access_token="access", refresh_token="refresh", csrf_token="csrf")
+    with sqlite_session_factory() as session:
+        membership = session.scalar(select(TenantAccountJoin))
+        assert membership is not None
+        assert membership.role == TenantAccountRole.EDITOR
 
 
 def test_security_gateway_owns_login_failure_state(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
@@ -199,6 +347,12 @@ def test_workspace_provisioning_persists_owner_workspace(
         assert membership is not None
         assert membership.role == TenantAccountRole.OWNER
         assert session.get(Tenant, membership.tenant_id) is not None
+        assert (
+            session.scalar(
+                select(HumanInputContactIdentity.id).where(HumanInputContactIdentity.account_id == "account-1")
+            )
+            is not None
+        )
 
 
 def test_workspace_provisioning_rejects_missing_account(
@@ -292,7 +446,7 @@ def test_turnstile_gateway_maps_provider_failures(
     assert (record.exc_info is not None) is has_exception_info
 
 
-def test_provisioning_persists_account_and_workspace_atomically(
+def test_provisioning_persists_account_contact_and_workspace_atomically(
     account_domain: AccountDomain,
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -313,6 +467,66 @@ def test_provisioning_persists_account_and_workspace_atomically(
         assert account.normalized_email == "user@example.com"
         assert account.timezone == "UTC"
         assert membership is not None
+        contact = session.scalars(
+            select(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id == account_id)
+        ).one()
+        assert contact.subject_type == ContactSubjectType.ACCOUNT
+
+
+def test_provisioning_rolls_back_when_contact_creation_fails(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = account_domain.provisioning
+
+    def fail_contact(*_args: object, **_kwargs: object) -> None:
+        raise ContactError(ContactErrorCode.CONFLICT, "Contact creation failed")
+
+    monkeypatch.setattr(SQLAlchemyContactRepository, "provision_account_backed_contact", fail_contact)
+
+    with pytest.raises(ContactError, match="Contact creation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
+
+
+def test_provisioning_rolls_back_account_and_contact_when_workspace_creation_fails(
+    account_domain: AccountDomain,
+    sqlite_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    gateway = account_domain.provisioning
+
+    def fail_key_pair(*_args: object, **_kwargs: object) -> None:
+        raise ValueError("Key generation failed")
+
+    monkeypatch.setattr(gateways, "generate_key_pair", fail_key_pair)
+
+    with pytest.raises(ValueError, match="Key generation failed"):
+        gateway.create_with_owner_workspace(
+            email="user@example.com",
+            name="User",
+            interface_language="en-US",
+            timezone="UTC",
+            ip_address="127.0.0.1",
+        )
+
+    with sqlite_session_factory() as session:
+        assert session.scalar(select(Account)) is None
+        assert session.scalar(select(HumanInputContactIdentity)) is None
+        assert session.scalar(select(Tenant)) is None
+        assert session.scalar(select(TenantAccountJoin)) is None
 
 
 def test_provisioning_rejects_equivalent_normalized_email(

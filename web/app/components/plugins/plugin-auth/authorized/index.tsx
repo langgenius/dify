@@ -1,4 +1,5 @@
 import type { PopoverContentProps } from '@langgenius/dify-ui/popover'
+import type { ComponentPropsWithRef, ReactElement } from 'react'
 import type { Credential, PluginPayload } from '../types'
 import {
   AlertDialog,
@@ -6,6 +7,7 @@ import {
   AlertDialogConfirmButton,
   AlertDialogContent,
   AlertDialogFooter,
+  AlertDialogHeader,
   AlertDialogTitle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Button } from '@langgenius/dify-ui/button'
@@ -26,12 +28,12 @@ import {
 import { CredentialTypeEnum } from '../types'
 import Item from './item'
 
-type AuthorizedProps = Pick<PopoverContentProps, 'placement' | 'sideOffset'> & {
+type AuthorizedProps = Pick<PopoverContentProps, 'side' | 'align' | 'sideOffset'> & {
   pluginPayload: PluginPayload
   credentials: Credential[]
   canOAuth?: boolean
   canApiKey?: boolean
-  renderTrigger?: (open?: boolean) => React.ReactNode
+  renderTrigger?: (open: boolean, props: ComponentPropsWithRef<'button'>) => ReactElement
   isOpen?: boolean
   onOpenChange?: (open: boolean) => void
   triggerPopupSameWidth?: boolean
@@ -52,8 +54,9 @@ const Authorized = ({
   renderTrigger,
   isOpen,
   onOpenChange,
-  sideOffset = 8,
-  placement = 'bottom-start',
+  sideOffset,
+  side,
+  align = 'start',
   triggerPopupSameWidth = true,
   popupClassName,
   disableSetDefault,
@@ -194,33 +197,35 @@ const Authorized = ({
     <>
       <Popover open={mergedIsOpen} onOpenChange={setMergedIsOpen}>
         <PopoverTrigger
-          render={(props, state) => (
-            <div
-              {...props}
-              className={cn(triggerPopupSameWidth ? 'w-full' : 'inline-block', props.className)}
-            >
-              {renderTrigger ? (
-                renderTrigger(state.open)
-              ) : (
-                <Button
-                  className={cn('w-full', state.open && 'bg-components-button-secondary-bg-hover')}
-                >
-                  <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
-                  {credentials.length}
-                  &nbsp;
-                  {credentials.length > 1
-                    ? t(($) => $['auth.authorizations'], { ns: 'plugin' })
-                    : t(($) => $['auth.authorization'], { ns: 'plugin' })}
-                  {!!unavailableCredentials.length &&
-                    ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
-                  <span className="i-ri-arrow-down-s-line size-4" />
-                </Button>
-              )}
-            </div>
-          )}
+          className={triggerPopupSameWidth ? 'w-full' : undefined}
+          render={(props, state) =>
+            renderTrigger ? (
+              renderTrigger(state.open, props)
+            ) : (
+              <Button
+                {...props}
+                className={cn(
+                  props.className,
+                  state.open && 'bg-components-button-secondary-bg-hover',
+                )}
+              >
+                <StatusDot status={unavailableCredential ? 'disabled' : 'success'} />
+                {credentials.length}
+                &nbsp;
+                {credentials.length > 1
+                  ? t(($) => $['auth.authorizations'], { ns: 'plugin' })
+                  : t(($) => $['auth.authorization'], { ns: 'plugin' })}
+                {!!unavailableCredentials.length &&
+                  ` (${unavailableCredentials.length} ${t(($) => $['auth.unavailable'], { ns: 'plugin' })})`}
+                <span className="i-ri-arrow-down-s-line size-4" />
+              </Button>
+            )
+          }
         />
         <PopoverContent
-          placement={placement}
+          aria-label={t(($) => $['auth.authorizations'], { ns: 'plugin' })}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           className={cn(
             'border-0 bg-transparent p-0 shadow-none backdrop-blur-none',
@@ -326,11 +331,11 @@ const Authorized = ({
       </Popover>
       <AlertDialog open={!!deleteCredentialId} onOpenChange={(open) => !open && closeConfirm()}>
         <AlertDialogContent backdropProps={{ forceRender: true }}>
-          <div className="flex flex-col gap-2 px-6 pt-6 pb-4">
-            <AlertDialogTitle className="w-full truncate title-2xl-semi-bold text-text-primary">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
               {t(($) => $['list.delete.title'], { ns: 'datasetDocuments' })}
             </AlertDialogTitle>
-          </div>
+          </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancelButton>
               {t(($) => $['operation.cancel'], { ns: 'common' })}

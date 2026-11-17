@@ -5,11 +5,14 @@ from flask_restx import Resource
 
 from controllers.common.fields import SimpleResultResponse
 from controllers.common.rbac import RBACCheck, Workspace, rbac_language
+from controllers.common.schema import query_params_from_model
 from controllers.console import console_ns
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.workspace.rbac.schemas import (
     CopyRoleParam,
+    _AccessControlLanguageQuery,
     _MembersInRoleList,
+    _PaginationQuery,
     _RBACRoleList,
     _RolesListQuery,
     _RoleUpsertRequest,
@@ -35,6 +38,12 @@ class RBACWorkspaceCatalogApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles")
 class RBACRolesApi(Resource):
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
+    @console_ns.doc(
+        params={
+            **query_params_from_model(_RolesListQuery),
+            **query_params_from_model(_AccessControlLanguageQuery),
+        }
+    )
     @console_ns.response(200, "Success", console_ns.models[_RBACRoleList.__name__])
     def get(self, context: RequestContext):
         req_data = _RolesListQuery.model_validate(request.args.to_dict(flat=True))
@@ -44,6 +53,8 @@ class RBACRolesApi(Resource):
         return dump_response(_RBACRoleList, result)
 
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.expect(console_ns.models[_RoleUpsertRequest.__name__])
     @console_ns.response(201, "Role created", console_ns.models[dto.RBACRole.__name__])
     def post(self, context: RequestContext):
         request = _RoleUpsertRequest.model_validate(console_ns.payload or {})
@@ -54,6 +65,7 @@ class RBACRolesApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>")
 class RBACRoleItemApi(Resource):
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
     @console_ns.response(200, "Success", console_ns.models[dto.RBACRole.__name__])
     def get(self, context: RequestContext, role_id):
         return dump_response(
@@ -61,6 +73,8 @@ class RBACRoleItemApi(Resource):
         )
 
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.expect(console_ns.models[_RoleUpsertRequest.__name__])
     @console_ns.response(200, "Success", console_ns.models[dto.RBACRole.__name__])
     def put(self, context: RequestContext, role_id):
         request = _RoleUpsertRequest.model_validate(console_ns.payload or {})
@@ -79,6 +93,8 @@ class RBACRoleItemApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/copy")
 class RBACRoleCopyApi(Resource):
     @console_account_admission(rbac_checks=[RBACCheck(RBACPermission.WORKSPACE_ROLE_MANAGE, Workspace())])
+    @console_ns.doc(params=query_params_from_model(_AccessControlLanguageQuery))
+    @console_ns.expect(console_ns.models[CopyRoleParam.__name__])
     @console_ns.response(201, "Role copied", console_ns.models[dto.RBACRole.__name__])
     def post(self, context: RequestContext, role_id):
         request = CopyRoleParam.model_validate(console_ns.payload or {})
@@ -91,6 +107,12 @@ class RBACRoleCopyApi(Resource):
 @console_ns.route("/workspaces/current/rbac/roles/<uuid:role_id>/members")
 class ListMembersByRole(Resource):
     @console_account_admission()
+    @console_ns.doc(
+        params={
+            **query_params_from_model(_PaginationQuery),
+            **query_params_from_model(_AccessControlLanguageQuery),
+        }
+    )
     @console_ns.response(200, "Success", console_ns.models[_MembersInRoleList.__name__])
     def get(self, context: RequestContext, role_id):
         return dump_response(

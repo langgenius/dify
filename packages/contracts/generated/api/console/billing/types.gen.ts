@@ -8,9 +8,24 @@ export type BillingInvoiceResponse = {
   url: string
 }
 
+export type ErrorResponse = {
+  code: string
+  details?: {
+    [key: string]: unknown
+  }
+  message: string
+  params?: string
+  status: number
+}
+
 export type BillingOperationFailedErrorResponse = {
   code: 'billing_operation_failed'
   message: string
+  status: 502
+}
+
+export type BillingOperationFailedError = ErrorResponse & {
+  code: 'billing_operation_failed'
   status: 502
 }
 
@@ -20,13 +35,28 @@ export type BillingUnavailableErrorResponse = {
   status: 503
 }
 
+export type BillingUnavailableError = ErrorResponse & {
+  code: 'billing_unavailable'
+  status: 503
+}
+
 export type BillingSubscriptionResponse = {
   url: string
 }
 
-export type TokenerEducationCheckoutUnsupportedErrorResponse = {
-  code: 'tokener_education_checkout_unsupported'
+export type AnnualDiscountActiveErrorResponse = {
+  code: 'annual_discount_active'
   message: string
+  status: 409
+}
+
+export type AnnualDiscountActiveError = ErrorResponse & {
+  code: 'annual_discount_active'
+  status: 409
+}
+
+export type TokenerEducationCheckoutUnsupportedError = ErrorResponse & {
+  code: 'tokener_education_checkout_unsupported'
   status: 409
 }
 
@@ -44,9 +74,10 @@ export type GetBillingInvoicesData = {
 }
 
 export type GetBillingInvoicesErrors = {
-  403: unknown
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  403: ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetBillingInvoicesError = GetBillingInvoicesErrors[keyof GetBillingInvoicesErrors]
@@ -69,11 +100,16 @@ export type GetBillingSubscriptionData = {
 }
 
 export type GetBillingSubscriptionErrors = {
-  403: unknown
-  409: TokenerEducationCheckoutUnsupportedErrorResponse
-  422: BillingUnprocessableEntityErrorResponse
-  502: BillingOperationFailedErrorResponse
-  503: BillingUnavailableErrorResponse
+  403: ErrorResponse
+  409:
+    | AnnualDiscountActiveErrorResponse
+    | AnnualDiscountActiveError
+    | TokenerEducationCheckoutUnsupportedError
+    | ErrorResponse
+  422: BillingUnprocessableEntityErrorResponse | ErrorResponse
+  502: BillingOperationFailedErrorResponse | BillingOperationFailedError | ErrorResponse
+  503: BillingUnavailableErrorResponse | BillingUnavailableError | ErrorResponse
+  default: ErrorResponse
 }
 
 export type GetBillingSubscriptionError =

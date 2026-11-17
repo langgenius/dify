@@ -13,7 +13,14 @@ def test_domain_hash_preserves_shared_canonical_bytes_and_application_export() -
     assert canonical_hash is application_canonical_hash
 
 
-@pytest.mark.parametrize("value", [{"amount": 1.0}, {"optional": None}, {"非ascii": "value"}])
-def test_domain_hash_keeps_protocol_rejections(value: dict[str, object]) -> None:
-    with pytest.raises(ValueError):
+@pytest.mark.parametrize(
+    ("value", "message"),
+    [
+        ({"amount": 1.0}, "canonical payload cannot contain float or null"),
+        ({"optional": None}, "canonical payload cannot contain float or null"),
+        ({"非ascii": "value"}, "canonical object keys must be ASCII strings"),
+    ],
+)
+def test_domain_hash_keeps_protocol_rejections(value: dict[str, object], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
         canonical_hash(value)

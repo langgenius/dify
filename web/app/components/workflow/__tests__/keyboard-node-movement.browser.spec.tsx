@@ -4,14 +4,13 @@ import ReactFlow, { Handle, Position, ReactFlowProvider, useStoreApi } from 'rea
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { WorkflowContext } from '../context'
+import { HooksStoreContext } from '../hooks-store/provider'
+import { createHooksStore, fullWorkflowAccessControl } from '../hooks-store/store'
 import { useNodeKeyboardInteractions } from '../hooks/use-node-keyboard-interactions'
 import { createWorkflowStore } from '../store/workflow'
 import 'reactflow/dist/style.css'
 import '../style.css'
 
-vi.mock('../hooks/use-workflow', () => ({
-  useNodesReadOnly: () => ({ getNodesReadOnly: () => false }),
-}))
 vi.mock('../hooks/use-nodes-sync-draft', () => ({
   useNodesSyncDraft: () => ({ handleSyncWorkflowDraft: vi.fn() }),
 }))
@@ -84,12 +83,17 @@ function Canvas() {
 
 function Fixture() {
   const [store] = useState(() => createWorkflowStore({}))
+  const [hooksStore] = useState(() =>
+    createHooksStore({ accessControl: fullWorkflowAccessControl }),
+  )
   return (
     <WorkflowContext value={store}>
-      <ReactFlowProvider>
-        <button type="button">Before canvas</button>
-        <Canvas />
-      </ReactFlowProvider>
+      <HooksStoreContext value={hooksStore}>
+        <ReactFlowProvider>
+          <button type="button">Before canvas</button>
+          <Canvas />
+        </ReactFlowProvider>
+      </HooksStoreContext>
     </WorkflowContext>
   )
 }
@@ -103,11 +107,14 @@ it('moves a Tab-focused node without selecting it first, at canvas scale', async
   const node = screen.getByRole('button', { name: 'Code', exact: true })
   await expect.element(node).toHaveFocus()
   const initial = node.element().getBoundingClientRect()
-  await userEvent.keyboard('{ArrowRight}{Shift>}{ArrowDown}{/Shift}')
+  await userEvent.keyboard('{ArrowRight}')
   await expect.poll(() => node.element().getBoundingClientRect().x).toBe(initial.x + 2.5)
-  expect(node.element().getBoundingClientRect().y).toBe(initial.y + 10)
+  await userEvent.keyboard('{Shift>}{ArrowDown}{/Shift}')
+  await expect.poll(() => node.element().getBoundingClientRect().y).toBe(initial.y + 10)
   await expect.element(node).toHaveFocus()
-  await userEvent.keyboard('{Escape}{ArrowRight}')
+  await userEvent.keyboard('{Escape}')
+  await expect.element(node).toHaveFocus()
+  await userEvent.keyboard('{ArrowRight}')
   await expect.poll(() => node.element().getBoundingClientRect().x).toBe(initial.x + 5)
 })
 

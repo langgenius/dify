@@ -8,7 +8,7 @@ from itertools import islice
 from typing import Any
 
 import click
-from celery import group, shared_task
+from celery import shared_task
 from flask import current_app, g
 from pydantic import TypeAdapter
 from sqlalchemy import select
@@ -28,7 +28,9 @@ from models.dataset import Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
+from services.file_scan.admission import reject_dataset_upload_file
 from services.file_service import FileService
+from services.workflow_run_agg import WorkflowRunAgg
 
 logger = logging.getLogger(__name__)
 
@@ -113,8 +115,8 @@ def rag_pipeline_run_task(
                         )
                     )
 
-                if jobs:
-                    group(jobs).apply_async()
+                for job in jobs:
+                    job.apply_async()
         else:
             # No more waiting tasks, clear the flag
             tenant_isolated_task_queue.delete_task_key()
@@ -193,8 +195,10 @@ def run_single_rag_pipeline_task(rag_pipeline_invoke_entity: Mapping[str, Any], 
                 # Since we're already in a thread pool, no need for nested threading
 
                 pipeline_generator = PipelineGenerator(
+                    execution_driver=WorkflowRunAgg.run,
                     documents=SQLAlchemyDocumentRepository(session_factory=session_factory),
                     datasource_providers=build_data_source_credentials(database_client=get_session_maker()).providers,
+                    file_admission=reject_dataset_upload_file,
                 )
                 # Using protected method intentionally for async execution
                 pipeline_generator._generate(  # type: ignore[attr-defined]

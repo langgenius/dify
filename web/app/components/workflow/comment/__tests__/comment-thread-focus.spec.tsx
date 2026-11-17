@@ -1,35 +1,27 @@
-import type { UserProfile, WorkflowCommentDetail, WorkflowCommentList } from '../types'
+import type {
+  WorkflowCommentBasic,
+  WorkflowCommentDetail,
+} from '@dify/contracts/api/console/apps/types.gen'
+import type { UserProfile } from '../types'
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
-import { renderWithAccountProfile } from '@/test/console/account-profile'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { renderWorkflowFlowComponent } from '../../__tests__/workflow-test-env'
 import { CommentIcon } from '../comment-icon'
 import { CommentInput } from '../comment-input'
 import { CommentThread } from '../thread'
 
-const storeState = vi.hoisted(() => ({
-  mentionableUsersCache: { 'app-1': [] } as Record<string, UserProfile[]>,
-  setCommentPreviewHovering: vi.fn(),
-}))
+let mentionableUsers: UserProfile[] = []
+const renderWithAccountProfile = (ui: Parameters<typeof renderWorkflowFlowComponent>[0]) => {
+  const { queryClient } = createConsoleQueryWrapper({ accountProfile: { id: 'user-1' } })
+  return renderWorkflowFlowComponent(ui, {
+    queryClient,
+    initialStoreState: { mentionableUsersCache: { 'app-1': mentionableUsers } },
+  })
+}
 
-vi.mock('@/next/navigation', () => ({
-  useParams: () => ({ appId: 'app-1' }),
-}))
-
-vi.mock('reactflow', () => ({
-  useReactFlow: () => ({
-    flowToScreenPosition: (position: { x: number; y: number }) => position,
-    screenToFlowPosition: (position: { x: number; y: number }) => position,
-  }),
-  useViewport: () => ({ x: 0, y: 0, zoom: 1 }),
-}))
-
-vi.mock('../../store', () => ({
-  useStore: (selector: (state: typeof storeState) => unknown) => selector(storeState),
-  useWorkflowStore: () => ({ getState: () => storeState }),
-}))
-
-const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
+const createComment = (): WorkflowCommentDetail & WorkflowCommentBasic => ({
   id: 'comment-1',
   position_x: 120,
   position_y: 80,
@@ -54,7 +46,7 @@ const createComment = (): WorkflowCommentDetail & WorkflowCommentList => ({
 describe('Comment thread focus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    storeState.mentionableUsersCache['app-1'] = []
+    mentionableUsers = []
     vi.useFakeTimers({ shouldAdvanceTime: true })
   })
 
@@ -67,9 +59,7 @@ describe('Comment thread focus', () => {
     async (kind) => {
       const user = userEvent.setup({ advanceTimers: vi.advanceTimersByTime })
       const onClose = vi.fn()
-      storeState.mentionableUsersCache['app-1'] = [
-        { id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null },
-      ]
+      mentionableUsers = [{ id: 'user-2', name: 'Bob', email: 'bob@example.com', avatar_url: null }]
       renderWithAccountProfile(
         kind === 'draft' ? (
           <CommentInput position={{ x: 0, y: 0 }} onSubmit={() => {}} onCancel={onClose} />
@@ -119,7 +109,7 @@ describe('Comment thread focus', () => {
 
     renderWithAccountProfile(<Comment />)
     const marker = screen.getByRole('button', { name: /workflow.keyboard.openComment/ })
-    await user.tab()
+    act(() => marker.focus())
     await user.keyboard('{Enter}')
     await act(() => vi.advanceTimersByTimeAsync(100))
     expect(screen.getByRole('textbox')).toHaveFocus()
@@ -156,7 +146,7 @@ describe('Comment thread focus', () => {
         onClose={onClose}
         onReply={() => {}}
         onReplyEdit={() => {}}
-        onReplyDeleteDirect={onDelete}
+        onReplyDelete={onDelete}
       />,
     )
     await act(() => vi.advanceTimersByTimeAsync(100))
@@ -169,7 +159,7 @@ describe('Comment thread focus', () => {
     })
     await user.click(deleteItem)
     const confirm = await screen.findByRole('alertdialog', {
-      name: 'workflowComments.comments.actions.deleteReply',
+      name: 'workflowComments.comments.confirm.deleteReplyTitle',
     })
     expect(screen.queryByRole('menu')).not.toBeInTheDocument()
     expect(onDelete).not.toHaveBeenCalled()
@@ -185,7 +175,9 @@ describe('Comment thread focus', () => {
     const reopened = await screen.findByRole('alertdialog')
     await user.click(within(reopened).getByRole('button', { name: 'common.operation.delete' }))
     expect(onDelete).toHaveBeenCalledExactlyOnceWith('reply-1')
-    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    expect(reopened).toBeVisible()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(trigger).toHaveFocus())
     expect(onClose).not.toHaveBeenCalled()
   })
 
@@ -217,7 +209,7 @@ describe('Comment thread focus', () => {
           onClose={() => {}}
           onReply={() => {}}
           onReplyEdit={() => {}}
-          onReplyDeleteDirect={async (id) => {
+          onReplyDelete={async (id) => {
             setLoading(true)
             onDelete(id)
             await deletion

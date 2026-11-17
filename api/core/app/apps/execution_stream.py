@@ -6,7 +6,7 @@ from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from queue import Empty, Full, Queue
 from threading import Event, Thread
-from typing import cast
+from typing import Any
 
 from flask import Flask, Response, after_this_request, current_app, has_request_context
 from werkzeug.local import LocalProxy
@@ -26,6 +26,37 @@ class _End:
     pass
 
 
+class _Ready:
+    """Private priming marker, never a source or HTTP delivery frame."""
+
+
+class _ArmedDelivery[T](Generator[T]):
+    """Forward the Generator ABC to the same already-primed delivery owner.
+
+    This is deliberately not a native GeneratorType. The inner generator still
+    owns validation of send/throw arguments and every close/finally transition;
+    the adapter owns no queue, thread, context, or execution lifecycle.
+    """
+
+    def __init__(self, source: Generator[T | _Ready]) -> None:
+        self._source = source
+
+    def _checked(self, item: T | _Ready) -> T:
+        if isinstance(item, _Ready):
+            raise RuntimeError("A private Classic delivery primer must not escape")
+        return item
+
+    def send(self, value: None) -> T:
+        return self._checked(self._source.send(value))
+
+    def throw(self, *args: Any) -> T:
+        # Preserve native throw's overloads, arity, validation and traceback behavior verbatim.
+        return self._checked(self._source.throw(*args))
+
+    def close(self) -> None:
+        self._source.close()
+
+
 def execution_owned_stream[T](
     source: Generator[T],
     *,
@@ -38,7 +69,12 @@ def execution_owned_stream[T](
     It continues draining after a client disconnects, dropping delivery frames
     instead of retaining them or cancelling the execution.
     """
-    flask_app = cast(LocalProxy[Flask], current_app)._get_current_object()
+    app_proxy: object = current_app
+    if not isinstance(app_proxy, LocalProxy):
+        raise RuntimeError("Classic execution requires the active Flask application proxy")
+    flask_app = app_proxy._get_current_object()
+    if not isinstance(flask_app, Flask):
+        raise RuntimeError("Classic execution requires a Flask application")
     context = contextvars.copy_context()
     delivery: Queue[T | _Failure | _End] = Queue(maxsize=EXECUTION_OUTPUT_BUFFER_SIZE)
     detached = Event()
@@ -86,11 +122,11 @@ def execution_owned_stream[T](
                     on_finished()
                     deliver(_End())
 
-    def listen() -> Generator[T]:
+    def listen() -> Generator[T | _Ready]:
         try:
             # Arm cleanup before returning, including close-before-first-read.
             # This private marker is consumed below and is never delivered.
-            yield cast(T, None)
+            yield _Ready()
             while True:
                 item = delivery.get()
                 if isinstance(item, _End):
@@ -101,8 +137,10 @@ def execution_owned_stream[T](
         finally:
             detach()
 
-    listener = listen()
-    next(listener)
+    raw_listener = listen()
+    if not isinstance(next(raw_listener), _Ready):
+        raise RuntimeError("Classic delivery must be primed before execution starts")
+    listener = _ArmedDelivery(raw_listener)
     try:
         Thread(target=consume_execution, name="classic-message-execution", daemon=True).start()
     except Exception:

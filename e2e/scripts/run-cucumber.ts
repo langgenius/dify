@@ -10,7 +10,12 @@ import { apiURL, baseURL, reuseExistingWebServer } from '../test-env.ts'
 import { e2eDir, isMainModule, runCommand } from './common.ts'
 import { parseRunOptions, shouldStartManagedAgentBackend } from './run-options.ts'
 import { runSeed } from './seed-runner.ts'
-import { resetState, startMiddleware, stopMiddleware } from './setup.ts'
+import {
+  getManagedSandboxEnvironment,
+  resetState,
+  startMiddleware,
+  stopMiddleware,
+} from './setup.ts'
 import './env-register.ts'
 
 const hasCustomTags = (forwardArgs: string[]) =>
@@ -77,6 +82,7 @@ const waitForManagedProcess = async ({
 export const runCucumber = async (argv: string[]) => {
   const { downloadWebBuild, forwardArgs, full, headed, seed, seedOnly } = parseRunOptions(argv)
   const startAgentBackendForRun = shouldStartManagedAgentBackend()
+  const sandboxEnvironment = startAgentBackendForRun ? getManagedSandboxEnvironment() : {}
   const cucumberReportDir = path.join(e2eDir, 'cucumber-report')
   const logDir = path.join(e2eDir, '.logs')
   let apiProcess: ManagedProcess | undefined
@@ -135,11 +141,17 @@ export const runCucumber = async (argv: string[]) => {
       await startMiddleware()
     }
 
-    if (startAgentBackendForRun) {
+    if (
+      startAgentBackendForRun &&
+      !process.env.DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT?.trim() &&
+      !process.env.DIFY_AGENT_SHELLCTL_ENTRYPOINT?.trim() &&
+      !process.env.E2E_SHELLCTL_URL?.trim()
+    ) {
       shellctlProcess = await startLoggedProcess({
         command: process.execPath,
         args: ['./scripts/setup.ts', 'shellctl-sandbox'],
         cwd: e2eDir,
+        env: sandboxEnvironment,
         label: 'shellctl sandbox',
         logFilePath: path.join(logDir, 'cucumber-shellctl-sandbox.log'),
       })
@@ -149,12 +161,14 @@ export const runCucumber = async (argv: string[]) => {
         managedProcess: shellctlProcess,
         url: `http://127.0.0.1:${shellctlPort}/healthz`,
       })
+    }
 
+    if (startAgentBackendForRun) {
       difyAgentProcess = await startLoggedProcess({
         command: process.execPath,
         args: ['./scripts/setup.ts', 'agent-backend'],
         cwd: e2eDir,
-        env: { E2E_START_AGENT_BACKEND: '1' },
+        env: { ...sandboxEnvironment, E2E_START_AGENT_BACKEND: '1' },
         label: 'agent backend',
         logFilePath: path.join(logDir, 'cucumber-agent-backend.log'),
       })
@@ -213,6 +227,7 @@ export const runCucumber = async (argv: string[]) => {
     if (!seedOnly) {
       const cucumberEnv: NodeJS.ProcessEnv = {
         ...process.env,
+        ...sandboxEnvironment,
         CUCUMBER_HEADLESS: headed ? '0' : '1',
       }
 

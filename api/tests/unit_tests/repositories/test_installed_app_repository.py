@@ -263,11 +263,11 @@ def _app_with_publication(
             kind=WorkflowKind.STANDARD,
             version="draft",
             graph='{"nodes":[],"edges":[]}',
-            features="{}",
+            _features="{}",
             created_by=str(uuid4()),
-            environment_variables=[],
-            conversation_variables=[],
-            rag_pipeline_variables=[],
+            _environment_variables=[],
+            _conversation_variables=[],
+            _rag_pipeline_variables=[],
         )
         session.add(workflow)
         app.workflow_id = workflow.id

@@ -18,10 +18,15 @@ from core.entities.provider_entities import (
 from core.errors.error import ModelCurrentlyNotSupportError
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
 from core.model_manager import LBModelManager, ModelInstance, ModelManager, QuotaManagedModelInstance
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from extensions.ext_redis import redis_client
+from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from graphon.model_runtime.entities.message_entities import AssistantPromptMessage
 from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from graphon.model_runtime.model_providers.base.tts_model import TTSModel
+from graphon.model_runtime.protocols.tts_runtime import TTSChunk
 from models.provider import ProviderType
 from models.tokener import TenantTokenerIntegrationStatus
 
@@ -36,7 +41,7 @@ def _legacy_model_billing_profile() -> Iterator[None]:
 
 
 @pytest.fixture
-def lb_model_manager():
+def lb_model_manager(monkeypatch: pytest.MonkeyPatch) -> LBModelManager:
     load_balancing_configs = [
         ModelLoadBalancingConfiguration(id="id1", name="__inherit__", credentials={}),
         ModelLoadBalancingConfiguration(id="id2", name="first", credentials={"openai_api_key": "fake_key"}),
@@ -52,26 +57,23 @@ def lb_model_manager():
         managed_credentials={"openai_api_key": "fake_key"},
     )
 
-    lb_model_manager.cooldown = MagicMock(return_value=None)
+    monkeypatch.setattr(lb_model_manager, "cooldown", MagicMock(return_value=None))
 
-    def is_cooldown(config: ModelLoadBalancingConfiguration):
-        if config.id == "id1":
-            return True
+    def is_cooldown(config: ModelLoadBalancingConfiguration) -> bool:
+        return config.id == "id1"
 
-        return False
-
-    lb_model_manager.in_cooldown = MagicMock(side_effect=is_cooldown)
+    monkeypatch.setattr(lb_model_manager, "in_cooldown", MagicMock(side_effect=is_cooldown))
 
     return lb_model_manager
 
 
-def test_model_manager_with_cache_enabled_reuses_stored_credentials():
+def test_model_manager_with_cache_enabled_reuses_stored_credentials() -> None:
     """With ``enable_credentials_cache=True``, later calls for the same key return cached creds."""
     provider_manager = MagicMock()
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.model_type_instance.model_type = ModelType.LLM
     get_creds = MagicMock(return_value={"api_key": "first"})
     bundle.configuration.get_current_credentials = get_creds
@@ -98,7 +100,7 @@ def _build_model_manager_bundle(
     bundle = MagicMock()
     bundle.configuration.provider.provider = "openai"
     bundle.configuration.tenant_id = "tenant-1"
-    bundle.configuration.model_settings = []
+    bundle.configuration.model_settings = list[object]()
     bundle.configuration.using_provider_type = provider_type
     bundle.configuration.system_configuration.current_quota_type = ProviderQuotaType.TRIAL
     bundle.configuration.system_configuration.quota_configurations = [
@@ -209,6 +211,70 @@ def test_model_manager_rejects_system_model_by_exact_name() -> None:
     bundle.configuration.get_current_credentials.assert_not_called()
 
 
+@pytest.mark.parametrize(
+    "case", ["denied", "allowed", "unrestricted", "name-across-types", "future-trial", "current-trial"]
+)
+def test_v3_inventory_access_matches_real_model_manager_bundle(case: str) -> None:
+    from dataclasses import replace
+
+    from services.model_billing_dependency_provenance import (
+        AccessCheckedSavedModelMigrationIntent,
+        ModelDependencyQuota,
+    )
+    from tests.unit_tests.core.plugin.backwards_invocation.test_model import _hosted_bundle
+    from tests.unit_tests.services.test_model_billing_dependency_provenance import REFERENCE, STATE, Selections
+
+    bundle = _hosted_bundle(ModelType.LLM)
+    requested = "gpt-6-astra" if case in {"denied", "unrestricted"} else "gpt-4o-mini"
+    kind = ModelType.TEXT_EMBEDDING if case == "name-across-types" else ModelType.LLM
+    allowed = [] if case == "unrestricted" else [RestrictModel(model="gpt-4o-mini", model_type=kind)]
+    system = bundle.configuration.system_configuration
+    system.current_quota_type = ProviderQuotaType.TRIAL if case == "current-trial" else ProviderQuotaType.PAID
+    system.quota_configurations = [
+        QuotaConfiguration(
+            quota_type=pool,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=100,
+            quota_used=0,
+            is_valid=True,
+            restrict_models=[RestrictModel(model="other", model_type=ModelType.LLM)]
+            if pool == ProviderQuotaType.PAID and case in {"future-trial", "current-trial"}
+            else allowed,
+        )
+        for pool in (ProviderQuotaType.PAID, ProviderQuotaType.TRIAL)
+    ]
+    if case in {"denied", "future-trial"}:
+        with pytest.raises(ModelCurrentlyNotSupportError, match="is not allowed"):
+            ModelManager._validate_system_model_access(bundle, model_type=ModelType.LLM, model=requested)
+    else:
+        ModelManager._validate_system_model_access(bundle, model_type=ModelType.LLM, model=requested)
+    state = replace(
+        STATE,
+        current_quota_type=system.current_quota_type.value,
+        quotas=tuple(
+            ModelDependencyQuota(
+                quota.quota_type.value,
+                quota.quota_unit.value,
+                quota.quota_limit,
+                quota.quota_used,
+                tuple((restricted.model_type.value, restricted.model) for restricted in quota.restrict_models),
+            )
+            for quota in system.quota_configurations
+        ),
+    )
+    result = AccessCheckedSavedModelMigrationIntent(selections=Selections(state)).resolve(
+        "tenant", (replace(REFERENCE, model=requested),)
+    )[0]
+    if case == "denied":
+        assert result.migration_intent == "policy_excluded"
+        assert result.exclusion_reason == "not_in_enabled_finite_credit_pools"
+    else:
+        assert result.migration_intent == "shared_credit_pool"
+        assert result.migration_pool_types == (
+            ("trial",) if case in {"future-trial", "current-trial"} else ("paid", "trial")
+        )
+
+
 def test_model_manager_matches_allowlist_name_across_model_types() -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
@@ -294,7 +360,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.LLM, "gpt-4")
     reservation = MagicMock(commit_before_delivery=True)
 
-    def failing_stream():
+    def failing_stream() -> Iterator[LLMResultChunk]:
         raise RuntimeError("provider failed")
         yield
 
@@ -332,7 +398,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
     events: list[str] = []
     reservation.commit.side_effect = lambda _usage: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[LLMResultChunk]:
         for index, chunk in enumerate(chunks):
             events.append(f"provider-{index}")
             yield chunk
@@ -469,7 +535,7 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     events: list[str] = []
     reservation.commit.side_effect = lambda: events.append("commit")
 
-    def provider_stream():
+    def provider_stream() -> Iterator[bytes]:
         events.append("provider")
         yield b"audio"
 
@@ -488,6 +554,30 @@ def test_quota_managed_tts_commits_before_first_chunk() -> None:
     reservation.release.assert_called_once_with()
 
 
+def test_model_instance_adapts_tts_chunks_to_audio_bytes() -> None:
+    manager, bundle = _build_model_manager_bundle(
+        provider_type=ProviderType.CUSTOM,
+        restrict_models=[],
+        model_type=ModelType.TTS,
+    )
+    tts_model = TTSModel(
+        provider_schema=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.TTS],
+            configurate_methods=[],
+        ),
+        model_runtime=create_plugin_model_runtime(tenant_id="tenant-1"),
+    )
+    bundle.model_type_instance = tts_model
+    model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
+
+    with patch.object(
+        tts_model.model_runtime, "invoke_tts", return_value=iter([TTSChunk(data=b"audio", mime_type="audio/wav")])
+    ):
+        assert list(model_instance.invoke_tts(content_text="hello", voice="voice")) == [b"audio"]
+
+
 def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> None:
     manager, _ = _build_model_manager_bundle(
         provider_type=ProviderType.SYSTEM,
@@ -497,7 +587,7 @@ def test_quota_managed_tts_releases_when_provider_fails_before_first_chunk() -> 
     model_instance = manager.get_model_instance("tenant-1", "openai", ModelType.TTS, "tts-model")
     reservation = MagicMock()
 
-    def failing_stream():
+    def failing_stream() -> Iterator[bytes]:
         raise RuntimeError("provider failed")
         yield b""
 
@@ -531,7 +621,7 @@ def test_quota_managed_non_inference_helper_does_not_reserve_quota() -> None:
     reserve.assert_not_called()
 
 
-def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager):
+def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LBModelManager) -> None:
     # initialize redis client
     redis_client.initialize(redis.Redis())
 
@@ -547,7 +637,7 @@ def test_lb_model_manager_fetch_next(mocker: MockerFixture, lb_model_manager: LB
 
     start_index = 0
 
-    def incr(key):
+    def incr(key: str) -> int:
         nonlocal start_index
         start_index += 1
         return start_index

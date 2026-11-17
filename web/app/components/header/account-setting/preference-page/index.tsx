@@ -1,4 +1,5 @@
 'use client'
+import type { ThemePreference } from '@/features/theme/theme'
 import type { Locale } from '@/i18n'
 import {
   Combobox,
@@ -30,12 +31,13 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
-import { useTheme } from 'next-themes'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { toast } from '@/app/notifications'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
+import { useThemePreference } from '@/features/theme/hooks'
+import { themeOptions } from '@/features/theme/theme'
 import { setLocaleOnClient } from '@/i18n/client'
 import { languages } from '@/i18n/language'
 import { useRouter } from '@/next/navigation'
@@ -44,7 +46,6 @@ import { timezones } from '@/utils/timezone'
 
 type TimezoneOption = (typeof timezones)[number]
 type TimezoneValue = TimezoneOption['value']
-type ThemeValue = 'system' | 'light' | 'dark'
 
 const languageItems = languages
   .filter((item) => item.supported)
@@ -67,7 +68,7 @@ export default function PreferencePage() {
   })
   const { t } = useTranslation(['common', 'accountSettings'])
   const router = useRouter()
-  const { theme, setTheme } = useTheme()
+  const { preference, setPreference } = useThemePreference()
   const updateProfile = useMutation(
     consoleQuery.account.profile.patch.mutationOptions({
       onSuccess: async (data, variables, onMutateResult, context) => {
@@ -75,7 +76,7 @@ export default function PreferencePage() {
         await Promise.all([
           profileMutationOptions.onSuccess?.(data, variables, onMutateResult, context),
           language
-            ? setLocaleOnClient(language, false).then(
+            ? setLocaleOnClient(language).then(
                 () => router.refresh(),
                 (error: unknown) => {
                   toast.error(
@@ -90,39 +91,32 @@ export default function PreferencePage() {
       },
     }),
   )
-  const themeItems = [
-    {
-      value: 'system',
-      label: t(($) => $['account.appearanceFollowSystem'], { ns: 'accountSettings' }),
-    },
-    { value: 'light', label: t(($) => $['account.appearanceLight'], { ns: 'accountSettings' }) },
-    { value: 'dark', label: t(($) => $['account.appearanceDark'], { ns: 'accountSettings' }) },
-  ] satisfies { value: ThemeValue; label: string }[]
+  const themeItems = themeOptions.map((option) => ({
+    value: option.value,
+    label: t(($) => $[option.labelKey], { ns: 'common' }),
+  }))
   const selectedLanguage = languageItems.find(
     (item) => item.value === (locale || userProfile.interface_language),
   )
-  const selectedTheme = themeItems.find((item) => item.value === theme)?.value ?? 'system'
   const selectedTimezone = timezones.find((item) => item.value === userProfile.timezone)
   return (
     <div className="grid gap-6 pt-1 pb-4">
       <div className="grid min-w-0 gap-1">
-        <Select<ThemeValue>
+        <Select<ThemePreference>
           items={themeItems}
-          value={selectedTheme}
+          value={preference}
           onValueChange={(nextValue) => {
-            if (nextValue === null || nextValue === selectedTheme) return
-            setTheme(nextValue)
+            if (nextValue === null || nextValue === preference) return
+            setPreference(nextValue)
           }}
         >
-          <SelectLabel>
-            {t(($) => $['account.appearanceLabel'], { ns: 'accountSettings' })}
-          </SelectLabel>
+          <SelectLabel>{t(($) => $['theme.label'], { ns: 'common' })}</SelectLabel>
           <SelectTrigger size="medium">
-            <SelectValue<ThemeValue> />
+            <SelectValue<ThemePreference> />
           </SelectTrigger>
           <SelectContent>
             {themeItems.map((item) => (
-              <SelectItem<ThemeValue> key={item.value} value={item.value}>
+              <SelectItem<ThemePreference> key={item.value} value={item.value}>
                 <SelectItemText>{item.label}</SelectItemText>
                 <SelectItemIndicator />
               </SelectItem>
@@ -134,7 +128,7 @@ export default function PreferencePage() {
         <Select<Locale>
           items={languageItems}
           value={selectedLanguage?.value ?? null}
-          disabled={updateProfile.isPending}
+          readOnly={updateProfile.isPending}
           onValueChange={(nextValue) => {
             if (nextValue === null || nextValue === selectedLanguage?.value) return
             updateProfile.mutate({ body: { interface_language: nextValue } })
@@ -160,7 +154,7 @@ export default function PreferencePage() {
         <Combobox<TimezoneValue, false, TimezoneOption>
           items={timezoneItems}
           value={selectedTimezone?.value ?? null}
-          disabled={updateProfile.isPending}
+          readOnly={updateProfile.isPending}
           filter={(item, query) => {
             const search = query.trim()
             return contains(item.name, search) || contains(item.value, search)
@@ -173,8 +167,8 @@ export default function PreferencePage() {
           <ComboboxLabel>
             <span id={timezoneLabelId}>{t(($) => $['language.timezone'], { ns: 'common' })}</span>
           </ComboboxLabel>
-          <ComboboxTrigger className="group/timezone-trigger flex h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 pr-2 pl-3 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt">
-            <span className="min-w-0 grow truncate">
+          <ComboboxTrigger className="group/timezone-trigger flex min-h-8 w-full min-w-0 items-center gap-0.5 rounded-lg border-0 bg-components-input-bg-normal py-2 ps-3 pe-2 text-start system-sm-regular text-components-input-text-filled hover:bg-state-base-hover-alt focus-visible:bg-state-base-hover-alt data-disabled:cursor-not-allowed data-disabled:bg-components-input-bg-disabled data-disabled:text-components-input-text-filled-disabled data-disabled:hover:bg-components-input-bg-disabled data-placeholder:text-components-input-text-placeholder data-disabled:data-placeholder:text-components-input-text-disabled data-popup-open:bg-state-base-hover-alt">
+            <span className="min-w-0 grow wrap-anywhere whitespace-normal">
               <ComboboxValue<TimezoneValue>
                 placeholder={t(($) => $['placeholder.select'], { ns: 'common' })}
               />
@@ -207,7 +201,9 @@ export default function PreferencePage() {
                 <ComboboxList<TimezoneOption>>
                   {(item) => (
                     <ComboboxItem<TimezoneValue> key={item.value} value={item.value}>
-                      <ComboboxItemText>{item.name}</ComboboxItemText>
+                      <ComboboxItemText className="wrap-anywhere text-clip whitespace-normal">
+                        {item.name}
+                      </ComboboxItemText>
                       <ComboboxItemIndicator />
                     </ComboboxItem>
                   )}

@@ -1,4 +1,4 @@
-"""Application query boundary for Console conversation variables."""
+"""Application query boundary for owned conversation variables."""
 
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -7,6 +7,7 @@ from typing import Protocol
 
 from graphon.variables import VariableBase
 from machinery.context import RequestContext
+from services.entities.conversation_entities import EndUserConversationRef
 
 # The Console endpoint exposes only the first page, including its legacy
 # total/has_more fields. Changing pagination is a separate API change.
@@ -19,6 +20,13 @@ class ConversationVariableRecord:
     variable: VariableBase
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class ConversationVariablePage:
+    limit: int
+    has_more: bool
+    data: tuple[ConversationVariableRecord, ...]
 
 
 class ConversationVariableAppNotFoundError(Exception):
@@ -34,4 +42,15 @@ class ConversationVariableQuery(Protocol):
         self, context: RequestContext, app_id: str, conversation_id: str
     ) -> Sequence[ConversationVariableRecord]:
         """Read the bounded result under the same workspace and app scope."""
+        ...
+
+    def get_page(
+        self,
+        *,
+        ref: EndUserConversationRef,
+        last_id: str | None,
+        limit: int,
+        variable_name: str | None,
+    ) -> ConversationVariablePage:
+        """Read an end user's variables; None omits the cursor or name filter."""
         ...

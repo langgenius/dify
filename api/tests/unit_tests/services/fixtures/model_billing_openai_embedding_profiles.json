@@ -1,0 +1,929 @@
+{
+  "schema_version": 1,
+  "profiles": [
+    {
+      "profile_id": "openai-042-embedding-runtime-v1:text-embedding-3-large",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "text-embedding-3-large",
+      "target_model": "text-embedding-3-large",
+      "source_schema_digest": "sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+      "source_runtime_schema_digest": "sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+      "source_codec_schema_digest": "sha256:a424be9a5640bea1e22c8cefbf97863c126e3e3549410555ac271ad47527537a",
+      "source_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "pt_BR": "text-embedding-3-large",
+          "ja_JP": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "042",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "source_tiktoken_version": "0.13.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "6047108d52e625a6c50043d951193f5eb92cad649624751cc7f06304eaea1dfa",
+        "vendored_runtime_sha256": "081b6d55004b67cb4b62cfd38cd993f792bb175534e18f7be780fe4d0fef06b1",
+        "source_method_ast_sha256": {
+          "_invoke": "812a11354566d4f96920724268407ad589c8696c549464359dd1227d131859e4",
+          "get_num_tokens": "c8b5de270b3e203c2e7704656269a1a18e1789ea03a921deec01e1902836e2a9",
+          "validate_credentials": "d691adf898b59659825919f2b3a0b0205d96805bd95b2a9796f7697e84925650",
+          "_embedding_invoke": "598fbb7bda66bf33f458654d53873d1f7d6e5c56be22ad0f7842dad24a3d8d26",
+          "_calc_response_usage": "7490b68aa21443f2348cee87879b9dd8d2767c712a9415f5aefdb441b42121f2"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit exception cause only; private codec never calls credential validation"
+        },
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8191,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "base64",
+        "numpy_version": "2.4.6",
+        "merge": "NumPy token-weighted average then NumPy L2 norm; exact float32 base64 decode/empty fallback",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list returns0 vectors/0 model POST; each empty string makes input='' fallback POST and float32 normalization",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    },
+    {
+      "profile_id": "openai-042-embedding-runtime-v1:text-embedding-3-small",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "text-embedding-3-small",
+      "target_model": "text-embedding-3-small",
+      "source_schema_digest": "sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+      "source_runtime_schema_digest": "sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+      "source_codec_schema_digest": "sha256:4f4566ac5b758863cfca7c43cf225a7581306bc43fe3298aaf7c551e625567c0",
+      "source_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "pt_BR": "text-embedding-3-small",
+          "ja_JP": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "042",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "source_tiktoken_version": "0.13.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "6047108d52e625a6c50043d951193f5eb92cad649624751cc7f06304eaea1dfa",
+        "vendored_runtime_sha256": "081b6d55004b67cb4b62cfd38cd993f792bb175534e18f7be780fe4d0fef06b1",
+        "source_method_ast_sha256": {
+          "_invoke": "812a11354566d4f96920724268407ad589c8696c549464359dd1227d131859e4",
+          "get_num_tokens": "c8b5de270b3e203c2e7704656269a1a18e1789ea03a921deec01e1902836e2a9",
+          "validate_credentials": "d691adf898b59659825919f2b3a0b0205d96805bd95b2a9796f7697e84925650",
+          "_embedding_invoke": "598fbb7bda66bf33f458654d53873d1f7d6e5c56be22ad0f7842dad24a3d8d26",
+          "_calc_response_usage": "7490b68aa21443f2348cee87879b9dd8d2767c712a9415f5aefdb441b42121f2"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit exception cause only; private codec never calls credential validation"
+        },
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8191,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "base64",
+        "numpy_version": "2.4.6",
+        "merge": "NumPy token-weighted average then NumPy L2 norm; exact float32 base64 decode/empty fallback",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list returns0 vectors/0 model POST; each empty string makes input='' fallback POST and float32 normalization",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    },
+    {
+      "profile_id": "openai-042-embedding-runtime-v1:text-embedding-ada-002",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "text-embedding-ada-002",
+      "target_model": "text-embedding-ada-002",
+      "source_schema_digest": "sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+      "source_runtime_schema_digest": "sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+      "source_codec_schema_digest": "sha256:d76c30be258981e427dca3de3dcbe21d1a59f4e107a5578dd59bfc2b8e5bf6a2",
+      "source_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "pt_BR": "text-embedding-ada-002",
+          "ja_JP": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "042",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "c1da1055814117e269e74d177489cd9fb45cbd14774d95cc2ad1846f2ff999b3",
+      "source_sdk_version": "0.9.0",
+      "source_openai_version": "2.38.0",
+      "source_tiktoken_version": "0.13.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "785c965ac7bcc0d8a58ebcde2ad6933f5127e85c9feccae6304baa5047a067d6",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "6047108d52e625a6c50043d951193f5eb92cad649624751cc7f06304eaea1dfa",
+        "vendored_runtime_sha256": "081b6d55004b67cb4b62cfd38cd993f792bb175534e18f7be780fe4d0fef06b1",
+        "source_method_ast_sha256": {
+          "_invoke": "812a11354566d4f96920724268407ad589c8696c549464359dd1227d131859e4",
+          "get_num_tokens": "c8b5de270b3e203c2e7704656269a1a18e1789ea03a921deec01e1902836e2a9",
+          "validate_credentials": "d691adf898b59659825919f2b3a0b0205d96805bd95b2a9796f7697e84925650",
+          "_embedding_invoke": "598fbb7bda66bf33f458654d53873d1f7d6e5c56be22ad0f7842dad24a3d8d26",
+          "_calc_response_usage": "7490b68aa21443f2348cee87879b9dd8d2767c712a9415f5aefdb441b42121f2"
+        },
+        "narrow_nonwire_source_edits": {
+          "validate_credentials": "explicit exception cause only; private codec never calls credential validation"
+        },
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8097,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "base64",
+        "numpy_version": "2.4.6",
+        "merge": "NumPy token-weighted average then NumPy L2 norm; exact float32 base64 decode/empty fallback",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list returns0 vectors/0 model POST; each empty string makes input='' fallback POST and float32 normalization",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    },
+    {
+      "profile_id": "openai-110-embedding-runtime-v1:text-embedding-3-large",
+      "source_plugin_uid": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+      "source_model": "text-embedding-3-large",
+      "target_model": "text-embedding-3-large",
+      "source_schema_digest": "sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+      "source_runtime_schema_digest": "sha256:aac5a07e511a6398575c855a61f572add58bdae23f28ad072a92bb7c58e47f5d",
+      "source_codec_schema_digest": "sha256:a424be9a5640bea1e22c8cefbf97863c126e3e3549410555ac271ad47527537a",
+      "source_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "pt_BR": "text-embedding-3-large",
+          "ja_JP": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-3-large",
+        "label": {
+          "zh_Hans": "text-embedding-3-large",
+          "en_US": "text-embedding-3-large"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00013",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "110",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "b24e087db7e01d1388100ad63f5a7f01aad5f5924f0c35d6d9431abc646698ab",
+      "source_sdk_version": "0.10.2",
+      "source_openai_version": "3.37.0",
+      "source_tiktoken_version": "0.14.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "240531d7ba5e8996b2998f3719cc890da18746fa9c22277a2f9b58e982798514",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "7fdeb9ece77bd8a6cea8faf1f44e009925dc6c501c21cdd3055089d1797415a0",
+        "vendored_runtime_sha256": "95facb53b65eb060330e39adb0ba401941f3d8adc7ce0b264c8ac5affaa19c6d",
+        "source_method_ast_sha256": {
+          "_normalize": "53c0c94ad1337145205d1eaf647f170c2c7c020a3e34f4e9868c9b591b0ef4c0",
+          "_merge_embeddings": "c4348a07987aa3b3025af97df6b97d6b605e2ebe60ae7197f031e968768f65c2",
+          "_invoke": "e5db7ba2aaf5279d06961d5f86873d8151bbec324f160e33eb3f716e6d6f51fb",
+          "get_num_tokens": "3a35068a55af5bbc5e36cfc806f3532b4fc695b3fb873b112bd5c9645e455e09",
+          "validate_credentials": "dd984c83935baaf1a4a396799279251e1c4f4ebc101e6e27ebb4efedf67f0264",
+          "_embedding_invoke": "7e01135ffa582b54072054981cbe79bc7326126024901bd5fe9dec2c5dba6ad0",
+          "_calc_response_usage": "bf0684a1de05d3dabe112c93bee4e5968a30fce2c323d076743f03c271efe5ef"
+        },
+        "narrow_nonwire_source_edits": {},
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8191,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "float",
+        "numpy_version": null,
+        "merge": "math.fsum token-weighted average then sqrt/fsum L2 norm with strict zip and finite/nonzero checks",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list or any empty string rejected before model POST",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    },
+    {
+      "profile_id": "openai-110-embedding-runtime-v1:text-embedding-3-small",
+      "source_plugin_uid": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+      "source_model": "text-embedding-3-small",
+      "target_model": "text-embedding-3-small",
+      "source_schema_digest": "sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+      "source_runtime_schema_digest": "sha256:ace3f43ba3540fd50fde03590705c8bedf4d8c12384ed286bb284762ba5aadb0",
+      "source_codec_schema_digest": "sha256:4f4566ac5b758863cfca7c43cf225a7581306bc43fe3298aaf7c551e625567c0",
+      "source_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "pt_BR": "text-embedding-3-small",
+          "ja_JP": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-3-small",
+        "label": {
+          "zh_Hans": "text-embedding-3-small",
+          "en_US": "text-embedding-3-small"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8191,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.00002",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "110",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "b24e087db7e01d1388100ad63f5a7f01aad5f5924f0c35d6d9431abc646698ab",
+      "source_sdk_version": "0.10.2",
+      "source_openai_version": "3.37.0",
+      "source_tiktoken_version": "0.14.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "240531d7ba5e8996b2998f3719cc890da18746fa9c22277a2f9b58e982798514",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "7fdeb9ece77bd8a6cea8faf1f44e009925dc6c501c21cdd3055089d1797415a0",
+        "vendored_runtime_sha256": "95facb53b65eb060330e39adb0ba401941f3d8adc7ce0b264c8ac5affaa19c6d",
+        "source_method_ast_sha256": {
+          "_normalize": "53c0c94ad1337145205d1eaf647f170c2c7c020a3e34f4e9868c9b591b0ef4c0",
+          "_merge_embeddings": "c4348a07987aa3b3025af97df6b97d6b605e2ebe60ae7197f031e968768f65c2",
+          "_invoke": "e5db7ba2aaf5279d06961d5f86873d8151bbec324f160e33eb3f716e6d6f51fb",
+          "get_num_tokens": "3a35068a55af5bbc5e36cfc806f3532b4fc695b3fb873b112bd5c9645e455e09",
+          "validate_credentials": "dd984c83935baaf1a4a396799279251e1c4f4ebc101e6e27ebb4efedf67f0264",
+          "_embedding_invoke": "7e01135ffa582b54072054981cbe79bc7326126024901bd5fe9dec2c5dba6ad0",
+          "_calc_response_usage": "bf0684a1de05d3dabe112c93bee4e5968a30fce2c323d076743f03c271efe5ef"
+        },
+        "narrow_nonwire_source_edits": {},
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8191,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "float",
+        "numpy_version": null,
+        "merge": "math.fsum token-weighted average then sqrt/fsum L2 norm with strict zip and finite/nonzero checks",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list or any empty string rejected before model POST",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    },
+    {
+      "profile_id": "openai-110-embedding-runtime-v1:text-embedding-ada-002",
+      "source_plugin_uid": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+      "source_model": "text-embedding-ada-002",
+      "target_model": "text-embedding-ada-002",
+      "source_schema_digest": "sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+      "source_runtime_schema_digest": "sha256:973002e4e3f913dd5366a37e85a674df1d3f104a0930abad6639ee7715a7500c",
+      "source_codec_schema_digest": "sha256:d76c30be258981e427dca3de3dcbe21d1a59f4e107a5578dd59bfc2b8e5bf6a2",
+      "source_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "pt_BR": "text-embedding-ada-002",
+          "ja_JP": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "text-embedding-ada-002",
+        "label": {
+          "zh_Hans": "text-embedding-ada-002",
+          "en_US": "text-embedding-ada-002"
+        },
+        "model_type": "text-embedding",
+        "features": null,
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 8097,
+          "max_chunks": 32
+        },
+        "deprecated": false,
+        "parameter_rules": [],
+        "pricing": {
+          "input": "0.0001",
+          "output": null,
+          "unit": "0.001",
+          "currency": "USD"
+        }
+      },
+      "source_version": "110",
+      "source_endpoint_classes": [
+        "unset",
+        "official_root"
+      ],
+      "source_endpoint_requirement": "unset or exact https://api.openai.com; /v1/custom/query not admitted",
+      "source_setting_contract": {
+        "request_metadata_behavior": "not_used",
+        "api_protocol_behavior": "not_used"
+      },
+      "source_operations": [
+        "model/schema",
+        "text_embedding/invoke",
+        "text_embedding/num_tokens"
+      ],
+      "adapter_id": "openai_embedding_source_v1",
+      "adapter_revision": "1",
+      "source_archive_sha256": "b24e087db7e01d1388100ad63f5a7f01aad5f5924f0c35d6d9431abc646698ab",
+      "source_sdk_version": "0.10.2",
+      "source_openai_version": "3.37.0",
+      "source_tiktoken_version": "0.14.0",
+      "target_sdk_version": "0.10.2",
+      "target_openai_version": "3.37.0",
+      "target_tiktoken_version": "0.14.0",
+      "source_inventory_evidence_sha256": "240531d7ba5e8996b2998f3719cc890da18746fa9c22277a2f9b58e982798514",
+      "source_runtime_evidence": "Exact local source class SDK schema projected through actual Core parser; readiness requires fresh exact-UID source schema RPC separately.",
+      "codec_rules": {
+        "implementation": "attributed_exact_source_embedding_per_rpc_fixed_managed_client_v1",
+        "source_runtime_sha256": "7fdeb9ece77bd8a6cea8faf1f44e009925dc6c501c21cdd3055089d1797415a0",
+        "vendored_runtime_sha256": "95facb53b65eb060330e39adb0ba401941f3d8adc7ce0b264c8ac5affaa19c6d",
+        "source_method_ast_sha256": {
+          "_normalize": "53c0c94ad1337145205d1eaf647f170c2c7c020a3e34f4e9868c9b591b0ef4c0",
+          "_merge_embeddings": "c4348a07987aa3b3025af97df6b97d6b605e2ebe60ae7197f031e968768f65c2",
+          "_invoke": "e5db7ba2aaf5279d06961d5f86873d8151bbec324f160e33eb3f716e6d6f51fb",
+          "get_num_tokens": "3a35068a55af5bbc5e36cfc806f3532b4fc695b3fb873b112bd5c9645e455e09",
+          "validate_credentials": "dd984c83935baaf1a4a396799279251e1c4f4ebc101e6e27ebb4efedf67f0264",
+          "_embedding_invoke": "7e01135ffa582b54072054981cbe79bc7326126024901bd5fe9dec2c5dba6ad0",
+          "_calc_response_usage": "bf0684a1de05d3dabe112c93bee4e5968a30fce2c323d076743f03c271efe5ef"
+        },
+        "narrow_nonwire_source_edits": {},
+        "tokenizer": "tiktoken.encoding_for_model exact model, fallback cl100k_base; default special-token rejection",
+        "cl100k_public_asset_sha256": "223921b76ee99bde995b7ff738513eef100fb51d18c93597a113bcffe865b2a7",
+        "context_size": 8097,
+        "max_chunks_per_model_post": 32,
+        "chunk_batching": "token ID chunks across original texts, preserve source chunk and original text order",
+        "encoding_format": "float",
+        "numpy_version": null,
+        "merge": "math.fsum token-weighted average then sqrt/fsum L2 norm with strict zip and finite/nonzero checks",
+        "single_chunk": "normalize even when original text has a single chunk",
+        "empty_input": "empty list or any empty string rejected before model POST",
+        "response_order": "use data list order, never sort by index; restore original text positions",
+        "query_document": "same payload; no new prefixes or retrieval task fields",
+        "dimensions": "source does not declare/send dimensions; no guessed dimension, pad/truncate/projection or synthetic shape guarantee",
+        "usage": "sum authoritative response.usage.total_tokens across actual chunk/fallback requests; source local pricing metadata only",
+        "num_tokens": "pure local tokenizer per original text; no model/count API or usage writes",
+        "flags": "exact source ignores api_protocol and enable_request_metadata including enabled/unknown/None; do not falsify raw settings",
+        "source_credential_reconstruction": "canonical absent base/protocol/metadata after both admitted endpoint classes proved wire-equivalent; managed key only",
+        "transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/embeddings",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10.0,
+            "read": 120.0,
+            "write": 120.0,
+            "pool": 10.0
+          },
+          "model_post_count": "ceil(nonempty token chunks/32) plus exact042 empty-text fallback posts; not a blanket one-invoke-one-post claim",
+          "auth": "managed org key only; no original source secret/URL or native fallback",
+          "lifecycle": "request-local ContextVar; all clients closed on success/error"
+        },
+        "managed_transport_sha256": "ea17ba8057c474f6bfe0ac6b88bccc21ef27a89ac820c4a88ba90881e5e6a6aa",
+        "source_wire_algorithm_proof_sha256": "fc30be0e698522aad6ce9496fe4edd0dc4bf80dd7f6655293ad51c4f895646bb",
+        "source_schema_projection_evidence_sha256": "78f80bed8ee8a6363dcbc6b4b933bba1d6e5d26e56ba6d7cb84d30ec542776c2",
+        "proof_scope": "offline exact source/target mock vector numeric+wire comparison; synthetic3D responses are NOT real model dimensions, billing, ACL, or live forwarding proof"
+      }
+    }
+  ]
+}

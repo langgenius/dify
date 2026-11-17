@@ -1,0 +1,1258 @@
+{
+  "profiles": [
+    {
+      "profile_id": "openai-042-chat-official-root-runtime-v1:gpt-4o-mini",
+      "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+      "source_model": "gpt-4o-mini",
+      "target_model": "gpt-4o-mini",
+      "source_schema_digest": "sha256:a6252c47636c0aa0b3c66327d3a512711abcd61cca079ac53a51c435a2d65771",
+      "source_sdk_version": "0.9.0",
+      "source_runtime_sha256": "6ad5e953331cc6291d493dce11144e5e85bd7bcb148e47fac7edb272b15d5071",
+      "source_protocol": "chat",
+      "source_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "存在惩罚",
+              "en_US": "Presence Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "频率惩罚",
+              "en_US": "Frequency Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1.0,
+            "max": 16384.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "algorithm": "exact_openai_chat_official_root_catalog_runtime_v1",
+      "omitted_optional_parameters": "remain_omitted",
+      "response_format": "source_chat_json_schema_envelope",
+      "controlled_transport": [
+        "chat/completions",
+        "stream_options_include_usage",
+        "stop",
+        "user",
+        "tools_function_auto"
+      ],
+      "authoritative_usage_regression_required": true,
+      "response_semantics": {
+        "positive_upstream_usage": "preserve complete nonnegative positive counts unchanged",
+        "missing_usage": "exact source SDK0.9.0 model tiktoken estimator, never an injected upstream usage frame",
+        "sync_zero_usage": "preserve source zero counts",
+        "stream_zero_usage": "source fallback estimation",
+        "legacy_function_call": "function name as tool id; modern tool_calls take priority",
+        "schema_owner": "request-local frozen source contract, independent of stripped wire credentials",
+        "token_count": "direct source estimator; never native Responses get_num_tokens"
+      },
+      "source_runtime_schema_digest": "sha256:b068793d31c93e11b44e31374e24f62ce25b7c8744aae708213f7caa41be4783",
+      "source_catalog_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "presence_penalty",
+              "en_US": "presence_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "frequency_penalty",
+              "en_US": "frequency_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1.0,
+            "max": 16384.0,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_profile_id": "openai-042-chat:gpt-4o-mini",
+      "source_codec_rules_digest": "sha256:81b8e1fa413088fa08c8f5114a9668fb0d9289fe6e60b07b16a805478ef912f2",
+      "source_codec_schema_digest": "sha256:e322eaf07a393f69b01a5911084192a5a6e9b790d4fbaebd30df5c30ae81ea33",
+      "source_runtime_evidence": {
+        "artifact_sha256": "44aba6a8996af37316714bf89be27b014cd72f06009f7b976a2d2d0a54c901f9",
+        "kind": "exact_original_system_runtime_schema_metadata",
+        "source_plugin_uid": "langgenius/openai:0.4.2@21195ee1321849e0a7d4b3f6b2fd8c2be23ea6c7182e1b444ecc4c1711b52468",
+        "captured_at": "2026-11-02T06:34:28.792842+00:00"
+      },
+      "adapter_id": "openai_chat_source_v1",
+      "adapter_revision": "3",
+      "source_protocol_selectors": [
+        "absent",
+        "chat"
+      ],
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false
+      },
+      "source_endpoint_requirement": "https://api.openai.com",
+      "source_endpoint_wire_evidence": {
+        "kind": "exact_openai_endpoint_public_sdk_offline_capture_v1",
+        "artifact_sha256": "4188d853b281ca1a28a833255c9bf222aebf38e13153e9635f20ad17c39456b0",
+        "source_capture_count": 36,
+        "source_constructor_unmodified": true,
+        "network_requests": 0,
+        "actual_model_generations": 0
+      }
+    },
+    {
+      "profile_id": "openai-110-chat-official-root-runtime-v1:gpt-4o-mini",
+      "source_plugin_uid": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+      "source_model": "gpt-4o-mini",
+      "target_model": "gpt-4o-mini",
+      "source_schema_digest": "sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+      "source_runtime_schema_digest": "sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+      "source_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "存在惩罚",
+              "en_US": "Presence Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "频率惩罚",
+              "en_US": "Frequency Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1,
+            "max": 16384,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Auto 跟随项目设置；Default 使用标准处理；Priority 使用低延迟处理。",
+              "en_US": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing."
+            },
+            "required": false,
+            "default": "auto",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "auto",
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "presence_penalty",
+              "en_US": "presence_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "frequency_penalty",
+              "en_US": "frequency_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1,
+            "max": 16384,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Auto 跟随项目设置；Default 使用标准处理；Priority 使用低延迟处理。",
+              "en_US": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing."
+            },
+            "required": false,
+            "default": "auto",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "auto",
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "chat",
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "chat"
+      ],
+      "adapter_id": "openai_provider110_source_v1",
+      "adapter_revision": "2",
+      "source_archive_sha256": "b24e087db7e01d1388100ad63f5a7f01aad5f5924f0c35d6d9431abc646698ab",
+      "actual_metadata_evidence_sha256": "240531d7ba5e8996b2998f3719cc890da18746fa9c22277a2f9b58e982798514",
+      "codec_rules": {
+        "algorithm": "exact-openai110-client-injected-codecs-v1",
+        "source_files_sha256": {
+          "models/llm/chat.py": "215da669d52613197357bccdbb1a788395cc8f5f41f338659e377a5c5033c4f1",
+          "models/llm/responses.py": "1f76e8d7fbc38eba0a53760d3075b89637f1bbefc9ce2bd8360fec371b0924a9",
+          "models/llm/stream.py": "e3f342523e78754656ef92ae9c7582e0357f62e913e2eea6926876e86bab6c1e",
+          "models/llm/tokens.py": "db28e51cbbd394f2160e21e03f843b788333efaab142aefb8418a61005282efa",
+          "models/llm/_metadata.py": "29ca4ebafc55d4b20a3564acee0e89182763d05c76e60082648b2b37271a2d90",
+          "models/llm/llm.py": "8d34dac1a2b01224044cb2e293e921a9a4d9fa2b5cfb96dc13a076e4849f4327",
+          "models/common_openai.py": "cf9421b38f00947c7d17d1aef9974bd3f0af3b1e7429bb714f48318ba2ef9490"
+        },
+        "local_counter_function_ast_sha256": "d72c936e9136d93f63eb910e1ee451629fb1a155978808d73fe3e90b7dc3bd3f",
+        "source_sdk_version": "0.10.2",
+        "openai_sdk_version": "3.37.0",
+        "parameter_filter": "exact-SDK-LargeLanguageModel-filter-required-defaults-only",
+        "invoke_preamble": "copy-params;literal-enable_stream-False-disables;service_tier-None-or-empty-dropped",
+        "transport": "fixed-managed-key-and-Tokener-endpoint;timeout-connect10-read120-write120-pool10;no-retry;no-redirect;trust-env-false;wire-invariants-checked",
+        "transport_parameter_policy": "deny-transport-or-private-fields-before-filter;drop-ordinary-undeclared-fields",
+        "source_credentials": "exact-public-official-root-https://api.openai.com;metadata-off;reconstruct-public-base-only;never-copy-source-key-url-org",
+        "sync_and_lazy_error_mapping": "exact-CommonOpenAI-mapping-and-stream-wrapper",
+        "schema_boundary": "catalog marker distinct from actual runtime RPC and SDK codec schema",
+        "live_inference_verified": false,
+        "local_counter_ast_format": "CPython3.12 ast.dump(include_attributes=False)"
+      },
+      "historical_no_base_public_settings_evidence_sha256": "18eb1dd9f4318b01f8f8678c6e0e752d6e8ce1e275bcd920533b459889f2f2b9",
+      "source_endpoint_requirement": "https://api.openai.com",
+      "source_endpoint_wire_evidence": {
+        "kind": "exact_openai_endpoint_public_sdk_offline_capture_v1",
+        "artifact_sha256": "4188d853b281ca1a28a833255c9bf222aebf38e13153e9635f20ad17c39456b0",
+        "source_capture_count": 36,
+        "source_constructor_unmodified": true,
+        "network_requests": 0,
+        "actual_model_generations": 0
+      }
+    },
+    {
+      "profile_id": "openai-110-responses-official-root-runtime-v1:gpt-4o-mini",
+      "source_plugin_uid": "langgenius/openai:1.1.0@95f7de6ee42124cb7649f20d3f175c5b0adb66ad92640a97e4027c15b266141c",
+      "source_model": "gpt-4o-mini",
+      "target_model": "gpt-4o-mini",
+      "source_schema_digest": "sha256:ebda9a686193f5f2e19da7cf059d4357dacfb09e09c010480d2003792236d8a0",
+      "source_runtime_schema_digest": "sha256:224a3127e23eb4d47ebe765dc5af81ba6b7c9510167d8dceedbe33c7c3ad3d2d",
+      "source_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "存在惩罚",
+              "en_US": "Presence Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "频率惩罚",
+              "en_US": "Frequency Penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "最大标记",
+              "en_US": "Max Tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1,
+            "max": 16384,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Auto 跟随项目设置；Default 使用标准处理；Priority 使用低延迟处理。",
+              "en_US": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing."
+            },
+            "required": false,
+            "default": "auto",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "auto",
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_catalog_schema": {
+        "model": "gpt-4o-mini",
+        "label": {
+          "zh_Hans": "gpt-4o-mini",
+          "en_US": "gpt-4o-mini"
+        },
+        "model_type": "llm",
+        "features": [
+          "multi-tool-call",
+          "agent-thought",
+          "stream-tool-call",
+          "vision",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 128000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "presence_penalty",
+            "use_template": "presence_penalty",
+            "label": {
+              "zh_Hans": "presence_penalty",
+              "en_US": "presence_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中已有的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens already in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "frequency_penalty",
+            "use_template": "frequency_penalty",
+            "label": {
+              "zh_Hans": "frequency_penalty",
+              "en_US": "frequency_penalty"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "对文本中出现的标记的对数概率施加惩罚。",
+              "en_US": "Applies a penalty to the log-probability of tokens that appear in the text."
+            },
+            "required": false,
+            "default": 0,
+            "min": 0,
+            "max": 1,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "max_tokens",
+            "use_template": "max_tokens",
+            "label": {
+              "zh_Hans": "max_tokens",
+              "en_US": "max_tokens"
+            },
+            "type": "int",
+            "help": {
+              "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+              "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+            },
+            "required": false,
+            "default": 512,
+            "min": 1,
+            "max": 16384,
+            "precision": 0,
+            "options": []
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "text",
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Auto 跟随项目设置；Default 使用标准处理；Priority 使用低延迟处理。",
+              "en_US": "Auto follows the project setting; Default selects standard processing; Priority selects lower-latency processing."
+            },
+            "required": false,
+            "default": "auto",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "auto",
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "0.15",
+          "output": "0.6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "protocol": "responses",
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false
+      },
+      "source_protocol_selectors": [
+        "absent",
+        "responses"
+      ],
+      "adapter_id": "openai_provider110_source_v1",
+      "adapter_revision": "2",
+      "source_archive_sha256": "b24e087db7e01d1388100ad63f5a7f01aad5f5924f0c35d6d9431abc646698ab",
+      "actual_metadata_evidence_sha256": "240531d7ba5e8996b2998f3719cc890da18746fa9c22277a2f9b58e982798514",
+      "codec_rules": {
+        "algorithm": "exact-openai110-client-injected-codecs-v1",
+        "source_files_sha256": {
+          "models/llm/chat.py": "215da669d52613197357bccdbb1a788395cc8f5f41f338659e377a5c5033c4f1",
+          "models/llm/responses.py": "1f76e8d7fbc38eba0a53760d3075b89637f1bbefc9ce2bd8360fec371b0924a9",
+          "models/llm/stream.py": "e3f342523e78754656ef92ae9c7582e0357f62e913e2eea6926876e86bab6c1e",
+          "models/llm/tokens.py": "db28e51cbbd394f2160e21e03f843b788333efaab142aefb8418a61005282efa",
+          "models/llm/_metadata.py": "29ca4ebafc55d4b20a3564acee0e89182763d05c76e60082648b2b37271a2d90",
+          "models/llm/llm.py": "8d34dac1a2b01224044cb2e293e921a9a4d9fa2b5cfb96dc13a076e4849f4327",
+          "models/common_openai.py": "cf9421b38f00947c7d17d1aef9974bd3f0af3b1e7429bb714f48318ba2ef9490"
+        },
+        "local_counter_function_ast_sha256": "d72c936e9136d93f63eb910e1ee451629fb1a155978808d73fe3e90b7dc3bd3f",
+        "source_sdk_version": "0.10.2",
+        "openai_sdk_version": "3.37.0",
+        "parameter_filter": "exact-SDK-LargeLanguageModel-filter-required-defaults-only",
+        "invoke_preamble": "copy-params;literal-enable_stream-False-disables;service_tier-None-or-empty-dropped",
+        "transport": "fixed-managed-key-and-Tokener-endpoint;timeout-connect10-read120-write120-pool10;no-retry;no-redirect;trust-env-false;wire-invariants-checked",
+        "transport_parameter_policy": "deny-transport-or-private-fields-before-filter;drop-ordinary-undeclared-fields",
+        "source_credentials": "exact-public-official-root-https://api.openai.com;metadata-off;reconstruct-public-base-only;never-copy-source-key-url-org",
+        "sync_and_lazy_error_mapping": "exact-CommonOpenAI-mapping-and-stream-wrapper",
+        "schema_boundary": "catalog marker distinct from actual runtime RPC and SDK codec schema",
+        "live_inference_verified": false,
+        "local_counter_ast_format": "CPython3.12 ast.dump(include_attributes=False)"
+      },
+      "historical_no_base_public_settings_evidence_sha256": "18eb1dd9f4318b01f8f8678c6e0e752d6e8ce1e275bcd920533b459889f2f2b9",
+      "source_endpoint_requirement": "https://api.openai.com",
+      "source_endpoint_wire_evidence": {
+        "kind": "exact_openai_endpoint_public_sdk_offline_capture_v1",
+        "artifact_sha256": "4188d853b281ca1a28a833255c9bf222aebf38e13153e9635f20ad17c39456b0",
+        "source_capture_count": 36,
+        "source_constructor_unmodified": true,
+        "network_requests": 0,
+        "actual_model_generations": 0
+      }
+    }
+  ]
+}

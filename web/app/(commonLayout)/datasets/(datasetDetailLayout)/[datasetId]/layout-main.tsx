@@ -1,9 +1,9 @@
 'use client'
 
+import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FC } from 'react'
-import type { DataSet } from '@/models/datasets'
 import { cn } from '@langgenius/dify-ui/cn'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect } from 'react'
@@ -19,8 +19,8 @@ import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePathname, useRouter } from '@/next/navigation'
+import { consoleQuery } from '@/service/console'
 import { getHttpErrorStatus } from '@/service/http-error'
-import { useDatasetDetail } from '@/service/knowledge/use-dataset'
 import { getDatasetACLCapabilities } from '@/utils/permission'
 
 type IAppDetailLayoutProps = {
@@ -44,6 +44,7 @@ const datasetDetailPageTitle = (pathname: string, t: ReturnType<typeof useTransl
   if (pathname.endsWith('/pipeline')) return t(($) => $['datasetMenus.pipeline'], { ns: 'common' })
   if (pathname.endsWith('/hitTesting'))
     return t(($) => $['datasetMenus.hitTesting'], { ns: 'common' })
+  if (pathname.endsWith('/evaluation')) return t(($) => $.title, { ns: 'evaluation' })
   if (pathname.endsWith('/settings')) return t(($) => $['datasetMenus.settings'], { ns: 'common' })
   if (pathname.endsWith('/access-config'))
     return t(($) => $['settings.resourceAccess'], { ns: 'navigation' })
@@ -64,7 +65,7 @@ const DatasetDetailPageTitle = ({ title }: { title: string }) => {
 }
 
 const getDatasetRedirectionPath = (
-  dataset: DataSet,
+  dataset: DatasetDetailWithPartialMembersResponse,
   datasetACLCapabilities: ReturnType<typeof getDatasetACLCapabilities>,
 ) => {
   if (dataset.provider === 'external') {
@@ -96,7 +97,16 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   })
   const workspacePermissionKeys = useAtomValue(workspacePermissionKeysAtom)
 
-  const { data: datasetRes, error, refetch: mutateDatasetRes } = useDatasetDetail(datasetId)
+  const {
+    data: datasetRes,
+    error,
+    refetch: mutateDatasetRes,
+  } = useQuery(
+    consoleQuery.datasets.byDatasetId.get.queryOptions({
+      input: { params: { dataset_id: datasetId } },
+      enabled: !!datasetId,
+    }),
+  )
   const shouldRedirect = shouldRedirectToDatasetList(error)
   const datasetACLCapabilities = React.useMemo(
     () =>
@@ -116,7 +126,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   )
   const isAccessConfigPath = pathname.endsWith('/access-config')
   const isHitTestingPath = pathname.endsWith('/hitTesting')
-  const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath
+  const isEvaluationPath = pathname.endsWith('/evaluation')
+  const isPermissionControlledPath = isAccessConfigPath || isHitTestingPath || isEvaluationPath
   const isCheckingRouteAccess =
     !!datasetRes &&
     isPermissionControlledPath &&
@@ -125,7 +136,11 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     !!datasetRes &&
     !isCheckingRouteAccess &&
     ((isAccessConfigPath && !datasetACLCapabilities.canAccessConfig) ||
-      (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall))
+      (isHitTestingPath && !datasetACLCapabilities.canRetrievalRecall) ||
+      (isEvaluationPath &&
+        (datasetRes.provider === 'external' ||
+          (datasetRes.runtime_mode === 'rag_pipeline' && !datasetRes.is_published) ||
+          !datasetACLCapabilities.canPipelineTest)))
   const pageTitle = datasetDetailPageTitle(pathname, t)
   const documentTitle = `${pageTitle} · ${datasetRes?.name || t(($) => $['menus.datasets'], { ns: 'navigation' })}`
 
@@ -158,7 +173,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     >
       <DatasetDetailContext.Provider
         value={{
-          indexingTechnique: datasetRes?.indexing_technique,
+          indexingTechnique: datasetRes?.indexing_technique ?? undefined,
           dataset: datasetRes,
           mutateDatasetRes,
         }}

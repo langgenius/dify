@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from enum import StrEnum, auto
-from typing import Any, Union
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, PrivateAttr
 
 from core.entities.parameter_entities import (
     AppSelectorScope,
@@ -12,7 +13,7 @@ from core.entities.parameter_entities import (
     ToolSelectorScope,
 )
 from core.tools.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
 
 
 class ProviderQuotaType(StrEnum):
@@ -80,6 +81,105 @@ class CredentialConfiguration(BaseModel):
     credential_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class HostedSourceProtocolFact:
+    """Non-secret SYSTEM settings captured before managed credentials replace them.
+
+    ``absent`` is positive evidence from an existing source credential dict,
+    not a fallback for missing settings. Catalog digests and the immutable
+    installation bind this request-local fact to the original provider.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    selector: Literal["absent", "chat", "responses"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedSourceVariantFact:
+    """New V2-only public settings; absence of this record proves nothing."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    selector: Literal["absent", "chat", "responses"]
+    source_base_is_set: bool
+    request_metadata_enabled: bool
+    # Request-local positive classification, never a persisted V2 setting or
+    # a raw URL. A truthy base flag alone cannot authorize an official route.
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedEmbeddingSourceFact:
+    """Request-local embedding facts; LLM protocol selection is not applicable.
+
+    Metadata behavior is proved by the exact source implementation, not inferred
+    from a credential default. It does not claim a False value for the original
+    dictionary. No raw source URL, key or dictionary is retained in this record.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    request_metadata_behavior: Literal["not_used"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedAudioSourceFact:
+    """Positive SYSTEM audio behavior; never raw False protocol/metadata guesses."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    api_protocol_behavior: Literal["not_used"]
+    request_metadata_behavior: Literal["not_used"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedXAISourceFact:
+    """Exact x0.0.27 public facts captured before replacing SYSTEM credentials."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    source_endpoint_class: Literal["unset", "official_root", "unreviewed"]
+    source_base_is_set: bool
+    request_metadata_enabled: bool
+    protocol_selector: Literal["not_used"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedGeminiSourceFact:
+    """Private, positive SYSTEM classifications; no credential or raw URL.
+
+    LLM settings retain an explicit unreviewed state. Exact source embeddings
+    do not use those fields; services determine that separate reviewed policy.
+    """
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    llm_source_base_policy: Literal["unset_or_exact_google_root", "unreviewed"]
+    llm_request_metadata_policy: Literal["system_false_only", "unreviewed"]
+    llm_file_url_policy: Literal["actual_system_absent_or_empty_only", "unreviewed"]
+
+
+@dataclass(frozen=True, slots=True)
+class HostedTongyiSourceFact:
+    """Positive before-clear SYSTEM classifications, never source key/URL/dict."""
+
+    provider: str
+    plugin_unique_identifier: str
+    catalog_schema_digests: tuple[tuple[ModelType, str, str], ...]
+    endpoint_selector: Literal["string_true", "string_false", "unreviewed"]
+    api_host_policy: Literal["actual_absent_or_blank", "unreviewed"]
+    llm_metadata_policy: Literal["actual_system_disabled", "unreviewed"]
+
+
 class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
@@ -89,6 +189,17 @@ class SystemConfiguration(BaseModel):
     current_quota_type: ProviderQuotaType | None = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: dict[str, Any] | None = Field(default=None)
+    # Request-scoped, server-verified schema evidence, never serialized as
+    # provider configuration or persisted into the source catalog.
+    _tokener_source_schemas: tuple[AIModelEntity, ...] = PrivateAttr(default=())
+    _tokener_source_plugin_unique_identifier: str | None = PrivateAttr(default=None)
+    _tokener_source_protocol_fact: HostedSourceProtocolFact | None = PrivateAttr(default=None)
+    _tokener_source_variant_fact: HostedSourceVariantFact | None = PrivateAttr(default=None)
+    _tokener_embedding_source_fact: HostedEmbeddingSourceFact | None = PrivateAttr(default=None)
+    _tokener_audio_source_fact: HostedAudioSourceFact | None = PrivateAttr(default=None)
+    _tokener_xai_source_fact: HostedXAISourceFact | None = PrivateAttr(default=None)
+    _tokener_gemini_source_fact: HostedGeminiSourceFact | None = PrivateAttr(default=None)
+    _tokener_tongyi_source_fact: HostedTongyiSourceFact | None = PrivateAttr(default=None)
 
 
 class CustomProviderConfiguration(BaseModel):
@@ -208,7 +319,7 @@ class ProviderConfig(BasicProviderConfig):
 
     scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     required: bool = False
-    default: Union[int, str, float, bool] | None = None
+    default: int | str | float | bool | None = None
     options: list[Option] | None = None
     multiple: bool = False
     label: I18nObject | None = None

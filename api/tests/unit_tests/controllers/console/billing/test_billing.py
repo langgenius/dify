@@ -8,16 +8,16 @@ from flask import Flask
 
 from controllers.console.billing.billing import Invoices, Subscription, SubscriptionQuery
 from controllers.console.billing.error import (
+    AnnualDiscountActiveError,
     BillingOperationFailedError,
     BillingUnavailableError,
     TokenerEducationCheckoutUnsupportedHTTPError,
 )
 from enums import CloudPlan
 from machinery.context import RequestContext
+from services.billing_client import billing
 from services.errors.billing import (
-    BillingUpstreamInvalidResponseError,
-    BillingUpstreamUnavailableError,
-    TokenerEducationCheckoutUnsupportedError,
+    UnknownErrorReason,
 )
 
 
@@ -58,7 +58,9 @@ class TestBillingPortal:
         resource = Subscription()
         method = unwrap(resource.get)
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
-        billing_portal.get_subscription.return_value = {"url": "https://billing.example.com/checkout"}
+        billing_portal.get_subscription.return_value = billing.GetSubscriptionPaymentLinkReply(
+            url="https://billing.example.com/checkout"
+        )
 
         with app.test_request_context("/billing/subscription"):
             result = method(resource, query, request_context)
@@ -78,7 +80,7 @@ class TestBillingPortal:
     ) -> None:
         resource = Invoices()
         method = unwrap(resource.get)
-        billing_portal.get_invoices.return_value = {"url": "https://billing.example.com/portal"}
+        billing_portal.get_invoices.return_value = billing.GetInvoicesReply(url="https://billing.example.com/portal")
 
         with app.test_request_context("/billing/invoices"):
             result = method(resource, request_context)
@@ -94,7 +96,7 @@ class TestBillingPortal:
     ) -> None:
         resource = Invoices()
         method = unwrap(resource.get)
-        billing_portal.get_invoices.side_effect = BillingUpstreamUnavailableError
+        billing_portal.get_invoices.side_effect = billing.BillingInvoiceUpstreamUnavailableError
 
         with app.test_request_context("/billing/invoices"):
             with pytest.raises(BillingUnavailableError) as exc_info:
@@ -115,7 +117,7 @@ class TestBillingPortal:
         resource = Subscription()
         method = unwrap(resource.get)
         query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month")
-        billing_portal.get_subscription.side_effect = BillingUpstreamInvalidResponseError
+        billing_portal.get_subscription.side_effect = billing.BillingSubscriptionUpstreamInvalidResponseError
 
         with app.test_request_context("/billing/subscription"):
             with pytest.raises(BillingOperationFailedError) as exc_info:
@@ -127,21 +129,141 @@ class TestBillingPortal:
             "status": 502,
         }
 
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason="ANNUAL_DISCOUNT_ACTIVE"
+                ),
+                AnnualDiscountActiveError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400, reason="MISSING_PLAN"),
+                BillingOperationFailedError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamUnavailableError(
+                    status_code=500, reason="CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED"
+                ),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamUnavailableError(status_code=429, reason="REQUEST_IN_PROGRESS"),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamInvalidResponseError(
+                    status_code=409, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")
+                ),
+                BillingOperationFailedError,
+            ),
+            (
+                billing.BillingSubscriptionUpstreamUnavailableError(
+                    status_code=503, reason=UnknownErrorReason("PLAN_SHIPPED_LATER")
+                ),
+                BillingUnavailableError,
+            ),
+            (billing.BillingSubscriptionUpstreamInvalidResponseError(status_code=400), BillingOperationFailedError),
+            (billing.BillingSubscriptionUpstreamUnavailableError(), BillingUnavailableError),
+        ],
+    )
+    def test_get_subscription_maps_upstream_errors(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+        error: billing.BillingSubscriptionUpstreamError,
+        expected: type[Exception],
+    ) -> None:
+        resource = Subscription()
+        billing_portal.get_subscription.side_effect = error
+
+        with app.test_request_context("/billing/subscription"), pytest.raises(expected) as exc_info:
+            unwrap(resource.get)(
+                resource, SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="month"), request_context
+            )
+
+        assert exc_info.value.__cause__ is error
+
+    @pytest.mark.parametrize(
+        ("error", "expected"),
+        [
+            (
+                billing.BillingInvoiceUpstreamInvalidResponseError(status_code=400, reason="INVALID_INVOICE_REQUEST"),
+                BillingOperationFailedError,
+            ),
+            (
+                billing.BillingInvoiceUpstreamUnavailableError(status_code=500, reason="CREATE_INVOICE_PORTAL_FAILED"),
+                BillingUnavailableError,
+            ),
+            (
+                billing.BillingInvoiceUpstreamInvalidResponseError(
+                    status_code=409, reason=UnknownErrorReason("INVOICE_SHIPPED_LATER")
+                ),
+                BillingOperationFailedError,
+            ),
+            (billing.BillingInvoiceUpstreamUnavailableError(status_code=502), BillingUnavailableError),
+        ],
+    )
+    def test_get_invoices_maps_every_reason_to_a_generic_billing_error(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+        error: billing.BillingInvoiceUpstreamError,
+        expected: type[Exception],
+    ) -> None:
+        resource = Invoices()
+        billing_portal.get_invoices.side_effect = error
+
+        with app.test_request_context("/billing/invoices"), pytest.raises(expected) as exc_info:
+            unwrap(resource.get)(resource, request_context)
+
+        assert exc_info.value.__cause__ is error
+
+    def test_get_subscription_preserves_active_annual_discount_error(
+        self,
+        app: Flask,
+        request_context: RequestContext,
+        billing_portal: MagicMock,
+    ) -> None:
+        error = billing.BillingSubscriptionUpstreamInvalidResponseError(
+            status_code=409, reason="ANNUAL_DISCOUNT_ACTIVE"
+        )
+        billing_portal.get_subscription.side_effect = error
+        resource = Subscription()
+        with (
+            app.test_request_context("/billing/subscription"),
+            pytest.raises(AnnualDiscountActiveError) as exc_info,
+        ):
+            unwrap(resource.get)(
+                resource, SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="year"), request_context
+            )
+        assert exc_info.value.__cause__ is error
+        assert exc_info.value.data == {
+            "code": "annual_discount_active",
+            "message": "You can switch to annual billing after your current discount ends.",
+            "status": 409,
+        }
+
     def test_get_subscription_exposes_clear_tokener_education_error(
         self,
         app: Flask,
         request_context: RequestContext,
         billing_portal: MagicMock,
     ) -> None:
+        billing_portal.get_subscription.side_effect = billing.BillingSubscriptionUpstreamInvalidResponseError(
+            status_code=409, reason="TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+        )
         resource = Subscription()
-        method = unwrap(resource.get)
-        query = SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="year")
-        billing_portal.get_subscription.side_effect = TokenerEducationCheckoutUnsupportedError
-
-        with app.test_request_context("/billing/subscription"):
-            with pytest.raises(TokenerEducationCheckoutUnsupportedHTTPError) as exc_info:
-                method(resource, query, request_context)
-
+        with (
+            app.test_request_context("/billing/subscription"),
+            pytest.raises(TokenerEducationCheckoutUnsupportedHTTPError) as exc_info,
+        ):
+            unwrap(resource.get)(
+                resource, SubscriptionQuery(plan=CloudPlan.PROFESSIONAL, interval="year"), request_context
+            )
         assert exc_info.value.data == {
             "code": "tokener_education_checkout_unsupported",
             "message": "Education subscriptions are not supported with Tokener billing.",

@@ -1,0 +1,52 @@
+# https://developers.openai.com/api/reference/resources/audio/subresources/speech/methods/create
+model: gpt-4o-mini-tts-2025-12-15
+model_type: tts
+model_properties:
+  default_voice: 'alloy'
+  voices:
+    - mode: 'alloy'
+      name: 'Alloy'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'ash'
+      name: 'Ash'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'ballad'
+      name: 'Ballad'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'coral'
+      name: 'Coral'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'echo'
+      name: 'Echo'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'fable'
+      name: 'Fable'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'onyx'
+      name: 'Onyx'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'nova'
+      name: 'Nova'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'sage'
+      name: 'Sage'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'shimmer'
+      name: 'Shimmer'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'verse'
+      name: 'Verse'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'marin'
+      name: 'Marin'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'cedar'
+      name: 'Cedar'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+  word_limit: 4096
+  audio_type: 'mp3'
+pricing:
+  input: '0.012'
+  output: '0'
+  unit: '0.001'
+  currency: USD

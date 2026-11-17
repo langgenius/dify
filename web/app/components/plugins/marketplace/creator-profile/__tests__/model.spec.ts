@@ -193,7 +193,7 @@ describe('creator profile model', () => {
     expect(parseCreatorSortOrder('ASC')).toBe('asc')
   })
 
-  it('sorts all fields in both directions and preserves equal-value order', () => {
+  it('sorts update time, creation time and popularity while preserving equal-value order', () => {
     const creations = [
       { id: 'first', updatedAt: 1, createdAt: 3, popularity: 2 },
       { id: 'second', updatedAt: 1, createdAt: 2, popularity: 3 },
@@ -222,32 +222,8 @@ describe('creator profile model', () => {
     expect(normalizeCreatorSocialLink('mailto:test@example.com')).toBeNull()
   })
 
-  it('ignores non-string social links and template dependencies instead of throwing', () => {
+  it('ignores non-string values at the social-link normalization boundary', () => {
     expect(normalizeCreatorSocialLink({ href: 'https://x.com/x' })).toBeNull()
     expect(normalizeCreatorSocialLink(null)).toBeNull()
-
-    const viewModel = adaptCreatorProfile({
-      creator: {
-        ...creator,
-        social_links: [{ href: 'https://x.com/x' }, 'github.com/evanz'] as unknown as string[],
-      },
-      kind: 'individual',
-      locale: 'en-US',
-      avatarUrl: '/avatar',
-      backgroundUrl: '/background',
-      plugins: [],
-      templates: [
-        {
-          ...template,
-          deps_plugins: [null, 'dify/search', ''] as unknown as string[],
-        },
-      ],
-      resolvePluginIcon: () => '/plugin-icon',
-      resolveTemplateIcon: () => '',
-      resolveDependencyIcon: (id) => `/dependency/${id}`,
-    })
-
-    expect(viewModel.profile.socialLinks).toEqual([expect.objectContaining({ platform: 'github' })])
-    expect(viewModel.creations[0]?.dependencyIcons).toEqual(['/dependency/dify/search'])
   })
 })

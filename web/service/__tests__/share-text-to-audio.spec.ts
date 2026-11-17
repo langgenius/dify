@@ -9,7 +9,7 @@ vi.mock('@/service/console', () => ({
 
 describe('Agent text-to-audio transport', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.mocked(consoleClient.agent.byAgentId.textToAudio.post).mockReset()
   })
 
   it('adapts generated audio downloads to the shared player response contract', async () => {

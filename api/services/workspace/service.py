@@ -3,7 +3,6 @@
 from collections.abc import Iterator, Mapping, Sequence
 from typing import Protocol
 
-from enums import CloudPlan
 from enums.model_billing import ModelBillingSource
 from machinery.context import RequestContext
 from services.errors.file import UnsupportedFileTypeError
@@ -81,9 +80,6 @@ class WorkspaceService:
     def find_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot | None:
         return self._workspaces.find_membership(account_id, workspace_id)
 
-    def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
-        return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)
-
     def iter_member_account_id_batches(self, workspace_id: str, batch_size: int) -> Iterator[tuple[str, ...]]:
         if batch_size <= 0:
             raise ValueError("batch_size must be positive")
@@ -123,8 +119,11 @@ class WorkspaceService:
     def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
         return self._features.get_model_provider_credits(workspace_id)
 
+    def switch_membership(self, account_id: str, workspace_id: str) -> WorkspaceSnapshot:
+        return self._workspaces.switch(account_id=account_id, workspace_id=workspace_id)
+
     def switch(self, context: RequestContext, workspace_id: str) -> dict[str, object]:
-        workspace = self._workspaces.switch(account_id=context.account_id, workspace_id=workspace_id)
+        workspace = self.switch_membership(context.account_id, workspace_id)
         return self._tenant_info(workspace)
 
     def custom_config(self, context: RequestContext) -> WorkspaceCustomConfig:
@@ -201,7 +200,7 @@ class WorkspaceService:
 
 
 class WorkspacePlanGateway(Protocol):
-    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str]: ...
+    def resolve_many(self, workspace_ids: Sequence[str]) -> Mapping[str, str | None]: ...
 
 
 class WorkspaceQuery(Protocol):
@@ -229,7 +228,7 @@ class WorkspaceQueryService:
             WorkspaceSummary(
                 id=record.id,
                 name=record.name,
-                plan=plans.get(record.id, CloudPlan.SANDBOX),
+                plan=plans.get(record.id),
                 status=record.status,
                 created_at=record.created_at,
                 last_opened_at=record.last_opened_at,

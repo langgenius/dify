@@ -1,30 +1,49 @@
+import json
+from collections import defaultdict
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from copy import deepcopy
+from dataclasses import dataclass
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import pytest
 from flask import has_app_context
+from pytest_mock import MockerFixture
 from sqlalchemy import Engine, event, select
 from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from core import provider_manager as provider_manager_module
-from core.entities.model_entities import DefaultModelSetting
+from core.entities.model_entities import (
+    DefaultModelSetting,
+    ModelStatus,
+    ModelWithProviderEntity,
+    SimpleModelProviderEntity,
+)
+from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations
 from core.entities.provider_entities import (
     CustomConfiguration,
     CustomProviderConfiguration,
     ModelSettings,
     ProviderQuotaType,
+    QuotaUnit,
+    RestrictModel,
+    SystemConfiguration,
 )
-from core.hosting_configuration import HostingProvider, TrialHostingQuota
+from core.helper.model_provider_cache import ProviderCredentialsCacheType
+from core.hosting_configuration import FreeHostingQuota, HostingProvider, PaidHostingQuota, TrialHostingQuota
 from core.model_billing_profile import ModelBillingSource, TenantModelBillingResolution
+from core.model_invocation_routing import ModelRouteUnavailable, ModelRouteUnmapped, RoutedModelCredentials
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
+from core.plugin.impl.model_runtime_factory import create_plugin_model_runtime
 from core.provider_manager import ProviderConfigurationCacheSource, ProviderManager
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from graphon.model_runtime.entities.common_entities import I18nObject
-from graphon.model_runtime.entities.model_entities import ModelType
-from graphon.model_runtime.entities.provider_entities import ConfigurateMethod
+from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
+from graphon.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderEntity
+from models.account import Tenant
 from models.base import TypeBase
 from models.provider import (
     LoadBalancingModelConfig,
@@ -38,7 +57,10 @@ from models.provider import (
     TenantPreferredModelProvider,
 )
 from models.provider_ids import ModelProviderID
-from tests.unit_tests.config_override import config_overrides_context
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services.entities.model_billing_migration import canonical_hash
+from tests.helpers.unit.config_override import config_overrides_context
+from tests.unit_tests.services.test_model_billing_mapping_service import mapping, schema
 
 
 def _build_provider_manager() -> ProviderManager:
@@ -237,6 +259,67 @@ def test__to_model_settings(mock_provider_entity, provider_db: Session):
     assert result[0].load_balancing_configs[1].name == "first"
 
 
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_credentials_are_not_decrypted_or_cached(encrypted_config: str) -> None:
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.return_value = None
+        credentials = manager._get_and_decrypt_credentials(
+            tenant_id="tenant-id",
+            record_id="credential-id",
+            encrypted_config=encrypted_config,
+            secret_variables=["api_key"],
+            cache_type=ProviderCredentialsCacheType.MODEL,
+        )
+
+    assert credentials == {}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
+@pytest.mark.parametrize("encrypted_config", ["{", "[]"])
+def test_invalid_load_balancing_credentials_preserve_valid_configs(
+    mock_provider_entity: Mock, provider_db: Session, encrypted_config: str
+) -> None:
+    setting = ProviderModelSetting(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type="llm",
+        enabled=True,
+        load_balancing_enabled=True,
+    )
+    configs = [
+        LoadBalancingModelConfig(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type="llm",
+            name=name,
+            encrypted_config=credentials,
+            enabled=True,
+        )
+        for name, credentials in [("__inherit__", None), ("invalid", encrypted_config), ("valid", "{}")]
+    ]
+    settings, configs = _persist_model_configuration(provider_db, setting, configs)
+    manager = _build_provider_manager()
+    with (
+        patch("core.provider_manager.ProviderCredentialsCache") as cache,
+        patch.object(manager, "_get_decoding_context") as decoding_context,
+    ):
+        cache.return_value.get.side_effect = [None, {"api_key": "cached-secret"}]
+        result = manager._to_model_settings(mock_provider_entity, settings, configs)
+
+    assert len(result) == 1
+    assert [config.name for config in result[0].load_balancing_configs] == ["__inherit__", "valid"]
+    assert result[0].load_balancing_configs[1].credentials == {"api_key": "cached-secret"}
+    decoding_context.assert_not_called()
+    cache.return_value.set.assert_not_called()
+
+
 @pytest.mark.parametrize(
     "installation_source",
     [
@@ -323,14 +406,22 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
             "core.plugin.plugin_service.PluginService.is_plugin_verified",
             return_value=True,
         ),
+        patch("core.provider_manager.FeatureService.get_workspace_plan") as get_workspace_plan,
         patch(
             "services.credit_pool_service.CreditPoolService.get_pool",
             side_effect=[trial_pool, paid_pool],
         ) as get_pool,
     ):
+        get_workspace_plan.side_effect = [CloudPlan.SANDBOX, CloudPlan.TEAM]
         with ThreadPoolExecutor(max_workers=1) as executor:
             assert executor.submit(has_app_context).result() is False
             configuration = executor.submit(
+                manager._to_system_configuration,
+                "tenant-id",
+                provider_entity,
+                [_build_trial_provider_record()],
+            ).result()
+            executor.submit(
                 manager._to_system_configuration,
                 "tenant-id",
                 provider_entity,
@@ -342,9 +433,7 @@ def test_to_system_configuration_uses_owned_session_for_cloud_credit_pools() -> 
         ProviderQuotaType.TRIAL,
         ProviderQuotaType.PAID,
     ]
-    owned_sessions = [call.kwargs["session"] for call in get_pool.call_args_list]
-    assert all(isinstance(session, Session) for session in owned_sessions)
-    assert owned_sessions[0] is owned_sessions[1]
+    assert all(isinstance(call.kwargs["session"], Session) for call in get_pool.call_args_list)
 
 
 def test_to_system_configuration_preserves_marketplace_behavior() -> None:
@@ -559,80 +648,6 @@ def test__to_model_settings_lb_disabled(mock_provider_entity, provider_db: Sessi
     assert result[0].model_type == ModelType.LLM
     assert result[0].enabled is True
     assert len(result[0].load_balancing_configs) == 0
-
-
-def test_get_default_model_uses_first_available_active_model(provider_db: Session):
-    other_tenant_default = TenantDefaultModel(
-        tenant_id="other-tenant",
-        provider_name="anthropic",
-        model_name="claude",
-        model_type=ModelType.LLM,
-    )
-    provider_db.add(other_tenant_default)
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-3.5-turbo", provider=Mock(provider="openai")),
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-    ]
-
-    manager = _build_provider_manager()
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        mock_factory_cls.return_value.get_provider_schema.return_value = Mock(
-            provider="openai",
-            label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
-            icon_small=I18nObject(en_US="icon_small.png", zh_Hans="icon_small.png"),
-            supported_model_types=[ModelType.LLM],
-        )
-
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-        assert result is not None
-        assert result.model == "gpt-3.5-turbo"
-        assert result.provider.provider == "openai"
-        provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-        saved_default_model = provider_db.scalar(
-            select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")
-        )
-        assert saved_default_model is not None
-        assert saved_default_model.model_name == "gpt-3.5-turbo"
-        assert saved_default_model.provider_name == "openai"
-        assert (
-            provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant"))
-            is other_tenant_default
-        )
-
-
-def test_get_default_model_returns_none_when_no_default_or_active_models(provider_db: Session):
-    provider_db.add(
-        TenantDefaultModel(
-            tenant_id="other-tenant",
-            provider_name="anthropic",
-            model_name="claude",
-            model_type=ModelType.LLM,
-        )
-    )
-    provider_db.commit()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
-    manager = _build_provider_manager()
-
-    with (
-        patch.object(manager, "get_configurations", return_value=provider_configurations),
-        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
-    ):
-        result = manager.get_default_model("tenant-id", ModelType.LLM)
-
-    assert result is None
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=True)
-    mock_factory_cls.assert_not_called()
-    assert provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "tenant-id")) is None
-    assert (
-        provider_db.scalar(select(TenantDefaultModel).where(TenantDefaultModel.tenant_id == "other-tenant")) is not None
-    )
 
 
 def test_get_default_model_uses_injected_runtime_for_existing_default_record(provider_db: Session):
@@ -914,30 +929,100 @@ def test_get_provider_model_bundle_returns_selected_model_type_instance():
     assert result is expected_bundle
 
 
-def test_get_first_provider_first_model_returns_none_when_no_models():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = []
+def _fallback_provider_configuration(
+    *, provider: str, models: list[str], configured: bool, disabled_models: tuple[str, ...] = ()
+) -> ProviderConfiguration:
+    """Build a real local provider catalog; predefined schemas require no plugin requests."""
+    return ProviderConfiguration(
+        tenant_id="tenant-id",
+        provider=ProviderEntity(
+            provider=provider,
+            label=I18nObject(en_US=provider),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+            models=[
+                AIModelEntity(
+                    model=model,
+                    label=I18nObject(en_US=model),
+                    model_type=ModelType.LLM,
+                    fetch_from=FetchFrom.PREDEFINED_MODEL,
+                    model_properties={},
+                )
+                for model in models
+            ],
+        ),
+        preferred_provider_type=ProviderType.CUSTOM,
+        using_provider_type=ProviderType.CUSTOM,
+        system_configuration=SystemConfiguration(enabled=False),
+        custom_configuration=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "synthetic"}) if configured else None
+        ),
+        model_settings=[
+            ModelSettings(model=model, model_type=ModelType.LLM, enabled=False) for model in disabled_models
+        ],
+    )
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
 
-    assert result == (None, None)
-    provider_configurations.get_models.assert_called_once_with(model_type=ModelType.LLM, only_active=False)
+def _fallback_provider_manager(*configurations: ProviderConfiguration) -> ProviderManager:
+    """Use the real request cache and catalog filtering without DB or plugin I/O."""
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id="tenant-id"))
+    catalog = ProviderConfigurations(tenant_id="tenant-id")
+    for configuration in configurations:
+        catalog[configuration.provider.provider] = configuration
+    manager._configurations_cache["tenant-id"] = catalog
+    return manager
 
 
-def test_get_first_provider_first_model_returns_first_model_and_provider():
-    manager = _build_provider_manager()
-    provider_configurations = Mock()
-    provider_configurations.get_models.return_value = [
-        Mock(model="gpt-4", provider=Mock(provider="openai")),
-        Mock(model="gpt-4o", provider=Mock(provider="openai")),
-    ]
+def test_get_first_provider_first_model_returns_none_when_no_models() -> None:
+    manager = _fallback_provider_manager()
 
-    with patch.object(manager, "get_configurations", return_value=provider_configurations):
-        result = manager.get_first_provider_first_model("tenant-id", ModelType.LLM)
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
 
-    assert result == ("openai", "gpt-4")
+
+@pytest.mark.parametrize(("configured", "disabled"), [(False, ()), (True, ("unavailable",))])
+def test_get_first_provider_first_model_returns_none_when_no_active_models(
+    configured: bool, disabled: tuple[str, ...]
+) -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["unavailable"],
+            configured=configured,
+            disabled_models=disabled,
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (None, None)
+
+
+def test_get_first_provider_first_model_skips_unconfigured_provider() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(provider="langgenius/x/x", models=["unconfigured-first"], configured=False),
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai", models=["active-second"], configured=True
+        ),
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
+
+
+def test_get_first_provider_first_model_skips_disabled_model() -> None:
+    manager = _fallback_provider_manager(
+        _fallback_provider_configuration(
+            provider="langgenius/openai/openai",
+            models=["disabled-first", "active-second", "active-third"],
+            configured=True,
+            disabled_models=("disabled-first",),
+        )
+    )
+
+    assert manager.get_first_provider_first_model("tenant-id", ModelType.LLM) == (
+        "langgenius/openai/openai",
+        "active-second",
+    )
 
 
 def test_update_default_model_record_raises_for_unknown_provider():
@@ -984,9 +1069,9 @@ def test_update_default_model_record_updates_existing_record(provider_db: Sessio
     with patch.object(manager, "get_configurations", return_value=provider_configurations):
         result = manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-3.5-turbo")
 
-    assert result is existing_default_model
-    assert existing_default_model.provider_name == "openai"
-    assert existing_default_model.model_name == "gpt-3.5-turbo"
+    assert result.id == existing_default_model.id
+    assert result.provider_name == "openai"
+    assert result.model_name == "gpt-3.5-turbo"
     provider_db.expire_all()
     persisted_default = provider_db.get(TenantDefaultModel, existing_default_model.id)
     assert persisted_default is not None
@@ -1023,6 +1108,50 @@ def test_update_default_model_record_creates_record_with_origin_model_type(provi
     assert {record.tenant_id for record in persisted_defaults} == {"tenant-id", "other-tenant"}
 
 
+def test_get_default_model_leaves_no_connection_checked_out(provider_db: Session, sqlite_engine: Engine) -> None:
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="openai",
+            model_name="gpt-4",
+            model_type=ModelType.LLM,
+        )
+    )
+    provider_db.commit()
+
+    result = _build_provider_manager().get_default_model("tenant-id", ModelType.LLM)
+
+    assert result is None
+    pool = sqlite_engine.pool
+    assert isinstance(pool, QueuePool)
+    assert pool.checkedout() == 0
+
+
+def test_update_default_model_record_does_not_commit_the_callers_pending_work(provider_db: Session) -> None:
+    manager = _build_provider_manager()
+    provider_db.add(
+        TenantDefaultModel(
+            tenant_id="other-tenant",
+            provider_name="anthropic",
+            model_name="claude",
+            model_type=ModelType.LLM,
+        )
+    )
+
+    with (
+        patch.object(manager, "get_configurations", return_value={}),
+        patch.object(manager, "_validate_default_model"),
+    ):
+        manager.update_default_model_record("tenant-id", ModelType.LLM, "openai", "gpt-4")
+
+    provider_db.rollback()
+    persisted = {
+        (record.tenant_id, record.provider_name, record.model_name)
+        for record in provider_db.scalars(select(TenantDefaultModel))
+    }
+    assert persisted == {("tenant-id", "openai", "gpt-4")}
+
+
 @pytest.mark.parametrize("clear_all", [False, True])
 def test_replace_default_model_records_removes_omitted_types_only_for_current_tenant(
     provider_db: Session, clear_all: bool
@@ -1048,11 +1177,23 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
     )
     provider_db.add_all([existing_default, omitted_default, other_tenant_default])
     provider_db.commit()
+    embedding_provider = _build_plugin_provider_declaration(None)
+    embedding_provider.supported_model_types = [ModelType.TEXT_EMBEDDING]
+    available_embedding_model = ModelWithProviderEntity(
+        model="text-embedding-3-small",
+        label=I18nObject(en_US="text-embedding-3-small"),
+        model_type=ModelType.TEXT_EMBEDDING,
+        fetch_from=FetchFrom.PREDEFINED_MODEL,
+        model_properties={},
+        status=ModelStatus.ACTIVE,
+        provider=SimpleModelProviderEntity(embedding_provider),
+    )
     configurations = MagicMock()
     configurations.__contains__.return_value = True
     configurations.get_models.side_effect = lambda model_type, **_kwargs: {
         ModelType.LLM: [Mock(model="gpt-4")],
         ModelType.RERANK: [Mock(model="rerank-v3")],
+        ModelType.TEXT_EMBEDDING: [available_embedding_model],
     }[model_type]
     settings = (
         []
@@ -1063,8 +1204,16 @@ def test_replace_default_model_records_removes_omitted_types_only_for_current_te
         ]
     )
 
-    with patch.object(manager, "get_configurations", return_value=configurations) as get_configurations:
+    with (
+        patch.object(manager, "get_configurations", return_value=configurations) as get_configurations,
+        patch("core.provider_manager.ModelProviderFactory") as mock_factory_cls,
+    ):
         manager.replace_default_model_records("tenant-id", settings)
+        provider_db.expire_all()
+        for _ in range(2):
+            assert manager.get_default_model("tenant-id", ModelType.TEXT_EMBEDDING) is None
+
+    mock_factory_cls.assert_not_called()
 
     provider_db.expire_all()
     defaults = list(provider_db.scalars(select(TenantDefaultModel)))
@@ -1238,6 +1387,28 @@ def test_get_all_providers_attaches_active_credentials(provider_db: Session) -> 
     assert str(ModelProviderID("anthropic")) not in result
 
 
+def test_init_trial_provider_records_attaches_credential_of_concurrently_created_record(provider_db: Session) -> None:
+    existing_provider = _build_trial_provider_record()
+    existing_provider.credential_id = "credential-id"
+    credential = ProviderCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+    provider_db.add_all([existing_provider, credential])
+    provider_db.commit()
+
+    with patch(
+        "core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map",
+        {"openai": _build_hosting_provider()},
+    ):
+        result = ProviderManager._init_trial_provider_records("tenant-id", defaultdict(list))
+
+    assert result["openai"][0].encrypted_config == '{"api_key": "secret"}'
+
+
 def test_invalidate_configurations_cache_bumps_selected_source_version() -> None:
     fake_redis = _FakeRedis()
 
@@ -1305,6 +1476,50 @@ def test_provider_model_credentials_cache_returns_cache_entries(provider_db: Ses
     assert second["openai"][0].credential_name == "primary"
     assert second["openai"][0].model_type == ModelType.LLM
     assert "anthropic" not in second
+
+
+def test_provider_model_cache_entries_resolve_credentials_through_owned_session(provider_db: Session) -> None:
+    credential = ProviderModelCredential(
+        tenant_id="tenant-id",
+        provider_name="openai",
+        model_name="gpt-4",
+        model_type=ModelType.LLM,
+        credential_name="primary",
+        encrypted_config='{"api_key": "secret"}',
+    )
+    credential.id = "credential-id"
+
+    def build_model(model_name: str, credential_id: str | None) -> ProviderModel:
+        return ProviderModel(
+            tenant_id="tenant-id",
+            provider_name="openai",
+            model_name=model_name,
+            model_type=ModelType.LLM,
+            credential_id=credential_id,
+            is_valid=True,
+        )
+
+    provider_db.add_all(
+        [
+            credential,
+            build_model("active", "credential-id"),
+            build_model("dangling", "deleted-credential-id"),
+            build_model("unset", None),
+        ]
+    )
+    provider_db.commit()
+
+    entries = {
+        entry.model_name: entry for entry in provider_manager_module._load_provider_model_cache_entries("tenant-id")
+    }
+
+    assert (entries["active"].credential_name, entries["active"].encrypted_config) == (
+        "primary",
+        '{"api_key": "secret"}',
+    )
+    assert entries["dangling"].credential_id == "deleted-credential-id"
+    assert (entries["dangling"].credential_name, entries["dangling"].encrypted_config) == (None, None)
+    assert (entries["unset"].credential_name, entries["unset"].encrypted_config) == (None, None)
 
 
 def test_provider_configuration_cache_skips_write_when_version_changes_during_load(
@@ -1520,3 +1735,518 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     assert [record.provider_name for record in result["openai"]] == ["openai"]
     assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]
     assert "other-provider" not in result
+
+
+TENANT_ID = "11111111-1111-4111-8111-111111111111"
+CREDENTIAL_ID = "33333333-3333-4333-8333-333333333333"
+PLUGIN_UID = "langgenius/tokener:0.4.1-dev3@fixture"
+
+
+@dataclass
+class ProviderCase:
+    manager: ProviderManager
+    provider: PluginModelProviderDeclaration
+    providers: list[PluginModelProviderDeclaration]
+    hosting: dict[str, HostingProvider]
+    preferences: dict[str, TenantPreferredModelProvider]
+    state: dict[str, object]
+    init_records: Mock
+    get_pool: Mock
+    integration: TenantTokenerIntegration
+    db: Session
+
+
+@pytest.fixture
+def provider_case(mocker: MockerFixture, sqlite_session: Session) -> Iterator[ProviderCase]:
+    provider = PluginModelProviderDeclaration(
+        provider="langgenius/openai/openai",
+        plugin_unique_identifier="langgenius/openai:1.0.8@source",
+        installation_source=PluginInstallationSource.Marketplace,
+        label=I18nObject(en_US="OpenAI"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+        models=[schema()],
+    )
+    providers = [provider]
+    hosting = {
+        provider.provider: HostingProvider(
+            enabled=True,
+            quota_unit=QuotaUnit.CREDITS,
+            credentials={"api_key": "SOURCE_SECRET"},
+            quotas=[PaidHostingQuota(), TrialHostingQuota()],
+        )
+    }
+    preferences: dict[str, TenantPreferredModelProvider] = {}
+    state: dict[str, object] = {
+        "phase": "active",
+        "persisted_model_billing_source": "tokener",
+        "model_mapping_version": "old",
+        "route_epoch": 3,
+        "source_ownership": {},
+        "preparation": {
+            "tenant_id": TENANT_ID,
+            "provider_credential_id": CREDENTIAL_ID,
+            "provider_name": "langgenius/tokener/tokener",
+            "credential_fingerprint": canonical_hash({"encrypted_config": '{"api_key":"ENCRYPTED"}'}),
+        },
+    }
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id=TENANT_ID))
+    mocker.patch(
+        "core.provider_manager.ModelBillingProfileService.resolve",
+        return_value=TenantModelBillingResolution(ModelBillingSource.TOKENER),
+    )
+    mocker.patch("core.model_invocation_routing.migration_routing_state", return_value=state)
+    mocker.patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=True)
+    mocker.patch("core.provider_manager.ext_hosting_provider.hosting_configuration.provider_map", hosting)
+    mocker.patch("core.provider_manager.ModelProviderFactory.get_providers", return_value=providers)
+    mocker.patch.object(manager, "_get_all_providers", return_value={})
+    init_records = mocker.patch.object(manager, "_init_trial_provider_records")
+    for method in (
+        "_get_all_provider_models",
+        "_get_all_provider_model_settings",
+        "_get_all_provider_load_balancing_configs",
+        "_get_all_provider_model_credentials",
+        "_get_all_provider_credentials",
+    ):
+        mocker.patch.object(manager, method, return_value={})
+    mocker.patch.object(manager, "_get_all_preferred_model_providers", return_value=preferences)
+    mocker.patch.object(manager, "_to_model_settings", return_value=[])
+    mocker.patch.object(
+        manager,
+        "_to_custom_configuration",
+        return_value=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "USER_SECRET"}),
+        ),
+    )
+    get_pool = mocker.patch("services.credit_pool_service.CreditPoolService.get_pool")
+    tenant = Tenant(name="Migrated provider availability")
+    tenant.id = TENANT_ID
+    credential = ProviderCredential(
+        tenant_id=TENANT_ID,
+        provider_name="langgenius/tokener/tokener",
+        credential_name="Managed fixture",
+        encrypted_config='{"api_key":"ENCRYPTED"}',
+    )
+    credential.id = CREDENTIAL_ID
+    integration = TenantTokenerIntegration(
+        tenant_id=TENANT_ID,
+        status=TenantTokenerIntegrationStatus.READY,
+        provider_credential_id=CREDENTIAL_ID,
+        plugin_unique_identifier=PLUGIN_UID,
+    )
+    sqlite_session.add_all([tenant, credential, integration])
+    sqlite_session.commit()
+    with config_overrides_context(
+        DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([mapping()])
+    ):
+        yield ProviderCase(
+            manager,
+            provider,
+            providers,
+            hosting,
+            preferences,
+            state,
+            init_records,
+            get_pool,
+            integration,
+            sqlite_session,
+        )
+
+
+def test_v2_independent_tokens_provider_retains_original_hosted_credentials_not_managed_key(
+    provider_case: ProviderCase,
+) -> None:
+    from models.enums import ProviderQuotaType as StoredQuotaType
+
+    with config_overrides_context(
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "old", "inventory_policy": "saved_system_dependencies_v2"}]
+        )
+    ):
+        provider_case.hosting[provider_case.provider.provider].quota_unit = QuotaUnit.TOKENS
+        original = Provider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_case.provider.provider,
+            provider_type=ProviderType.SYSTEM,
+            quota_type=StoredQuotaType.PAID,
+            quota_limit=100,
+            quota_used=7,
+        )
+        result = provider_case.manager._to_system_configuration(TENANT_ID, provider_case.provider, [original])
+        assert result.enabled
+        assert result.current_quota_type == ProviderQuotaType.PAID
+        assert result.credentials == {"api_key": "SOURCE_SECRET"}
+        assert result.quota_configurations[0].quota_limit == 100
+        assert result.quota_configurations[0].quota_used == 7
+
+
+@pytest.mark.parametrize("phase", ["claimed", "active"])
+@pytest.mark.parametrize("has_custom", [False, True])
+def test_v2_custom_preference_without_custom_configuration_keeps_system_fallback_but_real_byok_does_not_forward(
+    provider_case: ProviderCase,
+    mocker: MockerFixture,
+    phase: str,
+    has_custom: bool,
+) -> None:
+    from core.model_invocation_routing import ModelMigrationProcessing
+
+    preferred = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID, provider_name=provider_case.provider.provider, preferred_provider_type=ProviderType.CUSTOM
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_get_all_preferred_model_providers",
+        return_value={provider_case.provider.provider: preferred},
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_to_custom_configuration",
+        return_value=CustomConfiguration(
+            provider=CustomProviderConfiguration(credentials={"api_key": "USER_SECRET"}) if has_custom else None
+        ),
+    )
+    provider_case.state["phase"] = phase
+    with config_overrides_context(
+        TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON=json.dumps(
+            [{"schema_version": 1, "mapping_revision": "old", "inventory_policy": "saved_system_dependencies_v2"}]
+        )
+    ):
+        result = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert result is not None
+        assert result.preferred_provider_type == ProviderType.CUSTOM
+        if has_custom:
+            assert result.using_provider_type == ProviderType.CUSTOM
+            assert result.get_current_credentials(ModelType.LLM, "gpt-4o") == {"api_key": "USER_SECRET"}
+        else:
+            assert result.using_provider_type == ProviderType.SYSTEM
+            if phase == "claimed":
+                with pytest.raises(ModelMigrationProcessing):
+                    result.get_current_credentials(ModelType.LLM, "gpt-4o")
+            else:
+                assert isinstance(result.get_current_credentials(ModelType.LLM, "gpt-4o"), RoutedModelCredentials)
+
+
+def test_v1_custom_preference_metadata_fallback_remains_unchanged(
+    provider_case: ProviderCase, mocker: MockerFixture
+) -> None:
+    preferred = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID, provider_name=provider_case.provider.provider, preferred_provider_type=ProviderType.CUSTOM
+    )
+    mocker.patch.object(
+        provider_case.manager,
+        "_get_all_preferred_model_providers",
+        return_value={provider_case.provider.provider: preferred},
+    )
+    mocker.patch.object(
+        provider_case.manager, "_to_custom_configuration", return_value=CustomConfiguration(provider=None)
+    )
+    result = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert result is not None
+    assert result.using_provider_type == ProviderType.CUSTOM
+
+
+def test_new_provider_without_rows_can_route_without_rewriting_financial_state(provider_case: ProviderCase) -> None:
+    original_state = deepcopy(provider_case.state)
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    assert configuration.using_provider_type == ProviderType.SYSTEM
+    assert configuration.system_configuration.enabled
+    assert configuration.system_configuration.current_quota_type == ProviderQuotaType.PAID
+    assert configuration.system_configuration.credentials is None
+    assert all(
+        (quota.quota_limit, quota.quota_used, quota.is_valid) == (0, 0, False)
+        for quota in configuration.system_configuration.quota_configurations
+    )
+    credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+    assert isinstance(credentials, RoutedModelCredentials)
+    assert credentials.plan.logical_provider == provider_case.provider.provider
+    assert credentials.plan.logical_model == "gpt-4o"
+    assert credentials.plan.target_model == "old-target"
+    assert credentials.plan.mapping_revision == "old"
+    assert provider_case.state == original_state
+    provider_case.init_records.assert_not_called()
+    provider_case.get_pool.assert_not_called()
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize("previous_pool", ["paid", "trial"])
+def test_published_balance_unifies_hosted_models_without_mutating_history(
+    provider_case: ProviderCase, existing: bool, previous_pool: str
+) -> None:
+    paid, trial = schema("paid-only"), schema("trial-only")
+    provider_case.provider.models = [paid, trial]
+    provider_case.hosting[provider_case.provider.provider].quotas = [
+        PaidHostingQuota(restrict_models=[RestrictModel(model=paid.model, model_type=ModelType.LLM)]),
+        TrialHostingQuota(restrict_models=[RestrictModel(model=trial.model, model_type=ModelType.LLM)]),
+    ]
+    if existing:
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {
+                "current_quota_type": previous_pool,
+                "quotas": {previous_pool: {"unmetered": False}},
+            },
+        }
+    provider_case.state["manifest"] = {"immutable": "original-funded-slots"}
+    before = deepcopy(provider_case.state)
+    registry = [mapping(paid, pool_types=["paid"]), mapping(trial, pool_types=["trial"])]
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps(registry)):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        for quota in configuration.system_configuration.quota_configurations:
+            assert {r.model for r in quota.restrict_models} == {"paid-only", "trial-only"}
+            assert (quota.quota_limit, quota.quota_used, quota.is_valid) == (0, 0, False)
+        assert configuration.system_configuration.credentials is None
+        assert {model.model for model in configuration.get_provider_models()} == {"paid-only", "trial-only"}
+        for model in ("paid-only", "trial-only"):
+            credentials = configuration.get_current_credentials(ModelType.LLM, model)
+            assert isinstance(credentials, RoutedModelCredentials)
+            assert credentials.plan.mapping_revision == "old"
+    assert provider_case.state == before
+    provider_case.get_pool.assert_not_called()
+    provider_case.init_records.assert_not_called()
+    assert not provider_case.preferences
+
+
+@pytest.mark.parametrize("profile", [None, "legacy_message_credits", "invalid"])
+def test_phase_without_persisted_tokener_profile_cannot_obtain_managed_route(
+    provider_case: ProviderCase, profile: str | None
+) -> None:
+    provider_case.state["persisted_model_billing_source"] = profile
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    with pytest.raises(ModelRouteUnavailable):
+        configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+@pytest.mark.parametrize("existing", [False, True])
+@pytest.mark.parametrize(
+    "case", ["valid", "rpc_error", "wrong_identity", "digest", "operations", "byok", "changed_uid"]
+)
+def test_published_dynamic_schema_uses_bound_gateway_without_mutating_catalog(
+    provider_case: ProviderCase, mocker: MockerFixture, existing: bool, case: str
+) -> None:
+    from core.plugin.impl.model import PluginModelClient
+    from core.plugin.impl.model_runtime import PluginModelRuntime
+    from core.plugin.plugin_service import PluginService
+
+    source = schema("dynamic")
+    provider_case.provider.configurate_methods.append(ConfigurateMethod.CUSTOMIZABLE_MODEL)
+    if existing:
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {"current_quota_type": "trial", "quotas": {"trial": {"unmetered": False}}},
+        }
+    source_before = provider_case.provider.model_dump()
+    state_before = deepcopy(provider_case.state)
+    hosting = provider_case.hosting[provider_case.provider.provider]
+    hosting.quotas = [
+        PaidHostingQuota(
+            restrict_models=[
+                RestrictModel(model=model, model_type=ModelType.LLM)
+                for model in ("gpt-4o", "dynamic", "unmapped-dynamic")
+            ]
+        )
+    ]
+    original_credentials = deepcopy(hosting.credentials)
+    candidate = mapping(source, pool_types=["trial"])
+    if case == "digest":
+        candidate["source_schema_digest"] = "sha256:" + "c" * 64
+    elif case == "operations":
+        candidate["operations"] = ["model/schema"]
+    if case == "byok":
+        provider_case.preferences[provider_case.provider.provider] = TenantPreferredModelProvider(
+            tenant_id=TENANT_ID,
+            provider_name=provider_case.provider.provider,
+            preferred_provider_type=ProviderType.CUSTOM,
+        )
+    gateway = PluginModelClient()
+    calls: list[dict[str, object]] = []
+
+    def resolve(**kwargs: object) -> AIModelEntity:
+        credentials = kwargs["credentials"]
+        assert isinstance(credentials, dict)
+        calls.append({**kwargs, "credentials": dict(credentials)})
+        if case in {"rpc_error", "byok"}:
+            raise RuntimeError("source lookup unavailable")
+        return schema("wrong") if case == "wrong_identity" else source
+
+    mocker.patch.object(gateway, "get_model_schema", side_effect=resolve)
+    runtime = PluginModelRuntime(TENANT_ID, None, gateway, PluginService)
+    runtime.bind_provider_schema(provider_case.provider)
+    provider_case.manager._model_runtime = runtime
+    mocker.patch("core.plugin.impl.model_runtime.redis_client.get", return_value=None)
+    mocker.patch("core.plugin.impl.model_runtime.redis_client.setex")
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=json.dumps([mapping(), candidate])):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        if case == "operations":
+            assert calls == []
+        else:
+            assert len(calls) == 1
+            assert calls[0]["plugin_unique_identifier"] == provider_case.provider.plugin_unique_identifier
+            assert calls[0]["model"] == "dynamic"
+            assert calls[0]["model_type"] == "llm"
+            assert calls[0]["credentials"] == original_credentials
+        if case == "byok":
+            assert configuration.using_provider_type == ProviderType.CUSTOM
+            assert configuration.get_current_credentials(ModelType.LLM, "dynamic") == {"api_key": "USER_SECRET"}
+        else:
+            assert isinstance(configuration.get_current_credentials(ModelType.LLM, "gpt-4o"), RoutedModelCredentials)
+            if case == "changed_uid":
+                configuration.provider = configuration.provider.model_copy(
+                    update={"plugin_unique_identifier": "changed"}
+                )
+            if case == "valid":
+                assert isinstance(
+                    configuration.get_current_credentials(ModelType.LLM, "dynamic"), RoutedModelCredentials
+                )
+                assert "dynamic" in {model.model for model in configuration.get_provider_models()}
+                source.model = "mutated-after-discovery"
+                assert configuration.system_configuration._tokener_source_schemas[0].model == "dynamic"
+            else:
+                with pytest.raises(ModelRouteUnmapped):
+                    configuration.get_current_credentials(ModelType.LLM, "dynamic")
+        assert "_tokener_source_schemas" not in configuration.system_configuration.model_dump()
+        assert {model.model for model in provider_case.provider.models} == {"gpt-4o"}
+    assert provider_case.provider.model_dump() == source_before
+    assert provider_case.state == state_before
+    assert hosting.credentials == original_credentials
+
+
+def test_unmapped_provider_is_local_and_explicit_byok_still_works(provider_case: ProviderCase) -> None:
+    unmapped = provider_case.provider.model_copy(deep=True, update={"provider": "langgenius/anthropic/anthropic"})
+    provider_case.providers.append(unmapped)
+    provider_case.hosting[unmapped.provider] = provider_case.hosting[provider_case.provider.provider].model_copy(
+        deep=True
+    )
+    provider_case.preferences[unmapped.provider] = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID,
+        provider_name=unmapped.provider,
+        preferred_provider_type=ProviderType.CUSTOM,
+    )
+    configurations = provider_case.manager.get_configurations(TENANT_ID)
+    working = configurations.get(provider_case.provider.provider)
+    byok = configurations.get(unmapped.provider)
+    assert working is not None
+    assert byok is not None
+    assert isinstance(working.get_current_credentials(ModelType.LLM, "gpt-4o"), RoutedModelCredentials)
+    assert not byok.system_configuration.enabled
+    assert byok.using_provider_type == ProviderType.CUSTOM
+    assert byok.get_current_credentials(ModelType.LLM, "gpt-4o") == {"api_key": "USER_SECRET"}
+
+
+@pytest.mark.parametrize("raw_registry", ["[]", json.dumps([mapping(revision="newer")]), "invalid-json"])
+def test_unmapped_explicit_system_never_falls_back_to_byok_or_source(
+    provider_case: ProviderCase, raw_registry: str
+) -> None:
+    provider_case.preferences[provider_case.provider.provider] = TenantPreferredModelProvider(
+        tenant_id=TENANT_ID,
+        provider_name=provider_case.provider.provider,
+        preferred_provider_type=ProviderType.SYSTEM,
+    )
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON=raw_registry):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        assert not configuration.system_configuration.enabled
+        assert configuration.using_provider_type == ProviderType.SYSTEM
+        with pytest.raises(ModelRouteUnmapped):
+            configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+def test_unmapped_cloud_default_system_never_silently_uses_existing_byok(provider_case: ProviderCase) -> None:
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON="[]"):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        assert configuration.preferred_provider_type == ProviderType.SYSTEM
+        assert configuration.using_provider_type == ProviderType.SYSTEM
+        with pytest.raises(ModelRouteUnmapped):
+            configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+@pytest.mark.parametrize("hosting_kind", ["free", "tokens", "unlimited", "unverified", "existing"])
+def test_new_hosted_default_does_not_change_other_provider_selection(
+    provider_case: ProviderCase, mocker: MockerFixture, hosting_kind: str
+) -> None:
+    hosting = provider_case.hosting[provider_case.provider.provider]
+    if hosting_kind == "free":
+        hosting.quotas = [FreeHostingQuota()]
+    elif hosting_kind == "tokens":
+        hosting.quota_unit = QuotaUnit.TOKENS
+    elif hosting_kind == "unlimited":
+        hosting.quotas = [TrialHostingQuota(quota_limit=-1)]
+    elif hosting_kind == "unverified":
+        mocker.patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=False)
+    elif hosting_kind == "existing":
+        provider_case.state["source_ownership"] = {
+            provider_case.provider.provider: {"current_quota_type": "paid", "quotas": {"paid": {"unmetered": False}}}
+        }
+    with config_overrides_context(TOKENER_LEGACY_MODEL_MAPPING_JSON="[]"):
+        configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+        assert configuration is not None
+        if hosting_kind == "existing":
+            assert configuration.using_provider_type == ProviderType.SYSTEM
+            with pytest.raises(ModelRouteUnmapped):
+                configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            return
+        assert configuration.using_provider_type == ProviderType.CUSTOM
+        assert configuration.get_current_credentials(ModelType.LLM, "gpt-4o") == {"api_key": "USER_SECRET"}
+
+
+@pytest.mark.parametrize("malformed", [None, "invalid", {}])
+def test_existing_malformed_provider_ownership_is_not_treated_as_new(
+    provider_case: ProviderCase, mocker: MockerFixture, malformed: object
+) -> None:
+    provider_case.state["source_ownership"] = {provider_case.provider.provider: malformed}
+    # Existing owned rows ensure the prior strict provenance path is evaluated.
+    record = Provider(
+        tenant_id=TENANT_ID,
+        provider_name=provider_case.provider.provider,
+        provider_type=ProviderType.SYSTEM,
+        quota_type=ProviderQuotaType.PAID,
+        quota_used=0,
+        quota_limit=100,
+    )
+    mocker.patch.object(
+        provider_case.manager, "_get_all_providers", return_value={provider_case.provider.provider: [record]}
+    )
+    with pytest.raises(ModelRouteUnavailable):
+        provider_case.manager.get_configurations(TENANT_ID)
+
+
+@pytest.mark.parametrize(
+    ("verified", "source"), [(False, PluginInstallationSource.Marketplace), (True, PluginInstallationSource.Package)]
+)
+def test_new_provider_still_requires_trusted_marketplace_provenance(
+    provider_case: ProviderCase, mocker: MockerFixture, verified: bool, source: PluginInstallationSource
+) -> None:
+    mocker.patch("core.plugin.plugin_service.PluginService.is_plugin_verified", return_value=verified)
+    provider_case.provider.installation_source = source
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    assert not configuration.system_configuration.enabled
+
+
+def test_new_provider_checks_pinned_target_minimum_version(provider_case: ProviderCase) -> None:
+    provider_case.integration.plugin_unique_identifier = "langgenius/tokener:0.1.1@old"
+    provider_case.db.commit()
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    with pytest.raises(ModelRouteUnavailable):
+        configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+def test_new_provider_cannot_bypass_hosted_model_intersection_via_direct_invocation(
+    provider_case: ProviderCase,
+) -> None:
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    configuration.system_configuration.quota_configurations[0].restrict_models = []
+    with pytest.raises(ModelRouteUnmapped):
+        configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+
+def test_schema_change_after_assembly_requires_a_new_reviewed_contract(provider_case: ProviderCase) -> None:
+    configuration = provider_case.manager.get_configurations(TENANT_ID).get(provider_case.provider.provider)
+    assert configuration is not None
+    configuration.provider.models[0].label.en_us = "changed schema"
+    with pytest.raises(ModelRouteUnmapped):
+        configuration.get_current_credentials(ModelType.LLM, "gpt-4o")

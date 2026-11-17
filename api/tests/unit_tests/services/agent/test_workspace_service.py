@@ -1,10 +1,14 @@
 from contextlib import nullcontext
 from datetime import datetime, timedelta
 from types import SimpleNamespace
+from typing import Literal
 from unittest.mock import MagicMock
 
+import httpx
 import pytest
-from sqlalchemy import select
+from dify_agent.client import Client
+from dify_agent.protocol import DestroyExecutionBindingRequest
+from sqlalchemy import event, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from models.agent import (
@@ -21,7 +25,7 @@ from services.agent.workspace_service import (
     AgentWorkspaceService,
     WorkspaceOwnerScope,
 )
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 
 def _scope() -> WorkspaceOwnerScope:
@@ -54,7 +58,7 @@ def _workspace(
     updated_at: datetime | None = None,
     backend_workspace_ref: str = "workspace-ref",
 ) -> AgentWorkspace:
-    return AgentWorkspace(
+    row = AgentWorkspace(
         id=workspace_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -64,8 +68,10 @@ def _workspace(
         backend_workspace_ref=backend_workspace_ref,
         status=status,
         active_guard=1 if status is AgentWorkingResourceStatus.ACTIVE else None,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def _binding(
@@ -79,7 +85,7 @@ def _binding(
     config_kind: AgentConfigVersionKind = AgentConfigVersionKind.SNAPSHOT,
     updated_at: datetime | None = None,
 ) -> AgentWorkspaceBinding:
-    return AgentWorkspaceBinding(
+    row = AgentWorkspaceBinding(
         id=binding_id,
         tenant_id=tenant_id,
         app_id=app_id,
@@ -90,8 +96,10 @@ def _binding(
         agent_config_version_kind=config_kind,
         backend_binding_ref=f"{binding_id}-ref",
         status=status,
-        updated_at=updated_at,
     )
+    if updated_at is not None:
+        row.updated_at = updated_at
+    return row
 
 
 def test_workspace_client_honors_the_configured_snapshot_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -615,28 +623,140 @@ def test_workspace_collection_backend_failure_propagates_and_preserves_retired_r
     assert stored_anchor.status is AgentWorkingResourceStatus.RETIRED
 
 
-@pytest.mark.parametrize("sqlite_session", [(AgentWorkspace, AgentWorkspaceBinding)], indirect=True)
-def test_workspace_collection_final_delete_failure_propagates(
-    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session
+@pytest.mark.parametrize("resource", ["binding", "workspace"])
+def test_collection_commit_failure_preserves_ledgers_and_replay_converges(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    resource: Literal["binding", "workspace"],
 ) -> None:
-    workspace = _workspace(status=AgentWorkingResourceStatus.RETIRED)
-    anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
-    sqlite_session.add_all([workspace, anchor])
-    sqlite_session.commit()
-    error = RuntimeError("database unavailable")
-    commit = MagicMock(side_effect=error)
-    client = MagicMock()
-    monkeypatch.setattr(
-        "services.agent.workspace_service.session_factory.create_session", lambda: nullcontext(sqlite_session)
+    """After physical cleanup, a failed commit retains the ledger for an idempotent retry.
+
+    Observe persisted rows from fresh sessions, then replay the public collector;
+    successful replay removes only the retired resources and redelivery does no I/O.
+    """
+    workspace = _workspace(
+        status=AgentWorkingResourceStatus.RETIRED if resource == "workspace" else AgentWorkingResourceStatus.ACTIVE
     )
-    monkeypatch.setattr(sqlite_session, "commit", commit)
-    monkeypatch.setattr(AgentWorkspaceService, "_client", lambda: nullcontext(client))
+    anchor = _binding(status=AgentWorkingResourceStatus.RETIRED)
+    unrelated_workspace = _workspace(workspace_id="unrelated-workspace", owner_id="unrelated-conversation")
+    unrelated_binding = _binding(binding_id="unrelated-binding", workspace_id=unrelated_workspace.id)
+    sqlite_session.add_all([workspace, anchor, unrelated_workspace, unrelated_binding])
+    sqlite_session.commit()
+    requests: list[DestroyExecutionBindingRequest] = []
 
-    with pytest.raises(RuntimeError) as exc_info:
-        AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id="workspace-1")
+    def handle(request: httpx.Request) -> httpx.Response:
+        """Accept the real SDK destroy request without contacting an Agent backend."""
+        assert request.method == "POST"
+        assert request.url.path == "/execution-bindings/destroy"
+        requests.append(DestroyExecutionBindingRequest.model_validate_json(request.content))
+        return httpx.Response(204)
 
-    assert exc_info.value is error
-    client.destroy_execution_binding_sync.assert_called_once()
+    def collect() -> None:
+        """Collect the seeded retired resource through its public service entry point."""
+        if resource == "workspace":
+            AgentWorkspaceService.collect_retired_workspace(tenant_id="tenant-1", workspace_id=workspace.id)
+        else:
+            AgentWorkspaceService.collect_retired_binding(tenant_id="tenant-1", binding_id=anchor.id)
+
+    error = RuntimeError("ledger commit failed")
+
+    def fail_commit(session: Session) -> None:
+        """Reject the final ledger commit after the real SQL deletes have executed."""
+        if resource == "binding" or session.get(AgentWorkspace, workspace.id) is None:
+            raise error
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(
+            AgentWorkspaceService,
+            "_client",
+            lambda: Client(base_url="http://agent.example", sync_http_client=http_client),
+        )
+        event.listen(sqlite_session_factory, "before_commit", fail_commit)
+        try:
+            with pytest.raises(RuntimeError) as exc_info:
+                collect()
+            assert exc_info.value is error
+        finally:
+            event.remove(sqlite_session_factory, "before_commit", fail_commit)
+
+        expected_request = DestroyExecutionBindingRequest(
+            binding_ref=anchor.backend_binding_ref,
+            workspace_ref=workspace.backend_workspace_ref if resource == "workspace" else None,
+            destroy_workspace=resource == "workspace",
+        )
+        assert requests == [expected_request]
+        with sqlite_session_factory() as observer:
+            stored_binding = observer.get(AgentWorkspaceBinding, anchor.id)
+            stored_workspace = observer.get(AgentWorkspace, workspace.id)
+            assert stored_binding is not None
+            assert stored_binding.status is AgentWorkingResourceStatus.RETIRED
+            assert stored_workspace is not None
+            assert stored_workspace.status is workspace.status
+
+        collect()
+        assert requests == [expected_request, expected_request]
+        with sqlite_session_factory() as observer:
+            assert observer.get(AgentWorkspaceBinding, anchor.id) is None
+            stored_workspace = observer.get(AgentWorkspace, workspace.id)
+            if resource == "workspace":
+                assert stored_workspace is None
+            else:
+                assert stored_workspace is not None
+                assert stored_workspace.status is AgentWorkingResourceStatus.ACTIVE
+            stored_unrelated_workspace = observer.get(AgentWorkspace, unrelated_workspace.id)
+            stored_unrelated_binding = observer.get(AgentWorkspaceBinding, unrelated_binding.id)
+            assert stored_unrelated_workspace is not None
+            assert stored_unrelated_workspace.status is AgentWorkingResourceStatus.ACTIVE
+            assert stored_unrelated_binding is not None
+            assert stored_unrelated_binding.status is AgentWorkingResourceStatus.ACTIVE
+
+        collect()
+        assert requests == [expected_request, expected_request]
+
+
+@pytest.mark.parametrize("resource", ["binding", "workspace"])
+@pytest.mark.parametrize("unavailable", ["active", "foreign-tenant"])
+def test_collection_leaves_active_and_foreign_resources_untouched(
+    monkeypatch: pytest.MonkeyPatch,
+    sqlite_session: Session,
+    sqlite_session_factory: sessionmaker[Session],
+    resource: Literal["binding", "workspace"],
+    unavailable: Literal["active", "foreign-tenant"],
+) -> None:
+    """Active or differently owned resources must survive collection without backend I/O."""
+    status = AgentWorkingResourceStatus.ACTIVE if unavailable == "active" else AgentWorkingResourceStatus.RETIRED
+    workspace = _workspace(status=status)
+    binding = _binding(status=status)
+    sqlite_session.add_all([workspace, binding])
+    sqlite_session.commit()
+    requests: list[httpx.Request] = []
+
+    def handle(request: httpx.Request) -> httpx.Response:
+        """Record any unexpected destructive HTTP request without external network access."""
+        requests.append(request)
+        return httpx.Response(204)
+
+    with httpx.Client(transport=httpx.MockTransport(handle)) as http_client:
+        monkeypatch.setattr(
+            AgentWorkspaceService,
+            "_client",
+            lambda: Client(base_url="http://agent.example", sync_http_client=http_client),
+        )
+        tenant_id = "tenant-1" if unavailable == "active" else "other-tenant"
+        if resource == "workspace":
+            AgentWorkspaceService.collect_retired_workspace(tenant_id=tenant_id, workspace_id=workspace.id)
+        else:
+            AgentWorkspaceService.collect_retired_binding(tenant_id=tenant_id, binding_id=binding.id)
+
+    assert requests == []
+    with sqlite_session_factory() as observer:
+        stored_workspace = observer.get(AgentWorkspace, workspace.id)
+        stored_binding = observer.get(AgentWorkspaceBinding, binding.id)
+        assert stored_workspace is not None
+        assert stored_workspace.status is status
+        assert stored_binding is not None
+        assert stored_binding.status is status
 
 
 def test_binding_creation_ignores_unavailable_metering_configuration(

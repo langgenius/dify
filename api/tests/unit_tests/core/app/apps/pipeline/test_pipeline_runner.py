@@ -12,9 +12,10 @@ Primary collaborators include ``PipelineRunner``,
 """
 
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 
 import pytest
+from pytest_mock import MockerFixture
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,22 +24,19 @@ import core.app.apps.pipeline.pipeline_runner as module
 from core.app.apps.pipeline.pipeline_config_manager import PipelineConfig
 from core.app.apps.pipeline.pipeline_queue_manager import PipelineQueueManager
 from core.app.apps.pipeline.pipeline_runner import PipelineRunner
-from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity
+from core.app.entities.app_invoke_entities import InvokeFrom, RagPipelineGenerateEntity, UserFrom
 from core.app.entities.queue_entities import AppQueueEvent, QueueWorkflowFailedEvent
-from core.repositories.sqlalchemy_workflow_execution_repository import SQLAlchemyWorkflowExecutionRepository
-from core.repositories.sqlalchemy_workflow_node_execution_repository import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
+from graphon.engine_events import EngineEvent, GraphRunFailedEvent
 from graphon.graph import Graph
-from graphon.graph_events import GraphEngineEvent, GraphRunFailedEvent
-from graphon.runtime import GraphRuntimeState, VariablePool
+from graphon.runtime import RuntimeState, VariablePool
 from graphon.variable_loader import DUMMY_VARIABLE_LOADER
-from models.account import Account
 from models.dataset import Dataset, Document, Pipeline
-from models.enums import DocumentCreatedFrom, WorkflowRunTriggeredFrom
+from models.enums import DocumentCreatedFrom
 from models.model import AppMode, EndUser
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowType
+from models.workflow import Workflow, WorkflowType
 from repositories.knowledge.document_repository import SQLAlchemyDocumentRepository
-from tests.unit_tests.model_factories import make_dataset, make_document, make_end_user, make_workflow
+from tests.helpers.unit.model_factories import make_dataset, make_document, make_end_user, make_workflow
 
 
 def _pipeline(*, tenant_id: str = "tenant", pipeline_id: str = "pipe") -> Pipeline:
@@ -58,7 +56,9 @@ def _dataset(*, tenant_id: str = "tenant", dataset_id: str = "ds", pipeline_id: 
     )
 
 
-def _workflow(*, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: dict | None = None) -> Workflow:
+def _workflow(
+    *, tenant_id: str = "tenant", pipeline_id: str = "pipe", graph: Mapping[str, object] | None = None
+) -> Workflow:
     return make_workflow(
         tenant_id=tenant_id,
         app_id=pipeline_id,
@@ -105,13 +105,14 @@ def _persist_scope(
 def _build_app_generate_entity() -> RagPipelineGenerateEntity:
     app_config = PipelineConfig(app_id="pipe", workflow_id="wf", tenant_id="tenant", app_mode=AppMode.RAG_PIPELINE)
     return RagPipelineGenerateEntity(
+        user_from=UserFrom.END_USER,
         task_id="task",
         stream=True,
         app_config=app_config,
         pipeline_config=app_config,
         invoke_from=InvokeFrom.WEB_APP,
         user_id="user",
-        trace_manager=None,
+        trace_scope=None,
         inputs={"input1": "v1"},
         files=[],
         workflow_execution_id="run",
@@ -136,47 +137,31 @@ def isolate_queue_redis(monkeypatch: pytest.MonkeyPatch) -> None:
 def _build_runner(
     app_generate_entity: RagPipelineGenerateEntity, sqlite_engine: Engine, workflow: Workflow
 ) -> PipelineRunner:
-    user = Account(name="User", email="user@example.com")
-    user.id = app_generate_entity.user_id
     return PipelineRunner(
         application_generate_entity=app_generate_entity,
         queue_manager=PipelineQueueManager(
             task_id=app_generate_entity.task_id,
-            user_id=user.id,
+            user_id=app_generate_entity.user_id,
             invoke_from=app_generate_entity.invoke_from,
             app_mode=AppMode.RAG_PIPELINE,
         ),
         variable_loader=DUMMY_VARIABLE_LOADER,
         workflow=workflow,
         system_user_id="sys",
-        workflow_execution_repository=SQLAlchemyWorkflowExecutionRepository(
-            session_factory=sqlite_engine,
-            tenant_id="tenant",
-            user=user,
-            app_id="pipe",
-            triggered_from=WorkflowRunTriggeredFrom.APP_RUN,
-        ),
-        workflow_node_execution_repository=SQLAlchemyWorkflowNodeExecutionRepository(
-            session_factory=sqlite_engine,
-            tenant_id="tenant",
-            user=user,
-            app_id="pipe",
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        ),
         documents=SQLAlchemyDocumentRepository(session_factory=sessionmaker(bind=sqlite_engine)),
     )
 
 
 @pytest.fixture
-def runner(sqlite_engine: Engine):
+def runner(sqlite_engine: Engine) -> PipelineRunner:
     return _build_runner(_build_app_generate_entity(), sqlite_engine, _workflow())
 
 
-def test_get_app_id(runner):
+def test_get_app_id(runner: PipelineRunner) -> None:
     assert runner._get_app_id() == "pipe"
 
 
-def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
+def test_get_workflow_returns_workflow(runner: PipelineRunner, sqlite_session: Session) -> None:
     pipeline, _, workflow = _persist_scope(sqlite_session)
 
     result = runner.get_workflow(session=sqlite_session, pipeline=pipeline, workflow_id="wf")
@@ -184,38 +169,64 @@ def test_get_workflow_returns_workflow(runner, sqlite_session: Session):
     assert result == workflow
 
 
-def test_init_rag_pipeline_graph_invalid_config(mocker, runner):
+def test_init_rag_pipeline_graph_invalid_config(mocker: MockerFixture, runner: PipelineRunner) -> None:
     workflow = _workflow(graph={})
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="nodes or edges not found in workflow graph"):
         runner._init_rag_pipeline_graph(
-            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
         )
 
     workflow.graph = json.dumps({"nodes": "bad", "edges": []})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="nodes in workflow graph must be a list"):
         runner._init_rag_pipeline_graph(
-            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
         )
 
     workflow.graph = json.dumps({"nodes": [], "edges": "bad"})
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="edges in workflow graph must be a list"):
         runner._init_rag_pipeline_graph(
-            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
         )
 
 
-def test_init_rag_pipeline_graph_not_found(mocker, runner):
+def test_init_rag_pipeline_graph_not_found(mocker: MockerFixture, runner: PipelineRunner) -> None:
     workflow = _workflow()
     mocker.patch.object(module.Graph, "init", return_value=None)
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="Unable to determine default root node ID from workflow graph"):
         runner._init_rag_pipeline_graph(
-            workflow=workflow, graph_runtime_state=GraphRuntimeState(variable_pool=VariablePool(), start_at=0)
+            workflow=workflow,
+            graph_runtime_state=RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0),
         )
 
 
-def test_update_document_status_on_failure(runner, sqlite_session: Session):
+def test_init_rag_pipeline_graph_honors_canonical_root_ownership(runner: PipelineRunner) -> None:
+    workflow = _workflow(
+        graph={
+            "nodes": [
+                {
+                    "id": "start",
+                    "parentId": "stale-owner",
+                    "data": {"type": "start", "title": "Start", "variables": [], "container_id": ""},
+                },
+                {"id": "end", "data": {"type": "end", "title": "Output", "outputs": []}},
+            ],
+            "edges": [{"id": "start-end", "source": "start", "target": "end"}],
+        }
+    )
+    runtime_state = RuntimeState(workflow_id=workflow.id, variable_pool=VariablePool(), start_at=0.0)
+
+    graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=runtime_state)
+
+    assert graph.root_node.id == "start"
+    assert set(graph.nodes) == {"start", "end"}
+
+
+def test_update_document_status_on_failure(runner: PipelineRunner, sqlite_session: Session) -> None:
     document = _document()
     _, dataset, _ = _persist_scope(sqlite_session, documents=(document,))
 
@@ -235,7 +246,7 @@ def test_update_document_status_on_failure(runner, sqlite_session: Session):
     assert updated.error == "boom"
 
 
-def test_update_document_status_skips_when_document_not_found(runner, sqlite_session: Session):
+def test_update_document_status_skips_when_document_not_found(runner: PipelineRunner, sqlite_session: Session) -> None:
     _, dataset, _ = _persist_scope(sqlite_session)
 
     runner._update_document_status(
@@ -248,7 +259,7 @@ def test_update_document_status_skips_when_document_not_found(runner, sqlite_ses
     assert sqlite_session.get(Document, "missing") is None
 
 
-def test_update_document_status_skips_without_document_ref(runner, sqlite_engine: Engine):
+def test_update_document_status_skips_without_document_ref(runner: PipelineRunner, sqlite_engine: Engine) -> None:
     checkouts = 0
 
     def record_checkout(*_args) -> None:
@@ -269,7 +280,7 @@ def test_update_document_status_skips_without_document_ref(runner, sqlite_engine
     assert checkouts == 0
 
 
-def test_run_pipeline_not_found(sqlite_engine: Engine):
+def test_run_pipeline_not_found(sqlite_engine: Engine) -> None:
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.invoke_from = InvokeFrom.WEB_APP
     app_generate_entity.single_iteration_run = None
@@ -277,17 +288,17 @@ def test_run_pipeline_not_found(sqlite_engine: Engine):
 
     runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
 
-    with pytest.raises(ValueError):
-        runner.run()
+    with pytest.raises(ValueError, match="Pipeline not found"):
+        runner.prepare()
 
 
-def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sqlite_session: Session):
+def test_run_pipeline_from_other_tenant_is_not_found(runner: PipelineRunner, sqlite_session: Session) -> None:
     pipeline = _pipeline(tenant_id="other-tenant")
     sqlite_session.add(pipeline)
     sqlite_session.commit()
 
     with pytest.raises(ValueError, match="Pipeline not found"):
-        runner.run()
+        runner.prepare()
 
 
 def _unexpected_workflow_lookup(session: Session, pipeline: Pipeline, workflow_id: str) -> Workflow | None:
@@ -307,7 +318,7 @@ def test_run_rejects_unowned_pipeline_dataset(
     runner: PipelineRunner,
     dataset: Dataset | None,
     sqlite_session: Session,
-):
+) -> None:
     pipeline = _pipeline()
     sqlite_session.add(pipeline)
     if dataset is not None:
@@ -316,38 +327,38 @@ def test_run_rejects_unowned_pipeline_dataset(
     monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline dataset not found"):
-        runner.run()
+        runner.prepare()
 
 
 def test_run_rejects_document_outside_pipeline_dataset_after_async_boundary(
     monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
     sqlite_session: Session,
-):
+) -> None:
     runner.application_generate_entity.document_id = "foreign-doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session)
     monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline document not found"):
-        runner.run()
+        runner.prepare()
 
 
 def test_run_rejects_original_document_outside_pipeline_dataset_after_async_boundary(
     monkeypatch: pytest.MonkeyPatch,
     runner: PipelineRunner,
     sqlite_session: Session,
-):
+) -> None:
     runner.application_generate_entity.document_id = "doc"
     runner.application_generate_entity.original_document_id = "foreign-doc"
     _persist_scope(sqlite_session, documents=(_document(),))
     monkeypatch.setattr(runner, "get_workflow", _unexpected_workflow_lookup)
 
     with pytest.raises(ValueError, match="Pipeline original document not found"):
-        runner.run()
+        runner.prepare()
 
 
-def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine):
+def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: Engine) -> None:
     app_generate_entity = _build_app_generate_entity()
 
     pipeline = _pipeline()
@@ -357,8 +368,8 @@ def test_run_workflow_not_initialized(sqlite_session: Session, sqlite_engine: En
     sqlite_session.commit()
 
     runner = _build_runner(app_generate_entity, sqlite_engine, _workflow())
-    with pytest.raises(ValueError):
-        runner.run()
+    with pytest.raises(ValueError, match="Workflow not initialized"):
+        runner.prepare()
 
 
 def _start_workflow() -> Workflow:
@@ -367,7 +378,9 @@ def _start_workflow() -> Workflow:
     )
 
 
-def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_single_iteration_path(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+) -> None:
     app_generate_entity = _build_app_generate_entity()
     app_generate_entity.single_iteration_run = RagPipelineGenerateEntity.SingleIterationRunEntity(
         node_id="start", inputs={}
@@ -378,7 +391,7 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     published: list[AppQueueEvent] = []
     failure = GraphRunFailedEvent(error="iteration failed")
     variable_pool = VariablePool()
-    state = GraphRuntimeState(variable_pool=variable_pool, start_at=0)
+    state = RuntimeState(workflow_id=workflow.id, variable_pool=variable_pool, start_at=0)
 
     def prepare_single_node_execution(
         *,
@@ -386,20 +399,22 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
         single_iteration_run: RagPipelineGenerateEntity.SingleIterationRunEntity | None,
         single_loop_run: RagPipelineGenerateEntity.SingleLoopRunEntity | None,
         user_id: str,
-    ) -> tuple[Graph, VariablePool, GraphRuntimeState]:
+    ) -> tuple[Graph, VariablePool, RuntimeState]:
         prepared.append((workflow.id, single_iteration_run, single_loop_run, user_id))
         graph = runner._init_rag_pipeline_graph(workflow=workflow, graph_runtime_state=state, start_node_id="start")
         return graph, variable_pool, state
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
-        assert entry.graph_engine.graph_runtime_state is state
+    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
+        assert entry.graph_engine.runtime_state is state
         yield failure
 
     monkeypatch.setattr(runner, "_prepare_single_node_execution", prepare_single_node_execution)
     monkeypatch.setattr(runner, "_publish_event", published.append)
     monkeypatch.setattr(WorkflowEntry, "run", run_workflow)
 
-    runner.run()
+    prepared_run = runner.prepare()
+    for engine_event in prepared_run.entry.run():
+        runner.handle_event(prepared_run.entry, engine_event)
 
     assert prepared == [("wf", app_generate_entity.single_iteration_run, None, "user")]
     assert runner._queue_manager.graph_runtime_state is state
@@ -415,7 +430,9 @@ def test_run_single_iteration_path(monkeypatch: pytest.MonkeyPatch, sqlite_sessi
     assert published[0].error == failure.error
 
 
-def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine):
+def test_run_normal_path_builds_graph(
+    monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: Engine
+) -> None:
     app_generate_entity = _build_app_generate_entity()
     events: list[str] = []
     workflow = _start_workflow()
@@ -426,7 +443,7 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     runner = _build_runner(app_generate_entity, sqlite_engine, workflow)
     entries: list[WorkflowEntry] = []
 
-    def run_workflow(entry: WorkflowEntry) -> Generator[GraphEngineEvent]:
+    def run_workflow(entry: WorkflowEntry) -> Generator[EngineEvent]:
         events.append("workflow_run")
         entries.append(entry)
         yield from ()
@@ -438,7 +455,8 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
 
     event.listen(sqlite_engine, "checkin", record_checkin)
     try:
-        runner.run()
+        prepared_run = runner.prepare()
+        list(prepared_run.entry.run())
     finally:
         event.remove(sqlite_engine, "checkin", record_checkin)
 
@@ -447,7 +465,7 @@ def test_run_normal_path_builds_graph(monkeypatch: pytest.MonkeyPatch, sqlite_se
     assert len(entries) == 1
     graph_engine = entries[0].graph_engine
     assert graph_engine.graph.root_node.id == "start"
-    assert graph_engine.graph_runtime_state is runner._queue_manager.graph_runtime_state
-    input_variable = graph_engine.graph_runtime_state.variable_pool.get(["start", "input1"])
+    assert graph_engine.runtime_state is runner._queue_manager.graph_runtime_state
+    input_variable = graph_engine.runtime_state.variable_pool.get(["start", "input1"])
     assert input_variable is not None
     assert input_variable.value == "v1"

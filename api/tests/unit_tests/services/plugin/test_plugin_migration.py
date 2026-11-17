@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 from models.model import App, AppMode
 from services.plugin.plugin_migration import PluginMigration
+from tests.helpers.unit.plugin_installation import legacy_installations
 
 MIGRATION_MODULE = "services.plugin.plugin_migration"
 
@@ -73,7 +74,7 @@ class TestHandlePluginInstanceInstall:
         config_overrides(MARKETPLACE_ENABLED=False)
         with pytest.raises(ValueError, match="Marketplace disabled"):
             PluginMigration.handle_plugin_instance_install(
-                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}
+                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}, installations=legacy_installations()
             )
 
     def test_no_raise_when_disabled_and_map_empty(self, config_overrides: Callable[..., None]) -> None:
@@ -83,7 +84,7 @@ class TestHandlePluginInstanceInstall:
             mock_installer_cls.return_value = mock_installer
             mock_installer.install_from_identifiers.return_value = MagicMock(all_installed=True)
 
-            result = PluginMigration.handle_plugin_instance_install("tenant1", {})
+            result = PluginMigration.handle_plugin_instance_install("tenant1", {}, installations=legacy_installations())
 
         assert isinstance(result, dict)
 
@@ -99,7 +100,7 @@ class TestHandlePluginInstanceInstall:
             mock_installer.install_from_identifiers.return_value = MagicMock(all_installed=True)
 
             result = PluginMigration.handle_plugin_instance_install(
-                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}
+                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}, installations=legacy_installations()
             )
 
         mock_marketplace.download_plugin_pkg.assert_called_once()
@@ -118,7 +119,7 @@ class TestHandlePluginInstanceInstall:
             mock_installer.install_from_identifiers.side_effect = RuntimeError("install failed")
 
             result = PluginMigration.handle_plugin_instance_install(
-                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}
+                "tenant1", {"langgenius/openai": "langgenius/openai:1.0.0@abc"}, installations=legacy_installations()
             )
 
         assert result["success"] == []
@@ -145,7 +146,9 @@ class TestHandlePluginInstanceInstall:
             mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
-            PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
+            PluginMigration.install_plugins(
+                str(extracted_plugins), str(output_file), workers=1, installations=legacy_installations()
+            )
 
         mock_installer.install_from_identifiers.assert_called_once()
         invalidate_cache.assert_called_once_with("tenant1")
@@ -171,7 +174,9 @@ class TestHandlePluginInstanceInstall:
             mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
-            PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
+            PluginMigration.install_plugins(
+                str(extracted_plugins), str(output_file), workers=1, installations=legacy_installations()
+            )
 
         assert json.loads(output_file.read_text())["not_installed"] == [
             {
@@ -201,7 +206,9 @@ class TestHandlePluginInstanceInstall:
             mock_installer.list_plugins.return_value = list[object]()
             mock_installer_cls.return_value = mock_installer
 
-            PluginMigration.install_plugins(str(extracted_plugins), str(output_file), workers=1)
+            PluginMigration.install_plugins(
+                str(extracted_plugins), str(output_file), workers=1, installations=legacy_installations()
+            )
 
         output = json.loads(output_file.read_text())
         assert output["not_installed"] == [{"tenant_id": "tenant1", "plugin_not_exist": ["langgenius/missing"]}]

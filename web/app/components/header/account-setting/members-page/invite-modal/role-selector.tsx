@@ -15,11 +15,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@langgenius/dify-ui/select'
+import { useInfiniteQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { getAccessControlTemplateLanguage } from '@/i18n/language'
-import { useWorkspaceRoleList } from '@/service/access-control/use-workspace-roles'
+import { workspaceRoleListInfiniteOptions } from '../../workspace-role-list-query'
 
 type RoleSelectorProps = {
   hasServerError?: boolean
@@ -65,11 +66,13 @@ export function RoleSelector({ hasServerError = false, disabled = false }: RoleS
     hasNextPage,
     isFetchingNextPage,
     fetchNextPage,
-  } = useWorkspaceRoleList({
-    page: 1,
-    limit: PAGE_SIZE,
-    language,
-  })
+  } = useInfiniteQuery(
+    workspaceRoleListInfiniteOptions({
+      page: 1,
+      limit: PAGE_SIZE,
+      language,
+    }),
+  )
 
   useEffect(() => {
     const hasMore = hasNextPage ?? true

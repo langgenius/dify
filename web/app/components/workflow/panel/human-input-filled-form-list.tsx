@@ -13,13 +13,13 @@ const HumanInputFilledFormList = ({
     <div className="mt-3 flex flex-col gap-y-3 first:mt-0">
       {humanInputFilledFormDataList.map((formData) => (
         <ContentWrapper
-          key={formData.node_id}
+          key={formData.form_id}
           nodeTitle={formData.node_title}
           showExpandIcon
           className="bg-components-panel-bg"
           expanded
         >
-          <SubmittedHumanInputContent key={formData.node_id} formData={formData} />
+          <SubmittedHumanInputContent formData={formData} />
         </ContentWrapper>
       ))}
     </div>

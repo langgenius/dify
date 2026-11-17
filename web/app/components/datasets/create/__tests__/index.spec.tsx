@@ -1,1284 +1,485 @@
-import type { ComponentProps } from 'react'
-import type StepOneComponent from '../step-one'
-import type StepThreeComponent from '../step-three'
-import type { StepTwoProps } from '../step-two/types'
-import type { TopBarProps } from '../top-bar'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { NotionPage } from '@/models/common'
-import type { DataSet, FileItem } from '@/models/datasets'
-import { QueryClientProvider } from '@tanstack/react-query'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
-import * as React from 'react'
-import { DataSourceProvider } from '@/models/common'
-import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
-import { createAccountProfileQueryClient } from '@/test/console/account-profile'
-import { render as renderWithConsoleState } from '@/test/console/render'
-import { RETRIEVE_METHOD } from '@/types/app'
+import type {
+  DatasetAndDocumentResponse,
+  DatasetDetailWithPartialMembersResponse,
+} from '@dify/contracts/api/console/datasets/types.gen'
+import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import DatasetDetailContext from '@/context/dataset-detail'
+import { consoleQuery } from '@/service/console'
+import {
+  createCatalogModelFixture,
+  createDefaultModelFixture,
+  createModelCatalogFixture,
+  seedModelProviderQueries,
+} from '@/test/console/model-provider'
+import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createDatasetFixture } from '@/test/fixtures/dataset'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DatasetUpdateForm from '../index'
 
-type StepOneProps = ComponentProps<typeof StepOneComponent>
-type StepThreeTestProps = ComponentProps<typeof StepThreeComponent>
-
-// IndexingType values from step-two (defined here since we mock step-two)
-// Using type assertion to match the expected IndexingType enum from step-two
-const IndexingTypeValues = {
-  QUALIFIED: 'high_quality' as unknown as DataSet['indexing_technique'],
-  ECONOMICAL: 'economy' as unknown as DataSet['indexing_technique'],
-}
-
-// Mock next/link
-vi.mock('@/next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
-    return <a href={href}>{children}</a>
+const api = vi.hoisted(() => ({
+  replace: vi.fn(),
+  crawl: vi.fn<typeof import('@/service/datasets').createFirecrawlTask>(),
+  crawlStatus: vi.fn<typeof import('@/service/datasets').checkFirecrawlTaskStatus>(),
+  upload: vi.fn<typeof import('@/service/base').upload>(),
+  sources:
+    vi.fn<
+      typeof import('@/service/console').consoleClient.auth.plugin.datasource.defaultList.get
+    >(),
+  create: vi.fn<typeof import('@/service/console').consoleClient.datasets.init.post>(),
+  add: vi.fn<
+    typeof import('@/service/console').consoleClient.datasets.byDatasetId.documents.post
+  >(),
+  status: vi.fn<typeof import('@/service/datasets').fetchIndexingStatusBatch>(),
+}))
+vi.mock('@/next/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/next/navigation')>()),
+  useRouter: () => ({ replace: api.replace, push: vi.fn() }),
+}))
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  upload: api.upload,
+}))
+vi.mock('@/service/datasets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/datasets')>()),
+  fetchIndexingStatusBatch: api.status,
+  createFirecrawlTask: api.crawl,
+  checkFirecrawlTaskStatus: api.crawlStatus,
+}))
+vi.mock('@tanstack/react-virtual')
+vi.mock('@/config', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/config')>()),
+  ENABLE_WEBSITE_FIRECRAWL: true,
+  ENABLE_WEBSITE_JINAREADER: false,
+  ENABLE_WEBSITE_WATERCRAWL: false,
+}))
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { createFileUploadConfigFixture } = await import('@/test/fixtures/file-upload-config')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'auth.plugin.datasource.defaultList.get': api.sources,
+      'notion.preImport.pages.get': async () => ({
+        notion_info: [
+          {
+            workspace_id: 'notion-workspace',
+            workspace_name: 'Team notes',
+            workspace_icon: null,
+            pages: [
+              {
+                page_id: 'page-1',
+                page_name: 'Engineering notes',
+                page_icon: null,
+                parent_id: null,
+                type: 'page',
+                is_bound: false,
+              },
+            ],
+          },
+        ],
+      }),
+      'files.upload.get': async () => createFileUploadConfigFixture(),
+      'workspaces.current.rbac.myPermissions.get': () => new Promise(() => {}),
+      'files.supportType.get': async () => ({ allowed_extensions: ['txt'] }),
+      'datasets.processRule.get': async () => ({
+        mode: 'custom',
+        rules: {
+          segmentation: { separator: '\\n', max_tokens: 500, chunk_overlap: 50 },
+          pre_processing_rules: [{ id: 'remove_extra_spaces', enabled: true }],
+        },
+        limits: { indexing_max_segmentation_tokens_length: 4000 },
+      }),
+      'datasets.indexingEstimate.post': async () => ({
+        total_segments: 1,
+        tokens: 10,
+        total_price: 0,
+        currency: 'USD',
+        preview: [{ content: 'Source content', child_chunks: [] }],
+        qa_preview: [],
+      }),
+      'datasets.init.post': api.create,
+      'datasets.byDatasetId.documents.post': api.add,
+    }),
   }
 })
 
-const mockReplace = vi.fn()
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({
-    replace: mockReplace,
-  }),
-}))
-
-let mockCurrentUserId = 'user-1'
-let mockWorkspacePermissionKeys = ['dataset.create_and_management']
-let mockIsLoadingWorkspacePermissionKeys = false
-
-const render = (ui: Parameters<typeof renderWithConsoleState>[0]) => {
-  const queryClient = createAccountProfileQueryClient({ id: mockCurrentUserId })
-  return renderWithConsoleState(ui, {
-    wrapper: ({ children }: { children: React.ReactNode }) => (
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    ),
-  })
+const creation: DatasetAndDocumentResponse = {
+  batch: 'batch-1',
+  dataset: { id: 'new-dataset', name: 'Team handbook', indexing_technique: 'high_quality' },
+  documents: [
+    {
+      id: 'doc-1',
+      name: 'handbook.txt',
+      data_source_type: 'upload_file',
+      data_source_detail_dict: {},
+    },
+  ],
 }
 
-vi.mock('@/context/workspace-state', async () => {
-  const { createWorkspaceStateModuleMock } = await import('@/test/console/state-fixture')
+function setup({
+  dataset,
+  hasEmbeddingModel = true,
+  pendingPermissions = false,
+}: {
+  dataset?: DatasetDetailWithPartialMembersResponse
+  hasEmbeddingModel?: boolean
+  pendingPermissions?: boolean
+} = {}) {
+  const queryClient = createConsoleQueryClient()
+  seedModelProviderQueries(queryClient, [
+    createModelCatalogFixture({
+      models: [
+        createCatalogModelFixture({
+          model: 'text-embedding-ada-002',
+          model_type: 'text-embedding',
+        }),
+      ],
+    }),
+  ])
+  queryClient.setQueryData(
+    consoleQuery.workspaces.current.defaultModel.get.queryKey({
+      input: { query: { model_type: 'text-embedding' } },
+    }),
+    {
+      data: hasEmbeddingModel
+        ? createDefaultModelFixture({
+            model: 'text-embedding-ada-002',
+            model_type: 'text-embedding',
+          })
+        : null,
+    },
+  )
+  queryClient.setQueryData(consoleQuery.datasets.retrievalSetting.get.queryKey(), {
+    retrieval_method: ['semantic_search', 'full_text_search', 'hybrid_search'],
+  })
+  const { wrapper: UrlProvider, onUrlUpdate } = createNuqsTestWrapper({ hasMemory: true })
+  const view = renderWithConsoleQuery(
+    <UrlProvider>
+      {/* oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector contexts require their Provider rather than React 19 context rendering. */}
+      <DatasetDetailContext.Provider value={{ dataset }}>
+        <DatasetUpdateForm datasetId={dataset?.id} />
+      </DatasetDetailContext.Provider>
+    </UrlProvider>,
+    {
+      queryClient,
+      accountProfile: { id: 'user-1' },
+      workspacePermissionKeys: pendingPermissions ? null : [],
+      features: { billing: { subscription: { plan: 'sandbox' } } },
+    },
+  )
+  return { ...view, onUrlUpdate, user: userEvent.setup() }
+}
 
-  return createWorkspaceStateModuleMock(() => ({
-    userProfile: { id: mockCurrentUserId },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/context/permission-state', async () => {
-  const { createPermissionStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createPermissionStateModuleMock(() => ({
-    userProfile: { id: mockCurrentUserId },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-  }))
-})
-vi.mock('@/features/system-features/state', async () => {
-  const { createSystemFeaturesStateModuleMock } = await import('@/test/console/state-fixture')
-
-  return createSystemFeaturesStateModuleMock(() => ({
-    userProfile: { id: mockCurrentUserId },
-    workspacePermissionKeys: mockWorkspacePermissionKeys,
-    isLoadingWorkspacePermissionKeys: mockIsLoadingWorkspacePermissionKeys,
-  }))
-})
-
-const mockSetSettingsDestination = vi.fn()
-vi.mock('nuqs', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('nuqs')>()
-  return { ...actual, useQueryState: () => [null, mockSetSettingsDestination] }
-})
-
-// Mock dataset detail context
-let mockDatasetDetail: DataSet | undefined
-vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (
-    selector: (state: { dataset: DataSet | undefined }) => unknown,
-  ) => {
-    const state = {
-      dataset: mockDatasetDetail,
-    }
-    return selector(state)
-  },
-}))
-
-// Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
-vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useDefaultModel: () => ({
-    data: mockEmbeddingsDefaultModel,
-    mutate: vi.fn(),
-    isLoading: false,
-  }),
-}))
-
-// Mock useGetDefaultDataSourceListAuth hook
-let mockDataSourceList: { result: DataSourceAuth[] } | undefined
-let mockIsLoadingDataSourceList = false
-let mockFetchingError = false
-vi.mock('@/service/use-datasource', () => ({
-  useGetDefaultDataSourceListAuth: () => ({
-    data: mockDataSourceList,
-    isLoading: mockIsLoadingDataSourceList,
-    isError: mockFetchingError,
-  }),
-}))
-
-// Track props passed to child components
-let stepOneProps = {} as StepOneProps
-let stepTwoProps = {} as StepTwoProps
-let stepThreeProps = {} as StepThreeTestProps
-// _topBarProps is assigned but not directly used in assertions - values checked via data-testid
-let _topBarProps = {} as TopBarProps
-
-vi.mock('../step-one', () => ({
-  default: (props: StepOneProps) => {
-    stepOneProps = props
-    return (
-      <div data-testid="step-one">
-        <span data-testid="step-one-data-source-type">{props.dataSourceType}</span>
-        <span data-testid="step-one-files-count">{props.files?.length || 0}</span>
-        <span data-testid="step-one-notion-pages-count">{props.notionPages?.length || 0}</span>
-        <span data-testid="step-one-website-pages-count">{props.websitePages?.length || 0}</span>
-        <button data-testid="step-one-next" onClick={props.onStepChange}>
-          Next Step
-        </button>
-        <button data-testid="step-one-setting" onClick={props.onSetting}>
-          Open Settings
-        </button>
-        <button
-          data-testid="step-one-change-type"
-          onClick={() => props.changeType(DataSourceType.NOTION)}
-        >
-          Change Type
-        </button>
-        <button
-          data-testid="step-one-update-files"
-          onClick={() =>
-            props.updateFileList([
-              { fileID: 'test-1', file: { name: 'test.txt' }, progress: 0 },
-            ] as unknown as FileItem[])
-          }
-        >
-          Add File
-        </button>
-        <button
-          data-testid="step-one-update-file-progress"
-          onClick={() => {
-            const mockFile = {
-              fileID: 'test-1',
-              file: { name: 'test.txt' },
-              progress: 0,
-            } as unknown as FileItem
-            props.updateFile(mockFile, 50, [mockFile])
-          }}
-        >
-          Update File Progress
-        </button>
-        <button
-          data-testid="step-one-update-notion-pages"
-          onClick={() =>
-            props.updateNotionPages([
-              { page_id: 'page-1', type: 'page' },
-            ] as unknown as NotionPage[])
-          }
-        >
-          Add Notion Page
-        </button>
-        <button
-          data-testid="step-one-update-notion-credential"
-          onClick={() => props.updateNotionCredentialId('credential-123')}
-        >
-          Update Credential
-        </button>
-        <button
-          data-testid="step-one-update-website-pages"
-          onClick={() =>
-            props.updateWebsitePages([
-              { title: 'Test', markdown: '', description: '', source_url: 'https://test.com' },
-            ])
-          }
-        >
-          Add Website Page
-        </button>
-        <button
-          data-testid="step-one-update-crawl-options"
-          onClick={() => props.onCrawlOptionsChange({ ...props.crawlOptions, limit: 20 })}
-        >
-          Update Crawl Options
-        </button>
-        <button
-          data-testid="step-one-update-crawl-provider"
-          onClick={() => props.onWebsiteCrawlProviderChange(DataSourceProvider.fireCrawl)}
-        >
-          Update Crawl Provider
-        </button>
-        <button
-          data-testid="step-one-update-job-id"
-          onClick={() => props.onWebsiteCrawlJobIdChange('job-123')}
-        >
-          Update Job ID
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../step-two', () => ({
-  default: (props: StepTwoProps) => {
-    stepTwoProps = props
-    return (
-      <div data-testid="step-two">
-        <span data-testid="step-two-is-api-key-set">{String(props.isAPIKeySet)}</span>
-        <span data-testid="step-two-data-source-type">{props.dataSourceType}</span>
-        <span data-testid="step-two-files-count">{props.files?.length || 0}</span>
-        <span data-testid="step-two-can-create-document">{String(props.canCreateDocument)}</span>
-        <button data-testid="step-two-prev" onClick={() => props.onStepChange!(-1)}>
-          Prev Step
-        </button>
-        <button data-testid="step-two-next" onClick={() => props.onStepChange!(1)}>
-          Next Step
-        </button>
-        <button data-testid="step-two-setting" onClick={props.onSetting}>
-          Open Settings
-        </button>
-        <button
-          data-testid="step-two-update-indexing-cache"
-          onClick={() => props.updateIndexingTypeCache!('high_quality')}
-        >
-          Update Indexing Cache
-        </button>
-        <button
-          data-testid="step-two-update-retrieval-cache"
-          onClick={() => props.updateRetrievalMethodCache!(RETRIEVE_METHOD.semantic)}
-        >
-          Update Retrieval Cache
-        </button>
-        <button
-          data-testid="step-two-update-result-cache"
-          onClick={() => props.updateResultCache!({ batch: 'batch-1', documents: [] })}
-        >
-          Update Result Cache
-        </button>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../step-three', () => ({
-  default: (props: StepThreeTestProps) => {
-    stepThreeProps = props
-    return (
-      <div data-testid="step-three">
-        <span data-testid="step-three-dataset-id">{props.datasetId || 'none'}</span>
-        <span data-testid="step-three-dataset-name">{props.datasetName || 'none'}</span>
-        <span data-testid="step-three-indexing-type">{props.indexingType || 'none'}</span>
-        <span data-testid="step-three-retrieval-method">{props.retrievalMethod || 'none'}</span>
-      </div>
-    )
-  },
-}))
-
-vi.mock('../top-bar', () => ({
-  TopBar: (props: TopBarProps) => {
-    _topBarProps = props
-    return (
-      <div data-testid="top-bar">
-        <span data-testid="top-bar-active-index">{props.activeIndex}</span>
-        <span data-testid="top-bar-dataset-id">{props.datasetId || 'none'}</span>
-      </div>
-    )
-  },
-}))
-
-const createMockDataset = (overrides?: Partial<DataSet>): DataSet => ({
-  id: 'dataset-123',
-  name: 'Test Dataset',
-  indexing_status: 'completed',
-  icon_info: { icon: '', icon_background: '', icon_type: 'emoji' as const },
-  description: 'Test description',
-  permission: DatasetPermission.onlyMe,
-  data_source_type: DataSourceType.FILE,
-  indexing_technique: IndexingTypeValues.QUALIFIED,
-  created_by: 'user-1',
-  updated_by: 'user-1',
-  updated_at: Date.now(),
-  app_count: 0,
-  doc_form: ChunkingMode.text,
-  document_count: 0,
-  total_document_count: 0,
-  word_count: 0,
-  provider: 'openai',
-  embedding_model: 'text-embedding-ada-002',
-  embedding_model_provider: 'openai',
-  embedding_available: true,
-  retrieval_model_dict: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    weights: undefined,
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  retrieval_model: {
-    search_method: RETRIEVE_METHOD.semantic,
-    reranking_enable: false,
-    reranking_mode: undefined,
-    reranking_model: { reranking_provider_name: '', reranking_model_name: '' },
-    weights: undefined,
-    top_k: 3,
-    score_threshold_enabled: false,
-    score_threshold: 0,
-  },
-  tags: [],
-  external_knowledge_info: {
-    external_knowledge_id: '',
-    external_knowledge_api_id: '',
-    external_knowledge_api_name: '',
-    external_knowledge_api_endpoint: '',
-  },
-  external_retrieval_model: {
-    top_k: 3,
-    score_threshold: 0.5,
-    score_threshold_enabled: false,
-  },
-  built_in_field_enabled: false,
-  runtime_mode: 'general' as const,
-  enable_api: false,
-  is_multimodal: false,
-  permission_keys: ['dataset.acl.use', 'dataset.acl.edit'],
-  ...overrides,
+beforeEach(() => {
+  api.replace.mockReset()
+  api.crawl.mockReset().mockResolvedValue({ job_id: 'crawl-job' })
+  api.crawlStatus.mockReset().mockResolvedValue({
+    status: 'completed',
+    total: 1,
+    data: [
+      {
+        title: 'Web handbook',
+        markdown: 'Source content',
+        description: 'Handbook',
+        source_url: 'https://example.com/handbook',
+      },
+    ],
+  })
+  api.sources.mockReset().mockResolvedValue({ result: [] })
+  api.upload
+    .mockReset()
+    .mockResolvedValue({ id: 'uploaded-file', name: 'handbook.txt', extension: 'txt' })
+  api.create.mockReset().mockResolvedValue(creation)
+  api.add.mockReset().mockResolvedValue(creation)
+  api.status.mockReset().mockResolvedValue({
+    data: [
+      {
+        id: 'doc-1',
+        indexing_status: 'completed',
+        completed_segments: 1,
+        total_segments: 1,
+        processing_started_at: null,
+        parsing_completed_at: null,
+        cleaning_completed_at: null,
+        splitting_completed_at: null,
+        completed_at: null,
+        paused_at: null,
+        error: null,
+        stopped_at: null,
+      },
+    ],
+  })
 })
 
-const createMockDataSourceAuth = (overrides?: Partial<DataSourceAuth>): DataSourceAuth =>
-  ({
-    credential_id: 'cred-1',
-    provider: 'notion',
-    plugin_id: 'plugin-1',
-    ...overrides,
-  }) as DataSourceAuth
+async function uploadFile(user: ReturnType<typeof userEvent.setup>) {
+  const input = await screen.findByLabelText('datasetCreation.stepOne.uploader.browse')
+  await user.upload(input, new File(['Source content'], 'handbook.txt', { type: 'text/plain' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'datasetCreation.stepOne.button' })).toBeEnabled(),
+  )
+}
+async function openConfiguration(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepOne.button' }))
+  await waitFor(() =>
+    expect(screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.maxLength' })).toHaveValue(
+      '500',
+    ),
+  )
+}
 
-describe('DatasetUpdateForm', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    // Reset mock state
-    mockDatasetDetail = undefined
-    mockEmbeddingsDefaultModel = { model: 'text-embedding-ada-002', provider: 'openai' }
-    mockDataSourceList = { result: [createMockDataSourceAuth()] }
-    mockIsLoadingDataSourceList = false
-    mockFetchingError = false
-    mockCurrentUserId = 'user-1'
-    mockWorkspacePermissionKeys = ['dataset.create_and_management']
-    mockIsLoadingWorkspacePermissionKeys = false
-    // Reset captured props
-    stepOneProps = {} as StepOneProps
-    stepTwoProps = {} as StepTwoProps
-    stepThreeProps = {} as StepThreeTestProps
-    _topBarProps = {} as TopBarProps
+it('keeps uploaded files when returning to the source step, then carries the creation result into indexing', async () => {
+  const pending = createDeferred<DatasetAndDocumentResponse>()
+  api.create.mockReturnValue(pending.promise)
+  const { user } = setup()
+  await uploadFile(user)
+  const uploaded = api.upload.mock.calls[0]?.[0].data
+  expect(uploaded?.get('file')).toBeInstanceOf(File)
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.previousStep' }))
+  expect(
+    screen.getByRole('button', { name: 'datasetCreation.stepOne.filePreview handbook.txt' }),
+  ).toBeInTheDocument()
+  expect(api.upload).toHaveBeenCalledTimes(1)
+  await openConfiguration(user)
+  const submit = screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' })
+  await user.click(submit)
+  expect(api.create).toHaveBeenCalledExactlyOnceWith({
+    body: expect.objectContaining({
+      data_source: {
+        type: 'upload_file',
+        info_list: {
+          data_source_type: 'upload_file',
+          file_info_list: { file_ids: ['uploaded-file'] },
+        },
+      },
+      indexing_technique: 'high_quality',
+      embedding_model: 'text-embedding-ada-002',
+    }),
   })
+  expect(
+    screen.queryByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).not.toBeInTheDocument()
+  await act(async () => pending.resolve(creation))
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).toBeInTheDocument()
+  expect(screen.getByText('Team handbook')).toBeInTheDocument()
+  expect(api.status).toHaveBeenCalledWith({ datasetId: 'new-dataset', batchId: 'batch-1' })
+  expect(await screen.findByText('datasetDocuments.embedding.completed')).toHaveAttribute(
+    'role',
+    'status',
+  )
+  expect(screen.getByRole('link', { name: 'datasetCreation.stepThree.navTo' })).toHaveAttribute(
+    'href',
+    '/datasets/new-dataset/documents',
+  )
+})
 
-  // Rendering Tests - Verify component renders correctly in different states
-  describe('Rendering', () => {
-    it('should render TopBar with correct active index for step 1', () => {
-      render(<DatasetUpdateForm />)
+it('keeps a failed creation on the configuration step so the same uploaded source can be retried', async () => {
+  api.create.mockRejectedValueOnce(new Error('Creation failed'))
+  const { user } = setup()
+  await uploadFile(user)
+  await openConfiguration(user)
+  const submit = screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' })
+  await user.click(submit)
+  await waitFor(() => expect(submit).toBeEnabled())
+  expect(screen.getByRole('textbox', { name: 'datasetCreation.stepTwo.maxLength' })).toHaveValue(
+    '500',
+  )
+  await user.click(submit)
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).toBeInTheDocument()
+  expect(api.create).toHaveBeenCalledTimes(2)
+  expect(api.create.mock.calls[1]).toEqual(api.create.mock.calls[0])
+  expect(api.upload).toHaveBeenCalledTimes(1)
+})
 
-      expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('0')
-    })
-
-    it('should render StepOne by default', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('step-three')).not.toBeInTheDocument()
-    })
-
-    it('should show loading state when data source list is loading', () => {
-      mockIsLoadingDataSourceList = true
-
-      render(<DatasetUpdateForm />)
-
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      // Assert - Loading component should be rendered (not the steps)
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-    })
-
-    it('should show error state when fetching fails', () => {
-      mockFetchingError = true
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByText('datasetCreation.error.unavailable'))!.toBeInTheDocument()
-    })
+it('uses economical indexing when no default embedding model is configured', async () => {
+  const { user } = setup({ hasEmbeddingModel: false })
+  await uploadFile(user)
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' }))
+  expect(api.create).toHaveBeenCalledWith({
+    body: expect.objectContaining({ indexing_technique: 'economy' }),
   })
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).toBeInTheDocument()
+})
 
-  // Props Testing - Verify datasetId prop behavior
-  describe('Props', () => {
-    describe('datasetId prop', () => {
-      it('should pass datasetId to TopBar', () => {
-        render(<DatasetUpdateForm datasetId="dataset-abc" />)
-
-        expect(screen.getByTestId('top-bar-dataset-id'))!.toHaveTextContent('dataset-abc')
-      })
-
-      it('should pass datasetId to StepOne', () => {
-        render(<DatasetUpdateForm datasetId="dataset-abc" />)
-
-        expect(stepOneProps.datasetId).toBe('dataset-abc')
-      })
-
-      it('should render without datasetId', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('top-bar-dataset-id'))!.toHaveTextContent('none')
-        expect(stepOneProps.datasetId).toBeUndefined()
-      })
-    })
+it('adds documents using the existing dataset permission and identity', async () => {
+  const dataset = createDatasetFixture({
+    id: 'existing-dataset',
+    name: 'Existing handbook',
+    permission_keys: ['dataset.acl.use'],
   })
-
-  // State Management - Test state initialization and transitions
-  describe('State Management', () => {
-    describe('dataSourceType state', () => {
-      it('should initialize with FILE data source type', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
-          DataSourceType.FILE,
-        )
-      })
-
-      it('should update dataSourceType when changeType is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-change-type'))
-
-        expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
-          DataSourceType.NOTION,
-        )
-      })
-    })
-
-    describe('step state', () => {
-      it('should initialize at step 1', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('0')
-      })
-
-      it('should transition to step 2 when nextStep is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-        expect(screen.getByTestId('step-two'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('1')
-      })
-
-      it('should transition to step 3 from step 2', () => {
-        render(<DatasetUpdateForm />)
-
-        // First go to step 2
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        // Act - go to step 3
-        fireEvent.click(screen.getByTestId('step-two-next'))
-
-        expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-        expect(screen.getByTestId('step-three'))!.toBeInTheDocument()
-        expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('2')
-      })
-
-      it('should go back to step 1 from step 2', () => {
-        render(<DatasetUpdateForm />)
-        fireEvent.click(screen.getByTestId('step-one-next'))
-
-        fireEvent.click(screen.getByTestId('step-two-prev'))
-
-        expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-        expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-      })
-    })
-
-    describe('fileList state', () => {
-      it('should initialize with empty file list', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update file list when updateFileList is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-        expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('1')
-      })
-    })
-
-    describe('notionPages state', () => {
-      it('should initialize with empty notion pages', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update notion pages when updateNotionPages is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
-
-        expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('1')
-      })
-    })
-
-    describe('websitePages state', () => {
-      it('should initialize with empty website pages', () => {
-        render(<DatasetUpdateForm />)
-
-        expect(screen.getByTestId('step-one-website-pages-count'))!.toHaveTextContent('0')
-      })
-
-      it('should update website pages when setWebsitePages is called', () => {
-        render(<DatasetUpdateForm />)
-
-        fireEvent.click(screen.getByTestId('step-one-update-website-pages'))
-
-        expect(screen.getByTestId('step-one-website-pages-count'))!.toHaveTextContent('1')
-      })
-    })
+  const { user } = setup({ dataset })
+  await uploadFile(user)
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' }))
+  expect(api.add).toHaveBeenCalledWith({
+    params: { dataset_id: 'existing-dataset' },
+    body: expect.objectContaining({ indexing_technique: 'high_quality' }),
   })
+  expect(api.create).not.toHaveBeenCalled()
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.additionTitle' }),
+  ).toBeInTheDocument()
+  expect(api.status).toHaveBeenCalledWith({ datasetId: 'existing-dataset', batchId: 'batch-1' })
+})
 
-  // Callback Stability - Test memoization of callbacks
-  describe('Callback Stability and Memoization', () => {
-    it('should provide stable updateNotionPages callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateNotionPages
+it('waits for permissions before redirecting a user who cannot add documents', async () => {
+  const dataset = createDatasetFixture({ id: 'restricted-dataset', permission_keys: [] })
+  const { queryClient } = setup({ dataset, pendingPermissions: true })
+  expect(api.replace).not.toHaveBeenCalled()
+  expect(screen.queryByLabelText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+  const { seedWorkspacePermissionsQuery } = await import('@/test/console/workspace-permissions')
+  act(() => seedWorkspacePermissionsQuery(queryClient, []))
+  await waitFor(() =>
+    expect(api.replace).toHaveBeenCalledWith('/datasets/restricted-dataset/documents'),
+  )
+  expect(screen.queryByLabelText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+})
 
-      // Act - trigger a rerender
-      rerender(<DatasetUpdateForm />)
+it('opens datasource settings from the real Notion connection action', async () => {
+  const { user, onUrlUpdate } = setup()
+  await user.click(
+    await screen.findByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.notion' }),
+  )
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepOne.connect' }))
+  await waitFor(() =>
+    expect(onUrlUpdate.mock.lastCall?.[0].searchParams.get('settings')).toBe('data-source'),
+  )
+})
 
-      // Assert - callback reference should be the same due to useCallback
-      expect(stepOneProps.updateNotionPages).toBe(initialCallback)
-    })
+it('shows the source step after datasource authorization finishes loading', async () => {
+  const pending = createDeferred<Awaited<ReturnType<typeof api.sources>>>()
+  api.sources.mockReturnValue(pending.promise)
+  setup()
+  expect(screen.queryByLabelText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+  await act(async () => pending.resolve({ result: [] }))
+  expect(
+    await screen.findByLabelText('datasetCreation.stepOne.uploader.browse'),
+  ).toBeInTheDocument()
+})
 
-    it('should provide stable updateNotionCredentialId callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateNotionCredentialId
+it('replaces the creation form with the unavailable message when datasource loading fails', async () => {
+  api.sources.mockRejectedValue(new Error('Datasource service unavailable'))
+  setup()
+  expect(await screen.findByText('datasetCreation.error.unavailable')).toBeInTheDocument()
+  expect(screen.queryByLabelText('datasetCreation.stepOne.uploader.browse')).not.toBeInTheDocument()
+})
 
-      rerender(<DatasetUpdateForm />)
+function source(provider: string): Awaited<ReturnType<typeof api.sources>>['result'][number] {
+  return {
+    author: 'Dify',
+    name: provider,
+    provider,
+    plugin_id: 'source-plugin',
+    plugin_unique_identifier: 'source-plugin:1',
+    label: { en_US: provider },
+    description: { en_US: provider },
+    icon: '',
+    credential_schema: [],
+    oauth_schema: null,
+    credentials_list: [
+      {
+        id: 'credential-1',
+        name: 'Team account',
+        type: provider === 'notion_datasource' ? 'oauth2' : 'api-key',
+        credential: {},
+        is_default: true,
+        avatar_url: null,
+      },
+    ],
+  }
+}
 
-      expect(stepOneProps.updateNotionCredentialId).toBe(initialCallback)
-    })
-
-    it('should provide stable updateFileList callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateFileList
-
-      rerender(<DatasetUpdateForm />)
-
-      expect(stepOneProps.updateFileList).toBe(initialCallback)
-    })
-
-    it('should provide stable updateFile callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      const initialCallback = stepOneProps.updateFile
-
-      rerender(<DatasetUpdateForm />)
-
-      expect(stepOneProps.updateFile).toBe(initialCallback)
-    })
-
-    it('should provide stable updateIndexingTypeCache callback reference', () => {
-      const { rerender } = render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      const initialCallback = stepTwoProps.updateIndexingTypeCache
-
-      // Act - trigger a rerender without changing step
-      rerender(<DatasetUpdateForm />)
-
-      // Assert - callbacks with same dependencies should be stable
-      expect(stepTwoProps.updateIndexingTypeCache).toBe(initialCallback)
-    })
+it('preserves the selected Notion page and credential across steps and submits them together', async () => {
+  api.sources.mockResolvedValue({ result: [source('notion_datasource')] })
+  const { user } = setup()
+  await user.click(
+    await screen.findByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.notion' }),
+  )
+  await user.click(await screen.findByRole('checkbox', { name: 'Engineering notes' }))
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.previousStep' }))
+  expect(await screen.findByRole('checkbox', { name: 'Engineering notes' })).toBeChecked()
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' }))
+  expect(api.create).toHaveBeenCalledWith({
+    body: expect.objectContaining({
+      data_source: {
+        type: 'notion_import',
+        info_list: {
+          data_source_type: 'notion_import',
+          notion_info_list: [
+            {
+              workspace_id: 'notion-workspace',
+              credential_id: 'credential-1',
+              pages: [
+                expect.objectContaining({ page_id: 'page-1', page_name: 'Engineering notes' }),
+              ],
+            },
+          ],
+        },
+      },
+    }),
   })
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).toBeInTheDocument()
+})
 
-  // User Interactions - Test event handlers
-  describe('User Interactions', () => {
-    it('should open account settings when onSetting is called from StepOne', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-setting'))
-
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('data-source')
-    })
-
-    it('should open provider settings when onSetting is called from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-setting'))
-
-      expect(mockSetSettingsDestination).toHaveBeenCalledWith('provider')
-    })
-
-    it('should update crawl options when onCrawlOptionsChange is called', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
-
-      expect(stepOneProps.crawlOptions.limit).toBe(20)
-    })
-
-    it('should update crawl provider when onWebsiteCrawlProviderChange is called', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-provider'))
-
-      // Assert - Need to verify state through StepTwo props
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      expect(stepTwoProps.websiteCrawlProvider).toBe(DataSourceProvider.fireCrawl)
-    })
-
-    it('should update job id when onWebsiteCrawlJobIdChange is called', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-job-id'))
-
-      // Assert - Verify through StepTwo props
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      expect(stepTwoProps.websiteCrawlJobId).toBe('job-123')
-    })
-
-    it('should update file progress correctly using immer produce', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-      fireEvent.click(screen.getByTestId('step-one-update-file-progress'))
-
-      // Assert - Progress should be updated
-      expect(stepOneProps.files[0]!.progress).toBe(50)
-    })
-
-    it('should update notion credential id', () => {
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-update-notion-credential'))
-
-      expect(stepOneProps.notionCredentialId).toBe('credential-123')
-    })
+it('carries the selected crawl provider, job, pages and edited options into document creation', async () => {
+  api.sources.mockResolvedValue({ result: [source('firecrawl')] })
+  const { user } = setup()
+  await user.click(
+    await screen.findByRole('radio', { name: 'datasetCreation.stepOne.dataSourceType.web' }),
+  )
+  await user.click(screen.getByRole('radio', { name: /Firecrawl/ }))
+  await user.type(screen.getByPlaceholderText(/^https:\/\//), 'https://example.com/handbook')
+  const limit = screen.getByDisplayValue('10')
+  await user.clear(limit)
+  await user.type(limit, '20')
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepOne.website.run' }))
+  expect(await screen.findByText('Web handbook')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepOne.website.preview' }))
+  expect(screen.getByText('datasetCreation.stepOne.pagePreview')).toBeInTheDocument()
+  expect(screen.getByText('Source content')).toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'common.operation.close' }))
+  expect(screen.queryByText('datasetCreation.stepOne.pagePreview')).not.toBeInTheDocument()
+  expect(api.crawl).toHaveBeenCalledWith({
+    url: 'https://example.com/handbook',
+    options: expect.objectContaining({ limit: 20 }),
   })
-
-  // Step Two Specific Tests
-  describe('StepTwo Rendering and Props', () => {
-    it('should pass isAPIKeySet as true when embeddingsDefaultModel exists', () => {
-      mockEmbeddingsDefaultModel = { model: 'model-1', provider: 'openai' }
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-is-api-key-set'))!.toHaveTextContent('true')
-    })
-
-    it('should pass isAPIKeySet as false when embeddingsDefaultModel is undefined', () => {
-      mockEmbeddingsDefaultModel = undefined
-      render(<DatasetUpdateForm />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-is-api-key-set'))!.toHaveTextContent('false')
-    })
-
-    it('should pass correct dataSourceType to StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-data-source-type'))!.toHaveTextContent(
-        DataSourceType.NOTION,
-      )
-    })
-
-    it('should pass files mapped to file property to StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-files-count'))!.toHaveTextContent('1')
-    })
-
-    it('should update indexing type cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-
-      // Assert - Go to step 3 and verify
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-    })
-
-    it('should update retrieval method cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-
-      // Assert - Go to step 3 and verify
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
-        'semantic_search',
-      )
-    })
-
-    it('should update result cache from StepTwo', () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-
-      // Assert - Go to step 3 and verify creationCache is passed
-      fireEvent.click(screen.getByTestId('step-two-next'))
-      expect(stepThreeProps.creationCache).toBeDefined()
-      expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
-    })
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.previousStep' }))
+  await user.click(screen.getByRole('radio', { name: /Firecrawl/ }))
+  expect(screen.getByDisplayValue('20')).toBeInTheDocument()
+  await openConfiguration(user)
+  await user.click(screen.getByRole('button', { name: 'datasetCreation.stepTwo.nextStep' }))
+  expect(api.create).toHaveBeenCalledWith({
+    body: expect.objectContaining({
+      data_source: {
+        type: 'website_crawl',
+        info_list: {
+          data_source_type: 'website_crawl',
+          website_info_list: expect.objectContaining({
+            provider: 'firecrawl',
+            job_id: 'crawl-job',
+            urls: ['https://example.com/handbook'],
+            only_main_content: true,
+          }),
+        },
+      },
+    }),
   })
-
-  // Step Two with datasetId and datasetDetail
-  describe('StepTwo with existing dataset', () => {
-    it('should not render StepTwo when datasetId exists but datasetDetail is undefined', () => {
-      mockDatasetDetail = undefined
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      // Assert - StepTwo should not render due to condition
-      expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-    })
-
-    it('should render StepTwo when datasetId exists and datasetDetail is defined', () => {
-      mockDatasetDetail = createMockDataset()
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two'))!.toBeInTheDocument()
-    })
-
-    it('should redirect when existing dataset does not grant add document permission', async () => {
-      mockDatasetDetail = createMockDataset({ permission_keys: ['dataset.acl.edit'] })
-
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      await waitFor(() => {
-        expect(mockReplace).toHaveBeenCalledWith('/datasets/dataset-123/documents')
-      })
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-    })
-
-    it('should pass add document permission to StepTwo for existing dataset', () => {
-      mockDatasetDetail = createMockDataset()
-
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(screen.getByTestId('step-two-can-create-document')).toHaveTextContent('true')
-    })
-
-    it('should pass indexingType from datasetDetail to StepTwo', () => {
-      mockDatasetDetail = createMockDataset({ indexing_technique: IndexingTypeValues.ECONOMICAL })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(stepTwoProps.indexingType).toBe('economy')
-    })
-  })
-
-  // Step Three Tests
-  describe('StepThree Rendering and Props', () => {
-    it('should pass datasetId to StepThree', () => {
-      // Arrange - Need datasetDetail for StepTwo to render when datasetId exists
-      mockDatasetDetail = createMockDataset()
-      render(<DatasetUpdateForm datasetId="dataset-456" />)
-
-      // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(screen.getByTestId('step-three-dataset-id'))!.toHaveTextContent('dataset-456')
-    })
-
-    it('should pass datasetName from datasetDetail to StepThree', () => {
-      mockDatasetDetail = createMockDataset({ name: 'My Special Dataset' })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('My Special Dataset')
-    })
-
-    it('should use cached indexing type when datasetDetail indexing_technique is not available', () => {
-      render(<DatasetUpdateForm />)
-
-      // Navigate to step 2 and set cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-
-      // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-    })
-
-    it('should use datasetDetail indexing_technique over cached value', () => {
-      mockDatasetDetail = createMockDataset({ indexing_technique: IndexingTypeValues.ECONOMICAL })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      // Navigate to step 2 and set different cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-
-      // Act - Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - Should use datasetDetail value, not cache
-      // Assert - Should use datasetDetail value, not cache
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('economy')
-    })
-
-    it('should use retrieval method from datasetDetail when available', () => {
-      mockDatasetDetail = createMockDataset()
-      mockDatasetDetail.retrieval_model_dict = {
-        ...mockDatasetDetail.retrieval_model_dict,
-        search_method: RETRIEVE_METHOD.fullText,
-      }
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
-        'full_text_search',
-      )
-    })
-  })
-
-  // StepOne Props Tests
-  describe('StepOne Props', () => {
-    it('should pass authedDataSourceList from hook response', () => {
-      const mockAuth = createMockDataSourceAuth({ provider: 'google-drive' })
-      mockDataSourceList = { result: [mockAuth] }
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.authedDataSourceList).toEqual([mockAuth])
-    })
-
-    it('should pass empty array when dataSourceList is undefined', () => {
-      mockDataSourceList = undefined
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.authedDataSourceList).toEqual([])
-    })
-
-    it('should pass dataSourceTypeDisable as true when datasetDetail has data_source_type', () => {
-      mockDatasetDetail = createMockDataset({ data_source_type: DataSourceType.FILE })
-
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      expect(stepOneProps.dataSourceTypeDisable).toBe(true)
-    })
-
-    it('should pass dataSourceTypeDisable as false when datasetDetail is undefined', () => {
-      mockDatasetDetail = undefined
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.dataSourceTypeDisable).toBe(false)
-    })
-
-    it('should pass default crawl options', () => {
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.crawlOptions).toEqual({
-        crawl_sub_pages: true,
-        only_main_content: true,
-        includes: '',
-        excludes: '',
-        limit: 10,
-        max_depth: '',
-        use_sitemap: true,
-      })
-    })
-  })
-
-  // Edge Cases - Test boundary conditions and error handling
-  describe('Edge Cases', () => {
-    it('should handle empty data source list', () => {
-      mockDataSourceList = { result: [] }
-
-      render(<DatasetUpdateForm />)
-
-      expect(stepOneProps.authedDataSourceList).toEqual([])
-    })
-
-    it('should handle undefined datasetDetail retrieval_model_dict', () => {
-      mockDatasetDetail = createMockDataset()
-      // @ts-expect-error - Testing undefined case
-      mockDatasetDetail.retrieval_model_dict = undefined
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - Should use cached value
-      // Assert - Should use cached value
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
-        'semantic_search',
-      )
-    })
-
-    it('should handle step state correctly after multiple navigations', () => {
-      render(<DatasetUpdateForm />)
-
-      // Act - Navigate forward and back multiple times
-      fireEvent.click(screen.getByTestId('step-one-next')) // to step 2
-      fireEvent.click(screen.getByTestId('step-two-prev')) // back to step 1
-      fireEvent.click(screen.getByTestId('step-one-next')) // to step 2
-      fireEvent.click(screen.getByTestId('step-two-next')) // to step 3
-
-      expect(screen.getByTestId('step-three'))!.toBeInTheDocument()
-      expect(screen.getByTestId('top-bar-active-index'))!.toHaveTextContent('2')
-    })
-
-    it('should handle result cache being undefined', () => {
-      render(<DatasetUpdateForm />)
-
-      // Act - Navigate to step 3 without setting result cache
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      expect(stepThreeProps.creationCache).toBeUndefined()
-    })
-
-    it('should pass result cache to step three', async () => {
-      render(<DatasetUpdateForm />)
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Set result cache value
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-
-      // Navigate to step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - Result cache is correctly passed to step three
-      expect(stepThreeProps.creationCache).toBeDefined()
-      expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
-    })
-
-    it('should preserve state when navigating between steps', () => {
-      render(<DatasetUpdateForm />)
-
-      // Set up various states
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
-
-      // Navigate to step 2 and back
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-prev'))
-
-      // Assert - All state should be preserved
-      // Assert - All state should be preserved
-      expect(screen.getByTestId('step-one-data-source-type'))!.toHaveTextContent(
-        DataSourceType.NOTION,
-      )
-      expect(screen.getByTestId('step-one-files-count'))!.toHaveTextContent('1')
-      expect(screen.getByTestId('step-one-notion-pages-count'))!.toHaveTextContent('1')
-    })
-  })
-
-  // Integration Tests - Test complete flows
-  describe('Integration', () => {
-    it('should complete full flow from step 1 to step 3 with all state updates', () => {
-      render(<DatasetUpdateForm />)
-
-      // Step 1: Set up data
-      fireEvent.click(screen.getByTestId('step-one-update-files'))
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Step 2: Set caches
-      fireEvent.click(screen.getByTestId('step-two-update-indexing-cache'))
-      fireEvent.click(screen.getByTestId('step-two-update-retrieval-cache'))
-      fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - All data flows through to Step 3
-      // Assert - All data flows through to Step 3
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-      expect(screen.getByTestId('step-three-retrieval-method'))!.toHaveTextContent(
-        'semantic_search',
-      )
-      expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
-    })
-
-    it('should handle complete website crawl workflow', () => {
-      render(<DatasetUpdateForm />)
-
-      // Set website data source through button click
-      fireEvent.click(screen.getByTestId('step-one-update-website-pages'))
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-provider'))
-      fireEvent.click(screen.getByTestId('step-one-update-job-id'))
-
-      // Navigate to step 2
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Assert - All website data passed to StepTwo
-      expect(stepTwoProps.websitePages!.length).toBe(1)
-      expect(stepTwoProps.websiteCrawlProvider).toBe(DataSourceProvider.fireCrawl)
-      expect(stepTwoProps.websiteCrawlJobId).toBe('job-123')
-      expect(stepTwoProps.crawlOptions!.limit).toBe(20)
-    })
-
-    it('should handle complete notion workflow', () => {
-      render(<DatasetUpdateForm />)
-
-      // Set notion data source
-      fireEvent.click(screen.getByTestId('step-one-change-type'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-pages'))
-      fireEvent.click(screen.getByTestId('step-one-update-notion-credential'))
-
-      // Navigate to step 2
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      expect(stepTwoProps.notionPages!.length).toBe(1)
-      expect(stepTwoProps.notionCredentialId).toBe('credential-123')
-    })
-
-    it('should handle edit mode with existing dataset', () => {
-      mockDatasetDetail = createMockDataset({
-        name: 'Existing Dataset',
-        indexing_technique: IndexingTypeValues.QUALIFIED,
-        data_source_type: DataSourceType.NOTION,
-      })
-      render(<DatasetUpdateForm datasetId="dataset-123" />)
-
-      // Assert - Step 1 should have disabled data source type
-      expect(stepOneProps.dataSourceTypeDisable).toBe(true)
-
-      // Navigate through
-      fireEvent.click(screen.getByTestId('step-one-next'))
-
-      // Assert - Step 2 should receive dataset info
-      expect(stepTwoProps.indexingType).toBe('high_quality')
-      expect(stepTwoProps.datasetId).toBe('dataset-123')
-
-      // Navigate to Step 3
-      fireEvent.click(screen.getByTestId('step-two-next'))
-
-      // Assert - Step 3 should show dataset details
-      // Assert - Step 3 should show dataset details
-      expect(screen.getByTestId('step-three-dataset-name'))!.toHaveTextContent('Existing Dataset')
-      expect(screen.getByTestId('step-three-indexing-type'))!.toHaveTextContent('high_quality')
-    })
-  })
-
-  // Default Crawl Options Tests
-  describe('Default Crawl Options', () => {
-    it('should have correct default crawl options structure', () => {
-      render(<DatasetUpdateForm />)
-
-      const crawlOptions = stepOneProps.crawlOptions
-      expect(crawlOptions).toMatchObject({
-        crawl_sub_pages: true,
-        only_main_content: true,
-        includes: '',
-        excludes: '',
-        limit: 10,
-        max_depth: '',
-        use_sitemap: true,
-      })
-    })
-
-    it('should preserve crawl options when navigating steps', () => {
-      render(<DatasetUpdateForm />)
-
-      // Update crawl options
-      fireEvent.click(screen.getByTestId('step-one-update-crawl-options'))
-
-      // Navigate to step 2 and back
-      fireEvent.click(screen.getByTestId('step-one-next'))
-      fireEvent.click(screen.getByTestId('step-two-prev'))
-
-      expect(stepOneProps.crawlOptions.limit).toBe(20)
-    })
-  })
-
-  // Error State Tests
-  describe('Error States', () => {
-    it('should display error message when fetching data source list fails', () => {
-      mockFetchingError = true
-
-      render(<DatasetUpdateForm />)
-
-      const errorElement = screen.getByText('datasetCreation.error.unavailable')
-      expect(errorElement)!.toBeInTheDocument()
-    })
-
-    it('should not render steps when in error state', () => {
-      mockFetchingError = true
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('step-two')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('step-three')).not.toBeInTheDocument()
-    })
-
-    it('should render error page with 500 code when in error state', () => {
-      mockFetchingError = true
-
-      render(<DatasetUpdateForm />)
-
-      // Assert - Error state renders AppUnavailable, not the normal layout
-      // Assert - Error state renders AppUnavailable, not the normal layout
-      expect(screen.getByText('500'))!.toBeInTheDocument()
-      expect(screen.queryByTestId('top-bar')).not.toBeInTheDocument()
-    })
-  })
-
-  // Loading State Tests
-  describe('Loading States', () => {
-    it('should not render steps while loading', () => {
-      mockIsLoadingDataSourceList = true
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-    })
-
-    it('should render TopBar while loading', () => {
-      mockIsLoadingDataSourceList = true
-
-      render(<DatasetUpdateForm />)
-
-      expect(screen.getByTestId('top-bar'))!.toBeInTheDocument()
-    })
-
-    it('should render StepOne after loading completes', async () => {
-      mockIsLoadingDataSourceList = true
-      const { rerender } = render(<DatasetUpdateForm />)
-
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      // Assert - Initially not rendered
-      expect(screen.queryByTestId('step-one')).not.toBeInTheDocument()
-
-      // Act - Loading completes
-      mockIsLoadingDataSourceList = false
-      rerender(<DatasetUpdateForm />)
-
-      // Assert - Now rendered
-      await waitFor(() => {
-        expect(screen.getByTestId('step-one'))!.toBeInTheDocument()
-      })
-    })
-  })
+  expect(
+    await screen.findByRole('heading', { name: 'datasetCreation.stepThree.creationTitle' }),
+  ).toBeInTheDocument()
 })

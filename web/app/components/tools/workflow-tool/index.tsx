@@ -117,12 +117,12 @@ const WorkflowToolDrawerFrame = ({
           <DrawerPopup
             className={cn(
               'data-[swipe-direction=right]:top-2 data-[swipe-direction=right]:right-2 data-[swipe-direction=right]:bottom-2 data-[swipe-direction=right]:h-[calc(100dvh-16px)] data-[swipe-direction=right]:w-160 data-[swipe-direction=right]:max-w-[calc(100vw-16px)]',
-              'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:border-r-[0.5px] data-[swipe-direction=right]:border-divider-subtle',
+              'data-[swipe-direction=right]:rounded-xl data-[swipe-direction=right]:ring-divider-subtle',
             )}
           >
-            <DrawerContent className="flex min-h-0 flex-1 flex-col overflow-hidden p-0 pb-0">
+            <DrawerContent className="overflow-hidden">
               <div className="shrink-0 border-b border-divider-subtle py-4">
-                <div className="flex h-6 items-center justify-between pr-5 pl-6">
+                <div className="flex h-6 items-center justify-between ps-6 pe-5">
                   <DrawerTitle className="min-w-0 truncate system-xl-semibold text-text-primary">
                     {title}
                   </DrawerTitle>
@@ -355,7 +355,7 @@ export function WorkflowToolDrawer({
               <Field name="label" className="gap-0">
                 <FieldLabel className="py-2 text-text-primary">
                   {t(($) => $['createTool.name'], { ns: 'tools' })}{' '}
-                  <span aria-hidden className="ml-1 text-text-destructive">
+                  <span aria-hidden className="ms-1 text-text-destructive">
                     *
                   </span>
                 </FieldLabel>
@@ -382,11 +382,11 @@ export function WorkflowToolDrawer({
                 <FieldLabel id={toolNameLabelId} className="py-0 text-text-primary">
                   {t(($) => $['createTool.nameForToolCall'], { ns: 'tools' })}
                 </FieldLabel>
-                <span aria-hidden className="ml-1 text-text-destructive">
+                <span aria-hidden className="ms-1 text-text-destructive">
                   *
                 </span>
                 <Infotip>
-                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ml-1 size-3.5" />
+                  <InfotipTrigger aria-labelledby={toolNameLabelId} className="ms-1 size-3.5" />
                   <InfotipContent aria-labelledby={toolNameLabelId} className="w-45">
                     {t(($) => $['createTool.nameForToolCallPlaceHolder'], { ns: 'tools' })}
                   </InfotipContent>
@@ -410,9 +410,7 @@ export function WorkflowToolDrawer({
                 {t(($) => $['createTool.description'], { ns: 'tools' })}
               </FieldLabel>
               <Textarea
-                placeholder={
-                  t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.descriptionPlaceholder'], { ns: 'tools' })}
                 value={description}
                 onValueChange={(value) => setDescription(value)}
               />
@@ -426,13 +424,13 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.name'], { ns: 'tools' })}
                       </th>
-                      <th className="w-25.5 p-2 pl-3 font-medium">
+                      <th className="w-25.5 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.method'], { ns: 'tools' })}
                       </th>
-                      <th id={`${parameterId}-description`} className="p-2 pl-3 font-medium">
+                      <th id={`${parameterId}-description`} className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolInput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -440,7 +438,7 @@ export function WorkflowToolDrawer({
                   <tbody>
                     {parameters.map((item, index) => (
                       <tr key={index} className="border-b border-divider-regular last:border-0">
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <div className="text-[13px] leading-4.5">
                             <div className="flex">
                               <span
@@ -449,7 +447,7 @@ export function WorkflowToolDrawer({
                               >
                                 {item.name}
                               </span>
-                              <span className="shrink-0 pl-1 text-xs leading-4.5 text-[#ec4a0a]">
+                              <span className="shrink-0 ps-1 text-xs leading-4.5 text-[#ec4a0a]">
                                 {item.required
                                   ? t(($) => $['createTool.toolInput.required'], { ns: 'tools' })
                                   : ''}
@@ -483,7 +481,7 @@ export function WorkflowToolDrawer({
                             />
                           )}
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <input
                             type="text"
                             aria-labelledby={`${parameterId}-${index}-name ${parameterId}-description`}
@@ -515,10 +513,10 @@ export function WorkflowToolDrawer({
                 <table className="w-full text-xs leading-4.5 font-normal text-text-secondary">
                   <thead className="text-text-tertiary uppercase">
                     <tr className="border-b border-divider-regular">
-                      <th className="w-39 p-2 pl-3 font-medium">
+                      <th className="w-39 p-2 ps-3 font-medium">
                         {t(($) => $['createTool.name'], { ns: 'tools' })}
                       </th>
-                      <th className="p-2 pl-3 font-medium">
+                      <th className="p-2 ps-3 font-medium">
                         {t(($) => $['createTool.toolOutput.description'], { ns: 'tools' })}
                       </th>
                     </tr>
@@ -535,7 +533,7 @@ export function WorkflowToolDrawer({
                         }
                         className="border-b border-divider-regular last:border-0"
                       >
-                        <td className="max-w-39 p-2 pl-3">
+                        <td className="max-w-39 p-2 ps-3">
                           <WorkflowToolOutputName
                             duplicateSources={duplicateOutputSourceGroups.get(
                               normalizeWorkflowOutputName(item.name),
@@ -544,7 +542,7 @@ export function WorkflowToolDrawer({
                             reservedOutputParameters={reservedOutputParameters}
                           />
                         </td>
-                        <td className="w-59 p-2 pl-3 text-text-tertiary">
+                        <td className="w-59 p-2 ps-3 text-text-tertiary">
                           <span className="text-[13px] leading-4.5 font-normal text-text-secondary">
                             {item.description}
                           </span>
@@ -571,9 +569,7 @@ export function WorkflowToolDrawer({
                 className="h-10"
                 value={privacyPolicy}
                 onValueChange={(value) => setPrivacyPolicy(value)}
-                placeholder={
-                  t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' }) || ''
-                }
+                placeholder={t(($) => $['createTool.privacyPolicyPlaceholder'], { ns: 'tools' })}
               />
             </Field>
           </div>

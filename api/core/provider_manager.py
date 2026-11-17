@@ -7,12 +7,12 @@ from collections import defaultdict
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from enum import StrEnum
-from json import JSONDecodeError
 from typing import TYPE_CHECKING, Any, Protocol, Self
 
 from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, selectinload
 
 from configs import dify_config
 from core.db.session_factory import session_factory
@@ -23,6 +23,7 @@ from core.entities.provider_entities import (
     CustomConfiguration,
     CustomModelConfiguration,
     CustomProviderConfiguration,
+    HostedSourceProtocolFact,
     ModelLoadBalancingConfiguration,
     ModelSettings,
     ProviderQuotaType,
@@ -37,7 +38,7 @@ from core.helper.position_helper import is_filtered
 from core.model_billing_profile import ModelBillingProfileService
 from core.plugin.entities.plugin import PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
-from enums import DeploymentEdition
+from enums import CloudPlan, DeploymentEdition
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -70,6 +71,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _credentials_adapter: TypeAdapter[dict[str, Any]] = TypeAdapter(dict[str, Any])
+_provider_configuration_cache_rows_adapter: TypeAdapter[list[Any]] = TypeAdapter(list[Any])
 _PROVIDER_CONFIGURATION_CACHE_TTL_SECONDS = 300
 _PROVIDER_CONFIGURATION_CACHE_VERSION_TTL_SECONDS = 360
 _PROVIDER_CONFIGURATION_CACHE_VERSION_KEY = "provider_configurations:tenant:{tenant_id}:source:{source}:version"
@@ -113,8 +115,7 @@ class _ProviderModelCacheEntry:
     encrypted_config: str | None
 
     @classmethod
-    def from_record(cls, record: ProviderModel) -> _ProviderModelCacheEntry:
-        credential = record.__dict__.get("credential")
+    def from_record(cls, record: ProviderModel, credential: ProviderModelCredential | None) -> _ProviderModelCacheEntry:
         return cls(
             id=record.id,
             provider_name=record.provider_name,
@@ -357,9 +358,7 @@ class _ProviderConfigurationSourceCache:
                 return None, version
 
             cached_text = cached_records.decode("utf-8") if isinstance(cached_records, bytes) else cached_records
-            rows = json.loads(cached_text)
-            if not isinstance(rows, list):
-                return None, version
+            rows = _provider_configuration_cache_rows_adapter.validate_json(cached_text)
 
             return [entry_cls.from_cache_row(row) for row in rows if isinstance(row, dict)], version
         except Exception:
@@ -443,33 +442,38 @@ def _get_cached_or_load_records[T: _CacheEntry](
     return records
 
 
-def _attach_active_credentials(
-    *,
-    session: Any,
-    records: Sequence[Provider | ProviderModel],
-    credential_model_cls: type[ProviderCredential | ProviderModelCredential],
-) -> None:
-    credential_ids = [record.credential_id for record in records if getattr(record, "credential_id", None)]
-    if not credential_ids:
-        return
+def _load_provider_model_credentials(
+    *, session: Session, provider_models: Sequence[ProviderModel]
+) -> dict[str, ProviderModelCredential]:
+    """Load the credentials referenced by ``provider_models`` through the caller's session.
 
-    credentials = session.scalars(select(credential_model_cls).where(credential_model_cls.id.in_(credential_ids))).all()
-    credential_by_id = {credential.id: credential for credential in credentials}
-    for record in records:
-        if getattr(record, "credential_id", None):
-            record.__dict__["credential"] = credential_by_id.get(record.credential_id)
+    Precondition: ``session`` is open.
+    Postcondition: the result maps each credential ID that still exists to its row.
+    """
+    credential_ids = [
+        provider_model.credential_id for provider_model in provider_models if provider_model.credential_id
+    ]
+    if not credential_ids:
+        return {}
+
+    credentials = session.scalars(
+        select(ProviderModelCredential).where(ProviderModelCredential.id.in_(credential_ids))
+    ).all()
+    return {credential.id: credential for credential in credentials}
 
 
 def _load_provider_model_cache_entries(tenant_id: str) -> list[_ProviderModelCacheEntry]:
     with session_factory.create_session() as session:
-        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid.is_(True))
         provider_models = list(session.scalars(stmt))
-        _attach_active_credentials(
-            session=session,
-            records=provider_models,
-            credential_model_cls=ProviderModelCredential,
-        )
-        return [_ProviderModelCacheEntry.from_record(provider_model) for provider_model in provider_models]
+        credentials = _load_provider_model_credentials(session=session, provider_models=provider_models)
+        return [
+            _ProviderModelCacheEntry.from_record(
+                provider_model,
+                credentials.get(provider_model.credential_id) if provider_model.credential_id else None,
+            )
+            for provider_model in provider_models
+        ]
 
 
 def _load_preferred_model_provider_cache_entries(tenant_id: str) -> list[_TenantPreferredModelProviderCacheEntry]:
@@ -713,11 +717,19 @@ class ProviderManager:
         from core.model_invocation_routing import (
             SettlementOwner,
             has_compatibility_route,
+            has_finite_hosted_credit_pool,
             migration_routing_state,
+            provider_has_prepared_ownership,
             settlement_owner,
+            uses_published_tokener_balance,
+            uses_stable_dependency_inventory,
         )
 
-        compatibility_route = has_compatibility_route(migration_routing_state(tenant_id))
+        routing_state = migration_routing_state(tenant_id)
+        compatibility_route = has_compatibility_route(routing_state)
+        stable_inventory = uses_stable_dependency_inventory(
+            dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, routing_state
+        )
 
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
@@ -766,12 +778,38 @@ class ProviderManager:
 
             # Get preferred provider type
             preferred_provider_type_record = provider_name_to_preferred_model_provider_records_dict.get(provider_name)
+            provider_hosting = ext_hosting_provider.hosting_configuration.provider_map.get(provider_name)
+            hosted_compatibility_default = (
+                not preferred_provider_type_record
+                and compatibility_route
+                and routing_state is not None
+                and (
+                    uses_published_tokener_balance(routing_state)
+                    or not provider_has_prepared_ownership(provider_name, routing_state)
+                )
+                and provider_hosting is not None
+                and has_finite_hosted_credit_pool(provider_hosting)
+                and isinstance(provider_entity, PluginModelProviderDeclaration)
+                and provider_entity.installation_source == PluginInstallationSource.Marketplace
+            )
+            if (
+                hosted_compatibility_default
+                and not system_configuration.enabled
+                and isinstance(provider_entity, PluginModelProviderDeclaration)
+            ):
+                from core.plugin.plugin_service import PluginService
+
+                hosted_compatibility_default = PluginService.is_plugin_verified(
+                    tenant_id, provider_entity.plugin_unique_identifier
+                )
 
             if model_billing.uses_tokener and not compatibility_route:
                 preferred_provider_type = ProviderType.CUSTOM
             elif preferred_provider_type_record:
                 preferred_provider_type = preferred_provider_type_record.preferred_provider_type
-            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and system_configuration.enabled:
+            elif dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and (
+                system_configuration.enabled or hosted_compatibility_default
+            ):
                 preferred_provider_type = ProviderType.SYSTEM
             elif custom_configuration.provider or custom_configuration.models:
                 preferred_provider_type = ProviderType.CUSTOM
@@ -789,7 +827,10 @@ class ProviderManager:
 
             if preferred_provider_type == ProviderType.SYSTEM:
                 if not system_configuration.enabled or not system_configuration.quota_configurations:
-                    using_provider_type = ProviderType.CUSTOM
+                    # A missing managed route must not silently spend a user's
+                    # BYOK credential after shared-credit cutover.
+                    if not compatibility_route:
+                        using_provider_type = ProviderType.CUSTOM
                 elif (
                     not has_valid_quota
                     and not managed_shared_pool
@@ -801,7 +842,7 @@ class ProviderManager:
 
             else:
                 if not custom_configuration.provider and not custom_configuration.models:
-                    if system_configuration.enabled and has_valid_quota:
+                    if system_configuration.enabled and (has_valid_quota or stable_inventory and managed_shared_pool):
                         using_provider_type = ProviderType.SYSTEM
 
             # Get provider load balancing configs
@@ -875,7 +916,7 @@ class ProviderManager:
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> DefaultModelEntity | None:
         """
-        Get default model.
+        Get the configured default model, or None when no default is saved.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -885,41 +926,18 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
-
-        # If it does not exist, get the first available provider model from get_configurations
-        # and update the TenantDefaultModel record
-        if not default_model:
-            model_billing = ModelBillingProfileService.resolve(tenant_id)
-            if model_billing.uses_tokener:
+        with session_factory.create_session() as session:
+            default_model = session.scalar(stmt)
+            if not default_model:
                 return None
-
-            # Get provider configurations
-            provider_configurations = self.get_configurations(tenant_id)
-
-            # get available models from provider_configurations
-            available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
-
-            if available_models:
-                available_model = available_models[0]
-
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type,
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
-                db.session.add(default_model)
-                db.session.commit()
-
-        if not default_model:
-            return None
+            provider_name = default_model.provider_name
+            model_name = default_model.model_name
 
         model_provider_factory = ModelProviderFactory(runtime=self._model_runtime)
-        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
+        provider_schema = model_provider_factory.get_provider_schema(provider=provider_name)
 
         return DefaultModelEntity(
-            model=default_model.model_name,
+            model=model_name,
             model_type=model_type,
             provider=DefaultModelProviderEntity(
                 provider=provider_schema.provider,
@@ -930,17 +948,17 @@ class ProviderManager:
         )
 
     def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
-        """
-        Get names of first model and its provider
+        """Return the first active model of the requested type in this workspace.
 
-        :param tenant_id: workspace id
-        :param model_type: model type
-        :return: provider name, model name
+        Precondition: ``tenant_id`` identifies the workspace whose provider catalog
+        is being read. Postcondition: a returned provider/model pair is active in
+        that catalog; if none is active, return ``(None, None)``. This read does not
+        create or update the workspace's saved default model.
         """
         provider_configurations = self.get_configurations(tenant_id)
 
         # get available models from provider_configurations
-        all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+        all_models = provider_configurations.get_models(model_type=model_type, only_active=True)
 
         if not all_models:
             return None, None
@@ -965,24 +983,23 @@ class ProviderManager:
             TenantDefaultModel.tenant_id == tenant_id,
             TenantDefaultModel.model_type == model_type,
         )
-        default_model = db.session.scalar(stmt)
+        with session_factory.create_session() as session, session.begin():
+            default_model = session.scalar(stmt)
 
-        # create or update TenantDefaultModel record
-        if default_model:
-            # update default model
-            default_model.provider_name = provider
-            default_model.model_name = model
-            db.session.commit()
-        else:
-            # create default model
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type,
-                provider_name=provider,
-                model_name=model,
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            # create or update TenantDefaultModel record
+            if default_model:
+                # update default model
+                default_model.provider_name = provider
+                default_model.model_name = model
+            else:
+                # create default model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type,
+                    provider_name=provider,
+                    model_name=model,
+                )
+                session.add(default_model)
 
         return default_model
 
@@ -1034,13 +1051,12 @@ class ProviderManager:
     def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
         with session_factory.create_session() as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
-            providers = list(session.scalars(stmt))
-            _attach_active_credentials(
-                session=session,
-                records=providers,
-                credential_model_cls=ProviderCredential,
+            stmt = (
+                select(Provider)
+                .where(Provider.tenant_id == tenant_id, Provider.is_valid.is_(True))
+                .options(selectinload(Provider.credential))
             )
+            providers = list(session.scalars(stmt))
             for provider in providers:
                 # Use provider name with prefix after the data migration
                 provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
@@ -1289,6 +1305,8 @@ class ProviderManager:
                                 existed_provider_record.is_valid = True
                                 db.session.commit()
 
+                            # Load the credential after the commit above, which expires loaded attributes.
+                            db.session.refresh(existed_provider_record, ["credential"])
                             provider_name_to_provider_records_dict[provider_name].append(existed_provider_record)
 
         return provider_name_to_provider_records_dict
@@ -1525,7 +1543,7 @@ class ProviderManager:
 
         try:
             credentials = _credentials_adapter.validate_json(encrypted_config)
-        except (ValueError, JSONDecodeError):
+        except ValueError:
             return {}
 
         # Decrypt secret variables
@@ -1555,14 +1573,32 @@ class ProviderManager:
         :return:
         """
         from core.model_invocation_routing import (
+            additional_hosted_availability,
             compatibility_quota_type,
             has_compatibility_route,
+            has_finite_hosted_credit_pool,
+            hosted_audio_source_fact,
+            hosted_embedding_source_fact,
+            hosted_gemini_source_fact,
+            hosted_source_variant_fact,
+            hosted_tongyi_source_fact,
+            hosted_xai_source_fact,
+            mapped_dynamic_source_candidates,
             migration_routing_state,
+            model_schema_digest,
+            provider_has_prepared_ownership,
+            published_original_quotas,
+            source_schema_matches_mapping,
+            uses_published_tokener_balance,
+            uses_stable_dependency_inventory,
         )
 
         routing_state = migration_routing_state(tenant_id)
         compatibility_route = has_compatibility_route(routing_state)
         # Get hosting configuration
+        stable_inventory = uses_stable_dependency_inventory(
+            dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, routing_state
+        )
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
         provider_hosting_configuration = hosting_configuration.provider_map.get(provider_entity.provider)
@@ -1595,20 +1631,20 @@ class ProviderManager:
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and not compatibility_route:
             from services.credit_pool_service import CreditPoolService
 
+            credit_pool_type = (
+                ProviderQuotaType.TRIAL
+                if FeatureService.get_workspace_plan(tenant_id) == CloudPlan.SANDBOX
+                else ProviderQuotaType.PAID
+            )
             with session_factory.create_session() as session:
-                trail_pool = CreditPoolService.get_pool(
+                credit_pool = CreditPoolService.get_pool(
                     tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.TRIAL,
-                    session=session,
-                )
-                paid_pool = CreditPoolService.get_pool(
-                    tenant_id=tenant_id,
-                    pool_type=ProviderQuotaType.PAID,
+                    pool_type=credit_pool_type,
                     session=session,
                 )
         else:
-            trail_pool = None
-            paid_pool = None
+            credit_pool_type = None
+            credit_pool = None
 
         for provider_quota in provider_hosting_configuration.quotas:
             if provider_quota.quota_type not in quota_type_to_provider_records_dict:
@@ -1631,23 +1667,13 @@ class ProviderManager:
                 if provider_record.quota_limit is None:
                     raise ValueError("quota_limit is None")
                 match provider_quota.quota_type:
-                    case ProviderQuotaType.TRIAL if trail_pool is not None:
+                    case quota_type if quota_type == credit_pool_type and credit_pool is not None:
                         quota_configuration = QuotaConfiguration(
                             quota_type=provider_quota.quota_type,
                             quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=trail_pool.quota_used,
-                            quota_limit=trail_pool.quota_limit,
-                            is_valid=trail_pool.quota_limit > trail_pool.quota_used or trail_pool.quota_limit == -1,
-                            restrict_models=provider_quota.restrict_models,
-                        )
-
-                    case ProviderQuotaType.PAID if paid_pool is not None:
-                        quota_configuration = QuotaConfiguration(
-                            quota_type=provider_quota.quota_type,
-                            quota_unit=provider_hosting_configuration.quota_unit or QuotaUnit.TOKENS,
-                            quota_used=paid_pool.quota_used,
-                            quota_limit=paid_pool.quota_limit,
-                            is_valid=paid_pool.quota_limit > paid_pool.quota_used or paid_pool.quota_limit == -1,
+                            quota_used=credit_pool.quota_used,
+                            quota_limit=credit_pool.quota_limit,
+                            is_valid=credit_pool.quota_limit > credit_pool.quota_used or credit_pool.quota_limit == -1,
                             restrict_models=provider_quota.restrict_models,
                         )
 
@@ -1664,15 +1690,186 @@ class ProviderManager:
 
             quota_configurations.append(quota_configuration)
 
-        if len(quota_configurations) == 0:
+        additional_provider = (
+            compatibility_route
+            and routing_state is not None
+            and not provider_has_prepared_ownership(provider_entity.provider, routing_state)
+        )
+        published_balance = uses_published_tokener_balance(routing_state) and has_finite_hosted_credit_pool(
+            provider_hosting_configuration
+        )
+        preserve_independent_pool = None
+        if published_balance and routing_state is not None:
+            try:
+                quota_configurations, preserve_independent_pool = published_original_quotas(
+                    provider_entity.provider, quota_configurations, routing_state
+                )
+            except ValueError:
+                from core.model_invocation_routing import ModelRouteUnavailable
+
+                raise ModelRouteUnavailable from None
+        resolved_source_schemas = []
+        variant_fact = hosted_source_variant_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        embedding_fact = hosted_embedding_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        audio_fact = hosted_audio_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        xai_fact = hosted_xai_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        gemini_fact = hosted_gemini_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        tongyi_fact = hosted_tongyi_source_fact(
+            provider=provider_entity.provider,
+            source_uid=plugin_provider_entity.plugin_unique_identifier,
+            models=provider_entity.models,
+            credentials=provider_hosting_configuration.credentials,
+        )
+        if published_balance and routing_state is not None:
+            for candidate in mapped_dynamic_source_candidates(
+                provider=provider_entity,
+                hosting=provider_hosting_configuration,
+                raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
+                revision=routing_state.get("model_mapping_version", ""),
+                source_fact=variant_fact,
+                embedding_source_fact=embedding_fact,
+                audio_source_fact=audio_fact,
+                xai_source_fact=xai_fact,
+                gemini_source_fact=gemini_fact,
+                tongyi_source_fact=tongyi_fact,
+                allow_source_variants=stable_inventory,
+            ):
+                source_credentials = dict(provider_hosting_configuration.credentials or {})
+                if candidate.base_model_name is not None:
+                    source_credentials["base_model_name"] = candidate.base_model_name
+                try:
+                    source_schema = self._model_runtime.get_model_schema(
+                        provider=provider_entity.provider,
+                        model_type=candidate.mapping.source.model_type,
+                        model=candidate.mapping.source.model,
+                        credentials=source_credentials,
+                    )
+                    if source_schema is not None and source_schema_matches_mapping(source_schema, candidate.mapping):
+                        resolved_source_schemas.append(source_schema.model_copy(deep=True))
+                except Exception:
+                    # This candidate remains unavailable, not proven unsupported.
+                    # Never discard verified static/other models or leak the key.
+                    continue
+                finally:
+                    source_credentials.clear()
+        if additional_provider or published_balance:
+            variant_fact = hosted_source_variant_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            embedding_fact = hosted_embedding_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            audio_fact = hosted_audio_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            xai_fact = hosted_xai_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            gemini_fact = hosted_gemini_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            tongyi_fact = hosted_tongyi_source_fact(
+                provider=provider_entity.provider,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                models=[*provider_entity.models, *resolved_source_schemas],
+                credentials=provider_hosting_configuration.credentials,
+            )
+            availability = additional_hosted_availability(
+                provider=provider_entity.provider,
+                hosting=provider_hosting_configuration,
+                installed_models=[*provider_entity.models, *resolved_source_schemas],
+                original_quotas=quota_configurations,
+                raw_registry=dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON,
+                revision=routing_state.get("model_mapping_version", "") if routing_state is not None else "",
+                published_balance=published_balance,
+                preserve_independent_pool=preserve_independent_pool,
+                preserve_independent_units=stable_inventory,
+                source_uid=plugin_provider_entity.plugin_unique_identifier,
+                source_fact=variant_fact,
+                embedding_source_fact=embedding_fact,
+                audio_source_fact=audio_fact,
+                xai_source_fact=xai_fact,
+                gemini_source_fact=gemini_fact,
+                tongyi_source_fact=tongyi_fact,
+                allow_source_variants=stable_inventory,
+            )
+            if availability is None:
+                return SystemConfiguration(enabled=False)
+            quota_configurations = availability.quotas
+            current_quota_type = availability.current_quota_type
+        elif len(quota_configurations) == 0:
             return SystemConfiguration(enabled=False)
-
-        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
-
-        if compatibility_route and routing_state is not None:
+        elif compatibility_route and routing_state is not None:
             current_quota_type = compatibility_quota_type(provider_entity.provider, quota_configurations, routing_state)
+        else:
+            current_quota_type = credit_pool_type or self._choice_current_using_quota_type(quota_configurations)
 
+        source_protocol_fact = None
         current_using_credentials = provider_hosting_configuration.credentials
+        if str(ModelProviderID(provider_entity.provider)) == "langgenius/openai/openai" and isinstance(
+            current_using_credentials, dict
+        ):
+            protocol = current_using_credentials.get("api_protocol")
+            if protocol is None or protocol in ("chat", "responses"):
+                source_protocol_fact = HostedSourceProtocolFact(
+                    provider=str(ModelProviderID(provider_entity.provider)),
+                    plugin_unique_identifier=plugin_provider_entity.plugin_unique_identifier,
+                    catalog_schema_digests=tuple(
+                        (item.model_type, item.model, model_schema_digest(item))
+                        for item in [*provider_entity.models, *resolved_source_schemas]
+                    ),
+                    selector="absent" if protocol is None else protocol,
+                )
+        if (additional_provider or published_balance) and any(
+            quota.quota_type == current_quota_type
+            and quota.quota_type != ProviderQuotaType.FREE
+            and quota.quota_limit != -1
+            and (not stable_inventory or quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES})
+            for quota in quota_configurations
+        ):
+            # New shared-credit entries can only invoke the managed route; do
+            # not hand the original hosted key to any accidental legacy path.
+            current_using_credentials = None
         if current_quota_type == ProviderQuotaType.FREE:
             provider_record_quota_free = quota_type_to_provider_records_dict.get(current_quota_type)
 
@@ -1704,13 +1901,11 @@ class ProviderManager:
 
                     for variable in provider_credential_secret_variables:
                         if variable in provider_credentials:
-                            try:
+                            with contextlib.suppress(ValueError):
                                 provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                     provider_credentials.get(variable, ""),
                                     decoding_context,
                                 )
-                            except ValueError:
-                                pass
 
                     current_using_credentials = provider_credentials or {}
 
@@ -1722,12 +1917,22 @@ class ProviderManager:
                 current_using_credentials = {}
                 quota_configurations = []
 
-        return SystemConfiguration(
+        result = SystemConfiguration(
             enabled=True,
             current_quota_type=current_quota_type,
             quota_configurations=quota_configurations,
             credentials=current_using_credentials,
         )
+        result._tokener_source_schemas = tuple(resolved_source_schemas)
+        result._tokener_source_plugin_unique_identifier = plugin_provider_entity.plugin_unique_identifier
+        result._tokener_source_protocol_fact = source_protocol_fact
+        result._tokener_source_variant_fact = variant_fact
+        result._tokener_embedding_source_fact = embedding_fact
+        result._tokener_audio_source_fact = audio_fact
+        result._tokener_xai_source_fact = xai_fact
+        result._tokener_gemini_source_fact = gemini_fact
+        result._tokener_tongyi_source_fact = tongyi_fact
+        return result
 
     @staticmethod
     def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
@@ -1838,7 +2043,7 @@ class ProviderManager:
                                 provider_model_credentials = _credentials_adapter.validate_json(
                                     load_balancing_model_config.encrypted_config
                                 )
-                            except (ValueError, JSONDecodeError):
+                            except ValueError:
                                 continue
 
                             # Get decoding context for decrypting credentials
@@ -1846,13 +2051,11 @@ class ProviderManager:
 
                             for variable in model_credential_secret_variables:
                                 if variable in provider_model_credentials:
-                                    try:
+                                    with contextlib.suppress(ValueError):
                                         provider_model_credentials[variable] = encrypter.decrypt_token_with_decoding(
                                             provider_model_credentials.get(variable) or "",
                                             decoding_context,
                                         )
-                                    except ValueError:
-                                        pass
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)

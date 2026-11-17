@@ -198,6 +198,34 @@ def test_list_paginates_after_last_id(sqlite_session_factory: sessionmaker[Sessi
     assert [record.id for record in result.data] == [oldest.id]
 
 
+def test_list_paginates_messages_with_tied_created_at(sqlite_session_factory: sessionmaker[Session]) -> None:
+    actor = SavedMessageActor.account(_ACCOUNT_ID)
+    created_at = datetime(2026, 1, 2)
+    with sqlite_session_factory.begin() as session:
+        _persist_app(session)
+        messages = [
+            _persist_message(session, actor=actor, created_at=created_at),
+            _persist_message(session, actor=actor, created_at=created_at),
+        ]
+        for message in messages:
+            _save_message(session, app_id=_APP_ID, actor=actor, message_id=message.id)
+
+    repository = _repository(sqlite_session_factory)
+    first = repository.pagination_by_last_id(app_id=_APP_ID, actor=actor, last_id=None, limit=1)
+    second = repository.pagination_by_last_id(
+        app_id=_APP_ID,
+        actor=actor,
+        last_id=first.data[-1].id,
+        limit=1,
+    )
+
+    assert first.has_more is True
+    assert second.has_more is False
+    assert [record.id for record in (*first.data, *second.data)] == sorted(
+        (message.id for message in messages), reverse=True
+    )
+
+
 def test_list_rejects_last_id_outside_saved_set(sqlite_session_factory: sessionmaker[Session]) -> None:
     actor = SavedMessageActor.account(_ACCOUNT_ID)
     with sqlite_session_factory.begin() as session:

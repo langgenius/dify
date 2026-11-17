@@ -25,11 +25,11 @@ import {
   createComboboxItems,
 } from '@langgenius/dify-ui/combobox'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 
 type CreatorsFilterProps = {
@@ -53,7 +53,9 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
     ...userProfileQueryOptions(),
     select: (data) => data.profile.id,
   })
-  const { data: membersData } = useMembers()
+  const { data: membersData } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   const creatorOptions = useMemo<CreatorOption[]>(() => {
@@ -165,7 +167,7 @@ const CreatorsFilter = ({ value, onChange }: CreatorsFilterProps) => {
         )}
       </div>
       <ComboboxPortal>
-        <ComboboxPositioner placement="bottom-start" sideOffset={4}>
+        <ComboboxPositioner>
           <ComboboxPopup
             aria-label={t(($) => $['studio.filters.creators'], { ns: 'app' })}
             className="w-[min(280px,var(--available-width))] min-w-[min(var(--anchor-width),var(--available-width))] bg-components-panel-bg-blur text-sm text-text-secondary backdrop-blur-[5px]"

@@ -94,6 +94,7 @@
   "nodes.humanInput.userActions.buttonTextPlaceholder": "Giá trị Hành động",
   "nodes.humanInput.userActions.buttonTextTooLong": "Văn bản nút phải có {{maxLength}} ký tự trở xuống",
   "nodes.humanInput.userActions.chooseStyle": "Chọn kiểu nút",
+  "nodes.humanInput.userActions.defaultTitle": "Văn bản nút {{index}}",
   "nodes.humanInput.userActions.emptyTip": "Nhấp vào nút '+' để thêm hành động người dùng",
   "nodes.humanInput.userActions.title": "Hành động Người dùng",
   "nodes.humanInput.userActions.tooltip": "Xác định các nút mà người dùng có thể nhấp để phản hồi biểu mẫu này. ID hành động kiểm soát việc phân nhánh. Giá trị Hành động được hiển thị ở phía sau như là đầu ra tích hợp được chọn. ID hành động phải bắt đầu bằng chữ cái hoặc dấu gạch dưới, theo sau là chữ cái, số hoặc dấu gạch dưới.",

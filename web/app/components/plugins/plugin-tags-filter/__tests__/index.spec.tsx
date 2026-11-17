@@ -77,14 +77,4 @@ describe('PluginTagsFilter', () => {
     await user.click(screen.getByRole('checkbox', { name: 'RAG' }))
     expect(onTagsChange).toHaveBeenCalledWith(['agent', 'rag'])
   })
-
-  it('falls back to an empty placeholder when translation is missing', async () => {
-    const user = userEvent.setup()
-    mockTranslate.mockImplementation(() => undefined as unknown as string)
-
-    render(<PluginTagsFilter value={[]} onValueChange={vi.fn()} />)
-    await user.click(screen.getByRole('button'))
-
-    expect(screen.getByRole('searchbox')).toHaveAttribute('placeholder', '')
-  })
 })

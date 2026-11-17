@@ -1,11 +1,11 @@
 """Database-backed recommended app catalog adapter."""
 
-import json
 import logging
 from collections.abc import Sequence
 from typing import cast, override
 from uuid import UUID
 
+from pydantic import TypeAdapter, ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 # Keep the legacy "explore" Redis key: Explore was the former UI name for this recommended-app surface.
 _CATEGORY_ORDER_KEY_PREFIX = "explore:apps:category_order"
+_category_order_adapter = TypeAdapter(list[object])
 
 
 class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
@@ -117,6 +118,12 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
             )
 
     def _order_categories(self, categories: set[str], language: str) -> list[str]:
+        """Read an optional JSON array from Redis and retain its string entries.
+
+        Preserve configured order and duplicates. If Redis fails or its value is
+        absent, unreadable UTF-8/JSON, not an array, or has no strings, return the
+        supplied categories in sorted order. Never modify Redis or log its payload.
+        """
         try:
             raw_categories = self._redis.get(f"{_CATEGORY_ORDER_KEY_PREFIX}:{language}")
         except Exception:
@@ -125,16 +132,10 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
 
         if not raw_categories:
             return sorted(categories)
-        if isinstance(raw_categories, bytes):
-            raw_categories = raw_categories.decode("utf-8")
-
         try:
-            configured_order = json.loads(raw_categories)
-        except (TypeError, json.JSONDecodeError):
+            configured_order = _category_order_adapter.validate_json(raw_categories)
+        except ValidationError:
             logger.warning("Invalid recommended app category order payload for language %s.", language)
-            return sorted(categories)
-
-        if not isinstance(configured_order, list):
             return sorted(categories)
 
         string_order = [category for category in configured_order if isinstance(category, str)]
@@ -186,7 +187,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
                         id=app.id,
                         name=app.name,
                         mode=app.mode.value,
-                        icon=cast(str | None, app.icon),
+                        icon=app.icon,
                         icon_type=app.icon_type.value if app.icon_type is not None else None,
                         icon_background=app.icon_background,
                     ),
@@ -229,7 +230,7 @@ class DatabaseRecommendedAppCatalogRepository(RecommendedAppCatalogQuery):
         return RecommendedAppDetailRecord(
             id=app.id,
             name=app.name,
-            icon=cast(str | None, app.icon),
+            icon=app.icon,
             icon_background=app.icon_background,
             mode=app.mode.value,
             export_data="" if app.mode == AppMode.AGENT else AppDslService.export_dsl(app_model=app, session=session),

@@ -1,7 +1,7 @@
 import { useRefWithInit } from '@langgenius/dify-ui/use-ref-with-init'
 import { useCallback } from 'react'
 
-export const useSerialAsyncCallback = <Args extends any[], Result = void>(
+export const useSerialAsyncCallback = <Args extends unknown[], Result = void>(
   fn: (...args: Args) => Promise<Result> | Result,
   shouldSkip?: () => boolean,
 ) => {

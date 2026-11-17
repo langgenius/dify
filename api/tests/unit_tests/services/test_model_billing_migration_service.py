@@ -1,6 +1,8 @@
 import copy
+import json
 from datetime import datetime, timedelta
 from operator import itemgetter
+from pathlib import Path
 from typing import Literal, NoReturn, NotRequired, TypedDict, cast
 from uuid import uuid4
 
@@ -28,7 +30,7 @@ from services.entities.model_billing_migration import (
 )
 from services.model_billing_migration_service import MigrationError
 from services.model_billing_migration_service import ModelBillingMigrationService as Service
-from tests.unit_tests.config_override import apply_config_overrides
+from tests.helpers.unit.config_override import apply_config_overrides
 
 NOW = datetime(2026, 10, 1, 12)
 HASH = "sha256:" + "1" * 64
@@ -566,7 +568,7 @@ def test_manifest_rejects_each_duplicate_identity(field: str) -> None:
 def test_canonical_hash_forbids_float_and_null() -> None:
     invalid_payloads: tuple[dict[str, object], ...] = ({"amount": 1.2}, {"key": None})
     for value in invalid_payloads:
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError, match="canonical payload cannot contain float or null"):
             canonical_hash(value)
 
 
@@ -1298,6 +1300,7 @@ def test_routing_projection_does_not_materialize_control_status(
         "provisioned_binding",
         "source_ownership",
         "ever_activated",
+        "persisted_model_billing_source",
     }
     assert state["phase"] == "prepared"
 
@@ -1588,3 +1591,70 @@ def test_complete_preparation_rejects_key_edit_against_same_transaction_provisio
     routing_state = Service.get_routing_state(tenant_id)
     assert routing_state is not None
     assert "preparation" not in routing_state or routing_state["preparation"] == {}
+
+
+def test_go_manual_fixture_is_accepted_by_actual_core_cas(
+    sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manifest = json.loads(
+        (
+            (Path(__file__).resolve().parents[3] / "contracts/fixtures") / "tokener_migration_manifest_v1.json"
+        ).read_text()
+    )
+    request = json.loads(
+        ((Path(__file__).resolve().parents[3] / "contracts/fixtures") / "tokener_manual_replan_v1.json").read_text()
+    )
+    tenant = Tenant(name="Shared Go/Core manual repair")
+    tenant.id = manifest["tenant_id"]
+    sqlite_session.add(tenant)
+    original_hash = canonical_hash(manifest)
+    decisions = {
+        window["cycle_key"]: {
+            "cycle_key": window["cycle_key"],
+            "decision": "tokener",
+            "contract_ref": manifest["contract_ref"],
+            "operation_id": "33333333-3333-4333-8333-333333333333",
+            "manifest_hash": original_hash,
+        }
+        for window in manifest["windows"]
+    }
+    sqlite_session.add(
+        TenantModelBillingMigration(
+            tenant_id=tenant.id,
+            migration_id=manifest["migration_id"],
+            batch_id="shared-fixture",
+            phase="claimed",
+            revision=7,
+            route_epoch=1,
+            claimed_at=datetime(2027, 6, 17, 12),
+            state={
+                "manifest": manifest,
+                "manifest_hash": original_hash,
+                "intent_revision": 1,
+                "model_mapping_version": manifest["model_mapping_version"],
+                "inventory_hash": "sha256:" + "1" * 64,
+                "commands": {},
+                "cycle_decisions": decisions,
+            },
+        )
+    )
+    sqlite_session.commit()
+    monkeypatch.setattr(module, "naive_utc_now", lambda: datetime(2027, 6, 18, 12))
+    result = Service.contract_event(
+        tenant.id,
+        manifest["migration_id"],
+        ContractEventPayload.model_validate(request),
+    )
+    assert result["revision"] == 8
+    assert result["phase"] == "blocked"
+    assert result["manifest"] == request["replacement_manifest"]
+    assert result["manifest_hash"] == request["replacement_manifest_hash"]
+    assert result["claimed_at"] == "2027-06-17T12:00:00Z"
+    assert {decision["manifest_hash"] for decision in result["cycle_decisions"]} == {original_hash}
+    replayed = Service.contract_event(
+        tenant.id,
+        manifest["migration_id"],
+        ContractEventPayload.model_validate(request),
+    )
+    assert replayed["replayed"] is True
+    assert replayed["replayed_operation"]["result_revision"] == 8

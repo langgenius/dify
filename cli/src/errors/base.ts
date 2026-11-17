@@ -1,6 +1,9 @@
 import type { ErrorCodeValue, ExitCodeValue } from './codes'
+import type { Hint } from '@/protocol/hint'
 import { BINARY } from '@/version/info'
 import { ErrorCode, exitFor } from './codes'
+
+export const LOC_SEPARATOR = '.'
 
 export type ServerErrorDetail = {
   readonly type: string
@@ -8,11 +11,15 @@ export type ServerErrorDetail = {
   readonly msg: string
 }
 
+/** A detail the CLI reports; `field` is the input as the user typed it. */
+export type ErrorDetail = ServerErrorDetail & { readonly field?: string }
+
 export type ServerErrorBody = {
   readonly code?: string
   readonly message: string
   readonly status?: number
   readonly hint?: string
+  readonly hints?: Hint[]
   readonly details?: ServerErrorDetail[]
 }
 
@@ -21,7 +28,7 @@ export type ErrorEnvelope = {
     code: string
     message: string
     hint?: string
-    details?: ServerErrorDetail[]
+    details?: ErrorDetail[]
     schema?: unknown
     http_status?: number
     method?: string
@@ -36,14 +43,14 @@ export type BaseErrorOptions = {
   readonly message: string
   readonly hint?: string
   readonly cause?: unknown
-  readonly details?: ServerErrorDetail[]
+  readonly details?: ErrorDetail[]
   readonly schema?: unknown
 }
 
 export class BaseError extends Error {
   readonly code: ErrorCodeValue
   readonly hint?: string
-  readonly details?: ServerErrorDetail[]
+  readonly details?: ErrorDetail[]
   readonly schema?: unknown
 
   constructor(opts: BaseErrorOptions) {
@@ -116,10 +123,18 @@ export function unknownError(message: string, cause?: unknown): BaseError {
   return new BaseError({ code: ErrorCode.Unknown, message, cause })
 }
 
-export const LOGIN_HINT = `run ${BINARY} login`
+export const LOGIN_HINT = `run ${BINARY} help login`
 
-export function notLoggedIn(): BaseError {
-  return new BaseError({ code: ErrorCode.NotLoggedIn, message: 'not logged in', hint: LOGIN_HINT })
+export function notLoggedInMessage(reason?: string): string {
+  return reason === undefined ? 'not logged in' : `not logged in: ${reason}`
+}
+
+export function notLoggedIn(reason?: string): BaseError {
+  return new BaseError({
+    code: ErrorCode.NotLoggedIn,
+    message: notLoggedInMessage(reason),
+    hint: LOGIN_HINT,
+  })
 }
 
 type HttpClientErrorOptions = BaseErrorOptions & {

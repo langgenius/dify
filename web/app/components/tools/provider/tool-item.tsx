@@ -12,10 +12,9 @@ type Props = Readonly<{
   collection: Collection
   tool: Tool
   isBuiltIn: boolean
-  isModel: boolean
 }>
 
-const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => {
+const ToolItem = ({ disabled, collection, tool, isBuiltIn }: Props) => {
   const locale = useLocale()
   const language = getPluginLanguage(locale)
   const [showDetail, setShowDetail] = useState(false)
@@ -53,7 +52,6 @@ const ToolItem = ({ disabled, collection, tool, isBuiltIn, isModel }: Props) => 
             setShowDetail(false)
           }}
           isBuiltIn={isBuiltIn}
-          isModel={isModel}
         />
       )}
     </>

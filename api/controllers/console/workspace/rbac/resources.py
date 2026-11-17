@@ -17,6 +17,7 @@ from controllers.console.workspace.rbac.schemas import (
     _ReplaceBindingsRequest,
     _ResourceAccessScopeRequest,
     _ResourceUserAccessPoliciesQuery,
+    _WorkspaceMatrixQuery,
     pagination_options,
 )
 from extensions.ext_application_services import application_services
@@ -203,6 +204,7 @@ def _build_resource_access_apis(spec: _ResourceAccessRoutes) -> _ResourceAccessA
             return dump_response(SimpleResultResponse, {"result": "success"})
 
     class WorkspaceMatrixApi(Resource):
+        @console_ns.doc(params=query_params_from_model(_WorkspaceMatrixQuery))
         @console_account_admission()
         @console_ns.response(200, "Success", console_ns.models[dto.WorkspaceAccessMatrix.__name__])
         def get(self, context: RequestContext):

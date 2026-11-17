@@ -14,7 +14,7 @@ export default async function Layout({
   return (
     <React.Fragment>
       <ConsoleRuntimeProviders>
-        <div className="flex h-full flex-col overflow-hidden">
+        <div className="flex h-dvh flex-col overflow-hidden">
           <ConsoleContextProviders>
             <MainNavLayout detailSidebar={detailSidebar}>{children}</MainNavLayout>
             <CommonLayoutGlobalMounts />

@@ -1,4 +1,4 @@
-import { SourcesPage } from '@/features/new-rag/sources-page'
+import { SourcesPage } from '@/features/new-rag/sources/page'
 
 export default async function Page({ params }: { params: Promise<{ knowledgeSpaceId: string }> }) {
   const { knowledgeSpaceId } = await params

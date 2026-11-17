@@ -186,6 +186,7 @@ describe('SkillDetailPage uploads', () => {
   })
 
   it('cancels an active file upload from the upload status panel', async () => {
+    const user = userEvent.setup()
     mocks.skillDetail = createSkillDetail({
       files: [
         ...createSkillDetail().files!,
@@ -216,9 +217,11 @@ describe('SkillDetailPage uploads', () => {
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
+    await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
     expect(abortSpy).toHaveBeenCalledOnce()
+    expect(mocks.saveDraftFileMutationFn).not.toHaveBeenCalled()
+    abortSpy.mockRestore()
   })
 
   it('retries failed file uploads from the upload status panel', async () => {

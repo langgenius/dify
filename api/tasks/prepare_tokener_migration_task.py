@@ -17,8 +17,10 @@ from models.account import Tenant
 from models.model_billing_migration import TenantModelBillingMigration
 from models.provider import ProviderCredential
 from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services.billing_client import billing, transport
 from services.billing_service import BillingService
 from services.entities.model_billing_migration import canonical_hash
+from services.model_billing_migration_inventory import ModelBillingReadinessQuery
 from services.model_billing_migration_service import ModelBillingMigrationService
 from services.model_provider.service import ModelProviderService
 from tasks.bootstrap_tokener_tenant_task import (
@@ -163,31 +165,26 @@ def _persist_key(tenant_id: str, migration_id: str, api_key: str) -> str | None:
 
 def _prepare_resources(tenant_id: str, request: dict[str, Any]) -> str | None:
     """Consume a one-time key in-frame; never let upstream exceptions carry it."""
-    response: dict[str, Any] = {}
+    response: billing.TokenerMigrationPrepareResult | None = None
     key = ""
     try:
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
-        if not base_url:
+        if not transport.tokener_billing_is_configured():
             return None
-        raw = BillingService._send_request(
-            "POST",
-            f"/internal/v1/tokener/tenants/{tenant_id}/prepare-migration",
-            json=request,
-            base_url=base_url,
+        payload = billing.TokenerMigrationPreparePayload.model_validate(request)
+        response = BillingService.prepare_tokener_migration(
+            tenant_id,
+            payload,
         )
-        if not isinstance(raw, dict):
-            return None
-        response = raw
-        key = response.pop("data_plane_api_key", "")
+        key = response.data_plane_api_key or ""
         if (
-            response.get("tenant_id") != tenant_id
-            or response.get("status") != "ready"
-            or response.get("external_ref") != tenant_id
+            response.tenant_id != tenant_id
+            or response.status != "ready"
+            or response.external_ref != tenant_id
             or not isinstance(key, str)
             or not key
         ):
             return None
-        migration_id = request.get("migration_id")
+        migration_id = payload.migration_id
         if not isinstance(migration_id, str) or not migration_id:
             return None
         return _persist_key(tenant_id, migration_id, key)
@@ -195,10 +192,11 @@ def _prepare_resources(tenant_id: str, request: dict[str, Any]) -> str | None:
         return None
     finally:
         key = ""
-        response.clear()
+        if response is not None:
+            response.data_plane_api_key = None
 
 
-def _run_preparation(tenant_id: str, migration_id: str) -> None:
+def _run_preparation(tenant_id: str, migration_id: str, *, readiness_query: ModelBillingReadinessQuery) -> None:
     with session_factory.create_session() as session:
         row = session.get(TenantModelBillingMigration, tenant_id)
         tenant = session.get(Tenant, tenant_id)
@@ -237,16 +235,30 @@ def _run_preparation(tenant_id: str, migration_id: str) -> None:
         plugin_install_task_id=None,
         ready=True,
     )
-    from core.model_invocation_routing import validate_migration_readiness
-
-    readiness = validate_migration_readiness(tenant_id, state["model_mapping_version"])
+    readiness = readiness_query.readiness(
+        tenant_id,
+        state["model_mapping_version"],
+        eligibility_policy_version=state["eligibility_policy_version"],
+    )
     if readiness["inventory_hash"] != state["inventory_hash"]:
         raise PreparationStepError("migration_inventory_changed")
+    source_ownership = readiness.get("source_ownership")
+    fingerprint = readiness.get("credential_fingerprint")
+    variant_digest = readiness.get("source_variant_registry_digest")
+    if (
+        not isinstance(source_ownership, dict)
+        or any(not isinstance(key, str) for key in source_ownership)
+        or not isinstance(fingerprint, str)
+        or "source_variant_registry_digest" in readiness
+        and not isinstance(variant_digest, str)
+    ):
+        raise PreparationStepError("migration_readiness_invalid")
     ModelBillingMigrationService.complete_preparation(
         tenant_id,
         migration_id,
-        source_ownership=readiness["source_ownership"],
-        expected_credential_fingerprint=readiness["credential_fingerprint"],
+        source_ownership={key: value for key, value in source_ownership.items() if isinstance(key, str)},
+        expected_credential_fingerprint=fingerprint,
+        **({"source_variant_registry_digest": variant_digest} if isinstance(variant_digest, str) else {}),
     )
 
 
@@ -259,7 +271,11 @@ def prepare_tokener_migration_task(self, tenant_id: str, migration_id: str) -> N
         acquired = lock.acquire(blocking=False)
         if not acquired:
             raise PreparationStepError("migration_prepare_locked")
-        _run_preparation(tenant_id, migration_id)
+        from extensions.ext_application_services import application_services
+
+        _run_preparation(
+            tenant_id, migration_id, readiness_query=application_services().model_billing_migration_inventory
+        )
     except Exception:
         ModelBillingMigrationService.preparation_error(tenant_id, migration_id, "migration_prepare_pending")
         logger.warning("Migration preparation pending tenant=%s migration=%s", tenant_id, migration_id)
@@ -284,14 +300,11 @@ def resume_tokener_migration_task(tenant_id: str, migration_id: str) -> None:
     ):
         return
     try:
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
-        if not base_url:
+        if not transport.tokener_billing_is_configured():
             return
-        BillingService._send_request(
-            "POST",
-            f"/internal/v1/tokener/tenants/{tenant_id}/resume-migration",
-            json={"api_version": 1, "migration_id": migration_id},
-            base_url=base_url,
+        BillingService.resume_tokener_migration(
+            tenant_id,
+            billing.TokenerMigrationResumePayload(api_version=1, migration_id=migration_id),
         )
     except Exception:
         # Next minute retries the same durable intent; no retry-derived identities.

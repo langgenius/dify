@@ -2,14 +2,14 @@ import type { RecipientData, Recipient as RecipientItem } from '../../../types'
 import { cn } from '@langgenius/dify-ui/cn'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { RiGroupLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { produce } from 'immer'
 import { useAtomValue } from 'jotai'
 import { memo, useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { currentWorkspaceAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
-import { useMembers } from '@/service/use-common'
+import { consoleQuery } from '@/service/console'
 import EmailInput from './email-input'
 import MemberSelector from './member-selector'
 
@@ -28,7 +28,9 @@ const Recipient = ({ data, onChange }: Props) => {
     select: (data) => data.profile.email,
   })
   const currentWorkspace = useAtomValue(currentWorkspaceAtom)
-  const { data: members } = useMembers()
+  const { data: members } = useQuery(
+    consoleQuery.workspaces.current.members.get.queryOptions({ input: {} }),
+  )
   const accounts = members?.accounts || []
 
   const handleMemberSelect = (id: string) => {

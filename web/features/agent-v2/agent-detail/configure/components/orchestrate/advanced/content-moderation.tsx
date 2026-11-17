@@ -4,18 +4,20 @@ import type { AgentSoulAppFeaturesConfig } from '@dify/contracts/api/console/age
 import type { Features } from '@/app/components/base/features/types'
 import type { ModerationConfig } from '@/models/debug'
 import { Button } from '@langgenius/dify-ui/button'
+import { createDialogHandle, Dialog, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { Switch } from '@langgenius/dify-ui/switch'
-import { useCallback, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { FeaturesProvider } from '@/app/components/base/features'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useModalContext } from '@/context/modal-context'
+import { ModerationDialogContent } from '@/app/components/base/features/new-feature-panel/moderation/dialog-content'
 import {
   useAppFeatures,
   useSetAppFeatures,
 } from '@/features/agent-v2/agent-composer/store-modules/app-features'
-import { useCodeBasedExtensions } from '@/service/use-common'
+import { codeBasedExtensionsQueryOptions } from '@/features/code-based-extension/query'
 import { ConfigureSection } from '../common/section'
 import { useAgentOrchestrateReadOnly } from '../read-only-context'
 
@@ -36,9 +38,9 @@ function AgentContentModerationSettingsContent() {
   const featuresStore = useFeaturesStore()
   const readOnly = useAgentOrchestrateReadOnly()
   const setAppFeatures = useSetAppFeatures()
-  const { setShowModerationSettingModal } = useModalContext()
+  const [dialog] = useState(() => createDialogHandle<ModerationConfig>())
   const moderation = useFeatures((state) => state.features.moderation)
-  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
+  const { data: codeBasedExtensionList } = useQuery(codeBasedExtensionsQueryOptions('moderation'))
   const panelId = 'agent-configure-content-moderation-panel'
 
   const persistModeration = useCallback(
@@ -61,22 +63,11 @@ function AgentContentModerationSettingsContent() {
     [featuresStore, setAppFeatures],
   )
 
-  const openSettings = useCallback(
-    (payload: ModerationConfig = moderation as ModerationConfig) => {
-      setShowModerationSettingModal({
-        payload,
-        onSaveCallback: persistModeration,
-        onCancelCallback: () => {},
-      })
-    },
-    [moderation, persistModeration, setShowModerationSettingModal],
-  )
-
   const handleEnabledChange = useCallback(
     (enabled: boolean) => {
       if (enabled) {
         if (!moderation?.type) {
-          openSettings(defaultModerationConfig)
+          dialog.openWithPayload(defaultModerationConfig)
           return
         }
 
@@ -89,7 +80,7 @@ function AgentContentModerationSettingsContent() {
 
       persistModeration({ enabled: false })
     },
-    [moderation, openSettings, persistModeration],
+    [moderation, dialog, persistModeration],
   )
 
   const providerContent = useMemo(() => {
@@ -118,65 +109,86 @@ function AgentContentModerationSettingsContent() {
   }, [moderation?.config?.inputs_config?.enabled, moderation?.config?.outputs_config?.enabled, t])
 
   return (
-    <ConfigureSection
-      label={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}
-      labelId="agent-configure-content-moderation-label"
-      headingLevel="h4"
-      panelId={panelId}
-      rootClassName="gap-1 border-t border-divider-subtle py-3"
-      headerClassName="gap-1 px-3"
-      panelContentClassName="px-3 pt-1"
-      actions={
-        !readOnly ? (
-          <div className="flex shrink-0 items-center gap-2">
-            {!!moderation?.enabled && (
-              <Button
-                size="small"
-                variant="ghost"
-                className="h-6 py-1 text-text-tertiary"
-                onClick={() => openSettings()}
+    <>
+      <ConfigureSection
+        label={t(($) => $['feature.moderation.title'], { ns: 'appDebug' })}
+        labelId="agent-configure-content-moderation-label"
+        headingLevel="h4"
+        panelId={panelId}
+        rootClassName="gap-1 border-t border-divider-subtle py-3"
+        headerClassName="gap-1 px-3"
+        panelContentClassName="px-3 pt-1"
+        actions={
+          !readOnly ? (
+            <div className="flex shrink-0 items-center gap-2">
+              {!!moderation?.enabled && (
+                <DialogTrigger
+                  handle={dialog}
+                  payload={moderation}
+                  render={
+                    <Button size="small" variant="ghost" className="h-6 py-1 text-text-tertiary" />
+                  }
+                >
+                  <span className="i-ri-equalizer-2-line size-3.5" aria-hidden />
+                  <span className="system-xs-medium">
+                    {t(($) => $['operation.settings'], { ns: 'common' })}
+                  </span>
+                </DialogTrigger>
+              )}
+              <div className="h-3 w-px bg-divider-regular" />
+              <Switch
+                checked={!!moderation?.enabled}
+                onCheckedChange={handleEnabledChange}
+                size="sm"
+                aria-label={t(($) => $['feature.moderation.title'], { ns: 'appDebug' }) as string}
+              />
+            </div>
+          ) : undefined
+        }
+      >
+        {moderation?.enabled ? (
+          <div className="flex min-w-0 items-center gap-4">
+            <div className="min-w-0">
+              <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
+              </div>
+              <div className="truncate system-xs-regular text-text-secondary">
+                {providerContent}
+              </div>
+            </div>
+            <div className="h-6.75 w-px shrink-0 rotate-12 bg-divider-subtle" />
+            <div className="min-w-0">
+              <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
+                {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
+              </div>
+              <div
+                className="truncate system-xs-regular text-text-secondary"
+                title={enabledContent}
               >
-                <span className="i-ri-equalizer-2-line size-3.5" aria-hidden />
-                <span className="system-xs-medium">
-                  {t(($) => $['operation.settings'], { ns: 'common' })}
-                </span>
-              </Button>
-            )}
-            <div className="h-3 w-px bg-divider-regular" />
-            <Switch
-              checked={!!moderation?.enabled}
-              onCheckedChange={handleEnabledChange}
-              size="sm"
-              aria-label={t(($) => $['feature.moderation.title'], { ns: 'appDebug' }) as string}
+                {enabledContent}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="system-xs-regular text-text-tertiary">
+            {t(($) => $['feature.moderation.description'], { ns: 'appDebug' })}
+          </p>
+        )}
+      </ConfigureSection>
+      <Dialog handle={dialog} disablePointerDismissal>
+        {({ payload }) =>
+          payload && (
+            <ModerationDialogContent
+              data={payload}
+              onSave={(value) => {
+                persistModeration(value)
+                dialog.close()
+              }}
             />
-          </div>
-        ) : undefined
-      }
-    >
-      {moderation?.enabled ? (
-        <div className="flex min-w-0 items-center gap-4">
-          <div className="min-w-0">
-            <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['feature.moderation.modal.provider.title'], { ns: 'appDebug' })}
-            </div>
-            <div className="truncate system-xs-regular text-text-secondary">{providerContent}</div>
-          </div>
-          <div className="h-6.75 w-px shrink-0 rotate-12 bg-divider-subtle" />
-          <div className="min-w-0">
-            <div className="mb-0.5 truncate system-2xs-medium-uppercase text-text-tertiary">
-              {t(($) => $['feature.moderation.contentEnableLabel'], { ns: 'appDebug' })}
-            </div>
-            <div className="truncate system-xs-regular text-text-secondary" title={enabledContent}>
-              {enabledContent}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <p className="system-xs-regular text-text-tertiary">
-          {t(($) => $['feature.moderation.description'], { ns: 'appDebug' })}
-        </p>
-      )}
-    </ConfigureSection>
+          )
+        }
+      </Dialog>
+    </>
   )
 }
 

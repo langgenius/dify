@@ -25,6 +25,7 @@ from configs import dify_config
 from core.db.session_factory import session_factory
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_billing_migration_protocol import canonical_hash
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from core.repositories.model_billing_migration_repository import get_routing_state
 from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey, ModelType
 from models.provider import ProviderCredential, ProviderType
@@ -34,7 +35,57 @@ from services.entities.model_billing_mapping import MappingSource as MappingSour
 from services.entities.model_billing_mapping import MappingTarget as MappingTarget  # noqa: PLC0414
 from services.entities.model_billing_mapping import ModelMapping as ModelMapping  # noqa: PLC0414
 from services.entities.model_billing_mapping import ParameterAdapter as ParameterAdapter  # noqa: PLC0414
-from services.model_billing_mapping_service import hosted_migration_sources, mappings_for_revision
+from services.model_billing_mapping_service import (
+    SELECTED_SOURCE_VARIANT_TYPES,
+    SelectedSourceVariant,
+    SourceParameterContract,
+    TTSVoiceContract,
+    additional_model_is_authorized,
+    build_source_adapter_contract,
+    hosted_audio_source_fact,
+    hosted_embedding_source_fact,
+    hosted_gemini_source_fact,
+    hosted_migration_sources,
+    hosted_source_variant_fact,
+    hosted_tongyi_source_fact,
+    hosted_xai_source_fact,
+    managed_source_schemas,
+    mapping_supports_installed_plugin,
+    mappings_for_revision,
+    migration_policy_allows_empty_sources,
+    model_schema_digest,
+    partition_hosted_migration_sources,
+    partition_known_unavailable_sources,
+    resolve_source_capability_policy,
+    resolve_source_mapping,
+    restore_source_parameter_contract,
+    retirement_policy_for_revision,
+    source_mapping_revision,
+    source_parameter_marker,
+    source_parameter_public_settings,
+    uses_published_tokener_balance,
+    uses_stable_dependency_inventory,
+    validate_frozen_mapping_evidence,
+)
+from services.model_billing_mapping_service import (
+    additional_hosted_availability as additional_hosted_availability,  # noqa: PLC0414
+)
+from services.model_billing_mapping_service import (
+    has_finite_hosted_credit_pool as has_finite_hosted_credit_pool,  # noqa: PLC0414
+)
+from services.model_billing_mapping_service import (
+    mapped_dynamic_source_candidates as mapped_dynamic_source_candidates,  # noqa: PLC0414
+)
+from services.model_billing_mapping_service import normalize_tts_voice as normalize_tts_voice  # noqa: PLC0414
+from services.model_billing_mapping_service import (
+    provider_has_prepared_ownership as provider_has_prepared_ownership,  # noqa: PLC0414
+)
+from services.model_billing_mapping_service import (
+    published_original_quotas as published_original_quotas,  # noqa: PLC0414
+)
+from services.model_billing_mapping_service import (
+    source_schema_matches_mapping as source_schema_matches_mapping,  # noqa: PLC0414
+)
 
 if TYPE_CHECKING:
     from core.entities.provider_configuration import ProviderConfiguration
@@ -105,9 +156,21 @@ def compatibility_quota_type(
     provider: str, quotas: list[QuotaConfiguration], state: dict[str, Any]
 ) -> ProviderQuotaType:
     """Restore prepared ownership without consulting the now-closed legacy wallet."""
-    ownership = state.get("source_ownership", {}).get(str(ModelProviderID(provider)))
+    source_ownership = state.get("source_ownership")
+    if not isinstance(source_ownership, dict):
+        raise ModelRouteUnavailable
+    ownership = source_ownership.get(str(ModelProviderID(provider)))
     if not isinstance(ownership, dict):
         raise ModelRouteUnavailable
+    if "schema_version" in ownership and ownership.get("schema_version") != 2:
+        raise ModelRouteUnavailable
+    if ownership.get("schema_version") == 2:
+        from services.model_billing_mapping_service import stable_compatibility_quota_type
+
+        try:
+            return stable_compatibility_quota_type(provider, quotas, state)
+        except (KeyError, TypeError, ValueError):
+            raise ModelRouteUnavailable from None
     try:
         selected = ProviderQuotaType(ownership["current_quota_type"])
         for quota in quotas:
@@ -153,6 +216,15 @@ def model_mappings(mapping_version: str) -> dict[tuple[str, ModelType, str], Mod
 
 
 @dataclass(frozen=True, slots=True)
+class SourceVariantInvocationBinding:
+    """Per-variant evidence, absent for V1 logical siblings and old V1 plans."""
+
+    registry_digest: str
+    variant_id: str
+    source_settings_digest: str
+
+
+@dataclass(frozen=True, slots=True)
 class FrozenModelInvocation:
     tenant_id: str
     route_id: str
@@ -167,6 +239,12 @@ class FrozenModelInvocation:
     target_model: str
     operations: tuple[str, ...]
     settlement_backend: str = "tokener"
+    tts_voice_contract: TTSVoiceContract | None = None
+    source_parameter_contract: SourceParameterContract | None = None
+    source_variant_binding: SourceVariantInvocationBinding | None = None
+    # None is historical pure V1 only. A V2 selected revision pins every
+    # logical model, including identity/adapter records with the V1 shape.
+    mapping_revision_digest: str | None = None
 
     @property
     def cache_identity(self) -> str:
@@ -180,6 +258,42 @@ class FrozenModelInvocation:
             self.target_model,
             self.model_type.value,
         ]
+        if self.tts_voice_contract is not None:
+            identity.extend(
+                [
+                    self.tts_voice_contract.adapter_id,
+                    self.tts_voice_contract.source_plugin_unique_identifier,
+                    self.tts_voice_contract.source_schema_digest,
+                    self.tts_voice_contract.rules_digest,
+                ]
+            )
+        if self.source_parameter_contract is not None:
+            identity.extend(
+                [
+                    self.source_parameter_contract.adapter_id,
+                    self.source_parameter_contract.algorithm_revision,
+                    self.source_parameter_contract.profile_id,
+                    self.source_parameter_contract.source_model,
+                    self.source_parameter_contract.source_plugin_unique_identifier,
+                    self.source_parameter_contract.source_schema_digest,
+                    self.source_parameter_contract.target_model,
+                    self.source_parameter_contract.rules_digest,
+                ]
+            )
+            if self.source_parameter_contract.source_runtime_schema_digest is not None:
+                # Old contract tokens are unchanged; new reviewed split-boundary
+                # profiles additionally pin their exact source runtime schema.
+                identity.append(self.source_parameter_contract.source_runtime_schema_digest)
+        if self.mapping_revision_digest is not None:
+            identity.append(self.mapping_revision_digest)
+        if self.source_variant_binding is not None:
+            identity.extend(
+                [
+                    self.source_variant_binding.registry_digest,
+                    self.source_variant_binding.variant_id or "",
+                    self.source_variant_binding.source_settings_digest or "",
+                ]
+            )
         return hashlib.sha256(json.dumps(identity, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -289,8 +403,126 @@ def validate_invocation_admission(
         or (state.get("phase") == "cancelled" and not state.get("ever_activated"))
         or int(state["route_epoch"]) != binding.route_epoch
         or state.get("model_mapping_version") != credentials.plan.mapping_revision
+        or not uses_published_tokener_balance(state)
     ):
         raise ModelInvocationReprepare
+    else:
+        _validate_source_variant_admission(credentials.plan, state)
+
+
+def _validate_source_variant_admission(plan: FrozenModelInvocation, state: dict[str, Any]) -> None:
+    """Recheck config/public facts before reservation, without daemon RPC/SQL.
+
+    Fresh immutable bindings are attested at preparation/configuration. The
+    protected install lifecycle, cohort boot freeze and old-task drain remain
+    required; this is not a cross-daemon atomicity claim. Reserved invocations
+    do not re-enter admission and keep their already frozen source semantics.
+    """
+    from extensions import ext_hosting_provider
+
+    pin = plan.source_variant_binding
+    persisted_digest = state.get("source_variant_registry_digest")
+    has_new_evidence = persisted_digest is not None or plan.mapping_revision_digest is not None or pin is not None
+    try:
+        registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, plan.mapping_revision)
+    except Exception:
+        if has_new_evidence:
+            raise ModelInvocationReprepare from None
+        # Preserve historical pure-V1 admission semantics when no new state
+        # authority or evidence exists. This never bypasses a persisted V2 pin.
+        return
+    if not registry.has_variants:
+        if has_new_evidence:
+            raise ModelInvocationReprepare
+        return
+    try:
+        if (
+            registry.digest != plan.mapping_revision_digest
+            or persisted_digest != plan.mapping_revision_digest
+            or not uses_stable_dependency_inventory(dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, state)
+        ):
+            raise ValueError("Source variant registry changed")
+        identity = (plan.logical_provider, plan.model_type, plan.logical_model)
+        declaration = registry.declarations.get(identity)
+        if isinstance(declaration, ModelMapping):
+            if pin is not None:
+                raise ValueError("Unexpected source variant evidence")
+            validate_frozen_mapping_evidence(
+                declaration,
+                provider=plan.logical_provider,
+                model=plan.logical_model,
+                model_type=plan.model_type,
+                target_model=plan.target_model,
+                operations=plan.operations,
+                source_contract=plan.source_parameter_contract,
+                tts_contract=plan.tts_voice_contract,
+            )
+            return
+        contract = plan.source_parameter_contract
+        if contract is None or pin is None or pin.registry_digest != plan.mapping_revision_digest:
+            raise ValueError("Missing source variant profile")
+        hosting = ext_hosting_provider.hosting_configuration.provider_map.get(plan.logical_provider)
+        if hosting is None or not hosting.enabled:
+            raise ValueError("Source settings unavailable")
+        selected = resolve_source_mapping(
+            registry,
+            identity,
+            source_uid=contract.source_plugin_unique_identifier,
+            fact=hosted_source_variant_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            embedding_fact=hosted_embedding_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            audio_fact=hosted_audio_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            xai_fact=hosted_xai_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            gemini_fact=hosted_gemini_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+            tongyi_fact=hosted_tongyi_source_fact(
+                provider=plan.logical_provider,
+                source_uid=contract.source_plugin_unique_identifier,
+                models=(),
+                credentials=hosting.credentials,
+            ),
+        )
+        if (
+            not isinstance(selected, SELECTED_SOURCE_VARIANT_TYPES)
+            or selected.variant.variant_id != pin.variant_id
+            or canonical_hash(selected.variant.source_settings.model_dump(mode="json")) != pin.source_settings_digest
+        ):
+            raise ValueError("Source variant settings changed")
+        validate_frozen_mapping_evidence(
+            selected,
+            provider=plan.logical_provider,
+            model=plan.logical_model,
+            model_type=plan.model_type,
+            target_model=plan.target_model,
+            operations=plan.operations,
+            source_contract=plan.source_parameter_contract,
+            tts_contract=plan.tts_voice_contract,
+        )
+    except (KeyError, TypeError, ValueError):
+        raise ModelInvocationReprepare from None
 
 
 def routed_credentials(
@@ -310,15 +542,107 @@ def routed_credentials(
         or (state.get("phase") == "cancelled" and not state.get("ever_activated"))
     ):
         raise ModelMigrationProcessing
+    if not uses_published_tokener_balance(state):
+        # A phase flag alone is not publication authority. Never expand model
+        # access or reopen a legacy credential while the persisted cohort is missing.
+        raise ModelRouteUnavailable
     provider = str(ModelProviderID(configuration.provider.provider))
     mapping_version = state.get("model_mapping_version")
     if not isinstance(mapping_version, str):
         raise ModelRouteUnmapped
-    mapping = model_mappings(mapping_version).get((provider, model_type, model))
-    if mapping is None or configuration.system_configuration.current_quota_type not in mapping.pool_types:
-        raise ModelRouteUnmapped
+    registry = None
+    try:
+        source_uid = (
+            configuration.provider.plugin_unique_identifier
+            if isinstance(configuration.provider, PluginModelProviderDeclaration)
+            else ""
+        )
+        if state.get("source_variant_registry_digest") is None:
+            # Preserve the V1 dispatch owner and its exact legacy semantics.
+            # A V2 declaration cannot pass this V1-only parser without a pin.
+            mapping = model_mappings(mapping_version).get((provider, model_type, model))
+            if mapping is None or state.get("model_mapping_version") != mapping.mapping_revision:
+                raise ValueError("Unmapped source identity")
+            source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
+        else:
+            registry = source_mapping_revision(dify_config.TOKENER_LEGACY_MODEL_MAPPING_JSON, mapping_version)
+            if (
+                not registry.has_variants
+                or not uses_stable_dependency_inventory(dify_config.TOKENER_LEGACY_DEPENDENCY_INVENTORIES_JSON, state)
+                or state.get("source_variant_registry_digest") != registry.digest
+            ):
+                raise ValueError("Source variant revision is not pinned")
+            source_schemas = managed_source_schemas(configuration.system_configuration, configuration.provider)
+            matching_sources = [
+                schema for schema in source_schemas if (schema.model_type, schema.model) == (model_type, model)
+            ]
+            mapping = resolve_source_mapping(
+                registry,
+                (provider, model_type, model),
+                source_uid=source_uid,
+                fact=configuration.system_configuration._tokener_source_variant_fact,
+                embedding_fact=configuration.system_configuration._tokener_embedding_source_fact,
+                audio_fact=configuration.system_configuration._tokener_audio_source_fact,
+                xai_fact=configuration.system_configuration._tokener_xai_source_fact,
+                gemini_fact=configuration.system_configuration._tokener_gemini_source_fact,
+                tongyi_fact=configuration.system_configuration._tokener_tongyi_source_fact,
+                schema=matching_sources[0] if len(matching_sources) == 1 else None,
+            )
+    except (KeyError, TypeError, ValueError):
+        raise ModelRouteUnmapped from None
     if state.get("model_mapping_version") != mapping.mapping_revision:
         raise ModelRouteUnmapped
+    if not additional_model_is_authorized(
+        system=configuration.system_configuration,
+        installed_models=source_schemas,
+        mapping=mapping,
+    ):
+        raise ModelRouteUnmapped
+    tts_voice_contract = None
+    source_parameter_contract = None
+    if mapping.parameter_adapter.id != "identity_v1":
+        matching_sources = [
+            schema for schema in source_schemas if (schema.model_type, schema.model) == (model_type, model)
+        ]
+        source_uid = (
+            configuration.provider.plugin_unique_identifier
+            if isinstance(configuration.provider, PluginModelProviderDeclaration)
+            else None
+        )
+        if len(matching_sources) != 1 or not isinstance(source_uid, str):
+            raise ModelRouteUnmapped
+        source_settings = configuration.system_configuration.credentials
+        if mapping.parameter_adapter.id == "openai_chat_source_v1" and not isinstance(mapping, SelectedSourceVariant):
+            fact = configuration.system_configuration._tokener_source_protocol_fact
+            if (
+                fact is None
+                or fact.provider != provider
+                or fact.plugin_unique_identifier != source_uid
+                or [digest for kind, name, digest in fact.catalog_schema_digests if (kind, name) == (model_type, model)]
+                != [model_schema_digest(matching_sources[0])]
+                or fact.selector not in {"absent", "chat", "responses"}
+            ):
+                raise ModelRouteUnmapped
+            # The original hosted key remains inaccessible on this managed
+            # route. Only positively captured, package-bound public protocol
+            # settings reach the pure source adapter.
+            source_settings = {"api_protocol": None if fact.selector == "absent" else fact.selector}
+        try:
+            contract = build_source_adapter_contract(
+                mapping,
+                source_provider=provider,
+                source_plugin_unique_identifier=source_uid,
+                source_schema=matching_sources[0],
+                source_credentials=source_settings,
+            )
+        except ValueError:
+            raise ModelRouteUnmapped from None
+        if isinstance(contract, TTSVoiceContract):
+            tts_voice_contract = contract
+        elif isinstance(contract, SourceParameterContract):
+            source_parameter_contract = contract
+        else:
+            raise ModelRouteUnmapped
     with session_factory.create_session() as session:
         integration = session.scalar(
             select(TenantTokenerIntegration).where(TenantTokenerIntegration.tenant_id == configuration.tenant_id)
@@ -329,6 +653,8 @@ def routed_credentials(
             or not integration.provider_credential_id
             or not integration.plugin_unique_identifier
         ):
+            raise ModelRouteUnavailable
+        if not mapping_supports_installed_plugin(mapping, integration.plugin_unique_identifier):
             raise ModelRouteUnavailable
         expected_credential_fingerprint = _pinned_credential_fingerprint(
             state,
@@ -348,6 +674,18 @@ def routed_credentials(
             plugin_unique_identifier=integration.plugin_unique_identifier,
             target_model=mapping.target.model,
             operations=tuple(mapping.operations),
+            tts_voice_contract=tts_voice_contract,
+            source_parameter_contract=source_parameter_contract,
+            source_variant_binding=(
+                SourceVariantInvocationBinding(
+                    registry.digest,
+                    mapping.variant.variant_id,
+                    canonical_hash(mapping.variant.source_settings.model_dump(mode="json")),
+                )
+                if registry is not None and isinstance(mapping, SELECTED_SOURCE_VARIANT_TYPES)
+                else None
+            ),
+            mapping_revision_digest=registry.digest if registry is not None else None,
         )
     return RoutedModelCredentials(plan)
 
@@ -428,6 +766,27 @@ def redirect_payload(plan: FrozenModelInvocation, data: dict[str, Any]) -> dict[
         or data.get("provider") != ModelProviderID(plan.logical_provider).provider_name
     ):
         raise ModelRouteUnavailable
+    marker = None
+    if plan.source_parameter_contract is not None:
+        if plan.tts_voice_contract is not None:
+            raise ModelRouteUnavailable
+        try:
+            marker = source_parameter_marker(
+                plan.source_parameter_contract,
+                source_provider=plan.logical_provider,
+                source_model=plan.logical_model,
+                model_type=plan.model_type,
+                target_model=plan.target_model,
+            )
+        except ValueError:
+            raise ModelRouteUnavailable from None
+    target_credentials = managed_credentials(plan)
+    if "_dify_source_contract" in target_credentials:
+        # A stored or user-supplied field is never authority for a source
+        # profile. Only the server-frozen verified contract can create it.
+        raise ModelRouteUnavailable
+    if marker is not None:
+        target_credentials = {**target_credentials, "_dify_source_contract": marker}
     return {
         "version": 1,
         "route_id": plan.route_id,
@@ -437,7 +796,7 @@ def redirect_payload(plan: FrozenModelInvocation, data: dict[str, Any]) -> dict[
             "model_type": plan.model_type.value,
             "model": plan.target_model,
             "expected_unique_identifier": plan.plugin_unique_identifier,
-            "credentials": managed_credentials(plan),
+            "credentials": target_credentials,
         },
     }
 
@@ -468,14 +827,67 @@ def embedding_dimensions_contract(schema: AIModelEntity) -> str:
     )
 
 
-def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
-    """Export a non-secret source inventory before preparing a target plugin."""
+def migration_inventory(
+    tenant_id: str, mapping_version: str, *, eligibility_policy_version: str | None = None
+) -> dict[str, Any]:
+    """Export the source inventory using the admitted/persisted migration policy.
+
+    Omitted policy preserves strict historical behavior. The free-legacy policy
+    may freeze a genuinely empty inventory, not missing source schema evidence.
+    """
+    from core.plugin.entities.plugin import PluginInstallationSource
+    from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
     from core.plugin.impl.model import PluginModelClient
     from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 
     registry = model_mappings(mapping_version)
+    try:
+        retirement_policy = retirement_policy_for_revision(
+            dify_config.TOKENER_LEGACY_RETIRED_MODELS_JSON, mapping_version, registry
+        )
+        source_capability_policy = resolve_source_capability_policy(
+            dify_config.TOKENER_LEGACY_SOURCE_CAPABILITIES_JSON, mapping_version
+        )
+    except ValueError:
+        raise ModelRouteUnmapped from None
     client = PluginModelClient()
+    source_bindings: dict[str, str] = {}
+    parameter_profile_bindings: dict[str, str] = {}
+    parameter_profile_providers = {
+        provider
+        for (provider, _kind, _model), rule in registry.items()
+        if rule.parameter_adapter.id in {"anthropic_source_v1", "openai_chat_source_v1"}
+    }
+    evidence_providers = {
+        item.provider_id for item in source_capability_policy.declarations
+    } | parameter_profile_providers
+    if evidence_providers:
+        seen_bindings: set[str] = set()
+        # A cached catalog is insufficient: require a fresh, unique immutable
+        # installation. Mutable remote-debug code cannot satisfy this proof.
+        for binding in client.fetch_model_provider_bindings(tenant_id):
+            binding_provider = str(
+                ModelProviderID(
+                    binding.provider if binding.provider.count("/") == 2 else f"{binding.plugin_id}/{binding.provider}"
+                )
+            )
+            if binding_provider not in evidence_providers:
+                continue
+            if binding_provider in seen_bindings:
+                raise ModelRouteUnavailable
+            seen_bindings.add(binding_provider)
+            if binding.source == PluginInstallationSource.Remote:
+                continue
+            if binding.runtime_type in {"local", "serverless"}:
+                parameter_profile_bindings[binding_provider] = binding.plugin_unique_identifier
+            declaration = source_capability_policy.for_package(binding_provider, binding.plugin_unique_identifier)
+            # The old source-schema evidence was local-only. A v2 record can
+            # opt into an immutable serverless package under a new revision.
+            if declaration is not None and declaration.allows_runtime(binding.runtime_type):
+                source_bindings[binding_provider] = binding.plugin_unique_identifier
     inventory = []
+    retired_inventory = []
+    unavailable_inventory = []
     source_ownership = {}
     configurations = create_plugin_provider_manager(tenant_id=tenant_id).get_configurations(tenant_id)
     for provider_name, configuration in configurations:
@@ -496,7 +908,15 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             credentials: dict[str, Any],
             *,
             source_id: ModelProviderID = source_id,
+            source_plugin_unique_identifier: str | None = configuration.provider.plugin_unique_identifier
+            if isinstance(configuration.provider, PluginModelProviderDeclaration)
+            else None,
         ) -> AIModelEntity | None:
+            profile_uid = None
+            if str(source_id) in parameter_profile_providers:
+                profile_uid = source_plugin_unique_identifier
+                if not isinstance(profile_uid, str) or parameter_profile_bindings.get(str(source_id)) != profile_uid:
+                    raise ModelRouteUnavailable
             return client.get_model_schema(
                 tenant_id,
                 None,
@@ -505,14 +925,61 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
                 model_type.value,
                 model,
                 credentials,
+                plugin_unique_identifier=profile_uid,
             )
 
         try:
+            preparation_system = system
+            if source_capability_policy.declarations:
+                source_uid = (
+                    configuration.provider.plugin_unique_identifier
+                    if isinstance(configuration.provider, PluginModelProviderDeclaration)
+                    else None
+                )
+                configured_models = frozenset(
+                    (item.model_type, item.model)
+                    for item in [*configuration.custom_configuration.models, *configuration.model_settings]
+                )
+                unavailable = partition_known_unavailable_sources(
+                    system,
+                    configuration.provider.models,
+                    configuration._get_original_provider_configurate_methods(),
+                    configuration.provider.supported_model_types,
+                    configured_models,
+                    source_capability_policy.for_package(str(source_id), source_uid)
+                    if source_bindings.get(str(source_id)) == source_uid
+                    else None,
+                )
+                preparation_system = unavailable.system
+                for (kind, model), (proof_id, pools) in sorted(unavailable.unavailable.items()):
+                    unavailable_inventory.append(
+                        {
+                            "provider": str(source_id),
+                            "plugin_unique_identifier": source_uid,
+                            "model_type": kind.value,
+                            "model": model,
+                            "pool_types": sorted(pool.value for pool in pools),
+                            "reason": unavailable.unavailable_reasons[(kind, model)],
+                            "proof_id": proof_id,
+                        }
+                    )
+            partition = partition_hosted_migration_sources(
+                preparation_system, configuration.provider.models, retirement_policy.for_provider(str(source_id))
+            )
             sources = hosted_migration_sources(
-                system, configuration.provider.models, configuration.provider.supported_model_types, lookup
+                partition.system, partition.models, configuration.provider.supported_model_types, lookup
             )
         except ValueError:
             raise ModelRouteUnmapped from None
+        for (model_type, model), pools in sorted(partition.retired.items()):
+            retired_inventory.append(
+                {
+                    "provider": str(source_id),
+                    "model_type": model_type.value,
+                    "model": model,
+                    "pool_types": sorted(pool.value for pool in pools),
+                }
+            )
         for model_type, model in sorted(sources, key=lambda pair: (pair[0].value, pair[1])):
             rule = registry.get((str(ModelProviderID(provider_name)), model_type, model))
             if rule is None or rule.mapping_revision != mapping_version:
@@ -526,17 +993,7 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
                 and source_schema.model_properties.get(ModelPropertyKey.MODE) != rule.source.mode
             ):
                 raise ModelRouteUnmapped
-            source_digest = (
-                "sha256:"
-                + hashlib.sha256(
-                    json.dumps(
-                        source_schema.model_dump(mode="json"),
-                        sort_keys=True,
-                        separators=(",", ":"),
-                        ensure_ascii=False,
-                    ).encode()
-                ).hexdigest()
-            )
+            source_digest = model_schema_digest(source_schema)
             if source_digest != rule.source_schema_digest:
                 raise ModelRouteUnmapped
             required_ops = {"model/schema"}
@@ -548,7 +1005,7 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
                 required_ops.add(f"{model_type.value}/invoke")
             if not required_ops <= set(rule.operations):
                 raise ModelRouteUnmapped
-            item = {
+            item: dict[str, Any] = {
                 "provider": str(ModelProviderID(provider_name)),
                 "model_type": model_type.value,
                 "model": model,
@@ -559,26 +1016,115 @@ def migration_inventory(tenant_id: str, mapping_version: str) -> dict[str, Any]:
             }
             if model_type == ModelType.TEXT_EMBEDDING:
                 item["embedding_dimensions"] = embedding_dimensions_contract(source_schema)
+            if rule.parameter_adapter.id != "identity_v1":
+                source_uid = (
+                    configuration.provider.plugin_unique_identifier
+                    if isinstance(configuration.provider, PluginModelProviderDeclaration)
+                    else None
+                )
+                if not isinstance(source_uid, str):
+                    raise ModelRouteUnmapped
+                if (
+                    rule.parameter_adapter.id in {"anthropic_source_v1", "openai_chat_source_v1"}
+                    and parameter_profile_bindings.get(str(source_id)) != source_uid
+                ):
+                    # A cached historical declaration cannot attest today's
+                    # immutable source installation at preparation time.
+                    raise ModelRouteUnavailable
+                try:
+                    contract = build_source_adapter_contract(
+                        rule,
+                        source_provider=str(source_id),
+                        source_plugin_unique_identifier=source_uid,
+                        source_schema=source_schema,
+                        source_credentials=system.credentials,
+                    )
+                except ValueError:
+                    raise ModelRouteUnmapped from None
+                if contract is None:
+                    raise ModelRouteUnmapped
+                item["source_adapter_rules_digest"] = contract.rules_digest
+                if isinstance(contract, SourceParameterContract):
+                    if contract.source_runtime_schema_digest is not None:
+                        # Management catalogs and SDK-rendered model/schema RPCs
+                        # are distinct owners. Verify the actual original source
+                        # runtime under its fresh immutable UID before funding;
+                        # a static catalog cannot stand in for this evidence.
+                        if system.credentials is None:
+                            raise ModelRouteUnmapped
+                        runtime_schema = client.get_model_schema(
+                            tenant_id,
+                            None,
+                            source_id.plugin_id,
+                            source_id.provider_name,
+                            model_type.value,
+                            model,
+                            system.credentials,
+                            plugin_unique_identifier=source_uid,
+                        )
+                        if (
+                            runtime_schema is None
+                            or runtime_schema.model != model
+                            or runtime_schema.model_type != model_type
+                            or not hmac.compare_digest(
+                                model_schema_digest(runtime_schema), contract.source_runtime_schema_digest
+                            )
+                        ):
+                            raise ModelRouteUnmapped
+                        item["source_runtime_schema_digest"] = contract.source_runtime_schema_digest
+                    item["source_parameter_contract"] = source_parameter_marker(
+                        contract,
+                        source_provider=str(source_id),
+                        source_model=model,
+                        model_type=model_type,
+                        target_model=rule.target.model,
+                    )
+                    public_settings = source_parameter_public_settings(contract, source_credentials=system.credentials)
+                    if public_settings is not None:
+                        item["source_parameter_settings"] = public_settings
             inventory.append(item)
-    if not inventory:
+    if (
+        not inventory
+        and not retired_inventory
+        and not migration_policy_allows_empty_sources(eligibility_policy_version)
+    ):
         raise ModelRouteUnmapped
     inventory.sort(key=itemgetter("provider", "model_type", "model"))
-    return {
-        "inventory_hash": canonical_hash(inventory),
+    retired_inventory.sort(key=itemgetter("provider", "model_type", "model"))
+    unavailable_inventory.sort(key=itemgetter("provider", "model_type", "model"))
+    result: dict[str, Any] = {
+        "inventory_hash": canonical_hash(
+            source_capability_policy.inventory_payload(
+                retirement_policy.inventory_payload(inventory, retired_inventory), unavailable_inventory
+            )
+        ),
         "model_mapping_version": mapping_version,
         "model_count": len(inventory),
         "models": inventory,
         "source_ownership": source_ownership,
     }
+    if retirement_policy.identities:
+        result["retired_sources"] = retired_inventory
+        result["retirement_policy_digest"] = retirement_policy.digest
+    if source_capability_policy.declarations:
+        result["unavailable_sources"] = unavailable_inventory
+        result["source_capability_policy_digest"] = source_capability_policy.digest
+    return result
 
 
-def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[str, Any]:
-    """Check our installed adapters/registry; never invoke a billable model."""
+def validate_migration_readiness(
+    tenant_id: str, mapping_version: str, *, eligibility_policy_version: str | None = None
+) -> dict[str, Any]:
+    """Check adapters/registry under the persisted policy; never invoke a model.
+
+    Omitted policy remains strict for historical paid callers. Even an admitted
+    empty free inventory must validate the daemon and managed credential pin.
+    """
     from packaging.version import Version
 
     from core.plugin.impl.model import PluginModelClient
 
-    inventory = migration_inventory(tenant_id, mapping_version)
+    inventory = migration_inventory(tenant_id, mapping_version, eligibility_policy_version=eligibility_policy_version)
     registry = model_mappings(mapping_version)
     client = PluginModelClient()
     capabilities = client._request_with_plugin_daemon_response(
@@ -627,6 +1173,16 @@ def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[s
             raise ModelRouteUnavailable
         if Version(actual_version) < Version(rule.target.minimum_plugin_version):
             raise ModelRouteUnavailable
+        source_parameter_contract = None
+        if rule.parameter_adapter.id not in {"identity_v1", "tts_source_voice_v1"}:
+            try:
+                source_parameter_contract = restore_source_parameter_contract(
+                    source.get("source_parameter_contract"),
+                    mapping=rule,
+                    source_public_settings=source.get("source_parameter_settings"),
+                )
+            except ValueError:
+                raise ModelRouteUnmapped from None
         plan = FrozenModelInvocation(
             tenant_id=tenant_id,
             route_id=str(uuid4()),
@@ -640,6 +1196,7 @@ def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[s
             plugin_unique_identifier=plugin_unique_identifier,
             target_model=rule.target.model,
             operations=tuple(rule.operations),
+            source_parameter_contract=source_parameter_contract,
         )
         target_schema = client.get_model_schema(
             tenant_id,
@@ -649,9 +1206,30 @@ def validate_migration_readiness(tenant_id: str, mapping_version: str) -> dict[s
             model_type.value,
             source["model"],
             RoutedModelCredentials(plan),
+            plugin_unique_identifier=(
+                source_parameter_contract.source_plugin_unique_identifier
+                if source_parameter_contract is not None
+                else None
+            ),
         )
         if target_schema is None or target_schema.model_type != model_type:
             raise ModelRouteUnmapped
+        if source_parameter_contract is not None:
+            # A minimum version/mode match is not proof that the target
+            # understands the private source profile. Native schema fallback
+            # must fail before funds are issued. The target may report its
+            # physical model ID, but every other source field must match.
+            logical_schema = target_schema.model_copy(update={"model": source["model"]})
+            expected_schema_digest = (
+                source_parameter_contract.source_runtime_schema_digest or source_parameter_contract.source_schema_digest
+            )
+            if (
+                source_parameter_contract.source_runtime_schema_digest is not None
+                and source.get("source_runtime_schema_digest") != source_parameter_contract.source_runtime_schema_digest
+            ):
+                raise ModelRouteUnmapped
+            if not hmac.compare_digest(model_schema_digest(logical_schema), expected_schema_digest):
+                raise ModelRouteUnmapped
         if (
             model_type == ModelType.LLM
             and target_schema.model_properties.get(ModelPropertyKey.MODE) != rule.source.mode

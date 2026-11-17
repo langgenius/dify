@@ -1,0 +1,234 @@
+from __future__ import annotations
+
+from datetime import datetime
+from decimal import Decimal
+from uuid import uuid4
+
+import pytest
+from sqlalchemy.orm import Session
+
+from core.app.entities.app_invoke_entities import InvokeFrom
+from models import TenantAccountRole
+from models.account import Account, Tenant, TenantAccountJoin
+from models.enums import ConversationFromSource, EndUserType
+from models.model import App, Conversation, EndUser, Message
+from services.conversation_service import ConversationService
+from services.errors.conversation import ConversationNotExistsError
+
+
+class ConversationServiceIntegrationTestDataFactory:
+    @staticmethod
+    def create_app_and_account(db_session_with_containers: Session):
+        tenant = Tenant(name=f"Tenant {uuid4()}")
+        db_session_with_containers.add(tenant)
+        db_session_with_containers.flush()
+
+        account = Account(
+            name=f"Account {uuid4()}",
+            email=f"conversation_{uuid4()}@example.com",
+            password="hashed-password",
+            password_salt="salt",
+            interface_language="en-US",
+            timezone="UTC",
+        )
+        db_session_with_containers.add(account)
+        db_session_with_containers.flush()
+
+        tenant_join = TenantAccountJoin(
+            tenant_id=tenant.id,
+            account_id=account.id,
+            role=TenantAccountRole.OWNER,
+            current=True,
+        )
+        db_session_with_containers.add(tenant_join)
+        db_session_with_containers.flush()
+
+        app = App(
+            tenant_id=tenant.id,
+            name=f"App {uuid4()}",
+            description="",
+            mode="chat",
+            icon_type="emoji",
+            icon="bot",
+            icon_background="#FFFFFF",
+            enable_site=False,
+            enable_api=True,
+            api_rpm=100,
+            api_rph=100,
+            is_demo=False,
+            is_public=False,
+            is_universal=False,
+            created_by=account.id,
+            updated_by=account.id,
+        )
+        db_session_with_containers.add(app)
+        db_session_with_containers.commit()
+
+        return app, account
+
+    @staticmethod
+    def create_end_user(db_session_with_containers, app: App):
+        end_user = EndUser(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            type=EndUserType.SERVICE_API,
+            external_user_id=f"external-{uuid4()}",
+            name="End User",
+            _is_anonymous=False,
+            session_id=f"session-{uuid4()}",
+        )
+        db_session_with_containers.add(end_user)
+        db_session_with_containers.commit()
+        return end_user
+
+    @staticmethod
+    def create_conversation(
+        db_session_with_containers,
+        app: App,
+        user: Account | EndUser,
+        *,
+        invoke_from: InvokeFrom = InvokeFrom.WEB_APP,
+        updated_at: datetime | None = None,
+    ):
+        conversation = Conversation(
+            app_id=app.id,
+            app_model_config_id=None,
+            model_provider=None,
+            model_id="",
+            override_model_configs=None,
+            mode=app.mode,
+            name=f"Conversation {uuid4()}",
+            summary="",
+            _inputs={},
+            introduction="",
+            system_instruction="",
+            system_instruction_tokens=0,
+            status="normal",
+            invoke_from=invoke_from.value,
+            from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
+            from_end_user_id=user.id if isinstance(user, EndUser) else None,
+            from_account_id=user.id if isinstance(user, Account) else None,
+            dialogue_count=0,
+            is_deleted=False,
+        )
+        conversation.inputs = {}
+        if updated_at is not None:
+            conversation.updated_at = updated_at
+
+        db_session_with_containers.add(conversation)
+        db_session_with_containers.commit()
+        return conversation
+
+    @staticmethod
+    def create_message(
+        db_session_with_containers,
+        app: App,
+        conversation: Conversation,
+        user: Account | EndUser,
+        *,
+        query: str = "Test query",
+        answer: str = "Test answer",
+        created_at: datetime | None = None,
+    ):
+        message = Message(
+            app_id=app.id,
+            model_provider=None,
+            model_id="",
+            override_model_configs=None,
+            conversation_id=conversation.id,
+            _inputs={},
+            query=query,
+            message={"messages": [{"role": "user", "content": query}]},
+            message_tokens=0,
+            message_unit_price=Decimal(0),
+            message_price_unit=Decimal("0.001"),
+            answer=answer,
+            answer_tokens=0,
+            answer_unit_price=Decimal(0),
+            answer_price_unit=Decimal("0.001"),
+            parent_message_id=None,
+            provider_response_latency=0,
+            total_price=Decimal(0),
+            currency="USD",
+            status="normal",
+            invoke_from=InvokeFrom.WEB_APP,
+            from_source=ConversationFromSource.API if isinstance(user, EndUser) else ConversationFromSource.CONSOLE,
+            from_end_user_id=user.id if isinstance(user, EndUser) else None,
+            from_account_id=user.id if isinstance(user, Account) else None,
+        )
+        if created_at is not None:
+            message.created_at = created_at
+
+        db_session_with_containers.add(message)
+        db_session_with_containers.commit()
+        return message
+
+
+class TestConversationServiceRetrieval:
+    """
+    Test conversation and message retrieval operations.
+    """
+
+    def test_get_conversation_success(self, db_session_with_containers: Session):
+        """Test successful retrieval of conversation."""
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers,
+            app_model,
+            user,
+        )
+
+        # Act
+        result = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation.id, user=user, session=db_session_with_containers
+        )
+
+        # Assert
+        assert result == conversation
+
+    def test_get_conversation_not_found(self, db_session_with_containers: Session):
+        """Test ConversationNotExistsError when conversation doesn't exist."""
+        # Arrange
+        app_model, user = ConversationServiceIntegrationTestDataFactory.create_app_and_account(
+            db_session_with_containers
+        )
+
+        # Act & Assert
+        with pytest.raises(ConversationNotExistsError):
+            ConversationService.get_conversation(
+                app_model=app_model,
+                conversation_id=str(uuid4()),
+                user=user,
+                session=db_session_with_containers,
+            )
+
+    def test_get_conversation_for_end_user(self, db_session_with_containers: Session):
+        """
+        Test retrieving conversation created by end user via API.
+
+        End users (API) and accounts (console) have different access patterns.
+        """
+        # Arrange
+        app_model, _ = ConversationServiceIntegrationTestDataFactory.create_app_and_account(db_session_with_containers)
+        end_user = ConversationServiceIntegrationTestDataFactory.create_end_user(db_session_with_containers, app_model)
+
+        # Conversation created by end user via API
+        conversation = ConversationServiceIntegrationTestDataFactory.create_conversation(
+            db_session_with_containers,
+            app_model,
+            end_user,
+        )
+
+        # Act
+        result = ConversationService.get_conversation(
+            app_model=app_model,
+            conversation_id=conversation.id,
+            user=end_user,
+            session=db_session_with_containers,
+        )
+
+        # Assert
+        assert result == conversation

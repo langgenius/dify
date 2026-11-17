@@ -1,0 +1,2280 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "",
+    "version": "0.0.1"
+  },
+  "x-dify-saas-commit": "7e7b965851d1c0529eeaeb9212e36cb9636883c3",
+  "paths": {
+    "/v1/subscription/info": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionInfo",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "exclude_vector_space",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubscriptionInfoReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/vector-space": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionVectorSpace",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bypass_cache",
+            "in": "query",
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VectorSpaceQuota"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/knowledge-rate-limit": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetKnowledgeRateLimit",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetKnowledgeRateLimitReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/payment-link": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_GetSubscriptionPaymentLink",
+        "parameters": [
+          {
+            "name": "plan",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "interval",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetSubscriptionPaymentLinkReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/plan/batch": {
+      "post": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_BatchGetSubscriptionPlan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BatchGetSubscriptionPlanReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchGetSubscriptionPlanReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/subscription/cleanup/whitelist": {
+      "get": {
+        "tags": [
+          "BillingSubscription"
+        ],
+        "operationId": "BillingSubscription_ListSubscriptionCleanupWhitelist",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListSubscriptionCleanupWhitelistReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/model-provider/payment-link": {
+      "get": {
+        "tags": [
+          "BillingModelProvider"
+        ],
+        "operationId": "BillingModelProvider_GetModelProviderPaymentLink",
+        "parameters": [
+          {
+            "name": "provider_name",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetModelProviderPaymentLinkReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/invoices": {
+      "get": {
+        "tags": [
+          "BillingInvoice"
+        ],
+        "operationId": "BillingInvoice_GetInvoices",
+        "parameters": [
+          {
+            "name": "prefilled_email",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetInvoicesReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/verify": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_VerifyEducationIdentity",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyEducationIdentityReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/status": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_GetEducationIdentityStatus",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GetEducationIdentityStatusReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education": {
+      "post": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_CreateEducationIdentity",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEducationIdentityReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateEducationIdentityReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/education/autocomplete": {
+      "get": {
+        "tags": [
+          "BillingEducation"
+        ],
+        "operationId": "BillingEducation_AutocompleteEducationInstitution",
+        "parameters": [
+          {
+            "name": "keywords",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AutocompleteEducationInstitutionReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/compliance/download": {
+      "post": {
+        "tags": [
+          "BillingCompliance"
+        ],
+        "operationId": "BillingCompliance_DownloadComplianceDocument",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DownloadComplianceDocumentReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DownloadComplianceDocumentReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/info": {
+      "get": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "GetQuotaInfo returns aggregated quota info for all billing features of a tenant.",
+        "operationId": "BillingQuota_GetQuotaInfo",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaGetInfoReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/reserve": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Reserve pre-allocates quota before task execution.",
+        "operationId": "BillingQuota_Reserve",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaReserveReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaReserveReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/commit": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Commit finalizes the reservation with actual cost.",
+        "operationId": "BillingQuota_Commit",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaCommitReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaCommitReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/release": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "Release cancels a reservation and returns quota.",
+        "operationId": "BillingQuota_Release",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaReleaseReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaReleaseReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/balance": {
+      "get": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "GetBalance returns current available and reserved quota for a single feature.",
+        "operationId": "BillingQuota_GetBalance",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "feature_key",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "bucket",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaGetBalanceReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quota/consume-capped": {
+      "post": {
+        "tags": [
+          "BillingQuota"
+        ],
+        "description": "ConsumeCapped atomically consumes up to the available quota.",
+        "operationId": "BillingQuota_ConsumeCapped",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuotaConsumeCappedReq"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotaConsumeCappedReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/bootstrap": {
+      "post": {
+        "tags": [
+          "BillingTokener"
+        ],
+        "operationId": "BillingTokener_BootstrapTenant",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerTenantBootstrapPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapTokenerTenantReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/metering": {
+      "get": {
+        "tags": [
+          "BillingTokener"
+        ],
+        "operationId": "BillingTokener_GetTenantMetering",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerTenantMeteringReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/prepare-migration": {
+      "post": {
+        "tags": [
+          "BillingTokenerMigration"
+        ],
+        "description": "Persist the normal preparation intent, or service its resources phase.\n The existing handler reads at most64KiB, rejects unknown/trailing JSON,\n and accepts no caller-controlled amount, org, invoice or allowance window.",
+        "operationId": "BillingTokenerMigration_PrepareMigration",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerMigrationPreparePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "Existing raw HTTP error envelope. Known local codes and forwarded Core codes are not a closed enum; unknown/empty codes must remain fail-closed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationErrorReply"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationPrepareResult"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "Preparation accepted/pending. This is not activation or funding. No-store.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationPrepareResult"
+                }
+              }
+            }
+          }
+        },
+        "x-dify-error-style": "manual_code"
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/resume-migration": {
+      "post": {
+        "tags": [
+          "BillingTokenerMigration"
+        ],
+        "description": "Resume only an existing immutable intent. The strict4KiB handler owns\n tenant-body matching and manual-replan conditional validation.",
+        "operationId": "BillingTokenerMigration_ResumeMigration",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerMigrationResumePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "Existing raw HTTP code envelope; not a Kratos reason envelope or an exhaustive code set.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationErrorReply"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationReconcileResult"
+                }
+              }
+            }
+          }
+        },
+        "x-dify-error-style": "manual_code"
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/claim-free-migration": {
+      "post": {
+        "tags": [
+          "BillingTokenerMigration"
+        ],
+        "description": "Claim the normal configured one-time free grant for an eligible prepared\n tenant. This shares the strict4KiB/auth owner, never a new funding API.",
+        "operationId": "BillingTokenerMigration_ClaimFreeMigration",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerMigrationClaimFreePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "default": {
+            "description": "Existing raw HTTP code envelope; unknown codes are not successes.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationErrorReply"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerMigrationReconcileResult"
+                }
+              }
+            }
+          }
+        },
+        "x-dify-error-style": "manual_code"
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AutocompleteEducationInstitutionReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "curr_page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "has_next": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "data",
+          "curr_page",
+          "has_next"
+        ]
+      },
+      "BatchGetSubscriptionPlanReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "additionalProperties": {
+              "$ref": "#/components/schemas/SubscriptionPlanItem"
+            }
+          }
+        },
+        "description": "Batch get subscription plan reply",
+        "required": [
+          "data"
+        ]
+      },
+      "BatchGetSubscriptionPlanReq": {
+        "type": "object",
+        "properties": {
+          "tenant_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Batch get subscription plan request",
+        "required": [
+          "tenant_ids"
+        ]
+      },
+      "BillingComplianceErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_COMPLIANCE_DOWNLOAD_REQUEST",
+          "MISSING_DOC_NAME",
+          "MISSING_IP_ADDRESS",
+          "MISSING_DEVICE_INFO",
+          "COMPLIANCE_DOCUMENT_NOT_FOUND",
+          "COMPLIANCE_DOWNLOAD_FORBIDDEN",
+          "COMPLIANCE_DOWNLOAD_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingCompliance service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingComplianceErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingEducationErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "EDUCATION_VERIFY_FAILED",
+          "EDUCATION_CREATE_FAILED",
+          "EDUCATION_STATUS_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingEducation service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingEducationErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingInvoiceErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_INVOICE_REQUEST",
+          "CREATE_INVOICE_PORTAL_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingInvoice service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingInvoiceErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingModelProviderErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST",
+          "MISSING_PROVIDER_NAME",
+          "INVALID_MODEL_PROVIDER",
+          "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingModelProvider service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingModelProviderErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingQuotaErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "CREDIT_MANAGED_BY_TOKENER",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
+          "QUOTA_RESERVATION_EXPIRED",
+          "QUOTA_RESERVATION_FINALIZED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by BillingQuota: CommonErrorReason and BillingQuotaErrorReason, plus CODEC/VALIDATOR, UNKNOWN and an empty unclassified reason.",
+        "properties": {}
+      },
+      "BillingSubscriptionErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "INVALID_PAYMENT_LINK_REQUEST",
+          "MISSING_PLAN",
+          "MISSING_INTERVAL",
+          "INVALID_PLAN_INTERVAL",
+          "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED",
+          "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST",
+          "TENANT_IDS_COUNT_TOO_LARGE",
+          "DOCUMENT_USAGE_UNAVAILABLE",
+          "ANNUAL_DISCOUNT_ACTIVE",
+          "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
+        ],
+        "type": "string",
+        "description": "Reasons returned by the BillingSubscription service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingSubscriptionErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "properties": {}
+      },
+      "BillingSubscriptionPlan": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "interval": {
+            "enum": [
+              "",
+              "month",
+              "year"
+            ],
+            "type": "string"
+          },
+          "education": {
+            "type": "boolean"
+          },
+          "status": {
+            "type": "string"
+          },
+          "cancel_at_period_end": {
+            "type": "boolean"
+          },
+          "paid_period_end": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Subscription plan and billing cycle info",
+        "required": [
+          "plan",
+          "interval",
+          "education",
+          "status",
+          "cancel_at_period_end",
+          "paid_period_end"
+        ]
+      },
+      "BillingTokenerErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "TOKENER_INTERNAL_HTTP_ONLY",
+          "TOKENER_AUTH_NOT_CONFIGURED",
+          "TOKENER_INVALID_SECRET_KEY",
+          "INVALID_TOKENER_BOOTSTRAP_REQUEST",
+          "TOKENER_TENANT_ID_MISMATCH",
+          "INVALID_TOKENER_TENANT_ID",
+          "TOKENER_BOOTSTRAP_EMPTY_RESULT",
+          "TOKENER_BOOTSTRAP_MISSING_CREDENTIAL",
+          "INVALID_TOKENER_STATUS_REQUEST",
+          "INVALID_TOKENER_METERING_REQUEST",
+          "TOKENER_METERING_UNAVAILABLE",
+          "TOKENER_BILLING_PROFILE_NOT_TOKENER",
+          "TOKENER_METERING_NOT_READY",
+          "TOKENER_METERING_UPSTREAM_REJECTED",
+          "INVALID_TOKENER_REPAIR_REQUEST",
+          "TOKENER_ENTITLEMENT_REPAIR_UNAVAILABLE",
+          "TOKENER_ENTITLEMENT_REPAIR_FAILED",
+          "TOKENER_ENTITLEMENT_REPAIR_INVALID_RESULT",
+          "TOKENER_BOOTSTRAP_RETRY",
+          "TOKENER_INVALID_TENANT_ID",
+          "TOKENER_BOOTSTRAP_NOT_FOUND",
+          "TOKENER_BOOTSTRAP_DISABLED",
+          "TOKENER_INVALID_CONFIGURATION",
+          "TOKENER_WORKSPACE_PREPARING",
+          "TOKENER_WORKSPACE_SUSPENDED",
+          "TOKENER_WORKSPACE_ERROR",
+          "TOKENER_MISSING_DATA_PLANE_CREDENTIAL",
+          "TOKENER_STORAGE_UNAVAILABLE",
+          "TOKENER_OPERATION_LEASE_LOST",
+          "TOKENER_BILLING_PROFILE_UNAVAILABLE",
+          "TOKENER_INVALID_PROVISION_RESPONSE",
+          "TOKENER_INVALID_PERSISTED_TRIAL_AMOUNT",
+          "TOKENER_INVALID_STATUS_RESPONSE",
+          "TOKENER_UNKNOWN_WORKSPACE_STATUS",
+          "TOKENER_REQUEST_CANCELLED",
+          "TOKENER_PARTNER_REQUEST_FAILED"
+        ],
+        "type": "string",
+        "description": "Known reasons from BillingTokener and CommonErrorReason plus framework reasons. Bootstrap can normalize a new upstream reason; unknown reasons remain failures. HTTP status belongs to the actual operation/error path, not this reason-only enum.",
+        "x-dify-error-status-style": "handler_owned",
+        "properties": {}
+      },
+      "BootstrapTokenerTenantReply": {
+        "required": [
+          "tenant_id",
+          "status",
+          "retryable",
+          "error_code"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "type": "string",
+            "description": "pending means the caller should retry; ready means the credential and\n trial grant are both usable."
+          },
+          "data_plane_api_key": {
+            "nullable": true,
+            "type": "string",
+            "description": "Returned only when status=ready. This value is never persisted by billing.",
+            "x-dify-sensitive": true
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "error_code": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateEducationIdentityReply": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "CreateEducationIdentityReq": {
+        "type": "object",
+        "properties": {
+          "account_id": {
+            "type": "string"
+          },
+          "curr_tenant_id": {
+            "type": "string"
+          },
+          "institution": {
+            "type": "string"
+          },
+          "role": {
+            "type": "string"
+          },
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "account_id",
+          "curr_tenant_id",
+          "institution",
+          "role",
+          "token"
+        ]
+      },
+      "DownloadComplianceDocumentReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "DownloadComplianceDocumentReq": {
+        "type": "object",
+        "properties": {
+          "doc_name": {
+            "type": "string"
+          },
+          "account_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "ip_address": {
+            "type": "string"
+          },
+          "device_info": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "doc_name",
+          "account_id",
+          "tenant_id",
+          "ip_address",
+          "device_info"
+        ]
+      },
+      "Error": {
+        "required": [
+          "code",
+          "reason",
+          "message",
+          "metadata"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "integer",
+            "description": "HTTP status code.",
+            "format": "int32"
+          },
+          "reason": {
+            "type": "string",
+            "description": "Error reason. The possible values for an operation are listed in the dify.saas.api.billing.<Service>ErrorReason schema of its service, where <Service> is the operationId prefix before the underscore."
+          },
+          "message": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          }
+        },
+        "description": "Kratos error body. Raw Tokener migration HTTP operations explicitly use their separate code-string envelope."
+      },
+      "GetEducationIdentityStatusReply": {
+        "required": [
+          "result",
+          "is_student",
+          "expire_at",
+          "allow_refresh",
+          "can_redeem_discount"
+        ],
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "boolean",
+            "description": "True when the account has an education identity that has not expired yet. False when it has\n none or its latest identity has expired."
+          },
+          "is_student": {
+            "type": "boolean",
+            "description": "Always equal to `result`."
+          },
+          "expire_at": {
+            "type": "string",
+            "description": "Expiry of the account's latest education identity, as an RFC 3339 UTC timestamp\n (for example `2027-10-30T08:00:00Z`). `1997-01-01T00:00:00Z` when the account has no education identity.",
+            "format": "date-time"
+          },
+          "allow_refresh": {
+            "type": "boolean",
+            "description": "True when the latest education identity expires within the configured number of refresh days\n before or after now. False when the account has no education identity."
+          },
+          "can_redeem_discount": {
+            "type": "boolean",
+            "description": "True when the account has an active education identity and has not redeemed its discount in any workspace during the current verification period."
+          }
+        }
+      },
+      "GetInvoicesReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "GetKnowledgeRateLimitReply": {
+        "type": "object",
+        "properties": {
+          "subscription_plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "limit": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "required": [
+          "subscription_plan",
+          "limit"
+        ]
+      },
+      "GetModelProviderPaymentLinkReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ]
+      },
+      "GetSubscriptionInfoReply": {
+        "required": [
+          "enabled",
+          "subscription",
+          "members",
+          "apps",
+          "vector_space",
+          "knowledge_rate_limit",
+          "documents_upload_quota",
+          "annotation_quota_limit",
+          "docs_processing",
+          "can_replace_logo",
+          "model_load_balancing_enabled",
+          "knowledge_pipeline_publish_enabled",
+          "next_credit_reset_date"
+        ],
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "subscription": {
+            "$ref": "#/components/schemas/BillingSubscriptionPlan"
+          },
+          "members": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "apps": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "vector_space": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/VectorSpaceQuota"
+              }
+            ],
+            "nullable": true
+          },
+          "knowledge_rate_limit": {
+            "$ref": "#/components/schemas/KnowledgeRateLimit"
+          },
+          "documents_upload_quota": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "annotation_quota_limit": {
+            "$ref": "#/components/schemas/SubscriptionQuota"
+          },
+          "docs_processing": {
+            "enum": [
+              "standard",
+              "priority",
+              "top-priority"
+            ],
+            "type": "string"
+          },
+          "can_replace_logo": {
+            "type": "boolean"
+          },
+          "model_load_balancing_enabled": {
+            "type": "boolean"
+          },
+          "knowledge_pipeline_publish_enabled": {
+            "type": "boolean"
+          },
+          "next_credit_reset_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Get subscription info reply"
+      },
+      "GetSubscriptionPaymentLinkReply": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "description": "Get subscription payment link reply",
+        "required": [
+          "url"
+        ]
+      },
+      "KnowledgeRateLimit": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Knowledge rate limit (requests per minute)\n NOTE: size is retained for structural consistency but is not consumed by dify.\n Implementation should populate 0 for paid users.",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "ListSubscriptionCleanupWhitelistReply": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SubscriptionCleanupWhitelist"
+            }
+          }
+        },
+        "description": "List subscription cleanup whitelist reply",
+        "required": [
+          "data"
+        ]
+      },
+      "QuotaCommitReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "refunded": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "refunded"
+        ]
+      },
+      "QuotaCommitReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": "string"
+          },
+          "actual_amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "reservation_id",
+          "actual_amount",
+          "meta",
+          "bucket"
+        ]
+      },
+      "QuotaConsumeCappedReply": {
+        "type": "object",
+        "properties": {
+          "deducted": {
+            "type": "string",
+            "format": "int64"
+          },
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "quota": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "deducted",
+          "available",
+          "reserved",
+          "quota",
+          "usage"
+        ]
+      },
+      "QuotaConsumeCappedReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "request_id",
+          "amount",
+          "meta",
+          "bucket"
+        ]
+      },
+      "QuotaFeatureInfo": {
+        "type": "object",
+        "properties": {
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reset_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Per-feature quota detail",
+        "required": [
+          "usage",
+          "limit",
+          "reset_date"
+        ]
+      },
+      "QuotaGetBalanceReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "quota": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage": {
+            "type": "string",
+            "format": "int64"
+          },
+          "exhausted_at": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "quota",
+          "usage",
+          "exhausted_at"
+        ]
+      },
+      "QuotaGetInfoReply": {
+        "required": [
+          "trigger_event",
+          "api_rate_limit"
+        ],
+        "type": "object",
+        "properties": {
+          "trigger_event": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          },
+          "api_rate_limit": {
+            "$ref": "#/components/schemas/QuotaFeatureInfo"
+          }
+        }
+      },
+      "QuotaReleaseReply": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "released": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "available",
+          "reserved",
+          "released"
+        ]
+      },
+      "QuotaReleaseReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "reservation_id": {
+            "type": "string"
+          },
+          "bucket": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "reservation_id",
+          "bucket"
+        ]
+      },
+      "QuotaReserveReply": {
+        "type": "object",
+        "properties": {
+          "reservation_id": {
+            "type": "string"
+          },
+          "available": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved": {
+            "type": "string",
+            "format": "int64"
+          },
+          "reserved_amount": {
+            "type": "string",
+            "description": "Amount held by THIS reservation, never the aggregate reserved balance.",
+            "format": "int64"
+          }
+        },
+        "required": [
+          "reservation_id",
+          "available",
+          "reserved",
+          "reserved_amount"
+        ]
+      },
+      "QuotaReserveReq": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "feature_key": {
+            "type": "string"
+          },
+          "request_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string",
+            "format": "int64"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Optional metadata (model name, trace_id, etc.)"
+          },
+          "bucket": {
+            "type": "string"
+          },
+          "capped": {
+            "type": "boolean",
+            "description": "Explicit legacy message-tail semantics. Default remains strict reservation."
+          }
+        },
+        "required": [
+          "tenant_id",
+          "feature_key",
+          "request_id",
+          "amount",
+          "meta",
+          "bucket",
+          "capped"
+        ]
+      },
+      "SubscriptionCleanupWhitelist": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "type": "string"
+          },
+          "contact": {
+            "type": "string"
+          },
+          "expired_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "description": "Single whitelist item",
+        "required": [
+          "id",
+          "tenant_id",
+          "contact",
+          "expired_at",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "SubscriptionPlanItem": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "enum": [
+              "sandbox",
+              "professional",
+              "team"
+            ],
+            "type": "string"
+          },
+          "expiration_date": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Subscription plan item",
+        "required": [
+          "plan",
+          "expiration_date"
+        ]
+      },
+      "SubscriptionQuota": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "string",
+            "format": "int64"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          }
+        },
+        "description": "Generic usage quota (size = current usage, limit = max allowed)",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "TokenerAllowanceMetering": {
+        "required": [
+          "window_id",
+          "source_ref",
+          "amount_usd_micro",
+          "available_usd_micro",
+          "starts_at",
+          "ends_at"
+        ],
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "amount_usd_micro": {
+            "type": "string"
+          },
+          "available_usd_micro": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenerCurrentMonthMetering": {
+        "required": [
+          "status",
+          "start_date",
+          "end_date"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "type": "string",
+            "description": "available means the two counters below are present. unavailable is a\n degraded usage-rollup read and must never be rendered as zero."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Inclusive UTC range. billed_usd_micro is the amount Tokener has accounted\n through end_date; it must not be added to balance as an old-style quota."
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "billed_usd_micro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "request_count": {
+            "nullable": true,
+            "type": "string"
+          },
+          "error_code": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
+      "TokenerMigrationClaimFreePayload": {
+        "required": [
+          "api_version",
+          "migration_id"
+        ],
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "migration_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "nullable": true,
+            "type": "string"
+          },
+          "manual": {
+            "nullable": true,
+            "type": "boolean",
+            "description": "The shared legacy handler accepts explicit zero values, never recovery controls."
+          },
+          "manual_replan": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "operation_id": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
+      "TokenerMigrationErrorReply": {
+        "required": [
+          "code"
+        ],
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenerMigrationPreparePayload": {
+        "required": [
+          "api_version",
+          "operation_id",
+          "expected_revision",
+          "migration_id",
+          "batch_id",
+          "eligibility_policy_version",
+          "model_mapping_version",
+          "inventory_hash"
+        ],
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "operation_id": {
+            "type": "string"
+          },
+          "expected_revision": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "migration_id": {
+            "type": "string"
+          },
+          "batch_id": {
+            "type": "string"
+          },
+          "eligibility_policy_version": {
+            "type": "string"
+          },
+          "model_mapping_version": {
+            "type": "string"
+          },
+          "inventory_hash": {
+            "type": "string"
+          },
+          "billing_preparation_ref": {
+            "nullable": true,
+            "type": "string",
+            "description": "Accepted for compatibility; the owner always derives/overwrites this value."
+          },
+          "phase": {
+            "nullable": true,
+            "enum": [
+              "",
+              "orchestrate",
+              "resources"
+            ],
+            "type": "string"
+          },
+          "display_name": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
+      "TokenerMigrationPrepareResult": {
+        "required": [
+          "tenant_id",
+          "status",
+          "preparation_ref"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "type": "string"
+          },
+          "preparation_ref": {
+            "type": "string"
+          },
+          "external_ref": {
+            "nullable": true,
+            "type": "string"
+          },
+          "data_plane_api_key": {
+            "nullable": true,
+            "type": "string",
+            "description": "One-time credential; consumers must not include it in repr/errors/logs.",
+            "x-dify-sensitive": true
+          }
+        }
+      },
+      "TokenerMigrationReconcileResult": {
+        "required": [
+          "tenant_id",
+          "migration_id",
+          "status"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "migration_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "reconciled"
+            ],
+            "type": "string"
+          }
+        }
+      },
+      "TokenerMigrationResumePayload": {
+        "required": [
+          "api_version",
+          "migration_id"
+        ],
+        "type": "object",
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "migration_id": {
+            "type": "string"
+          },
+          "tenant_id": {
+            "nullable": true,
+            "type": "string",
+            "description": "Omitted/empty, or exactly the path tenant; the raw handler checks matching."
+          },
+          "manual": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "manual_replan": {
+            "nullable": true,
+            "type": "boolean"
+          },
+          "operation_id": {
+            "nullable": true,
+            "type": "string",
+            "description": "A UUID is required when manual_replan=true; manual must then also be true."
+          }
+        }
+      },
+      "TokenerTenantBootstrapPayload": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          }
+        },
+        "description": "body: \"payload\" keeps the external JSON flat while preserving the path\n tenant_id separately, allowing the service to reject path/body mismatches.",
+        "required": [
+          "tenant_id",
+          "display_name"
+        ]
+      },
+      "TokenerTenantMeteringReply": {
+        "required": [
+          "tenant_id",
+          "currency",
+          "available_usd_micro",
+          "current_month",
+          "balance_generated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "currency": {
+            "enum": [
+              "USD"
+            ],
+            "type": "string"
+          },
+          "available_usd_micro": {
+            "type": "string",
+            "description": "Signed decimal micro-USD string. It can be negative when the wallet owes\n credit after a dispute or adjustment."
+          },
+          "current_month": {
+            "$ref": "#/components/schemas/TokenerCurrentMonthMetering"
+          },
+          "balance_generated_at": {
+            "type": "string"
+          },
+          "usage_generated_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "allowance": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenerAllowanceMetering"
+              }
+            ],
+            "description": "Omitted when the tenant has no active allowance; it is not a zero allowance."
+          },
+          "entitlement_status": {
+            "nullable": true,
+            "enum": [
+              "active",
+              "processing",
+              "retrying",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "entitlement_error_code": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
+      "VectorSpaceQuota": {
+        "type": "object",
+        "properties": {
+          "size": {
+            "type": "number",
+            "format": "double"
+          },
+          "limit": {
+            "type": "string",
+            "format": "int64"
+          },
+          "usage_unknown": {
+            "nullable": true,
+            "type": "boolean"
+          }
+        },
+        "description": "Vector space quota (size is double because dataset sizes are fractional MB)",
+        "required": [
+          "size",
+          "limit"
+        ]
+      },
+      "VerifyEducationIdentityReply": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Verification token to pass to CreateEducationIdentity. Empty when status is `not_eligible`."
+          },
+          "status": {
+            "enum": [
+              "eligible",
+              "not_eligible"
+            ],
+            "type": "string",
+            "description": "`eligible`: the account email matches an education institution domain and `token` is set.\n `not_eligible`: the account email matches no education institution domain and `token` is empty."
+          }
+        },
+        "required": [
+          "token",
+          "status"
+        ]
+      }
+    }
+  },
+  "x-dify-saas-spec-sha256": "c4335864b8744b7c98a275f64d701e9d39d4b08b41b4621fd523c0cb66d54a23",
+  "x-dify-saas-source-dirty": false
+}

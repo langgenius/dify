@@ -1,3 +1,4 @@
+from controllers.common.errors import PaidPlanRequiredError  # noqa: F401 - Preserve the Console import path.
 from libs.exception import BaseHTTPException
 
 
@@ -119,3 +120,21 @@ class EducationActivateLimitError(BaseHTTPException):
     error_code = "education_activate_limit"
     description = "Rate limit exceeded"
     code = 429
+
+
+class EducationVerifyFailedError(BaseHTTPException):
+    error_code = "education_verify_failed"
+    description = "We couldn't verify your education status."
+    code = 400
+
+
+class EducationActivateFailedError(BaseHTTPException):
+    error_code = "education_activate_failed"
+    description = "We couldn't activate your education discount."
+    code = 400
+
+
+class ApiKeyLimitExceededHTTPError(BaseHTTPException):
+    error_code = "max_keys_exceeded"
+    description = "The API key limit has been reached."
+    code = 400

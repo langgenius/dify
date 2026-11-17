@@ -1,0 +1,1736 @@
+{
+  "schema_version": 1,
+  "kind": "new_unreleased_xai_credit_llm_source_family_v1",
+  "family": "xai_credit_llm_source_v1",
+  "profiles": [
+    {
+      "profile_id": "xai-credit-027-official-v1:grok-4.3",
+      "family": "xai_credit_llm_source_v1",
+      "adapter_id": "xai_credit_llm_source_v1",
+      "adapter_revision": "1",
+      "source_plugin_uid": "langgenius/x:0.0.27@895dd0c90fd73ca6a668860a01e4629fbca15f880b1b38a73e36a1ac45a4b8eb",
+      "source_model": "grok-4.3",
+      "target_model": "grok-4.3",
+      "source_schema_digest": "sha256:25db634221f08955071e25fa66f32c02fd4c8649206cdd4109937ea270eb8098",
+      "source_runtime_schema_digest": "sha256:67a8844ccd02db7cd38b7d1df855cb3b73ba364a6f56c1174f3519b47de5e71c",
+      "source_sdk_core_schema_digest": "sha256:a744aecac853c8753218e1b4d560b12aa94ccb94953cdb1f57a80464e28a5a1f",
+      "source_codec_schema_digest": "sha256:7da81782630ac3e091f7ef50e44e01a47b3dca6b4bfebb6231d662ffcbb8484c",
+      "target_schema_digest": "sha256:67a8844ccd02db7cd38b7d1df855cb3b73ba364a6f56c1174f3519b47de5e71c",
+      "source_catalog_schema": {
+        "model": "grok-4.3",
+        "label": {
+          "zh_Hans": "grok-4.3",
+          "en_US": "grok-4.3"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1000000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"auto\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "1.25",
+          "output": "2.5",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "grok-4.3",
+        "label": {
+          "zh_Hans": "grok-4.3",
+          "pt_BR": "grok-4.3",
+          "ja_JP": "grok-4.3",
+          "en_US": "grok-4.3"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 1000000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "pt_BR": "Temperature",
+              "ja_JP": "Temperature",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "pt_BR": "Top P",
+              "ja_JP": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "pt_BR": "reasoning_effort",
+              "ja_JP": "reasoning_effort",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "pt_BR": "constrains effort on reasoning for reasoning models",
+              "ja_JP": "constrains effort on reasoning for reasoning models",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "pt_BR": "Live Search Parameters",
+              "ja_JP": "Live Search Parameters",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "pt_BR": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "ja_JP": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"auto\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "1.25",
+          "output": "2.50",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_daemon_schema": {
+        "model": "grok-4.3",
+        "label": {
+          "zh_Hans": "grok-4.3",
+          "en_US": "grok-4.3"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 1000000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"auto\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "1.25",
+          "output": "2.5",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false,
+        "protocol_selector": null
+      },
+      "source_endpoint_class": "official_root",
+      "source_endpoint_requirement": "https://api.x.ai/v1",
+      "protocol": "chat",
+      "operations": [
+        "model/schema",
+        "llm/invoke",
+        "llm/num_tokens"
+      ],
+      "codec_rules": {
+        "implementation": "exact-x0027-public-sdk-request-local-facade-v1",
+        "source_metadata_sha256": "b8d3f076520e5125cb4f471e26635d29850556389b1c7226b2877b17e49833af",
+        "target_metadata_sha256": "bb8876310ea6a686fa4d3be7613d3d27742a358b4fe2250cd1fc33c91221c2db",
+        "source_archive_sha256": "5fffe94a162ce0d9f317b7c29d9bb1e98ba5245904e475a28424b3acc28038e4",
+        "source_llm_sha256": "b614587d98448f378fb8a722710f3188fbf3fcc5093afc9078480349108744aa",
+        "sdk_source_sha256": {
+          "python3.12/site-packages/dify_plugin/interfaces/model/ai_model.py": "689d97ff2dae380c0e4a3af59005fcbac55d36dd0e7fbeaf82f77a4b7dc84e04",
+          "python3.12/site-packages/dify_plugin/interfaces/model/large_language_model.py": "9252e2c65feddc8531afb870da3937d8af05cba5c6c191d7fb178aa5e18aa3f8",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/common.py": "de1174f4c6be4e38871b74b66707cb197f533a35d4dd6f56f0bff745a460476d",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/llm.py": "ec1395a95745384f9d7fc05a29e4581ceb7d006b4cb0cc2a59d0de1b7ed23358"
+        },
+        "go_boundary": {
+          "daemon_snapshot_commit": "ee396b11e070b7aaf2fa8f74878226d4e441c941",
+          "source_files_sha256": {
+            "go.mod": "d9385563287188974be37db9576baf163cb6df717c42a64809597344ba12bdb3",
+            "go.sum": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+            "pkg/entities/plugin_entities/model_declaration.go": "3ca09566c186e39869c72d556192f000f43261ed1cea645dc6e18d43472f23ab",
+            "pkg/entities/model_entities/ai_model.go": "3ee7f72ffcb9cf2708fbe26a868f24536f20b850bbef488723e18a4efb99a677",
+            "pkg/utils/parser/json.go": "ecf2779f25d75171d94d727b8566b994afd0bb15694f02770c013d1890125307",
+            "internal/core/io_tunnel/generic.go": "a4abbc5d04ca40808a9d9ba92ed1c290dbce5fbc00c2f4c77cb89b0c1bca862b"
+          },
+          "harness_source_sha256": "bced3186c501cdc0167d26693de13da470a5a1ba01e1dbe1d67a97a06466cb0d",
+          "harness_binary_sha256": "b1b8be6702125ede8df3c8e3585aadaaecc4a3d1020b8112b92988c644f6f135",
+          "harness_go_mod_sha256": "5ab6e101cf32d919b76c8c36da3365107391cbbed0731f8336046f6cf1e6741d",
+          "harness_go_sum_sha256": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+          "prior_core_verifier_sha256": "e6799d608250750e248e144293414def6c63d1fe680f416a4c36a7881cdd712e",
+          "prior_proof_sha256": "225485e10be4d77a55579f5499072549550a5c18bf32ef9779361a3691d12028",
+          "scope": "Existing exact archived ee396 local Go parser/ModelDeclaration boundary, not live OCI provenance or daemon RPC."
+        },
+        "operation_semantics": {
+          "invoke": "Exact source public invoke/filter/timing/eager-error and lazy-SSE behavior. No native defaults or output-cap injection; source drops user and reasoning stop/penalties.",
+          "token_count": "Exact inherited source public get_num_tokens with original public credential shape; do not run invoke-only custom-credential preamble."
+        },
+        "managed_transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/chat/completions",
+          "key": "managed-org-only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10,
+            "read": 120
+          },
+          "body": "Preserve exact source JSON bytes; no credential, endpoint, model or extra-body override from callers.",
+          "lifecycle": "Request-local ownership closes Response and Session on EOF, failure and generator close; never globally patch requests."
+        },
+        "scope": "Offline local SDK->exact ee396 Go->Core metadata equality only. Not live source/target installation, model generation, ACL, prices, token enforcement or settlement proof."
+      }
+    },
+    {
+      "profile_id": "xai-credit-027-official-v1:grok-4.5",
+      "family": "xai_credit_llm_source_v1",
+      "adapter_id": "xai_credit_llm_source_v1",
+      "adapter_revision": "1",
+      "source_plugin_uid": "langgenius/x:0.0.27@895dd0c90fd73ca6a668860a01e4629fbca15f880b1b38a73e36a1ac45a4b8eb",
+      "source_model": "grok-4.5",
+      "target_model": "grok-4.5",
+      "source_schema_digest": "sha256:7db902951459153697d2f2cfaa8d0de025c0016ac0fc7fb39ac27674120d2724",
+      "source_runtime_schema_digest": "sha256:adfe1b6b5a01f48e10479777d2ad8c3c8f74657b931561260b6adf1646430d83",
+      "source_sdk_core_schema_digest": "sha256:74a42cf0bb222a071a4152d7c2dbc519e59e13ced98fd531e93993d3fd3a6af9",
+      "source_codec_schema_digest": "sha256:26874ff2bce8bbc1dd6d74817b82d8c550acb3ca03de323e993ea00e531878b5",
+      "target_schema_digest": "sha256:adfe1b6b5a01f48e10479777d2ad8c3c8f74657b931561260b6adf1646430d83",
+      "source_catalog_schema": {
+        "model": "grok-4.5",
+        "label": {
+          "zh_Hans": "grok-4.5",
+          "en_US": "grok-4.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 500000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "2",
+          "output": "6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "grok-4.5",
+        "label": {
+          "zh_Hans": "grok-4.5",
+          "pt_BR": "grok-4.5",
+          "ja_JP": "grok-4.5",
+          "en_US": "grok-4.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 500000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "pt_BR": "Temperature",
+              "ja_JP": "Temperature",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "pt_BR": "Top P",
+              "ja_JP": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "pt_BR": "reasoning_effort",
+              "ja_JP": "reasoning_effort",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "pt_BR": "constrains effort on reasoning for reasoning models",
+              "ja_JP": "constrains effort on reasoning for reasoning models",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "pt_BR": "Live Search Parameters",
+              "ja_JP": "Live Search Parameters",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "pt_BR": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "ja_JP": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "2.00",
+          "output": "6.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_daemon_schema": {
+        "model": "grok-4.5",
+        "label": {
+          "zh_Hans": "grok-4.5",
+          "en_US": "grok-4.5"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 500000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          }
+        ],
+        "pricing": {
+          "input": "2",
+          "output": "6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false,
+        "protocol_selector": null
+      },
+      "source_endpoint_class": "official_root",
+      "source_endpoint_requirement": "https://api.x.ai/v1",
+      "protocol": "chat",
+      "operations": [
+        "model/schema",
+        "llm/invoke",
+        "llm/num_tokens"
+      ],
+      "codec_rules": {
+        "implementation": "exact-x0027-public-sdk-request-local-facade-v1",
+        "source_metadata_sha256": "b8d3f076520e5125cb4f471e26635d29850556389b1c7226b2877b17e49833af",
+        "target_metadata_sha256": "bb8876310ea6a686fa4d3be7613d3d27742a358b4fe2250cd1fc33c91221c2db",
+        "source_archive_sha256": "5fffe94a162ce0d9f317b7c29d9bb1e98ba5245904e475a28424b3acc28038e4",
+        "source_llm_sha256": "b614587d98448f378fb8a722710f3188fbf3fcc5093afc9078480349108744aa",
+        "sdk_source_sha256": {
+          "python3.12/site-packages/dify_plugin/interfaces/model/ai_model.py": "689d97ff2dae380c0e4a3af59005fcbac55d36dd0e7fbeaf82f77a4b7dc84e04",
+          "python3.12/site-packages/dify_plugin/interfaces/model/large_language_model.py": "9252e2c65feddc8531afb870da3937d8af05cba5c6c191d7fb178aa5e18aa3f8",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/common.py": "de1174f4c6be4e38871b74b66707cb197f533a35d4dd6f56f0bff745a460476d",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/llm.py": "ec1395a95745384f9d7fc05a29e4581ceb7d006b4cb0cc2a59d0de1b7ed23358"
+        },
+        "go_boundary": {
+          "daemon_snapshot_commit": "ee396b11e070b7aaf2fa8f74878226d4e441c941",
+          "source_files_sha256": {
+            "go.mod": "d9385563287188974be37db9576baf163cb6df717c42a64809597344ba12bdb3",
+            "go.sum": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+            "pkg/entities/plugin_entities/model_declaration.go": "3ca09566c186e39869c72d556192f000f43261ed1cea645dc6e18d43472f23ab",
+            "pkg/entities/model_entities/ai_model.go": "3ee7f72ffcb9cf2708fbe26a868f24536f20b850bbef488723e18a4efb99a677",
+            "pkg/utils/parser/json.go": "ecf2779f25d75171d94d727b8566b994afd0bb15694f02770c013d1890125307",
+            "internal/core/io_tunnel/generic.go": "a4abbc5d04ca40808a9d9ba92ed1c290dbce5fbc00c2f4c77cb89b0c1bca862b"
+          },
+          "harness_source_sha256": "bced3186c501cdc0167d26693de13da470a5a1ba01e1dbe1d67a97a06466cb0d",
+          "harness_binary_sha256": "b1b8be6702125ede8df3c8e3585aadaaecc4a3d1020b8112b92988c644f6f135",
+          "harness_go_mod_sha256": "5ab6e101cf32d919b76c8c36da3365107391cbbed0731f8336046f6cf1e6741d",
+          "harness_go_sum_sha256": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+          "prior_core_verifier_sha256": "e6799d608250750e248e144293414def6c63d1fe680f416a4c36a7881cdd712e",
+          "prior_proof_sha256": "225485e10be4d77a55579f5499072549550a5c18bf32ef9779361a3691d12028",
+          "scope": "Existing exact archived ee396 local Go parser/ModelDeclaration boundary, not live OCI provenance or daemon RPC."
+        },
+        "operation_semantics": {
+          "invoke": "Exact source public invoke/filter/timing/eager-error and lazy-SSE behavior. No native defaults or output-cap injection; source drops user and reasoning stop/penalties.",
+          "token_count": "Exact inherited source public get_num_tokens with original public credential shape; do not run invoke-only custom-credential preamble."
+        },
+        "managed_transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/chat/completions",
+          "key": "managed-org-only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10,
+            "read": 120
+          },
+          "body": "Preserve exact source JSON bytes; no credential, endpoint, model or extra-body override from callers.",
+          "lifecycle": "Request-local ownership closes Response and Session on EOF, failure and generator close; never globally patch requests."
+        },
+        "scope": "Offline local SDK->exact ee396 Go->Core metadata equality only. Not live source/target installation, model generation, ACL, prices, token enforcement or settlement proof."
+      }
+    },
+    {
+      "profile_id": "xai-credit-027-official-v1:grok-4.6",
+      "family": "xai_credit_llm_source_v1",
+      "adapter_id": "xai_credit_llm_source_v1",
+      "adapter_revision": "1",
+      "source_plugin_uid": "langgenius/x:0.0.27@895dd0c90fd73ca6a668860a01e4629fbca15f880b1b38a73e36a1ac45a4b8eb",
+      "source_model": "grok-4.6",
+      "target_model": "grok-4.6",
+      "source_schema_digest": "sha256:34ed148143261f14b03577e0f86f986031f5358087dccf859112a5f09c2e5d4b",
+      "source_runtime_schema_digest": "sha256:1dcd9da2d2ca2147d0c1be528f32a1e217446742b06ddc356cf1199a3a18e6f0",
+      "source_sdk_core_schema_digest": "sha256:c3ee145e2f77dcda58867437c87dcdf96803fc2761f0f655654e50d4b11ad5e8",
+      "source_codec_schema_digest": "sha256:6b1f5f33b7932198373aabe8de950034fee9594b735052661c2262b400f353f7",
+      "target_schema_digest": "sha256:1dcd9da2d2ca2147d0c1be528f32a1e217446742b06ddc356cf1199a3a18e6f0",
+      "source_catalog_schema": {
+        "model": "grok-4.6",
+        "label": {
+          "zh_Hans": "grok-4.6",
+          "en_US": "grok-4.6"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 500000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "temperature",
+              "en_US": "temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "top_p",
+              "en_US": "top_p"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "json_schema",
+              "en_US": "json_schema"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service Tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Default 使用标准处理，Priority 使用双倍价格的低延迟处理",
+              "en_US": "Default uses standard processing; Priority uses lower-latency processing at twice the price"
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "2",
+          "output": "6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_codec_schema": {
+        "model": "grok-4.6",
+        "label": {
+          "zh_Hans": "grok-4.6",
+          "pt_BR": "grok-4.6",
+          "ja_JP": "grok-4.6",
+          "en_US": "grok-4.6"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "mode": "chat",
+          "context_size": 500000
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "pt_BR": "Temperature",
+              "ja_JP": "Temperature",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "pt_BR": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "ja_JP": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "pt_BR": "Top P",
+              "ja_JP": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "pt_BR": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "ja_JP": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1.0,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "pt_BR": "reasoning_effort",
+              "ja_JP": "reasoning_effort",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "pt_BR": "constrains effort on reasoning for reasoning models",
+              "ja_JP": "constrains effort on reasoning for reasoning models",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "pt_BR": "Response Format",
+              "ja_JP": "Response Format",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "pt_BR": "specifying the format that the model must output",
+              "ja_JP": "specifying the format that the model must output",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "pt_BR": "JSON Schema",
+              "ja_JP": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "pt_BR": "Set a response json schema will ensure LLM to adhere it.",
+              "ja_JP": "Set a response json schema will ensure LLM to adhere it.",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "pt_BR": "Live Search Parameters",
+              "ja_JP": "Live Search Parameters",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "pt_BR": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "ja_JP": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "pt_BR": "Service Tier",
+              "ja_JP": "Service Tier",
+              "en_US": "Service Tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Default 使用标准处理，Priority 使用双倍价格的低延迟处理",
+              "pt_BR": "Default uses standard processing; Priority uses lower-latency processing at twice the price",
+              "ja_JP": "Default uses standard processing; Priority uses lower-latency processing at twice the price",
+              "en_US": "Default uses standard processing; Priority uses lower-latency processing at twice the price"
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "2.00",
+          "output": "6.00",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_daemon_schema": {
+        "model": "grok-4.6",
+        "label": {
+          "zh_Hans": "grok-4.6",
+          "en_US": "grok-4.6"
+        },
+        "model_type": "llm",
+        "features": [
+          "vision",
+          "agent-thought",
+          "tool-call",
+          "multi-tool-call",
+          "stream-tool-call",
+          "structured-output"
+        ],
+        "fetch_from": "predefined-model",
+        "model_properties": {
+          "context_size": 500000,
+          "mode": "chat"
+        },
+        "deprecated": false,
+        "parameter_rules": [
+          {
+            "name": "temperature",
+            "use_template": "temperature",
+            "label": {
+              "zh_Hans": "温度",
+              "en_US": "Temperature"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+              "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 2.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "top_p",
+            "use_template": "top_p",
+            "label": {
+              "zh_Hans": "Top P",
+              "en_US": "Top P"
+            },
+            "type": "float",
+            "help": {
+              "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+              "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+            },
+            "required": false,
+            "default": 1,
+            "min": 0.0,
+            "max": 1.0,
+            "precision": 2,
+            "options": []
+          },
+          {
+            "name": "reasoning_effort",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "推理工作",
+              "en_US": "reasoning_effort"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "限制推理模型的推理工作",
+              "en_US": "constrains effort on reasoning for reasoning models"
+            },
+            "required": false,
+            "default": "high",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          },
+          {
+            "name": "response_format",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "回复格式",
+              "en_US": "Response Format"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "指定模型必须输出的格式",
+              "en_US": "specifying the format that the model must output"
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "json_object",
+              "json_schema"
+            ]
+          },
+          {
+            "name": "json_schema",
+            "use_template": "json_schema",
+            "label": {
+              "zh_Hans": "JSON Schema",
+              "en_US": "JSON Schema"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "设置返回的json schema，llm将按照它返回",
+              "en_US": "Set a response json schema will ensure LLM to adhere it."
+            },
+            "required": false,
+            "default": null,
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "search_parameters",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "联网搜索参数",
+              "en_US": "Live Search Parameters"
+            },
+            "type": "text",
+            "help": {
+              "zh_Hans": "联网搜索的 JSON 参数，支持 mode、max_search_results、return_citations、sources、from_date 和 to_date，详见 https://docs.x.ai/developers/rest-api-reference/inference/chat",
+              "en_US": "JSON parameters for live search. Supported keys include mode, max_search_results, return_citations, sources, from_date, and to_date. See https://docs.x.ai/developers/rest-api-reference/inference/chat"
+            },
+            "required": false,
+            "default": "{\n  \"mode\": \"on\"\n}",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": []
+          },
+          {
+            "name": "service_tier",
+            "use_template": null,
+            "label": {
+              "zh_Hans": "服务层级",
+              "en_US": "Service Tier"
+            },
+            "type": "string",
+            "help": {
+              "zh_Hans": "Default 使用标准处理，Priority 使用双倍价格的低延迟处理",
+              "en_US": "Default uses standard processing; Priority uses lower-latency processing at twice the price"
+            },
+            "required": false,
+            "default": "default",
+            "min": null,
+            "max": null,
+            "precision": null,
+            "options": [
+              "default",
+              "priority"
+            ]
+          }
+        ],
+        "pricing": {
+          "input": "2",
+          "output": "6",
+          "unit": "0.000001",
+          "currency": "USD"
+        }
+      },
+      "source_settings": {
+        "source_base_is_set": true,
+        "request_metadata_enabled": false,
+        "protocol_selector": null
+      },
+      "source_endpoint_class": "official_root",
+      "source_endpoint_requirement": "https://api.x.ai/v1",
+      "protocol": "chat",
+      "operations": [
+        "model/schema",
+        "llm/invoke",
+        "llm/num_tokens"
+      ],
+      "codec_rules": {
+        "implementation": "exact-x0027-public-sdk-request-local-facade-v1",
+        "source_metadata_sha256": "b8d3f076520e5125cb4f471e26635d29850556389b1c7226b2877b17e49833af",
+        "target_metadata_sha256": "bb8876310ea6a686fa4d3be7613d3d27742a358b4fe2250cd1fc33c91221c2db",
+        "source_archive_sha256": "5fffe94a162ce0d9f317b7c29d9bb1e98ba5245904e475a28424b3acc28038e4",
+        "source_llm_sha256": "b614587d98448f378fb8a722710f3188fbf3fcc5093afc9078480349108744aa",
+        "sdk_source_sha256": {
+          "python3.12/site-packages/dify_plugin/interfaces/model/ai_model.py": "689d97ff2dae380c0e4a3af59005fcbac55d36dd0e7fbeaf82f77a4b7dc84e04",
+          "python3.12/site-packages/dify_plugin/interfaces/model/large_language_model.py": "9252e2c65feddc8531afb870da3937d8af05cba5c6c191d7fb178aa5e18aa3f8",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/common.py": "de1174f4c6be4e38871b74b66707cb197f533a35d4dd6f56f0bff745a460476d",
+          "site-packages/dify_plugin/interfaces/model/openai_compatible/llm.py": "ec1395a95745384f9d7fc05a29e4581ceb7d006b4cb0cc2a59d0de1b7ed23358"
+        },
+        "go_boundary": {
+          "daemon_snapshot_commit": "ee396b11e070b7aaf2fa8f74878226d4e441c941",
+          "source_files_sha256": {
+            "go.mod": "d9385563287188974be37db9576baf163cb6df717c42a64809597344ba12bdb3",
+            "go.sum": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+            "pkg/entities/plugin_entities/model_declaration.go": "3ca09566c186e39869c72d556192f000f43261ed1cea645dc6e18d43472f23ab",
+            "pkg/entities/model_entities/ai_model.go": "3ee7f72ffcb9cf2708fbe26a868f24536f20b850bbef488723e18a4efb99a677",
+            "pkg/utils/parser/json.go": "ecf2779f25d75171d94d727b8566b994afd0bb15694f02770c013d1890125307",
+            "internal/core/io_tunnel/generic.go": "a4abbc5d04ca40808a9d9ba92ed1c290dbce5fbc00c2f4c77cb89b0c1bca862b"
+          },
+          "harness_source_sha256": "bced3186c501cdc0167d26693de13da470a5a1ba01e1dbe1d67a97a06466cb0d",
+          "harness_binary_sha256": "b1b8be6702125ede8df3c8e3585aadaaecc4a3d1020b8112b92988c644f6f135",
+          "harness_go_mod_sha256": "5ab6e101cf32d919b76c8c36da3365107391cbbed0731f8336046f6cf1e6741d",
+          "harness_go_sum_sha256": "e9befb7553a1a2499da3f78ed013a0f772f3baa6ce114248b743c80af9a98931",
+          "prior_core_verifier_sha256": "e6799d608250750e248e144293414def6c63d1fe680f416a4c36a7881cdd712e",
+          "prior_proof_sha256": "225485e10be4d77a55579f5499072549550a5c18bf32ef9779361a3691d12028",
+          "scope": "Existing exact archived ee396 local Go parser/ModelDeclaration boundary, not live OCI provenance or daemon RPC."
+        },
+        "operation_semantics": {
+          "invoke": "Exact source public invoke/filter/timing/eager-error and lazy-SSE behavior. No native defaults or output-cap injection; source drops user and reasoning stop/penalties.",
+          "token_count": "Exact inherited source public get_num_tokens with original public credential shape; do not run invoke-only custom-credential preamble."
+        },
+        "managed_transport": {
+          "endpoint": "https://api-staging.tokener.dev/v1/chat/completions",
+          "key": "managed-org-only",
+          "max_retries": 0,
+          "follow_redirects": false,
+          "trust_env": false,
+          "timeout_seconds": {
+            "connect": 10,
+            "read": 120
+          },
+          "body": "Preserve exact source JSON bytes; no credential, endpoint, model or extra-body override from callers.",
+          "lifecycle": "Request-local ownership closes Response and Session on EOF, failure and generator close; never globally patch requests."
+        },
+        "scope": "Offline local SDK->exact ee396 Go->Core metadata equality only. Not live source/target installation, model generation, ACL, prices, token enforcement or settlement proof."
+      }
+    }
+  ]
+}

@@ -1,24 +1,181 @@
 import hashlib
 import json
 from collections.abc import Sequence
-from contextlib import nullcontext
 from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from pytest_mock import MockerFixture
+from sqlalchemy.orm import Session, sessionmaker
 
+from core.entities.provider_configuration import ProviderConfiguration
 from core.entities.provider_entities import (
+    CustomConfiguration,
     ProviderQuotaType,
     QuotaConfiguration,
     QuotaUnit,
     RestrictModel,
     SystemConfiguration,
 )
+from core.hosting_configuration import HostingProvider, PaidHostingQuota, TrialHostingQuota
 from graphon.model_runtime.entities.common_entities import I18nObject
 from graphon.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType
-from services.model_billing_mapping_service import hosted_migration_sources, mappings_for_revision
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
+from models.account import Tenant
+from models.provider import ProviderCredential, ProviderType
+from models.tokener import TenantTokenerIntegration, TenantTokenerIntegrationStatus
+from services.entities.model_billing_migration import canonical_hash
+from services.model_billing_mapping_service import (
+    additional_hosted_availability,
+    additional_model_is_authorized,
+    hosted_embedding_source_fact,
+    hosted_migration_sources,
+    mapping_has_required_operations,
+    mapping_supports_installed_plugin,
+    mappings_for_revision,
+    migration_policy_allows_empty_sources,
+    model_schema_digest,
+    partition_hosted_migration_sources,
+    provider_has_prepared_ownership,
+    published_original_quotas,
+    retirement_policy_for_revision,
+    uses_published_tokener_balance,
+)
+
+
+@pytest.mark.parametrize("protocol", [None, "chat", "responses", "unknown", False, {}, []])
+@pytest.mark.parametrize("endpoint", [None, "https://api.openai.com"])
+def test_embedding_fact_is_independent_from_ignored_llm_protocol_and_does_not_modify_source(
+    protocol: object, endpoint: str | None
+) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    original = {"api_key": "NEVER_EXPORT_SOURCE", "api_protocol": protocol, "openai_api_base": endpoint}
+    before = deepcopy(original)
+    embedding = schema("text-embedding-3-small", ModelType.TEXT_EMBEDDING)
+    fact = hosted_embedding_source_fact(
+        provider="langgenius/openai/openai",
+        source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+        models=[schema(), embedding],
+        credentials=original,
+    )
+    assert fact is not None
+    assert fact.source_endpoint_class == ("unset" if endpoint is None else "official_root")
+    assert fact.catalog_schema_digests == ((ModelType.TEXT_EMBEDDING, embedding.model, model_schema_digest(embedding)),)
+    assert fact.request_metadata_behavior == "not_used"
+    assert not hasattr(fact, "selector")
+    assert original == before
+    assert "NEVER_EXPORT_SOURCE" not in repr(fact)
+    configuration = SystemConfiguration(enabled=True, credentials=None)
+    serialized = configuration.model_dump(mode="json")
+    configuration._tokener_embedding_source_fact = fact
+    assert configuration.model_dump(mode="json") == serialized
+    assert (
+        SystemConfiguration.model_validate(
+            {**serialized, "_tokener_embedding_source_fact": fact}
+        )._tokener_embedding_source_fact
+        is None
+    )
+
+
+@pytest.mark.parametrize("original", [None, "malformed", [], True])
+def test_embedding_fact_never_fabricates_a_dictionary_for_missing_original_settings(original: object) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    assert (
+        hosted_embedding_source_fact(
+            provider="langgenius/openai/openai",
+            source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+            models=[],
+            credentials=original,
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("metadata", [None, "disabled", "enabled", "unknown", True, False, 0, {}, []])
+def test_embedding_fact_describes_ignored_metadata_without_changing_the_original_flag(metadata: object) -> None:
+    from services.model_billing_openai_embedding_adapter import OPENAI_EMBEDDING_SOURCE_UIDS
+
+    original = {"enable_request_metadata": metadata}
+    before = deepcopy(original)
+    fact = hosted_embedding_source_fact(
+        provider="langgenius/openai/openai",
+        source_uid=min(OPENAI_EMBEDDING_SOURCE_UIDS),
+        models=[],
+        credentials=original,
+    )
+    assert fact is not None
+    assert fact.request_metadata_behavior == "not_used"
+    assert not hasattr(fact, "request_metadata_enabled")
+    assert original == before
+
+
+@pytest.mark.parametrize(
+    ("paid_used", "trial_used", "selected", "valid"),
+    [
+        (3, 0, ProviderQuotaType.PAID, True),
+        (100, 4, ProviderQuotaType.TRIAL, True),
+        (100, 20, ProviderQuotaType.PAID, False),
+    ],
+)
+def test_v2_availability_preserves_finite_noncredit_units_counters_and_scope_on_original_backend(
+    paid_used: int,
+    trial_used: int,
+    selected: ProviderQuotaType,
+    valid: bool,
+) -> None:
+    original = [
+        QuotaConfiguration(
+            quota_type=kind,
+            quota_unit=QuotaUnit.TOKENS,
+            quota_limit=limit,
+            quota_used=used,
+            is_valid=limit > used,
+            restrict_models=[
+                RestrictModel(model="original-only", model_type=ModelType.LLM, base_model_name="original-deployment")
+            ],
+        )
+        for kind, limit, used in ((ProviderQuotaType.PAID, 100, paid_used), (ProviderQuotaType.TRIAL, 20, trial_used))
+    ]
+    hosting = HostingProvider(
+        enabled=True, quota_unit=QuotaUnit.TOKENS, quotas=[PaidHostingQuota(), TrialHostingQuota()]
+    )
+    assert (
+        additional_hosted_availability(
+            provider="langgenius/openai/openai",
+            hosting=hosting,
+            installed_models=[],
+            original_quotas=original,
+            raw_registry="[]",
+            revision="new-v2",
+            published_balance=True,
+        )
+        is None
+    )
+    available = additional_hosted_availability(
+        provider="langgenius/openai/openai",
+        hosting=hosting,
+        installed_models=[],
+        original_quotas=original,
+        raw_registry="[]",
+        revision="new-v2",
+        published_balance=True,
+        preserve_independent_units=True,
+    )
+    assert available is not None
+    assert available.current_quota_type == selected
+    assert [quota.model_dump(mode="json") for quota in available.quotas] == [
+        quota.model_dump(mode="json") for quota in original
+    ]
+    assert next(quota for quota in available.quotas if quota.quota_type == selected).is_valid is valid
+
+
+@pytest.mark.parametrize("policy", [None, "", "paid-legacy-v1", "free-legacy-v2", " free-legacy-v1", "free-legacy-v1 "])
+def test_only_exact_free_policy_allows_an_empty_inventory(policy: str | None) -> None:
+    assert migration_policy_allows_empty_sources(policy) is False
+    assert migration_policy_allows_empty_sources("free-legacy-v1") is True
 
 
 def schema(model: str = "gpt-4o", model_type: ModelType = ModelType.LLM) -> AIModelEntity:
@@ -28,6 +185,83 @@ def schema(model: str = "gpt-4o", model_type: ModelType = ModelType.LLM) -> AIMo
         model_type=model_type,
         fetch_from=FetchFrom.PREDEFINED_MODEL,
         model_properties={ModelPropertyKey.MODE: "chat"} if model_type == ModelType.LLM else {},
+    )
+
+
+@pytest.mark.parametrize(
+    ("selected", "unmetered", "free_valid"), [("free", False, True), ("free", False, False), ("trial", True, True)]
+)
+def test_published_balance_preserves_independent_owner_not_old_shared_wallet(
+    selected: str, unmetered: bool, free_valid: bool
+) -> None:
+    from core.hosting_configuration import FreeHostingQuota
+
+    original = [
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.PAID,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=200,
+            quota_used=0,
+            is_valid=True,
+        ),
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.FREE,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=20,
+            quota_used=0 if free_valid else 20,
+            is_valid=free_valid,
+        ),
+        QuotaConfiguration(
+            quota_type=ProviderQuotaType.TRIAL,
+            quota_unit=QuotaUnit.CREDITS,
+            quota_limit=200,
+            quota_used=0,
+            is_valid=True,
+        ),
+    ]
+    state = {
+        "source_ownership": {
+            "langgenius/openai/openai": {
+                "current_quota_type": selected,
+                "quotas": {
+                    "paid": {"unmetered": False},
+                    "trial": {"unmetered": unmetered},
+                    "free": {"unmetered": False},
+                },
+            }
+        }
+    }
+    before = deepcopy(state)
+    normalized, preserved = published_original_quotas("langgenius/openai/openai", original, state)
+    assert normalized[0].quota_limit == 0
+    assert normalized[0].is_valid is False
+    assert original[0].quota_limit == 200
+    assert original[0].is_valid is True
+    result = additional_hosted_availability(
+        provider="langgenius/openai/openai",
+        hosting=HostingProvider(
+            enabled=True,
+            quota_unit=QuotaUnit.CREDITS,
+            quotas=[PaidHostingQuota(), TrialHostingQuota(), FreeHostingQuota()],
+        ),
+        installed_models=[schema()],
+        original_quotas=normalized,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+        published_balance=True,
+        preserve_independent_pool=preserved,
+    )
+    assert result is not None
+    assert result.current_quota_type == (
+        ProviderQuotaType.TRIAL if unmetered else ProviderQuotaType.FREE if free_valid else ProviderQuotaType.PAID
+    )
+    assert state == before
+
+
+@pytest.mark.parametrize("phase", ["preparing", "prepared", "claimed", "granting", "activating", "blocked"])
+def test_prepublish_phase_never_enables_balance_model_union(phase: str) -> None:
+    assert not uses_published_tokener_balance(
+        {"phase": phase, "persisted_model_billing_source": "tokener", "ever_activated": True}
     )
 
 
@@ -79,6 +313,103 @@ def section(record: dict[str, object], key: str) -> dict[str, object]:
     value = record[key]
     assert isinstance(value, dict)
     return value
+
+
+def test_explicit_retirement_skips_only_missing_schema_and_preserves_source_ownership() -> None:
+    original = system(
+        [
+            RestrictModel(model="gpt-4o", model_type=ModelType.LLM),
+            RestrictModel(model="gpt-3.5-turbo", model_type=ModelType.LLM),
+        ]
+    )
+    before = original.model_dump()
+    partition = partition_hosted_migration_sources(original, [schema()], frozenset({(ModelType.LLM, "gpt-3.5-turbo")}))
+
+    def forbidden_lookup(*_args: object) -> None:
+        raise AssertionError("Retired schema must not be resolved")
+
+    active = hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], forbidden_lookup)
+    assert set(active) == {(ModelType.LLM, "gpt-4o")}
+    assert partition.retired == {(ModelType.LLM, "gpt-3.5-turbo"): {ProviderQuotaType.PAID}}
+    assert original.model_dump() == before
+
+
+def test_retirement_does_not_turn_empty_restriction_into_unrestricted_inventory() -> None:
+    original = system([RestrictModel(model="retired", model_type=ModelType.LLM)])
+    partition = partition_hosted_migration_sources(original, [schema()], frozenset({(ModelType.LLM, "retired")}))
+    assert partition.system.quota_configurations == []
+    assert hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None) == {}
+    assert len(partition.retired) == 1
+
+
+@pytest.mark.parametrize("retired_type", [ModelType.LLM, ModelType.TEXT_EMBEDDING])
+def test_an_unlisted_missing_source_still_fails(retired_type: ModelType) -> None:
+    original = system([RestrictModel(model="unlisted", model_type=ModelType.LLM)])
+    partition = partition_hosted_migration_sources(original, [], frozenset({(retired_type, "retired")}))
+    with pytest.raises(ValueError, match="Missing or ambiguous"):
+        hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None)
+
+
+def test_unknown_unrestricted_inventory_is_not_excused_by_retirement_policy() -> None:
+    partition = partition_hosted_migration_sources(system(), [], frozenset({(ModelType.LLM, "retired")}))
+    with pytest.raises(ValueError, match="Unrestricted source inventory"):
+        hosted_migration_sources(partition.system, partition.models, [ModelType.LLM], lambda *_args: None)
+
+
+def test_known_all_retired_unrestricted_inventory_is_represented_explicitly() -> None:
+    partition = partition_hosted_migration_sources(
+        system(), [schema("retired")], frozenset({(ModelType.LLM, "retired")})
+    )
+    assert partition.models == []
+    assert partition.system.quota_configurations == []
+    assert partition.retired == {(ModelType.LLM, "retired"): {ProviderQuotaType.PAID}}
+
+
+def test_retirement_does_not_hide_ambiguous_installed_model_types() -> None:
+    original = system([RestrictModel(model="shared-name", model_type=ModelType.LLM)])
+    with pytest.raises(ValueError, match="Ambiguous"):
+        partition_hosted_migration_sources(
+            original,
+            [schema("shared-name"), schema("shared-name", ModelType.TEXT_EMBEDDING)],
+            frozenset({(ModelType.LLM, "shared-name")}),
+        )
+
+
+@pytest.mark.parametrize(
+    ("pool", "unit", "limit"),
+    [
+        (ProviderQuotaType.FREE, QuotaUnit.CREDITS, 100),
+        (ProviderQuotaType.TRIAL, QuotaUnit.CREDITS, -1),
+        (ProviderQuotaType.PAID, QuotaUnit.TOKENS, 100),
+    ],
+)
+def test_retirement_does_not_reclassify_independent_or_unmetered_pools(
+    pool: ProviderQuotaType, unit: QuotaUnit, limit: int
+) -> None:
+    original = system([RestrictModel(model="retired", model_type=ModelType.LLM)], pool=pool, unit=unit, limit=limit)
+    partition = partition_hosted_migration_sources(
+        original, [schema("retired")], frozenset({(ModelType.LLM, "retired")})
+    )
+    assert partition.retired == {}
+    assert partition.system.model_dump() == original.model_dump()
+
+
+def test_retired_source_cannot_also_have_a_route_in_same_revision() -> None:
+    policy = json.dumps(
+        [
+            {
+                "schema_version": 1,
+                "mapping_revision": "old",
+                "provider_id": "langgenius/openai/openai",
+                "model_type": "llm",
+                "model": "gpt-4o",
+            }
+        ]
+    )
+    registry = mappings_for_revision(json.dumps([mapping()]), "old")
+    with pytest.raises(ValueError, match="both retired and routed"):
+        retirement_policy_for_revision(policy, "old", registry)
+    assert not retirement_policy_for_revision(policy, "new", registry).identities
 
 
 def system(
@@ -155,6 +486,219 @@ def test_cross_type_mapping_fails_closed() -> None:
     section(record, "target")["model_type"] = "text-embedding"
     with pytest.raises(ValueError, match="incompatible model type"):
         mappings_for_revision(json.dumps([record]), "old")
+
+
+@pytest.mark.parametrize("ownership", [None, "bad", [], {"langgenius/openai/openai": None}, {}])
+def test_only_a_missing_provider_key_is_new_ownership(ownership: object) -> None:
+    assert provider_has_prepared_ownership("openai", {"source_ownership": ownership}) == (ownership != {})
+    assert provider_has_prepared_ownership("openai", {})
+
+
+def test_additional_provider_has_typed_zero_quota_without_legacy_records() -> None:
+    source = schema("embedding-model", ModelType.TEXT_EMBEDDING)
+    hosting = HostingProvider(
+        enabled=True,
+        quota_unit=QuotaUnit.CREDITS,
+        quotas=[PaidHostingQuota(restrict_models=[RestrictModel(model=source.model, model_type=ModelType.LLM)])],
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[source],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(source)]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.PAID
+    assert len(result.quotas) == 1
+    quota = result.quotas[0]
+    assert (quota.quota_limit, quota.quota_used, quota.is_valid) == (0, 0, False)
+    assert [(item.model_type, item.model) for item in quota.restrict_models] == [
+        (ModelType.TEXT_EMBEDDING, source.model)
+    ]
+    config = SystemConfiguration(
+        enabled=True, current_quota_type=result.current_quota_type, quota_configurations=result.quotas
+    )
+    rule = next(iter(mappings_for_revision(json.dumps([mapping(source)]), "old").values()))
+    assert additional_model_is_authorized(system=config, installed_models=[source], mapping=rule)
+    assert not additional_model_is_authorized(system=config, installed_models=[source, source], mapping=rule)
+    config.quota_configurations[0].restrict_models = []
+    assert not additional_model_is_authorized(system=config, installed_models=[source], mapping=rule)
+
+
+@pytest.mark.parametrize(
+    "invalid", ["revision", "pool", "digest", "mode", "ops", "hosting", "unit", "unlimited", "provider"]
+)
+def test_additional_provider_requires_exact_frozen_server_contract(invalid: str) -> None:
+    source = schema()
+    record = mapping()
+    hosting = HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()])
+    if invalid == "revision":
+        record["mapping_revision"] = "newer"
+    elif invalid == "pool":
+        record["pool_types"] = ["trial"]
+    elif invalid == "digest":
+        record["source_schema_digest"] = "sha256:" + "0" * 64
+    elif invalid == "mode":
+        section(record, "source")["mode"] = "completion"
+    elif invalid == "ops":
+        record["operations"] = ["model/schema", "llm/invoke"]
+    elif invalid == "hosting":
+        hosting.quotas[0].restrict_models = [RestrictModel(model="different", model_type=ModelType.LLM)]
+    elif invalid == "unit":
+        hosting.quota_unit = QuotaUnit.TOKENS
+    elif invalid == "unlimited":
+        hosting.quotas = [TrialHostingQuota(quota_limit=-1)]
+    elif invalid == "provider":
+        section(record, "source")["provider_id"] = "anthropic"
+    original_hosting = hosting.model_dump()
+    assert (
+        additional_hosted_availability(
+            provider="openai",
+            hosting=hosting,
+            installed_models=[source],
+            original_quotas=[],
+            raw_registry=json.dumps([record]),
+            revision="old",
+        )
+        is None
+    )
+    assert hosting.model_dump() == original_hosting
+
+
+def test_additional_provider_pool_intersection_never_uses_unrelated_new_revision() -> None:
+    old_source, new_source = schema(), schema("new-model")
+    hosting = HostingProvider(
+        enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota(), TrialHostingQuota()]
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[old_source, new_source],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(pool_types=["paid"]), mapping(new_source, revision="new")]),
+        revision="old",
+    )
+    assert result is not None
+    assert len(result.quotas) == 1
+    assert result.quotas[0].quota_type == ProviderQuotaType.PAID
+    assert [entry.model for entry in result.quotas[0].restrict_models] == [old_source.model]
+
+
+@pytest.mark.parametrize("trial_only_hosting", [False, True])
+def test_trial_only_hosting_or_mapping_never_synthesizes_paid(trial_only_hosting: bool) -> None:
+    hosting = HostingProvider(
+        enabled=True,
+        quota_unit=QuotaUnit.CREDITS,
+        quotas=[TrialHostingQuota()] if trial_only_hosting else [PaidHostingQuota(), TrialHostingQuota()],
+    )
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=hosting,
+        installed_models=[schema()],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(pool_types=["paid", "trial"] if trial_only_hosting else ["trial"])]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.TRIAL
+    assert [quota.quota_type for quota in result.quotas] == [ProviderQuotaType.TRIAL]
+
+
+@pytest.mark.parametrize("explicit", ["placeholder", "non_llm", "deployment"])
+def test_additional_provider_reuses_preparation_ambiguity_rules(explicit: str) -> None:
+    llm, embedding = schema("shared-name"), schema("shared-name", ModelType.TEXT_EMBEDDING)
+    restricted = RestrictModel(model="shared-name", model_type=ModelType.LLM)
+    if explicit == "non_llm":
+        restricted.model_type = ModelType.TEXT_EMBEDDING
+    elif explicit == "deployment":
+        restricted.base_model_name = "base-model"
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(
+            enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota(restrict_models=[restricted])]
+        ),
+        installed_models=[llm, embedding],
+        original_quotas=[],
+        raw_registry=json.dumps([mapping(llm), mapping(embedding)]),
+        revision="old",
+    )
+    if explicit == "placeholder":
+        assert result is None
+    else:
+        assert result is not None
+        assert result.quotas[0].restrict_models[0].model_type == restricted.model_type
+
+
+@pytest.mark.parametrize(("pool", "limit"), [(ProviderQuotaType.FREE, 200), (ProviderQuotaType.TRIAL, -1)])
+def test_additional_provider_preserves_independent_allowances_without_mutation(
+    pool: ProviderQuotaType, limit: int
+) -> None:
+    original = system(pool=pool, limit=limit).quota_configurations
+    original[0].quota_used = 25
+    snapshot = [quota.model_dump() for quota in original]
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+        installed_models=[schema()],
+        original_quotas=original,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == pool
+    assert result.quotas[0].model_dump() == snapshot[0]
+    assert [quota.model_dump() for quota in original] == snapshot
+
+
+def test_additional_provider_does_not_let_free_pool_displace_existing_valid_paid_pool() -> None:
+    original = [*system().quota_configurations, *system(pool=ProviderQuotaType.FREE).quota_configurations]
+    result = additional_hosted_availability(
+        provider="openai",
+        hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+        installed_models=[schema()],
+        original_quotas=original,
+        raw_registry=json.dumps([mapping()]),
+        revision="old",
+    )
+    assert result is not None
+    assert result.current_quota_type == ProviderQuotaType.PAID
+    assert (
+        additional_hosted_availability(
+            provider="openai",
+            hosting=HostingProvider(enabled=True, quota_unit=QuotaUnit.CREDITS, quotas=[PaidHostingQuota()]),
+            installed_models=[schema()],
+            original_quotas=original,
+            raw_registry="[]",
+            revision="old",
+        )
+        is None
+    )
+
+
+@pytest.mark.parametrize("model_type", list(ModelType))
+def test_additional_mapping_requires_type_specific_daemon_operations(model_type: ModelType) -> None:
+    record = mapping(schema(model_type=model_type))
+    rule = next(iter(mappings_for_revision(json.dumps([record]), "old").values()))
+    assert mapping_has_required_operations(rule)
+    assert not mapping_has_required_operations(rule.model_copy(update={"operations": ["model/schema"]}))
+
+
+@pytest.mark.parametrize(
+    ("uid", "expected"),
+    [
+        ("langgenius/tokener:0.4.1-dev3@hash", True),
+        ("langgenius/tokener:0.1.1@hash", False),
+        ("evil/tokener:9.9.9@hash", False),
+        ("invalid", False),
+        ("langgenius/tokener:invalid@hash", False),
+    ],
+)
+def test_additional_mapping_checks_pinned_target_plugin(uid: str, expected: bool) -> None:
+    rule = next(iter(mappings_for_revision(json.dumps([mapping()]), "old").values()))
+    assert mapping_supports_installed_plugin(rule, uid) is expected
+    assert rule.source_schema_digest == model_schema_digest(schema())
 
 
 # Production allowlist inventory observed on 2026-10-27. This tests type
@@ -355,38 +899,68 @@ def test_inventory_keeps_all_compatibility_gates(mocker: MockerFixture, fault: s
 
 
 @pytest.mark.parametrize("revision", ["old", "new"])
-def test_active_tenant_selects_its_own_revision_and_freezes_it(mocker: MockerFixture, revision: str) -> None:
+def test_active_tenant_selects_its_own_revision_and_freezes_it(
+    mocker: MockerFixture, sqlite_session: Session, revision: str
+) -> None:
     from configs import dify_config
     from core.model_invocation_routing import redirect_payload, routed_credentials
-    from models.provider import ProviderType
 
     mocker.patch.object(
         dify_config,
         "TOKENER_LEGACY_MODEL_MAPPING_JSON",
         json.dumps([mapping(), mapping(revision="new", target="new-target")]),
     )
+    encrypted_config = '{"api_key":"ENCRYPTED"}'
+    tenant = Tenant(name="Revision fixture")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    credential = ProviderCredential(
+        tenant_id=tenant.id,
+        provider_name="langgenius/tokener/tokener",
+        credential_name="Managed fixture",
+        encrypted_config=encrypted_config,
+    )
+    sqlite_session.add(credential)
+    sqlite_session.flush()
+    integration = TenantTokenerIntegration(
+        tenant_id=tenant.id,
+        status=TenantTokenerIntegrationStatus.READY,
+        provider_credential_id=credential.id,
+        plugin_unique_identifier="langgenius/tokener:0.1.2@hash",
+    )
+    sqlite_session.add(integration)
+    sqlite_session.commit()
     state = {
         "phase": "active",
+        "persisted_model_billing_source": "tokener",
         "model_mapping_version": revision,
         "route_epoch": 1,
         "preparation": {
-            "tenant_id": "tenant",
+            "tenant_id": tenant.id,
             "provider_name": "langgenius/tokener/tokener",
-            "provider_credential_id": "credential",
-            "credential_fingerprint": "sha256:" + "a" * 64,
+            "provider_credential_id": credential.id,
+            "credential_fingerprint": canonical_hash({"encrypted_config": encrypted_config}),
         },
     }
     mocker.patch("core.model_invocation_routing.migration_routing_state", return_value=state)
-    session = Mock()
-    session.scalar.return_value = SimpleNamespace(
-        status="ready", provider_credential_id="credential", plugin_unique_identifier="langgenius/tokener:0.1.2@hash"
+    mocker.patch(
+        "core.model_invocation_routing.session_factory.create_session",
+        sessionmaker(bind=sqlite_session.get_bind(), expire_on_commit=False),
     )
-    mocker.patch("core.model_invocation_routing.session_factory.create_session", return_value=nullcontext(session))
-    config = Mock(
-        tenant_id="tenant",
-        provider=SimpleNamespace(provider="openai"),
-        system_configuration=system(),
+    config = ProviderConfiguration(
+        tenant_id=tenant.id,
+        provider=ProviderEntity(
+            provider="openai",
+            label=I18nObject(en_US="OpenAI"),
+            supported_model_types=[ModelType.LLM],
+            configurate_methods=[],
+            models=[schema()],
+        ),
+        system_configuration=system([RestrictModel(model="gpt-4o", model_type=ModelType.LLM)]),
+        custom_configuration=CustomConfiguration(provider=None),
+        preferred_provider_type=ProviderType.SYSTEM,
         using_provider_type=ProviderType.SYSTEM,
+        model_settings=[],
     )
     credentials = routed_credentials(config, ModelType.LLM, "gpt-4o")
     assert credentials is not None
@@ -402,21 +976,29 @@ def test_active_tenant_selects_its_own_revision_and_freezes_it(mocker: MockerFix
 def test_active_revision_missing_cannot_fall_forward_to_new(mocker: MockerFixture) -> None:
     from configs import dify_config
     from core.model_invocation_routing import ModelRouteUnmapped, routed_credentials
-    from models.provider import ProviderType
 
     mocker.patch.object(dify_config, "TOKENER_LEGACY_MODEL_MAPPING_JSON", json.dumps([mapping(revision="new")]))
     mocker.patch(
         "core.model_invocation_routing.migration_routing_state",
-        return_value={"phase": "active", "model_mapping_version": "old"},
+        return_value={"phase": "active", "model_mapping_version": "old", "persisted_model_billing_source": "tokener"},
     )
     session = mocker.patch("core.model_invocation_routing.session_factory.create_session")
     with pytest.raises(ModelRouteUnmapped):
         routed_credentials(
-            Mock(
+            ProviderConfiguration(
                 tenant_id="tenant",
-                provider=SimpleNamespace(provider="openai"),
+                provider=ProviderEntity(
+                    provider="openai",
+                    label=I18nObject(en_US="OpenAI"),
+                    supported_model_types=[ModelType.LLM],
+                    configurate_methods=[],
+                    models=[schema()],
+                ),
                 system_configuration=system(),
+                custom_configuration=CustomConfiguration(provider=None),
+                preferred_provider_type=ProviderType.SYSTEM,
                 using_provider_type=ProviderType.SYSTEM,
+                model_settings=[],
             ),
             ModelType.LLM,
             "gpt-4o",

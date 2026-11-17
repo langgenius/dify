@@ -43,7 +43,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_REDIS_URL` | `redis://localhost:6379/0` | Redis connection URL. |
 | `DIFY_AGENT_REDIS_PREFIX` | `dify-agent` | Prefix for Redis record and event keys. |
 | `DIFY_AGENT_SHUTDOWN_GRACE_SECONDS` | `30` | Seconds to wait for active local runs during graceful shutdown before cancellation. |
-| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records and per-run event streams after their last write; defaults to 2 hours. |
+| `DIFY_AGENT_RUN_RETENTION_SECONDS` | `7200` | Seconds to retain Redis run records, event streams, cancellation intents, and idempotency claims after their last write; defaults to 2 hours. |
 | `DIFY_AGENT_RUN_EVENT_STREAM_MAX_LENGTH` | `5000` | Approximate target maximum for replayable events retained in each per-run Redis Stream. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED` | `true` | Set `false` to publish each text delta without coalescing. |
 | `DIFY_AGENT_STREAM_TEXT_DELTA_FLUSH_INTERVAL_MS` | `100` | Soft debounce interval for compatible text deltas. Already-ready source events may continue to merge after this interval; a waiting source triggers the timed flush. Must be greater than zero; use `DIFY_AGENT_STREAM_TEXT_DELTA_COALESCING_ENABLED=false` to disable coalescing. |
@@ -57,7 +57,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_INNER_API_KEY` | empty | API key sent to Dify API inner plugin endpoints. Set this to Dify API `INNER_API_KEY_FOR_PLUGIN` (Docker: `PLUGIN_DIFY_INNER_API_KEY`). |
 | `DIFY_AGENT_RUNTIME_BACKEND` | `local` | Selects one coherent `local`, `enterprise`, `e2b`, or `openshell` Home Snapshot + Execution Binding backend profile. |
 | `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` | empty | Local shellctl data-plane URL. With the default Local selection, leaving it empty disables `dify.runtime` and resource endpoints. |
-| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Optional bearer token sent to Local shellctl. |
+| `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` | empty | Required nonblank bearer token when the Local endpoint is configured; must match shellctl's `SHELLCTL_AUTH_TOKEN`. |
 | `DIFY_AGENT_LOCAL_SANDBOX_MATERIALIZED_HOME_ROOT` | `/home/dify` | Root directory, on the Local shellctl filesystem, for per-Binding materialized Homes. |
 | `DIFY_AGENT_LOCAL_SANDBOX_WORKSPACE_ROOT` | `/workspace` | Root directory, on the Local shellctl filesystem, for mutable Workspaces. |
 | `DIFY_AGENT_LOCAL_SANDBOX_HOME_SNAPSHOT_ROOT` | `/home/dify/.snapshots` | Root directory, on the Local shellctl filesystem, for immutable Home Snapshots. |
@@ -72,7 +72,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_SHELL_REDACT_PATTERNS` | empty | JSON array of additional regex patterns redacted from Shell output. |
 | `DIFY_AGENT_STUB_API_BASE_URL` | empty | HTTP(S) Agent Stub API base URL reachable from the Sandbox. It may be the service root or `/agent-stub`. Enables `DIFY_AGENT_STUB_*` env injection for user `shell.run` jobs. |
 | `DIFY_AGENT_SANDBOX_FILES_BASE_URL` | empty | Dify API base URL reachable from the Sandbox for signed `/files/*` upload/download bytes, including Config file and skill pulls. Required when Agent Stub file operations are enabled. May include an ingress path prefix, but not a query or fragment. |
-| `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` | `50` | Agent service-owned maximum Agent Stub upload size in MiB. The file-request handler factory converts it to bytes and sends it to Dify API as the required `max_size` used to sign a size-limited upload URL. |
+| `DIFY_AGENT_STUB_UPLOAD_FILE_SIZE_LIMIT` | `50` | Agent service-owned maximum size in MiB for Agent Stub uploads and plugin tool `BLOB` persistence. The service converts it to bytes and sends it to Dify API as the required `max_size` used to sign a size-limited upload URL. Oversized plugin blobs return a text observation without allocating an upload URL. |
 | `DIFY_AGENT_SERVER_SECRET_KEY` | empty | Security-sensitive server-wide root secret used to derive the JWE encryption key for Agent Stub bearer tokens; required when `DIFY_AGENT_STUB_API_BASE_URL` is set. The supplied default config uses a development value; set a unique unpadded base64url 32-byte secret in production. |
 | `DIFY_AGENT_OUTBOUND_HTTP_CONNECT_TIMEOUT` | `10` | Shared outbound HTTP connect timeout in seconds. |
 | `DIFY_AGENT_OUTBOUND_HTTP_READ_TIMEOUT` | `600` | Shared outbound HTTP read timeout in seconds. |
@@ -82,6 +82,7 @@ in [E2B runtime metering](runtime-metering.md).
 | `DIFY_AGENT_OUTBOUND_HTTP_MAX_KEEPALIVE_CONNECTIONS` | `20` | Maximum idle shared outbound HTTP connections. |
 | `DIFY_AGENT_OUTBOUND_HTTP_KEEPALIVE_EXPIRY` | `30` | Idle keep-alive expiry in seconds. |
 | `DIFY_AGENT_TRAJECTORY_ENABLED` | `false` | Opt-in switch for the separate Agent trajectory export pipeline. |
+| `DIFY_AGENT_APPLICATION_TRACING_ENABLED` | `false` | Collect API-authorized application spans into the Dify inner API tracing inbox. Requires the server inner API URL and key. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_TRACES_ENDPOINT` | empty | Full HTTP(S) OTLP traces endpoint required when trajectory export is enabled. |
 | `DIFY_AGENT_TRAJECTORY_OTLP_HEADERS` | `{}` | JSON object of request headers sent with Agent OTLP trace exports. |
 | `DIFY_AGENT_TRAJECTORY_SERVICE_NAME` | `dify-agent-trajectory` | Resource service name attached to Agent trajectory spans. |
@@ -118,6 +119,48 @@ The two SDK instances, exporters, enable switch, and content opt-in remain
 separate. The mode is fixed at process initialization and requires a restart
 to change. No extra shared root span is added; incomplete traces may still
 appear temporarily while a run or export is in progress.
+
+Application tracing is a third, independent pipeline. When enabled, a run's
+API-issued `execution_context.tracing` supplies its durable run/invocation IDs,
+OpenTelemetry parent, session and content/sampling policy. Its spans are sent as
+JSON to `POST /inner/api/agent/tracing/batches`, authenticated with the server's
+`DIFY_AGENT_INNER_API_KEY` in `X-Inner-Api-Key`. Provider credentials and routing
+remain in the Dify API. Application spans do not inherit platform or deployment
+trajectory destinations, and one Agent is never instrumented by both application
+and deployment pipelines. Binary content is excluded.
+
+The actual model-call span also carries the Dify gateway's billed amount as
+`dify.llm.total_price` (a decimal string) and `dify.llm.currency` when a usage
+payload is returned. `gen_ai.response.time_to_first_token` is measured in seconds
+(`dify.llm.time_to_first_token_unit=s`): gateway-provided TTFT takes precedence;
+otherwise it measures request issue to the first content/tool-call chunk.
+`dify.llm.time_to_first_token_source` distinguishes those two sources. Missing
+accounting is left absent. The current Graphon LLM gateway does not expose cache
+token counters, so the Agent adapter does not manufacture them.
+
+Each batch has a stable `batch_id`. Retries reuse the same payload, and a 2xx
+response is accepted only with `{result: "success", batch_id, accepted_spans}`
+matching that batch. An invocation emits an empty `final: true` batch after its
+ended spans are flushed and acknowledged, before its normal terminal event when
+delivery completes within five seconds. Failure or cancellation still flushes.
+Collection failures do not fail the Agent run; outstanding delivery can finish
+in the background after the terminal-event deadline. A full in-memory queue or
+unacknowledged data suppresses completion instead of claiming a complete trace.
+The queue is bounded (2048 spans, batches of at most 128), with up to 128 unacknowledged
+batches retained until invocation finalization. Batches are split below 1 MiB
+of UTF-8 JSON. A single oversized span is dropped and marks its invocation
+incomplete rather than silently truncating content or sending a success marker.
+This is not a durable local
+spool: process loss can leave an incomplete trace in the API. Shutdown drains the
+collector after active runs finish.
+
+If setup fails or cancellation arrives before Pydantic AI starts its Agent span,
+the collector emits one failed `invoke_agent` span with the measured setup
+interval, then finalizes normally. It records `dify.agent.execution_state` as
+`initialization_failed` or `cancelled`. Runs that already started their native
+Agent span keep that span without an extra wrapper. Sampling-off invocations
+remain span-free; successful but unexplained empty collections are not converted
+to synthetic success.
 
 Example `.env`:
 
@@ -183,16 +226,43 @@ must use `DIFY_AGENT_LOCAL_SANDBOX_ENDPOINT` and
 `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN`. There is no compatibility setting for
 the removed shell-provider selector.
 
+Local shellctl deployments must start with `shellctl serve --require-auth-token`
+and set `SHELLCTL_AUTH_TOKEN` to the same secret as the Agent Backend. Compose's
+`local_sandbox` command enables this check; missing, empty, or whitespace-only
+tokens fail before service initialization. E2B and Enterprise retain their
+existing token requirements, and an unset Local endpoint still disables runtime.
+
+For Compose, set `DIFY_AGENT_LOCAL_SANDBOX_AUTH_TOKEN` in a shared interpolation
+source: the invoking shell, `docker/.env`, or a Compose `--env-file`. This supplies
+the same secret to Agent Backend and shellctl. Setting it only in a service env
+file is insufficient: Compose's explicit `environment` values override that
+file, including with an empty interpolated value. The legacy token alias remains
+accepted. Deploy this change with a rebuilt runtime image containing
+`--require-auth-token`; the previously published `1.17.1` image does not support
+the new flag.
+
+When shellctl path isolation is enabled, any Landlock setup error aborts the job
+with exit code `125` before its user script executes. Deployments may explicitly
+set `SHELLCTL_ENABLE_PATH_ISOLATION=false` to disable shellctl path isolation.
+
 The backend selection is deployment-private. Shell-enabled run requests use an
 Execution Context, `dify.runtime`, and `dify.shell` graph. Runtime config carries
 only the opaque `backend_binding_ref` resolved by Dify API. See
 [Runtime resources](../concepts/runtime-resources/index.md) for the ownership
 and lifecycle contract.
 
-Run records and event streams use the same retention. Status writes refresh the
-record TTL, and event writes refresh both the stream TTL and the corresponding
-record TTL so active runs that keep producing events remain observable. Text
-deltas for the same response part and provider metadata are coalesced within a
+Run records and event streams use the same `DIFY_AGENT_RUN_RETENTION_SECONDS`
+retention. Status writes refresh the record TTL, and event writes refresh both
+the stream TTL and the corresponding record TTL so active runs that keep
+producing events remain observable. Idempotency claims share that TTL. Event
+appends, accepted cancellation intents, and terminal success/failure/cancellation
+writes refresh a claim only when it is unowned or still belongs to the writing
+run; an older run cannot overwrite a newer owner after claim expiry. Passive
+admission replays extend neither the claim nor the run record TTL. Redis stores
+only the key digest, normalized request fingerprint, and run id for admission,
+never raw keys, layer Config, prompts, snapshots, or credentials.
+
+Text deltas for the same response part and provider metadata are coalesced within a
 soft debounce/size window before being published. The debounce timer flushes
 when reading the next source event would block; already-ready events may keep
 merging until the character threshold or a non-compatible event is reached.
@@ -358,8 +428,16 @@ blocks.
 
 ## Scheduling and shutdown semantics
 
-`POST /runs` persists a `running` run record and starts an `asyncio` task in the
-same process. There is no Redis job stream, consumer group, pending reclaim, or
+For a new admission, `POST /runs` persists a `running` run record and starts an
+`asyncio` task in the same process. An optional `idempotency_key` makes admission
+atomic across concurrent callers and server processes sharing the Redis prefix.
+The fingerprint includes the validated request with defaults and normalized
+snapshots, excluding `idempotency_key`. JSON object key order does not matter;
+list order, including `composition.layers`, is preserved. A matching retained
+request returns the original run and its current status without scheduling
+another task. Omitting the key or passing `null` creates a new run each time.
+
+There is no Redis job stream, consumer group, pending reclaim, or
 automatic retry layer. Request-shaped runtime failures such as bad composition,
 prompt, output, or snapshot inputs are reported later as failed runs rather than
 rejected synchronously once the request DTO itself is accepted.
@@ -397,11 +475,12 @@ response confirms that cancellation intent is durable; `GET /runs/{run_id}` may
 still report `running` until cleanup finishes. Retrying an accepted or completed
 cancellation is idempotent.
 
-Atomic terminal finalization currently assumes the configured Redis URL targets
-one Redis deployment that can execute all run-coordination keys in a Lua script.
-The record and event key names are unchanged, and cancellation adds a private
-cancel-intent key. These keys do not contain a shared Redis Cluster hash tag, so
-Redis Cluster is not supported for this transition. During
+Atomic admission, active-write retention refresh, and terminal finalization
+assume the configured Redis URL targets one Redis deployment that can execute
+all coordination keys in a Lua script, including the idempotency claim and its
+referenced run record. Record, event, cancel-intent, and claim keys do not contain
+a shared Redis Cluster hash tag, so Redis Cluster is not supported for these
+operations. During
 a rolling upgrade, older processes can still use the former split event/status
 writes; treat the single-terminal invariant as active only after those processes
 have exited. Deploy atomic terminal finalization everywhere first, then ensure
@@ -469,7 +548,14 @@ is presented, independently of its file `type` (`image`, `document`, `audio`,
 - `delivery: "download"` preserves the original file `type`, including `image`
   when the selected model has no Vision feature. It contains either
   `transfer_method: "remote_url"` with `url`, or a `local_file`, `tool_file`, or
-  `datasource_file` transfer method with a canonical `reference`.
+  `datasource_file` transfer method with a canonical `reference`. An optional
+  `filename` identifies the attachment in the rendered file locators.
+
+When an Agent App has KnowledgeFS spaces, each uploaded `local_file` image sent
+as multimodal content also has a named download entry. The model receives the
+image directly and can use its canonical `reference` with
+`dify-agent knowledge search --image-file-id`. Remote URLs and tool/datasource
+file references are not valid upload references for KnowledgeFS image search.
 
 The module appends sandbox file-download instructions for download attachments
 and adds multimodal attachments as structured model content. Callers keep
@@ -494,7 +580,13 @@ returned. Product Workspace retirement remains owned by the API.
 Use the HTTP status endpoint for coarse state and the event endpoints for detailed
 progress:
 
-- `POST /runs` creates a running run and schedules it locally.
+- `POST /runs` returns HTTP `202` with a new running run scheduled locally, or
+  the original `run_id` and current `RunStatus` (`running`, `succeeded`, `failed`,
+  or `cancelled`) on an exact keyed replay within retention. Reusing the same
+  `idempotency_key` with a different normalized payload while its claimed run
+  record remains live returns HTTP `409 Conflict`. Empty or whitespace-only
+  keys return HTTP `422` referencing `idempotency_key`; nonblank keys are used
+  verbatim, including surrounding whitespace.
 - `GET /runs/{run_id}` returns `running`, `succeeded`, `failed`, or `cancelled`.
   Failed records can also expose a stable machine-readable `error_type` alongside
   the diagnostic `error` text.
@@ -512,6 +604,14 @@ progress:
   delivering a terminal event. Clients must stop reconnecting after consuming
   that event. Both cursor forms remain exclusive resume cursors, so the server
   does not resend a terminal event that the supplied cursor already excludes.
+
+Both event endpoints replay with nonblocking `XREAD`, which supports exclusive
+resume cursors on Redis 6.0, including 6.0.14. `0-0` starts at the earliest
+retained event. Polling returns at most `limit` events; an empty page preserves
+the supplied `after` as `next_cursor`. SSE switches to blocking reads after
+replay is exhausted. Both endpoints return `404` when the run record is missing.
+This read-command compatibility does not define the platform's full Redis
+support matrix; the Redis deployment constraints above still apply.
 
 Successful runs emit `run_started`, zero or more `pydantic_ai_event`, and
 `run_succeeded`. Failed runs end with `run_failed`, and accepted cancellations
@@ -546,3 +646,49 @@ The repository includes simple consumers that print observed output/events:
 
 The create-run examples submit Dify plugin model modules, so they require Redis,
 the Agent server, Dify API gateway settings, and a configured model provider in Dify.
+
+### Automatic KnowledgeFS quality reporting
+
+Knowledge CLI calls now contribute bounded, server-owned investigation observations.
+The Stub records command IDs, queries/paths, outcomes, error codes, timing, small text
+snippets and receipt IDs. The runtime separately marks which observations were delivered
+to the model. This ledger survives the consumable tool-result queue and session cleanup.
+It shares the knowledge budget's two-hour retention and identity boundary. A human-input
+pause retains the investigation; a resumed run continues it. A new user turn gets a fresh
+investigation. Images and bearer capabilities are never included in these observations.
+
+After the authoritative final-answer event, the runtime submits the original question,
+final answer and observations to the private Dify API. Failed runs submit an interrupted
+report; cancellation leaves a bounded diagnostic ledger and does not create quality cases.
+A human-input pause does not submit a final report. Queue admission is retried with the same
+investigation ID, and submission failures do not change the completed Agent result.
+
+The existing `dataset` Celery workers process one job per investigated knowledge space.
+Each attempt reconstructs the Agent/app/configuration ownership and reissues a capability.
+An authorization fingerprint binds observations to the original caller, ACL/content policy
+revisions and content scopes; a changed scope rejects publication of old observations.
+Agent applications, Workflow Agent nodes and interactive previews use their actual caller
+identities and a dedicated `queries.agent_investigation.capture` action.
+
+KnowledgeFS makes one batched assessment of the space's complete investigation using its
+configured reasoning model with a 60-second model budget. The worker uses the existing
+`KNOWLEDGE_FS_RETRIEVAL_TEST_TIMEOUT_SECONDS` transport timeout for this operation.
+Query rewrites and recovered empty searches are grouped. An
+unresolved subquestion produces a failed-query record; only `retrieval-miss` produces a
+quality bad case tagged `agent`, `auto-captured`, `retrieval-miss`. Coverage gaps, unrelated
+questions and uncertain issues do not become retrieval bad cases. Tool errors, directory
+probing, unobserved results, image-only investigations and interruptions cannot by themselves
+produce a bad case. If the model is unavailable or returns an invalid assessment, the trace
+is retained as uncertain without automatic cases.
+
+The committed assessment and stable child IDs fence retries, so projection retries do not
+create duplicate failed queries/cases or repeat the committed judgment. Separate unanswered
+subquestions remain separate, with at most eight issues per space. The original question and
+bounded command history remain linked to each issue trace. The final answer is used for
+assessment but is not copied into a knowledge space's shared trace, since it may contain
+content from other spaces. Document snippets likewise remain transient classifier input;
+shared traces retain command metadata and receipt IDs without copying document text outside
+the existing evidence permission projection. Reports are best-effort: after bounded dispatch retries, an
+undelivered report remains only in the expiring runtime ledger. Deploy matching Agent,
+Dify API/worker and KnowledgeFS versions to enable the complete path; no new environment
+variable or Agent tool is required.

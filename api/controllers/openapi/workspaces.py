@@ -21,6 +21,7 @@ from werkzeug.exceptions import BadRequest, NotFound
 
 from configs import dify_config
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.rbac import RBACCheck, RBACPermission, Workspace
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint
@@ -77,6 +78,7 @@ def _member_response(account: WorkspaceMemberRecord) -> MemberResponse:
 class WorkspacesApi(Resource):
     @endpoint(
         op="get.workspace",
+        pat_policy=PersonalAccessTokenPolicy.WORKSPACE_DISCOVERY,
         kind=Kind.LIST,
         summary="List workspaces of the current account",
         examples=(Example(title="List my workspaces, first page", input={"page": 1, "limit": 20}),),
@@ -87,11 +89,11 @@ class WorkspacesApi(Resource):
     def get(self, ctx: Context, *, query: WorkspaceListQuery):
         if isinstance(ctx.subject, ResourceAccessSubject):
             tenant = ctx.workspace
-            item = WorkspaceSummaryResponse(
-                id=str(tenant.id), name=tenant.name, role="", status=tenant.status, current=True
-            )
+            item = WorkspaceSummaryResponse(id=str(tenant.id), name=tenant.name, role="", status=tenant.status)
             return WorkspaceListResponse.page_of([item], query=query)
         rows = application_services().workspaces.management.list_memberships(str(ctx.subject.account_id))
+        if ctx.personal_workspace_ids is not None:
+            rows = tuple(row for row in rows if row.id in ctx.personal_workspace_ids)
         return WorkspaceListResponse.page_of([_workspace_summary(row) for row in rows], query=query)
 
 
@@ -208,15 +210,15 @@ class WorkspaceMembersApi(Resource):
                 role=body.role,
             )
         except AccountAlreadyInTenantError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
-        except SeatsLimitExceededError:
-            raise BadRequest("licensed seats limit exceeded")
+            raise BadRequest(str(exc)) from exc
+        except SeatsLimitExceededError as caught_error:
+            raise BadRequest("licensed seats limit exceeded") from caught_error
         except AccountRegisterError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
 
         return _invitation_response(invitation)
 
@@ -252,11 +254,11 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
 
         return MemberActionResponse()
 
@@ -287,13 +289,13 @@ class WorkspaceMemberApi(Resource):
         except AccountNotFoundError:
             raise NotFound("member not found") from None
         except CannotOperateSelfError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except NoPermissionError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except MemberNotInTenantError as exc:
-            raise NotFound(str(exc))
+            raise NotFound(str(exc)) from exc
         except RoleAlreadyAssignedError as exc:
-            raise BadRequest(str(exc))
+            raise BadRequest(str(exc)) from exc
         except InvalidWorkspaceMemberRoleError as exc:
             raise BadRequest(str(exc)) from exc
 
@@ -325,7 +327,6 @@ def _workspace_summary(tenant: WorkspaceSnapshot) -> WorkspaceSummaryResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
     )
 
 
@@ -335,6 +336,5 @@ def _workspace_detail(tenant: WorkspaceSnapshot) -> WorkspaceDetailResponse:
         name=tenant.name,
         role=tenant.role or "",
         status=tenant.status,
-        current=tenant.current,
         created_at=tenant.created_at.isoformat() if tenant.created_at else None,
     )

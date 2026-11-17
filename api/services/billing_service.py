@@ -1,113 +1,30 @@
-import json
+from __future__ import annotations
+
 import logging
-import os
-from collections.abc import Sequence
-from datetime import date, datetime
-from typing import Any, Literal, NotRequired, TypedDict
+import re
+from collections.abc import Mapping, Sequence
+from typing import Literal, NotRequired, TypedDict
 from warnings import deprecated
 
-import httpx
 from pydantic import TypeAdapter, ValidationError
-from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
-from werkzeug.exceptions import InternalServerError
 
-from configs import dify_config
-from core.helper.http_client_pooling import get_pooled_http_client
 from enums import CloudPlan
 from extensions.ext_redis import redis_client
-from services.billing_portal_service import BillingPortalLink
-from services.compliance_download_service import ComplianceDownloadLink
-from services.entities.tokener_metering import (
-    TokenerAllowanceMetering,
-    TokenerCurrentMonthAvailableMetering,
-    TokenerCurrentMonthMetering,
-    TokenerCurrentMonthUnavailableMetering,
-    TokenerTenantMeteringResponse,
-)
+from services.billing_client import billing, saas, transport
+from services.entities.tokener_metering import TokenerTenantMeteringResponse
 from services.errors.billing import (
     BillingUpstreamInvalidResponseError,
     BillingUpstreamUnavailableError,
     LegacyCreditPoolManagedByTokenerError,
-    TokenerEducationCheckoutUnsupportedError,
 )
-
-__all__ = [
-    "AccountNotificationDict",
-    "BillingInfo",
-    "BillingService",
-    "DismissNotificationDict",
-    "EducationAutocompleteResponseDict",
-    "EducationStatusResponseDict",
-    "EducationVerifyResponseDict",
-    "EmailFreezeType",
-    "KnowledgeRateLimitDict",
-    "LangContentDict",
-    "MessageResponseDict",
-    "NotificationDict",
-    "QuotaBalanceResult",
-    "QuotaCommitResult",
-    "QuotaConsumeCappedResult",
-    "QuotaReleaseResult",
-    "QuotaReserveResult",
-    "SubscriptionPlan",
-    "TenantFeaturePlanUsageDict",
-    "TenantFeatureQuotaInfo",
-    "TokenerAllowanceMetering",
-    "TokenerBootstrapUpstreamError",
-    "TokenerCurrentMonthAvailableMetering",
-    "TokenerCurrentMonthMetering",
-    "TokenerCurrentMonthUnavailableMetering",
-    "TokenerTenantBootstrapResponse",
-    "TokenerTenantMeteringResponse",
-]
 
 logger = logging.getLogger(__name__)
-
-_http_client: httpx.Client = get_pooled_http_client(
-    "billing:default",
-    lambda: httpx.Client(
-        timeout=httpx.Timeout(30.0, connect=5.0),
-        limits=httpx.Limits(max_keepalive_connections=50, max_connections=100),
-    ),
-)
-
 
 EmailFreezeType = Literal["freeze", "email_domain_suspended"]
 
 
-class _BillingHTTPStatusError(ValueError):
-    def __init__(self, message: str, status_code: int, upstream_error_code: str | None = None) -> None:
-        super().__init__(message)
-        self.status_code = status_code
-        self.upstream_error_code = upstream_error_code
-
-
-_TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED = "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED"
-_CREDIT_MANAGED_BY_TOKENER = "CREDIT_MANAGED_BY_TOKENER"
-
-
-def _safe_billing_error_code(response: httpx.Response) -> str | None:
-    """Keep only explicitly supported upstream codes; never retain arbitrary error bodies."""
-    try:
-        payload = response.json()
-    except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
-        return None
-    if not isinstance(payload, dict):
-        return None
-
-    candidates = [payload.get("reason"), payload.get("code")]
-    nested_error = payload.get("error")
-    if isinstance(nested_error, dict):
-        candidates.append(nested_error.get("code"))
-    if _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED in candidates:
-        return _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
-    if _CREDIT_MANAGED_BY_TOKENER in candidates:
-        return _CREDIT_MANAGED_BY_TOKENER
-    return None
-
-
 class TokenerBootstrapUpstreamError(RuntimeError):
-    """Sanitized failure returned by the billing-side Tokener bootstrap API."""
+    """Sanitized bootstrap failure; no remote response or credential crosses this boundary."""
 
     def __init__(self, error_code: str, *, retryable: bool) -> None:
         super().__init__(error_code)
@@ -115,196 +32,23 @@ class TokenerBootstrapUpstreamError(RuntimeError):
         self.retryable = retryable
 
 
-class SubscriptionPlan(TypedDict):
-    """Tenant subscriptionplan information."""
-
-    plan: str
-    expiration_date: int
-
-
-class MessageResponseDict(TypedDict):
-    message: str
-
-
-class EducationVerifyResponseDict(TypedDict):
-    token: str
-
-
-class EducationStatusResponseDict(TypedDict):
-    result: bool
-    is_student: bool
-    expire_at: str
-    allow_refresh: bool
-
-
 class TokenerTenantBootstrapResponse(TypedDict):
     tenant_id: str
     status: Literal["pending", "ready"]
-    data_plane_api_key: NotRequired[str]
     retryable: bool
+    data_plane_api_key: NotRequired[str]
     error_code: NotRequired[str]
 
 
-class EducationAutocompleteResponseDict(TypedDict):
-    data: list[str]
-    curr_page: int
-    has_next: bool
-
-
-_billing_portal_link_adapter = TypeAdapter(BillingPortalLink)
-
-
-_compliance_download_link_adapter = TypeAdapter(ComplianceDownloadLink)
-
-
-class QuotaReserveResult(TypedDict):
-    reservation_id: str
-    available: int
-    reserved: int
-    reserved_amount: NotRequired[int]
-
-
-class QuotaCommitResult(TypedDict):
-    available: int
-    reserved: int
-    refunded: int
-
-
-class QuotaReleaseResult(TypedDict):
-    available: int
-    reserved: int
-    released: int
-
-
-class QuotaBalanceResult(TypedDict):
-    available: int
-    reserved: int
-    quota: int
-    usage: int
-    exhausted_at: NotRequired[int]
-
-
-class QuotaConsumeCappedResult(TypedDict):
-    deducted: int
-    available: int
-    reserved: int
-    quota: int
-    usage: int
-
-
-_quota_reserve_adapter = TypeAdapter(QuotaReserveResult)
-_quota_commit_adapter = TypeAdapter(QuotaCommitResult)
-_quota_release_adapter = TypeAdapter(QuotaReleaseResult)
-_quota_balance_adapter = TypeAdapter(QuotaBalanceResult)
-_quota_consume_capped_adapter = TypeAdapter(QuotaConsumeCappedResult)
-
-
-class _TenantFeatureQuota(TypedDict):
-    usage: int
-    limit: int
-    reset_date: NotRequired[int]
-
-
-class TenantFeatureQuotaInfo(TypedDict):
-    """Response of /quota/info.
-
-    NOTE (hj24):
-    - Same convention as BillingInfo: billing may return int fields as str,
-      always keep non-strict mode to auto-coerce.
-    """
-
-    trigger_event: _TenantFeatureQuota
-    api_rate_limit: _TenantFeatureQuota
-
-
-_tenant_feature_quota_info_adapter = TypeAdapter(TenantFeatureQuotaInfo)
-
-
-class _BillingQuota(TypedDict):
-    size: int
-    limit: int
-
-
-class _VectorSpaceQuota(TypedDict):
-    size: float
-    limit: int
-    usage_unknown: NotRequired[bool]
-
-
-class _BillingSubscription(TypedDict):
-    plan: str
-    interval: str
-    education: bool
-
-
-class BillingInfo(TypedDict):
-    """Response of /subscription/info.
-
-    NOTE (hj24):
-    - Fields not listed here (e.g. trigger_event, api_rate_limit) are stripped by TypeAdapter.validate_python()
-    - To ensure the precision, billing may convert fields like int as str, be careful when use TypeAdapter:
-        1. validate_python in non-strict mode will coerce it to the expected type
-        2. In strict mode, it will raise ValidationError
-        3. To preserve compatibility, always keep non-strict mode here and avoid strict mode
-    """
-
-    subscription: _BillingSubscription
-    members: _BillingQuota
-    apps: _BillingQuota
-    vector_space: NotRequired[_VectorSpaceQuota]
-    documents_upload_quota: _BillingQuota
-    annotation_quota_limit: _BillingQuota
-    can_replace_logo: bool
-    model_load_balancing_enabled: bool
-    knowledge_pipeline_publish_enabled: bool
-    next_credit_reset_date: NotRequired[int]
-
-
-_billing_info_adapter = TypeAdapter(BillingInfo)
-_vector_space_quota_adapter = TypeAdapter(_VectorSpaceQuota)
 _tokener_tenant_metering_adapter = TypeAdapter(TokenerTenantMeteringResponse)
 
 
-class KnowledgeRateLimitDict(TypedDict):
-    limit: int
-    subscription_plan: str
-
-
-class TenantFeaturePlanUsageDict(TypedDict):
-    result: str
-    history_id: str
-
-
-class LangContentDict(TypedDict):
-    lang: str
-    title: str
-    subtitle: str
-    body: str
-    title_pic_url: str
-
-
-class NotificationDict(TypedDict):
-    notification_id: str
-    contents: dict[str, LangContentDict]
-    frequency: Literal["once", "every_page_load"]
-
-
-class AccountNotificationDict(TypedDict, total=False):
-    should_show: bool
-    notification: NotificationDict
-    shouldShow: bool
-    notifications: list[dict]
-
-
-class DismissNotificationDict(TypedDict):
-    success: bool
+def _quota_meta(meta: Mapping[str, object] | None) -> dict[str, str]:
+    """The spec types quota metadata as a string map."""
+    return {key: value if isinstance(value, str) else str(value) for key, value in (meta or {}).items()}
 
 
 class BillingService:
-    base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
-    quota_base_url = os.environ.get("BILLING_QUOTA_API_URL") or base_url
-    secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
-
     # Redis key prefix for tenant plan cache
     _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
     # Cache TTL: 10 minutes
@@ -312,168 +56,137 @@ class BillingService:
 
     @classmethod
     def bootstrap_tokener_tenant(cls, tenant_id: str, display_name: str) -> TokenerTenantBootstrapResponse:
-        """Ensure the remote Tokener org and trial allowance without logging its one-time key."""
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
-        if not base_url:
+        """Ensure the admitted tenant's org via the generated internal billing operation.
+
+        Preserve tenant identity and pending/ready semantics; only a ready result
+        returns a one-time key. Failures expose safe codes, never upstream bodies.
+        """
+        if not transport.tokener_billing_is_configured():
             raise TokenerBootstrapUpstreamError("tokener_billing_api_not_configured", retryable=False)
         try:
-            payload = cls._send_request(
-                "POST",
-                f"/internal/v1/tokener/tenants/{tenant_id}/bootstrap",
-                json={"tenant_id": tenant_id, "display_name": display_name},
-                base_url=base_url,
+            reply = billing.tokener_bootstrap_tenant(
+                tenant_id=tenant_id,
+                body=billing.TokenerTenantBootstrapPayload(tenant_id=tenant_id, display_name=display_name),
             )
-        except _BillingHTTPStatusError as error:
-            retryable = error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            )
-            raise TokenerBootstrapUpstreamError("tokener_bootstrap_http_error", retryable=retryable) from None
-        except httpx.RequestError:
+        except billing.BillingTokenerUpstreamUnavailableError:
             raise TokenerBootstrapUpstreamError("tokener_bootstrap_unavailable", retryable=True) from None
-
-        if not isinstance(payload, dict):
-            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
-
-        raw_data_plane_api_key = payload.pop("data_plane_api_key", None)
-        response_tenant_id = payload.get("tenant_id")
-        status = payload.get("status")
-        retryable = payload.get("retryable", status == "pending")
-        raw_error_code = payload.get("error_code")
-        error_code = (
-            raw_error_code
-            if isinstance(raw_error_code, str)
-            and raw_error_code
-            and len(raw_error_code) <= 100
-            and all(character.isalnum() or character in "_-" for character in raw_error_code)
-            else None
-        )
-
-        if response_tenant_id != tenant_id or status not in {"pending", "ready"} or not isinstance(retryable, bool):
-            raw_data_plane_api_key = None
-            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
-
-        response: TokenerTenantBootstrapResponse = {
-            "tenant_id": tenant_id,
-            "status": status,
-            "retryable": retryable,
-        }
-        if error_code:
-            response["error_code"] = error_code
-
-        if status == "ready":
-            if not isinstance(raw_data_plane_api_key, str) or not raw_data_plane_api_key:
-                raw_data_plane_api_key = None
-                raise TokenerBootstrapUpstreamError("tokener_bootstrap_key_missing", retryable=True)
-            response["data_plane_api_key"] = raw_data_plane_api_key
-        raw_data_plane_api_key = None
-
-        return response
+        except billing.BillingTokenerUpstreamInvalidResponseError:
+            raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False) from None
+        key = reply.data_plane_api_key
+        try:
+            if reply.tenant_id != tenant_id or reply.status not in {"pending", "ready"}:
+                raise TokenerBootstrapUpstreamError("tokener_bootstrap_invalid_response", retryable=False)
+            result: TokenerTenantBootstrapResponse = {
+                "tenant_id": tenant_id,
+                "status": "ready" if reply.status == "ready" else "pending",
+                "retryable": reply.retryable,
+            }
+            if reply.error_code and re.fullmatch(r"[A-Za-z0-9_-]{1,100}", reply.error_code, flags=re.ASCII):
+                result["error_code"] = reply.error_code
+            if reply.status == "ready":
+                if not isinstance(key, str) or not key:
+                    raise TokenerBootstrapUpstreamError("tokener_bootstrap_key_missing", retryable=True)
+                result["data_plane_api_key"] = key
+            return result
+        finally:
+            reply.data_plane_api_key = None
+            key = None
 
     @classmethod
     def get_tokener_metering(cls, tenant_id: str) -> TokenerTenantMeteringResponse:
-        """Read secret-free Tokener balance and current-month usage from the internal billing API."""
-        base_url = dify_config.TOKENER_BILLING_API_URL.strip().rstrip("/")
-        if not base_url:
+        """Read validated tenant metering without turning unavailable usage into zero.
+
+        The generated operation enforces its response schema. This adapter also
+        checks tenant ownership and the available/unavailable union's field presence.
+        No persistence, fallback balance, or financial mutation occurs here.
+        """
+        if not transport.tokener_billing_is_configured():
             raise BillingUpstreamUnavailableError
-
         try:
-            payload = cls._send_request(
-                "GET",
-                f"/internal/v1/tokener/tenants/{tenant_id}/metering",
-                base_url=base_url,
-            )
-        except _BillingHTTPStatusError as error:
-            if error.status_code in {
-                httpx.codes.REQUEST_TIMEOUT,
-                httpx.codes.TOO_MANY_REQUESTS,
-                httpx.codes.SERVICE_UNAVAILABLE,
-            } or (error.status_code >= 500 and error.status_code != httpx.codes.BAD_GATEWAY):
-                raise BillingUpstreamUnavailableError from None
-            raise BillingUpstreamInvalidResponseError from None
-        except httpx.RequestError:
+            reply = billing.tokener_get_tenant_metering(tenant_id=tenant_id)
+        except billing.BillingTokenerUpstreamUnavailableError as error:
+            if error.status_code == 502:
+                raise BillingUpstreamInvalidResponseError from None
             raise BillingUpstreamUnavailableError from None
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except billing.BillingTokenerUpstreamInvalidResponseError:
             raise BillingUpstreamInvalidResponseError from None
-
+        payload = reply.model_dump(mode="json", by_alias=True, exclude_unset=True)
         try:
             metering = _tokener_tenant_metering_adapter.validate_python(payload, strict=True)
             if metering["tenant_id"] != tenant_id:
                 raise ValueError("tenant mismatch")
-
-            current_month = metering["current_month"]
-            raw_current_month = payload.get("current_month") if isinstance(payload, dict) else None
-            if not isinstance(raw_current_month, dict):
-                raise ValueError("invalid current-month usage")
-            if current_month["status"] == "available":
-                if "usage_generated_at" not in metering or "error_code" in raw_current_month:
+            current_month = payload["current_month"]
+            if metering["current_month"]["status"] == "available":
+                if "usage_generated_at" not in metering or "error_code" in current_month:
                     raise ValueError("incomplete available usage")
             elif (
-                "billed_usd_micro" in raw_current_month
-                or "request_count" in raw_current_month
+                "billed_usd_micro" in current_month
+                or "request_count" in current_month
                 or "usage_generated_at" in metering
             ):
                 raise ValueError("unavailable usage must not contain metrics")
-
-            start_date = date.fromisoformat(current_month["start_date"])
-            end_date = date.fromisoformat(current_month["end_date"])
-            if start_date > end_date:
-                raise ValueError("invalid usage period")
-
-            generated_at_values = [metering["balance_generated_at"]]
-            usage_generated_at = metering.get("usage_generated_at")
-            if usage_generated_at is not None:
-                generated_at_values.append(usage_generated_at)
-            for generated_at_value in generated_at_values:
-                generated_at = datetime.fromisoformat(generated_at_value)
-                if generated_at.utcoffset() is None:
-                    raise ValueError("timestamp must include a timezone")
-
-            allowance = metering.get("allowance")
-            if allowance is not None:
-                allowance_start = datetime.fromisoformat(allowance["starts_at"])
-                allowance_end = datetime.fromisoformat(allowance["ends_at"])
-                if allowance_start.utcoffset() is None or allowance_end.utcoffset() is None:
-                    raise ValueError("allowance timestamps must include a timezone")
-                if allowance_start >= allowance_end:
-                    raise ValueError("invalid allowance period")
-                if int(allowance["available_usd_micro"]) > int(allowance["amount_usd_micro"]):
-                    raise ValueError("allowance available amount exceeds total")
-        except (TypeError, ValueError, ValidationError):
+        except (KeyError, TypeError, ValueError):
             raise BillingUpstreamInvalidResponseError from None
-
         return metering
 
     @classmethod
-    def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> BillingInfo:
-        params = {"tenant_id": tenant_id}
-        if exclude_vector_space:
-            params["exclude_vector_space"] = "true"
-
-        billing_info = cls._send_request("GET", "/subscription/info", params=params)
-        if exclude_vector_space and billing_info.get("vector_space") is None:
-            # Unset proto message fields can be serialized as null; the light billing contract treats it as absent.
-            billing_info.pop("vector_space", None)
-        return _billing_info_adapter.validate_python(billing_info)
+    def prepare_tokener_migration(
+        cls, tenant_id: str, payload: billing.TokenerMigrationPreparePayload
+    ) -> billing.TokenerMigrationPrepareResult:
+        """Dispatch the original bounded prepare contract; 202 is a typed pending result, not success funding."""
+        result = billing.tokener_migration_prepare_migration(tenant_id=tenant_id, body=payload)
+        if result.tenant_id != tenant_id or result.status not in {"pending", "ready"}:
+            result.data_plane_api_key = None
+            raise billing.BillingTokenerMigrationUpstreamInvalidResponseError("Migration preparation identity mismatch")
+        return result
 
     @classmethod
-    def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> _VectorSpaceQuota:
-        params = {"tenant_id": tenant_id}
-        if bypass_cache:
-            params["bypass_cache"] = "true"
-        return _vector_space_quota_adapter.validate_python(
-            cls._send_request("GET", "/subscription/vector-space", params=params)
+    def resume_tokener_migration(
+        cls, tenant_id: str, payload: billing.TokenerMigrationResumePayload
+    ) -> billing.TokenerMigrationReconcileResult:
+        """Resume the same persisted migration intent through the generated operation only."""
+        result = billing.tokener_migration_resume_migration(tenant_id=tenant_id, body=payload)
+        if (result.tenant_id, result.migration_id, result.status) != (tenant_id, payload.migration_id, "reconciled"):
+            raise billing.BillingTokenerMigrationUpstreamInvalidResponseError("Migration recovery identity mismatch")
+        return result
+
+    @classmethod
+    def claim_free_tokener_migration(
+        cls, tenant_id: str, payload: billing.TokenerMigrationClaimFreePayload
+    ) -> billing.TokenerMigrationReconcileResult:
+        """Claim the selected free migration without bypassing Billing's eligibility or locks."""
+        result = billing.tokener_migration_claim_free_migration(tenant_id=tenant_id, body=payload)
+        if (result.tenant_id, result.migration_id, result.status) != (tenant_id, payload.migration_id, "reconciled"):
+            raise billing.BillingTokenerMigrationUpstreamInvalidResponseError("Free migration claim identity mismatch")
+        return result
+
+    @classmethod
+    def get_info(cls, tenant_id: str, exclude_vector_space: bool = False) -> billing.GetSubscriptionInfoReply:
+        return billing.subscription_get_subscription_info(
+            tenant_id=tenant_id, exclude_vector_space=exclude_vector_space
         )
+
+    @classmethod
+    def is_cloud_paid_plan(cls, tenant_id: str) -> bool:
+        """Return whether the given Cloud tenant has Professional or Team billing.
+
+        The tenant ID must be trusted. A billing failure propagates without
+        granting access; this method has no state changes.
+        """
+        plan = cls.get_info(tenant_id, exclude_vector_space=True).subscription.plan
+        return plan in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM)
+
+    @classmethod
+    def get_vector_space(cls, tenant_id: str, bypass_cache: bool = False) -> billing.VectorSpaceQuota:
+        return billing.subscription_get_subscription_vector_space(tenant_id=tenant_id, bypass_cache=bypass_cache)
 
     @classmethod
     def invalidate_vector_space_cache(cls, tenant_id: str) -> None:
         cls.get_vector_space(tenant_id, bypass_cache=True)
 
     @classmethod
-    def get_quota_info(cls, tenant_id: str) -> TenantFeatureQuotaInfo:
-        params = {"tenant_id": tenant_id}
-        return _tenant_feature_quota_info_adapter.validate_python(
-            cls._send_quota_request("GET", "/quota/info", params=params)
-        )
+    def get_quota_info(cls, tenant_id: str) -> billing.QuotaGetInfoReply:
+        return billing.quota_get_quota_info(tenant_id=tenant_id)
 
     @classmethod
     def quota_reserve(
@@ -482,24 +195,22 @@ class BillingService:
         feature_key: str,
         request_id: str,
         amount: int = 1,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
         capped: bool = False,
-    ) -> QuotaReserveResult:
+    ) -> billing.QuotaReserveReply:
         """Reserve quota before task execution."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "request_id": request_id,
-            "amount": amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
-        if capped:
-            payload["capped"] = True
-        return _quota_reserve_adapter.validate_python(cls._send_quota_request("POST", "/quota/reserve", json=payload))
+        return billing.quota_reserve(
+            body=billing.QuotaReserveReq(
+                tenant_id=tenant_id,
+                feature_key=feature_key,
+                request_id=request_id,
+                amount=amount,
+                meta=_quota_meta(meta),
+                bucket=bucket,
+                capped=capped,
+            )
+        )
 
     @classmethod
     def quota_commit(
@@ -508,53 +219,45 @@ class BillingService:
         feature_key: str,
         reservation_id: str,
         actual_amount: int,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
-    ) -> QuotaCommitResult:
+    ) -> billing.QuotaCommitReply:
         """Commit a reservation with actual consumption."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "reservation_id": reservation_id,
-            "actual_amount": actual_amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
-        return _quota_commit_adapter.validate_python(cls._send_quota_request("POST", "/quota/commit", json=payload))
+        return billing.quota_commit(
+            body=billing.QuotaCommitReq(
+                tenant_id=tenant_id,
+                feature_key=feature_key,
+                reservation_id=reservation_id,
+                actual_amount=actual_amount,
+                meta=_quota_meta(meta),
+                bucket=bucket,
+            )
+        )
 
     @classmethod
     def quota_release(
         cls, tenant_id: str, feature_key: str, reservation_id: str, bucket: str = ""
-    ) -> QuotaReleaseResult:
+    ) -> billing.QuotaReleaseReply:
         """Release a reservation (cancel, return frozen quota)."""
-        payload = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "reservation_id": reservation_id,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        return _quota_release_adapter.validate_python(cls._send_quota_request("POST", "/quota/release", json=payload))
+        return billing.quota_release(
+            body=billing.QuotaReleaseReq(
+                tenant_id=tenant_id, feature_key=feature_key, reservation_id=reservation_id, bucket=bucket
+            )
+        )
 
     @classmethod
-    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> QuotaBalanceResult:
+    def quota_get_balance(cls, tenant_id: str, feature_key: str, bucket: str = "") -> billing.QuotaGetBalanceReply:
         """Get quota balance for a feature bucket."""
-        params = {"tenant_id": tenant_id, "feature_key": feature_key}
-        if bucket:
-            params["bucket"] = bucket
         try:
-            result = cls._send_quota_request("GET", "/quota/balance", params=params)
-        except _BillingHTTPStatusError as error:
+            return billing.quota_get_balance(tenant_id=tenant_id, feature_key=feature_key, bucket=bucket)
+        except billing.BillingQuotaUpstreamError as error:
             if (
                 feature_key == "credit_pool"
-                and error.status_code == httpx.codes.CONFLICT
-                and error.upstream_error_code == _CREDIT_MANAGED_BY_TOKENER
+                and error.status_code == 409
+                and error.reason == "CREDIT_MANAGED_BY_TOKENER"
             ):
-                raise LegacyCreditPoolManagedByTokenerError(_CREDIT_MANAGED_BY_TOKENER) from None
+                raise LegacyCreditPoolManagedByTokenerError("CREDIT_MANAGED_BY_TOKENER") from None
             raise
-        return _quota_balance_adapter.validate_python(result)
 
     @classmethod
     def quota_consume_capped(
@@ -563,218 +266,81 @@ class BillingService:
         feature_key: str,
         request_id: str,
         amount: int,
-        meta: dict | None = None,
+        meta: Mapping[str, object] | None = None,
         bucket: str = "",
-    ) -> QuotaConsumeCappedResult:
+    ) -> billing.QuotaConsumeCappedReply:
         """Consume up to the available quota and return the actual deducted amount."""
-        payload: dict = {
-            "tenant_id": tenant_id,
-            "feature_key": feature_key,
-            "request_id": request_id,
-            "amount": amount,
-        }
-        if bucket:
-            payload["bucket"] = bucket
-        if meta:
-            payload["meta"] = meta
-        return _quota_consume_capped_adapter.validate_python(
-            cls._send_quota_request("POST", "/quota/consume-capped", json=payload)
+        return billing.quota_consume_capped(
+            body=billing.QuotaConsumeCappedReq(
+                tenant_id=tenant_id,
+                feature_key=feature_key,
+                request_id=request_id,
+                amount=amount,
+                meta=_quota_meta(meta),
+                bucket=bucket,
+            )
         )
 
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str) -> KnowledgeRateLimitDict:
-        params = {"tenant_id": tenant_id}
-
-        knowledge_rate_limit = cls._send_request("GET", "/subscription/knowledge-rate-limit", params=params)
-
-        return {
-            "limit": knowledge_rate_limit.get("limit", 10),
-            "subscription_plan": knowledge_rate_limit.get("subscription_plan", CloudPlan.SANDBOX),
-        }
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> billing.GetKnowledgeRateLimitReply:
+        return billing.subscription_get_knowledge_rate_limit(tenant_id=tenant_id)
 
     @classmethod
     def get_subscription(
         cls, plan: str, interval: str, prefilled_email: str = "", tenant_id: str = ""
-    ) -> BillingPortalLink:
-        params = {"plan": plan, "interval": interval, "prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_billing_portal_request("/subscription/payment-link", params=params)
-
-    @classmethod
-    @deprecated("Only used by the deprecated model-provider checkout endpoint.")
-    def get_model_provider_payment_link(cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str):
-        params = {
-            "provider_name": provider_name,
-            "tenant_id": tenant_id,
-            "account_id": account_id,
-            "prefilled_email": prefilled_email,
-        }
-        return cls._send_request("GET", "/model-provider/payment-link", params=params)
-
-    @classmethod
-    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> BillingPortalLink:
-        params = {"prefilled_email": prefilled_email, "tenant_id": tenant_id}
-        return cls._send_billing_portal_request("/invoices", params=params)
-
-    @classmethod
-    def update_tenant_feature_plan_usage(
-        cls, tenant_id: str, feature_key: str, delta: int
-    ) -> TenantFeaturePlanUsageDict:
-        """
-        Update tenant feature plan usage.
-
-        Args:
-            tenant_id: Tenant identifier
-            feature_key: Feature key (e.g., 'trigger', 'workflow')
-            delta: Usage delta (positive to add, negative to consume)
-
-        Returns:
-            Response dict with 'result' and 'history_id'
-            Example: {"result": "success", "history_id": "uuid"}
-        """
-        return cls._send_request(
-            "POST",
-            "/tenant-feature-usage/usage",
-            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
+    ) -> billing.GetSubscriptionPaymentLinkReply:
+        return billing.subscription_get_subscription_payment_link(
+            plan=plan, interval=interval, prefilled_email=prefilled_email, tenant_id=tenant_id
         )
 
     @classmethod
-    def refund_tenant_feature_plan_usage(cls, history_id: str) -> TenantFeaturePlanUsageDict:
-        """
-        Refund a previous usage charge.
-
-        Args:
-            history_id: The history_id returned from update_tenant_feature_plan_usage
-
-        Returns:
-            Response dict with 'result' and 'history_id'
-        """
-        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
+    @deprecated("Only used by the deprecated model-provider checkout endpoint.")
+    def get_model_provider_payment_link(
+        cls, provider_name: str, tenant_id: str, account_id: str, prefilled_email: str
+    ) -> billing.GetModelProviderPaymentLinkReply:
+        return billing.model_provider_get_model_provider_payment_link(
+            provider_name=provider_name, tenant_id=tenant_id, account_id=account_id, prefilled_email=prefilled_email
+        )
 
     @classmethod
-    @deprecated("Legacy tenant feature-plan usage endpoint; use the quota APIs instead.")
-    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
-        params = {"tenant_id": tenant_id, "feature_key": feature_key}
-        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+    def get_invoices(cls, prefilled_email: str = "", tenant_id: str = "") -> billing.GetInvoicesReply:
+        return billing.invoice_get_invoices(prefilled_email=prefilled_email, tenant_id=tenant_id)
 
     @classmethod
-    def _send_quota_request(
-        cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None
-    ) -> dict[str, Any]:
-        return cls._send_request(method, endpoint, json=json, params=params, base_url=cls.quota_base_url)
-
-    @classmethod
-    @retry(
-        wait=wait_fixed(2),
-        stop=stop_before_delay(10),
-        retry=retry_if_exception_type(httpx.RequestError),
-        reraise=True,
-    )
-    def _send_request(
-        cls,
-        method: Literal["GET", "POST", "DELETE", "PUT"],
-        endpoint: str,
-        json=None,
-        params=None,
-        base_url: str | None = None,
-    ) -> Any:
-        headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
-        url = f"{base_url or cls.base_url}{endpoint}"
-        response = _http_client.request(method, url, json=json, params=params, headers=headers, follow_redirects=True)
-        if method == "GET" and response.status_code != httpx.codes.OK:
-            raise _BillingHTTPStatusError(
-                "Unable to retrieve billing information. Please try again later or contact support.",
-                response.status_code,
-                _safe_billing_error_code(response),
-            )
-        if method == "PUT":
-            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
-                raise InternalServerError(
-                    "Unable to process billing request. Please try again later or contact support."
-                )
-            if response.status_code != httpx.codes.OK:
-                raise ValueError("Invalid arguments.")
-        if method == "POST" and response.status_code != httpx.codes.OK:
-            raise _BillingHTTPStatusError(
-                f"Unable to send request to {url}. Please try again later or contact support.",
-                response.status_code,
-            )
-        if method == "DELETE" and response.status_code != httpx.codes.OK:
-            logger.error("billing_service: DELETE response: %s %s", response.status_code, response.text)
-            raise ValueError(f"Unable to process delete request {url}. Please try again later or contact support.")
-        return response.json()
-
-    @classmethod
-    def _send_billing_portal_request(
-        cls,
-        endpoint: str,
-        *,
-        params: dict[str, str],
-    ) -> BillingPortalLink:
-        try:
-            response = cls._send_request("GET", endpoint, params=params)
-            return _billing_portal_link_adapter.validate_python(response)
-        except _BillingHTTPStatusError as error:
-            if (
-                error.status_code == httpx.codes.CONFLICT
-                and error.upstream_error_code == _TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED
-            ):
-                raise TokenerEducationCheckoutUnsupportedError from error
-            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            ):
-                raise BillingUpstreamUnavailableError from error
-            raise BillingUpstreamInvalidResponseError from error
-        except httpx.RequestError as error:
-            raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-            raise BillingUpstreamInvalidResponseError from error
-        except ValueError as error:
-            raise RuntimeError("Unexpected billing service value error") from error
-
-    @classmethod
-    def delete_account(cls, account_id: str) -> MessageResponseDict:
-        """Delete account."""
-        params = {"account_id": account_id}
-        return cls._send_request("DELETE", "/account", params=params)
+    def delete_account(cls, account_id: str) -> saas.DeleteAccountReply:
+        return saas.account_delete_account(account_id=account_id)
 
     @classmethod
     def get_email_freeze_type(cls, email: str) -> EmailFreezeType | None:
-        params = {"email": email}
         try:
-            response = cls._send_request("GET", "/account/in-freeze", params=params)
-            if not response.get("data", False):
-                return None
-
-            freeze_type = response.get("freeze_type") or response.get("freezeType")
-            if freeze_type in ("freeze", "email_domain_suspended"):
-                return freeze_type
-
-            # Keep compatibility with older billing services that only return
-            # the boolean `data` field.
-            return "freeze"
+            reply = saas.account_check_account_in_freeze(email=email)
         except Exception:
             return None
+        if not reply.data:
+            return None
+        match reply.freeze_type:
+            case "freeze" | "email_domain_suspended" as freeze_type:
+                return freeze_type
+            case _:
+                # Billing versions that only return the boolean `data` send an empty freeze type.
+                return "freeze"
 
     @classmethod
     def is_email_in_freeze(cls, email: str) -> bool:
         return cls.get_email_freeze_type(email) is not None
 
     @classmethod
-    def update_account_deletion_feedback(cls, email: str, feedback: str) -> MessageResponseDict:
-        """Update account deletion feedback."""
-        json = {"email": email, "feedback": feedback}
-        return cls._send_request("POST", "/account/delete-feedback", json=json)
+    def update_account_deletion_feedback(cls, email: str, feedback: str) -> saas.AddDeleteFeedbackReply:
+        return saas.account_add_delete_feedback(body=saas.AddDeleteFeedbackRequest(email=email, feedback=feedback))
 
     class EducationIdentity:
         @classmethod
-        def verify(cls, account_id: str) -> EducationVerifyResponseDict:
-            params = {"account_id": account_id}
-            return BillingService._send_request("GET", "/education/verify", params=params)
+        def verify(cls, account_id: str) -> billing.VerifyEducationIdentityReply:
+            return billing.education_verify_education_identity(account_id=account_id)
 
         @classmethod
-        def status(cls, account_id: str) -> EducationStatusResponseDict:
-            params = {"account_id": account_id}
-            return BillingService._send_request("GET", "/education/status", params=params)
+        def status(cls, account_id: str) -> billing.GetEducationIdentityStatusReply:
+            return billing.education_get_education_identity_status(account_id=account_id)
 
         @classmethod
         def activate(
@@ -785,19 +351,18 @@ class BillingService:
             token: str,
             institution: str,
             role: str,
-        ) -> MessageResponseDict:
-            params = {"account_id": account_id, "curr_tenant_id": tenant_id}
-            json = {
-                "institution": institution,
-                "token": token,
-                "role": role,
-            }
-            return BillingService._send_request("POST", "/education/", json=json, params=params)
+        ) -> billing.CreateEducationIdentityReply:
+            return billing.education_create_education_identity(
+                body=billing.CreateEducationIdentityReq(
+                    account_id=account_id, curr_tenant_id=tenant_id, institution=institution, role=role, token=token
+                )
+            )
 
         @classmethod
-        def autocomplete(cls, keywords: str, page: int = 0, limit: int = 20) -> EducationAutocompleteResponseDict:
-            params = {"keywords": keywords, "page": page, "limit": limit}
-            return BillingService._send_request("GET", "/education/autocomplete", params=params)
+        def autocomplete(
+            cls, keywords: str, page: int = 0, limit: int = 20
+        ) -> billing.AutocompleteEducationInstitutionReply:
+            return billing.education_autocomplete_education_institution(keywords=keywords, page=page, limit=limit)
 
     @classmethod
     def get_compliance_download_link(
@@ -807,63 +372,45 @@ class BillingService:
         tenant_id: str,
         ip: str,
         device_info: str,
-    ) -> ComplianceDownloadLink:
-        payload = {
-            "doc_name": doc_name,
-            "account_id": account_id,
-            "tenant_id": tenant_id,
-            "ip_address": ip,
-            "device_info": device_info,
-        }
-        try:
-            response = cls._send_request("POST", "/compliance/download", json=payload)
-            result = _compliance_download_link_adapter.validate_python(response)
-        except _BillingHTTPStatusError as error:
-            if error.status_code in {httpx.codes.REQUEST_TIMEOUT, httpx.codes.TOO_MANY_REQUESTS} or (
-                error.status_code >= 500
-            ):
-                raise BillingUpstreamUnavailableError from error
-            raise BillingUpstreamInvalidResponseError from error
-        except httpx.RequestError as error:
-            raise BillingUpstreamUnavailableError from error
-        except (json.JSONDecodeError, UnicodeDecodeError, ValidationError) as error:
-            raise BillingUpstreamInvalidResponseError from error
-        except ValueError as error:
-            raise RuntimeError("Unexpected billing service value error") from error
-
-        return result
+    ) -> billing.DownloadComplianceDocumentReply:
+        return billing.compliance_download_compliance_document(
+            body=billing.DownloadComplianceDocumentReq(
+                doc_name=doc_name, account_id=account_id, tenant_id=tenant_id, ip_address=ip, device_info=device_info
+            )
+        )
 
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str) -> None:
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
 
     @classmethod
-    def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+    def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, billing.SubscriptionPlanItem]:
         """
-        Bulk fetch billing subscription plan via billing API.
-        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
+        Bulk fetch billing subscription plan via billing API, at most 200 tenants per request.
+        Invalid items are skipped so callers only receive validated plans.
         Returns:
-            Mapping of tenant_id -> {plan: str, expiration_date: int}
+            Mapping of tenant_id -> subscription plan
         """
-        results: dict[str, SubscriptionPlan] = {}
-        subscription_adapter = TypeAdapter(SubscriptionPlan)
+        results: dict[str, billing.SubscriptionPlanItem] = {}
 
         chunk_size = 200
         for i in range(0, len(tenant_ids), chunk_size):
             chunk = tenant_ids[i : i + chunk_size]
             try:
-                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
-                data = resp.get("data", {})
-
-                for tenant_id, plan in data.items():
+                reply = billing.subscription_batch_get_subscription_plan(
+                    body=billing.BatchGetSubscriptionPlanReq(tenant_ids=list(chunk))
+                )
+                for tenant_id, item in (reply.data or {}).items():
                     try:
-                        subscription_plan = subscription_adapter.validate_python(plan)
-                        results[tenant_id] = subscription_plan
-                    except Exception:
+                        # Observed responses can contain constructed models; validating an instance would trust it.
+                        payload = (
+                            item.model_dump(warnings=False) if isinstance(item, billing.SubscriptionPlanItem) else item
+                        )
+                        results[tenant_id] = billing.SubscriptionPlanItem.model_validate(payload)
+                    except ValidationError:
                         logger.exception(
                             "get_plan_bulk: failed to validate subscription plan for tenant(%s)", tenant_id
                         )
-                        continue
             except Exception:
                 logger.exception("get_plan_bulk: failed to fetch billing info batch for tenants: %s", chunk)
                 continue
@@ -875,21 +422,19 @@ class BillingService:
         return f"{cls._PLAN_CACHE_KEY_PREFIX}{tenant_id}"
 
     @classmethod
-    def get_plan_bulk_with_cache(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+    def get_plan_bulk_with_cache(cls, tenant_ids: Sequence[str]) -> dict[str, billing.SubscriptionPlanItem]:
         """
         Bulk fetch billing subscription plan with cache to reduce billing API loads in batch job scenarios.
 
         NOTE: if you want to high data consistency, use get_plan_bulk instead.
 
         Returns:
-            Mapping of tenant_id -> {plan: str, expiration_date: int}
+            Mapping of tenant_id -> subscription plan
         """
-        tenant_plans: dict[str, SubscriptionPlan] = {}
+        tenant_plans: dict[str, billing.SubscriptionPlanItem] = {}
 
         if not tenant_ids:
             return tenant_plans
-
-        subscription_adapter = TypeAdapter(SubscriptionPlan)
 
         # Step 1: Batch fetch from Redis cache using mget
         redis_keys = [cls._make_plan_cache_key(tenant_id) for tenant_id in tenant_ids]
@@ -904,18 +449,10 @@ class BillingService:
             # Map cached values back to tenant_ids
             cache_misses: list[str] = []
 
-            for tenant_id, cached_value in zip(tenant_ids, cached_values):
+            for tenant_id, cached_value in zip(tenant_ids, cached_values, strict=False):
                 if cached_value:
                     try:
-                        # Redis returns bytes, decode to string and parse JSON
-                        json_str = cached_value.decode("utf-8") if isinstance(cached_value, bytes) else cached_value
-                        plan_dict = json.loads(json_str)
-                        # NOTE (hj24): New billing versions may return timestamp as str, and validate_python
-                        # in non-strict mode will coerce it to the expected int type.
-                        # To preserve compatibility, always keep non-strict mode here and avoid strict mode.
-                        subscription_plan = subscription_adapter.validate_python(plan_dict)
-                        # NOTE END
-                        tenant_plans[tenant_id] = subscription_plan
+                        tenant_plans[tenant_id] = billing.SubscriptionPlanItem.model_validate_json(cached_value)
                     except Exception:
                         logger.exception(
                             "get_plan_bulk_with_cache: process tenant(%s) failed, add to cache misses", tenant_id
@@ -938,7 +475,7 @@ class BillingService:
             bulk_plans = BillingService.get_plan_bulk(cache_misses)
 
             if bulk_plans:
-                plans_to_cache: dict[str, SubscriptionPlan] = {}
+                plans_to_cache: dict[str, billing.SubscriptionPlanItem] = {}
 
                 for tenant_id, subscription_plan in bulk_plans.items():
                     tenant_plans[tenant_id] = subscription_plan
@@ -950,9 +487,7 @@ class BillingService:
                         pipe = redis_client.pipeline()
                         for tenant_id, subscription_plan in plans_to_cache.items():
                             redis_key = cls._make_plan_cache_key(tenant_id)
-                            # Serialize dict to JSON string
-                            json_str = json.dumps(subscription_plan)
-                            pipe.setex(redis_key, cls._PLAN_CACHE_TTL, json_str)
+                            pipe.setex(redis_key, cls._PLAN_CACHE_TTL, subscription_plan.model_dump_json())
                         pipe.execute()
 
                         logger.info(
@@ -966,43 +501,17 @@ class BillingService:
 
     @classmethod
     def get_expired_subscription_cleanup_whitelist(cls) -> Sequence[str]:
-        resp = cls._send_request("GET", "/subscription/cleanup/whitelist")
-        data = resp.get("data", [])
-        tenant_whitelist = []
-        for item in data:
-            tenant_whitelist.append(item["tenant_id"])
-        return tenant_whitelist
+        reply = billing.subscription_list_subscription_cleanup_whitelist()
+        return [item.tenant_id for item in reply.data or []]
 
     @classmethod
-    def get_account_notification(cls, account_id: str) -> AccountNotificationDict:
-        """Return the active in-product notification for account_id, if any.
-
-        Calling this endpoint also marks the notification as seen; subsequent
-        calls will return should_show=false when frequency='once'.
-
-        Response shape (mirrors GetAccountNotificationReply):
-          {
-            "should_show": bool,
-            "notification": {          # present only when should_show=true
-              "notification_id": str,
-              "contents": {            # lang -> LangContent
-                "en": {"lang": "en", "title": ..., "subtitle": ..., "body": ..., "title_pic_url": ...},
-                ...
-              },
-              "frequency": "once" | "every_page_load"
-            }
-          }
-        """
-        return cls._send_request("GET", "/notifications/active", params={"account_id": account_id})
+    def get_account_notification(cls, account_id: str) -> saas.GetAccountNotificationReply:
+        """Return the active in-product notifications; fetching marks `once` notifications as seen."""
+        return saas.notification_get_account_notification(account_id=account_id)
 
     @classmethod
-    def dismiss_notification(cls, notification_id: str, account_id: str) -> DismissNotificationDict:
-        """Mark a notification as dismissed for an account.
-
-        Returns {"success": bool}.
-        """
-        return cls._send_request(
-            "POST",
-            f"/notifications/{notification_id}/dismiss",
-            json={"account_id": account_id},
+    def dismiss_notification(cls, notification_id: str, account_id: str) -> saas.DismissNotificationReply:
+        return saas.notification_dismiss_notification(
+            notification_id=notification_id,
+            body=saas.DismissNotificationReq(notification_id=notification_id, account_id=account_id),
         )

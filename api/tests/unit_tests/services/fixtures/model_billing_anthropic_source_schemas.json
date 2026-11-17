@@ -1,0 +1,1008 @@
+{
+  "schema_version": 1,
+  "schemas": {
+    "sha256:a82c389002c5199fa70eb48898e5b3ab0278af4d5a9a9bb72c0c37c57dfff147": {
+      "model": "claude-sonnet-4-5",
+      "label": {
+        "zh_Hans": "claude-sonnet-4-5",
+        "en_US": "claude-sonnet-4-5"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call",
+        "document"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 1000000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理模式",
+            "en_US": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "控制模型的推理能力。启用时，temperature、top_p和top_k将被禁用。",
+            "en_US": "Controls the model's thinking capability. When enabled, temperature, top_p and top_k will be disabled."
+          },
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "thinking_budget",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理预算",
+            "en_US": "Thinking Budget"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "推理的预算限制（最小1024），必须小于max_tokens。仅在推理模式启用时可用。",
+            "en_US": "Budget limit for thinking (minimum 1024), must be less than max_tokens. Only available when thinking mode is enabled."
+          },
+          "required": false,
+          "default": 1024,
+          "min": 0.0,
+          "max": 64000.0,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "zh_Hans": "temperature",
+            "en_US": "temperature"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "zh_Hans": "top_p",
+            "en_US": "top_p"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "取样数量",
+            "en_US": "Top k"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "仅从每个后续标记的前 K 个选项中采样。",
+            "en_US": "Only sample from the top K options for each subsequent token."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "zh_Hans": "max_tokens",
+            "en_US": "max_tokens"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": true,
+          "default": 64000,
+          "min": 1.0,
+          "max": 64000.0,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": "response_format",
+          "label": {
+            "zh_Hans": "response_format",
+            "en_US": "response_format"
+          },
+          "type": "string",
+          "help": {
+            "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
+            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "JSON",
+            "XML"
+          ]
+        },
+        {
+          "name": "prompt_caching_message_flow",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "大消息自动缓存阈值",
+            "en_US": "Cache Message Flow Threshold"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "当用户或助手消息的单词数超过此阈值时，自动为该消息添加缓存控制。0 表示禁用。",
+            "en_US": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature."
+          },
+          "required": false,
+          "default": 0,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_system_message",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存系统消息",
+            "en_US": "Cache System Message"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用系统消息的提示缓存。<cache></cache>中的内容将自动缓存。",
+            "en_US": "Enable prompt caching for system messages. Content within <cache></cache> will be cached."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_images",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存图片",
+            "en_US": "Cache Images"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用图片的提示缓存。",
+            "en_US": "Enable prompt caching for images."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_documents",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存文档",
+            "en_US": "Cache Documents"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用文档的提示缓存。",
+            "en_US": "Enable prompt caching for documents."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_definitions",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具定义",
+            "en_US": "Cache Tool Definitions"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具定义的提示缓存。",
+            "en_US": "Enable prompt caching for tool definitions."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_results",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具结果",
+            "en_US": "Cache Tool Results"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具结果的提示缓存。",
+            "en_US": "Enable prompt caching for tool results."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "context_1m",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "1M上下文窗口",
+            "en_US": "1M Context Window"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用1M令牌上下文窗口。需要使用层级4或自定义速率限制的组织。注意, 超过200K令牌的请求将按高级费率收费（输入2倍，输出1.5倍定价）, Dify显示的价格计算可能不准确。",
+            "en_US": "Enable 1M token context window. Requires organizations in usage tier 4 or with custom rate limits. Note, Requests exceeding 200K tokens are charged at premium rates (2x input, 1.5x output pricing), Dify's displayed pricing calculations may be inaccurate."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "3",
+        "output": "15",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "sha256:ff24aa6c4cacc289a0cd1197b1c537aefcca44c21c8cb945045f4997c8d856a9": {
+      "model": "claude-sonnet-4-5-20250929",
+      "label": {
+        "zh_Hans": "claude-sonnet-4-5-20250929",
+        "en_US": "claude-sonnet-4-5-20250929"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call",
+        "document"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 1000000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理模式",
+            "en_US": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "控制模型的推理能力。启用时，temperature、top_p和top_k将被禁用。",
+            "en_US": "Controls the model's thinking capability. When enabled, temperature, top_p and top_k will be disabled."
+          },
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "thinking_budget",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理预算",
+            "en_US": "Thinking Budget"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "推理的预算限制（最小1024），必须小于max_tokens。仅在推理模式启用时可用。",
+            "en_US": "Budget limit for thinking (minimum 1024), must be less than max_tokens. Only available when thinking mode is enabled."
+          },
+          "required": false,
+          "default": 1024,
+          "min": 0.0,
+          "max": 64000.0,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "zh_Hans": "temperature",
+            "en_US": "temperature"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "zh_Hans": "top_p",
+            "en_US": "top_p"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "取样数量",
+            "en_US": "Top k"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "仅从每个后续标记的前 K 个选项中采样。",
+            "en_US": "Only sample from the top K options for each subsequent token."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "zh_Hans": "max_tokens",
+            "en_US": "max_tokens"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": true,
+          "default": 64000,
+          "min": 1.0,
+          "max": 64000.0,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": "response_format",
+          "label": {
+            "zh_Hans": "response_format",
+            "en_US": "response_format"
+          },
+          "type": "string",
+          "help": {
+            "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
+            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "JSON",
+            "XML"
+          ]
+        },
+        {
+          "name": "prompt_caching_message_flow",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "大消息自动缓存阈值",
+            "en_US": "Cache Message Flow Threshold"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "当用户或助手消息的单词数超过此阈值时，自动为该消息添加缓存控制。0 表示禁用。",
+            "en_US": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature."
+          },
+          "required": false,
+          "default": 0,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_system_message",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存系统消息",
+            "en_US": "Cache System Message"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用系统消息的提示缓存。<cache></cache>中的内容将自动缓存。",
+            "en_US": "Enable prompt caching for system messages. Content within <cache></cache> will be cached."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_images",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存图片",
+            "en_US": "Cache Images"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用图片的提示缓存。",
+            "en_US": "Enable prompt caching for images."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_documents",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存文档",
+            "en_US": "Cache Documents"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用文档的提示缓存。",
+            "en_US": "Enable prompt caching for documents."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_definitions",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具定义",
+            "en_US": "Cache Tool Definitions"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具定义的提示缓存。",
+            "en_US": "Enable prompt caching for tool definitions."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_results",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具结果",
+            "en_US": "Cache Tool Results"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具结果的提示缓存。",
+            "en_US": "Enable prompt caching for tool results."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "context_1m",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "1M上下文窗口",
+            "en_US": "1M Context Window"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用1M令牌上下文窗口。需要使用层级4或自定义速率限制的组织。注意, 超过200K令牌的请求将按高级费率收费（输入2倍，输出1.5倍定价）, Dify显示的价格计算可能不准确。",
+            "en_US": "Enable 1M token context window. Requires organizations in usage tier 4 or with custom rate limits. Note, Requests exceeding 200K tokens are charged at premium rates (2x input, 1.5x output pricing), Dify's displayed pricing calculations may be inaccurate."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "3",
+        "output": "15",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "sha256:f89c0708afb2d34c0b381b16e3778c3cbb752aaa6d4a25bfe63b77db6e9dd60b": {
+      "model": "claude-opus-4-5-20251101",
+      "label": {
+        "zh_Hans": "claude-opus-4-5-20251101",
+        "en_US": "claude-opus-4-5-20251101"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call",
+        "document"
+      ],
+      "fetch_from": "predefined-model",
+      "model_properties": {
+        "context_size": 200000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理模式",
+            "en_US": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "控制模型的推理能力。启用时，temperature、top_p和top_k将被禁用。",
+            "en_US": "Controls the model's thinking capability. When enabled, temperature, top_p and top_k will be disabled."
+          },
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "thinking_budget",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理预算",
+            "en_US": "Thinking Budget"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "推理的预算限制（最小1024），必须小于max_tokens。仅在推理模式启用时可用。",
+            "en_US": "Budget limit for thinking (minimum 1024), must be less than max_tokens. Only available when thinking mode is enabled."
+          },
+          "required": false,
+          "default": 1024,
+          "min": 1024.0,
+          "max": 64000.0,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "zh_Hans": "temperature",
+            "en_US": "temperature"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "zh_Hans": "top_p",
+            "en_US": "top_p"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "取样数量",
+            "en_US": "Top k"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "仅从每个后续标记的前 K 个选项中采样。",
+            "en_US": "Only sample from the top K options for each subsequent token."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "zh_Hans": "max_tokens",
+            "en_US": "max_tokens"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": true,
+          "default": 64000,
+          "min": 1.0,
+          "max": 64000.0,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "response_format",
+          "use_template": "response_format",
+          "label": {
+            "zh_Hans": "response_format",
+            "en_US": "response_format"
+          },
+          "type": "string",
+          "help": {
+            "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
+            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc."
+          },
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": [
+            "JSON",
+            "XML"
+          ]
+        },
+        {
+          "name": "prompt_caching_message_flow",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "大消息自动缓存阈值",
+            "en_US": "Cache Message Flow Threshold"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "当用户或助手消息的单词数超过此阈值时，自动为该消息添加缓存控制。0 表示禁用。",
+            "en_US": "If a user or assistant message exceeds this word count, add cache_control automatically. 0 disables the feature."
+          },
+          "required": false,
+          "default": 0,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_system_message",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存系统消息",
+            "en_US": "Cache System Message"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用系统消息的提示缓存。<cache></cache>中的内容将自动缓存。",
+            "en_US": "Enable prompt caching for system messages. Content within <cache></cache> will be cached."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_images",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存图片",
+            "en_US": "Cache Images"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用图片的提示缓存。",
+            "en_US": "Enable prompt caching for images."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_documents",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存文档",
+            "en_US": "Cache Documents"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用文档的提示缓存。",
+            "en_US": "Enable prompt caching for documents."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_definitions",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具定义",
+            "en_US": "Cache Tool Definitions"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具定义的提示缓存。",
+            "en_US": "Enable prompt caching for tool definitions."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "prompt_caching_tool_results",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "缓存工具结果",
+            "en_US": "Cache Tool Results"
+          },
+          "type": "boolean",
+          "help": {
+            "zh_Hans": "启用工具结果的提示缓存。",
+            "en_US": "Enable prompt caching for tool results."
+          },
+          "required": false,
+          "default": true,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": {
+        "input": "5",
+        "output": "25",
+        "unit": "0.000001",
+        "currency": "USD"
+      }
+    },
+    "sha256:8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09": {
+      "model": "claude-opus-4-5",
+      "label": {
+        "zh_Hans": "claude-opus-4-5",
+        "en_US": "claude-opus-4-5"
+      },
+      "model_type": "llm",
+      "features": [
+        "agent-thought",
+        "vision",
+        "tool-call",
+        "stream-tool-call"
+      ],
+      "fetch_from": "customizable-model",
+      "model_properties": {
+        "context_size": 200000,
+        "mode": "chat"
+      },
+      "deprecated": false,
+      "parameter_rules": [
+        {
+          "name": "max_tokens",
+          "use_template": "max_tokens",
+          "label": {
+            "zh_Hans": "最大标记",
+            "en_US": "Max Tokens"
+          },
+          "type": "int",
+          "help": {
+            "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
+            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter."
+          },
+          "required": false,
+          "default": 4096,
+          "min": 1.0,
+          "max": 128000.0,
+          "precision": 0,
+          "options": []
+        },
+        {
+          "name": "thinking",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理模式",
+            "en_US": "Thinking Mode"
+          },
+          "type": "boolean",
+          "help": null,
+          "required": false,
+          "default": false,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "temperature",
+          "use_template": "temperature",
+          "label": {
+            "zh_Hans": "温度",
+            "en_US": "Temperature"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions."
+          },
+          "required": false,
+          "default": 0,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_p",
+          "use_template": "top_p",
+          "label": {
+            "zh_Hans": "Top P",
+            "en_US": "Top P"
+          },
+          "type": "float",
+          "help": {
+            "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered."
+          },
+          "required": false,
+          "default": 1,
+          "min": 0.0,
+          "max": 1.0,
+          "precision": 2,
+          "options": []
+        },
+        {
+          "name": "top_k",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "取样数量",
+            "en_US": "Top K"
+          },
+          "type": "int",
+          "help": null,
+          "required": false,
+          "default": null,
+          "min": null,
+          "max": null,
+          "precision": null,
+          "options": []
+        },
+        {
+          "name": "thinking_budget",
+          "use_template": null,
+          "label": {
+            "zh_Hans": "推理预算",
+            "en_US": "Thinking Budget"
+          },
+          "type": "int",
+          "help": null,
+          "required": false,
+          "default": 1024,
+          "min": 1024.0,
+          "max": 128000.0,
+          "precision": null,
+          "options": []
+        }
+      ],
+      "pricing": null
+    }
+  }
+}
