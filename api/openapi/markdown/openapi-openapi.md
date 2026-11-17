@@ -399,6 +399,27 @@ workspace filter. This handler is read-only and does not change membership.
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
+### [POST] /apps/{app_id}/chat:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [ChatStartPayload](#chatstartpayload)<br>**multipart/form-data**: [ChatStartPayload](#chatstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
 ### [POST] /apps/{app_id}/completion:run
 #### Parameters
 
@@ -417,6 +438,27 @@ workspace filter. This handler is read-only and does not change membership.
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
 | 200 | Run result (SSE stream) | **application/json**: [EventStreamResponse](#eventstreamresponse)<br> |
+| 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
+| default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
+
+### [POST] /apps/{app_id}/completion:start
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path |  | Yes | string |
+
+#### Request Body
+
+| Required | Schema |
+| -------- | ------ |
+| Yes | **application/json**: [CompletionStartPayload](#completionstartpayload)<br>**multipart/form-data**: [CompletionStartPayload](#completionstartpayload)<br> |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Job state | **application/json**: [JobState](#jobstate)<br> |
 | 422 | Validation error | **application/json**: [ErrorBody](#errorbody)<br> |
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
@@ -2667,6 +2709,20 @@ Button styles for user actions.
 | query | string | User message | Yes |
 | workspace_id | string | Workspace that owns the app | No |
 
+#### ChatStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| auto_generate_name | boolean, <br>**Default:** true | Let the server name a new conversation | No |
+| conversation_id | string | Continue an existing conversation | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | User message | Yes |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
+| workspace_id | string | Workspace that owns the app | No |
+
 #### ChatWebApp
 
 | Name | Type | Description | Required |
@@ -2729,6 +2785,18 @@ Button styles for user actions.
 | files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
 | inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
 | query | string | Prompt text; most completion apps take their input through `inputs` | No |
+| workspace_id | string | Workspace that owns the app | No |
+
+#### CompletionStartPayload
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| attachments | [ string ] | Local file paths attached to the run itself (the app's `sys.files`), not to a variable | No |
+| files | object | Local file paths keyed by the app's file variable name; each file is uploaded and becomes that variable's value. Give a list of paths for a file-list variable | No |
+| idempotency_key | string | A repeated start with the same key returns the first job | No |
+| inputs | object | Variables declared by the app. The exact shape is per app: read `input_schema` from describe.console_app. A file variable takes a Dify file mapping (remote url or upload id) here, or a local path in `files`, not both. | No |
+| query | string | Prompt text; most completion apps take their input through `inputs` | No |
+| wait_seconds | integer, <br>**Default:** 25 | How long to wait for the result before answering; 0 answers at once | No |
 | workspace_id | string | Workspace that owns the app | No |
 
 #### CreateAppPayload

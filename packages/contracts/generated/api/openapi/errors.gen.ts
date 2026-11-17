@@ -77,7 +77,7 @@ const zWorkflowNotActiveError = /* @__PURE__ */ (() =>
     }),
   ))()
 
-export const post10Errors = {
+export const post12Errors = {
   already_submitted: { status: 409, data: zAlreadySubmittedError },
   expired: { status: 410, data: zExpiredError },
   invalid_input: { status: 400, data: zInvalidInputError },
@@ -89,7 +89,7 @@ export const get15Errors = {
   expired: { status: 410, data: zExpiredError },
 }
 
-export const post19Errors = {
+export const post21Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },
   service_api_disabled: { status: 403, data: zServiceApiDisabledError },
 }

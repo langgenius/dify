@@ -317,6 +317,22 @@ export type ChatRunPayload = {
   workspace_id?: string | null
 }
 
+export type ChatStartPayload = {
+  attachments?: Array<Blob | File> | null
+  auto_generate_name?: boolean
+  conversation_id?: string | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query: string
+  wait_seconds?: number
+  workspace_id?: string | null
+}
+
 export type ChatWebApp = {
   access_token?: string | null
   app_base_url: string
@@ -372,6 +388,20 @@ export type CompletionRunPayload = {
     [key: string]: unknown
   }
   query?: string
+  workspace_id?: string | null
+}
+
+export type CompletionStartPayload = {
+  attachments?: Array<Blob | File> | null
+  files?: {
+    [key: string]: Blob | File | Array<Blob | File>
+  } | null
+  idempotency_key?: string | null
+  inputs?: {
+    [key: string]: unknown
+  }
+  query?: string
+  wait_seconds?: number
   workspace_id?: string | null
 }
 
@@ -2509,6 +2539,30 @@ export type PostAppsByAppIdChatRunResponses = {
 export type PostAppsByAppIdChatRunResponse =
   PostAppsByAppIdChatRunResponses[keyof PostAppsByAppIdChatRunResponses]
 
+export type PostAppsByAppIdChatStartData = {
+  body: ChatStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/chat:start'
+}
+
+export type PostAppsByAppIdChatStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdChatStartError =
+  PostAppsByAppIdChatStartErrors[keyof PostAppsByAppIdChatStartErrors]
+
+export type PostAppsByAppIdChatStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdChatStartResponse =
+  PostAppsByAppIdChatStartResponses[keyof PostAppsByAppIdChatStartResponses]
+
 export type PostAppsByAppIdCompletionRunData = {
   body: CompletionRunPayload
   path: {
@@ -2532,6 +2586,30 @@ export type PostAppsByAppIdCompletionRunResponses = {
 
 export type PostAppsByAppIdCompletionRunResponse =
   PostAppsByAppIdCompletionRunResponses[keyof PostAppsByAppIdCompletionRunResponses]
+
+export type PostAppsByAppIdCompletionStartData = {
+  body: CompletionStartPayload
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/completion:start'
+}
+
+export type PostAppsByAppIdCompletionStartErrors = {
+  422: ErrorBody
+  default: ErrorBody
+}
+
+export type PostAppsByAppIdCompletionStartError =
+  PostAppsByAppIdCompletionStartErrors[keyof PostAppsByAppIdCompletionStartErrors]
+
+export type PostAppsByAppIdCompletionStartResponses = {
+  200: JobState
+}
+
+export type PostAppsByAppIdCompletionStartResponse =
+  PostAppsByAppIdCompletionStartResponses[keyof PostAppsByAppIdCompletionStartResponses]
 
 export type GetAppsByAppIdDependenciesCheckData = {
   body?: never
