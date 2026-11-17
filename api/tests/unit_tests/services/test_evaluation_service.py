@@ -2555,7 +2555,9 @@ def test_execute_targets_preserves_row_order_and_reports_target_failures(monkeyp
     assert errors[0] is None
     assert "no workflow run ID" in (errors[1] or "")
     assert "no successful node results" in (errors[2] or "")
-    assert errors[3] == "provider unavailable"
+    assert errors[3] is not None
+    assert errors[3].startswith("EVAL_TARGET_FAILED:")
+    assert "provider unavailable" not in errors[3]
     assert task_ids == {
         index: EvaluationService.workflow_task_id("run-1", "target", position)
         for index, position in zip((10, 20, 30, 40), (3, 4, 5, 6), strict=True)
