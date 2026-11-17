@@ -4,10 +4,12 @@ import pytest
 
 from core.app.entities.app_invoke_entities import DifyRunContext
 from core.workflow.node_factory import resolve_workflow_node_class
+from core.workflow.workflow_entry import WorkflowEntry
 from graphon.enums import BuiltinNodeTypes
 from graphon.file import File
 from graphon.file.enums import FileTransferMethod
 from graphon.runtime import VariablePool
+from graphon.variable_loader import DUMMY_VARIABLE_LOADER, load_into_variable_pool
 from providers.a2a.workflow_node import (
     ExternalAgentNode,
     ExternalAgentNodeData,
@@ -16,6 +18,78 @@ from providers.a2a.workflow_node import (
 )
 from services.external_agents.io_contracts import ExternalIOError
 from services.external_agents.runtime_contracts import RuntimeError
+
+
+@pytest.mark.parametrize("fully_qualified", [False, True])
+@pytest.mark.parametrize("cached", [False, True])
+def test_single_step_task_uses_editor_input_instead_of_cached_value(fully_qualified: bool, cached: bool) -> None:
+    node_id = "1794901182883"
+    source_id = "1794901172081"
+    task = f"把 {{{{#{source_id}.input#}}}} 翻译成英文"
+    data = ExternalAgentNodeData(agent_task=task)
+    mapping = ExternalAgentNode.extract_variable_selector_to_variable_mapping(
+        graph_config={}, config={"id": node_id, "data": data}
+    )
+    input_key = f"{node_id}.#{source_id}.input#" if fully_qualified else f"#{source_id}.input#"
+    inputs = {input_key: "四项接口反馈已完成源码修复"}
+    pool = VariablePool()
+    if cached:
+        pool.add((source_id, "input"), "旧输入")
+
+    load_into_variable_pool(DUMMY_VARIABLE_LOADER, pool, mapping, inputs)
+    WorkflowEntry.mapping_user_inputs_to_variable_pool(
+        variable_mapping=mapping, user_inputs=inputs, variable_pool=pool, tenant_id="tenant"
+    )
+
+    assert task_parts(task, pool) == (
+        {"text": "把 "},
+        {"text": "四项接口反馈已完成源码修复"},
+        {"text": " 翻译成英文"},
+    )
+
+
+@pytest.mark.parametrize("fully_qualified", [False, True])
+@pytest.mark.parametrize("cached", [False, True])
+def test_single_step_nested_task_input_preserves_cached_siblings(fully_qualified: bool, cached: bool) -> None:
+    task = "Translate {{#source.payload.message#}}"
+    data = ExternalAgentNodeData(agent_task=task)
+    mapping = ExternalAgentNode.extract_variable_selector_to_variable_mapping(
+        graph_config={}, config={"id": "agent", "data": data}
+    )
+    input_key = "agent.#source.payload.message#" if fully_qualified else "#source.payload.message#"
+    inputs = {input_key: "新输入"}
+    pool = VariablePool()
+    if cached:
+        pool.add(("source", "payload"), {"message": "旧输入", "sibling": "preserved"})
+
+    load_into_variable_pool(DUMMY_VARIABLE_LOADER, pool, mapping, inputs)
+    WorkflowEntry.mapping_user_inputs_to_variable_pool(
+        variable_mapping=mapping, user_inputs=inputs, variable_pool=pool, tenant_id="tenant"
+    )
+
+    assert task_parts(task, pool) == ({"text": "Translate "}, {"text": "新输入"})
+    payload = pool.get(("source", "payload"))
+    assert payload is not None
+    assert payload.value == {"message": "新输入", **({"sibling": "preserved"} if cached else {})}
+
+
+def test_single_step_task_without_editor_input_or_cached_value_still_fails() -> None:
+    task = "Translate {{#source.input#}}"
+    data = ExternalAgentNodeData(agent_task=task)
+    mapping = ExternalAgentNode.extract_variable_selector_to_variable_mapping(
+        graph_config={}, config={"id": "agent", "data": data}
+    )
+    pool = VariablePool()
+    load_into_variable_pool(DUMMY_VARIABLE_LOADER, pool, mapping, {})
+
+    with pytest.raises(ValueError, match="not found in user inputs"):
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=mapping, user_inputs={}, variable_pool=pool, tenant_id="tenant"
+        )
+    assert pool.get(("source", "input")) is None
+    with pytest.raises(RuntimeError) as failure:
+        task_parts(task, pool)
+    assert failure.value.code == "input_variable_missing"
 
 
 def test_task_rendering_preserves_typed_files_array_order_and_json_text() -> None:
