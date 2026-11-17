@@ -66,8 +66,8 @@ def _form() -> ResolvedForm:
         title="Approval",
         parts=(
             MarkdownFragment(text="Review the response."),
-            ParagraphInput(output_variable_name="说明📝", default_value="初始值"),
-            SelectInput(output_variable_name="选择🌐", options=("选项 α", "选项 β"), default_value="选项 β"),
+            ParagraphInput(output_variable_name="说明📝", resolved_default_value="初始值"),
+            SelectInput(output_variable_name="选择🌐", options=("选项 α", "选项 β"), resolved_default_value="选项 β"),
         ),
         actions=(UserAction(id="批准✅", title="Approve", button_style=ButtonStyle.PRIMARY),),
         legacy_form_content="unused",

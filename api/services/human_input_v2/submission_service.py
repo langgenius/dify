@@ -184,11 +184,27 @@ class HumanInputSubmissionService:
     def get_service_api_form(
         self, *, actor: ServiceAPIFormActor, form_token: str, ip_address: str | None = None
     ) -> Form:
+        """Read an authorized waiting form unless its owning run has stopped.
+
+        Denied reads return no definition and record no form-view audit. Recheck
+        the run in case it stopped after authorization read the form snapshot.
+        """
         token_hash = hashlib.sha256(form_token.encode()).hexdigest()
         with self._session_factory() as session:
             form = self._authorize_service_api(session, actor=actor, token_hash=token_hash).form
+        self._ensure_run_not_stopped(form)
         self._record_form_view(form, ip_address=ip_address)
         return form
+
+    def _ensure_run_not_stopped(self, form: Form) -> None:
+        """Reject an already-authorized form's stopped run without changing state."""
+        if form.workflow_run_id is not None:
+            repository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+            run = repository.get_workflow_run_by_id(
+                tenant_id=form.tenant_id, app_id=form.app_id, run_id=form.workflow_run_id
+            )
+            if run is not None and run.status == WorkflowExecutionStatus.STOPPED:
+                raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
 
     def submit_service_api_form(
         self,
@@ -384,8 +400,15 @@ class HumanInputSubmissionService:
         after_submission: Callable[[Session, Form, Recipient], None] | None = None,
         input_validation_mode: _InputValidationMode = _InputValidationMode.STRICT,
     ) -> Form:
+        """Validate authorized inputs, then accept once under the run/form locks.
+
+        Runtime forms require a paused run with an active checkpoint; a stopped
+        run expires its pending approval. Rejected inputs or state checks must
+        not save a submission, append its success audit, or resume execution.
+        """
         with self._session_factory() as session:
             form = authorize(session).form
+        self._ensure_run_not_stopped(form)
         # File reconstruction can access storage or remote URLs. Keep it outside
         # the write transaction, then recheck authorization and terminal state.
         try:
@@ -409,6 +432,8 @@ class HumanInputSubmissionService:
                 )
                 if run is None:
                     raise HumanInputFormError(HumanInputFormErrorCode.NOT_FOUND)
+                if run.status == WorkflowExecutionStatus.STOPPED:
+                    raise HumanInputFormError(HumanInputFormErrorCode.EXPIRED, form_id=form.id)
                 if run.status != WorkflowExecutionStatus.PAUSED:
                     raise HumanInputFormError(HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE)
                 # PAUSED can be persisted before the checkpoint. Accept only

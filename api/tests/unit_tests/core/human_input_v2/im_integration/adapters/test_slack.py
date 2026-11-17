@@ -37,7 +37,11 @@ def test_card_markdown_limit_applies_to_all_fragments(
     adapter, _client = make_slack_adapter(monkeypatch, slack_api_server)
     paragraphs = tuple(MarkdownFragment(text="审" * length) for length in lengths)
     intent = make_slack_form(
-        blocks=(paragraphs[0], ParagraphInput(output_variable_name="note", default_value="Approved"), *paragraphs[1:])
+        blocks=(
+            paragraphs[0],
+            ParagraphInput(output_variable_name="note", resolved_default_value="Approved"),
+            *paragraphs[1:],
+        )
     )
 
     assessment = adapter.dynamic_card_messaging.assess(intent)

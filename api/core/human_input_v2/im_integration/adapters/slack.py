@@ -549,8 +549,8 @@ class _SlackCardCodec(IMCardEventDecoder):
             input_element: dict[str, JsonValue] = {"action_id": input_name}
             if isinstance(block, ParagraphInput):
                 input_element.update({"type": "plain_text_input", "multiline": True})
-                if block.default_value is not None:
-                    input_element["initial_value"] = block.default_value
+                if block.resolved_default_value is not None:
+                    input_element["initial_value"] = block.resolved_default_value
             elif isinstance(block, SelectInput):
                 options: list[JsonValue] = [
                     {"text": {"type": "plain_text", "text": option}, "value": option} for option in block.options
@@ -562,11 +562,11 @@ class _SlackCardCodec(IMCardEventDecoder):
                         "options": options,
                     }
                 )
-                if block.default_value is not None:
+                if block.resolved_default_value is not None:
                     input_element["initial_option"] = next(
                         option
                         for option in options
-                        if isinstance(option, dict) and option["value"] == block.default_value
+                        if isinstance(option, dict) and option["value"] == block.resolved_default_value
                     )
             else:
                 raise DynamicCardMessagingError("Slack cards cannot represent file inputs.")
@@ -641,12 +641,14 @@ class _SlackCardCodec(IMCardEventDecoder):
                     continue
                 case FileInput() | FileListInput():
                     return "Slack cards cannot represent file inputs."
-                case ParagraphInput(output_variable_name=input_name, default_value=default_value):
+                case ParagraphInput(output_variable_name=input_name, resolved_default_value=default_value):
                     if len(input_name) > cls._MAX_ACTION_ID_LENGTH or len(input_name) > cls._MAX_INPUT_LABEL_LENGTH:
                         return "Slack cannot preserve one card input identifier."
                     if default_value is not None and len(default_value) > cls._MAX_INPUT_INITIAL_VALUE_LENGTH:
                         return "Slack cannot preserve one card input default."
-                case SelectInput(output_variable_name=input_name, options=options, default_value=default_value):
+                case SelectInput(
+                    output_variable_name=input_name, options=options, resolved_default_value=default_value
+                ):
                     if len(input_name) > cls._MAX_ACTION_ID_LENGTH or len(input_name) > cls._MAX_INPUT_LABEL_LENGTH:
                         return "Slack cannot preserve one card input identifier."
                     if not 1 <= len(options) <= cls._MAX_STATIC_SELECT_OPTION_COUNT:

@@ -185,7 +185,9 @@ def _card_intent(
     action_style: ButtonStyle = ButtonStyle.PRIMARY,
 ) -> ResolvedForm:
     if input_type == "select":
-        input_block: FormPart = SelectInput(output_variable_name="comment", options=("One", "Two"), default_value="One")
+        input_block: FormPart = SelectInput(
+            output_variable_name="comment", options=("One", "Two"), resolved_default_value="One"
+        )
     elif input_type == "file":
         input_block = FileInput(
             output_variable_name="comment",
@@ -202,7 +204,7 @@ def _card_intent(
             number_limits=1,
         )
     else:
-        input_block = ParagraphInput(output_variable_name="comment", default_value="Initial")
+        input_block = ParagraphInput(output_variable_name="comment", resolved_default_value="Initial")
     return ResolvedForm(
         title="Approval",
         parts=(MarkdownFragment(text=markdown_text), input_block, MarkdownFragment(text="After input")),
@@ -1056,18 +1058,18 @@ def test_unrepresentable_card_send_fails_before_provider_state_creation(mocker: 
     "intent",
     [
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=(), default_value=None),),
+            blocks=(SelectInput(output_variable_name="choice", options=(), resolved_default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=("",), default_value=None),),
+            blocks=(SelectInput(output_variable_name="choice", options=("",), resolved_default_value=None),),
         ),
         _custom_card_intent(
-            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), default_value="One"),),
+            blocks=(SelectInput(output_variable_name="choice", options=("One", "One"), resolved_default_value="One"),),
         ),
         _custom_card_intent(
             blocks=(
-                ParagraphInput(output_variable_name="comment", default_value=None),
-                ParagraphInput(output_variable_name="comment", default_value=None),
+                ParagraphInput(output_variable_name="comment", resolved_default_value=None),
+                ParagraphInput(output_variable_name="comment", resolved_default_value=None),
             ),
         ),
         _custom_card_intent(blocks=(MarkdownFragment(text=""),)),

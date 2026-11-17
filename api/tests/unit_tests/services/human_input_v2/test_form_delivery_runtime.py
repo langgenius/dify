@@ -2203,7 +2203,7 @@ def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
                 "parts": record.resolved_form.parts
                 + (
                     MarkdownFragment(text="; choice: "),
-                    SelectInput(output_variable_name="choice", options=("Yes", "No"), default_value=None),
+                    SelectInput(output_variable_name="choice", options=("Yes", "No"), resolved_default_value=None),
                     MarkdownFragment(text="; attachment: "),
                     file_input,
                     MarkdownFragment(text="; files: "),
@@ -2211,7 +2211,7 @@ def test_im_card_updates_render_typed_inputs_and_skip_missing_values(
                     MarkdownFragment(text="; empty files: "),
                     file_list.model_copy(update={"output_variable_name": "empty_files"}),
                     MarkdownFragment(text="; omitted: "),
-                    ParagraphInput(output_variable_name="missing", default_value=None),
+                    ParagraphInput(output_variable_name="missing", resolved_default_value=None),
                     file_input.model_copy(update={"output_variable_name": "null_file"}),
                 )
             }
@@ -2739,12 +2739,12 @@ def test_console_approval_preserves_first_submission(
 
 
 @pytest.mark.parametrize(
-    "status",
+    ("status", "expected_code"),
     [
-        WorkflowExecutionStatus.RUNNING,
-        WorkflowExecutionStatus.STOPPED,
-        WorkflowExecutionStatus.FAILED,
-        WorkflowExecutionStatus.SUCCEEDED,
+        (WorkflowExecutionStatus.RUNNING, "workflow_not_active"),
+        (WorkflowExecutionStatus.STOPPED, "expired"),
+        (WorkflowExecutionStatus.FAILED, "workflow_not_active"),
+        (WorkflowExecutionStatus.SUCCEEDED, "workflow_not_active"),
     ],
 )
 def test_console_approval_requires_paused_workflow(
@@ -2752,10 +2752,10 @@ def test_console_approval_requires_paused_workflow(
     console_approval: tuple[str, str],
     monkeypatch: pytest.MonkeyPatch,
     status: WorkflowExecutionStatus,
+    expected_code: str,
 ) -> None:
     from services.human_input_v2.submission_service import (
         HumanInputFormError,
-        HumanInputFormErrorCode,
         HumanInputSubmissionService,
     )
     from tasks.app_generate.workflow_execute_task import resume_app_execution
@@ -2773,7 +2773,7 @@ def test_console_approval_requires_paused_workflow(
         HumanInputSubmissionService(session_factory=context.sessions).submit_console_form(
             account_id=_ACCOUNT, form_token=token, action="approve", inputs={"note": "Approved"}
         )
-    assert exc.value.code == HumanInputFormErrorCode.WORKFLOW_NOT_ACTIVE
+    assert exc.value.code.value == expected_code
     with context.sessions() as session:
         assert session.get_one(HumanInputForm, form_id).status == HumanInputFormStatus.WAITING
     assert not enqueue_calls
@@ -2846,7 +2846,9 @@ def test_console_approval_uses_frozen_select_options(
     with context.sessions.begin() as session:
         record = session.get_one(HumanInputForm, form_id)
         record.resolved_form = record.resolved_form.model_copy(
-            update={"parts": (SelectInput(output_variable_name="note", options=("Yes", "No"), default_value=None),)}
+            update={
+                "parts": (SelectInput(output_variable_name="note", options=("Yes", "No"), resolved_default_value=None),)
+            }
         )
     monkeypatch.setattr(resume_app_execution, "apply_async", lambda **_kwargs: None)
     service = HumanInputSubmissionService(session_factory=context.sessions)
