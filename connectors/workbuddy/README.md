@@ -13,7 +13,7 @@ node connectors/workbuddy/package.ts dify --tag <release>  # a given release tag
 node connectors/workbuddy/package.ts dify --worktree       # skill from the working tree, no tag
 ```
 
-The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used, or `worktree` with `--worktree`; check it is the source you expect. `--tag` and `--worktree` cannot be combined. The tag must be a release that contains the MCP flow (`skills/difyctl/references/mcp.md`). Older tags build a package whose intro points at a missing file.
+The zip is written to `connectors/workbuddy/build/<connector>.zip`. The script prints the tag it used, or `worktree` with `--worktree`; check it is the source you expect. `--tag` and `--worktree` cannot be combined. The script fails when a relative link in `skill-intro.md` points to a file the skill does not have, or when the zip is over WorkBuddy's 20 MB limit. The tag must be a release that contains the MCP flow (`skills/difyctl/references/mcp.md`). Older tags build a package whose intro points at a missing file.
 
 Use `--worktree` for a test build before a release, so the zip contains skill changes that no tag has yet. Packages submitted to WorkBuddy are always built from a release tag, never with `--worktree`.
 
