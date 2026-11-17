@@ -641,3 +641,13 @@ def test_every_tool_has_a_description_and_the_call_tools_name_their_effect() -> 
         assert call_tool.effect.value in tools[call_tool].description
     assert "cannot be undone" in tools[CallTool.DESTRUCTIVE].description
     assert "cannot be undone" not in tools[CallTool.WRITE].description
+
+
+def test_the_instructions_say_what_to_do_when_the_workspace_list_is_empty() -> None:
+    step_one = next(line for line in MCP_INSTRUCTIONS.splitlines() if line.startswith("1."))
+
+    assert "get.workspace" in step_one
+    assert "If the list is empty" in step_one
+    assert "give the token access to the workspace" in step_one
+    assert "workspace id" in step_one
+    assert "Do not guess" in step_one
