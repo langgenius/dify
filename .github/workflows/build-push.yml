@@ -91,6 +91,13 @@ jobs:
             runs_on: depot-ubuntu-24.04-4
 
     steps:
+      # Cancelled remote Git checkouts can leave locks in the shared Depot cache.
+      - name: Checkout SaaS build source
+        if: github.ref == 'refs/heads/deploy/saas'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
@@ -116,8 +123,8 @@ jobs:
         uses: depot/build-push-action@0f27be7c41d76663a98518dfe68f1c46582242c4 # v1.19.0
         with:
           project: ${{ vars.DEPOT_PROJECT_ID }}
-          context: ${{ matrix.build_context }}
-          file: ${{ matrix.file }}
+          context: ${{ github.ref == 'refs/heads/deploy/saas' && (matrix.artifact_context == 'local-sandbox' && './dify-agent-runtime' || '.') || matrix.build_context }}
+          file: ${{ github.ref == 'refs/heads/deploy/saas' && matrix.artifact_context == 'local-sandbox' && 'dify-agent-runtime/docker/Dockerfile' || matrix.file }}
           platforms: ${{ matrix.platform }}
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           build-contexts: ${{ matrix.build_contexts }}
