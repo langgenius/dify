@@ -23214,6 +23214,8 @@ Write transport; app-mode validators own defaults and feature-specific rules.
 
 #### AppModelSelectionResponse
 
+Readable model selection; missing or null identifiers mean it is not fully configured.
+
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | completion_params | object |  | No |

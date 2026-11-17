@@ -1102,6 +1102,64 @@ class TestAppResponseModelsCases:
         assert serialized["data"][1]["icon_url"] is None
 
     @staticmethod
+    @pytest.mark.parametrize(
+        "selection",
+        [
+            {"provider": None, "name": None, "mode": "chat", "completion_params": {}},
+            {"provider": "openai", "name": None},
+            {"mode": "chat", "completion_params": {}},
+            {},
+            None,
+            {"provider": "openai", "name": "gpt-4o"},
+        ],
+    )
+    def test_list_and_detail_preserve_unset_model_selection(
+        app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, selection: dict[str, object] | None
+    ) -> None:
+        """Stored unset selections remain readable without changing configuration or hiding apps."""
+        app_obj = _persist_response_graph(sqlite_session)
+        app_obj.mode = AppMode.AGENT_CHAT
+        config = sqlite_session.get(AppModelConfig, CONFIG_ID)
+        assert config is not None
+        stored_model = json.dumps(selection) if selection is not None else None
+        config.model = stored_model
+        sqlite_session.commit()
+        monkeypatch.setattr(
+            "repositories.app.response.load_annotation_reply_config", lambda _session, _app_id: {"enabled": False}
+        )
+        configured = replace(
+            app_record(app_obj, session=sqlite_session),
+            id="00000000-0000-0000-0000-000000000112",
+            app_model_config={"model": {"provider": "openai", "name": "gpt-4o"}},
+        )
+        without_config = replace(configured, id="00000000-0000-0000-0000-000000000113", app_model_config=None)
+        page = PaginatedResult(
+            page=1,
+            per_page=20,
+            total=3,
+            items=[configured, without_config, app_record(app_obj, session=sqlite_session)],
+        )
+        detail = app_record(app_obj, session=sqlite_session, projection="detail-with-site")
+        service = SimpleNamespace(list_apps=lambda *_: page, get=lambda *_: detail)
+        monkeypatch.setattr(
+            controller, "application_services", lambda: SimpleNamespace(apps=SimpleNamespace(console=service))
+        )
+
+        with app.test_request_context("/"):
+            data, status = unwrap(controller.AppListApi.get)(controller.AppListApi(), CONTEXT)
+            response = unwrap(controller.AppApi.get)(controller.AppApi(), CONTEXT, app_id=UUID(app_obj.id))
+
+        assert status == 200
+        assert [item["id"] for item in data["data"]] == [configured.id, without_config.id, app_obj.id]
+        assert data["data"][0]["model_config"]["model"] == {"provider": "openai", "name": "gpt-4o"}
+        assert data["data"][1]["model_config"] is None
+        assert data["data"][2]["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["model"] == (selection if selection is not None else {})
+        assert response["model_config"]["pre_prompt"] == "hello"
+        sqlite_session.expire(config)
+        assert config.model == stored_model
+
+    @staticmethod
     @pytest.mark.parametrize("strategy", [None, "cot", "function-calling"])
     def test_app_detail_preserves_historical_agent_strategy(
         app: Flask, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, strategy: str | None
@@ -1261,6 +1319,8 @@ class TestAppResponseModelsCases:
             {"dataset_configs": {"retrieval_model": "unsupported"}},
             {"dataset_configs": {"retrieval_model": "multiple", "reranking_mode": "unsupported"}},
             {"model": {"provider": "openai", "name": "gpt-4o", "mode": "unsupported"}},
+            {"model": {"provider": 123, "name": "gpt-4o"}},
+            {"model": {"provider": "openai", "name": ["gpt-4o"]}},
             {"user_input_form": [{"unsupported": {"label": "Name", "variable": "name"}}]},
         ):
             with pytest.raises(ValidationError):
