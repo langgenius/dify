@@ -14,10 +14,10 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+import core.moderation.factory as moderation_factory
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
-from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -907,7 +907,7 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
-    app.extensions[API_MODERATION_EXTENSION_KEY] = APIModerationCallbacks(
+    app.extensions[moderation_factory.API_MODERATION_EXTENSION_KEY] = moderation_factory.APIModerationCallbacks(
         validate_config=services.api_moderation.validate_config,
         moderate_inputs=services.api_moderation.moderate_inputs,
         moderate_outputs=services.api_moderation.moderate_outputs,
