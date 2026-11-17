@@ -1497,13 +1497,13 @@ export type WebAppHumanInputV2SubmitResponse = {
 
 export type WebAppParametersResponse = {
   account_login_enabled: boolean
-  account_login_url: string | null
   allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
   }
   connection_requirements: Array<WebAppConnectionRequirement>
   connection_revision: string | null
+  console_web_url: string | null
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1912,9 +1912,9 @@ export type WebSiteResponse = {
 }
 
 export type WebSystemFeatureResponse = {
-  account_login_url: string | null
   agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
+  console_web_url: string | null
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean

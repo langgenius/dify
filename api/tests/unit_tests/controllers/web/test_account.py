@@ -72,6 +72,7 @@ def test_profile_returns_personal_settings_without_workspace_or_secrets(client: 
         "has_tenant": False,
     }
     schema = account.WebAccountProfileResponse.model_json_schema(mode="serialization")
+    assert "console_web_url" not in schema["properties"]
     assert "account_login_url" not in schema["properties"]
 
 

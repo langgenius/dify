@@ -2520,13 +2520,13 @@ export const zWebAppHumanInputV2SubmitResponse = z.record(z.string(), z.unknown(
  */
 export const zWebAppParametersResponse = z.object({
   account_login_enabled: z.boolean(),
-  account_login_url: z.string().nullable(),
   allow_anonymous_end_user_auth: z.boolean(),
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
   }),
   connection_requirements: z.array(zWebAppConnectionRequirement),
   connection_revision: z.string().nullable(),
+  console_web_url: z.string().nullable(),
   file_upload: z.object({
     allowed_file_extensions: z.array(z.string()).optional(),
     allowed_file_types: z
@@ -2978,10 +2978,9 @@ export const zHumanInputFormDefinitionResponse = z.object({
 /**
  * WebSystemFeatureResponse
  *
- * Extend public bootstrap with the Web-only Account sign-in entry point.
+ * Extend public bootstrap with the Web-only Account console endpoint.
  */
 export const zWebSystemFeatureResponse = z.object({
-  account_login_url: z.string().nullable(),
   agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',
@@ -2990,6 +2989,7 @@ export const zWebSystemFeatureResponse = z.object({
     login_page_logo: '',
     workspace_logo: '',
   }),
+  console_web_url: z.string().nullable(),
   deployment_edition: zDeploymentEdition,
   enable_app_deploy: z.boolean().default(false),
   enable_change_email: z.boolean().default(true),

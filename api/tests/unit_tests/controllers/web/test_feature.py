@@ -15,7 +15,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 
 @pytest.mark.parametrize("login_enabled", [True, False])
 @pytest.mark.parametrize("console_url", ["https://console.example.com", "https://console.example.com/base///", ""])
-def test_public_system_features_exposes_web_account_login_url(
+def test_public_system_features_exposes_web_console_endpoint_url(
     monkeypatch: pytest.MonkeyPatch,
     account_application_services: ApplicationServices,
     login_enabled: bool,
@@ -43,8 +43,9 @@ def test_public_system_features_exposes_web_account_login_url(
     console_payload.pop("webapp_url")
     assert payload == {
         **console_payload,
-        "account_login_url": f"{console_url.rstrip('/')}/signin" if login_enabled else None,
+        "console_web_url": console_url.rstrip("/") if login_enabled else None,
     }
+    assert "account_login_url" not in payload
     assert "account_login_url" not in console_response.get_json()
     assert "webapp_url" not in payload
     assert "Set-Cookie" not in response.headers
@@ -55,24 +56,25 @@ def test_public_system_features_exposes_web_account_login_url(
 def test_web_system_features_preserves_shared_bootstrap(deployment_edition: DeploymentEdition) -> None:
     features = SystemFeatureModel(agent_tracing_api_collection_enabled=False, deployment_edition=deployment_edition)
 
-    response = WebSystemFeatureResponse(**features.model_dump(mode="json"), account_login_url=None)
+    response = WebSystemFeatureResponse(**features.model_dump(mode="json"), console_web_url=None)
 
-    assert response.model_dump(mode="json") == {**features.model_dump(mode="json"), "account_login_url": None}
+    assert response.model_dump(mode="json") == {**features.model_dump(mode="json"), "console_web_url": None}
 
 
-def test_web_system_features_schema_requires_nullable_login_url() -> None:
+def test_web_system_features_schema_requires_nullable_console_web_url() -> None:
     schema = WebSystemFeatureResponse.model_json_schema(mode="serialization")
 
-    assert "account_login_url" in schema["required"]
-    assert schema["properties"]["account_login_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
-    assert "default" not in schema["properties"]["account_login_url"]
-    assert "account_login_url" not in SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
+    assert "console_web_url" in schema["required"]
+    assert schema["properties"]["console_web_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
+    assert "default" not in schema["properties"]["console_web_url"]
+    assert "console_web_url" not in SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
+    assert "account_login_url" not in schema["properties"]
 
 
-def test_web_system_features_cannot_default_missing_login_url_to_disabled() -> None:
+def test_web_system_features_cannot_default_missing_console_web_url_to_disabled() -> None:
     with pytest.raises(ValidationError) as error:
         WebSystemFeatureResponse.model_validate(
             {"deployment_edition": DeploymentEdition.COMMUNITY, "agent_tracing_api_collection_enabled": False}
         )
 
-    assert error.value.errors(include_input=False)[0]["loc"] == ("account_login_url",)
+    assert error.value.errors(include_input=False)[0]["loc"] == ("console_web_url",)
