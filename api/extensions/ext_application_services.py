@@ -58,6 +58,7 @@ from extensions.application_services.workspace import (
 from extensions.ext_redis import RedisClientWrapper, redis_client
 from extensions.ext_storage import storage
 from extensions.tracing import bind_tracing
+from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from libs.passport import PassportService
 from models.model import EndUser
@@ -263,6 +264,7 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -465,6 +467,11 @@ def _build_file_grant_service(*, database_client: sessionmaker[Session]) -> File
     )
 
 
+def _collect_agent_workspaces(*, tenant_id: str, agent_workspace_ids: tuple[str, ...]) -> None:
+    """Enqueue physical collection of committed RETIRED Agent workspaces of a tenant."""
+    enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=agent_workspace_ids)
+
+
 def _get_annotation_import_quota(*, tenant_id: str) -> AnnotationImportQuota | None:
     if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
         return None
@@ -637,7 +644,9 @@ def build_application_services(
         generate_name=DefaultModelConversationNameGenerator(trace_scopes=tracing.scopes),
     )
     conversation_commands = ConversationCommandService(
-        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+        conversations=conversations,
+        enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        collect_agent_workspaces=_collect_agent_workspaces,
     )
     message_files = MessageFileResolver()
     conversation_queries = ConversationQueryService(
@@ -646,6 +655,7 @@ def build_application_services(
     conversation_variables = ConversationVariableRepository(session_factory=database_client)
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
+    workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
     suggested_questions = SuggestedQuestionsQuery(
         session_factory=database_client,
         repository=messages,
@@ -897,9 +907,11 @@ def build_application_services(
             logs=WorkflowAppLogQueryRepository(session_factory=database_client),
         ),
         workflow_comments=WorkflowCommentService(
-            comments=WorkflowCommentRepository(session_factory=database_client),
+            threads=workflow_comment_repository,
+            queries=workflow_comment_repository,
             notifier=CeleryWorkflowCommentMentionNotifier(),
             console_web_url=dify_config.CONSOLE_WEB_URL,
+            now=naive_utc_now,
         ),
         inner_mail=InnerMailService(dispatch=enqueue_inner_mail),
         web_passport=WebPassportService(

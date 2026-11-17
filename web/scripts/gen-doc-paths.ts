@@ -62,6 +62,15 @@ const OPENAPI_BASE_URL = (
   process.env.DOCS_OPENAPI_BASE_URL || new URL('.', DOCS_JSON_URL).toString()
 ).replace(/\/?$/, '/')
 const DOCS_PRODUCTS = ['cloud', 'self-host'] as const
+const WORKSPACE_CHANNEL_PAGES = [
+  'dingtalk',
+  'email',
+  'feishu-lark',
+  'ms-teams',
+  'overview',
+  'slack',
+  'wecom',
+] as const
 
 type DocsProduct = (typeof DOCS_PRODUCTS)[number]
 type ProductAvailability = Record<string, Set<DocsProduct>>
@@ -436,6 +445,11 @@ async function main(): Promise<void> {
 
   // Group by section
   const { groups, productAvailability } = groupPathsBySection(allPaths)
+  for (const page of WORKSPACE_CHANNEL_PAGES) {
+    const channelPath = `use-dify/workspace/channels/${page}`
+    addPathToGroup(groups, channelPath)
+    productAvailability[`/${channelPath}`] = new Set(DOCS_PRODUCTS)
+  }
 
   console.log(`Grouped into ${Object.keys(groups).length} sections:`, Object.keys(groups))
   console.log(`Found ${Object.keys(productAvailability).length} product-aware paths`)

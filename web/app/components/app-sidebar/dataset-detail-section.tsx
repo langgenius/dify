@@ -6,11 +6,13 @@ import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
+import { isEvaluationEdition } from '@/features/system-features/utils'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import { getDatasetACLCapabilities } from '@/utils/permission'
@@ -27,7 +29,7 @@ type DatasetDetailSectionProps = {
 }
 
 const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
-  const { t } = useTranslation(['common', 'navigation'])
+  const { t } = useTranslation(['common', 'navigation', 'evaluation'])
   const pathname = usePathname()
   const datasetId = getDatasetIdFromPathname(pathname)
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
@@ -73,6 +75,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     return !datasetRes.is_published
   }, [datasetRes])
 
+  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
   const navigation = useMemo(() => {
     if (!datasetId) return []
 
@@ -82,6 +85,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
       icon: string
       selectedIcon: string
       disabled: boolean
+      disabledReason?: string
     }[] = [
       {
         name: t(($) => $['datasetMenus.hitTesting'], { ns: 'common' }),
@@ -111,6 +115,21 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     ]
 
     if (datasetRes?.provider !== 'external') {
+      if (isEvaluationEdition(systemFeatures.deployment_edition)) {
+        baseNavigation.unshift({
+          name: t(($) => $.title, { ns: 'evaluation' }),
+          href: `/datasets/${datasetId}/evaluation`,
+          icon: 'i-ri-flask-line',
+          selectedIcon: 'i-ri-flask-fill',
+          disabled:
+            evaluationRequiresUpgrade ||
+            isButtonDisabledWithPipeline ||
+            !datasetACLCapabilities.canPipelineTest,
+          disabledReason: evaluationRequiresUpgrade
+            ? t(($) => $['compliance.sandboxUpgradeTooltip'], { ns: 'common' })
+            : undefined,
+        })
+      }
       baseNavigation.unshift({
         name: t(($) => $['datasetMenus.pipeline'], { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
@@ -128,7 +147,15 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
     }
 
     return baseNavigation
-  }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider, datasetACLCapabilities])
+  }, [
+    t,
+    datasetId,
+    isButtonDisabledWithPipeline,
+    datasetRes?.provider,
+    datasetACLCapabilities,
+    systemFeatures.deployment_edition,
+    evaluationRequiresUpgrade,
+  ])
 
   if (!datasetRes) return null
 
@@ -166,6 +193,7 @@ const DatasetDetailSection = ({ expand = true }: DatasetDetailSectionProps) => {
               name={item.name}
               href={item.href}
               disabled={item.disabled}
+              disabledReason={item.disabledReason}
               pathname={pathname}
             />
           ))}
