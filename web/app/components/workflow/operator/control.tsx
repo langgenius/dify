@@ -5,10 +5,8 @@ import { Toggle } from '@langgenius/dify-ui/toggle'
 import { useAtomValue, useSetAtom } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  collaborationUpgradeAvailableAtom,
-  collaborationUpgradeOpenAtom,
-} from '../collaboration/upgrade-state'
+import { collaborationUpgradeAvailableAtom } from '../collaboration/upgrade-state'
+import { collaborationUpgradeOpenAtom } from '../editor-resource/state'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'

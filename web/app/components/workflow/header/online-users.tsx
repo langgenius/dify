@@ -11,15 +11,15 @@ import { useAtomValue, useSetAtom } from 'jotai'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { editorAppIdAtom } from '@/app/components/workflow/editor-resource/state'
+import {
+  collaborationUpgradeOpenAtom,
+  editorAppIdAtom,
+} from '@/app/components/workflow/editor-resource/state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { getAvatar } from '@/service/common'
 import { getAvatarInitial } from '@/utils/avatar'
 import { useCollaboration } from '../collaboration/hooks/use-collaboration'
-import {
-  collaborationUpgradeAvailableAtom,
-  collaborationUpgradeOpenAtom,
-} from '../collaboration/upgrade-state'
+import { collaborationUpgradeAvailableAtom } from '../collaboration/upgrade-state'
 import { getUserColor } from '../collaboration/utils/user-color'
 import { useHooksStore } from '../hooks-store'
 
