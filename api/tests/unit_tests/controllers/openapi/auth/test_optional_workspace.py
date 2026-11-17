@@ -187,7 +187,7 @@ def test_an_external_sso_login_carries_apps_read() -> None:
 
 # The ops whose apps:read check an external SSO login can reach. Every other op that checks apps:read refuses the
 # login at its subject check, which runs first, so carrying the scope makes no other op callable.
-SSO_APPS_READ_OPS: frozenset[str] = frozenset()
+SSO_APPS_READ_OPS: frozenset[str] = frozenset({"get.console_app"})
 
 
 def test_apps_read_admits_an_external_sso_login_only_where_pinned() -> None:
