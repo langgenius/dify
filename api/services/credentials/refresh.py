@@ -23,7 +23,7 @@ class CredentialRefreshLease(Protocol):
 
 class CredentialRefreshLock(Protocol):
     def acquire(
-        self, *, credential_type: Literal["tool", "datasource"], workspace_id: str, credential_id: str
+        self, *, credential_type: Literal["tool", "datasource", "mcp"], workspace_id: str, credential_id: str
     ) -> AbstractContextManager[CredentialRefreshLease]:
         """Serialize refreshes across workers, with bounded waiting and a renewed lease.
 

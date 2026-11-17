@@ -34,22 +34,33 @@ class MCPClient:
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
 
+        self.headers = self._expand_request_headers(self.headers)
+
+        # Initialize session and client objects
+        self._session: ClientSession | None = None
+        self._exit_stack = ExitStack()
+        self._initialized = False
+
+    @staticmethod
+    def _expand_request_headers(headers: dict[str, str]) -> dict[str, str]:
+        """Copy raw connection headers and expand templates in the current request.
+
+        Without a request context preserve placeholders, matching construction
+        behavior. Never mutate the connection values used for refresh digests.
+        """
+        headers = headers.copy()
         # Substitute placeholders with incoming request headers if in a request context
-        if has_request_context() and self.headers:
+        if has_request_context() and headers:
             pattern = re.compile(r"\{\{\s*request\.headers?\.(.+?)\s*\}\}", re.IGNORECASE)
-            for key, value in list(self.headers.items()):
+            for key, value in list(headers.items()):
                 if isinstance(value, str):
 
                     def replace_func(match):
                         header_name = match.group(1)
                         return request.headers.get(header_name, "")
 
-                    self.headers[key] = pattern.sub(replace_func, value)
-
-        # Initialize session and client objects
-        self._session: ClientSession | None = None
-        self._exit_stack = ExitStack()
-        self._initialized = False
+                    headers[key] = pattern.sub(replace_func, value)
+        return headers
 
     def __enter__(self):
         self._initialize()

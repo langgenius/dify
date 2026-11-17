@@ -9,13 +9,10 @@ import logging
 from collections.abc import Callable
 from typing import Any, override
 
-from sqlalchemy.orm import Session
-
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.error import MCPAuthError
 from core.mcp.mcp_client import MCPClient
 from core.mcp.types import CallToolResult, Tool
-from extensions.ext_database import db
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +51,9 @@ class MCPClientWithAuthRetry(MCPClient):
             forward_identity_active: If True, suppress the static-OAuth retry
                 on 401 — the forwarded identity must propagate as-is.
         """
+        # Refresh compares stored connection values, before request templates
+        # are expanded into this invocation's transport headers.
+        self._connection_headers = headers.copy() if headers else {}
         super().__init__(server_url, headers, timeout, sse_read_timeout)
 
         self.provider_entity = provider_entity
@@ -65,8 +65,9 @@ class MCPClientWithAuthRetry(MCPClient):
         """
         Handle authentication error by refreshing tokens.
 
-        This method creates a short-lived database session only when authentication
-        retry is needed, minimizing database connection hold time.
+        Given a failed connection, compare its unexpanded headers under the
+        shared refresh lease. On success expand the returned headers in the
+        current request before reconnecting; failures preserve MCPAuthError.
 
         Args:
             error: The authentication error
@@ -84,37 +85,23 @@ class MCPClientWithAuthRetry(MCPClient):
         self._has_retried = True
 
         try:
-            # Create a temporary session only for auth retry
-            # This session is short-lived and only exists during the auth operation
+            from extensions.application_services.mcp import mcp_credential_digest, mcp_credential_service
 
-            from services.tools.mcp_tools_manage_service import MCPToolManageService
-
-            with Session(db.engine) as session, session.begin():
-                mcp_service = MCPToolManageService(session=session)
-
-                # Perform authentication using the service's auth method
-                # Extract OAuth metadata hints from the error
-                mcp_service.auth_with_actions(
-                    self.provider_entity,
-                    self.authorization_code,
-                    resource_metadata_url=error.resource_metadata_url,
-                    scope_hint=error.scope_hint,
-                )
-
-                # Retrieve new tokens
-                self.provider_entity = mcp_service.get_provider_entity_by_server_identifier(
-                    server_identifier=self.provider_entity.server_identifier, tenant_id=self.provider_entity.tenant_id
-                )
-
-            # Session is closed here, before we update headers
-            token = self.provider_entity.retrieve_tokens()
-            if not token:
-                raise MCPAuthError("Authentication failed - no token received")
-
-            # Update headers with new token
-            self.headers["Authorization"] = f"{token.token_type.capitalize()} {token.access_token}"
-
-            # Clear authorization code after first use
+            values = mcp_credential_service().resolve(
+                workspace_id=self.provider_entity.tenant_id,
+                provider=self.provider_entity.server_identifier,
+                credential_id=self.provider_entity.id,
+                deployed=False,
+                authorization_code=self.authorization_code,
+                resource_metadata_url=error.resource_metadata_url,
+                scope_hint=error.scope_hint,
+                failed_credential_digest=mcp_credential_digest(
+                    {"server_url": self.server_url, "headers": self._connection_headers}
+                ),
+            )
+            self.server_url = values["server_url"]
+            self._connection_headers = values["headers"].copy()
+            self.headers = self._expand_request_headers(self._connection_headers)
             self.authorization_code = None
 
         except MCPAuthError:
@@ -123,7 +110,7 @@ class MCPClientWithAuthRetry(MCPClient):
         except Exception as e:
             # Catch all exceptions during auth retry
             logger.exception("Authentication retry failed")
-            raise MCPAuthError(f"Authentication retry failed: {e}") from e
+            raise MCPAuthError("MCP authentication refresh failed. Authorize the provider in the Dify console.") from e
 
     def _execute_with_retry[**P, R](self, func: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
         """

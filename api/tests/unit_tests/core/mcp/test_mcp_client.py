@@ -3,14 +3,12 @@ from contextlib import ExitStack, contextmanager
 from datetime import timedelta
 from queue import Queue
 from threading import Thread
-from types import SimpleNamespace, TracebackType
+from types import TracebackType
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
 import pytest
-from sqlalchemy import event, text
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
 from core.entities.mcp_provider import MCPProviderEntity
 from core.mcp.auth_client import MCPClientWithAuthRetry
@@ -589,7 +587,7 @@ class TestMCPClientWithAuthRetry:
         assert client.authorization_code == "initial-code"
         assert client._has_retried is False
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("extensions.application_services.mcp.mcp_credential_service")
     def test_handle_auth_error_success(
         self,
         mock_service_class,
@@ -598,18 +596,11 @@ class TestMCPClientWithAuthRetry:
         monkeypatch: pytest.MonkeyPatch,
         sqlite_engine: Engine,
     ):
-        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
-
         mock_service = mock_service_class.return_value
-        new_provider = make_provider(
-            credentials={
-                "access_token": "new-access-token",
-                "token_type": "Bearer",
-                "expires_in": 3600,
-                "refresh_token": "new-refresh-token",
-            }
-        )
-        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
+        mock_service.resolve.return_value = {
+            "server_url": "http://test.example.com",
+            "headers": {"Authorization": "Bearer new-access-token"},
+        }
 
         # MCPAuthError parses resource_metadata and scope from www_authenticate_header
         www_auth = 'Bearer resource_metadata="http://meta", scope="read"'
@@ -617,26 +608,26 @@ class TestMCPClientWithAuthRetry:
 
         auth_client._handle_auth_error(error)
 
-        service_session = mock_service_class.call_args.kwargs["session"]
-        assert isinstance(service_session, Session)
-        assert service_session.in_transaction() is False
+        from services.credentials.mcp_runtime import mcp_credential_digest
 
-        # Verify service calls - error.resource_metadata_url and error.scope_hint are parsed from header
-        mock_service.auth_with_actions.assert_called_once_with(
-            provider,
-            "test-code",
+        mock_service.resolve.assert_called_once_with(
+            workspace_id=provider.tenant_id,
+            provider=provider.server_identifier,
+            credential_id=provider.id,
+            deployed=False,
+            authorization_code="test-code",
             resource_metadata_url="http://meta",
             scope_hint="read",
-        )
-        mock_service.get_provider_entity_by_server_identifier.assert_called_once_with(
-            server_identifier=provider.server_identifier, tenant_id=provider.tenant_id
+            failed_credential_digest=mcp_credential_digest(
+                {"server_url": "http://test.example.com", "headers": {"Authorization": "Bearer old-token"}}
+            ),
         )
 
         # Verify client updates
         assert auth_client.headers["Authorization"] == "Bearer new-access-token"
         assert auth_client.authorization_code is None
         assert auth_client._has_retried is True
-        assert auth_client.provider_entity == new_provider
+        assert auth_client.provider_entity == provider
 
     def test_handle_auth_error_no_provider(self, auth_client):
         """Test auth error handling when no provider entity is set."""
@@ -658,7 +649,7 @@ class TestMCPClientWithAuthRetry:
 
         assert exc_info.value == error
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("extensions.application_services.mcp.mcp_credential_service")
     def test_handle_auth_error_no_token(
         self,
         mock_service_class,
@@ -668,20 +659,20 @@ class TestMCPClientWithAuthRetry:
         sqlite_engine: Engine,
     ):
         """Test auth error handling when no token is received."""
-        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
 
-        new_provider = make_provider(credentials={})
-        mock_service.get_provider_entity_by_server_identifier.return_value = new_provider
+        from services.credentials.mcp_runtime import MCPCredentialUnavailableError
+
+        mock_service.resolve.side_effect = MCPCredentialUnavailableError("No token")
 
         error = MCPAuthError("Auth failed")
 
         with pytest.raises(MCPAuthError) as exc_info:
             auth_client._handle_auth_error(error)
 
-        assert "Authentication failed - no token received" in str(exc_info.value)
+        assert "Authorize the provider" in str(exc_info.value)
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("extensions.application_services.mcp.mcp_credential_service")
     def test_handle_auth_error_generic_exception(
         self,
         mock_service_class,
@@ -690,30 +681,17 @@ class TestMCPClientWithAuthRetry:
         sqlite_engine: Engine,
     ):
         """Test auth error handling when a generic exception occurs."""
-        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         service = mock_service_class.return_value
-
-        def fail_statement(*_args, **_kwargs):
-            raise RuntimeError("DB error")
-
-        def execute_statement(*_args, **_kwargs):
-            service_session = mock_service_class.call_args.kwargs["session"]
-            service_session.execute(text("SELECT 1"))
-
-        service.auth_with_actions.side_effect = execute_statement
-        event.listen(sqlite_engine, "before_cursor_execute", fail_statement)
+        service.resolve.side_effect = RuntimeError("DB secret error")
 
         error = MCPAuthError("Auth failed")
 
-        try:
-            with pytest.raises(MCPAuthError) as exc_info:
-                auth_client._handle_auth_error(error)
-        finally:
-            event.remove(sqlite_engine, "before_cursor_execute", fail_statement)
+        with pytest.raises(MCPAuthError) as exc_info:
+            auth_client._handle_auth_error(error)
 
-        assert "Authentication retry failed: DB error" in str(exc_info.value)
+        assert "DB secret error" not in str(exc_info.value)
 
-    @patch("services.tools.mcp_tools_manage_service.MCPToolManageService")
+    @patch("extensions.application_services.mcp.mcp_credential_service")
     def test_handle_auth_error_mcp_auth_error_propagation(
         self,
         mock_service_class,
@@ -722,9 +700,8 @@ class TestMCPClientWithAuthRetry:
         sqlite_engine: Engine,
     ):
         """Test that MCPAuthError during refresh is propagated as is."""
-        monkeypatch.setattr("core.mcp.auth_client.db", SimpleNamespace(engine=sqlite_engine))
         mock_service = mock_service_class.return_value
-        mock_service.auth_with_actions.side_effect = MCPAuthError("Refresh failed")
+        mock_service.resolve.side_effect = MCPAuthError("Refresh failed")
 
         error = MCPAuthError("Initial auth failed")
 
@@ -1081,3 +1058,40 @@ def test_empty_string_is_an_opaque_continuation_cursor() -> None:
         assert len(requests) == 2
         assert requests[1].params is not None
         assert requests[1].params.cursor == ""
+
+
+def test_auth_retry_hashes_raw_headers_and_expands_templates_for_both_connections() -> None:
+    from flask import Flask
+
+    from services.credentials.mcp_runtime import MCPCredentialRecord, MCPCredentialService
+    from tests.helpers.unit.credential_refresh import ThreadCredentialRefreshLock
+
+    raw = {"Authorization": "Bearer old", "X-User": "{{request.headers.X-User}}"}
+    refreshed = {**raw, "Authorization": "Bearer new"}
+    store, runtime = MagicMock(), MagicMock()
+    store.get_mcp_credential.return_value = MCPCredentialRecord("id", "tenant", "server", "old", {}, True)
+    store.update_mcp_credential_if_unchanged.return_value = True
+    runtime.resolve.side_effect = [
+        {"server_url": "https://example.com/mcp", "headers": raw},
+        {"server_url": "https://example.com/mcp", "headers": refreshed},
+    ]
+    runtime.refresh.return_value = "encrypted-new"
+    service = MCPCredentialService(credentials=store, runtime=runtime, refresh_lock=ThreadCredentialRefreshLock())
+    with (
+        Flask(__name__).test_request_context(headers={"X-User": "request-user"}),
+        patch("extensions.application_services.mcp.mcp_credential_service", return_value=service),
+        patch("core.mcp.mcp_client.streamablehttp_client") as transport,
+        patch("core.mcp.mcp_client.ClientSession") as sessions,
+    ):
+        transport.return_value.__enter__.return_value = (Mock(), Mock(), Mock())
+        sessions.return_value.__enter__.return_value.initialize.side_effect = [MCPAuthError("401"), None]
+        client = MCPClientWithAuthRetry("https://example.com/mcp", headers=raw, provider_entity=make_provider({}))
+        with client:
+            assert client.headers == {"Authorization": "Bearer new", "X-User": "request-user"}
+        sent = [call.kwargs["headers"] for call in transport.call_args_list]
+    assert sent == [
+        {"Authorization": "Bearer old", "X-User": "request-user"},
+        {"Authorization": "Bearer new", "X-User": "request-user"},
+    ]
+    runtime.refresh.assert_called_once()
+    assert raw["X-User"] == "{{request.headers.X-User}}"

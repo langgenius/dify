@@ -4,7 +4,9 @@ Primary keys and server identifiers are distinct, even when an identifier looks
 like a UUID or collides with another provider's primary key.
 """
 
+import json
 from typing import Literal
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.orm import Session
@@ -158,3 +160,21 @@ def test_server_identifier_can_be_reused_across_tenants(service: MCPToolManageSe
         service.get_provider_by_server_identifier(server_identifier=SERVER_IDENTIFIER, tenant_id=TENANT_ID).id
         == provider.id
     )
+
+
+def test_saving_oauth_tokens_records_absolute_expiry(service: MCPToolManageService, sqlite_session: Session) -> None:
+    provider = _provider()
+    _persist(sqlite_session, provider)
+    with (
+        patch("services.tools.mcp_tools_manage_service.time.time", return_value=1000),
+        patch("core.tools.mcp_tool.provider.MCPToolProviderController.from_db", return_value=MagicMock()),
+        patch("services.tools.mcp_tools_manage_service.ProviderConfigEncrypter") as factory,
+    ):
+        factory.return_value.encrypt.side_effect = lambda values: values
+        service.update_provider_credentials(
+            provider_id=PROVIDER_UUID,
+            tenant_id=TENANT_ID,
+            credentials={"access_token": "token", "expires_in": 120},
+            authed=True,
+        )
+    assert json.loads(provider.encrypted_credentials or "{}")["expires_at"] == 1120

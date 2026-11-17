@@ -7,7 +7,7 @@ returns decrypted model and tool credentials for in-memory runtime use only.
 import json
 import logging
 from json import JSONDecodeError
-from typing import Any
+from typing import Any, Literal
 
 from flask_restx import Resource
 from pydantic import BaseModel, ConfigDict, Field
@@ -27,10 +27,13 @@ from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.helper.provider_encryption import create_provider_encrypter
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
 from core.tools.tool_manager import ToolManager
+from extensions.application_services.mcp import mcp_credential_service
 from extensions.ext_database import db
 from fields.base import ResponseModel
 from models.provider import ProviderCredential
 from models.tools import BuiltinToolProvider
+from services.credentials.mcp_runtime import MCPCredentialUnavailableError
+from services.credentials.refresh import CredentialRefreshUnavailableError
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +49,8 @@ class InnerRuntimeCredentialResolveItem(BaseModel):
 
     credential_id: str = Field(description="Credential id")
     provider: str = Field(description="Runtime provider identifier, for example langgenius/openai/openai")
-    kind: str = Field(description="Credential kind, either 'model' or 'tool'")
+    kind: str = Field(description="Credential kind: 'model', 'tool' or 'mcp'")
+    failed_credential_digest: str = Field(default="", pattern=r"^(?:[0-9a-f]{64})?$")
 
 
 class InnerRuntimeCredentialsResolvePayload(BaseModel):
@@ -61,6 +65,10 @@ class InnerRuntimeCredentialResponse(ResponseModel):
     provider: str
     kind: str
     values: dict[str, Any]
+    identity_mode: Literal["off", "idp_token"] | None = Field(
+        default=None,
+        description="MCP only: run owner expands raw header templates and issues run-scoped identity tokens.",
+    )
 
 
 class InnerRuntimeCredentialsResolveResponse(ResponseModel):
@@ -95,6 +103,7 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
 
         resolved: list[InnerRuntimeCredentialResponse] = []
         for item in args.credentials:
+            identity_mode = None
             if item.kind == _KIND_MODEL:
                 if model_configurations is None:
                     provider_manager = create_plugin_provider_manager(tenant_id=args.tenant_id)
@@ -102,6 +111,24 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
                 values, error = _resolve_model(args.tenant_id, model_configurations, item)
             elif item.kind == _KIND_TOOL:
                 values, error = _resolve_tool(args.tenant_id, item)
+            elif item.kind == "mcp":
+                try:
+                    values = mcp_credential_service().resolve(
+                        workspace_id=args.tenant_id,
+                        provider=item.provider,
+                        credential_id=item.credential_id,
+                        failed_credential_digest=item.failed_credential_digest,
+                    )
+                    identity_mode = values["identity_mode"]
+                    values = {key: values[key] for key in ("server_url", "headers")}
+                    error = None
+                except MCPCredentialUnavailableError:
+                    return {
+                        "message": "Authorize the MCP provider in the Dify console.",
+                        "cause": "reauthorization_required",
+                    }, 404
+                except CredentialRefreshUnavailableError:
+                    return {"message": "MCP credential refresh is temporarily unavailable."}, 503
             else:
                 return {"message": f"unsupported credential kind '{item.kind}'"}, 400
 
@@ -113,10 +140,13 @@ class EnterpriseRuntimeCredentialsResolve(Resource):
                     kind=item.kind,
                     provider=item.provider,
                     values=values,
+                    identity_mode=identity_mode,
                 )
             )
 
-        return InnerRuntimeCredentialsResolveResponse(credentials=resolved).model_dump(mode="json"), 200
+        return InnerRuntimeCredentialsResolveResponse(credentials=resolved).model_dump(
+            mode="json", exclude_none=True
+        ), 200
 
 
 def _resolve_model(

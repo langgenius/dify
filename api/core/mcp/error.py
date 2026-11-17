@@ -59,5 +59,7 @@ class MCPAuthError(MCPConnectionError):
         return None
 
 
-class MCPRefreshTokenError(MCPError):
-    pass
+class MCPRefreshTokenError(MCPError, ValueError):
+    def __init__(self, message: str, *, permanent: bool = False):
+        super().__init__(message)
+        self.permanent = permanent
