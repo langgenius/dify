@@ -32,7 +32,7 @@ from controllers.openapi._errors import (
 )
 from controllers.openapi._models import Hint
 from controllers.openapi.auth.context import Context
-from controllers.openapi.auth.loaders import load_app, load_caller, load_workspace, load_workspace_role
+from controllers.openapi.auth.loaders import PathParam, load_app, load_caller, load_workspace, load_workspace_role
 from controllers.openapi.auth.subjects import AccountSubject, ResourceAccessSubject, Subject
 from enums import DeploymentEdition
 from extensions.ext_application_services import application_services
@@ -135,6 +135,21 @@ class CheckWorkspaceMember(Requirement):
         if subject.caller_role is not CreatorUserRole.ACCOUNT:
             return
         load_workspace_role(ctx)
+
+
+class CheckNamedWorkspaceMember(CheckWorkspaceMember):
+    """For a route whose workspace is optional, taken from the query string. With no `workspace_id`
+    nothing is loaded or checked. With one, even an empty one, the workspace is loaded and an account's
+    membership checked exactly as `CheckWorkspaceMember` does, so every call that names a workspace
+    answers as it did when the workspace was required.
+    """
+
+    @override
+    def run(self, subject: Subject, ctx: Context, session: Session) -> None:
+        if PathParam.WORKSPACE_ID not in request.args:
+            return
+        load_workspace(ctx)
+        super().run(subject, ctx, session)
 
 
 class CheckScope(Requirement):

@@ -68,7 +68,8 @@ class CheckPersonalAccess(Requirement):
                 app = load_app(ctx)
                 app_id = app.id
                 workspace_id = app.tenant_id
-            else:
+            elif policy is not PersonalAccessTokenPolicy.RESOURCE_DISCOVERY:
+                # A discovery route may name no workspace, and its grant does not read one.
                 workspace_id = load_workspace(ctx).id
         try:
             grant = application_services().personal_access_tokens.authorize(
