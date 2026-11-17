@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 from collections.abc import Callable
 from typing import Protocol, cast
 
@@ -281,9 +282,8 @@ def _list_with(
     monkeypatch.setattr(services.apps.discovery, "list_apps_for", list_apps_for)
     api = AppListApi()
     with app.test_request_context("/openapi/v1/apps?page=2&limit=3"):
-        response = cast(Endpoint[AppListResponse], api.get).__handler__(
-            api, ctx, query=AppListQuery.model_validate({"page": 2, "limit": 3})
-        )
+        response = inspect.unwrap(AppListApi.get)(api, ctx, query=AppListQuery.model_validate({"page": 2, "limit": 3}))
+    assert isinstance(response, AppListResponse)
     return logins, response
 
 
