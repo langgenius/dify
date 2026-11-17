@@ -9,10 +9,10 @@ from decimal import Decimal
 from typing import cast
 
 from core.credit_usage import CreditUsageCreatedBy
+from core.db.session_factory import session_factory
 from core.model_context import with_credit_usage_created_by
 from core.model_manager import ModelManager
 from core.tools.entities.tool_entities import ToolProviderType
-from extensions.ext_database import db
 from graphon.model_runtime.entities.llm_entities import LLMResult
 from graphon.model_runtime.entities.message_entities import PromptMessage
 from graphon.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
@@ -99,6 +99,12 @@ class ModelInvocationUtils:
         :param tool_name: tool name
         :param prompt_messages: prompt messages
         :return: AssistantPromptMessage
+
+        The ``ToolModelInvoke`` log row is written through sessions this method owns, so it never
+        commits work pending in the caller's session. The row is committed with an empty response
+        before the model is called and no session is open during the call. On success, a second
+        session records the response and usage. If the call fails, the row keeps its empty response
+        and ``InvokeModelError`` is raised.
         """
 
         # get model manager
@@ -136,8 +142,9 @@ class ModelInvocationUtils:
             currency="USD",
         )
 
-        db.session.add(tool_model_invoke)
-        db.session.commit()
+        with session_factory.create_session() as session:
+            session.add(tool_model_invoke)
+            session.commit()
 
         try:
             response: LLMResult = model_instance.invoke_llm(
@@ -162,15 +169,17 @@ class ModelInvocationUtils:
             raise InvokeModelError(f"Invoke error: {e}") from e
 
         # update tool model invoke
-        tool_model_invoke.model_response = str(response.message.content)
-        if response.usage:
-            tool_model_invoke.answer_tokens = response.usage.completion_tokens
-            tool_model_invoke.answer_unit_price = response.usage.completion_unit_price
-            tool_model_invoke.answer_price_unit = response.usage.completion_price_unit
-            tool_model_invoke.provider_response_latency = response.usage.latency
-            tool_model_invoke.total_price = response.usage.total_price
-            tool_model_invoke.currency = response.usage.currency
+        with session_factory.create_session() as session:
+            session.add(tool_model_invoke)
+            tool_model_invoke.model_response = str(response.message.content)
+            if response.usage:
+                tool_model_invoke.answer_tokens = response.usage.completion_tokens
+                tool_model_invoke.answer_unit_price = response.usage.completion_unit_price
+                tool_model_invoke.answer_price_unit = response.usage.completion_price_unit
+                tool_model_invoke.provider_response_latency = response.usage.latency
+                tool_model_invoke.total_price = response.usage.total_price
+                tool_model_invoke.currency = response.usage.currency
 
-        db.session.commit()
+            session.commit()
 
         return response
