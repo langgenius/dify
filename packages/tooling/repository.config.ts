@@ -58,7 +58,8 @@ export default defineConfig({
   run: {
     tasks: {
       'check:cached': {
-        command: ['vp check', 'eslint --concurrency=auto'],
+        // Report formatting, lint, and type errors from one run instead of stopping at the first.
+        command: ['vp check --continue-on-error', 'eslint --concurrency=auto'],
         cache: {
           env: ['CI', 'NODE_ENV', 'TAILWIND_CANONICAL_CLASSES'],
           // Static checks have no artifacts to restore into the working tree.
