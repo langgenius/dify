@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.knowledge.summaries.adapters as summary_module
@@ -19,6 +19,7 @@ from services.knowledge.documents.adapters import SQLAlchemyDocumentOperations
 from services.knowledge.documents.application import DocumentNotFoundError
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from tests.helpers.unit.second_precision_datetimes import second_precision_datetimes
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -327,6 +328,24 @@ class TestVectorizeSummary:
             5,
         )
 
+    def test_provided_session_token_survives_second_precision_storage(
+        self, sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dataset, document, segment = _graph(sqlite_session)
+        summary = _persist_summary(sqlite_session, dataset, document, segment)
+        vector = _install_vector_dependencies(monkeypatch)
+        monkeypatch.setattr(summary_module, "naive_utc_now", lambda: datetime(2026, 1, 1, 1, 2, 3, 654321))
+
+        with second_precision_datetimes(sqlite_engine):
+            published = SummaryIndexAdapter.vectorize_summary(summary, segment, dataset, session=sqlite_session)
+
+        # A token with microseconds never equals the stored value on MySQL: the
+        # attempt would lose ownership and delete the vector it just wrote.
+        assert published is True
+        vector.delete_by_ids.assert_not_called()
+        sqlite_session.refresh(summary)
+        assert (summary.status, summary.summary_index_node_id) == (SummaryStatus.COMPLETED, "node-1")
+
     def test_service_owned_session_updates_persisted_record(
         self,
         sqlite_session: Session,
@@ -482,6 +501,26 @@ class TestBatchAndGeneration:
         )
 
         with pytest.raises(RuntimeError, match="LLM failed"):
+            SummaryIndexAdapter.generate_and_vectorize_summary(
+                segment, dataset, {"enable": True}, session=sqlite_session
+            )
+
+        sqlite_session.refresh(summary)
+        assert (summary.status, summary.error) == (SummaryStatus.ERROR, "Summary generation failed: LLM failed")
+
+    def test_generate_failure_persists_error_with_second_precision_storage(
+        self, sqlite_session: Session, sqlite_engine: Engine, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        dataset, document, segment = _graph(sqlite_session)
+        summary = _persist_summary(sqlite_session, dataset, document, segment, status=SummaryStatus.NOT_STARTED)
+        monkeypatch.setattr(summary_module, "naive_utc_now", lambda: datetime(2026, 1, 1, 1, 2, 3, 654321))
+        monkeypatch.setattr(
+            SummaryIndexAdapter,
+            "generate_summary_for_segment",
+            MagicMock(side_effect=RuntimeError("LLM failed")),
+        )
+
+        with second_precision_datetimes(sqlite_engine), pytest.raises(RuntimeError, match="LLM failed"):
             SummaryIndexAdapter.generate_and_vectorize_summary(
                 segment, dataset, {"enable": True}, session=sqlite_session
             )

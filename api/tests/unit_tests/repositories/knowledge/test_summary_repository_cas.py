@@ -4,15 +4,18 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
 import pytest
+from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
+from repositories.knowledge.segment_repository import SQLAlchemySegmentRepository
 from repositories.knowledge.summary_repository import SQLAlchemySummaryRepository
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
 from services.knowledge.summaries.application import SummaryIndexService, SummaryVectorInput, SummaryVectorResult
+from tests.helpers.unit.second_precision_datetimes import second_precision_datetimes
 
 
 @dataclass
@@ -195,6 +198,44 @@ def test_stale_failure_does_not_mark_a_newer_summary_as_error(
         assert current.summary_index_node_id == "new-node"
         assert current.status == SummaryStatus.COMPLETED
         assert current.error is None
+
+
+def test_saved_summary_token_owns_its_row_with_second_precision_storage(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seeded = _seed_summary(sqlite_session_factory)
+    monkeypatch.setattr(
+        "repositories.knowledge.segment_repository.naive_utc_now", lambda: datetime(2026, 1, 2, 1, 2, 3, 654321)
+    )
+    vectors = _VectorProbe()
+
+    with second_precision_datetimes(sqlite_engine):
+        record = SQLAlchemySegmentRepository(session_factory=sqlite_session_factory).save_summary(
+            seeded.ref, "new summary"
+        )
+        assert record is not None
+        # The token is whatever the database kept (MySQL rounds to seconds),
+        # not the microsecond value that was sent.
+        assert record.updated_at == datetime(2026, 1, 2, 1, 2, 4)
+        command = SummaryVectorInput(
+            seeded.ref,
+            record.id,
+            record.summary_content or "",
+            record.summary_index_node_id,
+            record.updated_at,
+            str(record.status),
+            record.enabled,
+        )
+        result = _service(sqlite_session_factory, vectors).vectorize(command)
+
+    assert result is not None
+    assert "fresh-node" not in vectors.deletes
+    with sqlite_session_factory() as session:
+        current = session.get_one(DocumentSegmentSummary, seeded.summary_id)
+        assert current.status == SummaryStatus.COMPLETED
+        assert current.summary_index_node_id == "fresh-node"
 
 
 def test_completion_after_summary_clear_is_discarded_without_recreating_the_row(

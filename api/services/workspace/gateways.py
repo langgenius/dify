@@ -179,13 +179,23 @@ class _RedisWorkspaceQuotaLock(Protocol):
 
 
 class RedisWorkspaceQuotaGuard(WorkspaceQuotaGuard):
-    """Serialize the license check and committed workspace aggregate globally."""
+    """Serialize the license check and committed workspace aggregate globally.
+
+    Only Enterprise deployments carry a workspace-count license limit (see
+    ``SystemFeatureService.get_uncached_license``). Every other edition has no
+    limit to protect, so ``acquire`` yields immediately without touching Redis
+    and workspace creation neither serializes globally nor depends on Redis.
+    """
 
     def __init__(self, *, redis: RedisClientWrapper) -> None:
         self._redis = redis
 
     @contextmanager
     def acquire(self) -> Generator[Callable[[], None]]:
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.ENTERPRISE:
+            yield lambda: None
+            return
+
         lock: _RedisWorkspaceQuotaLock = self._redis.lock(
             _WORKSPACE_QUOTA_LOCK_KEY,
             timeout=_WORKSPACE_QUOTA_LOCK_TIMEOUT_SECONDS,

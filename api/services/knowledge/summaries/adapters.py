@@ -216,8 +216,11 @@ class SummaryIndexAdapter:
         if session is not None:
             # Persist an attempt-local CAS token before releasing this session
             # for vector I/O. Content and node identity alone cannot distinguish
-            # two requests that intentionally publish the same text.
-            summary_record.updated_at = naive_utc_now()
+            # two requests that intentionally publish the same text. The column
+            # is a plain DateTime, which MySQL stores (and rounds) at second
+            # precision, so the token is written without microseconds to read
+            # back identically on every backend.
+            summary_record.updated_at = naive_utc_now().replace(microsecond=0)
             session.add(summary_record)
             session.flush()
         command = SummaryVectorInput(
@@ -399,7 +402,9 @@ class SummaryIndexAdapter:
             # Update status to "generating"
             summary_record_in_session.status = SummaryStatus.GENERATING
             summary_record_in_session.error = None
-            summary_record_in_session.updated_at = naive_utc_now()
+            # Second precision keeps this CAS token identical to the stored
+            # value on MySQL; see vectorize_summary.
+            summary_record_in_session.updated_at = naive_utc_now().replace(microsecond=0)
             session.add(summary_record_in_session)
             session.flush()
             generation_command = SummaryVectorInput(

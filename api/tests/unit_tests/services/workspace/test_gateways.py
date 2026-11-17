@@ -4,6 +4,7 @@ from unittest.mock import Mock, create_autospec
 
 import httpx
 import pytest
+from redis import RedisError
 
 from enums import CloudPlan, DeploymentEdition
 from enums.creator import CreatorUserRole
@@ -55,7 +56,38 @@ def test_workspace_owner_binding_retries_transient_rbac_failure(
     assert attempts == ["workspace", "workspace"]
 
 
-def test_workspace_quota_guard_renews_and_releases_owned_token(monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.CLOUD])
+def test_workspace_quota_guard_skips_redis_when_no_workspace_license_limit_is_enforced(
+    edition: DeploymentEdition,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.side_effect = RedisError("redis unavailable")
+
+    with gateways.RedisWorkspaceQuotaGuard(redis=redis).acquire() as assert_owned:
+        assert_owned()
+
+    redis.lock.assert_not_called()
+
+
+def test_workspace_quota_guard_fails_closed_when_enterprise_redis_is_unavailable(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    redis = create_autospec(RedisClientWrapper, instance=True, spec_set=True)
+    redis.lock.return_value.acquire.side_effect = RedisError("redis unavailable")
+
+    with pytest.raises(RuntimeError, match="Workspace quota guard is unavailable"):
+        with gateways.RedisWorkspaceQuotaGuard(redis=redis).acquire():
+            pytest.fail("the guard must not be entered")
+
+
+def test_workspace_quota_guard_renews_and_releases_owned_token(
+    monkeypatch: pytest.MonkeyPatch,
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
     renewed = Event()
     calls: list[tuple[object, ...]] = []
 

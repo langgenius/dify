@@ -3,7 +3,7 @@ from datetime import datetime
 from unittest.mock import patch
 
 import pytest
-from sqlalchemy import event, func, select
+from sqlalchemy import Engine, event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import tasks.clean_document_task as clean_document_task_module
@@ -29,6 +29,7 @@ from services.knowledge.documents.contracts import (
 from services.knowledge.entities.resource_scope import DatasetRef
 from services.knowledge.indexing.errors import DocumentIsDeletedPausedError, DocumentIsPausedError
 from tests.helpers.unit.model_factories import make_account, make_tenant, make_upload_file
+from tests.helpers.unit.second_precision_datetimes import second_precision_datetimes
 
 
 def _dataset(dataset_id: str, workspace_id: str) -> Dataset:
@@ -136,6 +137,33 @@ def test_retry_accepts_and_reenables_disabled_error_document(
         assert failed.disabled_by is None
 
 
+def test_retry_dispatch_failure_compensates_with_second_precision_storage(
+    sqlite_session_factory: sessionmaker[Session],
+    sqlite_engine: Engine,
+) -> None:
+    with sqlite_session_factory.begin() as session:
+        session.add_all([_dataset("dataset-1", "workspace-1"), _document("failed", status=IndexingStatus.ERROR)])
+
+    repository = SQLAlchemyDocumentRepository(session_factory=sqlite_session_factory)
+    dataset_ref = DatasetRef("workspace-1", "dataset-1")
+    with (
+        second_precision_datetimes(sqlite_engine),
+        patch(
+            "repositories.knowledge.document_repository.naive_utc_now",
+            return_value=datetime(2026, 10, 29, 12, 30, 45, 654321),
+        ),
+    ):
+        batch = repository.retry_documents(dataset_ref, ["failed"], actor_id="account-1")
+        assert batch is not None
+        repository.fail_retry_dispatch(dataset_ref, batch)
+
+    with sqlite_session_factory() as session:
+        failed = session.get_one(Document, "failed")
+        assert failed.processing_started_at == batch.started_at
+        assert failed.indexing_status == IndexingStatus.ERROR
+        assert failed.error == "Document retry could not be queued."
+
+
 def test_retry_dispatch_failure_compensates_only_the_same_generation(
     sqlite_session_factory: sessionmaker[Session],
 ) -> None:
@@ -155,9 +183,10 @@ def test_retry_dispatch_failure_compensates_only_the_same_generation(
         batch = repository.retry_documents(dataset_ref, ["failed", "newer"], actor_id="account-1")
     assert batch is not None
     assert batch.document_ids == ("failed", "newer")
-    assert batch.started_at == retry_generation
+    # The generation token is second-precision so it equals the stored column on every backend.
+    assert batch.started_at == retry_generation.replace(microsecond=0)
 
-    newer_generation = datetime(2026, 10, 29, 12, 30, 45, 654321)
+    newer_generation = datetime(2026, 10, 29, 12, 30, 46)
     with sqlite_session_factory.begin() as session:
         newer = session.get_one(Document, "newer")
         newer.processing_started_at = newer_generation

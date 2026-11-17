@@ -1,11 +1,12 @@
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
-from hashlib import sha256
+from hashlib import sha1, sha256
 from unittest.mock import MagicMock, call, create_autospec, patch
 
 import httpx
 import pytest
 from redis import RedisError
+from redis.crc import key_slot
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import Unauthorized
@@ -14,6 +15,7 @@ from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
+from services.account import adapters
 from services.account.adapters import (
     AccountIdentityGateway,
     BillingAccountActivationEligibility,
@@ -191,20 +193,261 @@ def test_reinvitation_does_not_reactivate_an_older_subject_token(
     assert store.find(InvitationLookup(workspace_id=None, email=None, token=second)) == invitation
 
 
-def test_invitation_token_store_completes_activation_only_for_owned_claim(
+class _InvitationRedis:
+    """In-memory stand-in for the Redis commands the invitation store issues.
+
+    Scripts are emulated by their SHA so the test fails if the store starts
+    sending a script this fake does not know, and every command is checked to
+    address a single Redis Cluster hash slot.
+    """
+
+    def __init__(self) -> None:
+        self.values: dict[str, str] = {}
+        self.ttls: dict[str, int] = {}
+        self.script_key_counts: list[int] = []
+        self.failing: set[tuple[str, str]] = set()
+        self._scripts: dict[str, Callable[[str, list[str]], object]] = {
+            sha1(adapters._RELEASE_INVITATION_ACCEPTANCE_LUA.encode()).hexdigest(): self._release,
+            sha1(adapters._REVOKE_INVITATION_SUBJECT_LUA.encode()).hexdigest(): self._revoke,
+            sha1(adapters._REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA.encode()).hexdigest(): self._revoke_accepted,
+        }
+
+    def put(self, key: str, value: str, ttl: int = 60_000) -> None:
+        self.values[key] = value
+        self.ttls[key] = ttl
+
+    def execute(self, command: object, *args: object, **_kwargs: object) -> object:
+        operation = str(command).upper()
+        if operation == "EVALSHA":
+            key_count = int(str(args[1]))
+            keys = [str(key) for key in args[2 : 2 + key_count]]
+            self.script_key_counts.append(key_count)
+            assert len({key_slot(key.encode()) for key in keys}) == 1
+            self._fail_if_requested(operation, keys[0])
+            return self._scripts[str(args[0])](keys[0], [str(arg) for arg in args[2 + key_count :]])
+        key = str(args[0])
+        self._fail_if_requested(operation, key)
+        match operation:
+            case "GET":
+                value = self.values.get(key)
+                return None if value is None else value.encode()
+            case "PTTL":
+                return self.ttls.get(key, -2)
+            case "SET":
+                options = [str(option).upper() for option in args[2:]]
+                if "NX" in options and key in self.values:
+                    return None
+                self.put(key, str(args[1]), int(str(args[2:][options.index("PX") + 1])))
+                return True
+            case "SETEX":
+                self.put(
+                    key, args[2].decode() if isinstance(args[2], bytes) else str(args[2]), int(str(args[1])) * 1000
+                )
+                return True
+            case "DEL":
+                assert len(args) == 1
+                self.ttls.pop(key, None)
+                return 1 if self.values.pop(key, None) is not None else 0
+            case _:
+                raise AssertionError(f"Unexpected Redis command: {operation}")
+
+    def _fail_if_requested(self, operation: str, key: str) -> None:
+        if (operation, key) in self.failing:
+            raise RedisError("redis unavailable")
+
+    def _release(self, key: str, args: list[str]) -> object:
+        if self.values.get(key) != args[0]:
+            return 0
+        del self.values[key]
+        self.ttls.pop(key, None)
+        return 1
+
+    def _revoke(self, key: str, args: list[str]) -> object:
+        ttl = self.ttls.get(key, -2)
+        self.put(key, "revoked", ttl if ttl > 0 else int(args[0]))
+        return ttl
+
+    def _revoke_accepted(self, key: str, args: list[str]) -> object:
+        state = self.values.get(key)
+        if state is not None and state not in {args[0], "revoked"}:
+            return 0
+        ttl = self.ttls.get(key, -2)
+        self.put(key, "revoked", ttl if ttl > 0 else int(args[1]))
+        return 1
+
+
+_INVITATION = InvitationToken(account_id="account-1", email="invitee@example.com", workspace_id="workspace-1")
+_SUBJECT_KEY = "member_invite:subject:workspace-1:account-1:state"
+
+
+@pytest.fixture
+def invitation_redis(
     redis_transport: tuple[RedisClientWrapper, MagicMock],
-) -> None:
+) -> tuple[RedisInvitationTokenStore, _InvitationRedis]:
     redis, commands = redis_transport
-    commands.side_effect = lambda command, *_args, **_kwargs: b"account-1" if command == "GET" else 1
+    fake = _InvitationRedis()
+    commands.side_effect = fake.execute
+    return RedisInvitationTokenStore(redis=redis), fake
+
+
+def _issued_invitation(store: RedisInvitationTokenStore) -> InvitationLookup:
+    return InvitationLookup(workspace_id=None, email=None, token=store.create(_INVITATION))
+
+
+def _claimed(store: RedisInvitationTokenStore, lookup: InvitationLookup, *, membership: bool) -> str:
+    claim_id = store.claim(lookup, require_unused_membership=membership)
+    assert claim_id is not None
+    return claim_id
+
+
+def test_invitation_scripts_never_span_redis_cluster_hash_slots(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, fake = invitation_redis
+    lookup = _issued_invitation(store)
+    workspace_lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="legacy-token")
+    fake.put(RedisInvitationTokenStore._workspace_invitation_key(workspace_lookup), "account-1")
+
+    store.complete_membership(lookup, _claimed(store, lookup, membership=True))
+    store.release(lookup, _claimed(store, lookup, membership=False))
+    store.complete_activation(lookup, _claimed(store, lookup, membership=False))
+    store.complete_activation(workspace_lookup, _claimed(store, workspace_lookup, membership=False))
+    store.revoke_subject("workspace-1", "account-1")
+
+    # The fake asserts one hash slot per command; a script with one key cannot be cross-slot.
+    assert fake.script_key_counts
+    assert set(fake.script_key_counts) == {1}
+
+
+def test_membership_completion_keeps_the_token_usable_for_one_activation(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, fake = invitation_redis
+    lookup = _issued_invitation(store)
+
+    store.complete_membership(lookup, _claimed(store, lookup, membership=True))
+
+    # Sign-in restored the membership; the invite-settings step still needs the token.
+    assert store.find(lookup) == _INVITATION
+    assert store.is_membership_consumed(lookup) is True
+    assert store.is_subject_revoked("workspace-1", "account-1") is False
+    assert store.claim(lookup, require_unused_membership=True) is None
+
+    store.complete_activation(lookup, _claimed(store, lookup, membership=False))
+
+    assert store.find(lookup) is None
+    assert store.claim(lookup, require_unused_membership=False) is None
+    assert f"member_invite:token:{lookup.token}:acceptance_claim" not in fake.values
+
+
+def test_member_removal_after_membership_completion_still_rejects_the_token(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, _fake = invitation_redis
+    lookup = _issued_invitation(store)
+    store.complete_membership(lookup, _claimed(store, lookup, membership=True))
+
+    store.revoke_subject("workspace-1", "account-1")
+
+    assert store.find(lookup) is None
+
+
+def test_reinvitation_after_membership_completion_still_rejects_the_earlier_token(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, _fake = invitation_redis
+    earlier = _issued_invitation(store)
+    store.complete_membership(earlier, _claimed(store, earlier, membership=True))
+
+    later = _issued_invitation(store)
+
+    assert store.find(earlier) is None
+    assert store.find(later) == _INVITATION
+
+
+def test_activation_completion_consumes_a_workspace_scoped_invitation(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, fake = invitation_redis
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")
+    source_key = f"member_invite_token:workspace-1, {sha256(b'invitee@example.com').hexdigest()}:token-1"
+    fake.put(source_key, "account-1", ttl=5_000)
 
-    RedisInvitationTokenStore(redis=redis).complete_activation(lookup, "claim-1")
+    store.complete_activation(lookup, _claimed(store, lookup, membership=False))
 
-    email_hash = sha256(b"invitee@example.com").hexdigest()
-    flattened_args = tuple(str(value) for call_args in commands.call_args_list for value in call_args.args)
-    assert f"member_invite_token:workspace-1, {email_hash}:token-1" in flattened_args
-    assert "member_invite:token:token-1:acceptance_claim" in flattened_args
-    assert "member_invite:subject:workspace-1:account-1:state" in flattened_args
+    assert source_key not in fake.values
+    assert "member_invite:token:token-1:acceptance_claim" not in fake.values
+    # A subject without prior state is tombstoned for the source's remaining lifetime.
+    assert fake.values[_SUBJECT_KEY] == "revoked"
+    assert fake.ttls[_SUBJECT_KEY] == 5_000
+
+
+def test_activation_completion_does_not_revoke_a_newer_invitation(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, fake = invitation_redis
+    earlier = _issued_invitation(store)
+    claim_id = _claimed(store, earlier, membership=False)
+    later = _issued_invitation(store)
+
+    store.complete_activation(earlier, claim_id)
+
+    assert fake.values[_SUBJECT_KEY] == later.token
+    assert store.find(earlier) is None
+    assert store.find(later) == _INVITATION
+
+
+@pytest.mark.parametrize("membership", [True, False])
+def test_completion_requires_the_owned_claim_and_writes_nothing_otherwise(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis], membership: bool
+) -> None:
+    store, fake = invitation_redis
+    lookup = _issued_invitation(store)
+    _claimed(store, lookup, membership=membership)
+    before = dict(fake.values)
+
+    with pytest.raises(RuntimeError, match="no longer owned"):
+        store._complete(lookup, "claim:someone-else", membership=membership)
+
+    assert fake.values == before
+    assert store.find(lookup) == _INVITATION
+
+
+def test_activation_completion_succeeds_when_cleanup_after_revocation_fails(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis],
+) -> None:
+    store, fake = invitation_redis
+    lookup = _issued_invitation(store)
+    claim_id = _claimed(store, lookup, membership=False)
+    claim_key = f"member_invite:token:{lookup.token}:acceptance_claim"
+    fake.failing = {("DEL", f"member_invite:token:{lookup.token}"), ("EVALSHA", claim_key)}
+
+    store.complete_activation(lookup, claim_id)
+
+    # The committed acceptance is reported as success and the token is already unusable.
+    assert store.find(lookup) is None
+    assert store.claim(lookup, require_unused_membership=False) is None
+
+
+@pytest.mark.parametrize("membership", [True, False])
+def test_completion_failure_before_the_decisive_write_leaves_the_invitation_retryable(
+    invitation_redis: tuple[RedisInvitationTokenStore, _InvitationRedis], membership: bool
+) -> None:
+    store, fake = invitation_redis
+    lookup = _issued_invitation(store)
+    claim_id = _claimed(store, lookup, membership=membership)
+    decisive = (
+        ("SET", f"member_invite:token:{lookup.token}:membership_used") if membership else ("EVALSHA", _SUBJECT_KEY)
+    )
+    fake.failing = {decisive}
+
+    with pytest.raises(RedisError):
+        store._complete(lookup, claim_id, membership=membership)
+
+    fake.failing = set()
+    assert store.find(lookup) == _INVITATION
+    assert store.is_membership_consumed(lookup) is False
+    store._complete(lookup, claim_id, membership=membership)
 
 
 def test_invitation_subject_revocation_uses_an_atomic_bounded_tombstone(

@@ -112,26 +112,16 @@ redis.call('SET', KEYS[1], 'revoked', 'PX', ttl)
 return ttl
 """
 
-_COMPLETE_INVITATION_ACCEPTANCE_LUA = """
-if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end
-
-local source_ttl = redis.call('PTTL', KEYS[2])
-local subject_state = redis.call('GET', KEYS[3])
-if not subject_state or subject_state == ARGV[2] or subject_state == 'revoked' then
-    local subject_ttl = redis.call('PTTL', KEYS[3])
-    if subject_ttl <= 0 then subject_ttl = source_ttl end
-    if subject_ttl <= 0 then subject_ttl = tonumber(ARGV[3]) end
-    redis.call('SET', KEYS[3], 'revoked', 'PX', subject_ttl)
-end
-
-if ARGV[4] == 'membership' then
-    local marker_ttl = source_ttl
-    if marker_ttl <= 0 then marker_ttl = tonumber(ARGV[3]) end
-    redis.call('SET', KEYS[4], '1', 'PX', marker_ttl)
-else
-    redis.call('DEL', KEYS[2])
-end
-redis.call('DEL', KEYS[1])
+# Every invitation script touches exactly one key. The acceptance-claim, source,
+# membership-marker and subject-state keys share no hash tag (the source key
+# formats predate hash tags and cannot be renamed while invitations are
+# pending), so a multi-key script is rejected by Redis Cluster as cross-slot.
+_REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA = """
+local state = redis.call('GET', KEYS[1])
+if state and state ~= ARGV[1] and state ~= 'revoked' then return 0 end
+local ttl = redis.call('PTTL', KEYS[1])
+if ttl <= 0 then ttl = tonumber(ARGV[2]) end
+redis.call('SET', KEYS[1], 'revoked', 'PX', ttl)
 return 1
 """
 
@@ -308,25 +298,62 @@ class RedisInvitationTokenStore(InvitationTokenStore):
         return self._redis.get(self._membership_used_key(invitation.token)) in {b"1", "1"}
 
     def _complete(self, invitation: InvitationLookup, claim_id: str, *, membership: bool) -> None:
+        """Record a committed acceptance using single-key Redis operations only.
+
+        The keys involved live in different Redis Cluster hash slots, so the
+        steps are not atomic as a group. The acceptance claim is the ownership
+        fence instead: it is created for the source token's remaining lifetime
+        and only its owner deletes it, so while this call runs no other
+        acceptance of the same token can interleave. Each step is individually
+        atomic and they are ordered so that an interruption fails closed:
+
+        - Membership: the ``membership_used`` marker is written first, then the
+          claim is released. The source and the subject state are left intact so
+          the same token still passes ``find`` and can complete activation once;
+          the marker stops that activation, and later sign-ins, from granting
+          membership again. If the marker write fails, nothing has changed.
+        - Activation: the subject state is revoked first (a compare-and-set that
+          never overwrites a newer invitation's token), which alone makes the
+          token unusable. Deleting the source and releasing the claim are
+          cleanup; their failures are logged and not raised because the
+          invitation is already consumed, and the keys expire with the source.
+
+        A process crash between steps leaves the claim in place until the
+        source expires, which keeps the token unusable rather than reusable.
+        Ownership is read before, not atomically with, the decisive write; the
+        claim can only disappear in between by expiring together with the source.
+
+        Raises:
+            RuntimeError: The source is gone or the claim is not owned. Nothing
+                was written.
+            RedisError: The decisive write failed. Nothing was written.
+        """
         source = self._find_source(invitation)
         if source is None:
             raise RuntimeError("Invitation source is no longer available")
-        completed = self._redis.register_script(_COMPLETE_INVITATION_ACCEPTANCE_LUA)(
-            keys=[
-                self._acceptance_claim_key(invitation.token),
-                self._source_key(invitation),
-                self._subject_state_key(source.workspace_id, source.account_id),
-                self._membership_used_key(invitation.token),
-            ],
-            args=[
-                claim_id,
-                invitation.token,
-                self._maximum_ttl_ms(),
-                "membership" if membership else "activation",
-            ],
-        )
-        if completed != 1:
+        stored_claim = self._redis.get(self._acceptance_claim_key(invitation.token))
+        if isinstance(stored_claim, bytes):
+            stored_claim = stored_claim.decode("utf-8")
+        if stored_claim != claim_id:
             raise RuntimeError("Invitation acceptance claim is no longer owned")
+
+        source_ttl = self._redis.pttl(self._source_key(invitation))
+        fallback_ttl = source_ttl if source_ttl > 0 else self._maximum_ttl_ms()
+        if membership:
+            self._redis.set(self._membership_used_key(invitation.token), "1", px=fallback_ttl)
+        else:
+            self._redis.register_script(_REVOKE_ACCEPTED_INVITATION_SUBJECT_LUA)(
+                keys=[self._subject_state_key(source.workspace_id, source.account_id)],
+                args=[invitation.token, fallback_ttl],
+            )
+            try:
+                self._redis.delete(self._source_key(invitation))
+            except RedisError:
+                logger.warning("Failed to delete a consumed invitation source", exc_info=True)
+        try:
+            self.release(invitation, claim_id)
+        except RedisError:
+            logger.warning("Failed to release a completed invitation acceptance claim", exc_info=True)
 
     def _find_source(self, invitation: InvitationLookup) -> InvitationToken | None:
         data = self._redis.get(self._source_key(invitation))

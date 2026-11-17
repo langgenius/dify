@@ -1116,7 +1116,11 @@ class SQLAlchemyDocumentRepository:
             ]
             if not documents:
                 return None
-            retry_started_at = naive_utc_now()
+            # This value is the generation token fail_retry_dispatch compares
+            # by equality. processing_started_at is a plain DateTime, which
+            # MySQL stores (and rounds) at second precision, so the token is
+            # produced without microseconds to match on every backend.
+            retry_started_at = naive_utc_now().replace(microsecond=0)
             for document in documents:
                 document.indexing_status = IndexingStatus.WAITING
                 document.processing_started_at = retry_started_at
