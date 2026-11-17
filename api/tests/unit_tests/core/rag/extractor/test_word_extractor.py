@@ -96,13 +96,12 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
     doc.save(buf)
     docx_bytes = buf.getvalue()
 
-    calls: list[tuple[str, tuple[str, dict[str, object]] | None]] = []
+    calls: list[tuple[tuple[object, ...], dict[str, object]]] = []
 
     response = Response(200, content=docx_bytes)
 
-    def fake_make_request(method: str, url: str, **kwargs: object) -> Response:
-        assert method == "GET"
-        calls.append(("get", (url, kwargs)))
+    def fake_make_request[**P](*args: P.args, **kwargs: P.kwargs) -> Response:
+        calls.append((args, kwargs))
         return response
 
     monkeypatch.setattr(we.remote_fetcher, "make_request", fake_make_request)
@@ -112,12 +111,10 @@ def test_init_downloads_via_remote_fetcher(monkeypatch: pytest.MonkeyPatch, tmp_
         extractor = WordExtractor("https://example.com/test.docx", "tenant_id", "user_id")
         try:
             assert calls
-            assert calls[0][0] == "get"
-            first_call = calls[0][1]
-            assert first_call is not None
-            url, kwargs = first_call
+            (method, url), kwargs = calls[0]
+            assert method == "GET"
             assert url == "https://example.com/test.docx"
-            assert kwargs.get("timeout") is None
+            assert "timeout" not in kwargs
             assert extractor.web_path == "https://example.com/test.docx"
             assert extractor.file_path != extractor.web_path
             assert temp_file.closed
