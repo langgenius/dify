@@ -23,6 +23,7 @@ from services.run_job_service import WAIT_DEFAULT_SECONDS, JobNotFoundError, Job
 WAIT_JOB_OP: Final = "wait.job"
 STOP_JOB_OP: Final = "stop.job"
 WAIT_HINT_SUMMARY: Final = "Wait for the result"
+REPLY_HINT_SUMMARY: Final = "Reply in this conversation"
 RESUMED_WAIT_HINT_SUMMARY: Final = "After submitting, wait for the resumed run"
 _JOB_STATE: Final = (200, JobState, "Job state")
 
@@ -87,6 +88,24 @@ def _paused_hints(view: JobView, *, app_id: str) -> list[Hint]:
     return [*hints, _wait_hint(view, app_id=app_id, summary=RESUMED_WAIT_HINT_SUMMARY)]
 
 
+def _succeeded_hints(view: JobView, *, app_id: str) -> list[Hint]:
+    """Offer a reply in the job's conversation.
+
+    Precondition: the view's status is succeeded.
+    Postcondition: one hint that runs the job's own op in its conversation; empty when the job has no conversation.
+    """
+    record = view.record
+    if record.conversation_id is None:
+        return []
+    return [
+        Hint(
+            summary=REPLY_HINT_SUMMARY,
+            op=record.op,
+            input={"app_id": app_id, "conversation_id": record.conversation_id, "query": None, "inputs": {}},
+        )
+    ]
+
+
 class _HintBuilder(Protocol):
     def __call__(self, view: JobView, *, app_id: str) -> list[Hint]: ...
 
@@ -94,7 +113,7 @@ class _HintBuilder(Protocol):
 HINTS_BY_STATUS: Final[Mapping[JobStatus, _HintBuilder]] = {
     JobStatus.RUNNING: _running_hints,
     JobStatus.PAUSED: _paused_hints,
-    JobStatus.SUCCEEDED: _no_hints,
+    JobStatus.SUCCEEDED: _succeeded_hints,
     JobStatus.FAILED: _no_hints,
     JobStatus.STOPPED: _no_hints,
 }
