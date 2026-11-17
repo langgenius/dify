@@ -167,6 +167,9 @@ it('maps starring to the installed-app pin API and removes unstarred apps from t
       screen.getByRole('button', { name: 'app.endUser.unstarApp:{"name":"Assistant second"}' }),
     )
     .toHaveAttribute('aria-pressed', 'true')
+  await expect
+    .element(screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ }))
+    .not.toBeInTheDocument()
   expect(service.pin).toHaveBeenCalledExactlyOnceWith({
     params: { installed_app_id: 'second' },
     body: { is_pinned: true },
