@@ -2,8 +2,13 @@ import type { MouseEvent } from 'react'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Toggle } from '@langgenius/dify-ui/toggle'
+import { useAtomValue, useSetAtom } from 'jotai'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  collaborationUpgradeAvailableAtom,
+  collaborationUpgradeOpenAtom,
+} from '../collaboration/upgrade-state'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 import { useWorkflowOrganize } from '../hooks/use-workflow-organize'
 import { useWorkflowMoveMode } from '../hooks/use-workflow-panel-interactions'
@@ -19,6 +24,8 @@ const pressedModeClassName =
 
 const Control = () => {
   const { t } = useTranslation(['workflow'])
+  const canShowCollaborationUpgrade = useAtomValue(collaborationUpgradeAvailableAtom)
+  const setCollaborationUpgradeOpen = useSetAtom(collaborationUpgradeOpenAtom)
   const controlMode = useStore((s) => s.controlMode)
   const {
     handleModePointer,
@@ -30,6 +37,19 @@ const Control = () => {
   const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const commentModeLabel = t(($) => $['common.commentMode'], { ns: 'workflow' })
+  const commentButton = (
+    <IconButton
+      size="lg"
+      aria-label={commentModeLabel}
+      disabled={isCommentModeAvailable && !canUseCommentMode}
+      focusableWhenDisabled
+      className="ml-px rounded-md"
+      onClick={canShowCollaborationUpgrade ? () => setCollaborationUpgradeOpen(true) : undefined}
+    >
+      <span aria-hidden className="i-custom-public-other-comment size-4" />
+    </IconButton>
+  )
 
   const addNote = (e: MouseEvent<HTMLButtonElement>) => {
     if (getNodesReadOnly()) return
@@ -98,28 +118,22 @@ const Control = () => {
           }
         />
       </TipPopup>
-      {isCommentModeAvailable && (
+      {(isCommentModeAvailable || canShowCollaborationUpgrade) && (
         <TipPopup
-          title={t(($) => $['common.commentMode'], { ns: 'workflow' })}
-          shortcut="workflow.comment-mode"
+          title={commentModeLabel}
+          shortcut={isCommentModeAvailable ? 'workflow.comment-mode' : undefined}
         >
-          <Toggle
-            pressed={controlMode === ControlMode.Comment}
-            onPressedChange={handleModeComment}
-            disabled={!canUseCommentMode}
-            className={pressedModeClassName}
-            render={
-              <IconButton
-                size="lg"
-                aria-label={t(($) => $['common.commentMode'], { ns: 'workflow' })}
-                disabled={!canUseCommentMode}
-                focusableWhenDisabled
-                className="ml-px rounded-md"
-              >
-                <span aria-hidden className="i-custom-public-other-comment size-4" />
-              </IconButton>
-            }
-          />
+          {isCommentModeAvailable ? (
+            <Toggle
+              pressed={controlMode === ControlMode.Comment}
+              onPressedChange={handleModeComment}
+              disabled={!canUseCommentMode}
+              className={pressedModeClassName}
+              render={commentButton}
+            />
+          ) : (
+            commentButton
+          )}
         </TipPopup>
       )}
       <Separator className="my-1 h-[0.5px] w-3.5" />

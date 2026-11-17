@@ -17,6 +17,7 @@ type Props = Readonly<{
   title: string
   description: string
   extraInfo?: ReactNode
+  loc?: string
   show: boolean
   onClose: () => void
 }>
@@ -26,6 +27,7 @@ export function PlanUpgradeModal({
   title,
   description,
   extraInfo,
+  loc = 'trigger-events-limit-modal',
   show,
   onClose,
 }: Props) {
@@ -56,7 +58,7 @@ export function PlanUpgradeModal({
             onClick={handleUpgrade}
             className="h-8! rounded-lg! px-2"
             labelKey="triggerLimitModal.upgrade"
-            loc="trigger-events-limit-modal"
+            loc={loc}
           />
         </>
       }
