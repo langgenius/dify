@@ -1,6 +1,7 @@
 from inspect import unwrap
 from io import BytesIO
 from types import SimpleNamespace
+from typing import NoReturn
 from unittest.mock import Mock
 from uuid import UUID
 
@@ -228,7 +229,7 @@ def test_discard_uploaded_files_does_not_resolve_services_for_empty_uploads(
 ) -> None:
     from controllers.openapi import _files as module
 
-    def unexpected_service_lookup():
+    def unexpected_service_lookup() -> NoReturn:
         raise AssertionError("no service lookup expected for an empty upload list")
 
     monkeypatch.setattr(module, "application_services", unexpected_service_lookup)
@@ -241,7 +242,7 @@ def test_discard_uploaded_files_preserves_rejection_when_service_lookup_fails(
 ) -> None:
     from controllers.openapi import _files as module
 
-    def unavailable_services():
+    def unavailable_services() -> NoReturn:
         raise RuntimeError("application services unavailable")
 
     monkeypatch.setattr(module, "application_services", unavailable_services)
