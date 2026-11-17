@@ -111,9 +111,12 @@ describe('YamlStore lock', () => {
 
   it('a read waits while another process holds the lock', async () => {
     await writeFile(path, 'key: value\n')
-    const started = Date.now()
-    expect(await withHeldLock(() => new YamlStore(path).read())).toBe('key: value\n')
-    expect(Date.now() - started).toBeGreaterThanOrEqual(HOLD_MS / 2)
+    await withHeldLock(async () => {
+      const started = Date.now()
+      expect(await new YamlStore(path).read()).toBe('key: value\n')
+      // Measure the read itself, before the helper joins fixture cleanup.
+      expect(Date.now() - started).toBeGreaterThanOrEqual(HOLD_MS / 2)
+    })
   })
 
   it('an update waits while another process holds the lock, then sees its write', async () => {
