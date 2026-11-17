@@ -15,6 +15,7 @@ from werkzeug.exceptions import BadRequest, Forbidden, NotFound, TooManyRequests
 
 import services
 from configs import dify_config
+from constants.languages import get_valid_language, languages
 from controllers.common.fields import BinaryFileResponse
 from controllers.common.rbac import AgentId, DatasetId, PlainApp, RBACCheck, Workspace, enforce_rbac_checks
 from controllers.common.schema import (
@@ -615,6 +616,12 @@ def _xlsx_response(content: bytes, filename: str) -> Response:
     return response
 
 
+def _evaluation_template_language(account: Account) -> str:
+    """Use the current UI locale when valid, then the saved account language."""
+    cookie_locale = request.cookies.get("locale")
+    return cookie_locale if cookie_locale in languages else get_valid_language(account.interface_language)
+
+
 @console_ns.route("/<string:evaluate_target_type>/<uuid:evaluate_target_id>/dataset-template/download")
 class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
     @console_ns.expect(console_ns.models[EvaluationConfigPayload.__name__])
@@ -638,9 +645,12 @@ class EvaluationDatasetTemplateDownloadApi(EvaluationEditionResource):
         snippet_permission=RBACPermission.SNIPPETS_CREATE_AND_MODIFY,
     )
     def post(self, session: Session, target: EvaluationTarget, target_type: str) -> Response:
+        current_user, _ = current_account_with_tenant()
         payload = EvaluationConfigPayload.model_validate(console_ns.payload or {})
         try:
-            content, filename = EvaluationService.generate_dataset_template(target, target_type, payload, session)
+            content, filename = EvaluationService.generate_dataset_template(
+                target, target_type, payload, session, language=_evaluation_template_language(current_user)
+            )
         except ValueError as exc:
             raise BadRequest(str(exc)) from exc
         return _xlsx_response(content, filename)
@@ -1083,7 +1093,9 @@ class DatasetEvaluationTemplateDownloadApi(EvaluationEditionResource):
     def post(self, session: Session, dataset_id: UUID) -> Response:
         current_user, tenant_id = current_account_with_tenant()
         _get_accessible_dataset(session, dataset_id, current_user, tenant_id)
-        content, filename = EvaluationService.generate_retrieval_dataset_template()
+        content, filename = EvaluationService.generate_retrieval_dataset_template(
+            language=_evaluation_template_language(current_user)
+        )
         return _xlsx_response(content, filename)
 
 
