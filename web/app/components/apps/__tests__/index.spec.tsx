@@ -57,7 +57,8 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.starred.get': async () =>
         zAppPagination.parse({ data: [], page: 1, limit: 100, total: 0, has_more: false }),
       'trialApps.byAppId.get': api.trial,
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 1, limit: 10 } }),
+      'features.get': async () =>
+        zGetFeaturesResponse.parse({ end_user_auth_enabled: false, apps: { size: 1, limit: 10 } }),
       'tags.get': async () => [],
       'workspaces.current.members.get': async () => ({ accounts: [] }),
       'workspaces.current.toolProviders.get': async () => [],

@@ -44,6 +44,8 @@ MIGRATION_ENABLED=${MIGRATION_ENABLED-true}
 # ------------------------------
 # System features and account access
 # ------------------------------
+# Console EndUser tool-auth configuration entry points only; no WebApp or runtime authorization changes.
+# CONSOLE_END_USER_AUTH_ENABLED=false
 # MARKETPLACE_ENABLED=true
 # ENABLE_EMAIL_CODE_LOGIN=false
 # EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES=5

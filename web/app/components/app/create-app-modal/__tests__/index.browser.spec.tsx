@@ -49,7 +49,8 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: appQuota }),
+      'features.get': async () =>
+        zGetFeaturesResponse.parse({ end_user_auth_enabled: false, apps: appQuota }),
       'apps.post': ({ body }: { body: Record<string, unknown> }) => mocks.create(body),
     }),
   }

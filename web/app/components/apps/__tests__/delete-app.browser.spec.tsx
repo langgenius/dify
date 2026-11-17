@@ -39,7 +39,7 @@ vi.mock('@/service/console', async (importOriginal) => {
       'apps.get': api.apps,
       'apps.starred.get': api.starred,
       'apps.byAppId.delete': api.delete,
-      'features.get': async () => zGetFeaturesResponse.parse({}),
+      'features.get': async () => zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
       'tags.get': async () => [],
       'workspaces.current.members.get': async () => ({ accounts: [] }),
     }),

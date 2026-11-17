@@ -190,7 +190,7 @@ describe('recipient selection through generated queries', () => {
     'gates the platform source on authoritative features (%s)',
     async (enabled) => {
       contactApi.features.mockResolvedValue({
-        ...zGetFeaturesResponse.parse({}),
+        ...zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
         im_centrally_managed: enabled,
       })
       const user = userEvent.setup()

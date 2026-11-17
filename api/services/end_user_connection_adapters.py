@@ -33,7 +33,8 @@ from services.end_user_connections.errors import (
     ConnectionSecretUnavailableError,
 )
 from services.end_user_connections.revision import ConnectionProviderMetadata, ConnectionRevisionSnapshots
-from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig, check_tool_credentials
+from services.workflow.tool_credential_validation import check_tool_credentials
+from services.workflow.tool_credentials import EndUserAuthConfig, ToolCredentialConfig
 
 
 def validate_provider_authentication(provider: PluginToolProviderController, auth: EndUserAuthConfig) -> None:

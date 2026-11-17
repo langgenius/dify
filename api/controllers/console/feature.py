@@ -20,6 +20,15 @@ from . import console_ns
 from .wraps import cloud_utm_record
 
 
+class ConsoleFeatureResponse(FeatureModel, ResponseModel):
+    """Expose Console feature entry points only after account admission."""
+
+    end_user_auth_enabled: bool = Field(
+        description="Whether Console exposes EndUser authentication configuration for workflow tool nodes. "
+        "Does not control WebApp login, Guest personal Connections, or runtime authorization."
+    )
+
+
 class TrialModelsResponse(ResponseModel):
     trial_models: list[str]
 
@@ -42,8 +51,8 @@ class ConsoleSystemFeatureResponse(SystemFeatureModel):
 register_response_schema_models(
     console_ns,
     AppDslVersionResponse,
+    ConsoleFeatureResponse,
     ConsoleSystemFeatureResponse,
-    FeatureModel,
     LicenseModel,
     LimitationModel,
     TrialModelsResponse,
@@ -58,13 +67,26 @@ class FeatureApi(Resource):
     @console_ns.response(
         200,
         "Success",
-        console_ns.models[FeatureModel.__name__],
+        console_ns.models[ConsoleFeatureResponse.__name__],
     )
     @console_account_admission()
     @cloud_utm_record
     def get(self, request_context: RequestContext):
-        """Get current workspace features."""
-        return dump_response(FeatureModel, application_services().feature_queries.get_features(request_context))
+        """Get workspace features and Console EndUser auth configuration availability.
+
+        Preconditions: an admitted Console account has an active workspace; the
+        Console feature flag comes only from trusted deployment configuration.
+        Postconditions: preserve workspace features and report the Console-only
+        configuration gate without changing WebApp login, Guest personal-Connection
+        policies, runtime authorization, or state. Feature-query failures propagate unchanged.
+        """
+        return dump_response(
+            ConsoleFeatureResponse,
+            {
+                **application_services().feature_queries.get_features(request_context).model_dump(mode="json"),
+                "end_user_auth_enabled": dify_config.CONSOLE_END_USER_AUTH_ENABLED,
+            },
+        )
 
 
 @console_ns.route("/features/vector-space")

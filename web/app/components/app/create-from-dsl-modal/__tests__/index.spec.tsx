@@ -43,7 +43,10 @@ vi.mock('@/service/console', async (importOriginal) => {
     }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': () =>
-        zGetFeaturesResponse.parse({ apps: { size: appCount, limit: appLimit } }),
+        zGetFeaturesResponse.parse({
+          end_user_auth_enabled: false,
+          apps: { size: appCount, limit: appLimit },
+        }),
       'apps.imports.post': ({ body }) => mockImportDSL(body),
       'apps.imports.byImportId.confirm.post': ({ params }) => mockImportDSLConfirm(params),
     }),

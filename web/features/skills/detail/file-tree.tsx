@@ -120,7 +120,7 @@ const skillSidebarHelpTriggerIcon = (
 function SkillSidebarAccountFooter({ compact = false }: { compact?: boolean }) {
   return (
     <div className="shrink-0 border-t border-divider-subtle">
-      <ContactSupport placement="sidebar" compact={compact} showDivider={false} />
+      <ContactSupport placement="sidebar" compact={compact} />
       <div
         className={cn(
           compact

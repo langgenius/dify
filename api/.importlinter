@@ -212,6 +212,7 @@ name = EndUser Connection contracts and policies are framework and persistence n
 type = forbidden
 source_modules =
     services.end_user_connections
+    services.workflow.tool_credentials
 forbidden_modules =
     controllers
     extensions

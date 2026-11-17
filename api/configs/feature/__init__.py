@@ -1097,6 +1097,13 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    CONSOLE_END_USER_AUTH_ENABLED: bool = Field(
+        default=False,
+        description="Expose EndUser authentication configuration for workflow tool nodes in Console. "
+        "Controls frontend feature entry points only; does not control WebApp login, "
+        "Guest personal Connections, or runtime authorization.",
+    )
+
     END_USER_AUTH_ALLOW_ANONYMOUS: bool = Field(
         default=False,
         description="Allow Guest identities to manage and use personal Connections. Does not control Web App entry. "
@@ -1410,6 +1417,11 @@ class DataSetConfig(BaseSettings):
     """
     Configuration for dataset management
     """
+
+    DATASET_DESCRIPTION_MAX_LENGTH: PositiveInt = Field(
+        description="Maximum number of characters in a knowledge base description",
+        default=400,
+    )
 
     PLAN_SANDBOX_CLEAN_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for dataset cleanup operations - plan: sandbox",
