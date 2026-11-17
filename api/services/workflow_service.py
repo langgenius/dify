@@ -116,10 +116,11 @@ from services.errors.billing import BillingError
 from services.errors.evaluation import EvaluationEntitlementUnavailableError, EvaluationPlanRequiredError
 from services.human_input_service import HumanInputService
 from services.system_feature_service import SystemFeatureService
+from services.workflow.tool_credential_validation import check_tool_credentials
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
     WorkflowToolEndUserAuthError,
-    check_tool_credentials,
+    WorkflowTriggerEndUserAuthError,
     first_end_user_tool_node,
 )
 from services.workflow.workflow_converter import WorkflowConverter
@@ -935,7 +936,7 @@ class WorkflowService:
             if config.credential_source != "end_user":
                 continue
             if has_trigger:
-                raise ValueError(f"Node {node_id}: EndUser credentials are not supported in trigger workflows.")
+                raise WorkflowTriggerEndUserAuthError(str(node_id))
             assert config.end_user_auth is not None
             try:
                 provider = providers.provider(workflow.tenant_id, data["provider_id"])

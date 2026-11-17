@@ -15,9 +15,9 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
 )
 from services.end_user_connections.revision import ConnectionRevisionSnapshots
+from services.workflow.tool_credential_validation import check_tool_credentials
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
-    check_tool_credentials,
     get_tool_connection_requirements,
 )
 

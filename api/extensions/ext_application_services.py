@@ -719,10 +719,7 @@ def build_application_services(
     annotations = AnnotationRepository(session_factory=database_client)
     messages = MessageRepository(session_factory=database_client)
     workflow_comment_repository = WorkflowCommentRepository(session_factory=database_client)
-    suggested_questions = SuggestedQuestionsQuery(
-        session_factory=database_client,
-        repository=messages,
-    )
+    suggested_questions = SuggestedQuestionsQuery(session_factory=database_client, repository=messages)
 
     web_passport = WebPassportService(
         passports=web_passport_repository,

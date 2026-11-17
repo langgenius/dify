@@ -26,7 +26,14 @@ from controllers.common.rbac import RBACPermission
 from controllers.openapi import openapi_ns
 from controllers.openapi._audit import emit_app_run
 from controllers.openapi._contract import Effect, Example, Kind, endpoint
-from controllers.openapi._errors import AppModeMismatch, RunNotFound, RunNotStoppable, require_uuid
+from controllers.openapi._errors import (
+    AppModeMismatch,
+    ErrorDetail,
+    RunNotFound,
+    RunNotStoppable,
+    TestCredentialsNotReady,
+    require_uuid,
+)
 from controllers.openapi._files import end_read_transaction, materialize, merge_files
 from controllers.openapi._hints import attach_stream_hints
 from controllers.openapi._models import (
@@ -86,6 +93,7 @@ from services.errors.app import (
 )
 from services.errors.llm import InvokeRateLimitError
 from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
+from services.workflow_test_credentials import TestCredentialNotReadyError
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +134,18 @@ def _translate_service_errors() -> Generator[None]:
         raise InvokeRateLimitHttpError(ex.description) from ex
     except InvokeError as e:
         raise CompletionRequestError(e.description) from e
+    except TestCredentialNotReadyError as caught_error:
+        raise TestCredentialsNotReady(
+            details=[
+                ErrorDetail(
+                    type=state.status,
+                    loc=["credentials", state.node_id],
+                    msg=f"Test credential is {state.status}.",
+                )
+                for state in caught_error.result.credentials
+                if state.status != "connected"
+            ]
+        ) from caught_error
     except ValueError as caught_error:
         logger.warning("run input refused by the service.", exc_info=True)
         raise BadRequest(_INVALID_RUN_INPUT) from caught_error

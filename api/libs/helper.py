@@ -27,8 +27,10 @@ from extensions.ext_redis import redis_client
 from extensions.redis_names import serialize_redis_name
 from graphon.file import helpers as file_helpers
 from graphon.model_runtime.utils.encoders import jsonable_encoder
-from libs import uuid_validation
-from libs.uuid_validation import uuid_value
+from libs import uuid_utils
+
+UUIDStr = uuid_utils.UUIDStr
+uuid_value = uuid_utils.uuid_value
 
 if TYPE_CHECKING:
     from models import Account
@@ -266,7 +268,6 @@ def parse_uuid_str_or_none(value: str | None) -> str | None:
 
 
 UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
-UUIDStr = uuid_validation.UUIDStr
 
 
 def alphanumeric(value: str):

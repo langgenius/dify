@@ -25,18 +25,24 @@ export const vectorSpace = {
 }
 
 /**
- * Get current workspace features
+ * Get workspace features and Console EndUser auth configuration availability
  *
  * Get feature availability and limits for the current workspace
+ * Preconditions: an admitted Console account has an active workspace; the
+ * Console feature flag comes only from trusted deployment configuration.
+ * Postconditions: preserve workspace features and report the Console-only
+ * configuration gate without changing WebApp login, Guest personal-Connection
+ * policies, runtime authorization, or state. Feature-query failures propagate unchanged.
  */
 export const get2 = oc
   .route({
-    description: 'Get feature availability and limits for the current workspace',
+    description:
+      'Get feature availability and limits for the current workspace\nPreconditions: an admitted Console account has an active workspace; the\nConsole feature flag comes only from trusted deployment configuration.\nPostconditions: preserve workspace features and report the Console-only\nconfiguration gate without changing WebApp login, Guest personal-Connection\npolicies, runtime authorization, or state. Feature-query failures propagate unchanged.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getFeatures',
     path: '/features',
-    summary: 'Get current workspace features',
+    summary: 'Get workspace features and Console EndUser auth configuration availability',
     tags: ['console'],
   })
   .output(zGetFeaturesResponse)

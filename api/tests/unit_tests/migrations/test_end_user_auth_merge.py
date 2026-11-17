@@ -100,3 +100,12 @@ def test_file_scan_merge_preserves_both_histories_without_schema_operations() ->
     assert all(scripts.get_revision(parent) is not None for parent in migration.down_revision)
     assert migration.upgrade() is None
     assert migration.downgrade() is None
+
+
+def test_evaluation_merge_preserves_both_parents_without_schema_operations() -> None:
+    """Require both parent histories and verify the merge has no schema side effects."""
+    migration = import_module("migrations.versions.2026_11_17_1115-b6d8f2a4c901_merge_end_user_auth_and_evaluation")
+
+    assert set(migration.down_revision) == {"9f2c7a6e4b31", "f8b6e2c4a901"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None

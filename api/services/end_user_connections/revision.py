@@ -9,7 +9,7 @@ from typing import Any, Protocol
 from pydantic import BaseModel, ConfigDict
 
 from constants.end_user_connections import ConnectionRevisionAcceptanceReason, OAuthClientSource
-from libs.uuid_validation import UUIDStr
+from libs.uuid_utils import UUIDStr
 from services.end_user_connections.entities import WebConnectionContext
 from services.entities import tool_connection_entities
 

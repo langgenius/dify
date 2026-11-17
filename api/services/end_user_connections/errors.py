@@ -27,8 +27,14 @@ class ConnectionNotFoundError(ConnectionError):
 
 
 class ConnectionRequiredError(ConnectionError):
-    def __init__(self) -> None:
-        super().__init__("Select a connection for every required tool before running.")
+    """A run needs a selection this caller did not make.
+
+    `message` overrides the default text for a caller that cannot supply a selection
+    at all, so the run failure names the way out instead of asking for one.
+    """
+
+    def __init__(self, message: str | None = None) -> None:
+        super().__init__(message or "Select a connection for every required tool before running.")
 
 
 class ConnectionConfigurationError(ConnectionError):

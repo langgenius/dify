@@ -8014,15 +8014,20 @@ Delete an API key for a dataset
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features
-**Get current workspace features**
+**Get workspace features and Console EndUser auth configuration availability**
 
 Get feature availability and limits for the current workspace
+Preconditions: an admitted Console account has an active workspace; the
+Console feature flag comes only from trusted deployment configuration.
+Postconditions: preserve workspace features and report the Console-only
+configuration gate without changing WebApp login, Guest personal-Connection
+policies, runtime authorization, or state. Feature-query failures propagate unchanged.
 
 #### Responses
 
 | Code | Description | Schema |
 | ---- | ----------- | ------ |
-| 200 | Success | **application/json**: [FeatureModel](#featuremodel)<br> |
+| 200 | Success | **application/json**: [ConsoleFeatureResponse](#consolefeatureresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /features/vector-space
@@ -24892,6 +24897,34 @@ The connection requirements changed. Refresh and confirm again.
 | page | integer, <br>**Default:** 1 | Page number | No |
 | tag_ids | [ string ] | Filter by tag IDs | No |
 
+#### ConsoleFeatureResponse
+
+Expose Console feature entry points only after account admission.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
+| api_rate_limit | [Quota](#quota) |  | Yes |
+| apps | [LimitationModel](#limitationmodel) |  | Yes |
+| billing | [BillingModel](#billingmodel) |  | Yes |
+| can_replace_logo | boolean |  | Yes |
+| documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
+| education | [EducationModel](#educationmodel) |  | Yes |
+| enable_file_scan | boolean |  | Yes |
+| enable_knowledge_fs | boolean |  | Yes |
+| enable_skill | boolean, <br>**Default:** true |  | Yes |
+| end_user_auth_enabled | boolean | Whether Console exposes EndUser authentication configuration for workflow tool nodes. Does not control WebApp login, Guest personal Connections, or runtime authorization. | Yes |
+| human_input_email_delivery_enabled | boolean |  | Yes |
+| im_centrally_managed | boolean |  | Yes |
+| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
+| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
+| members | [LimitationModel](#limitationmodel) |  | Yes |
+| model_load_balancing_enabled | boolean |  | Yes |
+| trigger_event | [Quota](#quota) |  | Yes |
+| webapp_copyright_enabled | boolean |  | Yes |
+| workflow_collaboration_enabled | boolean |  | Yes |
+| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
+
 #### ConsoleHumanInputFormDefinitionResponse
 
 | Name | Type | Description | Required |
@@ -27751,12 +27784,7 @@ Request body for creating or updating one external contact.
 
 #### ExternalDatasetCreatePayload
 
-Validated fields required to create an external dataset binding.
-
-The console controller owns HTTP concerns, but the service also needs this
-contract when creating the tenant-scoped dataset and external knowledge
-binding. Keep it outside controllers so service imports do not depend on
-Flask blueprint initialization.
+Apply the deployment's description limit at the HTTP boundary.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
@@ -27846,33 +27874,6 @@ Flask blueprint initialization.
 | ---- | ---- | ----------- | -------- |
 | email | string |  | Yes |
 | type | string, <br>**Default:** external |  | No |
-
-#### FeatureModel
-
-Effective feature availability and limits for the current workspace.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
-| api_rate_limit | [Quota](#quota) |  | Yes |
-| apps | [LimitationModel](#limitationmodel) |  | Yes |
-| billing | [BillingModel](#billingmodel) |  | Yes |
-| can_replace_logo | boolean |  | Yes |
-| documents_upload_quota | [LimitationModel](#limitationmodel) |  | Yes |
-| education | [EducationModel](#educationmodel) |  | Yes |
-| enable_file_scan | boolean |  | Yes |
-| enable_knowledge_fs | boolean |  | Yes |
-| enable_skill | boolean, <br>**Default:** true |  | Yes |
-| human_input_email_delivery_enabled | boolean |  | Yes |
-| im_centrally_managed | boolean |  | Yes |
-| is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
-| knowledge_pipeline | [KnowledgePipeline](#knowledgepipeline) |  | Yes |
-| members | [LimitationModel](#limitationmodel) |  | Yes |
-| model_load_balancing_enabled | boolean |  | Yes |
-| trigger_event | [Quota](#quota) |  | Yes |
-| webapp_copyright_enabled | boolean |  | Yes |
-| workflow_collaboration_enabled | boolean |  | Yes |
-| workspace_members | [LicenseLimitationModel](#licenselimitationmodel) |  | Yes |
 
 #### Feedback
 
