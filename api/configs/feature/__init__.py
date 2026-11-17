@@ -1097,6 +1097,13 @@ class AuthConfig(BaseSettings):
     Configuration for authentication and OAuth
     """
 
+    CONSOLE_END_USER_AUTH_ENABLED: bool = Field(
+        default=False,
+        description="Expose EndUser authentication configuration for workflow tool nodes in Console. "
+        "Controls frontend feature entry points only; does not control WebApp login, "
+        "Guest personal Connections, or runtime authorization.",
+    )
+
     END_USER_AUTH_ALLOW_ANONYMOUS: bool = Field(
         default=False,
         description="Allow Guest identities to manage and use personal Connections. Does not control Web App entry. "
