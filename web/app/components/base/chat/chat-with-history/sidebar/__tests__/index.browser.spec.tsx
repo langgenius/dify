@@ -1,3 +1,8 @@
+import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
+import type {
+  WebAccountProfileResponse,
+  WebSystemFeatureResponse,
+} from '@dify/contracts/api/web/types.gen'
 import type { ChatWithHistoryContextValue } from '../../context'
 import type { ConnectionsState } from '@/app/components/share/connections/use-connections'
 import type { WebAppEntryState } from '@/app/components/share/webapp-entry'
@@ -17,11 +22,14 @@ import {
   unpinConversation,
 } from '@/service/share'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createSystemFeaturesFixture } from '@/test/console/system-features'
 import { createDeferred } from '@/test/deferred'
 import { CONVERSATION_ID_INFO, TAB_CONVERSATION_ID_INFO } from '../../../constants'
 import { createChatHistoryTestEnvironment } from '../../__tests__/chat-history-test-env'
 import { chatConnectionEntry, createChatConnections } from '../../__tests__/connection-fixture'
+import { ChatWithHistoryContext } from '../../context'
 import Header from '../../header'
+import { useChatWithHistory } from '../../hooks'
 import Sidebar from '../index'
 
 // boundary: share requests are the network boundary; the query and feature owners stay real.
@@ -57,17 +65,42 @@ const appInfo: AppData = {
   custom_config: { replace_webapp_logo: customLogo },
 }
 
+const buildAppLabel = 'app.endUser.buildYourOwnApp'
+const profile: WebAccountProfileResponse = {
+  email: 'joel@example.com',
+  is_password_set: false,
+  interface_language: 'en-US',
+  interface_theme: 'system',
+  timezone: 'UTC',
+  name: 'Test Account',
+  avatar: null,
+  avatar_url: null,
+  has_owned_tenant: false,
+  has_tenant: false,
+}
+const webSystemFeatures = {
+  ...createSystemFeaturesFixture(),
+  account_login_url: 'https://console.example.com/dify/signin',
+} satisfies WebSystemFeatureResponse
+const webRequests: Request[] = []
+let hasTenant = false
+
 beforeEach(async ({ onTestFinished }) => {
-  // boundary: the authenticated footer loads its account through the Webapp HTTP service.
+  // boundary: account identity and Console discovery stay on the real Webapp HTTP service.
   const unexpectedRequests: string[] = []
+  webRequests.length = 0
+  hasTenant = false
   vi.stubGlobal(
     'fetch',
-    vi.fn<typeof fetch>(async (input) => {
-      const url = input instanceof Request ? input.url : String(input)
-      if (new URL(url, window.location.origin).pathname === '/api/account/profile')
-        return Response.json({ name: 'Test Account', avatar: null, avatar_url: null })
-      unexpectedRequests.push(url)
-      throw new Error(`Unexpected request: ${url}`)
+    vi.fn<typeof fetch>(async (input, init) => {
+      const request = new Request(input, init)
+      webRequests.push(request)
+      const path = new URL(request.url).pathname
+      if (path === '/api/account/profile')
+        return Response.json({ ...profile, has_tenant: hasTenant })
+      if (path === '/api/system-features') return Response.json(webSystemFeatures)
+      unexpectedRequests.push(request.url)
+      throw new Error(`Unexpected request: ${request.url}`)
     }),
   )
   onTestFinished(() => {
@@ -108,6 +141,7 @@ async function renderSidebar(
   showCurrentConversation = false,
   entry: WebAppEntryState | null = null,
   connections: ConnectionsState = createChatConnections(),
+  installedAppInfo?: InstalledAppResponse,
 ) {
   const { Owner, queryClient } = createChatHistoryTestEnvironment({
     currentConversationId: '1',
@@ -120,9 +154,19 @@ async function renderSidebar(
     queryClient,
     systemFeatures: { branding },
   })
+  function InstalledOwner({ children, displayProps }: Parameters<typeof Owner>[0]) {
+    const value = useChatWithHistory(installedAppInfo)
+    return (
+      // oxlint-disable-next-line eslint-react/no-context-provider -- use-context-selector exposes a Provider component, not a renderable React 19 Context.
+      <ChatWithHistoryContext.Provider value={{ ...value, isBelowSm: false, ...displayProps }}>
+        {children}
+      </ChatWithHistoryContext.Provider>
+    )
+  }
+  const HistoryOwner = installedAppInfo ? InstalledOwner : Owner
   const view = (displayProps = options.ownerProps) => (
     <QueryProvider>
-      <Owner displayProps={displayProps}>
+      <HistoryOwner displayProps={displayProps}>
         {showCurrentConversation && (
           <section aria-label="Current conversation">
             <Header />
@@ -138,7 +182,7 @@ async function renderSidebar(
             </ConnectionsContext>
           </WebAppEntryContext>
         </aside>
-      </Owner>
+      </HistoryOwner>
     </QueryProvider>
   )
   const rendered = await render(view())
@@ -187,6 +231,50 @@ function anonymousEntry(allowAnonymous = false): WebAppEntryState {
   }
 }
 
+it.each([
+  { hasTenant: true, destination: 'https://console.example.com/dify/' },
+  { hasTenant: false, destination: 'https://console.example.com/dify/create-workspace' },
+])('offers $destination above the authenticated account avatar', async (scenario) => {
+  hasTenant = scenario.hasTenant
+  await renderSidebar({}, noBranding, false, chatConnectionEntry)
+  const link = conversationHistory().getByRole('link', { name: buildAppLabel })
+  const avatar = conversationHistory().getByRole('button', { name: 'Test Account' })
+  await expect.element(link).toBeVisible()
+  await expect.element(link).toHaveAttribute('href', scenario.destination)
+  await expect.element(link).toHaveAttribute('target', '_blank')
+  await expect.element(link).toHaveAttribute('rel', 'noopener noreferrer')
+  await expect.element(avatar).toBeVisible()
+  expect(link.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(
+    avatar.element().getBoundingClientRect().top,
+  )
+})
+
+it('keeps the build link and public Console discovery out of installed apps', async () => {
+  await renderSidebar({}, noBranding, false, chatConnectionEntry, createChatConnections(), {
+    id: 'app-1',
+    app_owner_tenant_id: 'tenant-1',
+    editable: true,
+    is_pinned: false,
+    last_used_at: null,
+    app: {
+      id: 'source-app-1',
+      name: 'Installed App',
+      description: '',
+      mode: 'chat',
+      icon_type: 'emoji',
+      icon: '🤖',
+      icon_background: '#ffffff',
+      icon_url: null,
+      use_icon_as_answer_icon: false,
+    },
+  })
+  await expect.element(page.getByRole('button', { name: 'Test Account' })).toBeVisible()
+  await expect.element(page.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
+  expect(
+    webRequests.some((request) => new URL(request.url).pathname === '/api/system-features'),
+  ).toBe(false)
+})
+
 it.each([false, true])(
   'places My apps before application information in the narrow=%s sidebar',
   async (isBelowSm) => {
@@ -222,6 +310,8 @@ it('offers sign-in instead of the footer menu and blocks new chat while personal
   await expect
     .element(page.getByRole('link', { name: 'app.endUser.myApps' }))
     .not.toBeInTheDocument()
+  await expect.element(page.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
+  expect(webRequests).toEqual([])
   await expect
     .element(page.getByRole('button', { name: 'common.operation.more' }))
     .not.toBeInTheDocument()

@@ -3,10 +3,10 @@
 import { useTranslation } from 'react-i18next'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import MainNavLink from '@/app/components/main-nav/components/nav-link'
+import BuildAppLink from '@/app/components/share/build-app-link'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import AccountMenu from './account-menu'
-import BuildAppLink from './build-app-link'
 
 const navigationItems = [
   {
