@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import io
 import json
 from typing import Protocol
 
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
+from werkzeug.test import EnvironBuilder, run_wsgi_app
 
 from controllers.openapi import account as account_module
 from controllers.openapi import mcp as mcp_module
@@ -334,6 +336,39 @@ def test_a_body_over_the_cap_is_413_and_runs_no_op(openapi_app: Flask, monkeypat
     assert payload["id"] is None
     assert payload["error"]["code"] == mcp_types.INVALID_REQUEST
     assert payload["error"]["message"] == "Request body too large"
+    assert recorder.calls == []
+
+
+def _post_without_content_length(app: Flask, body: object) -> tuple[int, dict[str, object]]:
+    builder = EnvironBuilder(
+        path=MCP_PATH,
+        method="POST",
+        input_stream=io.BytesIO(json.dumps(body).encode()),
+        content_type="application/json",
+        headers={"Authorization": "Bearer dfoa_x"},
+    )
+    environ = builder.get_environ()
+    del environ["CONTENT_LENGTH"]
+    environ["wsgi.input_terminated"] = True
+    app_iter, status, _headers = run_wsgi_app(app.wsgi_app, environ)
+    return int(status.split()[0]), json.loads(b"".join(app_iter))
+
+
+def _oversize_call() -> dict[str, object]:
+    padding = "x" * MCP_MAX_BODY_BYTES
+    return _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {"p": padding}}})
+
+
+@JSON_RPC_ERROR_BODY
+def test_a_chunked_body_over_the_cap_is_cut_at_the_cap_and_is_a_parse_error(
+    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    recorder = _OpRecorder()
+    monkeypatch.setattr(mcp_module, "call_op", recorder)
+    status, payload = _post_without_content_length(openapi_app, _oversize_call())
+
+    assert status == 400
+    assert payload["error"]["code"] == mcp_types.PARSE_ERROR
     assert recorder.calls == []
 
 
