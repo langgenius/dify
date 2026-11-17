@@ -83,14 +83,20 @@ def _slack_directory(monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
 
 
 @pytest.fixture
-def _default_im_worker(flask_app_with_containers: DifyApp, redis_container: RedisContainer) -> Iterator[None]:
-    """Consume production-selected queues through Redis and restore the previous Celery app afterward."""
+def _default_im_worker(
+    flask_app_with_containers: DifyApp,
+    redis_container: RedisContainer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> Iterator[None]:
+    """Publish and consume on the supplied Redis, restoring the previous Celery app afterward."""
     selected = worker_configuration({})
     assert selected.returncode == 0, selected.stderr
     queues = selected.stdout.splitlines()[-1].split(",")
     previous_app = flask_app_with_containers.extensions["celery"]
     assert isinstance(previous_app, Celery)
     broker_url = f"redis://{redis_container.get_container_host_ip()}:{redis_container.get_exposed_port(6379)}/1"
+    # Celery reads this environment variable before its configured broker URL.
+    monkeypatch.setenv("CELERY_BROKER_URL", broker_url)
 
     with config_overrides_context(CELERY_BROKER_URL=broker_url, CELERY_USE_SENTINEL=False, CELERY_BACKEND="redis"):
         worker_app = init_celery_app(flask_app_with_containers)
@@ -98,9 +104,10 @@ def _default_im_worker(flask_app_with_containers: DifyApp, redis_container: Redi
             task_always_eager=False,
             broker_transport_options={"global_keyprefix": f"im-sync-worker-{uuidv7()}:"},
         )
-        worker_app.set_current()
         try:
             with start_worker(worker_app, queues=queues, pool="solo", perform_ping_check=False, shutdown_timeout=10):
+                # Task imports during worker startup can change Celery's current app.
+                worker_app.set_current()
                 yield
         finally:
             flask_app_with_containers.extensions["celery"] = previous_app
