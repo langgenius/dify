@@ -49,6 +49,8 @@ FIND_LIMIT: Final = 20
 FIND_TOOL: Final = "dify_find"
 TOOL_RESULT_MAX_CHARS: Final = 40_000
 _PASSED_HEADERS: Final = ("WWW-Authenticate", "Cache-Control")
+_RETRY_AFTER_HEADER: Final = "Retry-After"
+_RETRY_AFTER_MESSAGE: Final = "Retry after {seconds} seconds."
 _TEXT_TYPE: Final = "text"
 _HINTS_KEY: Final = "hints"
 _OP_KEY: Final = "op"
@@ -450,6 +452,21 @@ def _without_uncallable_hints(body: Any, allowed: Mapping[str, Any]) -> Any:
     return {**body, _HINTS_KEY: [hint for hint in hints if _is_callable_hint(hint, allowed)]}
 
 
+def _retry_after_note(result: OpResult) -> mcp_types.TextContent | None:
+    """Postcondition: for a 429 whose ``Retry-After`` is a non-negative whole number of seconds, the text
+    block naming the wait; None otherwise (an HTTP-date or any other value adds nothing)."""
+    if result.status != HTTPStatus.TOO_MANY_REQUESTS:
+        return None
+    value = result.headers.get(_RETRY_AFTER_HEADER)
+    if value is None:
+        return None
+    if not value.isascii():
+        return None
+    if not value.isdigit():
+        return None
+    return mcp_types.TextContent(type=_TEXT_TYPE, text=_RETRY_AFTER_MESSAGE.format(seconds=int(value)))
+
+
 def _map_result(result: OpResult, *, allowed: Mapping[str, Any], protocol_version: str) -> mcp_types.CallToolResult:
     """Postcondition: the op's response as a tool result; raises ``Unauthenticated`` on 401."""
     if result.status == HTTPStatus.UNAUTHORIZED:
@@ -457,7 +474,11 @@ def _map_result(result: OpResult, *, allowed: Mapping[str, Any], protocol_versio
     if result.status >= HTTPStatus.BAD_REQUEST:
         if result.is_json:
             body = _without_uncallable_hints(result.body, allowed)
-            return _json_result(body, protocol_version=protocol_version, is_error=True)
+            error = _json_result(body, protocol_version=protocol_version, is_error=True)
+            note = _retry_after_note(result)
+            if note is not None:
+                error.content.append(note)
+            return error
         return _error(f"The operation answered {result.status} without a JSON body.")
     if not result.is_json:
         return _error("The operation returned a non-JSON response, which a tool call cannot carry.")

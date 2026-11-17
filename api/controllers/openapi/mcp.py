@@ -171,9 +171,10 @@ class OpenApiMcpApi(Resource):
         (result, or error for an unsupported protocol version or tool name); 202 with no body for
         a notification or an unparsable message that has no ``id``; 400 with a JSON-RPC error for
         any other unparsable message; 413 with a JSON-RPC error when the body is above
-        ``MCP_MAX_BODY_BYTES`` (checked before the body is read and before any login check);
-        401 when the token is not real; the login check's own status
-        when it answers a server error.
+        ``MCP_MAX_BODY_BYTES`` and sent with a ``Content-Length`` (checked before the body is read and
+        before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
+        cut at the cap and answers 400 with a JSON-RPC parse error; 401 when
+        the token is not real; the login check's own status when it answers a server error.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
         request.max_content_length = MCP_MAX_BODY_BYTES
