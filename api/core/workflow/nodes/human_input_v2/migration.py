@@ -11,12 +11,13 @@ import enum
 from dataclasses import dataclass
 
 from core.human_input_v2.entities import DebugChannel
-from core.human_input_v2.shared.values import NormalizedEmail
+from core.human_input_v2.shared.values import ContactId, NormalizedEmail
 from core.workflow.human_input_adapter import (
     DeliveryChannelConfig,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     ExternalRecipient,
+    MemberRecipient,
     WebAppDeliveryMethod,
 )
 from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
@@ -24,6 +25,7 @@ from core.workflow.nodes.human_input.entities import HumanInputNodeDataFull
 from .entities import (
     HUMAN_INPUT_NODE_TYPE,
     AllWorkspaceContacts,
+    Contact,
     DebugModeConfig,
     HumanInputNodeData,
     Initiator,
@@ -34,21 +36,22 @@ from .entities import (
 
 
 @dataclass(frozen=True, slots=True)
-class ResolvedMemberEmail:
+class ResolvedMemberContact:
     member_id: str
-    email: NormalizedEmail
+    contact_id: ContactId
 
 
 @dataclass(frozen=True, slots=True)
-class MemberEmailSnapshot:
-    """Immutable request-local workspace member Email snapshot."""
+class MemberContactSnapshot:
+    """Immutable request-local workspace member to Contact identity mapping."""
 
-    entries: tuple[ResolvedMemberEmail, ...] = ()
+    entries: tuple[ResolvedMemberContact, ...] = ()
 
-    def email_for(self, member_id: str) -> NormalizedEmail | None:
+    def contact_id_for(self, member_id: str) -> ContactId | None:
+        """Return the resolved identity, or None for an unavailable member."""
         for entry in self.entries:
             if entry.member_id == member_id:
-                return entry.email
+                return entry.contact_id
         return None
 
 
@@ -130,19 +133,57 @@ def _validated_email_template(config: EmailDeliveryConfig) -> tuple[str, str] | 
     return config.subject, config.body
 
 
+def _convert_email_recipient(
+    source: ExternalRecipient | MemberRecipient,
+    member_contacts: MemberContactSnapshot,
+    method_id: str,
+    method_index: int,
+    recipient_index: int,
+) -> Contact | OnetimeEmail | NodeMigrationBlocker:
+    """Preserve each validated legacy source's identity or report its blocker."""
+    if isinstance(source, ExternalRecipient):
+        try:
+            return OnetimeEmail(email=str(NormalizedEmail(source.email)))
+        except ValueError:
+            return NodeMigrationBlocker(
+                MigrationBlockerCode.INVALID_EMAIL,
+                method_id,
+                source.email,
+                method_index=method_index,
+                recipient_index=recipient_index,
+            )
+    contact_id = member_contacts.contact_id_for(source.reference_id)
+    if contact_id is None:
+        return NodeMigrationBlocker(
+            MigrationBlockerCode.UNRESOLVED_MEMBER,
+            method_id,
+            source.reference_id,
+            method_index=method_index,
+            recipient_index=recipient_index,
+        )
+    return Contact(contact_id=contact_id)
+
+
 def convert_legacy_human_input_node_data(
     legacy_node_data: HumanInputNodeDataFull,
-    member_emails: MemberEmailSnapshot,
+    member_contacts: MemberContactSnapshot,
 ) -> NodeMigrationConversion:
-    """Convert one legacy node against a caller-owned immutable Email snapshot."""
+    """Convert validated v1 data against a caller-owned Contact snapshot.
+
+    Members retain Contact identity; external addresses remain one-time Email.
+    Return complete v2 data or blockers without changing either input or storage.
+    """
 
     recipients: list[RecipientConfig] = []
     blockers: list[NodeMigrationBlocker] = []
     seen_emails: set[str] = set()
+    seen_contact_ids: set[str] = set()
     has_initiator = False
     has_workspace_marker = False
     email_debug_enabled = False
     email_template: tuple[str, str] | None = None
+    # TODO(QuantumGhost): the template validation should be removed. It does not enforce
+    # any invariant.
     conflicting_template: tuple[str, int] | None = None
     for method_index, method in enumerate(legacy_node_data.delivery_methods):
         method_id = str(method.id)
@@ -190,39 +231,16 @@ def convert_legacy_human_input_node_data(
         email_debug_enabled = email_debug_enabled or method.config.debug_mode
         email_recipients = method.config.recipients
         for recipient_index, source in enumerate(email_recipients.items):
-            if isinstance(source, ExternalRecipient):
-                try:
-                    normalized_email = str(NormalizedEmail(source.email))
-                except ValueError:
-                    blockers.append(
-                        NodeMigrationBlocker(
-                            MigrationBlockerCode.INVALID_EMAIL,
-                            method_id,
-                            source.email,
-                            method_index=method_index,
-                            recipient_index=recipient_index,
-                        )
-                    )
-                    continue
-            else:
-                member_id = source.reference_id
-                member_email = member_emails.email_for(member_id)
-                if member_email is None:
-                    blockers.append(
-                        NodeMigrationBlocker(
-                            MigrationBlockerCode.UNRESOLVED_MEMBER,
-                            method_id,
-                            member_id,
-                            method_index=method_index,
-                            recipient_index=recipient_index,
-                        )
-                    )
-                    continue
-                normalized_email = str(member_email)
-            if normalized_email in seen_emails:
-                continue
-            recipients.append(OnetimeEmail(email=normalized_email))
-            seen_emails.add(normalized_email)
+            converted = _convert_email_recipient(source, member_contacts, method_id, method_index, recipient_index)
+            if isinstance(converted, NodeMigrationBlocker):
+                blockers.append(converted)
+            elif isinstance(converted, Contact):
+                if converted.contact_id not in seen_contact_ids:
+                    recipients.append(converted)
+                    seen_contact_ids.add(converted.contact_id)
+            elif converted.email not in seen_emails:
+                recipients.append(converted)
+                seen_emails.add(converted.email)
         if email_recipients.include_bound_group and not has_workspace_marker:
             recipients.append(AllWorkspaceContacts())
             has_workspace_marker = True
@@ -243,13 +261,10 @@ def convert_legacy_human_input_node_data(
 
     if email_template is None:
         # Runtime requires a Request URL even for initiator-only forms.
-        subject = "Action required"
-        body = (
-            "A request is waiting for your review. Please review the details and submit your decision to continue. "
-            "Review and respond: {{#url#}}"
-        )
+        message_template = MessageTemplateConfig.default_template()
     else:
         subject, body = email_template
+        message_template = MessageTemplateConfig(subject=subject, body=body)
 
     node_data = HumanInputNodeData(
         type=HUMAN_INPUT_NODE_TYPE,
@@ -259,7 +274,7 @@ def convert_legacy_human_input_node_data(
         default_value=legacy_node_data.default_value,
         retry_config=legacy_node_data.retry_config,
         recipients_spec=recipients,
-        message_template=MessageTemplateConfig(subject=subject, body=body),
+        message_template=message_template,
         debug_mode=DebugModeConfig(
             enabled=email_debug_enabled,
             channels=(DebugChannel.EMAIL,) if email_debug_enabled else (),
