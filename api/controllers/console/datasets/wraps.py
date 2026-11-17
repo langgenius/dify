@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
+from typing import ParamSpec, TypeVar
 
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,18 @@ from libs.external_api import document_errors
 from libs.login import current_account_with_tenant
 from models.dataset import Pipeline
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+
+def _scoped_session() -> Session:
+    """Return the scoped session that unmigrated handlers later commit.
+
+    Handlers that have not composed ``with_session`` above this decorator still
+    read and commit through that session, so the pipeline has to be loaded there.
+    """
+    return db.session()
 
 
 def load_rag_pipeline(session: Session, pipeline_id: str, *, tenant_id: str) -> Pipeline:
@@ -68,7 +81,7 @@ def _pipeline_for_call(
     return load_rag_pipeline(session, pipeline_id, tenant_id=resolve_tenant_id())
 
 
-def get_rag_pipeline_with[**P, R](
+def get_rag_pipeline_with(
     *,
     session_factory: Callable[[], Session],
     resolve_tenant_id: Callable[[], str] = _request_tenant_id,
@@ -76,7 +89,7 @@ def get_rag_pipeline_with[**P, R](
     """Build ``get_rag_pipeline`` with an explicit session factory and tenant resolver.
 
     Callers pass the session factory. Tests pass the factory that owns the fixture
-    row. ``get_rag_pipeline`` passes the scoped session for handlers that have not
+    row. ``get_rag_pipeline`` passes ``_scoped_session`` for handlers that have not
     composed ``with_session`` yet.
 
     Precondition: ``session_factory`` returns an open session and
@@ -86,7 +99,7 @@ def get_rag_pipeline_with[**P, R](
     outside the tenant raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    def decorator(view: Callable[P, R]) -> Callable[P, R]:
+    def decorator[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         @wraps(view)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("pipeline_id"):
@@ -107,7 +120,7 @@ def get_rag_pipeline_with[**P, R](
     return decorator
 
 
-def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+def get_rag_pipeline(view: Callable[P, R]) -> Callable[P, R]:
     """Replace the ``pipeline_id`` path parameter with the tenant's ``Pipeline``.
 
     A handler that composes ``@with_session`` directly above this decorator loads
@@ -131,7 +144,7 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
         kwargs["pipeline"] = _pipeline_for_call(
             args,
             pipeline_id,
-            session_factory=db.session,
+            session_factory=_scoped_session,
             resolve_tenant_id=_request_tenant_id,
         )
         return view(*args, **kwargs)
