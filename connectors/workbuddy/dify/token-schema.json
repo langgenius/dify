@@ -14,8 +14,8 @@
       "type": "text",
       "required": true,
       "placeholder": "dify.example.com",
-      "description": "只填域名，不要带 https:// 和路径。",
-      "description_en": "The host name only, without https:// or a path."
+      "description": "只填域名，不要带 https://、端口或路径。服务器需要能通过 HTTPS 的默认 443 端口访问。",
+      "description_en": "The host name only, without https://, a port or a path. The server must be reachable over HTTPS on port 443."
     },
     {
       "key": "DIFY_TOKEN",
@@ -24,8 +24,8 @@
       "type": "password",
       "required": true,
       "placeholder": "dpat_...",
-      "description": "建议使用个人访问令牌。工作区访问令牌只能查找和运行应用，不能管理插件、模型和工具凭据，也不能回复运行中的人工输入表单。",
-      "description_en": "A personal access token is recommended. A workspace access token can only find and run apps: it cannot manage plugins, models or tool credentials, or answer a human-input form in a paused run."
+      "description": "建议使用个人访问令牌。工作区访问令牌只能查找和运行应用，不能管理插件、模型供应商和工具凭据，也不能填写暂停运行中的人工介入表单。",
+      "description_en": "A personal access token is recommended. A workspace access token can only find and run apps: it cannot manage plugins, model providers or tool credentials, or fill in the human-input form of a paused run."
     }
   ]
 }
