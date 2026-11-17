@@ -1479,29 +1479,59 @@ def test_partial_usage_persistence_recovers_invalid_metadata(metadata: str, sqli
     assert json.loads(persisted.message_metadata)["usage"]["total_tokens"] == 3
 
 
+class _RecordingSession:
+    """Session double for commit/rollback assertions without a MagicMock assignment."""
+
+    def __init__(
+        self,
+        *,
+        get_result: Any = None,
+        get_error: Exception | None = None,
+        commit_error: Exception | None = None,
+    ) -> None:
+        self._get_result = get_result
+        self._get_error = get_error
+        self._commit_error = commit_error
+        self.commit_calls = 0
+        self.rollback_calls = 0
+
+    def get(self, *args: Any, **kwargs: Any) -> Any:
+        del args, kwargs
+        if self._get_error is not None:
+            raise self._get_error
+        return self._get_result
+
+    def commit(self) -> None:
+        self.commit_calls += 1
+        if self._commit_error is not None:
+            raise self._commit_error
+
+    def rollback(self) -> None:
+        self.rollback_calls += 1
+
+
+@contextmanager
+def _recording_session_context(recording: _RecordingSession) -> Generator[_RecordingSession]:
+    # Mirror SQLAlchemy Session.__exit__: roll back then re-raise.
+    try:
+        yield recording
+    except Exception:
+        recording.rollback()
+        raise
+
+
 def test_partial_usage_persistence_rolls_back_database_error(monkeypatch: pytest.MonkeyPatch) -> None:
     """Session-context exit must roll back when usage persistence hits a DB error."""
-    session = MagicMock()
-    session.get.side_effect = RuntimeError("database unavailable")
-
-    @contextmanager
-    def failing_session() -> Generator[MagicMock]:
-        # Mirror SQLAlchemy Session.__exit__: roll back then re-raise.
-        try:
-            yield session
-        except Exception:
-            session.rollback()
-            raise
-
-    monkeypatch.setattr(app_runner_module, "create_session", failing_session)
+    recording = _RecordingSession(get_error=RuntimeError("database unavailable"))
+    monkeypatch.setattr(app_runner_module, "create_session", lambda: _recording_session_context(recording))
 
     AgentAppRunner._persist_message_usage(
         message_id="msg-1",
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
-    session.rollback.assert_called_once()
-    session.commit.assert_not_called()
+    assert recording.rollback_calls == 1
+    assert recording.commit_calls == 0
 
 
 def test_trim_answer_suffix_skips_when_thought_row_missing() -> None:
@@ -1574,29 +1604,18 @@ def test_update_thought_skips_missing_row(sqlite_session: Session) -> None:
 
 def test_persist_message_usage_commit_failure_rolls_back(monkeypatch: pytest.MonkeyPatch) -> None:
     """Commit errors inside the session block must roll back via context exit."""
-    session = MagicMock()
     message = MagicMock()
     message.message_metadata = "{}"
-    session.get.return_value = message
-    session.commit.side_effect = RuntimeError("commit failed")
-
-    @contextmanager
-    def failing_commit_session() -> Generator[MagicMock]:
-        try:
-            yield session
-        except Exception:
-            session.rollback()
-            raise
-
-    monkeypatch.setattr(app_runner_module, "create_session", failing_commit_session)
+    recording = _RecordingSession(get_result=message, commit_error=RuntimeError("commit failed"))
+    monkeypatch.setattr(app_runner_module, "create_session", lambda: _recording_session_context(recording))
 
     AgentAppRunner._persist_message_usage(
         message_id="msg-1",
         usage=LLMUsage.from_metadata({"prompt_tokens": 2, "completion_tokens": 1}),
     )
 
-    session.commit.assert_called_once()
-    session.rollback.assert_called_once()
+    assert recording.commit_calls == 1
+    assert recording.rollback_calls == 1
 
 
 @pytest.mark.parametrize("outcome", ["failed", "stopped"])
