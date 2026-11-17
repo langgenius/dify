@@ -348,7 +348,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         error: str,
         finished_at: datetime,
     ) -> None:
+        """Stop a locked, owner-scoped run within the caller's transaction.
+
+        Persist the stop marker, reason and finish time together so delayed
+        history cannot overwrite the terminal state. Invalidate any active
+        pause in the same transaction; database failures propagate to the caller.
+        """
         run.status = WorkflowExecutionStatus.STOPPED
+        run.stop_requested_at = finished_at
         run.error = error
         run.finished_at = finished_at
         pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id).with_for_update())
