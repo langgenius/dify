@@ -1,9 +1,14 @@
+import os
 import ssl
+import subprocess
+import sys
 import threading
 from collections.abc import Iterator
 from datetime import UTC, datetime, timedelta
 from importlib import import_module
+from pathlib import Path
 from queue import Empty
+from textwrap import dedent
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from zoneinfo import ZoneInfo
@@ -29,6 +34,48 @@ from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+def test_worker_registers_trigger_tasks_at_startup() -> None:
+    """With both trigger pollers enabled, a fresh worker can resolve trigger tasks by name."""
+    script = dedent(
+        """
+        from dify_app import DifyApp
+        from extensions.ext_celery import init_app
+
+        expected_tasks = {
+            "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
+            "schedule.workflow_schedule_task.poll_workflow_schedules",
+            "tasks.async_workflow_tasks.execute_workflow_professional",
+            "tasks.async_workflow_tasks.execute_workflow_sandbox",
+            "tasks.async_workflow_tasks.execute_workflow_team",
+            "tasks.trigger_processing_tasks.dispatch_triggered_workflows_async",
+            "tasks.trigger_subscription_refresh_tasks.trigger_subscription_refresh",
+            "tasks.workflow_schedule_tasks.run_schedule_trigger",
+        }
+        with init_app(DifyApp(__name__)) as celery_app:
+            celery_app.loader.init_worker()
+            missing_tasks = expected_tasks.difference(celery_app.tasks)
+            assert not missing_tasks, sorted(missing_tasks)
+        """
+    )
+    # Other tests may import executor modules and register their shared tasks in this interpreter.
+    completed = subprocess.run(
+        [sys.executable, "-B", "-c", script],
+        cwd=Path(__file__).resolve().parents[3],
+        env={
+            **os.environ,
+            "CELERY_BROKER_URL": "memory://",
+            "DISABLE_TELEMETRY": "true",
+            "ENABLE_TRIGGER_PROVIDER_REFRESH_TASK": "true",
+            "ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK": "true",
+        },
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
 
 
 @pytest.mark.parametrize(
