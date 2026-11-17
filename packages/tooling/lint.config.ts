@@ -636,6 +636,8 @@ export const lintConfig = {
     'e2e/.auth/**',
     'e2e/cucumber-report/**',
     'packages/contracts/**',
+    // Its content mapper composes the console OpenAPI from the Python API; `type-check:contracts` covers it.
+    'packages/openapi-content-mapper/examples/repository/**',
     'web/next/**',
     'web/next-env.d.ts',
     'web/public/**',
