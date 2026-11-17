@@ -274,12 +274,14 @@ class TestRedisBroadcastChannelIntegration:
             producer_futures = [executor.submit(producer_thread, i) for i in range(producer_count)]
 
             sent_msgs: set[bytes] = set()
-            # Wait for completion
-            for future in as_completed(producer_futures, timeout=30.0):
-                sent_msgs.update(future.result())
+            try:
+                for future in as_completed(producer_futures, timeout=30.0):
+                    sent_msgs.update(future.result())
 
-            subscription.close()
-            consumer_received_msgs = consumer_future.result(timeout=30.0)
+                # Publishing can finish before the subscriber drains its pending messages.
+                consumer_received_msgs = consumer_future.result(timeout=30.0)
+            finally:
+                subscription.close()
 
         # Verify message content
         assert sent_msgs == consumer_received_msgs
