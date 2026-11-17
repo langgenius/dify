@@ -13,6 +13,7 @@ import json
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
+from http import HTTPStatus
 from typing import Any, Final
 
 from flask import Flask, current_app
@@ -38,8 +39,6 @@ FIND_TOOL: Final = "dify_find"
 TOOL_RESULT_MAX_CHARS: Final = 40_000
 _BEARER_SCHEME: Final = "bearer"
 _PASSED_HEADERS: Final = ("WWW-Authenticate", "Cache-Control")
-_HTTP_UNAUTHORIZED: Final = 401
-_HTTP_ERROR_MIN: Final = 400
 _TEXT_TYPE: Final = "text"
 _HINTS_KEY: Final = "hints"
 _OP_KEY: Final = "op"
@@ -325,16 +324,18 @@ def _supports_structured_output(protocol_version: str) -> bool:
     return protocol_version >= STRUCTURED_OUTPUT_MIN_VERSION
 
 
-def _json_result(body: Any, *, protocol_version: str) -> mcp_types.CallToolResult:
+def _json_result(body: Any, *, protocol_version: str, is_error: bool = False) -> mcp_types.CallToolResult:
     """Postcondition: the body as compact JSON text, or a tool error when the text is above
-    ``TOOL_RESULT_MAX_CHARS``; ``structuredContent`` only for an object body on a protocol that has it."""
+    ``TOOL_RESULT_MAX_CHARS``; ``structuredContent`` only for a non-error object body on a protocol that has it."""
     text = _compact(body)
     if len(text) > TOOL_RESULT_MAX_CHARS:
         return _error(
             f"The result is {len(text)} characters, above the {TOOL_RESULT_MAX_CHARS} limit. "
             "Narrow the request (use `limit`, a filter, or a more specific operation)."
         )
-    result = mcp_types.CallToolResult(content=[mcp_types.TextContent(type=_TEXT_TYPE, text=text)])
+    result = mcp_types.CallToolResult(content=[mcp_types.TextContent(type=_TEXT_TYPE, text=text)], isError=is_error)
+    if is_error:
+        return result
     if not isinstance(body, dict):
         return result
     if not _supports_structured_output(protocol_version):
@@ -410,11 +411,12 @@ def _without_uncallable_hints(body: Any, allowed: Mapping[str, Any]) -> Any:
 
 def _map_result(result: OpResult, *, allowed: Mapping[str, Any], protocol_version: str) -> mcp_types.CallToolResult:
     """Postcondition: the op's response as a tool result; raises ``Unauthenticated`` on 401."""
-    if result.status == _HTTP_UNAUTHORIZED:
+    if result.status == HTTPStatus.UNAUTHORIZED:
         raise Unauthenticated({name: result.headers[name] for name in _PASSED_HEADERS if name in result.headers})
-    if result.status >= _HTTP_ERROR_MIN:
+    if result.status >= HTTPStatus.BAD_REQUEST:
         if result.is_json:
-            return _error(_compact(result.body))
+            body = _without_uncallable_hints(result.body, allowed)
+            return _json_result(body, protocol_version=protocol_version, is_error=True)
         return _error(f"The operation answered {result.status} without a JSON body.")
     if not result.is_json:
         return _error("The operation returned a non-JSON response, which a tool call cannot carry.")
