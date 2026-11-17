@@ -24,11 +24,13 @@ from controllers.console.agent.build_session import (
 from controllers.console.agent.composer import AgentComposerApi, AgentComposerCandidatesApi, AgentComposerValidateApi
 from controllers.console.agent.roster import (
     AgentAppApi,
+    AgentAppCopyApi,
     AgentAppListApi,
     AgentInviteOptionsApi,
     AgentLogMessagesApi,
     AgentLogsApi,
     AgentLogSourcesApi,
+    AgentPublishApi,
     AgentRosterVersionDetailApi,
     AgentRosterVersionRestoreApi,
     AgentRosterVersionsApi,
@@ -49,18 +51,23 @@ from models.account import AccountStatus, TenantAccountRole
 from models.agent import (
     Agent,
     AgentConfigDraft,
+    AgentConfigDraftType,
     AgentConfigRevision,
     AgentConfigRevisionOperation,
     AgentConfigSnapshot,
     AgentScope,
     AgentSource,
 )
-from models.agent_config_entities import AgentSoulConfig
+from models.agent_config_entities import AgentSoulConfig, AgentSoulModelConfig
 from models.engine import db
 from models.enums import ApiTokenType
 from models.model import ApiToken, App, AppMode
+from models.skill import AgentSkillBinding, AgentSkillBindingSnapshot
+from repositories.app.agent_app_repository import AgentAppRepository
+from services.agent.app_composer_store import AgentPublicationChangedError
 from services.entities.app_entities import AppEvent
 from tests.helpers.unit.config_override import config_overrides_context
+from tests.helpers.unit.rbac_fakes import RBACDomain
 
 
 @dataclass(frozen=True)
@@ -163,6 +170,8 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
         api.add_resource(AgentLogMessagesApi, "/agent/<uuid:agent_id>/logs/<uuid:conversation_id>/messages")
         api.add_resource(AgentLogSourcesApi, "/agent/<uuid:agent_id>/log-sources")
         api.add_resource(AgentStatisticsSummaryApi, "/agent/<uuid:agent_id>/statistics/summary")
+        api.add_resource(AgentAppCopyApi, "/agent/<uuid:agent_id>/copy")
+        api.add_resource(AgentPublishApi, "/agent/<uuid:agent_id>/publish")
         api.add_resource(AgentAppApi, "/agent/<uuid:agent_id>")
         api.add_resource(AgentBuildDraftApi, "/agent/<uuid:agent_id>/build-draft")
         api.add_resource(AgentBuildDraftCheckoutApi, "/agent/<uuid:agent_id>/build-draft/checkout")
@@ -495,3 +504,130 @@ def test_agent_composer_can_save_incomplete_knowledge_configuration(harness: Har
     validated = harness.client.post(f"{path}/validate", headers=harness.headers, json=payload)
     assert validated.status_code == HTTPStatus.BAD_REQUEST
     assert validated.get_json()["code"] == "invalid_composer_config_error"
+
+
+def test_publish_and_copy_keep_the_source_and_target_publication_histories_separate(harness: Harness) -> None:
+    """Exercise real publishing, republishing, and copying through the production resources."""
+    agent_id, app_id = harness.create_agent()
+    model = AgentSoulModelConfig(
+        plugin_id="langgenius/openai", model_provider="langgenius/openai/openai", model="gpt-4o"
+    )
+    with harness.sessions.begin() as session:
+        agent = session.get_one(Agent, agent_id)
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version=1, config_snapshot=AgentSoulConfig(model=model)
+        )
+        skill_id = str(uuid4())
+        session.add(AgentSkillBinding(tenant_id=harness.tenant_id, agent_id=agent_id, skill_id=skill_id, priority=0))
+        session.add(snapshot)
+        agent.active_config_snapshot_id = snapshot.id
+
+    path = f"/console/api/agent/{agent_id}"
+    first = harness.client.post(f"{path}/publish", json={"version_note": "initial release"}, headers=harness.headers)
+    assert first.status_code == HTTPStatus.OK, first.get_json()
+    first_body = first.get_json()
+    assert first_body["publication_kind"] == "first"
+    assert first_body["draft"]["base_snapshot_id"] == first_body["active_config_snapshot_id"]
+    with harness.sessions.begin() as session:
+        source_app = session.get_one(App, app_id)
+        assert source_app.enable_site
+        assert source_app.enable_api
+        source_app.enable_site = False
+
+    second = harness.client.post(f"{path}/publish", json={"version_note": "follow-up"}, headers=harness.headers)
+    assert second.status_code == HTTPStatus.OK, second.get_json()
+    assert second.get_json()["publication_kind"] == "update"
+
+    copied = harness.client.post(f"{path}/copy", json={}, headers=harness.headers)
+    assert copied.status_code == HTTPStatus.CREATED, copied.get_json()
+    result = copied.get_json()
+    assert result["name"] == "Agent App copy"
+    assert result["debug_conversation_id"]
+    assert result["access_ready"] is False
+    with harness.sessions() as session:
+        assert session.get_one(App, app_id).enable_site is False
+        target = session.get_one(Agent, result["id"])
+        target_app = session.get_one(App, result["app_id"])
+        assert target.app_id == target_app.id
+        assert not target_app.enable_api
+        assert not target_app.enable_site
+        assert not target.active_config_is_published
+        assert target.active_config_snapshot_id is not None
+        target_snapshot = session.get_one(AgentConfigSnapshot, target.active_config_snapshot_id)
+        assert target_snapshot.version == 1
+        assert target_snapshot.config_snapshot_dict["model"]["model"] == model.model
+        assert target_snapshot.version_note == "follow-up"
+        bindings = session.scalars(select(AgentSkillBinding).where(AgentSkillBinding.agent_id == target.id))
+        assert [binding.skill_id for binding in bindings] == [skill_id]
+        snapshot_bindings = session.scalars(
+            select(AgentSkillBindingSnapshot).where(
+                AgentSkillBindingSnapshot.config_snapshot_id == second.get_json()["active_config_snapshot_id"]
+            )
+        )
+        assert [binding.skill_id for binding in snapshot_bindings] == [skill_id]
+
+
+def test_publish_with_no_model_does_not_create_a_draft_or_enable_access(harness: Harness) -> None:
+    """Reject an unpublishable Soul before making any publication writes."""
+    agent_id, app_id = harness.create_agent()
+    with harness.sessions.begin() as session:
+        snapshot = AgentConfigSnapshot(
+            tenant_id=harness.tenant_id, agent_id=agent_id, version=1, config_snapshot=AgentSoulConfig()
+        )
+        session.add(snapshot)
+        session.get_one(Agent, agent_id).active_config_snapshot_id = snapshot.id
+
+    response = harness.client.post(f"/console/api/agent/{agent_id}/publish", json={}, headers=harness.headers)
+    assert response.status_code == HTTPStatus.BAD_REQUEST
+    assert response.get_json()["code"] == "agent_model_not_configured"
+    with harness.sessions() as session:
+        app = session.get_one(App, app_id)
+        assert not app.enable_site
+        assert not app.enable_api
+        assert session.scalar(select(AgentConfigDraft).where(AgentConfigDraft.agent_id == agent_id)) is None
+
+
+def test_publication_rejects_a_draft_changed_after_preparation(harness: Harness) -> None:
+    """A concurrent save invalidates the prepared version before any publication writes."""
+    agent_id, _ = harness.create_agent()
+    store = AgentAppRepository(session_factory=harness.sessions)
+    with harness.sessions.begin() as session:
+        draft = AgentConfigDraft(
+            tenant_id=harness.tenant_id,
+            agent_id=agent_id,
+            draft_type=AgentConfigDraftType.DRAFT,
+            config_snapshot=AgentSoulConfig(),
+        )
+        session.add(draft)
+        session.flush()
+        draft_id = draft.id
+    prepared = store.prepare_publication(tenant_id=harness.tenant_id, agent_id=agent_id)
+    with harness.sessions.begin() as session:
+        session.get_one(AgentConfigDraft, draft_id).config_snapshot = AgentSoulConfig.model_validate(
+            {"prompt": {"system_prompt": "newer edit"}}
+        )
+    with pytest.raises(AgentPublicationChangedError):
+        store.publish_composer(
+            tenant_id=harness.tenant_id,
+            agent_id=agent_id,
+            account_id=harness.account_id,
+            source=prepared,
+            version_note=None,
+        )
+    with harness.sessions() as session:
+        assert session.get_one(Agent, agent_id).active_config_snapshot_id is None
+        assert (
+            session.get_one(AgentConfigDraft, draft_id).config_snapshot_dict["prompt"]["system_prompt"] == "newer edit"
+        )
+
+
+def test_agent_copy_requires_workspace_create_even_for_source_owner(harness: Harness, rbac_domain: RBACDomain) -> None:
+    """Owning the source Agent does not grant workspace permission to create an Agent."""
+    agent_id, _ = harness.create_agent()
+    rbac_domain.transport.response = {"allowed": False}
+    with config_overrides_context(RBAC_ENABLED=True):
+        result = harness.client.post(f"/console/api/agent/{agent_id}/copy", headers=harness.headers, json={})
+    assert result.status_code == HTTPStatus.FORBIDDEN
+    request_data = rbac_domain.transport.only_request.json
+    assert request_data is not None
+    assert request_data["scene"] == "agent_create"
