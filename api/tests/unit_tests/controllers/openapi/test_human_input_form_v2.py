@@ -6,7 +6,6 @@ from dataclasses import dataclass
 from datetime import timedelta
 from hashlib import sha256
 from io import BytesIO
-from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -21,7 +20,7 @@ from core.workflow.nodes.human_input_v2.entities import Initiator
 from enums import DeploymentEdition, WebAppAccessMode
 from graphon.enums import WorkflowExecutionStatus
 from libs.datetime_utils import naive_utc_now
-from libs.oauth_bearer import AuthContext
+from libs.oauth_bearer import AuthContext, BearerAuthenticator
 from models import Account, App
 from models.enums import CreatorUserRole, EndUserType, WorkflowRunTriggeredFrom
 from models.human_input_v2 import (
@@ -318,9 +317,9 @@ def test_external_sso_can_only_approve_its_own_initiator_grant(
         token_id=uuid4(),
         expires_at=None,
     )
-    monkeypatch.setattr(
-        "controllers.openapi.auth.router.get_authenticator", lambda: SimpleNamespace(authenticate=lambda _token: token)
-    )
+    authenticator = BearerAuthenticator({})
+    monkeypatch.setattr(authenticator, "authenticate", lambda _token: token)
+    monkeypatch.setattr("controllers.openapi.auth.router.get_authenticator", lambda: authenticator)
     url = approval.url(admitted_bearer.app_id)
     read = admitted_bearer.client.get(url, headers=admitted_bearer.headers)
     submitted = admitted_bearer.client.post(

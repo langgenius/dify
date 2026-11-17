@@ -210,10 +210,13 @@ jobs:
           retention-days: 7
 
       - name: Generate coverage report
+        id: controller-coverage
+        if: ${{ !cancelled() && hashFiles(env.COVERAGE_FILE) != '' }}
         run: uv run --project api coverage xml -o coverage.xml
 
       # Codecov combines all backend uploads under the same commit and api flag.
       - name: Report coverage
+        if: ${{ !cancelled() && steps.controller-coverage.outcome == 'success' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
@@ -286,10 +289,13 @@ jobs:
           retention-days: 7
 
       - name: Generate coverage report
+        id: integration-coverage
+        if: ${{ !cancelled() && hashFiles(env.COVERAGE_FILE) != '' }}
         run: uv run --project api coverage xml -o coverage.xml
 
       # Codecov combines all backend uploads under the same commit and api flag.
       - name: Report coverage
+        if: ${{ !cancelled() && steps.integration-coverage.outcome == 'success' }}
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           files: ./coverage.xml
