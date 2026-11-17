@@ -542,7 +542,7 @@ class TestDeleteSegmentFromIndexTask:
 
         This test verifies:
         - Task handles empty index node IDs gracefully
-        - Index processor clean method is called with empty list
+        - Index processor cleanup is skipped when no index node IDs are supplied
         - Task completes successfully
         - Database session is properly managed
         """
@@ -557,23 +557,13 @@ class TestDeleteSegmentFromIndexTask:
         # Use empty index node IDs
         index_node_ids = []
 
-        # Mock the index processor
-        mock_processor = MagicMock()
-        mock_index_processor_factory.return_value.init_index_processor.return_value = mock_processor
-
         # Execute the task
         result = delete_segment_from_index_task(index_node_ids, dataset.id, document.id, [])
 
         # Verify the task completed successfully
         assert result is None
 
-        # Verify index processor clean method was called with empty list
-        assert mock_processor.clean.call_count == 1
-        call_args = mock_processor.clean.call_args
-        assert call_args[0][0].id == dataset.id  # Verify dataset ID matches
-        assert call_args[0][1] == index_node_ids  # Verify index node IDs match (empty list)
-        assert call_args[1]["with_keywords"] is True
-        assert call_args[1]["delete_child_chunks"] is True
+        mock_index_processor_factory.assert_not_called()
 
     @patch("tasks.delete_segment_from_index_task.IndexProcessorFactory", autospec=True)
     def test_delete_segment_from_index_task_large_index_node_ids(

@@ -97,6 +97,65 @@ def _record_transaction_events(
         event.remove(session_type, "after_commit", after_commit)
 
 
+class _VectorBackend:
+    def __init__(self) -> None:
+        self.deleted_ids: list[list[str]] = []
+        self.delete_called = False
+
+    def delete_by_ids(self, ids: list[str]) -> None:
+        self.deleted_ids.append(ids)
+
+    def delete(self) -> None:
+        self.delete_called = True
+
+
+class _VectorFactory:
+    def __init__(self, backend: _VectorBackend) -> None:
+        self._backend = backend
+
+    def init_vector(self, *_args, **_kwargs):
+        return self._backend
+
+
+class _DeleteBlobSequence:
+    def __init__(self, outcomes: list[BaseException | None]) -> None:
+        self.outcomes = list(outcomes)
+        self.calls: list[str] = []
+
+    def __call__(self, key: str) -> None:
+        self.calls.append(key)
+        outcome = self.outcomes.pop(0)
+        if outcome is not None:
+            raise outcome
+
+
+class _StorageBucket:
+    def __init__(self, delete_blob: _DeleteBlobSequence) -> None:
+        self._delete_blob = delete_blob
+
+    def delete_blob(self, key: str) -> None:
+        self._delete_blob(key)
+
+
+class _StorageClient:
+    def __init__(self, bucket: _StorageBucket) -> None:
+        self._bucket = bucket
+
+    def get_bucket(self, _name: str) -> _StorageBucket:
+        return self._bucket
+
+
+def _google_storage(delete_blob: _DeleteBlobSequence) -> GoogleCloudStorage:
+    bucket = _StorageBucket(delete_blob)
+    with patch(
+        "extensions.storage.google_cloud_storage.google_cloud_storage.Client",
+        return_value=_StorageClient(bucket),
+    ):
+        storage = GoogleCloudStorage()
+    storage.bucket_name = "test-bucket"
+    return storage
+
+
 def test_disable_segment_commits_index_cleanup(
     indexed_segment: tuple[Dataset, Document, DocumentSegment],
     sqlite_session_factory: sessionmaker[Session],
@@ -277,9 +336,8 @@ def test_delete_disabled_segment_with_no_index_node_ids_preserves_other_segments
     attachment_id = attachment.id
     binding_id = binding.id
 
-    vector_backend = MagicMock()
-    vector_factory_instance = MagicMock()
-    vector_factory_instance.init_vector.return_value = vector_backend
+    vector_backend = _VectorBackend()
+    vector_factory_instance = _VectorFactory(vector_backend)
     with (
         patch(
             "core.rag.datasource.vdb.vector_factory.Vector.get_vector_factory",
@@ -290,8 +348,8 @@ def test_delete_disabled_segment_with_no_index_node_ids_preserves_other_segments
     ):
         delete_segment_from_index_task.run([], dataset.id, document.id, [disabled_segment.id], [])
 
-    assert [entry.args for entry in vector_backend.delete_by_ids.call_args_list] == [(["disabled-summary-node"],)]
-    vector_backend.delete.assert_not_called()
+    assert vector_backend.deleted_ids == [["disabled-summary-node"]]
+    assert vector_backend.delete_called is False
     keyword_delete.assert_not_called()
     storage_delete.assert_called_once_with(attachment.key)
     sqlite_session.expire_all()
@@ -566,12 +624,8 @@ def test_delete_segment_retry_tolerates_google_missing_object_after_partial_succ
     attachment_keys = [attachment.key for attachment in attachments]
     binding_ids = [binding.id for binding in bindings]
 
-    bucket = MagicMock()
-    bucket.delete_blob.side_effect = [None, RuntimeError("temporary failure"), NotFound("missing"), None]
-    google_storage = GoogleCloudStorage.__new__(GoogleCloudStorage)
-    google_storage.bucket_name = "test-bucket"
-    google_storage.client = MagicMock()
-    google_storage.client.get_bucket.return_value = bucket
+    delete_blob = _DeleteBlobSequence([None, RuntimeError("temporary failure"), NotFound("missing"), None])
+    google_storage = _google_storage(delete_blob)
 
     with (
         patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
@@ -592,7 +646,7 @@ def test_delete_segment_retry_tolerates_google_missing_object_after_partial_succ
         delete_segment_from_index_task.run(["node-1"], dataset.id, document.id, [segment.id])
 
     assert storage_delete.call_count == 4
-    deleted_keys = [entry.args[0] for entry in bucket.delete_blob.call_args_list]
+    deleted_keys = delete_blob.calls
     assert deleted_keys[:2] == deleted_keys[2:]
     assert set(deleted_keys[:2]) == set(attachment_keys)
     sqlite_session.expire_all()
@@ -631,12 +685,8 @@ def test_delete_segment_treats_google_missing_object_on_first_attempt_as_success
     attachment_id = attachment.id
     binding_id = binding.id
 
-    bucket = MagicMock()
-    bucket.delete_blob.side_effect = NotFound("missing")
-    google_storage = GoogleCloudStorage.__new__(GoogleCloudStorage)
-    google_storage.bucket_name = "test-bucket"
-    google_storage.client = MagicMock()
-    google_storage.client.get_bucket.return_value = bucket
+    delete_blob = _DeleteBlobSequence([NotFound("missing")])
+    google_storage = _google_storage(delete_blob)
     with (
         patch("tasks.delete_segment_from_index_task.IndexProcessorFactory"),
         patch(
