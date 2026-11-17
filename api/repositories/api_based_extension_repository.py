@@ -31,7 +31,7 @@ class APIBasedExtensionRepository(APIBasedExtensionStore):
             )
 
     @override
-    def find_extension(self, workspace_id: str, extension_id: str) -> APIBasedExtensionRecord | None:
+    def find_extension(self, workspace_id: str, extension_id: object) -> APIBasedExtensionRecord | None:
         with self._session_factory() as session:
             extension = self._find(session, workspace_id, extension_id)
             return self._to_record(extension) if extension is not None else None
@@ -79,7 +79,7 @@ class APIBasedExtensionRepository(APIBasedExtensionStore):
             session.delete(self._require(session, workspace_id, extension_id))
 
     @staticmethod
-    def _find(session: Session, workspace_id: str, extension_id: str) -> APIBasedExtension | None:
+    def _find(session: Session, workspace_id: str, extension_id: object) -> APIBasedExtension | None:
         return session.scalar(
             select(APIBasedExtension)
             .where(APIBasedExtension.tenant_id == workspace_id, APIBasedExtension.id == extension_id)

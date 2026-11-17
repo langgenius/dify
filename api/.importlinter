@@ -945,6 +945,41 @@ forbidden_modules =
     sqlalchemy
     werkzeug
 
+[importlinter:contract:api-moderation-application-boundary]
+name = API moderation owns framework-neutral parsing and orchestration
+type = forbidden
+source_modules =
+    services.api_moderation_service
+forbidden_modules =
+    celery
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+    services.api_based_extension_adapters
+
+[importlinter:contract:moderation-factory-boundary]
+name = Moderation factory uses root-bound callbacks instead of persistence or application imports
+type = forbidden
+source_modules =
+    core.moderation.factory
+forbidden_modules =
+    core.db
+    core.helper.encrypter
+    core.extension.api_based_extension_requestor
+    extensions.ext_application_services
+    models
+    repositories
+    services
+    sqlalchemy
+allow_indirect_imports = True
+
 [importlinter:contract:console-extension-controller-boundary]
 name = Console extension controller reaches persistence only through the composition root
 type = forbidden

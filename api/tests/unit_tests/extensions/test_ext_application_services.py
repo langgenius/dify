@@ -2,6 +2,7 @@
 
 import json
 import logging
+import sys
 from collections.abc import Mapping
 from decimal import Decimal
 from io import BytesIO
@@ -20,6 +21,8 @@ from sqlalchemy.orm import Session, SessionTransaction, sessionmaker
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT
 from core.model_context import get_credit_usage_metadata, use_credit_usage_metadata
+from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks, ModerationFactory
 from core.plugin.impl import base as plugin_http
 from core.tools.tool_file_manager import ToolFileManager
 from enums import DeploymentEdition, WebAppAccessMode
@@ -194,6 +197,44 @@ def _redis() -> RedisClientWrapper:
     client = RedisClientWrapper()
     client.initialize(Redis())
     return client
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="Existing tracing composition requires POSIX os.register_at_fork")
+def test_init_app_binds_api_moderation_to_real_factory(sqlite_session_factory: sessionmaker[Session]) -> None:
+    """The actual root registers the callbacks consumed by input/output/form dispatch."""
+    from models.api_based_extension import APIBasedExtension
+
+    tenant_id = str(uuid4())
+    extension_id = str(uuid4())
+    extension = APIBasedExtension(
+        tenant_id=tenant_id,
+        name="Moderation",
+        api_endpoint="https://moderation.example.test",
+        api_key="ciphertext",
+    )
+    extension.id = extension_id
+    with sqlite_session_factory.begin() as session:
+        session.add(extension)
+    app = Flask(__name__)
+    ext_application_services.init_app(app)
+    callbacks = app.extensions[API_MODERATION_EXTENSION_KEY]
+    assert isinstance(callbacks, APIModerationCallbacks)
+    with app.app_context():
+        assert (
+            callbacks.validate_config == ext_application_services.application_services().api_moderation.validate_config
+        )
+        ModerationFactory.validate_config(
+            "api",
+            tenant_id,
+            {"inputs_config": {"enabled": True}, "outputs_config": {}, "api_based_extension_id": extension_id},
+        )
+        disabled = ModerationFactory(
+            "api", "app", tenant_id, {"inputs_config": {"enabled": False}, "outputs_config": {"enabled": False}}
+        )
+        assert disabled.moderation_for_inputs({}) == ModerationInputsResult(action=ModerationAction.DIRECT_OUTPUT)
+        assert disabled.moderation_for_outputs("text") == ModerationOutputsResult(action=ModerationAction.DIRECT_OUTPUT)
+        with pytest.raises(ValueError, match=r"^The config is not set\.$"):
+            ModerationFactory("api", "app", tenant_id, None).moderation_for_inputs({})
 
 
 @pytest.mark.parametrize(

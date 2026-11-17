@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from constants.dsl_version import CURRENT_APP_DSL_VERSION
 from core.db.session_factory import get_session_maker
+from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationCallbacks
 from core.schemas.schema_manager import SchemaManager
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.tool_manager import ToolManager
@@ -115,8 +116,14 @@ from services.annotation_command_service import AnnotationCommandService
 from services.annotation_import_service import AnnotationImportLimits, AnnotationImportQuota, AnnotationImportService
 from services.annotation_query import AnnotationQuery
 from services.annotation_reply_service import AnnotationReplyService
-from services.api_based_extension_adapters import APIBasedExtensionPingProbe, WorkspaceTokenCipher
+from services.api_based_extension_adapters import (
+    APIBasedExtensionPingProbe,
+    APIModerationGateway,
+    WorkspaceTokenCipher,
+    request_api_based_extension,
+)
 from services.api_based_extension_application_service import APIBasedExtensionApplicationService
+from services.api_moderation_service import APIModerationService
 from services.app.advanced_prompt_template_service import AdvancedPromptTemplateService
 from services.app.api_key_service import AppApiKeyService
 from services.app.mcp_server_service import AppMCPServerService
@@ -302,6 +309,7 @@ class ApplicationServices:
     agent_apps: AgentAppServices
     advanced_prompt_templates: AdvancedPromptTemplateService
     api_based_extensions: APIBasedExtensionApplicationService
+    api_moderation: APIModerationService
     credential_queries: CredentialQuery
     accounts: AccountServices
     app_api_keys: AppApiKeyService
@@ -453,6 +461,9 @@ def build_application_services(
     initialization_password: str,
     redis: RedisClientWrapper,
 ) -> ApplicationServices:
+    api_based_extensions = APIBasedExtensionRepository(session_factory=database_client)
+    workspace_token_cipher = WorkspaceTokenCipher()
+    api_moderation_gateway = APIModerationGateway(request=request_api_based_extension)
     installation_state = InstallationStateRepository(session_factory=database_client)
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
@@ -860,9 +871,15 @@ def build_application_services(
             access_token_expire_minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES,
         ),
         api_based_extensions=APIBasedExtensionApplicationService(
-            extensions=APIBasedExtensionRepository(session_factory=database_client),
-            secrets=WorkspaceTokenCipher(),
+            extensions=api_based_extensions,
+            secrets=workspace_token_cipher,
             probe=APIBasedExtensionPingProbe(),
+        ),
+        api_moderation=APIModerationService(
+            find_extension=api_based_extensions.find_extension,
+            decrypt_key=workspace_token_cipher.decrypt,
+            request_inputs=api_moderation_gateway.inputs,
+            request_outputs=api_moderation_gateway.outputs,
         ),
         tags=tags,
         workflow_statistics=WorkflowStatisticQueryService(
@@ -890,6 +907,11 @@ def init_app(app: Flask) -> None:
         redis=redis_client,
     )
     app.extensions[_EXTENSION_KEY] = services
+    app.extensions[API_MODERATION_EXTENSION_KEY] = APIModerationCallbacks(
+        validate_config=services.api_moderation.validate_config,
+        moderate_inputs=services.api_moderation.moderate_inputs,
+        moderate_outputs=services.api_moderation.moderate_outputs,
+    )
     bind_tracing(app, scopes=StoredPolicyTraceScopes(services.tracing.scopes), hooks=services.tracing.hooks)
     bind_account_loader(app, services.accounts.identity.load_user)
 
