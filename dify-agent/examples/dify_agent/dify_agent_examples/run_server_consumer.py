@@ -11,9 +11,13 @@ The request carries Dify plugin model configuration in registered modules. This
 script prints the created run and every event observed through cursor polling.
 ``Client.create_run`` performs one POST attempt only; use polling or SSE replay to
 recover after client-side uncertainty.
+
+If the server requires authentication, set DIFY_AGENT_API_TOKEN in the client
+process environment to the same token as the server.
 """
 
 import asyncio
+import os
 
 from dify_agent.layers.prompt import Config as PromptConfig
 from dify_agent.client import Client
@@ -34,7 +38,9 @@ MODEL_NAME = "gpt-4o-mini"
 
 
 async def main() -> None:
-    async with Client(base_url=API_BASE_URL) as client:
+    token = os.environ.get("DIFY_AGENT_API_TOKEN")
+    headers = {"Authorization": f"Bearer {token}"} if token else None
+    async with Client(base_url=API_BASE_URL, headers=headers) as client:
         run = await client.create_run(
             CreateRunRequest(
                 composition=RunComposition(
