@@ -821,7 +821,7 @@ class TestAgentAppType:
 
     def test_delete_agent_app_archives_backing_agent(
         self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
+    ) -> None:
         app, backing_agent = _persist_agent_app(sqlite_session)
         workflow_app = _persist_app(sqlite_session, tenant_id=app.tenant_id, name="Workflow")
         workflow_app.mode = AppMode.WORKFLOW
@@ -992,7 +992,7 @@ class TestAgentAppType:
 
     def test_delete_workflow_app_releases_all_bindings_before_retirement(
         self, sqlite_session: Session, sqlite_session_factory: sessionmaker[Session]
-    ):
+    ) -> None:
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         app.mode = AppMode.WORKFLOW
         workflow = Workflow.new(
@@ -1066,7 +1066,7 @@ class TestAgentAppType:
         assert sqlite_session.get(WorkflowAgentNodeBinding, inline_binding.id) is None
         assert sqlite_session.get(WorkflowAgentNodeBinding, roster_binding.id) is None
 
-    def test_delete_app_wakeup_failure_keeps_durable_cleanup_pending(self, sqlite_session: Session):
+    def test_delete_app_wakeup_failure_keeps_durable_cleanup_pending(self, sqlite_session: Session) -> None:
         app = _persist_app(sqlite_session, tenant_id=str(uuid4()))
         error = RuntimeError("broker unavailable")
 
