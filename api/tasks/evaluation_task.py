@@ -1602,10 +1602,8 @@ def _evaluate_retrieval_results(
         input_list=run_data.input_list,
         results_by_index=results_by_index,
         missing_errors={
-            item.index: (
-                safe_evaluation_error_text(retrieval_errors[position])
-                if retrieval_errors[position]
-                else new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED).text
+            item.index: safe_evaluation_error_text(
+                retrieval_errors[position] or new_public_evaluation_error(EvaluationErrorCode.METRIC_FAILED).text
             )
             for position, item in enumerate(run_data.input_list)
         },

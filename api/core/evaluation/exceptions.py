@@ -4,6 +4,7 @@ import re
 import uuid
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import overload
 
 
 class EvaluationWorkflowVersionNotFoundError(Exception):
@@ -89,6 +90,14 @@ def new_public_evaluation_error(code: EvaluationErrorCode) -> PublicEvaluationEr
     reference can be attached to the corresponding server-side log event.
     """
     return PublicEvaluationError(code=code, error_id=uuid.uuid4().hex)
+
+
+@overload
+def safe_evaluation_error_text(error: None) -> None: ...
+
+
+@overload
+def safe_evaluation_error_text(error: str) -> str: ...
 
 
 def safe_evaluation_error_text(error: str | None) -> str | None:
