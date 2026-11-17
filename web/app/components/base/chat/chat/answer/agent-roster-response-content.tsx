@@ -1,3 +1,4 @@
+import type { ToolActivity } from './tool-activity-item'
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { ChatItem } from '@/app/components/base/chat/types'
 import type { Locale } from '@/i18n'
@@ -9,24 +10,13 @@ import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import { getPluginLanguage, renderI18nObject } from '@/i18n/metadata'
 import { resolveKnowledgeCitationLinks } from './knowledge-citation-links'
+import { SHELL_TOOL_NAMES, ToolActivityItem } from './tool-activity-item'
 
 type AgentRosterResponseContentProps = {
   item: ChatItem
   responding?: boolean
   content?: string
   showThoughts?: boolean
-}
-
-const SHELL_TOOL_NAMES = new Set(['shell_run', 'shell_wait', 'shell_input', 'shell_interrupt'])
-
-type ToolActivity = {
-  kind: 'shell' | 'tool'
-  key: string
-  name: string
-  label: string
-  input: string
-  output: string
-  isFinished: boolean
 }
 
 type AgentActivityEntry =
@@ -178,82 +168,6 @@ function ResponseMessage({ content }: { content: string }) {
       data-testid="agent-content-markdown"
     >
       <Markdown content={content} />
-    </div>
-  )
-}
-
-function ToolActivityItem({ tool }: { tool: ToolActivity }) {
-  const { t } = useTranslation(['agentV2', 'tools'])
-  const hasDetails = !!tool.input || !!tool.output
-  const label =
-    tool.name === 'shell_run' && tool.label === tool.name
-      ? tool.isFinished
-        ? t(($) => $['agentDetail.configure.answer.activity.ranCommands'], { ns: 'agentV2' })
-        : t(($) => $['agentDetail.configure.answer.activity.runningCommands'], {
-            ns: 'agentV2',
-          })
-      : tool.label
-
-  const content = (
-    <>
-      <span className="inline-flex min-w-0 items-center gap-1">
-        <span className="flex size-3.5 shrink-0 items-center justify-center text-text-tertiary">
-          {!tool.isFinished ? (
-            <span className="i-ri-loader-2-line size-3.5 animate-spin" aria-hidden />
-          ) : tool.kind === 'shell' ? (
-            <span className="i-ri-terminal-box-line size-3.5" aria-hidden />
-          ) : (
-            <span className="i-ri-hammer-line size-3.5" aria-hidden />
-          )}
-        </span>
-        <span className="min-w-0 truncate text-text-secondary">{label}</span>
-      </span>
-      {hasDetails && (
-        <span
-          className="i-ri-arrow-right-s-line size-4 shrink-0 text-text-tertiary transition-transform duration-100 ease-out group-data-panel-open/tool:rotate-90 motion-reduce:transition-none"
-          aria-hidden
-        />
-      )}
-    </>
-  )
-
-  return (
-    <div className="flex w-full max-w-full min-w-0 flex-col items-start">
-      {hasDetails ? (
-        <Collapsible className="w-full max-w-full items-start">
-          <CollapsibleTrigger className="group/tool flex h-6 min-h-0 max-w-full touch-manipulation items-center justify-start gap-0 rounded-md p-1 text-start system-xs-medium text-text-tertiary select-none hover:bg-state-base-hover hover:text-text-primary focus-visible:bg-state-base-hover data-panel-open:text-text-primary">
-            {content}
-          </CollapsibleTrigger>
-          <CollapsiblePanel className="w-full max-w-full">
-            <div className="w-full max-w-full min-w-0 space-y-1 pb-1">
-              {!!tool.input && (
-                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">
-                    {t(($) => $['thought.requestTitle'], { ns: 'tools' })}
-                  </div>
-                  <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-                    {tool.input}
-                  </div>
-                </div>
-              )}
-              {!!tool.output && (
-                <div className="w-full max-w-full min-w-0 overflow-hidden rounded-[10px] bg-components-input-bg-normal px-3 py-2">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">
-                    {t(($) => $['thought.responseTitle'], { ns: 'tools' })}
-                  </div>
-                  <div className="mt-1 max-w-full min-w-0 code-xs-regular wrap-break-word whitespace-pre-wrap text-text-secondary">
-                    {tool.output}
-                  </div>
-                </div>
-              )}
-            </div>
-          </CollapsiblePanel>
-        </Collapsible>
-      ) : (
-        <div className="inline-flex h-6 w-auto max-w-full items-center rounded-md p-1 system-xs-medium">
-          {content}
-        </div>
-      )}
     </div>
   )
 }

@@ -59,6 +59,15 @@ clipped, `display: none` or unmounted, and the shared positioner class turns tha
 - Add shared backdrop or presentation chrome inside the owning exported component, not at call
   sites.
 
+## Opening overlays
+
+Use a Trigger under its Root for a dedicated opener. Child components and portals preserve that
+React relationship. When a Trigger must live outside the Root, connect it with the Root’s shared
+handle. A [menu command] opens a sibling dialog from its action. Use local controlled `open`
+when the Root already knows the target, or `openWithPayload` when the action supplies the target
+to a shared dialog. For an anchored overlay such as a [`Popover`], an imperative `open(triggerId)`
+identifies its registered Trigger.
+
 ## Primitive semantics
 
 - Use `Dialog` for modal content that needs focus containment and scroll locking. `DialogContent`
@@ -104,3 +113,4 @@ renders a non-button element, set `nativeButton={false}`.
 [`Popover`]: https://base-ui.com/react/components/popover
 [`PreviewCard`]: https://base-ui.com/react/components/preview-card
 [`Tooltip`]: https://base-ui.com/react/components/tooltip
+[menu command]: https://base-ui.com/react/components/dialog#open-from-a-menu

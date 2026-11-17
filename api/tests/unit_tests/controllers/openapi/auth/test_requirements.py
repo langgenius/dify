@@ -2264,7 +2264,7 @@ EXPECTED_RESPONSE_CODES: dict[tuple[str, str], frozenset[str]] = {
     ("get", "/apps/{app_id}/runs"): frozenset({"200", "422", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/runs/{run_id}/nodes"): frozenset({"200", "default"}),
-    ("post", "/apps/{app_id}:publish"): frozenset({"200", "422", "default"}),
+    ("post", "/apps/{app_id}:publish"): frozenset({"200", "403", "422", "default"}),
     ("get", "/apps/{app_id}/versions"): frozenset({"200", "422", "default"}),
     ("post", "/apps/{app_id}/versions/{version_id}:restore"): frozenset({"200", "default"}),
     ("get", "/apps/{app_id}/release:check"): frozenset({"200", "default"}),

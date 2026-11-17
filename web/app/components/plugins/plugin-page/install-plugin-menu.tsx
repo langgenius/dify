@@ -1,9 +1,10 @@
 'use client'
 
 import type { ButtonProps } from '@langgenius/dify-ui/button'
-import type { PluginCategoryEnum } from '@/app/components/plugins/types'
+import type { PluginCategoryEnum, UpdatePluginPayload } from '@/app/components/plugins/types'
 import { Button } from '@langgenius/dify-ui/button'
 import { cn } from '@langgenius/dify-ui/cn'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
 import {
   Menu,
   MenuContent,
@@ -13,12 +14,13 @@ import {
   MenuTrigger,
 } from '@langgenius/dify-ui/menu'
 import { RiAddCircleFill, RiArrowDownSLine } from '@remixicon/react'
-import { useSuspenseQuery } from '@tanstack/react-query'
+import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { noop } from 'es-toolkit/function'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
+import { GitHubInstallDialog } from '@/app/components/plugins/install-plugin/install-from-github/dialog'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
+import { beginGitHubPluginIntent } from '@/app/components/plugins/update-plugin/check-github-update'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useMarketplace } from '@/features/marketplace/client'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
@@ -60,7 +62,8 @@ const InstallPluginMenu = ({
   const { t } = useTranslation(['plugin'])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [selectedAction, setSelectedAction] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const buttonLabel = triggerLabel ?? t(($) => $.installPlugin, { ns: 'plugin' })
   const enable_marketplace = useMarketplace() !== null
@@ -76,13 +79,11 @@ const InstallPluginMenu = ({
 
     if (file) {
       setSelectedFile(file)
-      setSelectedAction('local')
       setIsMenuOpen(false)
     }
   }
 
   const handleCloseLocalInstaller = () => {
-    setSelectedAction(null)
     setSelectedFile(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
@@ -127,6 +128,7 @@ const InstallPluginMenu = ({
   const handleInstallMethodSelect = (action: string) => {
     if (disabled) return
 
+    beginGitHubPluginIntent(queryClient)
     if (action === 'local') {
       fileInputRef.current?.click()
       return
@@ -137,64 +139,61 @@ const InstallPluginMenu = ({
       return
     }
 
-    queueMicrotask(() => {
-      setSelectedAction(action)
-    })
+    githubDialog.open(null)
   }
 
   return (
-    <Menu
-      open={!disabled && isMenuOpen}
-      onOpenChange={(open) => setIsMenuOpen(disabled ? false : open)}
-      modal={false}
-    >
-      <div className={cn('relative', rootClassName)}>
-        <input
-          type="file"
-          ref={fileInputRef}
-          disabled={disabled}
-          style={{ display: 'none' }}
-          onChange={handleFileChange}
-          accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
-        />
-        <MenuTrigger
-          render={
-            <Button
-              variant={triggerVariant}
-              disabled={disabled}
-              title={buttonLabel}
-              className={cn('size-full p-2 data-popup-open:bg-state-base-hover', triggerClassName)}
-            >
-              <RiAddCircleFill className="size-4 shrink-0" />
-              <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-left')}>
-                {buttonLabel}
-              </span>
-              {showTriggerArrow && <RiArrowDownSLine className="size-4" />}
-            </Button>
-          }
-        />
-        <MenuContent align="start" className={cn('w-50 pb-2', popupClassName)}>
-          <MenuGroup>
-            <MenuGroupLabel>{t(($) => $.installFrom, { ns: 'plugin' })}</MenuGroupLabel>
-            {installMethods.map(({ icon: Icon, text, action }) => (
-              <MenuItem key={action} onClick={() => handleInstallMethodSelect(action)}>
-                <div className="flex items-center gap-1">
-                  <Icon className="size-4 text-text-tertiary" />
-                  <span className="px-1 system-md-regular text-text-secondary">{text}</span>
-                </div>
-              </MenuItem>
-            ))}
-          </MenuGroup>
-        </MenuContent>
-      </div>
-      {selectedAction === 'github' && (
-        <InstallFromGitHub
-          installContextCategory={installContextCategory}
-          onSuccess={noop}
-          onClose={() => setSelectedAction(null)}
-        />
-      )}
-      {selectedAction === 'local' && selectedFile && (
+    <>
+      <Menu
+        open={!disabled && isMenuOpen}
+        onOpenChange={(open) => setIsMenuOpen(disabled ? false : open)}
+        modal={false}
+      >
+        <div className={cn('relative', rootClassName)}>
+          <input
+            type="file"
+            ref={fileInputRef}
+            disabled={disabled}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+            accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
+          />
+          <MenuTrigger
+            render={
+              <Button
+                variant={triggerVariant}
+                disabled={disabled}
+                title={buttonLabel}
+                className={cn(
+                  'size-full p-2 data-popup-open:bg-state-base-hover',
+                  triggerClassName,
+                )}
+              >
+                <RiAddCircleFill className="size-4 shrink-0" />
+                <span className={cn(!showTriggerArrow && 'min-w-0 flex-1 text-start')}>
+                  {buttonLabel}
+                </span>
+                {showTriggerArrow && <RiArrowDownSLine className="size-4" />}
+              </Button>
+            }
+          />
+          <MenuContent align="start" className={cn('w-50 pb-2', popupClassName)}>
+            <MenuGroup>
+              <MenuGroupLabel>{t(($) => $.installFrom, { ns: 'plugin' })}</MenuGroupLabel>
+              {installMethods.map(({ icon: Icon, text, action }) => (
+                <MenuItem key={action} onClick={() => handleInstallMethodSelect(action)}>
+                  <div className="flex items-center gap-1">
+                    <Icon className="size-4 text-text-tertiary" />
+                    <span className="px-1 system-md-regular text-text-secondary">{text}</span>
+                  </div>
+                </MenuItem>
+              ))}
+            </MenuGroup>
+          </MenuContent>
+        </div>
+      </Menu>
+      <GitHubInstallDialog handle={githubDialog} installContextCategory={installContextCategory} />
+      {selectedFile && (
         <InstallFromLocalPackage
           file={selectedFile}
           installContextCategory={installContextCategory}
@@ -205,7 +204,7 @@ const InstallPluginMenu = ({
       {/* {pluginLists.map((item: any) => (
         <div key={item.id} onClick={() => handleUninstall(item.id)}>{item.name} 卸载</div>
       ))} */}
-    </Menu>
+    </>
   )
 }
 

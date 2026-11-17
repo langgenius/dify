@@ -25,6 +25,7 @@ import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { consoleQuery } from '@/service/console'
 import AccountSection from './components/account-section'
+import ContactSupport from './components/contact-support'
 import HelpMenu from './components/help-menu'
 import MainNavLink from './components/nav-link'
 import { MainNavSearchButton } from './components/search-button'
@@ -162,12 +163,15 @@ export function MainNavFooter({
   helpMenuTriggerRef?: Ref<HTMLButtonElement>
 }) {
   return (
-    <div className="flex w-60 items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
-      <div className="flex min-w-0 items-center gap-1 overflow-hidden">
-        <AccountSection />
-      </div>
-      <div className="flex shrink-0 items-center justify-center rounded-full p-1">
-        <HelpMenu triggerRef={helpMenuTriggerRef} />
+    <div className="w-60">
+      <ContactSupport placement="sidebar" />
+      <div className="flex items-center justify-between bg-linear-to-b from-background-body-transparent to-background-body to-50% py-3 ps-3 pe-1 backdrop-blur-[2px]">
+        <div className="flex min-w-0 items-center gap-1 overflow-hidden">
+          <AccountSection />
+        </div>
+        <div className="flex shrink-0 items-center justify-center rounded-full p-1">
+          <HelpMenu triggerRef={helpMenuTriggerRef} />
+        </div>
       </div>
     </div>
   )

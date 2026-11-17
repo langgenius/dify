@@ -6,13 +6,13 @@ from threading import Thread
 from uuid import uuid4
 
 import pytest
-from flask import Flask, Response, request
+from flask import Response, request
 from sqlalchemy import select
 from werkzeug.test import TestResponse
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from extensions.ext_application_services import application_services
-from extensions.ext_redis import RedisClientWrapper, redis_client
+from extensions.ext_redis import redis_client
 from models.trigger import TriggerSubscription
 from models.utils.trigger_endpoint import generate_plugin_trigger_endpoint_url
 from repositories.trigger.subscription_builder_repository import RedisTriggerSubscriptionBuilderRepository
@@ -25,14 +25,9 @@ from tests.unit_tests.controllers.console.workspace.test_trigger_subscription_bu
 
 sqlite_engine = test_trigger_subscription_query.sqlite_engine
 sqlite_session_factory = test_trigger_subscription_query.sqlite_session_factory
+application_redis = test_trigger_subscription_query.application_redis
 harness = test_trigger_oauth_client.harness
 daemon = test_trigger_subscription_builder.daemon
-
-
-@pytest.fixture
-def application_redis(flask_app_with_containers: Flask) -> RedisClientWrapper:
-    assert flask_app_with_containers.extensions["redis"] is redis_client
-    return redis_client
 
 
 def _key(builder_id: str) -> str:
