@@ -100,6 +100,7 @@ ENDINGS_BY_FAMILY: Final[Mapping[JobFamily, Mapping[StreamEvent, _Handler]]] = {
     JobFamily.GRAPH: {StreamEvent.WORKFLOW_FINISHED: _run_finished, StreamEvent.MESSAGE_END: _answered_without_run},
     JobFamily.MESSAGE: {StreamEvent.MESSAGE_END: _message_ended, StreamEvent.ERROR: _run_errored},
 }
+ENDING_EVENTS: Final = frozenset(event for endings in ENDINGS_BY_FAMILY.values() for event in endings)
 
 
 def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
@@ -132,11 +133,12 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     """Apply one frame to the job.
 
     Precondition: the job exists; reading.stored holds the ids already written.
-    Postcondition: ids and status from the frame are stored and reading.stored names them; ids count as stored only
-    after the store accepted them, so a failed save is retried by the next frame that carries them; an ending stays
-    in reading.unsaved until the store accepted it, so a failed save is retried when the stream ends; a pending stop
-    is sent once when the task id is first stored. A frame that does not fit core's model changes nothing and is
-    reported.
+    Postcondition: ids and ending from the frame are stored and reading.stored names them; the job record is read
+    only when the frame carries an id not stored yet or an event that ends a job of some family; ids count as
+    stored only after the store accepted them, so a failed save is retried by the next frame that carries them; an
+    ending stays in reading.unsaved until the store accepted it, so a failed save is retried when the stream ends; a
+    pending stop is sent once when the task id is first stored. A frame that does not fit core's model changes
+    nothing and is reported.
     """
     read = read_frame(frame)
     if isinstance(read, Misfit):
@@ -145,6 +147,9 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     if read is None:
         return
     found = _unstored_ids(read.ids, reading.stored)
+    if not found:
+        if read.event not in ENDING_EVENTS:
+            return
     if found:
         store.record_ids(job_id, JobIds(**found))
     task_id_known = reading.stored.task_id is not None
