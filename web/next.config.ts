@@ -7,12 +7,6 @@ const openapiLoader = {
 }
 
 const isDev = process.env.NODE_ENV === 'development'
-// Cloudflare POC only: proxy the API through the Worker so the console and the API share one
-// origin. On workers.dev the API's login cookies would otherwise be third-party and dropped.
-// Every proxied call is a billed Worker request, so production should host the API on the same
-// site instead.
-const apiProxyOrigin =
-  process.env.VINEXT_PLATFORM === 'cloudflare' ? process.env.CF_API_PROXY_ORIGIN : undefined
 const allowedDevOrigins = process.env.NEXT_ALLOWED_DEV_ORIGINS?.split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
@@ -55,23 +49,6 @@ const nextConfig: NextConfig = {
       },
     ]
   },
-  ...(apiProxyOrigin
-    ? {
-        async rewrites() {
-          return {
-            beforeFiles: [
-              {
-                source: '/console/api/:path*',
-                destination: `${apiProxyOrigin}/console/api/:path*`,
-              },
-              { source: '/api/:path*', destination: `${apiProxyOrigin}/api/:path*` },
-            ],
-            afterFiles: [],
-            fallback: [],
-          }
-        },
-      }
-    : {}),
   // The Cloudflare Workers build (vinext POC) emits its own Worker bundle instead of a Node server.
   output: process.env.VINEXT_PLATFORM === 'cloudflare' ? undefined : 'standalone',
   compiler: {
