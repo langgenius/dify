@@ -67,7 +67,10 @@ class TestFeatureApi:
         request_context = _request_context()
         result = raw_get(api, request_context)
 
-        assert result == features.model_dump(mode="json")
+        assert result == {
+            **features.model_dump(mode="json"),
+            "end_user_auth_enabled": feature.dify_config.CONSOLE_END_USER_AUTH_ENABLED,
+        }
         assert result["apps"] == {"size": 3, "limit": 10}
         retired_fields = {
             "vector_space",
@@ -76,10 +79,28 @@ class TestFeatureApi:
             "knowledge_rate_limit",
             "dataset_operator_enabled",
         }
-        schema = FeatureModel.model_json_schema(mode="serialization")
+        schema = feature.ConsoleFeatureResponse.model_json_schema(mode="serialization")
         assert retired_fields.isdisjoint(result)
         assert set(schema["properties"]) == set(schema["required"]) == set(result)
         get_features.assert_called_once_with(request_context)
+
+    def test_end_user_auth_flag_is_a_required_console_only_boolean(self) -> None:
+        schema = feature.ConsoleFeatureResponse.model_json_schema(mode="serialization")
+        field = "end_user_auth_enabled"
+
+        assert field in schema["required"]
+        assert schema["properties"][field]["type"] == "boolean"
+        assert "default" not in schema["properties"][field]
+        assert field not in FeatureModel.model_json_schema(mode="serialization")["properties"]
+        assert field not in feature.ConsoleSystemFeatureResponse.model_json_schema(mode="serialization")["properties"]
+        assert "account_login_enabled" not in schema["properties"]
+        assert "allow_anonymous_end_user_auth" not in schema["properties"]
+
+    def test_missing_end_user_auth_flag_cannot_default_to_disabled(self) -> None:
+        with pytest.raises(ValidationError) as error:
+            feature.ConsoleFeatureResponse.model_validate(FeatureModel().model_dump(mode="json"))
+
+        assert error.value.errors(include_input=False)[0]["loc"] == ("end_user_auth_enabled",)
 
 
 class TestFeatureVectorSpaceApi:
@@ -332,15 +353,24 @@ def test_public_system_features_exposes_gate_without_account_app_or_provider(
 
 
 @pytest.mark.parametrize("enabled", [False, True])
-def test_authenticated_workspace_features_omits_deployment_gate(
+@pytest.mark.parametrize("end_user_auth_enabled", [False, True])
+@pytest.mark.parametrize("account_login_enabled", [False, True])
+@pytest.mark.parametrize("allow_anonymous", [False, True])
+def test_authenticated_workspace_features_exposes_console_gate_independent_of_webapp_policies(
     monkeypatch: pytest.MonkeyPatch,
     account_application_services: ApplicationServices,
     enabled: bool,
+    end_user_auth_enabled: bool,
+    account_login_enabled: bool,
+    allow_anonymous: bool,
 ) -> None:
     apply_config_overrides(
         monkeypatch,
         DEPLOYMENT_EDITION=DeploymentEdition.COMMUNITY,
         OPS_AGENT_TRACE_ENABLED=enabled,
+        CONSOLE_END_USER_AUTH_ENABLED=end_user_auth_enabled,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=account_login_enabled,
+        END_USER_AUTH_ALLOW_ANONYMOUS=allow_anonymous,
         LOGIN_DISABLED=False,
     )
     account = make_account(status=AccountStatus.ACTIVE)
@@ -356,13 +386,25 @@ def test_authenticated_workspace_features_omits_deployment_gate(
 
     assert response.status_code == 200
     payload = response.get_json()
+    assert payload["end_user_auth_enabled"] is end_user_auth_enabled
+    assert "account_login_enabled" not in payload
+    assert "allow_anonymous_end_user_auth" not in payload
     assert "agent_tracing_api_collection_enabled" not in payload
-    schema = FeatureModel.model_json_schema(mode="serialization")
+    schema = feature.ConsoleFeatureResponse.model_json_schema(mode="serialization")
+    assert set(schema["properties"]) == set(schema["required"]) == set(payload)
     assert "agent_tracing_api_collection_enabled" not in schema["properties"]
+    assert "Set-Cookie" not in response.headers
 
 
 def test_workspace_features_still_require_authentication(monkeypatch: pytest.MonkeyPatch) -> None:
-    apply_config_overrides(monkeypatch, LOGIN_DISABLED=False, OPS_AGENT_TRACE_ENABLED=True)
+    apply_config_overrides(
+        monkeypatch,
+        LOGIN_DISABLED=False,
+        OPS_AGENT_TRACE_ENABLED=True,
+        CONSOLE_END_USER_AUTH_ENABLED=True,
+        WEBAPP_ACCOUNT_PASSPORT_ENABLED=True,
+        END_USER_AUTH_ALLOW_ANONYMOUS=True,
+    )
     monkeypatch.setattr(wraps, "_is_setup_completed", lambda: True)
     monkeypatch.setattr(login, "_resolve_current_user", lambda: None)
 
@@ -378,6 +420,9 @@ def test_workspace_features_still_require_authentication(monkeypatch: pytest.Mon
 
     assert response.status_code == 401
     assert b"agent_tracing_api_collection_enabled" not in response.data
+    assert b"end_user_auth_enabled" not in response.data
+    assert b"account_login_enabled" not in response.data
+    assert b"allow_anonymous_end_user_auth" not in response.data
 
 
 def test_missing_public_gate_cannot_default_to_disabled() -> None:
