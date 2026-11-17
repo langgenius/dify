@@ -28,6 +28,7 @@ const profile: WebAccountProfileResponse = createWebAccountProfile({
 })
 const features = {
   ...createSystemFeaturesFixture(),
+  console_web_url: 'https://console.example.com/dify',
   account_login_url: 'https://console.example.com/dify/signin',
 } satisfies WebSystemFeatureResponse
 const clients: ReturnType<typeof createTestQueryClient>[] = []

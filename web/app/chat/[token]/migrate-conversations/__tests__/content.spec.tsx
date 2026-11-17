@@ -73,6 +73,7 @@ const appInfo = {
 } satisfies AppData
 
 const parameters: WebAppParametersResponse = {
+  console_web_url: 'https://accounts.example',
   account_login_enabled: true,
   account_login_url: 'https://accounts.example/signin',
   allow_anonymous_end_user_auth: true,

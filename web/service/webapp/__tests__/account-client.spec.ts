@@ -94,6 +94,7 @@ const accountProfile: WebAccountProfileResponse = {
 
 const systemFeatures = {
   ...createSystemFeaturesFixture(),
+  console_web_url: 'https://accounts.example/console',
   account_login_url: 'https://accounts.example/console/signin?source=portal',
 } satisfies WebSystemFeatureResponse
 

@@ -20,6 +20,7 @@ from core.plugin.impl.model import PluginModelClient
 from enums import DeploymentEdition
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import (
     LLMResult,
     LLMResultChunk,
@@ -803,6 +804,94 @@ def test_api_evaluate_preserves_app_inputs_and_replacement(api_moderation: APIMo
             "params": {"app_id": "app-1", "inputs": {"input_key": "value"}, "query": "query"},
         }
     ]
+
+
+@pytest.fixture
+def moderation_input_file() -> File:
+    return File(
+        file_id=str(uuid4()),
+        file_type=FileType.DOCUMENT,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.test/blocked.pdf",
+        filename="blocked.pdf",
+        extension=".pdf",
+        mime_type="application/pdf",
+        size=12,
+    )
+
+
+@pytest.mark.parametrize("action", ["approved", "overridden", "direct_output"])
+def test_api_input_checks_text_without_sending_or_replacing_files(
+    api_moderation: APIModerationFixture, moderation_input_file: File, action: str
+) -> None:
+    """Real HTTP receives text only; an API verdict cannot replace the caller's file inputs."""
+    service, rule, context, response, requests = api_moderation
+    files = [moderation_input_file]
+    inputs = {"text": "original", "file": moderation_input_file, "files": files}
+    response.update(
+        flagged=action != "approved",
+        action="overridden" if action == "overridden" else "direct_output",
+        inputs={"text": "rewritten", "file": "untrusted replacement", "files": []},
+        query="safe query",
+    )
+
+    verdict = service.evaluate(
+        context,
+        rule=rule,
+        request=ModerationRequest(text="", inputs=inputs, query="query"),
+        phase="input",
+    )
+
+    assert requests == [
+        {
+            "point": "app.moderation.input",
+            "params": {"app_id": "app-1", "inputs": {"text": "original"}, "query": "query"},
+        }
+    ]
+    assert verdict.flagged is (action != "approved")
+    assert verdict.replacement is not None
+    if action == "overridden":
+        assert verdict.replacement.inputs == {"text": "rewritten", "file": moderation_input_file, "files": files}
+        assert verdict.replacement.inputs["file"] is moderation_input_file
+        assert verdict.replacement.inputs["files"] is files
+        assert verdict.replacement.query == "safe query"
+    else:
+        assert verdict.replacement.action == "direct_output"
+    assert inputs == {"text": "original", "file": moderation_input_file, "files": files}
+    assert inputs["file"] is moderation_input_file
+    assert inputs["files"] is files
+
+
+@pytest.mark.parametrize("blocked_field", ["neither", "text", "query"])
+def test_keyword_input_ignores_file_metadata_but_still_checks_text(
+    sqlite_engine: Engine, moderation_input_file: File, blocked_field: str
+) -> None:
+    """File names and URLs never cause rejection, but string variables and queries still do."""
+    code_based_extension.init()
+    service = build_moderation_service(database_client=sessionmaker(sqlite_engine))
+    rule = ModerationRule(
+        type="keywords",
+        config={
+            "inputs_config": {"enabled": True, "preset_response": "Input blocked"},
+            "outputs_config": {"enabled": False},
+            "keywords": "blocked",
+        },
+    )
+    inputs = {
+        "text": "blocked" if blocked_field == "text" else "safe",
+        "file": moderation_input_file,
+        "files": [moderation_input_file],
+    }
+
+    verdict = service.evaluate(
+        AppRequestContext(tenant_id="tenant-1", app_id="app-1"),
+        rule=rule,
+        request=ModerationRequest(text="", inputs=inputs, query="blocked" if blocked_field == "query" else "safe"),
+        phase="input",
+    )
+
+    assert verdict.flagged is (blocked_field != "neither")
+    assert inputs["file"] is moderation_input_file
 
 
 @pytest.mark.parametrize("verdict", [None, "false", 0])

@@ -26,6 +26,7 @@ vi.mock('../refresh-token', () => ({ refreshAccessTokenOrReLogin: vi.fn() }))
 const anonymousStatus: LoginStatusResponse = { logged_in: false, app_logged_in: false }
 const signedInStatus: LoginStatusResponse = { logged_in: true, app_logged_in: true }
 const parameters: WebAppParametersResponse = {
+  console_web_url: '/',
   account_login_enabled: true,
   account_login_url: '/signin',
   allow_anonymous_end_user_auth: true,

@@ -37,6 +37,7 @@ beforeEach(() => {
     if (new URL(url).pathname.endsWith('/system-features'))
       return Response.json({
         ...createSystemFeaturesFixture(),
+        console_web_url: 'https://console.example.com/dify',
         account_login_url: 'https://console.example.com/dify/signin',
       } satisfies WebSystemFeatureResponse)
     throw new Error(`Unexpected request: ${url}`)

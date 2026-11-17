@@ -9,6 +9,7 @@ import { selectWebAppParameters } from './webapp-parameters'
 vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const parameters: WebAppParametersResponse = {
+  console_web_url: '/',
   account_login_enabled: true,
   account_login_url: '/signin',
   allow_anonymous_end_user_auth: false,

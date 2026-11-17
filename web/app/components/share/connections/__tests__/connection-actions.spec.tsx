@@ -114,6 +114,7 @@ function entry(): ReadyEntry {
 function parameters(currentConnectionRevision: string): WebAppParametersResponse {
   return {
     ...entry().parameters,
+    console_web_url: '/',
     connection_revision: currentConnectionRevision,
     annotation_reply: {},
     file_upload: {},

@@ -6902,6 +6902,18 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
 
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
+    app_id: z.uuid(),
+  },
+)
+
+/**
+ * Workspaces retired
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  z.void()
+
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
   zHumanInputFormPreviewPayload
 
