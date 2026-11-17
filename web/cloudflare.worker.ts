@@ -1,4 +1,5 @@
 import fs from 'node:fs'
+import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 import { bindings, defineWorker } from 'cf/config'
@@ -13,6 +14,46 @@ const PASSTHROUGH_ENV_KEYS = [
   'WEBAPP_ACCESS_PREFLIGHT_URL',
   'WORKFLOW_GENERATION_TIMEOUT_MS',
 ]
+
+const appDir = fileURLToPath(new URL('./app', import.meta.url))
+const publicDir = fileURLToPath(new URL('./public', import.meta.url))
+
+// First URL segments the App Router can serve. Route groups `(name)` and parallel slots
+// `@name` add no segment, so their children count as top-level too.
+function appTopLevelSegments(dir = appDir, found = { names: new Set<string>(), dynamic: false }) {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('_')) continue
+    if (entry.name.startsWith('(') || entry.name.startsWith('@'))
+      appTopLevelSegments(path.join(dir, entry.name), found)
+    else if (entry.name.startsWith('[')) found.dynamic = true
+    else found.names.add(entry.name)
+  }
+  return found
+}
+
+function listFiles(dir: string): string[] {
+  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const file = path.join(dir, entry.name)
+    return entry.isDirectory() ? listFiles(file) : [file]
+  })
+}
+
+// Serve public/ straight from Workers Static Assets (free) instead of invoking the Worker
+// (billed per request). proxy.ts only adds CSP and frame headers there, which do nothing for
+// images and scripts; public/ holds no HTML documents.
+// Negative run_worker_first rules win over `/*`, so a directory rule such as `!/education/*`
+// would also hide the /education pages from the Worker. Directories that share their name with a
+// route are therefore excluded file by file.
+function staticPublicRoutes(basePath: string) {
+  const routes = appTopLevelSegments()
+  return fs.readdirSync(publicDir, { withFileTypes: true }).flatMap((entry) => {
+    if (!entry.isDirectory()) return [`!${basePath}/${entry.name}`]
+    if (!routes.dynamic && !routes.names.has(entry.name)) return [`!${basePath}/${entry.name}/*`]
+    return listFiles(path.join(publicDir, entry.name)).map(
+      (file) => `!${basePath}/${path.relative(publicDir, file).split(path.sep).join('/')}`,
+    )
+  })
+}
 
 // Not named cloudflare.config.ts on purpose: vinext treats that file as "this project builds for
 // Cloudflare" and fails the default Node build (Dockerfile, bundle-size CI) without the plugin.
@@ -29,14 +70,8 @@ export function createWorker() {
       .map(([key, value]) => [key, bindings.text(value!)]),
   )
 
-  // Serve public/ straight from Workers Static Assets (free) instead of invoking the Worker
-  // (billed per request). proxy.ts only adds CSP and frame headers there, which do nothing for
-  // images and scripts; public/ holds no HTML documents.
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
-  const publicDir = fileURLToPath(new URL('./public', import.meta.url))
-  const publicRoutes = fs
-    .readdirSync(publicDir, { withFileTypes: true })
-    .map((entry) => `!${basePath}/${entry.name}${entry.isDirectory() ? '/*' : ''}`)
+  const publicRoutes = staticPublicRoutes(basePath)
 
   // Run the Worker next to the AWS region that hosts the API, so SSR calls to the backend stay short.
   // e.g. CF_PLACEMENT_REGION=aws:us-east-1
