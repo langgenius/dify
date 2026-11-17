@@ -167,6 +167,11 @@ export type WorkflowRunCountResponse = {
   total: number
 }
 
+export type ConversationNotFoundError = ErrorResponse & {
+  code: 'conversation_not_found'
+  status: 404
+}
+
 export type HumanInputFormPreviewPayload = {
   inputs?: {
     [key: string]: unknown
@@ -540,11 +545,6 @@ export type ConversationWithSummaryPagination = {
   limit: number
   page: number
   total: number
-}
-
-export type ConversationNotFoundError = ErrorResponse & {
-  code: 'conversation_not_found'
-  status: 404
 }
 
 export type ConversationDetail = {
@@ -5186,6 +5186,36 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse =
   GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireData =
+  {
+    body?: never
+    path: {
+      app_id: string
+      conversation_id: string
+    }
+    query?: never
+    url: '/apps/{app_id}/advanced-chat/workflows/draft/conversations/{conversation_id}/workspaces/retire'
+  }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireErrors =
+  {
+    401: ErrorResponse
+    403: ErrorResponse
+    404: AppNotFoundError | ConversationNotFoundError | ErrorResponse
+    default: ErrorResponse
+  }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireErrors]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponses =
+  {
+    204: void
+  }
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsByConversationIdWorkspacesRetireResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData = {
   body: HumanInputFormPreviewPayload

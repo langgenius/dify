@@ -55,6 +55,7 @@ export const useChat = (
   },
   prevChatTree?: ChatItemInTree[],
   stopChat?: (taskId: string) => void,
+  retireConversation?: (conversationId: string) => void,
 ) => {
   const { t } = useTranslation(['appDebug'])
   const { handleRun } = useWorkflowRun()
@@ -71,6 +72,7 @@ export const useChat = (
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
   const [suggestedQuestions, setSuggestedQuestions] = useState<string[]>([])
   const cancelSuggestedQuestionsRef = useRef<(() => void) | null>(null)
+  const retireConversationRef = useRef(retireConversation)
   const { setIterTimes, setLoopTimes } = workflowStore.getState()
   const store = useStoreApi()
 
@@ -150,6 +152,19 @@ export const useChat = (
     }
   }, [])
 
+  useEffect(() => {
+    retireConversationRef.current = retireConversation
+  }, [retireConversation])
+
+  // Closing the panel unmounts this hook; the debug Conversation itself stays,
+  // so only its Agent workspaces are retired, once, on the way out.
+  useEffect(() => {
+    return () => {
+      const conversationId = conversationIdRef.current
+      if (conversationId) retireConversationRef.current?.(conversationId)
+    }
+  }, [])
+
   /** Find the target node by bfs and then operate on it */
   const produceChatTreeNode = useCallback(
     (targetId: string, operation: (node: ChatItemInTree) => void) => {
@@ -202,6 +217,7 @@ export const useChat = (
 
   const handleRestart = useCallback(() => {
     handleStop()
+    if (conversationIdRef.current) retireConversationRef.current?.(conversationIdRef.current)
     conversationIdRef.current = ''
     taskIdRef.current = ''
     setIterTimes(DEFAULT_ITER_TIMES)

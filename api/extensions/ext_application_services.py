@@ -261,6 +261,7 @@ from tasks.annotation.delete_annotation_index_task import delete_annotation_inde
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.update_annotation_to_index_task import update_annotation_to_index_task
+from tasks.collect_agent_resources_task import enqueue_agent_resource_collection
 from tasks.mail_inner_task import enqueue_inner_mail
 
 logger = logging.getLogger(__name__)
@@ -634,7 +635,9 @@ def build_application_services(
         generate_name=DefaultModelConversationNameGenerator(trace_scopes=tracing.scopes),
     )
     conversation_commands = ConversationCommandService(
-        conversations=conversations, enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup
+        conversations=conversations,
+        enqueue_delete_cleanup=ConversationService.enqueue_delete_cleanup,
+        collect_workspaces=enqueue_agent_resource_collection,
     )
     message_files = MessageFileResolver()
     conversation_queries = ConversationQueryService(

@@ -2,7 +2,7 @@
 
 import logging
 
-from sqlalchemy import and_, select
+from sqlalchemy import ColumnElement, and_, select
 from sqlalchemy.orm import Session
 
 from core.agent.workspace import AgentWorkspaceNotFoundError, WorkspaceOwnerScope
@@ -10,8 +10,26 @@ from models.agent import AgentWorkingResourceStatus, AgentWorkspace, AgentWorksp
 from models.enums import ConversationFromSource, InvokeFrom
 from models.model import App, Conversation
 from repositories.agent_workspace_repository import AgentWorkspaceRepository
+from services.errors.conversation import ConversationNotExistsError
 
 logger = logging.getLogger(__name__)
+
+
+def _debug_conversation_criteria(*, app_id: str, account_id: str) -> tuple[ColumnElement[bool], ...]:
+    """WHERE criteria selecting one editor's Console debug Conversations of an app.
+
+    Debug Conversations are hidden from the Console list and have no delete
+    affordance, so every mutation that targets them shares this ownership
+    filter: Console-sourced, ``DEBUGGER``-invoked, not deleted, and owned by the
+    given account on the given app.
+    """
+    return (
+        Conversation.app_id == app_id,
+        Conversation.from_source == ConversationFromSource.CONSOLE,
+        Conversation.from_account_id == account_id,
+        Conversation.invoke_from == InvokeFrom.DEBUGGER,
+        Conversation.is_deleted.is_(False),
+    )
 
 
 def retire_conversation(*, app_model: App, conversation: Conversation, session: Session) -> tuple[str, ...]:
@@ -86,11 +104,7 @@ def retire_superseded_debug_conversations(
                 ),
             )
             .where(
-                Conversation.app_id == app_id,
-                Conversation.from_source == ConversationFromSource.CONSOLE,
-                Conversation.from_account_id == account_id,
-                Conversation.invoke_from == InvokeFrom.DEBUGGER,
-                Conversation.is_deleted.is_(False),
+                *_debug_conversation_criteria(app_id=app_id, account_id=account_id),
                 Conversation.id != current_conversation_id,
             )
             .distinct()
@@ -101,5 +115,42 @@ def retire_superseded_debug_conversations(
             tenant_id=tenant_id,
             app_id=app_id,
             conversation_ids=superseded_conversation_ids,
+        )
+    )
+
+
+def retire_debug_conversation_workspaces(
+    *,
+    session: Session,
+    tenant_id: str,
+    app_id: str,
+    account_id: str,
+    conversation_id: str,
+) -> tuple[str, ...]:
+    """Retire the ACTIVE workspaces owned by one debug Conversation.
+
+    Preconditions: ``conversation_id`` resolves to a non-deleted Console debug
+    ``Conversation`` of ``app_id`` owned by ``account_id``; another account's,
+    non-debug, deleted, other-app, or unknown conversation raises
+    ``ConversationNotExistsError``. Postconditions: the conversation's ACTIVE
+    workspaces are RETIRED and their ids returned; an already-retired
+    conversation returns ``()``. The Conversation row and its messages are
+    untouched. Neither commits nor dispatches tasks.
+    """
+    conversation = session.scalar(
+        select(Conversation).where(
+            *_debug_conversation_criteria(app_id=app_id, account_id=account_id),
+            Conversation.id == conversation_id,
+        )
+    )
+    if conversation is None:
+        raise ConversationNotExistsError(
+            f"Conversation {conversation_id} is not a debug conversation of this app and account."
+        )
+    return tuple(
+        AgentWorkspaceRepository(session=session).retire_all_for_conversation(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            conversation_id=conversation.id,
         )
     )

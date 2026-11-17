@@ -24,6 +24,10 @@ from tests.e2e_tests.contracts.controllers.web.test_conversation_rename import _
 rename_harness = rename_tests.harness
 
 
+def _unexpected_workspace_collection(*, tenant_id: str, workspace_ids: tuple[str, ...]) -> None:
+    raise AssertionError(f"No workspace collection expected: {tenant_id} {workspace_ids}")
+
+
 @dataclass(frozen=True)
 class _Services:
     conversation_commands: ConversationCommandService
@@ -74,6 +78,7 @@ def harness(rename_harness: RenameHarness) -> _Harness:
         conversation_commands=ConversationCommandService(
             conversations=ConversationRepository(session_factory=rename_harness.repository_factory),
             enqueue_delete_cleanup=enqueue_cleanup,
+            collect_workspaces=_unexpected_workspace_collection,
         )
     )
     rename_harness.api.add_resource(ConversationApi, "/conversations/<uuid:c_id>")

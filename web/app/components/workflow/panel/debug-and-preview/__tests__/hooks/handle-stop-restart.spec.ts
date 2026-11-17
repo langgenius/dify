@@ -58,6 +58,68 @@ it('does not send an empty task id when stopped before any run', () => {
   expect(stopChat).not.toHaveBeenCalled()
 })
 
+const startConversationRun = () => {
+  mocks.run.mockImplementation((_params: unknown, callbacks: Callbacks) => {
+    callbacks.onData!('answer', true, {
+      conversationId: 'conversation-1',
+      messageId: 'message-1',
+      taskId: 'task-1',
+    })
+  })
+}
+
+it('retires the debug conversation workspaces on restart', () => {
+  const retireConversation = vi.fn()
+  startConversationRun()
+  const { result } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleSend({ query: 'test' }, {})
+  })
+  act(() => {
+    result.current.handleRestart()
+  })
+  expect(retireConversation).toHaveBeenCalledExactlyOnceWith('conversation-1')
+})
+
+it('does not retire workspaces on restart before any conversation exists', () => {
+  const retireConversation = vi.fn()
+  const { result } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleRestart()
+  })
+  expect(retireConversation).not.toHaveBeenCalled()
+})
+
+it('retires the debug conversation workspaces once on unmount', () => {
+  const retireConversation = vi.fn()
+  startConversationRun()
+  const { result, unmount } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    { hooksStoreProps },
+  )
+  act(() => {
+    result.current.handleSend({ query: 'test' }, {})
+  })
+  unmount()
+  expect(retireConversation).toHaveBeenCalledExactlyOnceWith('conversation-1')
+})
+
+it('does not retire workspaces on unmount without a conversation', () => {
+  const retireConversation = vi.fn()
+  const { unmount } = renderHook(
+    () => useChat({}, undefined, undefined, undefined, retireConversation),
+    { hooksStoreProps },
+  )
+  unmount()
+  expect(retireConversation).not.toHaveBeenCalled()
+})
+
 it('cancels suggested questions on stop and removes loaded suggestions on restart', async () => {
   let callbacks: Callbacks
   mocks.run.mockImplementation((_params: unknown, value: Callbacks) => {
