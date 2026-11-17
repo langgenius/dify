@@ -3,9 +3,15 @@
 import gc
 import logging
 
+from blinker import Signal
+
 from configs import dify_config
 
 logger = logging.getLogger(__name__)
+
+# Process-local startup notifications let optional telemetry observe the explicit startup
+# collection without coupling this helper to the exporter. Subscribers belong to the app lifecycle.
+startup_gc = Signal()
 
 
 def freeze_startup_objects() -> None:
@@ -23,11 +29,13 @@ def freeze_startup_objects() -> None:
 
     Call it once, when the process has loaded everything it will serve with and before it serves.
     """
+    startup_gc.send(None, phase="start", frozen_objects=0)
     if not dify_config.GC_FREEZE_AFTER_STARTUP:
+        startup_gc.send(None, phase="stop", frozen_objects=0)
         return
     # Collect first so that garbage left over from loading is released rather than frozen.
     gc.collect()
     gc.freeze()
-    logger.info(
-        "Froze %d objects alive at startup; full garbage collections no longer scan them", gc.get_freeze_count()
-    )
+    frozen_objects = gc.get_freeze_count()
+    startup_gc.send(None, phase="stop", frozen_objects=frozen_objects)
+    logger.info("Froze %d objects alive at startup; full garbage collections no longer scan them", frozen_objects)
