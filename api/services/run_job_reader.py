@@ -144,16 +144,21 @@ def decode_frame(frame: str) -> Mapping[str, Any] | None:
     return payload
 
 
-def _new_ids(payload: Mapping[str, Any], stored: set[str]) -> JobPatch | None:
+def _unstored_ids(payload: Mapping[str, Any], stored: set[str]) -> Mapping[str, str]:
     """Pick the run ids that this frame carries and that were not stored yet.
 
     Precondition: stored holds the id fields already written.
-    Postcondition: a patch with the new ids (stored is updated), or None when there are none.
+    Postcondition: the id fields and values to store; stored is not changed.
     """
-    found = {name: payload[name] for name in ID_FIELDS if name not in stored and isinstance(payload.get(name), str)}
-    if not found:
-        return None
-    stored.update(found)
+    return {name: payload[name] for name in ID_FIELDS if name not in stored and isinstance(payload.get(name), str)}
+
+
+def _ids_patch(found: Mapping[str, str]) -> JobPatch:
+    """Build the patch that stores the given id fields.
+
+    Precondition: found is not empty and its keys are in ID_FIELDS.
+    Postcondition: a patch setting exactly those ids.
+    """
     return JobPatch(
         task_id=found.get("task_id"),
         run_id=found.get("workflow_run_id"),
@@ -166,17 +171,19 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     """Apply one frame to the job.
 
     Precondition: the job exists.
-    Postcondition: the alive key is refreshed; ids, form and status from the frame are stored; a pending stop is
-    sent once when the task id is first stored.
+    Postcondition: the alive key is refreshed; ids, form and status from the frame are stored;
+    ids count as stored only after the store accepted them, so a failed save is retried by the next frame that
+    carries them; a pending stop is sent once when the task id is first stored.
     """
     store.touch(job_id)
     payload = decode_frame(frame)
     if payload is None:
         return
     task_id_known = "task_id" in stored_ids
-    ids = _new_ids(payload, stored_ids)
-    if ids is not None:
-        store.patch(job_id, ids)
+    found = _unstored_ids(payload, stored_ids)
+    if found:
+        store.patch(job_id, _ids_patch(found))
+        stored_ids.update(found)
     record = store.get(job_id)
     if record is None:
         return

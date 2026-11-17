@@ -12,6 +12,7 @@ from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobOwner, JobPatch, JobRecord, JobStatus, OpenedJob
 from services.run_job_service import (
     POLL_INTERVAL_SECONDS,
+    RUN_NOT_CONFIRMED,
     WAIT_MAX_SECONDS,
     JobCapacityError,
     JobNotFoundError,
@@ -65,12 +66,14 @@ class Harness:
     store: RedisRunJobStore
     results: InMemoryRunResults
     tasks: RecordingTaskControl
+    redis: InMemoryRedis
     clock: FakeClock = field(default_factory=FakeClock)
 
 
 def _harness(*, max_background_runs: int = 10, max_waiters: int = 4) -> Harness:
     clock = FakeClock()
-    store = RedisRunJobStore(redis_client=InMemoryRedis())
+    redis = InMemoryRedis()
+    store = RedisRunJobStore(redis_client=redis)
     results = InMemoryRunResults()
     tasks = RecordingTaskControl()
     service = RunJobService(
@@ -82,7 +85,7 @@ def _harness(*, max_background_runs: int = 10, max_waiters: int = 4) -> Harness:
         sleep=clock.sleep,
         monotonic=clock.monotonic,
     )
-    return Harness(service=service, store=store, results=results, tasks=tasks, clock=clock)
+    return Harness(service=service, store=store, results=results, tasks=tasks, redis=redis, clock=clock)
 
 
 def _opening(mode: AppMode = AppMode.WORKFLOW, key: str | None = None) -> JobOpening:
@@ -293,6 +296,59 @@ def test_view_of_a_graph_job_without_a_run_id_uses_the_record():
 
     assert view.status is JobStatus.RUNNING
     assert view.outputs is None
+
+
+def _lapse_alive_key(harness: Harness, job_id: str) -> None:
+    harness.redis.delete(f"openapi:job:{job_id}:alive")
+
+
+def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_saved():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    _lapse_alive_key(harness, opened.record.id)
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.FAILED
+    assert view.error == RUN_NOT_CONFIRMED
+    stored = harness.store.get(opened.record.id)
+    assert stored is not None
+    assert (stored.status, stored.error) == (JobStatus.FAILED, RUN_NOT_CONFIRMED)
+
+
+def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.RUNNING
+    assert view.error is None
+
+
+def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
+    harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.SUCCEEDED, outputs={"x": 1})
+    _lapse_alive_key(harness, opened.record.id)
+
+    view = harness.service.view(OWNER, opened.record.id)
+
+    assert view.status is JobStatus.SUCCEEDED
+    assert view.outputs == {"x": 1}
+    assert view.error is None
+
+
+def test_wait_returns_at_once_for_a_graph_job_whose_run_start_was_not_confirmed():
+    harness = _harness()
+    opened = harness.service.open(_opening())
+    _lapse_alive_key(harness, opened.record.id)
+
+    view = harness.service.wait(OWNER, opened.record.id, wait_seconds=10)
+
+    assert view.status is JobStatus.FAILED
+    assert harness.clock.slept == []
 
 
 def test_view_of_a_message_job_uses_the_record():
