@@ -12,6 +12,7 @@ from datetime import datetime, timedelta
 from typing import TYPE_CHECKING, Any, Final, Protocol
 
 from flask import copy_current_request_context
+from flask.globals import app_ctx
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from libs.datetime_utils import naive_utc_now
@@ -249,6 +250,16 @@ class RunJobService:
         Postcondition: the reader thread started; raises, starting nothing, when it cannot.
         """
         context = contextvars.copy_context()
+        flask_app = app_ctx.app
+
+        def read_in_app_context() -> None:
+            """Read the stream under an app context of its own.
+
+            Precondition: runs inside the copied contextvars, which hold the request's app context.
+            Postcondition: the stream was read to its end; its session and g belong to this context, not the request's.
+            """
+            with flask_app.app_context():
+                read_to_end(job_id=job_id, frames=frames, store=self._store, stopper=self._stop)
 
         def reader_with_context() -> None:
             """Read the stream under the copied contexts.
@@ -257,13 +268,7 @@ class RunJobService:
             Postcondition: the stream was read to its end and the slot is released.
             """
             try:
-                context.run(
-                    read_to_end,
-                    job_id=job_id,
-                    frames=frames,
-                    store=self._store,
-                    stopper=self._stop,
-                )
+                context.run(read_in_app_context)
             finally:
                 self._slots.release()
 

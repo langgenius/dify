@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.human_input_policy import HumanInputSurface
+from factories.file_url_factory import re_sign_file_urls
 from graphon.enums import WorkflowExecutionStatus
 from libs.stream import close_stream
 from models.model import AppMode, Message
@@ -77,15 +78,15 @@ class SQLAlchemyRunResultReader:
         """Read the saved answer and error of a message.
 
         Precondition: ownership of the message was proven by the job that points at it.
-        Postcondition: the message's answer and error; None when no message has that id in the app. The session is
-        closed.
+        Postcondition: the message's answer, with its file links re-signed, and error; None when no message has
+        that id in the app. The session is closed.
         """
         stmt = sa.select(Message.answer, Message.error).where(Message.id == message_id, Message.app_id == app_id)
         with self._session_factory() as session:
             row = session.execute(stmt).one_or_none()
         if row is None:
             return None
-        return MessageResult(answer=row.answer, error=row.error)
+        return MessageResult(answer=re_sign_file_urls(row.answer), error=row.error)
 
     def pending_form(
         self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
