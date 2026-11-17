@@ -11,11 +11,13 @@ from sqlalchemy.orm import Session, sessionmaker
 from core.human_input_v2.entities import IMProvider
 from core.human_input_v2.im_integration import ActiveRunDecisionKind
 from core.human_input_v2.im_integration.sync_records import SysUserId, SysUserIMSyncInitiator
-from core.human_input_v2.shared import ContactId, IMIdentityId, IMSyncRunId
+from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, IMIdentityId, IMSyncRunId
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
+from models.account import Account, AccountStatus
 from models.human_input_v2 import (
+    HumanInputContactIdentity,
     HumanInputIMBinding,
     HumanInputIMBindingWorkspaceOverride,
     HumanInputIMChannel,
@@ -34,9 +36,11 @@ from repositories.human_input_v2.im_channel_repository import (
 )
 from repositories.human_input_v2.im_identity_repository import IMIdentityObservation, OpaqueProviderPayload
 from repositories.human_input_v2.im_integration.repository import SQLAlchemyIMControlPlaneRepository
+from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from repositories.human_input_v2.sqlalchemy_im_binding_repository import SQLAlchemyIMBindingRepository
 from repositories.human_input_v2.sqlalchemy_im_channel_repository import DeploymentIMChannelWriter
 from repositories.human_input_v2.sqlalchemy_im_identity_repository import SQLAlchemyIMIdentityRepository
+from services.human_input_v2.contact_service_composition import build_deployment_contact_service
 
 
 def _require_postgresql() -> None:
@@ -86,6 +90,69 @@ def _cleanup(session_maker: sessionmaker[Session], channel_id: IMChannelId) -> N
 def _persist_channel(session_maker: sessionmaker[Session], channel: IMChannel) -> None:
     with session_maker.begin() as session:
         DeploymentIMChannelWriter(session).create(channel)
+
+
+def test_concurrent_organization_default_replacements_preserve_both_endpoints(flask_req_ctx: object) -> None:
+    """Exercise the service's Channel/Account locks with concurrent default endpoint swaps."""
+    _require_postgresql()
+    sessions = sessionmaker(bind=db.engine, expire_on_commit=False)
+    channel = _channel()
+    _persist_channel(sessions, channel)
+    account_ids = (str(uuidv7()), str(uuidv7()))
+    identity_ids = (IMIdentityId(str(uuidv7())), IMIdentityId(str(uuidv7())))
+    contacts: list[ContactId] = []
+    try:
+        with sessions.begin() as session:
+            for account_id, identity_id in zip(account_ids, identity_ids, strict=True):
+                account = Account(
+                    name="Concurrent Contact", email=f"{account_id}@example.com", status=AccountStatus.ACTIVE
+                )
+                account.id = account_id
+                session.add(account)
+                session.flush()
+                contacts.append(
+                    SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account_id))
+                )
+                SQLAlchemyIMIdentityRepository(session, channel.id).create(
+                    identity_id,
+                    IMIdentityObservation(
+                        provider_user_id=str(identity_id),
+                        display_name=None,
+                        email=account.email,
+                        raw_payload=OpaqueProviderPayload({}),
+                        sync_run_id=IMSyncRunId(str(uuidv7())),
+                        observed_at=naive_utc_now(),
+                    ),
+                )
+        for contact_id, identity_id in zip(contacts, identity_ids, strict=True):
+            with sessions.begin() as session:
+                build_deployment_contact_service(session, for_update=True).set_organization_im_binding(
+                    DeploymentScope(), contact_id, identity_id
+                )
+        barrier = Barrier(2)
+
+        def rebind(index: int) -> None:
+            barrier.wait(timeout=10)
+            with sessions.begin() as session:
+                build_deployment_contact_service(session, for_update=True).set_organization_im_binding(
+                    DeploymentScope(), contacts[index], identity_ids[1 - index]
+                )
+
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            list(executor.map(rebind, (0, 1)))
+        with sessions() as session:
+            current = SQLAlchemyIMBindingRepository(session, channel.id).list_all()
+        assert {(binding.contact_id, binding.identity_id) for binding in current} == {
+            (contacts[0], identity_ids[1]),
+            (contacts[1], identity_ids[0]),
+        }
+    finally:
+        _cleanup(sessions, channel.id)
+        with sessions.begin() as session:
+            session.execute(
+                sa.delete(HumanInputContactIdentity).where(HumanInputContactIdentity.account_id.in_(account_ids))
+            )
+            session.execute(sa.delete(Account).where(Account.id.in_(account_ids)))
 
 
 def test_concurrent_sync_triggers_create_at_most_one_active_run(flask_req_ctx: object) -> None:

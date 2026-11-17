@@ -1,10 +1,10 @@
 # Dify 部署级凭据加密设计
 
-状态：开发设计基础，尚未实现。日期：2026-11-11。
+状态：已实现 local/Azure backend、provisioning、只读 builder、新安装接线及显式初始化 CLI；已接入 EE Human Input inner API 和部署同步 worker。日期：2026-11-11。
 
 ## 目标与现有能力
 
-为没有 Tenant owner 的部署级凭据提供独立的加密解密能力，供后续 EE HITL 等功能使用。密钥由 Dify 创建、保存并在运行时加载；业务调用方只接收已绑定当前部署的 cipher。
+为没有 Tenant owner 的部署级凭据提供独立的加密解密能力，供 EE HITL 等功能使用。密钥由 Dify 创建、保存并在运行时加载；业务调用方只接收已绑定当前部署的 cipher。
 
 已有实现可以提供参考：
 
@@ -30,7 +30,7 @@ class BoundCredentialCipher(Protocol):
 
 composition 解析当前部署及其密钥，构造具体 cipher 并注入业务 Service。调用方法不接受 `tenant_id`、deployment ID、key reference 或 provider 参数；密钥加载和可复用的解密上下文由实现内部管理。
 
-HITL 的 `IMCredentialCodec` 已使用同形接口，可以直接接收该 cipher。JSON、Base64、凭据 Pydantic 模型与持久化 envelope 继续由业务 codec 管理，不进入通用加密接口。
+通用 Protocol 位于 `api/libs/credential_cipher.py`；HITL 的 `IMCredentialCodec` 直接依赖它并接收已绑定 cipher。JSON、Base64、凭据 Pydantic 模型与持久化 envelope 继续由业务 codec 管理，不进入通用加密接口。
 
 ## 密钥身份与存储
 
@@ -82,13 +82,35 @@ Runtime builder、encrypt 和 decrypt 均不触发 provisioning。API 与 worker
 
 ## 实施范围
 
-先交付部署级密钥引用、provisioning、local/Azure cipher 和 composition 入口，再由独立业务变更接入 HITL 的配置写入与运行时读取。本能力不受 edition 限制；是否启用某个部署级业务由对应业务入口决定。
+部署级密钥引用、provisioning、local/Azure cipher 和 composition 入口由本能力交付；HITL inner API 的配置读写与部署同步 worker 通过独立的 inner API 变更接入。本能力不受 edition 限制；是否启用某个部署级业务由对应业务入口决定。
 
 本次不扩展 Tenant `BaseKeyProvider` 的 owner 参数，不迁移现有 Tenant/SystemEncrypter 数据，不增加加解密 HTTP API、通用密钥 registry、local 密钥轮换或后端迁移能力。
+
+## 实现与操作
+
+- `libs/credential_cipher.py`：运行时 Protocol 与安全的 key-unavailable / invalid-ciphertext 错误。
+- `libs/key_providers/deployment_{local,azure}.py`：独立 backend，不修改 Tenant provider。Local 使用 RSA-OAEP 包装随机 AES data key；Azure 使用 RSA-OAEP-256 包装，每次加密读取当前 version。两者以 AES-EAX 验证正文与 envelope header。
+- `repositories/deployment_credential_repository.py`：使用注入的 Session 读取 setup 和条件保存 reference。唯一 nullable 字段由 migration `a84d72e9c61f` 增加。
+- `services/deployment_credential_service.py`：初始化时按 instance ID 取得可续期 Redis lease，读取和持久化分别使用短 Session；Storage/KMS 不位于数据库事务内。运行时 builder 只读，不获取初始化锁或创建 key。
+- `services/deployment_credential_composition.py`：读取既有 `KEY_PROVIDER_TYPE`、Storage 与 Azure 配置，Azure 继续通过 `DefaultAzureCredential` 认证。
+
+新安装在 `DifySetup` 提交后初始化，key 创建失败时保留稳定身份供恢复。已有安装应用 migration 后，显式执行：
+
+```bash
+uv run --project api flask provision-deployment-credential-key
+```
+
+该命令不会打印 reference 或 key；缺少稳定 setup identity 时失败。可重复执行同一命令以恢复“外部创建成功、DB 未提交”的状态。若 reference 已存在而私钥/key 丢失，恢复原 Storage/Vault material；不能通过重新生成 key 恢复密文。
+
+Azure 使用现有 `AZURE_KEYVAULT_VAULT_URL`、`AZURE_KEYVAULT_KEY_SIZE`、`AZURE_KEYVAULT_ROTATION_INTERVAL_DAYS`。运行身份需要相应 get/wrap/unwrap 权限；初始化还需要 create 与配置 rotation policy 的权限。已经加密的版本必须持续 enabled 且无 expiry。改变 provider 或 Vault 不构成 migration，builder 会拒绝不兼容或不存在的 reference/material。
+
+本地行为测试与真实 Azure SDK 验证已通过：随机化、认证失败、错误 key、初始化重试、commit 失败恢复与版本轮换。真实 Azure 验证使用 `qg-kms-test` 的临时 key，之后已软删除并撤回临时授权；不提供持久应用凭证。后续已按用户指令在 box 完成全新 PostgreSQL 迁移、实际 Redis 并发 lease 与数据库 reference 行为验证，并从 box 对真实 Azure Vault 验证部署 Service 的 reference 持久化、幂等初始化、轮换与旧版本解密；详见 [box 集成报告](hitl-v2-ee-inner-api-box-integration-report.md)。
 
 ## 参考
 
 - [现有 Tenant KeyProvider 接口](../api/libs/key_providers/base.py)
+- [通用 bound cipher 接口](../api/libs/credential_cipher.py)
+- [部署级 lifecycle Service](../api/services/deployment_credential_service.py)
 - [现有 SystemEncrypter](../api/core/tools/utils/system_encryption.py)
-- [HITL 凭据 codec 与 cipher 接口](../api/services/human_input_v2/im_credential_codec.py)
-- OpenSpec 草案：`dify-specs/openspec/changes/add-deployment-credential-cipher/`。本文整理该草案与本次讨论中的设计决定，作为后续实现入口；实现时需同步维护对应规范。
+- [HITL 凭据 codec](../api/services/human_input_v2/im_credential_codec.py)
+- OpenSpec：`dify-specs/openspec/changes/add-deployment-credential-cipher/` 与 `implement-dify-ee-human-input-inner-api/`。

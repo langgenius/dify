@@ -10,6 +10,12 @@ from flask import abort, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 
+from controllers.common.human_input_v2.im_sync import (
+    sync_result_response as _sync_result_response,
+)
+from controllers.common.human_input_v2.im_sync import (
+    sync_run_response as _sync_run_response,
+)
 from controllers.common.human_input_v2_contracts import (
     AddPlatformContactsRequest,
     AddPlatformContactsResponse,
@@ -34,6 +40,7 @@ from controllers.common.human_input_v2_contracts import (
     HumanInputContactType,
     IMContactSyncErrorResponse,
     IMProvider,
+    IMSyncResultItem,
     IMSyncResultType,
     IMSyncRunStatus,
     ListContactOptionsResponse,
@@ -76,8 +83,6 @@ from core.human_input_v2.im_integration import (
     ContactIMBindingView,
     IMBindingCommandError,
     IMBindingCommandErrorCode,
-    SyncContactSnapshot,
-    SyncResultFact,
 )
 from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator
 from core.human_input_v2.shared import (
@@ -95,7 +100,6 @@ from libs.login import login_required
 from libs.uuid_utils import uuidv7
 from models.account import Account
 from repositories.human_input_v2.contact import (
-    CandidateId,
     Contact,
     ContactError,
     ContactErrorCode,
@@ -123,7 +127,6 @@ from services.human_input_v2.im_contact_sync.service import (
     IMSyncDispatchUnavailableError,
     IMSyncRevisionChangedError,
     IMSyncRunNotFoundError,
-    IMSyncRunSummary,
 )
 from services.human_input_v2.node_data_migration import MigrationNode, NodeDataMigrationFailure
 
@@ -238,95 +241,8 @@ def _im_application_error_response(error: _IMApplicationError) -> tuple[dict[str
     )
 
 
-def _sync_run_payload(summary: IMSyncRunSummary) -> dict[str, object]:
-    """Serialize a persisted run with the currently resolved Account name."""
-    run = summary.run
-    return {
-        "id": run.id,
-        "status": run.status,
-        "initiator_display_name": summary.initiator_display_name,
-        "started_at": run.started_at,
-        "finished_at": run.finished_at,
-        "error_message": run.error_message,
-        "result_counts": {
-            "added": run.added_count,
-            "not_matched": run.not_matched_count,
-            "failed": run.failed_count,
-            "removed": run.removed_count,
-            "skipped": run.skipped_count,
-        },
-        "provider": run.provider,
-        "channel_id": run.channel_revision.channel_id,
-        "channel_config_version": run.channel_revision.config_version,
-    }
-
-
-def _directory_entry_payload(result: SyncResultFact) -> dict[str, object] | None:
-    if result.provider_user_id is None:
-        return None
-    return {
-        "provider_user_id": result.provider_user_id,
-        "display_name": result.display_name,
-        "email": result.email,
-    }
-
-
 def _avatar_url(avatar_file_id: str | None) -> str:
     return build_avatar_url(avatar_file_id) or ""
-
-
-def _sync_contact_payload(contact: SyncContactSnapshot, fallback_created_at) -> dict[str, object]:
-    """Serialize the frozen Contact profile without consulting current state."""
-    # Historical result snapshots predate the Contact creation-time field.
-    created_at = contact.created_at if contact.created_at is not None else fallback_created_at
-    return {
-        "id": contact.contact_id,
-        "name": contact.name,
-        "email": contact.email,
-        "avatar_url": _avatar_url(contact.avatar_file_id),
-        "created_at": created_at,
-    }
-
-
-def _sync_result_payload(result: SyncResultFact) -> dict[str, object]:
-    entry = _directory_entry_payload(result)
-    if result.result_type is IMSyncResultType.NOT_MATCHED:
-        return {"type": result.result_type, "entry": entry}
-    if result.result_type is IMSyncResultType.FAILED:
-        return {
-            "type": result.result_type,
-            "entry": entry,
-            "reason": result.reason_message or result.reason_code or "sync_failed",
-        }
-    if result.result_type is IMSyncResultType.ADDED:
-        if result.contact_snapshot is None or entry is None:
-            raise RuntimeError("added sync result is missing its persisted display snapshot")
-        return {
-            "type": result.result_type,
-            "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
-            "entry": entry,
-        }
-    if result.result_type is IMSyncResultType.SKIPPED:
-        if result.contact_snapshot is None:
-            raise RuntimeError("skipped sync result is missing its persisted Contact snapshot")
-        return {
-            "type": result.result_type,
-            "entry": entry,
-            "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
-        }
-    if result.contact_snapshot is None or result.identity_snapshot is None or result.removal_reason is None:
-        raise RuntimeError("removed sync result is missing its persisted display snapshot")
-    return {
-        "type": result.result_type,
-        "contact": _sync_contact_payload(result.contact_snapshot, result.created_at),
-        "last_known_identity": {
-            "identity_id": result.identity_snapshot.identity_id,
-            "provider_user_id": result.identity_snapshot.provider_user_id,
-            "display_name": result.identity_snapshot.display_name,
-            "email": result.identity_snapshot.email,
-        },
-        "reason": result.removal_reason,
-    }
 
 
 def _contact_binding_payload(contact: ContactIMBindingView) -> dict[str, object]:
@@ -555,7 +471,7 @@ class WorkspacePlatformContactsApi(Resource):
         try:
             contacts = build_enterprise_contact_management_service(session).add_platform_contacts(
                 TenantId(tenant_id),
-                [CandidateId(candidate_id) for candidate_id in request_body.candidate_ids],
+                [ContactId(candidate_id) for candidate_id in request_body.candidate_ids],
                 AccountId(current_user.id),
             )
         except ContactError as error:
@@ -676,7 +592,7 @@ class WorkspaceIMSyncRunsApi(Resource):
             IMWriteUnavailableError,
         ) as error:
             return _im_application_error_response(error)
-        return dump_response(CreateIMSyncRunResponse, {"run": _sync_run_payload(run)})
+        return CreateIMSyncRunResponse(run=_sync_run_response(run)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/im-sync-runs/latest")
@@ -696,7 +612,7 @@ class WorkspaceLatestIMSyncRunApi(Resource):
             run = build_im_contact_sync_application().sync_service.get_latest_run(_workspace_scope(tenant_id))
         except (IMChannelNotConfiguredError, IMSyncRunNotFoundError) as error:
             return _im_application_error_response(error)
-        return dump_response(GetLatestIMSyncRunResponse, {"run": _sync_run_payload(run)})
+        return GetLatestIMSyncRunResponse(run=_sync_run_response(run)).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/im-sync-runs/latest/results")
@@ -723,15 +639,12 @@ class WorkspaceLatestIMSyncRunResultsApi(Resource):
             )
         except (IMChannelNotConfiguredError, IMSyncRunNotFoundError) as error:
             return _im_application_error_response(error)
-        return dump_response(
-            ListLatestIMSyncRunResultsResponse,
-            {
-                "data": [{"id": result.id, "result": _sync_result_payload(result)} for result in result_page.items],
-                "page": result_page.page,
-                "limit": result_page.limit,
-                "total": result_page.total,
-            },
-        )
+        return ListLatestIMSyncRunResultsResponse(
+            data=[IMSyncResultItem(id=result.id, result=_sync_result_response(result)) for result in result_page.items],
+            page=result_page.page,
+            limit=result_page.limit,
+            total=result_page.total,
+        ).model_dump(mode="json")
 
 
 @console_ns.route("/workspaces/current/human-input/v2/im-identities")

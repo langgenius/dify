@@ -7,12 +7,11 @@ import pytest
 
 from core.human_input_v2.shared import ContactId
 from repositories.human_input_v2.contact import (
-    CandidateId,
     Contact,
     ContactQuery,
     ContactType,
     ExternalContact,
-    OrganizationCandidate,
+    OrganizationContact,
     Page,
 )
 
@@ -28,19 +27,19 @@ def test_contact_type_has_only_current_contact_classifications() -> None:
     ]
 
 
-def test_candidate_id_is_the_contact_id_type_and_keeps_the_candidate_identity() -> None:
-    candidate_id = CandidateId(_CONTACT_ID)
-    candidate = OrganizationCandidate(
-        id=candidate_id,
+def test_organization_contact_preserves_its_identity_and_distinct_account_join_time() -> None:
+    contact = OrganizationContact(
+        id=_CONTACT_ID,
         name="Reviewer",
         email="reviewer@example.com",
         avatar_file_id=None,
         created_at=_NOW,
+        joined_at=datetime(2020, 1, 1),
     )
 
-    assert CandidateId is ContactId
-    assert candidate.id is candidate_id
-    assert ContactId(candidate.id) == _CONTACT_ID
+    assert contact.id == _CONTACT_ID
+    assert contact.created_at == _NOW
+    assert contact.joined_at == datetime(2020, 1, 1)
 
 
 def test_contact_values_are_frozen_slotted_values_with_stable_shapes() -> None:

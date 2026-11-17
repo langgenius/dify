@@ -33,6 +33,7 @@ from core.human_input_v2.im_integration.adapters import (
 from core.human_input_v2.im_integration.sync_records import AccountIMSyncInitiator, SysUserId, SysUserIMSyncInitiator
 from core.human_input_v2.shared import AccountId, ContactId, DirectoryScope, IMSyncRunId, TenantId, WorkspaceScope
 from libs.datetime_utils import naive_utc_now
+from models.account import Account
 from models.human_input_v2 import (
     HumanInputIMBinding,
     HumanInputIMBindingWorkspaceOverride,
@@ -70,6 +71,7 @@ def sync_engine(request: pytest.FixtureRequest) -> Iterator[Engine]:
             external_url = container.get_connection_url()
         engine = sa.create_engine(external_url)
         models = (
+            Account,
             HumanInputIMChannel,
             HumanInputIMSyncRun,
             HumanInputIMSyncResult,

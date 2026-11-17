@@ -47,8 +47,10 @@ def init_app(app: DifyApp):
         upgrade_db,
         vdb_migrate,
     )
+    from commands.deployment_credentials import provision_deployment_credential_key
 
     cmds_to_register = [
+        provision_deployment_credential_key,
         reset_password,
         reset_email,
         reset_encrypt_key_pair,

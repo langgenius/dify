@@ -1,23 +1,18 @@
-"""Behavioral contracts for core and Enterprise Contact capability ownership."""
+"""Contact management and Platform operations share one Contact repository."""
 
-from __future__ import annotations
-
-from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import get_type_hints
+from unittest.mock import create_autospec
 
-from core.human_input_v2.shared import AccountId, ContactId, TenantId
+import pytest
+
+from core.human_input_v2.shared import AccountId, ContactId, DeploymentScope, DirectoryScope, TenantId, WorkspaceScope
 from repositories.human_input_v2.contact import (
-    CandidateId,
     Contact,
     ContactIMBindingRepository,
     ContactQuery,
     ContactRepository,
     ContactType,
-    EnterpriseContactRepository,
-    ExternalContact,
-    IMBinding,
-    OrganizationCandidate,
+    OrganizationContact,
     Page,
 )
 from services.enterprise.human_input_contact_service import EnterpriseContactManagementService
@@ -27,195 +22,80 @@ _NOW = datetime(2026, 8, 30, 8)
 _TENANT_ID = TenantId("00000000-0000-0000-0000-000000000101")
 _ACCOUNT_ID = AccountId("00000000-0000-0000-0000-000000000201")
 _CONTACT_ID = ContactId("00000000-0000-0000-0000-000000000301")
-_DEFAULT_CONTACT_QUERY = ContactQuery()
 
 
-class _TenantContactPort:
-    def __init__(self, contacts: Sequence[Contact]) -> None:
-        self._contacts = tuple(contacts)
-        self.tenant_calls: list[TenantId] = []
-
-    def count_contact(self, tenant_id: TenantId, query: ContactQuery = _DEFAULT_CONTACT_QUERY) -> int:
-        self.tenant_calls.append(tenant_id)
-        return len(self._matching_contacts(query))
-
-    def list_contact(
-        self,
-        tenant_id: TenantId,
-        page: int,
-        limit: int,
-        query: ContactQuery = _DEFAULT_CONTACT_QUERY,
-    ) -> Page[Contact]:
-        self.tenant_calls.append(tenant_id)
-        contacts = self._matching_contacts(query)
-        offset = (page - 1) * limit
-        return Page(contacts[offset : offset + limit], page, limit)
-
-    def get_contacts_by_id(self, tenant_id: TenantId, contact_id: ContactId) -> Contact | None:
-        self.tenant_calls.append(tenant_id)
-        return next((contact for contact in self._contacts if contact.id == contact_id), None)
-
-    def get_contact_by_account_id(self, tenant_id: TenantId, account_id: AccountId) -> Contact | None:
-        raise AssertionError(f"Account identity lookup is outside this contract: {tenant_id}, {account_id}")
-
-    def get_contacts_by_ids(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[Contact]:
-        self.tenant_calls.append(tenant_id)
-        requested_ids = set(contact_ids)
-        return tuple(contact for contact in self._contacts if contact.id in requested_ids)
-
-    def available(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Mapping[ContactId, bool]:
-        self.tenant_calls.append(tenant_id)
-        available_ids = {contact.id for contact in self._contacts}
-        return {contact_id: contact_id in available_ids for contact_id in dict.fromkeys(contact_ids)}
-
-    def save_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> Contact:
-        self.tenant_calls.append(tenant_id)
-        return Contact(
-            id=external_contact.id,
-            type=ContactType.EXTERNAL,
-            name=external_contact.name,
-            email=external_contact.email,
-            avatar_file_id=external_contact.avatar_file_id,
-            created_at=external_contact.created_at,
-        )
-
-    def delete_external_contact(self, tenant_id: TenantId, external_contact: ExternalContact) -> None:
-        del external_contact
-        self.tenant_calls.append(tenant_id)
-
-    def provision_account_backed_contact(self, account_id: AccountId) -> ContactId:
-        del account_id
-        return _CONTACT_ID
-
-    def query_contacts_by_email(self, tenant_id: TenantId, emails: Sequence[str]) -> Sequence[Contact]:
-        self.tenant_calls.append(tenant_id)
-        requested_emails = {email.casefold() for email in emails}
-        return tuple(
-            contact
-            for contact in self._contacts
-            if contact.email is not None and contact.email.casefold() in requested_emails
-        )
-
-    def _matching_contacts(self, query: ContactQuery) -> tuple[Contact, ...]:
-        keyword = query.keyword.strip().casefold()
-        return tuple(
-            contact
-            for contact in self._contacts
-            if (query.contact_type is None or contact.type is query.contact_type)
-            and (not keyword or keyword in contact.name.casefold() or keyword in (contact.email or "").casefold())
-        )
+def _workspace_contact() -> Contact:
+    return Contact(_CONTACT_ID, ContactType.PLATFORM, "Reviewer", "reviewer@example.com", None, _NOW)
 
 
-class _BindingReadPort:
-    def __init__(self) -> None:
-        self.calls: list[tuple[TenantId, tuple[ContactId, ...]]] = []
-
-    def get_im_bindings(self, tenant_id: TenantId, contact_ids: Sequence[ContactId]) -> Sequence[IMBinding]:
-        self.calls.append((tenant_id, tuple(contact_ids)))
-        return ()
-
-
-class _EnterpriseContactPort:
-    def __init__(self, candidate: OrganizationCandidate) -> None:
-        self.candidate = candidate
-        self.created: list[tuple[TenantId, CandidateId, AccountId]] = []
-        self.deleted: list[tuple[TenantId, ContactId]] = []
-
-    def list_organization_candidates(
-        self,
-        page: int,
-        limit: int,
-        keyword: str = "",
-    ) -> Sequence[OrganizationCandidate]:
-        if page != 1 or limit < 1 or keyword.casefold() not in self.candidate.name.casefold():
-            return ()
-        return (self.candidate,)
-
-    def count_organization_candidates(self, keyword: str = "") -> int:
-        return int(keyword.casefold() in self.candidate.name.casefold())
-
-    def create_platform_entry(
-        self,
-        tenant_id: TenantId,
-        candidate_id: CandidateId,
-        added_by_account_id: AccountId,
-    ) -> None:
-        self.created.append((tenant_id, candidate_id, added_by_account_id))
-
-    def delete_platform_entry(self, tenant_id: TenantId, contact_id: ContactId) -> None:
-        self.deleted.append((tenant_id, contact_id))
-
-
-def _platform_contact() -> Contact:
-    return Contact(
-        id=_CONTACT_ID,
-        type=ContactType.PLATFORM,
-        name="Platform Reviewer",
-        email="reviewer@example.com",
-        avatar_file_id=None,
-        created_at=_NOW,
+def _organization_contact() -> OrganizationContact:
+    return OrganizationContact(
+        _CONTACT_ID,
+        "Reviewer",
+        "reviewer@example.com",
+        None,
+        _NOW,
+        datetime(2020, 1, 1),
     )
 
 
-def test_public_service_constructors_expose_the_core_and_enterprise_ports_separately() -> None:
-    core_hints = get_type_hints(ContactManagementService.__init__)
-    enterprise_hints = get_type_hints(EnterpriseContactManagementService.__init__)
+@pytest.mark.parametrize("organization_scope", [WorkspaceScope(_TENANT_ID), DeploymentScope()])
+def test_one_service_queries_both_directories_without_additional_contact_capabilities(
+    organization_scope: DirectoryScope,
+) -> None:
+    repository = create_autospec(ContactRepository, instance=True)
+    workspace = _workspace_contact()
+    organization = _organization_contact()
+    repository.list_contact.return_value = Page((workspace,), 1, 10)
+    repository.get_contacts_by_id.return_value = workspace
+    repository.get_contacts_by_ids.return_value = (workspace,)
+    repository.list_organization_contacts.return_value = (organization,)
+    repository.count_organization_contacts.return_value = 1
+    repository.get_organization_contact.return_value = organization
+    bindings = create_autospec(ContactIMBindingRepository, instance=True)
+    bindings.get_im_bindings.return_value = ()
+    bindings.get_organization_im_bindings.return_value = ()
+    service = ContactManagementService(repository, bindings, None)
 
-    assert core_hints["contact_repository"] is ContactRepository
-    assert core_hints["binding_repository"] is ContactIMBindingRepository
-    assert EnterpriseContactRepository not in core_hints.values()
-    assert enterprise_hints["contacts"] is ContactRepository
-    assert enterprise_hints["enterprise_contacts"] is EnterpriseContactRepository
+    page, listed = service.list_contacts(_TENANT_ID, page=1, limit=10, query=ContactQuery())
+    selected = service.get_contact(_TENANT_ID, _CONTACT_ID)
+    options = service.get_contact_options(_TENANT_ID, (_CONTACT_ID,))
+    organization_page = service.list_organization_contacts(organization_scope, page=1, limit=10, keyword="reviewer")
+    details = service.get_organization_contact_details(organization_scope, _CONTACT_ID)
 
-
-def test_tenant_scoped_core_service_needs_only_contact_and_binding_read_ports() -> None:
-    contact = _platform_contact()
-    contact_port = _TenantContactPort((contact,))
-    binding_port = _BindingReadPort()
-    service = ContactManagementService(contact_port, binding_port, None)
-
-    contact_page, contacts_with_bindings = service.list_contacts(
-        _TENANT_ID,
-        page=1,
-        limit=10,
-        query=ContactQuery(keyword="reviewer"),
-    )
-    selected = service.get_contact(_TENANT_ID, contact.id)
-    options = service.get_contact_options(_TENANT_ID, (contact.id,))
-
-    assert contact_page.items == (contact,)
-    assert tuple(item.contact for item in contacts_with_bindings) == (contact,)
+    assert page.items == (workspace,)
     assert selected is not None
-    assert selected.contact == contact
-    assert tuple(option.contact for option in options) == (contact,)
-    assert all(not option.im_bindings for option in options)
-    assert contact_port.tenant_calls == [_TENANT_ID, _TENANT_ID, _TENANT_ID]
-    assert binding_port.calls == [(_TENANT_ID, (contact.id,)), (_TENANT_ID, (contact.id,)), (_TENANT_ID, (contact.id,))]
+    assert selected.contact == workspace
+    assert listed == options == (selected,)
+    assert not selected.im_bindings
+    assert tuple(item.contact for item in organization_page.items) == (organization,)
+    assert service.count_organization_contacts(organization_scope, "reviewer") == 1
+    assert details is not None
+    assert details.contact.contact.id == selected.contact.id
+    assert details.contact.contact.joined_at == datetime(2020, 1, 1)
+    assert not details.contact.im_bindings
+    assert not details.im_binding_details
 
 
-def test_candidate_id_round_trips_unchanged_through_the_enterprise_service_port() -> None:
-    candidate_id = CandidateId(_CONTACT_ID)
-    candidate = OrganizationCandidate(
-        id=candidate_id,
-        name="Platform Reviewer",
-        email="reviewer@example.com",
-        avatar_file_id=None,
-        created_at=_NOW,
-    )
-    tenant_port = _TenantContactPort((_platform_contact(),))
-    enterprise_port = _EnterpriseContactPort(candidate)
-    query_service = ContactManagementService(tenant_port, _BindingReadPort(), None)
-    service = EnterpriseContactManagementService(tenant_port, enterprise_port, query_service)
+def test_platform_candidate_selection_preserves_the_shared_contact_id() -> None:
+    repository = create_autospec(ContactRepository, instance=True)
+    organization = _organization_contact()
+    repository.list_organization_contacts.return_value = (organization,)
+    repository.count_organization_contacts.return_value = 1
+    repository.get_contacts_by_ids.return_value = (_workspace_contact(),)
+    bindings = create_autospec(ContactIMBindingRepository, instance=True)
+    bindings.get_im_bindings.return_value = ()
+    queries = ContactManagementService(repository, bindings, None)
+    service = EnterpriseContactManagementService(repository, queries)
 
     listed = service.list_organization_candidates(page=1, limit=10, keyword="reviewer")
     count = service.count_organization_candidates("reviewer")
     added = service.add_platform_contacts(_TENANT_ID, (listed[0].id,), _ACCOUNT_ID)
     removed = service.remove_contacts(_TENANT_ID, (listed[0].id,))
 
-    assert count == len(listed) == 1
-    assert listed[0].id is candidate_id
-    assert enterprise_port.created == [(_TENANT_ID, candidate_id, _ACCOUNT_ID)]
-    assert enterprise_port.created[0][1] is candidate_id
-    assert tuple(item.contact.id for item in added) == (candidate_id,)
-    assert enterprise_port.deleted == [(_TENANT_ID, candidate_id)]
-    assert removed == (candidate_id,)
+    assert listed == (organization,)
+    assert count == 1
+    assert tuple(item.contact.id for item in added) == (_CONTACT_ID,)
+    assert removed == (_CONTACT_ID,)
+    repository.create_platform_entry.assert_called_once_with(_TENANT_ID, _CONTACT_ID, _ACCOUNT_ID)
+    repository.delete_platform_entry.assert_called_once_with(_TENANT_ID, _CONTACT_ID)

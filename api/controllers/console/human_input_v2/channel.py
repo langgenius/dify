@@ -14,6 +14,13 @@ from flask_restx import Resource
 from pydantic import Field, StringConstraints
 
 from controllers.common.human_input_v2._common import StrictModel
+from controllers.common.human_input_v2.config_version import (
+    InvalidConfigVersionError,
+    decode_email_config_version,
+    decode_im_config_version,
+    encode_email_config_version,
+    encode_im_config_version,
+)
 from controllers.common.human_input_v2.provider_updates import (
     EmailProviderCredentialsUpdateInput,
     IMProviderCredentialsUpdateInput,
@@ -69,13 +76,6 @@ from services.human_input_v2.im_channel_service_composition import (
 )
 
 from ._decorators import require_admin_or_owner, workspace_channel_api_admission
-from .config_version import (
-    InvalidConfigVersionError,
-    decode_email_config_version,
-    decode_im_config_version,
-    encode_email_config_version,
-    encode_im_config_version,
-)
 from .errors import (
     ChannelAlreadyConfiguredHttpError,
     ChannelNotFoundHttpError,

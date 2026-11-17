@@ -1,6 +1,7 @@
 """Account lifecycle regressions through application ports and real SQLite Sessions."""
 
 from collections.abc import Callable
+from contextlib import nullcontext
 from datetime import datetime
 from unittest.mock import Mock
 
@@ -8,6 +9,7 @@ import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
+from libs.key_providers.deployment_local import LocalDeploymentKeyBackend
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.human_input_v2 import ContactSubjectType, HumanInputContactIdentity
 from models.model import DifySetup
@@ -25,6 +27,7 @@ from services.account_errors import (
     AccountRegisterError,
     SeatsLimitExceededError,
 )
+from services.deployment_credential_service import DeploymentCredentialService
 from services.entities.account_entities import AccountSessionTokens
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from tests.helpers.unit.account_domain import AccountDomain
@@ -207,6 +210,7 @@ def test_setup_cleans_partial_state_on_failure(
         workspaces=account_domain.provisioning,
         installation=installation,
         telemetry=Telemetry(),
+        credential_keys=Mock(),
     )
     with pytest.raises(ValueError, match="Setup failed"):
         provisioner.provision(
@@ -222,6 +226,25 @@ def test_setup_persists_initialized_owner_before_telemetry(
     account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session]
 ) -> None:
     reported: list[str] = []
+    files: dict[str, bytes] = {}
+    storage = Mock()
+
+    def load(filename: str) -> bytes:
+        if filename not in files:
+            raise FileNotFoundError
+        return files[filename]
+
+    def save(filename: str, encoded: bytes) -> None:
+        assert filename not in files
+        files[filename] = encoded
+
+    storage.load_once.side_effect = load
+    storage.save.side_effect = save
+    credential_keys = DeploymentCredentialService(
+        sqlite_session_factory,
+        LocalDeploymentKeyBackend(storage),
+        lambda _: nullcontext(Mock()),
+    )
 
     class Telemetry:
         def report(self) -> None:
@@ -230,6 +253,7 @@ def test_setup_persists_initialized_owner_before_telemetry(
                 assert account is not None
                 assert account.initialized_at == datetime(2026, 1, 1)
                 assert session.scalar(select(DifySetup.version)) is not None
+                assert session.scalar(select(DifySetup.credential_encryption_key_ref)) is not None
                 owner = session.scalar(select(TenantAccountJoin))
                 assert owner is not None
                 assert owner.account_id == account.id
@@ -243,8 +267,44 @@ def test_setup_persists_initialized_owner_before_telemetry(
         workspaces=account_domain.provisioning,
         installation=InstallationStateRepository(session_factory=sqlite_session_factory),
         telemetry=Telemetry(),
+        credential_keys=credential_keys,
     )
     provisioner.provision(
         SetupInput(email="a@example.com", name="A", password="Valid123!", ip_address="127.0.0.1", language="en-US")
     )
     assert len(reported) == 1
+    key_material = dict(files)
+    credential_keys.provision()
+    assert len(files) == 1
+    assert files == key_material
+
+
+def test_setup_preserves_committed_identity_after_credential_key_failure(
+    account_domain: AccountDomain, sqlite_session_factory: sessionmaker[Session]
+) -> None:
+    from libs.credential_cipher import CredentialKeyUnavailableError
+
+    credential_keys = Mock()
+    credential_keys.provision.side_effect = CredentialKeyUnavailableError("Key unavailable")
+    provisioner = AccountSetupProvisioner(
+        accounts=account_domain.accounts,
+        workspaces=account_domain.provisioning,
+        installation=InstallationStateRepository(session_factory=sqlite_session_factory),
+        telemetry=Mock(),
+        credential_keys=credential_keys,
+    )
+    with pytest.raises(CredentialKeyUnavailableError):
+        provisioner.provision(
+            SetupInput(
+                email="a@example.com",
+                name="A",
+                password="Valid123!",
+                ip_address="127.0.0.1",
+                language="en-US",
+            )
+        )
+    with sqlite_session_factory() as session:
+        setup = session.scalar(select(DifySetup))
+        assert setup is not None
+        assert setup.instance_id is not None
+        assert session.scalar(select(Account)) is not None
