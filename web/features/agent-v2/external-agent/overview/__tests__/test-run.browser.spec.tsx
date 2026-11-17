@@ -1,4 +1,5 @@
 import { ORPCError } from '@orpc/client'
+import { act } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
@@ -52,6 +53,58 @@ beforeEach(({ onTestFinished }) => {
   api.leave.mockReset().mockResolvedValue({ result: 'success' })
 })
 
+it.each([
+  { label: 'unknown', tokens: null, reported: 1, total: 2, expected: 'Not reported' },
+  { label: 'zero', tokens: 0, reported: 1, total: 1, expected: '0' },
+  { label: 'positive', tokens: 12345, reported: 2, total: 2, expected: '12,345' },
+])(
+  'shows $label token usage and its reported attempt coverage',
+  async ({ tokens, reported, total, expected }) => {
+    api.start.mockResolvedValue(
+      testResult('succeeded', {
+        statistics: {
+          ...testResult().statistics,
+          total_tokens: tokens,
+          attempt_count: total,
+          token_reporting_numerator: reported,
+          token_reporting_denominator: total,
+        },
+      }),
+    )
+    const rendered = await renderTestPanel()
+    onTestFinished(() => rendered.queryClient.clear())
+    await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+    await task().fill('Review this contract.')
+    await panel().getByRole('button', { name: 'Run test', exact: true }).click()
+    await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
+    await expect
+      .element(
+        status().getByText(new RegExp(`^${expected}\\s*${reported}/${total} attempts reported$`)),
+      )
+      .toBeVisible()
+  },
+)
+
+it('shows missing token usage as unreported without replacing it with zero', async () => {
+  // The wire response can omit this field on older deployments, despite the generated contract.
+  api.start.mockResolvedValue({
+    ...testResult('succeeded'),
+    statistics: {
+      attempt_count: 1,
+      elapsed_time: null,
+      token_reporting_numerator: 0,
+      token_reporting_denominator: 1,
+    },
+  })
+  const rendered = await renderTestPanel()
+  onTestFinished(() => rendered.queryClient.clear())
+  await page.getByRole('button', { name: 'Test agent', exact: true }).click()
+  await task().fill('Review this contract.')
+  await panel().getByRole('button', { name: 'Run test', exact: true }).click()
+  await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
+  await expect.element(status().getByText(/^Not reported\s*0\/1 attempts reported$/)).toBeVisible()
+})
+
 it('polls the fixed anchor, cancels its latest retry child, and gives completion priority over pending cancellation', async () => {
   const rendered = await renderTestPanel()
   onTestFinished(() => rendered.queryClient.clear())
@@ -71,7 +124,7 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
   usePollClock()
   await openAndRun()
   expect(api.start).toHaveBeenCalledTimes(1)
-  await vi.advanceTimersByTimeAsync(1_500)
+  await act(() => vi.advanceTimersByTimeAsync(1_500))
   await expect.poll(() => api.read.mock.calls.length).toBe(1)
   await panel().getByRole('button', { name: 'Stop test', exact: true }).click()
   await expect.element(status().getByText('Success', { exact: true })).toBeVisible()
@@ -82,7 +135,7 @@ it('polls the fixed anchor, cancels its latest retry child, and gives completion
   await expect
     .element(panel().getByText('Result supplied by the agent.', { exact: true }))
     .toBeVisible()
-  await expect.element(status().getByText('Not provided', { exact: true })).toBeVisible()
+  await expect.element(status().getByText(/^Not reported\s*0\/0 attempts reported$/)).toBeVisible()
   await vi.advanceTimersByTimeAsync(10_000)
   expect(api.start).toHaveBeenCalledTimes(1)
   expect(api.read).toHaveBeenCalledTimes(2)

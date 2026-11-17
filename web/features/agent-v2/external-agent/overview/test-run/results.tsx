@@ -6,6 +6,9 @@ import { useTranslation } from 'react-i18next'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { ExternalAgentInvocationTrace } from '../../invocation-trace'
 
+const isTokenCount = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0
+
 export function TestAgentResults({
   run,
   tab,
@@ -32,6 +35,15 @@ export function TestAgentResults({
     unknown: t(($) => $['external.overview.testRun.unsupportedState']),
   }
   const outputs = run.result?.outputs
+  const statistics = run.result?.statistics
+  const totalTokens = statistics?.total_tokens
+  const reportedAttempts = statistics?.token_reporting_numerator
+  const totalAttempts = statistics?.token_reporting_denominator
+  const hasCoverage =
+    isTokenCount(reportedAttempts) &&
+    isTokenCount(totalAttempts) &&
+    reportedAttempts <= totalAttempts
+  const numberFormat = new Intl.NumberFormat(i18n.language)
   return (
     <div className="flex shrink-0 flex-col gap-4">
       <StatusContainer status={stopping ? 'running' : ended ? 'stopped' : run.status}>
@@ -76,7 +88,17 @@ export function TestAgentResults({
                   {t(($) => $['external.overview.testRun.totalTokens'])}
                 </dt>
                 <dd className="system-sm-medium text-text-secondary">
-                  {t(($) => $['external.overview.testRun.notProvided'])}
+                  {isTokenCount(totalTokens)
+                    ? numberFormat.format(totalTokens)
+                    : t(($) => $['external.overview.testRun.tokensNotReported'])}
+                  {hasCoverage && (
+                    <p className="mt-0.5 system-2xs-regular text-text-tertiary">
+                      {t(($) => $['external.overview.testRun.tokenReportingCoverage'], {
+                        reported: numberFormat.format(reportedAttempts),
+                        total: numberFormat.format(totalAttempts),
+                      })}
+                    </p>
+                  )}
                 </dd>
               </div>
             </>
