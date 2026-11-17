@@ -141,7 +141,7 @@ return {1, ARGV[1], event_id}
 
 _APPEND_EVENT_SCRIPT = (
     """
--- KEYS: record, events. ARGV: event JSON, max stream length, TTL.
+-- KEYS: record, events, cancel intent. ARGV: event JSON, max stream length, TTL.
 -- Return {-1, ""} if missing, {0, status} if sealed, {1, "running", event id} if appended.
 local record_json = redis.call("GET", KEYS[1])
 if not record_json then
@@ -157,6 +157,7 @@ local ttl = tonumber(ARGV[3])
 local event_id = redis.call("XADD", KEYS[2], "MAXLEN", "~", ARGV[2], "*", "payload", ARGV[1])
 redis.call("EXPIRE", KEYS[2], ttl)
 redis.call("EXPIRE", KEYS[1], ttl)
+redis.call("EXPIRE", KEYS[3], ttl)
 """
     + _REFRESH_IDEMPOTENCY_CLAIM
     + """
@@ -342,18 +343,20 @@ class RedisRunStore(RunEventSink):
         """Append a non-terminal event while the durable run status is still ``running``.
 
         The status check and the write share one linearization point with
-        ``finalize_run``/``finalize_cancellation``: once a terminal transition
-        wins, late non-terminal appends are rejected without consuming a
-        cursor or refreshing retention.
+        ``finalize_run``/``finalize_cancellation``. An append also keeps an
+        existing cancellation intent on the same retention window as the run.
+        Once a terminal transition wins, late non-terminal appends are
+        rejected without consuming a cursor or refreshing retention.
         """
         payload = RUN_EVENT_ADAPTER.dump_json(event, exclude={"id"}).decode()
         evaluation = cast(
             Awaitable[object],
             self.redis.eval(
                 _APPEND_EVENT_SCRIPT,
-                2,
+                3,
                 run_record_key(self.prefix, event.run_id),
                 run_events_key(self.prefix, event.run_id),
+                run_cancel_intent_key(self.prefix, event.run_id),
                 payload,
                 str(self.run_event_stream_max_length),
                 str(self.run_retention_seconds),
