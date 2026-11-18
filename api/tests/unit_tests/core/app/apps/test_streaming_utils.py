@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import queue
-from collections.abc import Generator
+import types
+from collections.abc import Generator, Iterator
+from typing import override
 
 import pytest
 from sqlalchemy.orm import Session
@@ -27,10 +29,12 @@ from core.app.entities.task_entities import (
     MessageEndStreamResponse,
     MessageStreamResponse,
     StreamEvent,
+    StreamTopicEvent,
 )
 from graphon.entities import WorkflowStartReason
-from libs.broadcast_channel.channel import SupportsPreparedSubscription
-from models.enums import ConversationFromSource, MessageStatus
+from libs.broadcast_channel.channel import Subscriber, SupportsPreparedSubscription
+from models.enums import ConversationFromSource, EndUserType, MessageStatus
+from models.enums import InvokeFrom as ModelInvokeFrom
 from models.model import AppMode, EndUser, Message
 from tasks.app_generate.workflow_execute_task import _publish_streaming_response
 
@@ -41,12 +45,18 @@ class FakeSubscription:
         self._state = state
         self._closed = False
 
-    def __enter__(self):
+    def __enter__(self) -> FakeSubscription:
         self._state["subscribed"] = True
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: types.TracebackType | None,
+    ) -> bool | None:
         self.close()
+        return None
 
     def close(self) -> None:
         self._closed = True
@@ -54,6 +64,13 @@ class FakeSubscription:
     @property
     def closed(self) -> bool:
         return self._closed
+
+    def __iter__(self) -> Iterator[bytes]:
+        while True:
+            message = self.receive()
+            if message is None:
+                return
+            yield message
 
     def receive(self, timeout: float | None = 0.1) -> bytes | None:
         if self._closed:
@@ -73,7 +90,7 @@ class FakeTopic:
         self.subscribe_calls = 0
         self.subscriber_view_calls = 0
 
-    def as_subscriber(self):
+    def as_subscriber(self) -> Subscriber:
         self.subscriber_view_calls += 1
         return self
 
@@ -95,15 +112,18 @@ class FakePreparedSubscriber(SupportsPreparedSubscription):
         self._state = state
         self.prepare_calls = 0
 
+    @override
     def prepare_subscription(self) -> FakeSubscription:
         self.prepare_calls += 1
         return FakeSubscription(self._queue, self._state)
 
+    @override
     def subscribe(self) -> FakeSubscription:
         return FakeSubscription(self._queue, self._state)
 
 
 class FailingPreparedSubscriber(FakePreparedSubscriber):
+    @override
     def prepare_subscription(self) -> FakeSubscription:
         raise RuntimeError("prepare failed")
 
@@ -113,6 +133,7 @@ class FakePreparedTopic(FakeTopic):
         super().__init__()
         self.subscriber = FakePreparedSubscriber(self._queue, self._state)
 
+    @override
     def as_subscriber(self) -> FakePreparedSubscriber:
         self.subscriber_view_calls += 1
         return self.subscriber
@@ -123,15 +144,18 @@ class FailingPreparedTopic(FakeTopic):
         super().__init__()
         self.subscriber = FailingPreparedSubscriber(self._queue, self._state)
 
+    @override
     def as_subscriber(self) -> FailingPreparedSubscriber:
         self.subscriber_view_calls += 1
         return self.subscriber
 
 
-def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(monkeypatch: pytest.MonkeyPatch):
+def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(monkeypatch: pytest.MonkeyPatch) -> None:
     topic = FakeTopic()
 
-    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+    def fake_get_response_topic(
+        cls: type[MessageBasedAppGenerator], app_mode: AppMode, workflow_run_id: str
+    ) -> FakeTopic:
         return topic
 
     monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
@@ -152,16 +176,17 @@ def test_retrieve_events_falls_back_to_subscribe_and_invokes_hook_after_entry(mo
     assert topic.subscribe_calls == 1
     assert topic.subscribed is False
     assert next(generator) == StreamEvent.PING.value
-    event = next(generator)
-    assert event["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
     with pytest.raises(StopIteration):
         next(generator)
 
 
-def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monkeypatch: pytest.MonkeyPatch):
+def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monkeypatch: pytest.MonkeyPatch) -> None:
     topic = FakePreparedTopic()
 
-    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+    def fake_get_response_topic(
+        cls: type[MessageBasedAppGenerator], app_mode: AppMode, workflow_run_id: str
+    ) -> FakeTopic:
         return topic
 
     monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
@@ -179,13 +204,17 @@ def test_retrieve_events_prepares_capable_topic_before_generator_iteration(monke
 
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
     assert next(generator) == StreamEvent.PING.value
-    assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
 
 
-def test_retrieve_events_propagates_preparation_error_before_generator_iteration(monkeypatch: pytest.MonkeyPatch):
+def test_retrieve_events_propagates_preparation_error_before_generator_iteration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     topic = FailingPreparedTopic()
 
-    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+    def fake_get_response_topic(
+        cls: type[MessageBasedAppGenerator], app_mode: AppMode, workflow_run_id: str
+    ) -> FakeTopic:
         return topic
 
     monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
@@ -198,23 +227,23 @@ def test_retrieve_events_propagates_preparation_error_before_generator_iteration
         )
 
 
-def test_normalize_terminal_events_defaults():
+def test_normalize_terminal_events_defaults() -> None:
     assert _normalize_terminal_events(None) == {
         StreamEvent.WORKFLOW_FINISHED.value,
         StreamEvent.WORKFLOW_PAUSED.value,
     }
 
 
-def test_normalize_terminal_events_empty_values():
+def test_normalize_terminal_events_empty_values() -> None:
     assert _normalize_terminal_events([]) == set({})
 
 
-def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.MonkeyPatch):
+def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     topic = FakeTopic()
     subscription = topic.subscribe()
     times = [1000.0, 1000.0, 1001.0, 1001.0, 1002.0]
 
-    def fake_time():
+    def fake_time() -> float:
         return times.pop(0)
 
     monkeypatch.setattr("core.app.apps.streaming_utils.time.time", fake_time)
@@ -230,7 +259,7 @@ def test_stream_topic_events_emits_ping_and_idle_timeout(monkeypatch: pytest.Mon
     assert next(generator) == StreamEvent.PING.value
 
 
-def test_stream_topic_events_can_continue_past_pause():
+def test_stream_topic_events_can_continue_past_pause() -> None:
     topic = FakeTopic()
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_PAUSED.value}).encode())
     topic.publish(json.dumps({"event": StreamEvent.WORKFLOW_FINISHED.value}).encode())
@@ -243,13 +272,13 @@ def test_stream_topic_events_can_continue_past_pause():
     )
 
     assert next(generator) == StreamEvent.PING.value
-    assert next(generator)["event"] == StreamEvent.WORKFLOW_PAUSED.value
-    assert next(generator)["event"] == StreamEvent.WORKFLOW_FINISHED.value
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_PAUSED.value)
+    assert next(generator) == StreamTopicEvent(event=StreamEvent.WORKFLOW_FINISHED.value)
     with pytest.raises(StopIteration):
         next(generator)
 
 
-def test_stream_topic_events_hides_completion_signal_and_delivers_prior_public_events():
+def test_stream_topic_events_hides_completion_signal_and_delivers_prior_public_events() -> None:
     topic = FakeTopic()
     message_end = {"event": StreamEvent.MESSAGE_END.value, "message_id": "message-id"}
     tts_end = {"event": StreamEvent.TTS_MESSAGE_END.value, "message_id": "message-id"}
@@ -265,7 +294,7 @@ def test_stream_topic_events_hides_completion_signal_and_delivers_prior_public_e
     assert subscription.closed is True
 
 
-def test_stream_completion_signal_ends_stream_when_public_terminal_events_are_disabled():
+def test_stream_completion_signal_ends_stream_when_public_terminal_events_are_disabled() -> None:
     topic = FakeTopic()
     workflow_finished = {"event": StreamEvent.WORKFLOW_FINISHED.value}
     topic.publish(json.dumps(workflow_finished).encode())
@@ -285,10 +314,12 @@ def test_stream_completion_signal_ends_stream_when_public_terminal_events_are_di
     assert subscription.closed is True
 
 
-def test_annotation_shaped_response_stream_completes_without_workflow_events(monkeypatch: pytest.MonkeyPatch):
+def test_annotation_shaped_response_stream_completes_without_workflow_events(monkeypatch: pytest.MonkeyPatch) -> None:
     topic = FakeTopic()
 
-    def fake_get_response_topic(cls, app_mode, workflow_run_id):
+    def fake_get_response_topic(
+        cls: type[MessageBasedAppGenerator], app_mode: AppMode, workflow_run_id: str
+    ) -> FakeTopic:
         return topic
 
     monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", classmethod(fake_get_response_topic))
@@ -350,10 +381,10 @@ def test_annotation_shaped_response_stream_completes_without_workflow_events(mon
 def test_input_moderation_direct_reply_completes_without_workflow_events(
     monkeypatch: pytest.MonkeyPatch,
     sqlite_session: Session,
-):
+) -> None:
     """A moderation text/stop queue saves the reply and reaches EOF without a workflow or annotation."""
     moderation_reply = "This request was blocked by input moderation."
-    user = EndUser(tenant_id="tenant-id", type="session", session_id="session-id")
+    user = EndUser(tenant_id="tenant-id", type=EndUserType.BROWSER, session_id="session-id")
     message = Message(
         id="message-id",
         app_id="app-id",
@@ -363,7 +394,7 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
         answer="",
         from_source=ConversationFromSource.API,
         from_end_user_id=user.id,
-        invoke_from=InvokeFrom.WEB_APP,
+        invoke_from=ModelInvokeFrom.WEB_APP,
         app_mode=AppMode.ADVANCED_CHAT,
     )
     sqlite_session.add(message)
@@ -420,6 +451,7 @@ def test_input_moderation_direct_reply_completes_without_workflow_events(
     monkeypatch.setattr(MessageBasedAppGenerator, "get_response_topic", lambda *_args, **_kwargs: topic)
     subscription = topic.subscribe()
 
+    assert generate_entity.workflow_run_id is not None
     _publish_streaming_response(
         converted,
         generate_entity.workflow_run_id,
