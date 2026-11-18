@@ -704,6 +704,7 @@ async function render(ui: ReactElement, options: RenderOptions = {}) {
   )
   const rendered = renderWithConsoleQuery(withProviders(ui), {
     knowledgeFsFeatures: { upload_enabled: systemFeaturesStateMock.uploadEnabled },
+    features: null,
     queryClient,
     systemFeatures: { deployment_edition: systemFeaturesStateMock.deploymentEdition },
   })

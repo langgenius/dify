@@ -656,6 +656,7 @@ async function renderPage(
       <CreateKnowledgePage />
     </QueryTestingAdapter>,
     {
+      features: null,
       accountProfile: {
         ...workspaceMembers[0],
         avatar: '',

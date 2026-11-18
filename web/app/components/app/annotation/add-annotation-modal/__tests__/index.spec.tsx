@@ -166,7 +166,7 @@ it('blocks saving until quota loads and lets a failed quota request retry', asyn
   api.features.mockReturnValueOnce(request.promise)
   const user = userEvent.setup()
   renderWithConsoleQuery(<AddAnnotationDialog appId="app-id" onAdded={vi.fn()} />, {
-    systemFeatures: { deployment_edition: 'CLOUD' },
+    features: null,
   })
   await user.click(trigger())
   expect(submit()).toBeDisabled()
