@@ -413,10 +413,13 @@ def test_loro_confirmation_matches_durable_history_and_duplicate_revision(
         assert durable.loro_draft_snapshot is not None
     duplicate, status = server.handlers["/"]["loro_draft_sync"](sid, payload)
     assert status == 200
+    confirmed_version = VersionVector.decode(first.pop("version"))
+    repeated_version = VersionVector.decode(duplicate.pop("version"))
+    assert confirmed_version.distance_between(repeated_version) == 0
     assert duplicate == first
 
 
-@pytest.mark.parametrize("kind", ["corrupt-update", "corrupt-version", "snapshot", "string-bytes"])
+@pytest.mark.parametrize("kind", ["corrupt-update", "corrupt-version", "snapshot", "string-bytes", "incomplete-batch"])
 def test_loro_rejects_invalid_binary_without_changing_the_draft(
     loro_client: LoroClient, sqlite_session_factory: sessionmaker[Session], kind: str
 ) -> None:
@@ -430,6 +433,20 @@ def test_loro_rejects_invalid_binary_without_changing_the_draft(
         payload["version"] = b"invalid"
     elif kind == "snapshot":
         payload["update"] = doc.export(ExportMode.Snapshot())
+    elif kind == "incomplete-batch":
+        doc.get_map("editState").insert("step", True)
+        doc.get_map("editLog").insert(
+            "step",
+            {
+                "step": "step",
+                "patches": [
+                    {"kind": "nodes", "id": "llm", "op": "set", "path": ["data", "title"], "value": "Uncommitted"},
+                    {"kind": "nodes", "id": "llm", "op": "set", "path": ["data", "prompt"]},
+                ],
+            },
+        )
+        payload["format"] = 2
+        payload["update"] = doc.export(ExportMode.Updates(VersionVector.decode(baseline)))
     else:
         payload["update"] = "invalid"
     assert server.handlers["/"]["loro_draft_sync"](sid, payload) == ({"msg": "invalid_loro_update"}, 400)
@@ -440,7 +457,7 @@ def test_loro_rejects_invalid_binary_without_changing_the_draft(
         assert durable.loro_draft_snapshot is not None
         recovered = LoroDoc()
         recovered.import_(durable.loro_draft_snapshot)
-        assert recovered.state_vv.encode() == baseline
+        assert recovered.state_vv.distance_between(VersionVector.decode(baseline)) == 0
 
 
 @pytest.mark.parametrize("reason", ["unjoined", "identity-changed", "disabled", "viewer", "wrong-tenant"])

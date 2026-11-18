@@ -14,6 +14,7 @@ from services.workflow_loro_document import (
     project_loro_graph,
     replace_loro_graph,
 )
+from services.workflow_loro_edits import LoroDraftLegacyEditConflictError
 
 if TYPE_CHECKING:
     from loro import LoroValue
@@ -236,6 +237,9 @@ def test_undone_node_and_case_survive_for_other_users_edges() -> None:
     }
     _record(doc, "03:b", [{**branch, "op": "remove"}])
     assert project_loro_graph(doc) == {"nodes": [{"id": "end"}], "edges": []}
+    doc.get_map("editState").delete("03:b")
+    doc.get_map("editState").delete("02:b")
+    assert project_loro_graph(doc) == {"nodes": [{"id": "end"}], "edges": []}
 
 
 def test_row_move_remove_and_undo_preserve_other_users_structural_changes() -> None:
@@ -269,6 +273,10 @@ def test_undone_nullable_configuration_survives_a_dependent_edit(as_list: bool) 
     doc.get_map("editState").delete("02:b")
     assert project_loro_graph(doc) == graph
     doc.get_map("editState").insert("02:b", True)
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"config": expected}}]
+    _record(doc, "03:b", [{**target, "op": "remove", "path": ["data", "config"]}])
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {}}]
+    doc.get_map("editState").delete("03:b")
     assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"config": expected}}]
 
 
@@ -324,3 +332,175 @@ def test_concurrent_first_rows_keep_their_identity_after_independent_undos(confi
     assert project_loro_graph(alice)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "bob"}]}}]
     alice.get_map("editState").delete("bob")
     assert project_loro_graph(alice) == graph
+
+
+@pytest.mark.parametrize(
+    ("record", "error"),
+    [
+        ({}, "record"),
+        ({"step": "s", "patches": None}, "edit list"),
+        ({"step": "s", "patches": [None]}, "Invalid graph edit"),
+        ({"step": "s", "patches": [{"kind": "viewport", "id": "a", "op": "remove", "path": []}]}, "target"),
+    ],
+)
+def test_rejects_incomplete_edit_records(record: LoroValue, error: str) -> None:
+    doc = load_loro_draft(None, {"nodes": [{"id": "a"}]})
+    doc.get_map("draftFormat").insert("version", 2)
+    doc.get_map("editLog").insert("s", record)
+    with pytest.raises(LoroDraftUpdateError, match=error):
+        project_loro_graph(doc)
+
+
+def test_graph_updates_cannot_bypass_or_downgrade_format_negotiation() -> None:
+    doc = load_loro_draft(None, {"nodes": [{"id": "a"}]})
+    _record(doc, "step", [{"kind": "nodes", "id": "a", "op": "set", "path": ["data", "title"], "value": "Alice"}])
+    with pytest.raises(LoroDraftUpdateError, match="require format 2"):
+        project_loro_graph(doc, client_format=1)
+    doc.get_map("draftFormat").insert("version", 2)
+    with pytest.raises(LoroDraftUpdateError, match="negotiated format"):
+        project_loro_graph(doc, client_format=1)
+    doc.get_map("draftFormat").insert("version", 3)
+    with pytest.raises(LoroDraftUpdateError, match="Invalid workflow document format"):
+        project_loro_graph(doc, client_format=2)
+
+
+@pytest.mark.parametrize(
+    ("operation", "error"),
+    [
+        ({"op": "remove", "path": ["data", {"row": 1}]}, "path"),
+        ({"op": "move", "path": ["data", "rows"], "after": None}, "row edit"),
+        ({"op": "insert", "path": ["data", "rows", {"row": "n:row"}], "value": {}, "after": 1}, "anchor"),
+        ({"op": "set", "path": ["data", "rows", {"row": "i:0"}], "value": {}}, "insert"),
+        ({"op": "set", "path": [], "value": {"id": "other"}}, "ID does not match"),
+        ({"op": "set", "path": ["id"], "value": "other"}, "ID does not match"),
+        ({"op": "set", "path": ["data", "text"], "value": b"binary"}, "JSON graph value"),
+    ],
+)
+def test_rejects_invalid_row_addresses_and_non_graph_values(operation: dict[str, LoroValue], error: str) -> None:
+    doc = load_loro_draft(None, {"nodes": [{"id": "a", "data": {"rows": [{}]}}]})
+    doc.get_map("draftFormat").insert("version", 2)
+    _record(doc, "s", [{"kind": "nodes", "id": "a", **operation}])
+    with pytest.raises(LoroDraftUpdateError, match=error):
+        project_loro_graph(doc)
+
+
+def test_edits_and_undo_follow_the_editor_representation_of_legacy_node_data() -> None:
+    conditions: list[LoroValue] = [{"comparison_operator": "is", "value": "old"}]
+    branch: dict[str, LoroValue] = {"type": "if-else", "logical_operator": "and", "conditions": conditions}
+    tool: dict[str, LoroValue] = {"type": "tool", "tool_configurations": {"max_tokens": 20}}
+    graph: dict[str, LoroValue] = {"nodes": [{"id": "if", "data": branch}, {"id": "tool", "data": tool}], "edges": []}
+    doc = load_loro_draft(None, graph)
+    doc.get_map("draftFormat").insert("version", 2)
+    _record(
+        doc,
+        "a",
+        [
+            {
+                "kind": "nodes",
+                "id": "if",
+                "op": "set",
+                "path": ["data", "cases", {"row": "i:0"}, "conditions", {"row": "i:0"}, "value"],
+                "value": "changed",
+            }
+        ],
+    )
+    _record(
+        doc,
+        "b",
+        [
+            {
+                "kind": "nodes",
+                "id": "tool",
+                "op": "set",
+                "path": ["data", "tool_configurations", "max_tokens", "value"],
+                "value": 42,
+            }
+        ],
+    )
+    case: dict[str, LoroValue] = {
+        "case_id": "true",
+        "logical_operator": "and",
+        "conditions": [{"comparison_operator": "is", "value": "changed"}],
+    }
+    configured: dict[str, LoroValue] = {
+        "id": "tool",
+        "data": {**tool, "tool_configurations": {"max_tokens": {"type": "constant", "value": 42}}},
+    }
+    assert project_loro_graph(doc)["nodes"] == [{"id": "if", "data": {**branch, "cases": [case]}}, configured]
+    doc.get_map("editState").delete("a")
+    assert project_loro_graph(doc)["nodes"] == [{"id": "if", "data": branch}, configured]
+    doc.get_map("editState").delete("b")
+    assert project_loro_graph(doc) == graph
+
+
+def test_explicit_row_delete_wins_over_stale_edits_until_the_row_is_reinserted() -> None:
+    doc = load_loro_draft(None, {"nodes": [{"id": "a", "data": {"rows": [{"name": "first"}, {"name": "second"}]}}]})
+    doc.get_map("draftFormat").insert("version", 2)
+    row: list[LoroValue] = ["data", "rows", {"row": "i:0"}]
+    target: dict[str, LoroValue] = {"kind": "nodes", "id": "a"}
+    _record(doc, "01", [{**target, "path": row, "op": "remove"}])
+    _record(doc, "02", [{**target, "path": [*row, "name"], "op": "set", "value": "stale"}])
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "second"}]}}]
+    _record(doc, "03", [{**target, "path": row, "op": "insert", "after": "i:1", "value": {"name": "reinserted"}}])
+    assert project_loro_graph(doc)["nodes"] == [
+        {"id": "a", "data": {"rows": [{"name": "second"}, {"name": "reinserted"}]}}
+    ]
+    doc.get_map("editState").delete("03")
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "second"}]}}]
+    doc.get_map("editState").delete("01")
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"rows": [{"name": "stale"}, {"name": "second"}]}}]
+
+
+def test_legacy_outbox_cannot_remove_the_anchor_of_a_concurrent_row_insertion() -> None:
+    server = load_loro_draft(None, {"nodes": [{"id": "a", "data": {"rows": [{"id": "a"}, {"id": "b"}]}}]})
+    baseline = server.state_vv
+    legacy = load_loro_draft(server.export(ExportMode.Snapshot()), {})
+    server.get_map("draftFormat").insert("version", 2)
+    _record(
+        server,
+        "peer",
+        [
+            {
+                "kind": "nodes",
+                "id": "a",
+                "op": "insert",
+                "path": ["data", "rows", {"row": "n:c"}],
+                "after": "i:1",
+                "value": {"id": "c"},
+            }
+        ],
+    )
+    _node_data(legacy).insert("rows", [{"id": "a"}])
+    with pytest.raises(LoroDraftLegacyEditConflictError, match="row anchor"):
+        merge_loro_update(server, legacy.export(ExportMode.Updates(baseline)), legacy_update=True)
+
+
+@pytest.mark.parametrize("old_write", ["sibling-field", "same-field", "delete-list", "replace-list"])
+def test_legacy_and_current_editors_can_change_different_fields_of_a_stable_row(old_write: str) -> None:
+    server = load_loro_draft(None, {"nodes": [{"id": "a", "data": {"rows": [{"id": "same", "label": "before"}]}}]})
+    baseline = server.state_vv
+    legacy = load_loro_draft(server.export(ExportMode.Snapshot()), {})
+    server.get_map("draftFormat").insert("version", 2)
+    _record(
+        server,
+        "b",
+        [{"kind": "nodes", "id": "a", "op": "set", "path": ["data", "rows", {"row": "i:0"}, "label"], "value": "Bob"}],
+    )
+    data = _node_data(legacy)
+    if old_write == "sibling-field":
+        data.insert("rows", [{"id": "same", "label": "before", "text": "Alice"}])
+    elif old_write == "same-field":
+        data.insert("rows", [{"id": "same", "label": "Alice"}])
+    elif old_write == "delete-list":
+        data.delete("rows")
+    else:
+        data.insert("rows", None)
+    delta = legacy.export(ExportMode.Updates(baseline))
+    if old_write == "sibling-field":
+        merge_loro_update(server, delta, legacy_update=True)
+        assert project_loro_graph(server)["nodes"] == [
+            {"id": "a", "data": {"rows": [{"id": "same", "label": "Bob", "text": "Alice"}]}}
+        ]
+    else:
+        with pytest.raises(LoroDraftLegacyEditConflictError, match="overlaps"):
+            merge_loro_update(server, delta, legacy_update=True)
