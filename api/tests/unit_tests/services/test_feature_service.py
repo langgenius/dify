@@ -144,6 +144,20 @@ def test_education_is_advertised_only_where_its_endpoints_exist(
     assert features.education.enabled is (edition in EDUCATION_EDITIONS)
 
 
+@pytest.mark.parametrize("edition", list(DeploymentEdition))
+def test_agent_preview_feature_matches_the_chat_admission_policy(
+    config_overrides: Callable[..., None], edition: DeploymentEdition
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=edition)
+
+    with patch("services.feature_service.EnterpriseService.get_workspace_info", return_value={}):
+        features = FeatureService.get_features("")
+
+    expected = edition in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+    assert FeatureService.is_agent_preview_enabled() is expected
+    assert features.agent_preview_enabled is expected
+
+
 def test_education_stays_disabled_on_cloud_without_the_env_flag(
     config_overrides: Callable[..., None],
 ) -> None:

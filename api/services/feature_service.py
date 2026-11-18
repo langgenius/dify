@@ -19,6 +19,11 @@ class FeatureService:
         """Cloud uses tenant Email Channels instead of the global mail client."""
         return dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
 
+    @staticmethod
+    def is_agent_preview_enabled() -> bool:
+        """Agent App preview runs are available on Cloud and Enterprise deployments only."""
+        return dify_config.DEPLOYMENT_EDITION in {DeploymentEdition.CLOUD, DeploymentEdition.ENTERPRISE}
+
     @classmethod
     def can_import_premium_site_settings(cls, tenant_id: str) -> bool:
         """Keep Cloud-only Web app customization out of free workspace imports."""
@@ -65,6 +70,7 @@ class FeatureService:
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
         features.im_centrally_managed = cls.is_im_centrally_managed()
+        features.agent_preview_enabled = cls.is_agent_preview_enabled()
         if exclude_vector_space:
             features.vector_space = None
 
