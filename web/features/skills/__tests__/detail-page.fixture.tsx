@@ -302,7 +302,12 @@ vi.mock('@/service/console', async (importOriginal) => {
                         .queryOptions,
                   },
                   patch: {
-                    mutationOptions: () => ({ mutationFn: mocks.versionPatchMutationFn }),
+                    mutationOptions: () =>
+                      actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.patch.mutationOptions(
+                        {
+                          mutationFn: mocks.versionPatchMutationFn,
+                        },
+                      ),
                   },
                   delete:
                     actual.consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId

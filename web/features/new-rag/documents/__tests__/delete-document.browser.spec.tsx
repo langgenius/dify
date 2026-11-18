@@ -196,3 +196,16 @@ describe('Knowledge document deletion', () => {
       .toHaveFocus()
   })
 })
+
+it('returns focus to the row menu button after cancelling a rename', async () => {
+  const { screen, actions } = await setup(['Alpha'])
+  const trigger = actions('Alpha')
+  await trigger.click()
+  await screen.getByRole('menuitem', { name: 'common.operation.rename' }).click()
+  const dialog = screen.getByRole('dialog', { name: 'common.operation.rename' })
+  await expect.element(dialog.getByRole('textbox')).toHaveValue('Alpha')
+  await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
+  await userEvent.keyboard('{Escape}')
+  await expect.element(dialog).not.toBeInTheDocument()
+  await expect.element(trigger).toHaveFocus()
+})

@@ -72,10 +72,37 @@ class WorkflowAgentWorkspaceRetirementLayer(Layer):
         )
 
 
+def retire_standalone_node_execution_workspaces(*, tenant_id: str, app_id: str, node_execution_id: str) -> None:
+    """Retire a finished single-step preview's Workspaces, then enqueue physical collection.
+
+    Preconditions: the node execution is terminal; single-step previews run
+    synchronously and cannot pause, so no later step reuses the Workspace.
+    Postconditions: its ACTIVE Workspaces and Bindings are RETIRED and committed
+    before collection is enqueued. Failures are logged and swallowed, like the
+    run layer, so cleanup never replaces the preview's own result or error.
+    """
+    try:
+        workspace_ids = WorkflowAgentWorkspaceStore().retire_standalone_node_execution(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            node_execution_id=node_execution_id,
+        )
+        enqueue_agent_resource_collection(tenant_id=tenant_id, workspace_ids=workspace_ids)
+    except Exception:
+        logger.exception(
+            "Failed to retire single-step Workflow Agent Workspaces",
+            extra={"tenant_id": tenant_id, "app_id": app_id, "node_execution_id": node_execution_id},
+        )
+
+
 def build_workflow_agent_workspace_retirement_layer(
     *, dify_run_context: DifyRunContext
 ) -> WorkflowAgentWorkspaceRetirementLayer:
     return WorkflowAgentWorkspaceRetirementLayer(dify_run_context=dify_run_context)
 
 
-__all__ = ["WorkflowAgentWorkspaceRetirementLayer", "build_workflow_agent_workspace_retirement_layer"]
+__all__ = [
+    "WorkflowAgentWorkspaceRetirementLayer",
+    "build_workflow_agent_workspace_retirement_layer",
+    "retire_standalone_node_execution_workspaces",
+]

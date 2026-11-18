@@ -478,7 +478,7 @@ def test_missing_provider_missing_file_and_broken_settings_block_with_a_reason(
     assert other_tenant.status == "disabled"
 
     def broken(_tenant_id: str, _provider: FileScanProvider) -> FileScanner:
-        raise ScannerConfigError("ClamAV is not configured for this deployment")
+        raise ScannerConfigError("endpoint is required")
 
     monkeypatch.setattr(service_module, "build_scanner", broken)
     assert _scan(service, upload_file_id).code is ScanErrorCode.PROVIDER_AUTH_FAILED
@@ -699,19 +699,30 @@ def test_provider_in_use_cannot_be_deleted(sqlite_session_factory: sessionmaker[
     assert providers.list(tenant_id=TENANT_ID) == []
 
 
-def test_clamav_is_offered_only_when_the_deployment_configures_it(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(provider_module.dify_config, "FILE_SCAN_CLAMAV_HOST", "")
-    available = {item.provider_type: item.available for item in FileScanProviderService.provider_types()}
-    assert available == {
-        "clamav": False,
-        "cloudmersive": True,
-        "scanii": True,
-        "metadefender": True,
-        "api": True,
-    }
+@pytest.mark.usefixtures("checked_scanner")
+def test_provider_remembered_by_a_turned_off_policy_can_be_deleted(
+    sqlite_session_factory: sessionmaker[Session],
+) -> None:
+    providers = FileScanProviderService(sqlite_session_factory)
+    policies = FileScanPolicyService(sqlite_session_factory)
+    created = providers.create(
+        tenant_id=TENANT_ID,
+        account_id=ACCOUNT_ID,
+        name="Scanner",
+        provider_type="cloudmersive",
+        config={},
+        credentials={"api_key": "k"},
+    )
+    policies.set(
+        tenant_id=TENANT_ID, scope=SCOPE, policy=ScanPolicy(enabled=False, provider_id=created.id), account_id=None
+    )
 
-    monkeypatch.setattr(provider_module.dify_config, "FILE_SCAN_CLAMAV_HOST", "clamav")
-    assert FileScanProviderService.provider_types()[0].available
+    # Scanning is off there, so the knowledge base neither counts as a user nor blocks the deletion.
+    assert providers.list(tenant_id=TENANT_ID)[0].policy_count == 0
+    providers.delete(tenant_id=TENANT_ID, provider_id=created.id)
+
+    assert providers.list(tenant_id=TENANT_ID) == []
+    assert policies.get(tenant_id=TENANT_ID, scope=SCOPE) == ScanPolicy(enabled=False, provider_id=None)
 
 
 def test_scan_content_scans_bytes_that_are_not_stored_yet_under_the_scope_policy(

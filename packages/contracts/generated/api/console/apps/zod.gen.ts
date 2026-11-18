@@ -4373,12 +4373,14 @@ export const zLlmMode = z.enum(['chat', 'completion'])
 
 /**
  * AppModelSelectionResponse
+ *
+ * Readable model selection; missing or null identifiers mean it is not fully configured.
  */
 export const zAppModelSelectionResponse = z.object({
   completion_params: z.record(z.string(), zJsonValue).optional(),
   mode: z.union([zLlmMode, z.literal('')]).optional(),
-  name: z.string().optional(),
-  provider: z.string().optional(),
+  name: z.string().nullish(),
+  provider: z.string().nullish(),
 })
 
 /**
@@ -6826,6 +6828,18 @@ export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountQuery = z.object({
  * Workflow runs count retrieved successfully
  */
 export const zGetAppsByAppIdAdvancedChatWorkflowRunsCountResponse = zWorkflowRunCountResponse
+
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetirePath = z.object(
+  {
+    app_id: z.uuid(),
+  },
+)
+
+/**
+ * Workspaces retired
+ */
+export const zPostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  z.void()
 
 export const zPostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewBody =
   zHumanInputFormPreviewPayload

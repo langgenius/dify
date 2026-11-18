@@ -3,6 +3,7 @@ from __future__ import annotations
 import importlib
 import json
 import os
+from collections.abc import Callable
 from copy import deepcopy
 from dataclasses import dataclass
 from inspect import unwrap
@@ -18,10 +19,11 @@ from flask.testing import FlaskClient
 from flask_restx import Resource
 from sqlalchemy import func, select
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session, object_session, sessionmaker
+from sqlalchemy.orm import Session, object_session, scoped_session, sessionmaker
 
 from controllers.common import session as controller_session
 from controllers.console.app import model_config as model_config_module
+from controllers.console.app.model_config_payload import AppAgentToolPayload
 from core.app.app_config.easy_ui_based_app.dataset.manager import DatasetConfigManager
 from core.app.app_config.easy_ui_based_app.model_config import manager as model_config_manager_module
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
@@ -29,7 +31,7 @@ from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from fields.app_model_config_response import AppModelConfigResponse
 from libs.external_api import ExternalApi
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, AppModelConfigDict
 from models.provider_ids import ModelProviderID
 
 app_wraps_module = importlib.import_module("controllers.console.app.wraps")
@@ -142,7 +144,7 @@ def model_config_http(sqlite_session: Session, monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", signal)
 
     class ModelConfigHttpResource(Resource):
-        def post(self):
+        def post(self) -> dict[str, str]:
             # Admission is supplied by this harness; parsing and HTTP errors use the real controller and API.
             return unwrap(model_config_module.ModelConfigResource.post)(
                 model_config_module.ModelConfigResource(), sqlite_session, "t1", "u1", app_model=app_model
@@ -494,7 +496,7 @@ def test_post_keeps_legacy_tools_readable_across_planning_strategies(
     model_config_http: _ModelConfigHttp, app_mode: AppMode, strategy: str
 ) -> None:
     model_config_http.app_model.mode = app_mode
-    tools = [
+    tools: list[AppAgentToolPayload] = [
         {
             "extension": {"values": [None, False]},
             "dataset": {"id": "00000000-0000-0000-0000-000000000001", "enabled": None},
@@ -691,7 +693,7 @@ def test_post_updates_non_agent_model_config_without_implicit_properties(
         lambda **_kwargs: {"pre_prompt": "hi"},
     )
 
-    def _from_model_config_dict(self, model_config):
+    def _from_model_config_dict(self: AppModelConfig, model_config: AppModelConfigDict) -> AppModelConfig:
         self.pre_prompt = model_config["pre_prompt"]
         self.id = "config-1"
         return self
@@ -757,7 +759,7 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
 
     captured: dict[str, object] = {}
 
-    def load_app_model(session, requested_app_id: str):
+    def load_app_model(session: Session | scoped_session[Session], requested_app_id: str) -> App | None:
         loaded_app = session.get(App, requested_app_id)
         captured["load_session"] = session
         return loaded_app
@@ -771,12 +773,20 @@ def test_post_uses_one_session_and_rolls_back_when_signal_fails(
     monkeypatch.setattr(app_wraps_module, "_load_app_model", load_app_model)
     monkeypatch.setattr(model_config_module.app_model_config_was_updated, "send", fail_signal)
 
-    method = model_config_module.ModelConfigResource.post
-    while not os.path.normpath(method.__code__.co_filename).endswith(
-        os.path.join("controllers", "common", "session.py")
-    ):
-        method = method.__wrapped__
-    assert os.path.normpath(method.__wrapped__.__code__.co_filename).endswith(
+    # `with_session` sits in the middle of the decorator chain (controllers/common/session.py),
+    # not at its end, so unwrap only down to that layer and take the wrapped view below it.
+    def is_controller_session_layer(candidate: Callable[..., object]) -> bool:
+        return os.path.normpath(candidate.__code__.co_filename).endswith(
+            os.path.join("controllers", "common", "session.py")
+        )
+
+    method: Callable[..., object] = unwrap(
+        model_config_module.ModelConfigResource.post, stop=is_controller_session_layer
+    )
+    assert is_controller_session_layer(method)
+    wrapped_view = vars(method)["__wrapped__"]
+    assert callable(wrapped_view)
+    assert os.path.normpath(wrapped_view.__code__.co_filename).endswith(
         os.path.join("controllers", "console", "app", "wraps.py")
     )
 
@@ -862,19 +872,19 @@ def test_post_encrypts_agent_tool_parameters(
     monkeypatch.setattr(model_config_module.ToolManager, "get_agent_tool_runtime", lambda **_kwargs: object())
 
     class _ParamManager:
-        def __init__(self, **_kwargs):
+        def __init__(self, **_kwargs: object) -> None:
             self.delete_called = False
 
-        def decrypt_tool_parameters(self, _value):
+        def decrypt_tool_parameters(self, _value: dict[str, object]) -> dict[str, object]:
             return {"secret": "decrypted"}
 
-        def mask_tool_parameters(self, _value):
+        def mask_tool_parameters(self, _value: dict[str, object]) -> dict[str, object]:
             return {"secret": "masked"}
 
-        def encrypt_tool_parameters(self, _value):
+        def encrypt_tool_parameters(self, _value: dict[str, object]) -> dict[str, object]:
             return {"secret": "encrypted"}
 
-        def delete_tool_parameters_cache(self):
+        def delete_tool_parameters_cache(self) -> None:
             self.delete_called = True
 
     monkeypatch.setattr(model_config_module, "ToolParameterConfigurationManager", _ParamManager)
@@ -888,6 +898,7 @@ def test_post_encrypts_agent_tool_parameters(
 
     stored_config = sqlite_session.get(AppModelConfig, app_model.app_model_config_id)
     assert stored_config is not None
+    assert stored_config.agent_mode is not None
     stored_agent_mode = json.loads(stored_config.agent_mode)
     assert app_model.mode == AppMode.AGENT_CHAT
     assert stored_agent_mode["tools"][0]["tool_parameters"]["secret"] == "encrypted"
