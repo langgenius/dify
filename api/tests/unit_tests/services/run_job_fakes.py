@@ -1,6 +1,6 @@
 """In-memory fakes shared by the run job tests."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 
 from models.enums import CreatorUserRole
@@ -17,7 +17,6 @@ class InMemoryRedis:
     values: dict[str, str] = field(default_factory=dict)
     hashes: dict[str, dict[str, str]] = field(default_factory=dict)
     ttls: dict[str, int] = field(default_factory=dict)
-    scripts: list[str] = field(default_factory=list)
 
     def set(self, name: str, value: str, ex: int | None = None, nx: bool = False) -> bool | None:
         if nx and name in self.values:
@@ -52,16 +51,6 @@ class InMemoryRedis:
             return 0
         fields[key] = value
         return 1
-
-    def register_script(self, script: str) -> Callable[..., int]:
-        self.scripts.append(script)
-
-        def delete_if_equal(*, keys: list[str], args: list[str]) -> int:
-            if self.values.get(keys[0]) != args[0]:
-                return 0
-            return self.delete(keys[0])
-
-        return delete_if_equal
 
     def exists(self, *names: str) -> int:
         return sum(name in self.hashes or name in self.values for name in names)

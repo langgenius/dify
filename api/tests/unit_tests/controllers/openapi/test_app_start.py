@@ -25,7 +25,7 @@ from extensions.ext_application_services import ApplicationServices
 from models import App
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobRecord, JobStatus
+from services.run_job_contracts import JobOwner, JobStatus
 from services.run_job_service import (
     READER_THREAD_NAME,
     WAIT_DEFAULT_SECONDS,
@@ -159,11 +159,11 @@ def test_start_audits_inside_the_start_then_ends_the_read_transaction_then_waits
     start = world.service.start
     wait = world.service.wait
 
-    def recording_start(opening: JobOpening, launch: Callable[[], Iterable[str]]) -> JobRecord:
+    def recording_start(opening: JobOpening, launch: Callable[[], Iterable[str]]) -> str:
         order.append("start")
-        record = start(opening, launch)
+        job_id = start(opening, launch)
         order.append("started")
-        return record
+        return job_id
 
     def recording_wait(owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         order.append("wait")
