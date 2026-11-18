@@ -2140,24 +2140,6 @@ export const zConversationDetail = z.object({
 })
 
 /**
- * AgentThought
- */
-export const zAgentThought = z.object({
-  answer: z.string().nullish(),
-  chain_id: z.string().nullish(),
-  created_at: z.int().nullish(),
-  files: z.array(z.string()),
-  id: z.string(),
-  message_id: z.string(),
-  observation: z.string().nullish(),
-  position: z.int(),
-  thought: z.string().nullish(),
-  tool: z.string().nullish(),
-  tool_input: z.string().nullish(),
-  tool_labels: zAnyJsonValue,
-})
-
-/**
  * MessageFile
  */
 export const zMessageFile = z.object({
@@ -3635,50 +3617,6 @@ export const zRetrievalSourceMetadata = z.object({
   word_count: z.int().nullish(),
 })
 
-/**
- * MessageDetail
- */
-export const zMessageDetail = z.object({
-  agent_thoughts: z.array(zAgentThought),
-  annotation: zConversationAnnotation.nullish(),
-  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
-  answer: z.string(),
-  answer_tokens: z.int(),
-  conversation_id: z.string(),
-  created_at: z.int().nullish(),
-  error: z.string().nullish(),
-  feedbacks: z.array(zFeedback),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
-  id: z.string(),
-  inputs: z.record(z.string(), zAnyJsonValue),
-  message: zAnyJsonValue,
-  message_files: z.array(zMessageFile),
-  message_tokens: z.int(),
-  metadata: zAnyJsonValue,
-  parent_message_id: z.string().nullish(),
-  provider_response_latency: z.number(),
-  query: z.string(),
-  retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
-  status: z.string(),
-  workflow_run_id: z.string().nullish(),
-})
-
-/**
- * ConversationMessageDetail
- */
-export const zConversationMessageDetail = z.object({
-  created_at: z.int().nullish(),
-  from_account_id: z.string().nullish(),
-  from_end_user_id: z.string().nullish(),
-  from_source: z.string(),
-  id: z.string(),
-  message: zMessageDetail.nullish(),
-  model_config: zConversationModelConfig.nullish(),
-  status: z.string(),
-})
-
 export const zAppConfigJsonValue = z.json().nullable()
 
 /**
@@ -4581,6 +4519,101 @@ export const zAppExternalDataToolFormResponse = z.object({
  */
 export const zAppJsonObjectFormResponse = z.object({
   json_object: zAppUserInputFormConfigResponse,
+})
+
+/**
+ * ToolCallLimitMetadata
+ *
+ * Usage at this call's dispatch boundary and its authoritative disposition.
+ */
+export const zToolCallLimitMetadata = z.object({
+  execution_status: z.enum(['executed', 'not_executed', 'unconfirmed']),
+  limit: z.int().gt(0),
+  reason: z.enum(['call_limit_reached', 'duplicate_tool_call']).nullish(),
+  tool_identity: z.string().min(1),
+  used: z.int().gte(0),
+})
+
+/**
+ * AgentToolActivity
+ *
+ * One native tool call's application-owned, persistable display metadata.
+ *
+ * Native call identity is independent of its display name and the SQL thought
+ * row. Arguments, credentials and observations remain outside this sidecar.
+ * Missing metadata on older thoughts conveys no execution or quota claim.
+ */
+export const zAgentToolActivity = z.object({
+  call_limit: zToolCallLimitMetadata.nullish(),
+  error: z.string().nullish(),
+  id: z.string().min(1),
+  run_id: z.string().min(1),
+  status: z.enum(['cancelled', 'failed', 'not_executed', 'running', 'started', 'succeeded']),
+  tool_call_id: z.string().min(1),
+  tool_name: z.string().min(1),
+})
+
+/**
+ * AgentThought
+ */
+export const zAgentThought = z.object({
+  answer: z.string().nullish(),
+  chain_id: z.string().nullish(),
+  created_at: z.int().nullish(),
+  files: z.array(z.string()),
+  id: z.string(),
+  message_id: z.string(),
+  observation: z.string().nullish(),
+  position: z.int(),
+  thought: z.string().nullish(),
+  tool: z.string().nullish(),
+  tool_activity: zAgentToolActivity.nullish(),
+  tool_input: z.string().nullish(),
+  tool_labels: zAnyJsonValue,
+})
+
+/**
+ * MessageDetail
+ */
+export const zMessageDetail = z.object({
+  agent_thoughts: z.array(zAgentThought),
+  annotation: zConversationAnnotation.nullish(),
+  annotation_hit_history: zConversationAnnotationHitHistory.nullish(),
+  answer: z.string(),
+  answer_tokens: z.int(),
+  conversation_id: z.string(),
+  created_at: z.int().nullish(),
+  error: z.string().nullish(),
+  feedbacks: z.array(zFeedback),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  inputs: z.record(z.string(), zAnyJsonValue),
+  message: zAnyJsonValue,
+  message_files: z.array(zMessageFile),
+  message_tokens: z.int(),
+  metadata: zAnyJsonValue,
+  parent_message_id: z.string().nullish(),
+  provider_response_latency: z.number(),
+  query: z.string(),
+  retriever_resources: z.array(zRetrievalSourceMetadata).optional(),
+  status: z.string(),
+  workflow_run_id: z.string().nullish(),
+})
+
+/**
+ * ConversationMessageDetail
+ */
+export const zConversationMessageDetail = z.object({
+  created_at: z.int().nullish(),
+  from_account_id: z.string().nullish(),
+  from_end_user_id: z.string().nullish(),
+  from_source: z.string(),
+  id: z.string(),
+  message: zMessageDetail.nullish(),
+  model_config: zConversationModelConfig.nullish(),
+  status: z.string(),
 })
 
 /**

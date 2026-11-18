@@ -112,6 +112,60 @@ their reservation consumed allowance, but no external execution is claimed.
 This covers cancellation between reservation and a tool result without adding
 an independently written event or refunding uncertain dispatch.
 
+### Agent App Preview and persisted history
+
+Agent App tool thoughts expose the same structured `tool_activity` value in
+three existing Console APIs:
+
+- `POST /console/api/agent/{agent_id}/chat-messages`: the `agent_thought` SSE
+  event has an optional top-level `tool_activity` alongside the SQL thought `id`.
+- `GET /console/api/agent/{agent_id}/chat-messages`: each message's
+  `agent_thoughts[]` contains the same optional field.
+- `GET /console/api/agent/{agent_id}/logs/{conversation_id}/messages`: each App
+  message includes `agent_thoughts[]` with that field. Existing source filters
+  still apply; Preview runs require the `debugger` source when reading Logs.
+
+```json
+{
+  "id": "<runtime-run-id>:<native-call-id>",
+  "run_id": "<runtime-run-id>",
+  "tool_call_id": "<native-call-id>",
+  "tool_name": "search",
+  "status": "not_executed",
+  "error": "Call limit reached (3 per run). This request was not executed.",
+  "call_limit": {
+    "tool_identity": "<stable-operation-identity>",
+    "limit": 3,
+    "used": 3,
+    "execution_status": "not_executed",
+    "reason": "call_limit_reached"
+  }
+}
+```
+
+The enclosing thought ID remains its persistent SQL row ID; the sidecar ID is
+the native run/call identity. Sequential replays reuse that tool row and cannot
+regress a completed tool. New turns have fresh native run IDs and quota.
+Thinking and answer thoughts, legacy records and invalid historical sidecars
+omit `tool_activity`; observations are never parsed to invent it. Unlimited
+native tools can have activity status with `call_limit: null`.
+
+The recorder stores only validated activity under `agent_v2_tool_activity` in
+the existing thought metadata column and commits before publishing a snapshot.
+The APIs return this allowlisted value, not the raw metadata or provider config.
+No schema migration or Tracing configuration is required. Agent Logs loads all
+thoughts for the current page in one App/tenant/conversation-scoped query.
+
+Stop may close the SSE consumer before its final snapshot is delivered. Cleanup
+still applies the authoritative terminal reservations and persists unfinished
+calls as `cancelled`/`failed` with `execution_status: "unconfirmed"`; clients can
+refresh history or Logs. A pending answer-text flush cannot bypass that cleanup.
+Completed tool outcomes and their original frozen limits remain unchanged.
+
+Workflow live tool records retain their existing `agent_log.data.data.call_limit`
+path. This App thought projection does not synthesize thought rows for the
+Workflow-source Agent Logs entries, which remain separate execution records.
+
 Deploy the updated Agent server fleet before sending the new configuration
 field from the API. Older tool DTOs reject unknown fields, and older server
 record DTOs do not read records with private quota state. Drain retained

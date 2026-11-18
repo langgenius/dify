@@ -2103,6 +2103,7 @@ export type AgentThought = {
   position: number
   thought?: string | null
   tool?: string | null
+  tool_activity?: AgentToolActivity | null
   tool_input?: string | null
   tool_labels: AnyJsonValue
 }
@@ -3202,6 +3203,16 @@ export type SimpleMessageDetail = {
   query: string
 }
 
+export type AgentToolActivity = {
+  call_limit?: ToolCallLimitMetadata | null
+  error?: string | null
+  id: string
+  run_id: string
+  status: 'cancelled' | 'failed' | 'not_executed' | 'running' | 'started' | 'succeeded'
+  tool_call_id: string
+  tool_name: string
+}
+
 export type SimpleAccount = {
   email: string
   id: string
@@ -3936,6 +3947,14 @@ export type StringListSource = {
   selector?: Array<string>
   type: ValueSourceType
   value?: Array<string>
+}
+
+export type ToolCallLimitMetadata = {
+  execution_status: 'executed' | 'not_executed' | 'unconfirmed'
+  limit: number
+  reason?: 'call_limit_reached' | 'duplicate_tool_call' | null
+  tool_identity: string
+  used: number
 }
 
 export type AppProviderAgentToolPayload = {
