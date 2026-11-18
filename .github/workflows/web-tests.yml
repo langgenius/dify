@@ -63,8 +63,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4]
-        shardTotal: [4]
+        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
+        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2, 3, 4]') }}
+        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[4]') }}
     defaults:
       run:
         shell: bash
@@ -107,8 +108,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2]
-        shardTotal: [2]
+        # Pull requests run only affected tests, so one machine avoids repeated setup cost.
+        shardIndex: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[1, 2]') }}
+        shardTotal: ${{ fromJSON(github.event_name == 'pull_request' && '[1]' || '[2]') }}
     defaults:
       run:
         shell: bash
