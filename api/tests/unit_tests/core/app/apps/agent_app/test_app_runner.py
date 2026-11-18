@@ -105,6 +105,14 @@ def _thought_rows(session: Session) -> list[MessageAgentThought]:
     return list(session.scalars(select(MessageAgentThought).order_by(MessageAgentThought.position)).all())
 
 
+def _message_file_rows(session: Session) -> list[MessageFile]:
+    """Require no pending writes, then expire cached attachments and read stored columns."""
+    assert not session.new
+    assert not session.dirty
+    session.expire_all()
+    return list(session.scalars(select(MessageFile).order_by(MessageFile.url)).all())
+
+
 class _NoToolsBuilder:
     def build_layers(
         self,
@@ -1149,7 +1157,7 @@ def test_plugin_blob_files_are_owned_persisted_and_published_once(
     finally:
         event.remove(sqlite_session, "before_commit", record_commit)
 
-    attachments = list(sqlite_session.scalars(select(MessageFile).order_by(MessageFile.url)))
+    attachments = _message_file_rows(sqlite_session)
     assert len(attachments) == len(published_with_files) == 2
     by_upload_id = {file.upload_file_id: file for file in attachments}
     assert by_upload_id[files[0].id].url == f"/files/tools/{files[0].id}.png"
@@ -1200,7 +1208,7 @@ def test_unowned_plugin_blob_files_are_not_delivered(sqlite_session: Session, in
             },
         )
     )
-    assert list(sqlite_session.scalars(select(MessageFile))) == []
+    assert _message_file_rows(sqlite_session) == []
     assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
     assert _thought_rows(sqlite_session)[0].observation == "Still observable"
 
@@ -1243,10 +1251,10 @@ def test_failed_blob_attachment_commit_can_be_retried(sqlite_session: Session) -
     finally:
         event.remove(sqlite_session, "before_commit", fail_attachment_commit)
     assert not any(isinstance(item, QueueMessageFileEvent) for item in qm.events)
-    assert list(sqlite_session.scalars(select(MessageFile))) == []
+    assert _message_file_rows(sqlite_session) == []
 
     recorder.handle_stream_event(stream_event)
-    assert len(list(sqlite_session.scalars(select(MessageFile)))) == 1
+    assert len(_message_file_rows(sqlite_session)) == 1
     assert len([item for item in qm.events if isinstance(item, QueueMessageFileEvent)]) == 1
 
 
