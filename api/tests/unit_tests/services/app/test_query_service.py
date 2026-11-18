@@ -17,9 +17,15 @@ from models.workflow import Workflow, WorkflowType
 from repositories.app.console_repository import ConsoleAppRepository
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.app.access import AppAccessFilter
-from services.app.query_service import AppDiscoveryQuery, AppDiscoveryService, AppListLogin
+from services.app.query_service import (
+    PERMITTED_WALK_MAX_APPS,
+    PERMITTED_WALK_PAGE_SIZE,
+    AppDiscoveryQuery,
+    AppDiscoveryService,
+    AppListLogin,
+)
 from services.entities.app_entities import PermittedAppsPage
-from services.errors.app import AppDiscoveryNotFoundError
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsTooManyError
 
 
 @dataclass
@@ -611,3 +617,31 @@ def test_every_login_kind_has_a_rule(joined_service: AppDiscoveryService, sqlite
             login(kind, "", workspace, resource_app_ids=frozenset()), AppDiscoveryQuery(1, 1, None, None)
         )
         assert result.items == []
+
+
+def test_an_external_sso_login_with_a_workspace_reads_at_most_the_walk_bound(
+    joined_service: AppDiscoveryService, by_workspace: VisibilityByWorkspace, two_workspaces: TwoWorkspaces
+) -> None:
+    pages = PERMITTED_WALK_MAX_APPS // PERMITTED_WALK_PAGE_SIZE
+    by_workspace.permitted = [PermittedAppsPage([str(uuid4())], 10**6, True) for _ in range(pages + 1)]
+    with pytest.raises(PermittedAppsTooManyError):
+        joined_service.list_apps_for(
+            login(SubjectType.EXTERNAL_SSO, "", two_workspaces.first), AppDiscoveryQuery(1, 20, None, None)
+        )
+    assert [q.page for q in by_workspace.queries] == list(range(1, pages + 1))
+    assert {q.limit for q in by_workspace.queries} == {PERMITTED_WALK_PAGE_SIZE}
+
+
+def test_an_external_sso_login_with_a_workspace_reads_up_to_the_bound_exactly(
+    joined_service: AppDiscoveryService, by_workspace: VisibilityByWorkspace, two_workspaces: TwoWorkspaces
+) -> None:
+    pages = PERMITTED_WALK_MAX_APPS // PERMITTED_WALK_PAGE_SIZE
+    w = two_workspaces
+    by_workspace.permitted = [PermittedAppsPage([str(uuid4())], 10**6, True) for _ in range(pages - 1)] + [
+        PermittedAppsPage([w.first_apps[0]], 10**6, False)
+    ]
+    result = joined_service.list_apps_for(
+        login(SubjectType.EXTERNAL_SSO, "", w.first), AppDiscoveryQuery(1, 20, None, None)
+    )
+    assert [entry.app.id for entry in result.items] == [w.first_apps[0]]
+    assert len(by_workspace.queries) == pages
