@@ -8,13 +8,10 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.entities.provider_configuration import ProviderModelBundle
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit
 from core.plugin.impl.model import PluginModelClient
 from core.plugin.plugin_service import PluginService
-from enums import DeploymentEdition
-from graphon.model_runtime.entities.model_entities import ModelType
+from extensions.application_services.moderation_policy import platform_moderation_enabled
 from machinery.context import AppRequestContext
-from models.provider import ProviderType
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_adapters import WorkspaceTokenCipher
 from services.moderation_adapters import (
@@ -28,23 +25,6 @@ from services.moderation_service import ModerationPhase, ModerationRule, Moderat
 
 if TYPE_CHECKING:
     from core.model_manager import LLMModerationPolicy
-
-
-def platform_moderation_enabled(bundle: ProviderModelBundle) -> bool:
-    """Select Cloud AI-credit LLMs only when enabled; other models are excluded without provider I/O."""
-    if (
-        dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
-        or not dify_config.HOSTED_MODERATION_ENABLED
-        or bundle.model_type_instance.model_type != ModelType.LLM
-        or bundle.configuration.using_provider_type != ProviderType.SYSTEM
-    ):
-        return False
-    configuration = bundle.configuration.system_configuration
-    return configuration.current_quota_type in {ProviderQuotaType.TRIAL, ProviderQuotaType.PAID} and any(
-        quota.quota_type == configuration.current_quota_type
-        and quota.quota_unit in {QuotaUnit.CREDITS, QuotaUnit.TIMES}
-        for quota in configuration.quota_configurations
-    )
 
 
 def build_platform_moderation_service() -> ModerationService:

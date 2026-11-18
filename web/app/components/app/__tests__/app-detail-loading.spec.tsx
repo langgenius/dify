@@ -53,7 +53,7 @@ describe('App sidebar route loading', () => {
   it('keeps the shell visible while loading the app detail once', async () => {
     const pending = deferredResponse()
     request.mockReturnValue(pending.promise)
-    renderWithConsoleQuery(<Route />)
+    renderWithConsoleQuery(<Route />, { features: {} })
     expect(screen.getByRole('link', { name: 'Back to Apps' })).toBeVisible()
     expect(screen.getByText('navigation.menus.appDetail')).toBeVisible()
     expect(screen.getByRole('button', { name: /common\.operation\.moreActionsFor/ })).toBeDisabled()
@@ -72,7 +72,7 @@ describe('App sidebar route loading', () => {
   it('retries a failed query inside the sidebar', async () => {
     request.mockRejectedValueOnce(new Error('unavailable'))
     request.mockResolvedValue(Response.json(app('app-1', 'Recovered app')))
-    renderWithConsoleQuery(<AppDetailSection />)
+    renderWithConsoleQuery(<AppDetailSection />, { features: {} })
     expect(await screen.findByRole('alert')).toBeVisible()
     const user = userEvent.setup()
     await user.click(screen.getByRole('button', { name: 'common.errorBoundary.tryAgain' }))
@@ -84,7 +84,7 @@ describe('App sidebar route loading', () => {
     const a = deferredResponse()
     const b = deferredResponse()
     request.mockImplementation((url) => (url.endsWith('/app-1') ? a.promise : b.promise))
-    const view = renderWithConsoleQuery(<Route />)
+    const view = renderWithConsoleQuery(<Route />, { features: {} })
     await waitFor(() => expect(request).toHaveBeenCalledTimes(1))
     pathname = '/app/app-2/logs'
     view.rerender(<Route />)
@@ -105,7 +105,7 @@ describe('App sidebar route loading', () => {
 
   it('shares cached data between sections and reacts to metadata and permission changes', async () => {
     request.mockResolvedValue(Response.json(app('app-1', 'First app')))
-    const view = renderWithConsoleQuery(<Route />)
+    const view = renderWithConsoleQuery(<Route />, { features: {} })
     await screen.findByText('First app')
     pathname = '/app/app-1/logs'
     view.rerender(<Route />)
@@ -133,7 +133,7 @@ describe('App sidebar route loading', () => {
     '/app//workflow',
   ])('does not request App Detail at %s', (path) => {
     pathname = path
-    renderWithConsoleQuery(<Route />)
+    renderWithConsoleQuery(<Route />, { features: {} })
     expect(request).not.toHaveBeenCalled()
   })
 })

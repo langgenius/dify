@@ -27498,6 +27498,7 @@ Effective feature availability and limits for the current workspace.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -27508,6 +27509,8 @@ Effective feature availability and limits for the current workspace.
 | enable_file_scan | boolean |  | Yes |
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
