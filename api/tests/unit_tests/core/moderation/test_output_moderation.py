@@ -36,7 +36,11 @@ def make_handler(evaluator: RecordingEvaluator) -> OutputModeration:
     )
 
 
-def make_keyword_handler(*, injected_evaluator: bool = False) -> OutputModeration:
+def make_keyword_handler(
+    *,
+    injected_evaluator: bool = False,
+    output_evaluator: Callable[[str], ModerationOutputsResult] | None = None,
+) -> OutputModeration:
     code_based_extension.init()
     rule = ModerationRule(
         type="keywords",
@@ -51,7 +55,7 @@ def make_keyword_handler(*, injected_evaluator: bool = False) -> OutputModeratio
         tenant_id="tenant-1",
         app_id="app-1",
         rule=rule,
-        output_evaluator=backend.moderation_for_outputs if injected_evaluator else None,
+        output_evaluator=output_evaluator or (backend.moderation_for_outputs if injected_evaluator else None),
     )
 
 
@@ -204,6 +208,21 @@ def test_keyword_boundary_context_includes_existing_stream_prefix(config_overrid
     assert text == ""
     assert replacement == "Refused"
     assert handler.moderation_completion("xxblocked-safe") == ("Refused", True)
+
+
+def test_keyword_override_preserves_existing_prefix_across_boundary(
+    config_overrides: Callable[..., None],
+) -> None:
+    config_overrides(MODERATION_BUFFER_SIZE=5)
+    evaluator = RecordingEvaluator(ModerationAction.OVERRIDDEN)
+    handler = make_keyword_handler(output_evaluator=evaluator)
+
+    text, replacement = handler.append_new_token("cked-safe", prefix="xxblo")
+
+    assert text == ""
+    assert replacement == "xxmasked-"
+    assert handler.moderation_completion("xxblocked-safe") == ("xxmasked-safe", True)
+    assert evaluator.calls == ["xxblocked-", "ocked-safe"]
 
 
 def test_keyword_stream_overlap_preserves_safe_output(config_overrides: Callable[..., None]) -> None:
