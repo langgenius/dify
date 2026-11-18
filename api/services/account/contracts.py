@@ -8,6 +8,13 @@ from services.entities.account_entities import AccountPasswordDigest
 
 
 @dataclass(frozen=True, slots=True)
+class TokenerSignupEnrollment:
+    """Positive signup policy frozen before the account is inserted; contains no key."""
+
+    plugin_unique_identifier: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class AccountCreation:
     email: str
     name: str
@@ -19,6 +26,7 @@ class AccountCreation:
     check_normalized_email: bool = False
     status: str = "active"
     initialized_at: datetime | None = None
+    tokener_signup: TokenerSignupEnrollment | None = None
     id: str = field(default_factory=lambda: str(uuid4()))
 
 

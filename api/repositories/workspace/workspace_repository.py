@@ -26,6 +26,8 @@ from models.account import (
 from models.dataset import Dataset
 from models.enums import ProviderQuotaType
 from models.model import App
+from models.model_billing import TenantModelBillingProfile
+from models.tokener import AccountTokenerSignupIntent, TenantTokenerIntegration
 from repositories.account.repository import SQLAlchemyAccountRepository
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
@@ -102,9 +104,15 @@ class WorkspaceRepository(
             if account is not None:
                 owner_id = SQLAlchemyAccountRepository.add(account, session=session).id
             elif owner_id is not None:
-                owner = session.get(Account, owner_id, with_for_update=only_if_no_active_workspace)
+                owner = session.get(Account, owner_id, with_for_update=True)
                 if owner is None:
                     raise WorkspaceOwnerNotFoundError()
+            signup_intent = (
+                session.get(AccountTokenerSignupIntent, owner_id, with_for_update=True)
+                if owner_id is not None
+                else None
+            )
+            pending_intent = signup_intent if signup_intent is not None and signup_intent.consumed_at is None else None
             if (
                 only_if_no_active_workspace
                 and session.scalar(
@@ -115,7 +123,10 @@ class WorkspaceRepository(
                 )
                 is not None
             ):
+                if pending_intent is not None:
+                    pending_intent.consumed_at = naive_utc_now()
                 return None
+            eligible_intent = pending_intent if account is not None or only_if_no_active_workspace else None
             creation = prepare()
             tenant = Tenant(name=creation.name, encrypt_public_key=creation.encrypt_public_key)
             tenant.id = creation.id
@@ -136,14 +147,29 @@ class WorkspaceRepository(
                         include_plugins=[],
                     )
                 )
-            session.add(
-                TenantCreditPool(
-                    tenant_id=tenant.id,
-                    quota_limit=creation.trial_credits,
-                    quota_used=0,
-                    pool_type=ProviderQuotaType.TRIAL,
+            if eligible_intent is not None:
+                session.add_all(
+                    [
+                        TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"),
+                        TenantTokenerIntegration(
+                            tenant_id=tenant.id, plugin_unique_identifier=eligible_intent.plugin_unique_identifier
+                        ),
+                    ]
                 )
-            )
+            else:
+                session.add(
+                    TenantCreditPool(
+                        tenant_id=tenant.id,
+                        quota_limit=creation.trial_credits,
+                        quota_used=0,
+                        pool_type=ProviderQuotaType.TRIAL,
+                    )
+                )
+            if pending_intent is not None:
+                # A raced ordinary first workspace retires, but never converts,
+                # that workspace. Deletion cannot reopen this consumed intent.
+                pending_intent.consumed_at = naive_utc_now()
+                pending_intent.consumed_tenant_id = tenant.id if eligible_intent is not None else None
             session.flush()
             return CreatedWorkspace(
                 tenant.id,

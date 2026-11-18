@@ -3,9 +3,13 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Literal, NamedTuple
+from typing import TYPE_CHECKING, Literal, NamedTuple
 
 from enums import CloudPlan
+from enums.model_billing import ModelBillingSource
+
+if TYPE_CHECKING:
+    from services.entities.tokener_metering import TokenerTenantMeteringResponse
 
 
 @dataclass(frozen=True)
@@ -121,6 +125,9 @@ class EffectiveCreditPool:
     quota_used: int | None = None
     exhausted_at: int | None = None
     next_credit_reset_date: int | None = None
+    model_billing_source: ModelBillingSource = ModelBillingSource.LEGACY_MESSAGE_CREDITS
+    tokener_bootstrap_status: str | None = None
+    tokener_metering: "TokenerTenantMeteringResponse | None" = None
 
     @property
     def remaining_credits(self) -> int | None:

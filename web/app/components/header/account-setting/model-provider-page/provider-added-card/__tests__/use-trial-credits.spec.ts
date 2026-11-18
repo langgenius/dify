@@ -1,4 +1,5 @@
 import type { ModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/types.gen'
+import { zModelProviderCreditsResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { act, waitFor } from '@testing-library/react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderHookWithConsoleQuery } from '@/test/console/query-data'
@@ -35,7 +36,7 @@ const renderCredits = (data?: ModelProviderCreditsResponse) => {
   if (data)
     queryClient.setQueryData(
       consoleQuery.workspaces.current.modelProviders.credits.get.queryKey(),
-      data,
+      zModelProviderCreditsResponse.parse(data),
     )
   return renderHookWithConsoleQuery(() => useTrialCredits(), { queryClient })
 }
@@ -48,6 +49,9 @@ describe('useTrialCredits', () => {
   it('returns the remaining credits and reset date', () => {
     const { result } = renderCredits(createCredits())
     expect(result.current).toEqual({
+      modelBillingSource: 'legacy_message_credits',
+      tokenerBootstrapStatus: null,
+      tokenerMetering: null,
       credits: 60,
       usedCredits: 40,
       totalCredits: 100,
@@ -82,6 +86,9 @@ describe('useTrialCredits', () => {
     getCredits.mockReturnValue(request.promise)
     const { result } = renderCredits()
     expect(result.current).toEqual({
+      modelBillingSource: undefined,
+      tokenerBootstrapStatus: null,
+      tokenerMetering: null,
       credits: 0,
       usedCredits: 0,
       totalCredits: 0,

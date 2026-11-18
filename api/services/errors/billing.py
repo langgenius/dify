@@ -8,6 +8,10 @@ class BillingError(Exception):
     pass
 
 
+class LegacyCreditPoolManagedByTokenerError(BillingError):
+    """The native signup cohort cannot start a legacy message-credit charge."""
+
+
 class ComplianceRateLimitExceededError(BillingError):
     pass
 

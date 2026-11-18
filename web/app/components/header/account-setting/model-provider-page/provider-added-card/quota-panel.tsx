@@ -28,6 +28,7 @@ import {
   providerLogoMap,
 } from '../utils'
 import styles from './quota-panel.module.css'
+import { TokenerCreditPanel } from './tokener-credit-panel'
 import { useTrialCredits } from './use-trial-credits'
 
 const allProviders = MODEL_PROVIDER_QUOTA_GET_PAID.map((key) => ({
@@ -92,11 +93,14 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
     isLoading,
     exhaustedAt,
     nextCreditResetDate,
-  } = useTrialCredits()
+    modelBillingSource,
+    tokenerBootstrapStatus,
+    tokenerMetering,
+  } = useTrialCredits({ pollTokener: true })
   const isCloud = deploymentEdition === 'CLOUD'
   const { data: trialModels = [], isPending: isTrialModelsPending } = useQuery(
     consoleQuery.trialModels.get.queryOptions({
-      enabled: isCloud,
+      enabled: isCloud && modelBillingSource !== 'tokener',
       select: (data) => data.trial_models,
     }),
   )
@@ -174,6 +178,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({ providers }) => {
       .filter(Boolean)
       .join(', '),
   })
+
+  if (isCloud && modelBillingSource === 'tokener') {
+    return (
+      <TokenerCreditPanel bootstrapStatus={tokenerBootstrapStatus} metering={tokenerMetering} />
+    )
+  }
 
   if (isLoading || (isCloud && isTrialModelsPending)) {
     return (

@@ -61,6 +61,8 @@ class OAuthAccountRegistrationGateway(Protocol):
 class OAuthWorkspaceGateway(Protocol):
     def create_owner_workspace(self, account_id: str) -> None: ...
 
+    def create_registration_owner_workspace(self, account_id: str) -> None: ...
+
     def try_join_default_workspace(self, account_id: str) -> None: ...
 
 
@@ -175,7 +177,7 @@ class AccountOAuthService:
         if self._workspace_policy.is_creation_allowed():
             account_claim.ensure_owned()
             try:
-                self._workspaces.create_owner_workspace(account_id)
+                self._workspaces.create_registration_owner_workspace(account_id)
             except OAuthWorkspaceCreationNotAllowedError as exc:
                 creation_error = exc
             else:

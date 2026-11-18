@@ -262,6 +262,7 @@ def test_committed_snapshots_keep_only_the_reasons_of_called_services() -> None:
         "BillingModelProviderErrorReason",
         "BillingQuotaErrorReason",
         "BillingSubscriptionErrorReason",
+        "BillingTokenerErrorReason",
     ]
     assert sorted(reason_schemas["saas"]) == [
         "AccountErrorReason",

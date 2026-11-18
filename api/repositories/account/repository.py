@@ -17,6 +17,7 @@ from models.account import (
     TenantAccountJoin,
     TenantStatus,
 )
+from models.tokener import AccountTokenerSignupIntent
 from repositories.human_input_v2.sqlalchemy_contact_repository import SQLAlchemyContactRepository
 from services.account.contracts import AccountCreation
 from services.account.login_service import ConsoleAuthAccountRepository
@@ -176,6 +177,11 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         account.id = creation.id
         session.add(account)
         session.flush()
+        if creation.tokener_signup is not None:
+            session.add(AccountTokenerSignupIntent(
+                account_id=account.id,
+                plugin_unique_identifier=creation.tokener_signup.plugin_unique_identifier,
+            ))
         # Keep the stable Contact identity in the caller's account transaction.
         SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         return account

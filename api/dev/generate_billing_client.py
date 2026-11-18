@@ -51,7 +51,7 @@ GENERATOR = "api/dev/generate_billing_client.py"
 logger = logging.getLogger("generate_billing_client")
 
 type Service = Literal["billing", "saas"]
-type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "SAAS", "NETWORK_ACCESS"]
+type UpstreamName = Literal["BILLING", "BILLING_QUOTA", "TOKENER_BILLING", "SAAS", "NETWORK_ACCESS"]
 type JsonObject = dict[str, Any]
 
 SERVICES: tuple[Service, ...] = ("billing", "saas")
@@ -96,6 +96,8 @@ ALLOWED_OPERATIONS: dict[Service, tuple[AllowedOperation, ...]] = {
         AllowedOperation("POST", "/v1/quota/release", "BILLING_QUOTA"),
         AllowedOperation("GET", "/v1/quota/balance", "BILLING_QUOTA"),
         AllowedOperation("POST", "/v1/quota/consume-capped", "BILLING_QUOTA"),
+        AllowedOperation("POST", "/internal/v1/tokener/tenants/{tenant_id}/bootstrap", "TOKENER_BILLING"),
+        AllowedOperation("GET", "/internal/v1/tokener/tenants/{tenant_id}/metering", "TOKENER_BILLING"),
     ),
     "saas": (
         AllowedOperation("DELETE", "/v1/account", "SAAS"),
@@ -408,8 +410,17 @@ def render_model(name: str, schema: JsonObject) -> list[str]:
         attribute = python_name(wire_name)
         annotation = field_type(field, wire_name in required, f"{name}.{wire_name}")
         default = "" if wire_name in required else "None"
-        if attribute != wire_name:
-            arguments = ", ".join([*([default] if default else []), f"alias={json.dumps(wire_name)}"])
+        if "x-dify-sensitive" in field and type(field["x-dify-sensitive"]) is not bool:
+            raise GenerationError(f"{name}.{wire_name}: sensitivity metadata must be boolean")
+        sensitive = field.get("x-dify-sensitive") is True
+        if attribute != wire_name or sensitive:
+            arguments = ", ".join(
+                [
+                    *([default] if default else []),
+                    *([f"alias={json.dumps(wire_name)}"] if attribute != wire_name else []),
+                    *(["repr=False"] if sensitive else []),
+                ]
+            )
             lines.append(f"    {attribute}: {annotation} = Field({arguments})")
         else:
             lines.append(f"    {attribute}: {annotation}{f' = {default}' if default else ''}")

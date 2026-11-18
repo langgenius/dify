@@ -347,6 +347,21 @@ class PluginConfig(BaseSettings):
         default="",
     )
 
+    TOKENER_NEW_TENANT_COHORT_ENABLED: bool = Field(
+        description="Enroll only a newly registered Cloud account's first self-owned workspace in Tokener.",
+        default=False,
+    )
+    TOKENER_NEW_TENANT_BOOTSTRAP_ENABLED: bool = Field(default=False)
+    TOKENER_BILLING_API_URL: str = Field(default="")
+    TOKENER_PLUGIN_UNIQUE_IDENTIFIER: str = Field(default="")
+    TOKENER_PLUGIN_INSTALL_SOURCE: Literal["marketplace", "package"] = Field(default="marketplace")
+    TOKENER_PROVIDER_NAME: str = Field(default="langgenius/tokener/tokener")
+    TOKENER_DEFAULT_LLM_MODEL: str = Field(default="gpt-4o-mini")
+    TOKENER_ENDPOINT_URL: str = Field(default="")
+    ENABLE_TOKENER_BOOTSTRAP_RECOVERY_TASK: bool = Field(default=False)
+    TOKENER_BOOTSTRAP_RECOVERY_TASK_INTERVAL: PositiveInt = Field(default=5)
+    TOKENER_BOOTSTRAP_RECOVERY_BATCH_SIZE: PositiveInt = Field(default=100)
+
     @property
     def NEW_USER_DEFAULT_MODEL_LIST(self) -> list[tuple[str, str, str]]:
         default_models: list[tuple[str, str, str]] = []

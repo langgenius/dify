@@ -1526,6 +1526,25 @@ forbidden_modules =
     extensions.ext_application_services
 allow_indirect_imports = True
 
+[importlinter:contract:signup-model-billing-profile-application]
+name = Native signup profile application is independent of framework and persistence
+type = forbidden
+source_modules =
+    services.model_billing_profile_service
+    services.entities.model_billing
+    services.entities.tokener_metering
+forbidden_modules =
+    configs
+    controllers
+    core
+    extensions
+    flask
+    models
+    repositories
+    sqlalchemy
+    tasks
+    werkzeug
+
 [importlinter:contract:trigger-plugin-runtime-boundary]
 name = Trigger provider loading and dispatch do not access persistence or the application container
 type = forbidden

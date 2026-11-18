@@ -4,6 +4,7 @@ import logging
 import secrets
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
+from dataclasses import replace
 from typing import Literal, override
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition
+from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import RedisClientWrapper
 from libs.helper import RateLimiter, TokenManager
@@ -26,6 +28,8 @@ from models.account import (
 )
 from repositories.workspace.workspace_repository import WorkspaceRepository
 from services.account.adapters import RedisInvitationTokenStore
+from services.account.contracts import TokenerSignupEnrollment
+from services.account.signup_adapter import configured_signup_enrollment
 from services.account_security_gateway import RedisAccountEmailSecurityGateway
 from services.billing_service import BillingService
 from services.credit_pool_service import CreditPoolBalance, CreditPoolService
@@ -35,6 +39,7 @@ from services.enterprise.rbac_service import RBACService
 from services.entities.account_activation_entities import InvitationToken
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
+from services.errors.billing import BillingError
 from services.errors.workspace import (
     InvalidWorkspaceMemberRoleError,
     OwnerTransferSendRateLimitError,
@@ -342,8 +347,13 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
     @override
     def get_features(self, workspace_id: str) -> WorkspaceFeatures:
         features = FeatureService.get_features(workspace_id, exclude_vector_space=True)
-        credits = EffectiveCreditPool()
+        credits = self._billing_context(workspace_id)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
+            credits = replace(credits, plan=CloudPlan(features.billing.subscription.plan))
+        if (
+            dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD
+            and credits.model_billing_source != ModelBillingSource.TOKENER
+        ):
             credits = self._credit_pool(
                 workspace_id, CloudPlan(features.billing.subscription.plan), features.next_credit_reset_date
             )
@@ -351,10 +361,39 @@ class DeploymentWorkspaceFeatureGateway(WorkspaceFeatureGateway):
 
     @override
     def get_effective_credit_pool(self, workspace_id: str) -> EffectiveCreditPool:
+        context = self._billing_context(workspace_id)
+        if context.model_billing_source == ModelBillingSource.TOKENER:
+            return context
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return EffectiveCreditPool()
+            return context
         billing = BillingService.get_info(workspace_id, exclude_vector_space=True)
         return self._credit_pool(workspace_id, CloudPlan(billing.subscription.plan), billing.next_credit_reset_date)
+
+    @staticmethod
+    def _billing_context(workspace_id: str) -> EffectiveCreditPool:
+        profile = FeatureService.get_model_billing_resolution(workspace_id)
+        return EffectiveCreditPool(
+            model_billing_source=profile.model_billing_source,
+            tokener_bootstrap_status=profile.tokener_bootstrap_status.value
+            if profile.tokener_bootstrap_status
+            else None,
+        )
+
+    def get_model_provider_credits(self, workspace_id: str) -> EffectiveCreditPool:
+        """Enrich only a ready native cohort, never query its legacy credit pool."""
+        context = self.get_effective_credit_pool(workspace_id)
+        if (
+            dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD
+            or context.model_billing_source != ModelBillingSource.TOKENER
+            or context.tokener_bootstrap_status != TenantTokenerIntegrationStatus.READY.value
+        ):
+            return context
+        try:
+            metering = BillingService.get_tokener_metering(workspace_id)
+        except BillingError:
+            logger.warning("Tokener metering is unavailable for tenant %s", workspace_id)
+            return context
+        return replace(context, tokener_metering=metering)
 
     @staticmethod
     def _credit_pool(workspace_id: str, plan: CloudPlan, reset_date: int | None) -> EffectiveCreditPool:
@@ -462,6 +501,9 @@ class WorkspaceProvisioningEffectsGateway:
                 for category in TenantPluginAutoUpgradeCategory
             },
         )
+
+    def signup_enrollment(self) -> TokenerSignupEnrollment | None:
+        return configured_signup_enrollment()
 
     def bind_owner(self, workspace_id: str, account_id: str) -> None:
         if not dify_config.RBAC_ENABLED:

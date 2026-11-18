@@ -1,14 +1,25 @@
 from configs import dify_config
 from enums import CloudPlan, DeploymentEdition, HostedTrialProvider
+from enums.model_billing import ModelBillingSource
 from services.account_education_service import EDUCATION_EDITIONS
 from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 from services.entities import feature_entities
+from services.entities.model_billing import TenantModelBillingResolution
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
 class FeatureService:
+    @staticmethod
+    def get_model_billing_resolution(tenant_id: str) -> TenantModelBillingResolution:
+        """Resolve this tenant's persisted billing feature without plan/usage HTTP calls."""
+        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+            return TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
+        from extensions.application_services.model_billing import build_model_billing_profiles
+
+        return build_model_billing_profiles().resolve(tenant_id)
+
     @staticmethod
     def is_im_centrally_managed() -> bool:
         """Enterprise centrally manages IM channels and default bindings."""
@@ -48,6 +59,11 @@ class FeatureService:
     @classmethod
     def get_features(cls, tenant_id: str, exclude_vector_space: bool = False) -> feature_entities.FeatureModel:
         features = feature_entities.FeatureModel()
+        billing_profile = cls.get_model_billing_resolution(tenant_id)
+        features.model_billing_source = billing_profile.model_billing_source.value
+        features.tokener_bootstrap_status = (
+            billing_profile.tokener_bootstrap_status.value if billing_profile.tokener_bootstrap_status else None
+        )
         features.im_centrally_managed = cls.is_im_centrally_managed()
         if exclude_vector_space:
             features.vector_space = None

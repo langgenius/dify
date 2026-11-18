@@ -1675,3 +1675,71 @@ def test_get_all_provider_load_balancing_configs_populates_cache_and_groups_conf
     assert [record.provider_name for record in result["openai"]] == ["openai"]
     assert [record.provider_name for record in result["anthropic"]] == ["anthropic"]
     assert "other-provider" not in result
+
+
+def test_native_signup_uses_custom_providers_without_hosted_initialization(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from core.plugin.impl.model import PluginModelClient
+    from core.plugin.plugin_service import PluginService
+    from models.account import Tenant
+    from models.model_billing import TenantModelBillingProfile
+    from services.feature_service import FeatureService
+    from services.entities.feature_entities import FeatureModel
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+
+    tenant = Tenant(name="Native source isolation")
+    sqlite_session.add(tenant)
+    sqlite_session.flush()
+    sqlite_session.add(TenantModelBillingProfile(tenant_id=tenant.id, model_billing_source="tokener"))
+    sqlite_session.commit()
+    provider = PluginModelProviderDeclaration(
+        provider="langgenius/tokener/tokener",
+        plugin_unique_identifier="langgenius/tokener:0.4.4@native-fixture",
+        installation_source=PluginInstallationSource.Marketplace,
+        label=I18nObject(en_US="Tokener"),
+        supported_model_types=[ModelType.LLM],
+        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
+    )
+
+    def installed(
+        _cls: type[PluginService], tenant_id: str, client: PluginModelClient
+    ) -> list[PluginModelProviderDeclaration]:
+        assert tenant_id == tenant.id
+        assert isinstance(client, PluginModelClient)
+        return [provider]
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("native signup must not initialize or read hosted SYSTEM quotas")
+
+    def features(_cls: type[FeatureService], tenant_id: str, **_kwargs: object) -> FeatureModel:
+        assert tenant_id == tenant.id
+        return FeatureModel(model_billing_source="tokener")
+
+    monkeypatch.setattr(PluginService, "fetch_plugin_model_providers", classmethod(installed))
+    # Only the already-resolved plan/license feature boundary is isolated;
+    # billing cohort still comes from the real profile repository above.
+    monkeypatch.setattr(FeatureService, "get_features", classmethod(features))
+    monkeypatch.setattr(ProviderManager, "_init_trial_provider_records", forbidden)
+    monkeypatch.setattr(ProviderManager, "_to_system_configuration", forbidden)
+    manager = ProviderManager(model_runtime=create_plugin_model_runtime(tenant_id=tenant.id))
+    configuration = manager.get_configurations(tenant.id).get(provider.provider)
+    assert configuration is not None
+    assert configuration.preferred_provider_type == ProviderType.CUSTOM
+    assert configuration.using_provider_type == ProviderType.CUSTOM
+    assert not configuration.system_configuration.enabled
+    assert configuration.get_current_credentials(ModelType.LLM, "gpt-4o-mini") is None
+    assert (
+        list(
+            sqlite_session.scalars(
+                select(Provider).where(
+                    Provider.tenant_id == tenant.id,
+                    Provider.provider_type == ProviderType.SYSTEM,
+                )
+            )
+        )
+        == []
+    )

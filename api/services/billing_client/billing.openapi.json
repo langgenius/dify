@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "72ee562e43bd39cd8f7cf414d545efca646c27cf",
+  "x-dify-saas-commit": "81d30ab3bf1dd60ec8e8b6711ec1f686d11a6d2e",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -653,6 +653,76 @@
           }
         }
       }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/bootstrap": {
+      "post": {
+        "tags": [
+          "BillingTokener"
+        ],
+        "operationId": "BillingTokener_BootstrapTenant",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TokenerTenantBootstrapPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BootstrapTokenerTenantReply"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/internal/v1/tokener/tenants/{tenant_id}/metering": {
+      "get": {
+        "tags": [
+          "BillingTokener"
+        ],
+        "operationId": "BillingTokener_GetTenantMetering",
+        "parameters": [
+          {
+            "name": "tenant_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenerTenantMeteringReply"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -723,6 +793,8 @@
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
           "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
           "INVALID_COMPLIANCE_DOWNLOAD_REQUEST",
           "MISSING_DOC_NAME",
           "MISSING_IP_ADDRESS",
@@ -748,6 +820,8 @@
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
           "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
           "EDUCATION_VERIFY_FAILED",
           "EDUCATION_CREATE_FAILED",
           "EDUCATION_STATUS_FAILED"
@@ -769,6 +843,8 @@
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
           "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
           "INVALID_INVOICE_REQUEST",
           "CREATE_INVOICE_PORTAL_FAILED"
         ],
@@ -789,10 +865,13 @@
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
           "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
           "INVALID_MODEL_PROVIDER_PAYMENT_LINK_REQUEST",
           "MISSING_PROVIDER_NAME",
           "INVALID_MODEL_PROVIDER",
-          "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED"
+          "CREATE_MODEL_PROVIDER_PAYMENT_LINK_FAILED",
+          "TOKENER_NATIVE_PROVIDER_PURCHASE_UNSUPPORTED"
         ],
         "type": "string",
         "description": "Reasons returned by the BillingModelProvider service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingModelProviderErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
@@ -810,10 +889,13 @@
           "INVALID_TENANT_ID",
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
-          "MISSING_PREFILLED_EMAIL"
+          "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
+          "CREDIT_MANAGED_BY_TOKENER"
         ],
         "type": "string",
-        "description": "Reasons returned by the BillingQuota service: values of the proto enum dify.saas.api.billing.CommonErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
+        "description": "Reasons returned by the BillingQuota service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingQuotaErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
         "properties": {}
       },
       "BillingSubscriptionErrorReason": {
@@ -829,6 +911,8 @@
           "MISSING_ACCOUNT_ID",
           "INVALID_ACCOUNT_ID",
           "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
           "INVALID_PAYMENT_LINK_REQUEST",
           "MISSING_PLAN",
           "MISSING_INTERVAL",
@@ -837,7 +921,10 @@
           "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST",
           "TENANT_IDS_COUNT_TOO_LARGE",
           "DOCUMENT_USAGE_UNAVAILABLE",
-          "ANNUAL_DISCOUNT_ACTIVE"
+          "ANNUAL_DISCOUNT_ACTIVE",
+          "TOKENER_PAID_GRANTS_DISABLED",
+          "TOKENER_EDUCATION_CHECKOUT_UNSUPPORTED",
+          "TOKENER_PAID_CONTROL_PLANE_UNAVAILABLE"
         ],
         "type": "string",
         "description": "Reasons returned by the BillingSubscription service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingSubscriptionErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
@@ -885,6 +972,78 @@
           "cancel_at_period_end",
           "paid_period_end"
         ]
+      },
+      "BillingTokenerErrorReason": {
+        "enum": [
+          "",
+          "CODEC",
+          "VALIDATOR",
+          "UNKNOWN",
+          "INVALID_SECRET_KEY",
+          "REQUEST_IN_PROGRESS",
+          "MISSING_TENANT_ID",
+          "INVALID_TENANT_ID",
+          "MISSING_ACCOUNT_ID",
+          "INVALID_ACCOUNT_ID",
+          "MISSING_PREFILLED_EMAIL",
+          "TOKENER_NATIVE_ACCOUNT_NOT_READY",
+          "TENANT_BILLING_MODE_UNAVAILABLE",
+          "TOKENER_INTERNAL_HTTP_ONLY",
+          "TOKENER_AUTH_NOT_CONFIGURED",
+          "TOKENER_INVALID_SECRET_KEY",
+          "INVALID_TOKENER_BOOTSTRAP_REQUEST",
+          "TOKENER_TENANT_ID_MISMATCH",
+          "INVALID_TOKENER_TENANT_ID",
+          "TOKENER_BOOTSTRAP_EMPTY_RESULT",
+          "TOKENER_BOOTSTRAP_MISSING_CREDENTIAL",
+          "INVALID_TOKENER_METERING_REQUEST",
+          "TOKENER_METERING_UNAVAILABLE",
+          "TOKENER_BILLING_PROFILE_NOT_TOKENER",
+          "TOKENER_METERING_NOT_READY",
+          "TOKENER_METERING_UPSTREAM_REJECTED",
+          "TOKENER_BOOTSTRAP_RETRY",
+          "TOKENER_BOOTSTRAP_DISABLED",
+          "TOKENER_INVALID_CONFIGURATION",
+          "TOKENER_WORKSPACE_SUSPENDED",
+          "TOKENER_BOOTSTRAP_INTERVENTION"
+        ],
+        "type": "string",
+        "description": "Native new-signup BillingTokener errors and framework/CommonErrorReason values.",
+        "properties": {}
+      },
+      "BootstrapTokenerTenantReply": {
+        "required": [
+          "tenant_id",
+          "status",
+          "retryable",
+          "error_code"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "ready"
+            ],
+            "type": "string",
+            "description": "pending means the caller should retry; ready means the credential and\n trial grant are both usable."
+          },
+          "data_plane_api_key": {
+            "nullable": true,
+            "type": "string",
+            "description": "Returned only when status=ready. This value is never persisted by billing.",
+            "x-dify-sensitive": true
+          },
+          "retryable": {
+            "type": "boolean"
+          },
+          "error_code": {
+            "type": "string"
+          }
+        }
       },
       "CreateEducationIdentityReply": {
         "type": "object",
@@ -1555,6 +1714,148 @@
           "limit"
         ]
       },
+      "TokenerAllowanceMetering": {
+        "required": [
+          "window_id",
+          "source_ref",
+          "amount_usd_micro",
+          "available_usd_micro",
+          "starts_at",
+          "ends_at"
+        ],
+        "type": "object",
+        "properties": {
+          "window_id": {
+            "type": "string"
+          },
+          "source_ref": {
+            "type": "string"
+          },
+          "amount_usd_micro": {
+            "type": "string"
+          },
+          "available_usd_micro": {
+            "type": "string"
+          },
+          "starts_at": {
+            "type": "string"
+          },
+          "ends_at": {
+            "type": "string"
+          }
+        }
+      },
+      "TokenerCurrentMonthMetering": {
+        "required": [
+          "status",
+          "start_date",
+          "end_date"
+        ],
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "available",
+              "unavailable"
+            ],
+            "type": "string",
+            "description": "available means the two counters below are present. unavailable is a\n degraded usage-rollup read and must never be rendered as zero."
+          },
+          "start_date": {
+            "type": "string",
+            "description": "Inclusive UTC range. billed_usd_micro is the amount Tokener has accounted\n through end_date; it must not be added to balance as an old-style quota."
+          },
+          "end_date": {
+            "type": "string"
+          },
+          "billed_usd_micro": {
+            "nullable": true,
+            "type": "string"
+          },
+          "request_count": {
+            "nullable": true,
+            "type": "string"
+          },
+          "error_code": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
+      "TokenerTenantBootstrapPayload": {
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "display_name": {
+            "type": "string"
+          }
+        },
+        "description": "body: \"payload\" keeps the external JSON flat while preserving the path\n tenant_id separately, allowing the service to reject path/body mismatches.",
+        "required": [
+          "tenant_id",
+          "display_name"
+        ]
+      },
+      "TokenerTenantMeteringReply": {
+        "required": [
+          "tenant_id",
+          "currency",
+          "available_usd_micro",
+          "current_month",
+          "balance_generated_at"
+        ],
+        "type": "object",
+        "properties": {
+          "tenant_id": {
+            "type": "string"
+          },
+          "currency": {
+            "enum": [
+              "USD"
+            ],
+            "type": "string"
+          },
+          "available_usd_micro": {
+            "type": "string",
+            "description": "Signed decimal micro-USD string. It can be negative when the wallet owes\n credit after a dispute or adjustment."
+          },
+          "current_month": {
+            "$ref": "#/components/schemas/TokenerCurrentMonthMetering"
+          },
+          "balance_generated_at": {
+            "type": "string"
+          },
+          "usage_generated_at": {
+            "nullable": true,
+            "type": "string"
+          },
+          "allowance": {
+            "nullable": true,
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/TokenerAllowanceMetering"
+              }
+            ],
+            "description": "Omitted when the tenant has no active allowance; it is not a zero allowance."
+          },
+          "entitlement_status": {
+            "nullable": true,
+            "enum": [
+              "active",
+              "processing",
+              "retrying",
+              "failed"
+            ],
+            "type": "string"
+          },
+          "entitlement_error_code": {
+            "nullable": true,
+            "type": "string"
+          }
+        }
+      },
       "VectorSpaceQuota": {
         "type": "object",
         "properties": {
@@ -1582,7 +1883,7 @@
         "properties": {
           "token": {
             "type": "string",
-            "description": "Verification token to pass to CreateEducationIdentity. Empty when status is `not_eligible`."
+            "description": "When status is `eligible`, pass this token to CreateEducationIdentity. Otherwise, ignore it."
           },
           "status": {
             "enum": [
@@ -1590,7 +1891,7 @@
               "not_eligible"
             ],
             "type": "string",
-            "description": "`eligible`: the account email matches an education institution domain and `token` is set.\n `not_eligible`: the account email matches no education institution domain and `token` is empty."
+            "description": "Use status to determine eligibility.\n `eligible`: the account email matches an education institution domain and `token` is set.\n `not_eligible`: the account email matches no education institution domain."
           }
         },
         "required": [

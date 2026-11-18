@@ -90,6 +90,7 @@ from repositories.human_input_file_upload_repository import SQLAlchemyHumanInput
 from repositories.installation_state_repository import InstallationStateRepository
 from repositories.message_file_preview_repository import MessageFilePreviewQueryRepository
 from repositories.message_repository import MessageRepository
+from repositories.model_billing_profile_repository import ModelBillingProfileRepository
 from repositories.network_access_group_repository import SQLAlchemyNetworkAccessGroupAppRepository
 from repositories.oauth_device_token_repository import SQLAlchemyOAuthDeviceTokenRepository
 from repositories.oauth_server_repository import RedisOAuthServerTokenRepository, SQLAlchemyOAuthServerRepository
@@ -186,6 +187,7 @@ from services.message_query_service import MessageQueryService
 from services.message_suggested_questions_generator import SuggestedQuestionsGenerator
 from services.message_suggested_questions_queries import SuggestedQuestionsQuery
 from services.message_suggested_questions_service import MessageSuggestedQuestions, MessageSuggestedQuestionsService
+from services.model_billing_profile_service import ModelBillingProfileService
 from services.moderation_service import ModerationService
 from services.network_access_group_gateway import (
     BillingNetworkAccessGroupEntitlementGateway,
@@ -346,6 +348,7 @@ class ApplicationServices:
     app_tracing_configs: AppTracingConfigService
     agent_tracing_configs: AgentTracingConfigService
     billing_portal: BillingPortalService
+    model_billing_profiles: ModelBillingProfileService
     compliance_downloads: ComplianceDownloadService
     conversation_names: ConversationNameService
     conversation_commands: ConversationCommandService
@@ -740,6 +743,9 @@ def build_application_services(
             accounts=accounts,
             get_subscription=BillingService.get_subscription,
             get_invoices=BillingService.get_invoices,
+        ),
+        model_billing_profiles=ModelBillingProfileService(
+            profiles=ModelBillingProfileRepository(sessions=database_client)
         ),
         compliance_downloads=ComplianceDownloadService(
             fetch_link=BillingService.get_compliance_download_link,
