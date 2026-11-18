@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const {
   membersRequest,

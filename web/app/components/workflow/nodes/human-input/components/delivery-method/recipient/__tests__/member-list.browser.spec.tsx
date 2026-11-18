@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
-import MemberList from '../member-list'
+import { MemberList } from '../member-list'
 import { members } from './recipient-test-data'
 
 beforeEach(async () => {

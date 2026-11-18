@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import MembersPage from '../../index'
+import { MembersPage } from '../../index'
 
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
 

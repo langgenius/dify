@@ -3,7 +3,7 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@langgenius/dif
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MemberRow from '../member-row'
+import { MemberRow } from '../member-row'
 
 const member: AccountWithRoleResponse = {
   id: 'member-1',

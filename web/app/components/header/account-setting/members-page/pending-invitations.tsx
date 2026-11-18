@@ -2,9 +2,9 @@ import { useQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { consoleQuery } from '@/service/console'
-import RoleBadges from './role-badges'
+import { RoleBadges } from './role-badges'
 
-const PendingInvitations = ({ workspaceId }: { workspaceId: string }) => {
+export const PendingInvitations = ({ workspaceId }: { workspaceId: string }) => {
   const { t } = useTranslation(['workspaceMembers'])
   const locale = useLocale()
   const { data } = useQuery(
@@ -76,5 +76,3 @@ const PendingInvitations = ({ workspaceId }: { workspaceId: string }) => {
     </table>
   )
 }
-
-export default PendingInvitations

@@ -21,7 +21,7 @@ type Props = Readonly<{
   hideSearch?: boolean
 }>
 
-const MemberList: FC<Props> = ({
+export const MemberList: FC<Props> = ({
   searchValue,
   list,
   value,
@@ -132,5 +132,3 @@ const MemberList: FC<Props> = ({
     </div>
   )
 }
-
-export default MemberList

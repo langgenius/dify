@@ -41,12 +41,12 @@ import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/lan
 import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
-import EditWorkspaceContent from './edit-workspace-content'
-import InvitationResultsContent from './invitation-results-content'
+import { EditWorkspaceContent } from './edit-workspace-content'
+import { InvitationResultsContent } from './invitation-results-content'
 import { InviteModal } from './invite-modal'
-import MemberDetailsContent from './member-details-content'
-import MemberRow from './member-row'
-import PendingInvitations from './pending-invitations'
+import { MemberDetailsContent } from './member-details-content'
+import { MemberRow } from './member-row'
+import { PendingInvitations } from './pending-invitations'
 
 const MembersPageContent = () => {
   const { t } = useTranslation([
@@ -458,6 +458,6 @@ const MembersPageContent = () => {
   )
 }
 
-export default function MembersPage() {
+export function MembersPage() {
   return <MembersPageContent />
 }
