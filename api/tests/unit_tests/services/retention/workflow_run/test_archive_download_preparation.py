@@ -3,7 +3,6 @@ import datetime
 import hashlib
 import io
 import json
-import logging
 import subprocess
 import sys
 import threading
@@ -619,9 +618,8 @@ def test_stale_upload_cannot_overwrite_or_delete_a_new_execution(
     assert storage.put_objects == {newer_key: b"new result"}
 
 
-def test_multiple_batches_preserve_csv_escaping_and_report_progress(
+def test_multiple_batches_preserve_csv_escaping(
     month_lease: WorkflowRunArchiveMonthLease,
-    caplog: pytest.LogCaptureFixture,
 ) -> None:
     values = ["=formula", "+formula", "-formula", "@formula", "tab\tcomma,newline\n", 'quote"']
     records: list[dict[str, object]] = [{"id": str(i), "value": values[i % len(values)]} for i in range(8300)]
@@ -633,12 +631,11 @@ def test_multiple_batches_preserve_csv_escaping_and_report_progress(
         }
     )
     task = _task()
-    with caplog.at_level(logging.INFO):
-        result = _preparer(storage=storage, cache=FakeTaskCache(task), lease=month_lease).prepare(
-            tenant_id=TENANT_ID,
-            download_id=task.download_id,
-            celery_task_id="celery-task-1",
-        )
+    result = _preparer(storage=storage, cache=FakeTaskCache(task), lease=month_lease).prepare(
+        tenant_id=TENANT_ID,
+        download_id=task.download_id,
+        celery_task_id="celery-task-1",
+    )
     assert result is not None
     assert result.status == WorkflowRunArchiveDownloadStatus.READY
     assert result.storage_key is not None
@@ -649,9 +646,6 @@ def test_multiple_batches_preserve_csv_escaping_and_report_progress(
     for row, record in zip(rows, records, strict=True):
         value = str(record["value"])
         assert row == {"id": record["id"], "value": "'" + value if value[0] in "=+-@" else value}
-    assert "csv_progress" in caplog.text
-    assert "rss_peak_mib" in caplog.text
-    assert "upload_finished" in caplog.text
 
 
 @pytest.mark.parametrize("has_schema", [True, False])

@@ -10,10 +10,7 @@ import datetime
 import hashlib
 import logging
 import re
-import resource
-import sys
 import tempfile
-import time
 import uuid
 import zipfile
 from collections.abc import Callable, Sequence
@@ -108,9 +105,7 @@ class WorkflowRunArchiveDownloadPreparer:
             WorkflowRunArchiveDownloadStatus.PENDING,
             WorkflowRunArchiveDownloadStatus.PROCESSING,
         ):
-            _log_preparation_progress(task, "message_skipped", message_task_id=celery_task_id)
             return task
-        _log_preparation_progress(task, "waiting_for_month_lease")
         with self._month_lock(tenant_id=tenant_id, year=task.year, month=task.month) as lease:
             lease.assert_owned()
             with self.cache.lock(tenant_id=tenant_id, download_id=download_id):
@@ -147,7 +142,6 @@ class WorkflowRunArchiveDownloadPreparer:
         The caller holds the month lease. Temporary files are removed on return or exception; a rejected upload is
         deleted by its unique execution key and can never delete another attempt's published ZIP.
         """
-        started = time.monotonic()
         bundles = self._get_task_bundles(task)
         archive_storage = self._archive_storage_provider()
         download_storage = self._download_storage_provider()
@@ -155,13 +149,8 @@ class WorkflowRunArchiveDownloadPreparer:
             zip_path = Path(directory) / "archive.zip"
             self._build_zip_file(archive_storage, task, bundles, zip_path=zip_path, lease=lease)
             file_size = zip_path.stat().st_size
-            _log_preparation_progress(
-                task, "zip_ready", file_size_bytes=file_size, elapsed_seconds=time.monotonic() - started
-            )
             storage_key = build_archive_download_storage_key(task)
             self._assert_execution_owned(task, lease)
-            _log_preparation_progress(task, "upload_started", storage_key=storage_key)
-            upload_started = time.monotonic()
             try:
                 download_storage.upload_file(storage_key, str(zip_path))
                 # Deletion may be requested during upload; it waits for this lease before cleaning the month.
@@ -170,14 +159,6 @@ class WorkflowRunArchiveDownloadPreparer:
                 result = self._mark_ready(task, storage_key=storage_key, file_size_bytes=file_size)
                 if result.storage_key != storage_key:
                     download_storage.delete_object(storage_key)
-                _log_preparation_progress(
-                    task,
-                    "upload_finished",
-                    status=result.status,
-                    file_size_bytes=file_size,
-                    upload_seconds=time.monotonic() - upload_started,
-                    elapsed_seconds=time.monotonic() - started,
-                )
                 return result
             except Exception:
                 download_storage.delete_object(storage_key)
@@ -220,15 +201,12 @@ class WorkflowRunArchiveDownloadPreparer:
         archives stay unchanged. CSV headers, bundle row order and formula escaping match the existing export.
         """
         tables: dict[str, list[ArchiveBundleTableManifestEntry]] = {}
-        for index, bundle in enumerate(bundles, start=1):
+        for bundle in bundles:
             self._assert_execution_owned(task, lease)
             object_prefix = _build_archive_bundle_object_prefix(task, bundle)
             _, manifest = _load_and_validate_manifest(storage, task, bundle, object_prefix)
             for table_name, entry in manifest["tables"].items():
                 tables.setdefault(table_name, []).append(entry)
-            _log_preparation_progress(
-                task, "bundle_indexed", bundle_id=bundle.bundle_id, bundle=index, total_bundles=len(bundles)
-            )
 
         zip_root = f"workflow-run-logs-{task.year:04d}-{task.month:02d}"
         parquet_path = zip_path.with_suffix(".parquet")
@@ -239,12 +217,6 @@ class WorkflowRunArchiveDownloadPreparer:
                     header_written = False
                     for entry in entries:
                         self._assert_execution_owned(task, lease)
-                        _log_preparation_progress(
-                            task,
-                            "parquet_started",
-                            object_key=entry["object_key"],
-                            compressed_bytes=entry["size_bytes"],
-                        )
                         _download_parquet(storage, entry, parquet_path)
                         if len(_run_archive_cpu_work(lambda: pq.read_schema(parquet_path))) > 0:
                             if output is None:
@@ -257,8 +229,6 @@ class WorkflowRunArchiveDownloadPreparer:
                                     parquet_path,
                                     output,
                                     include_header=not header_written,
-                                    task=task,
-                                    object_key=entry["object_key"],
                                 )
                             )
                             header_written = header_written or wrote_csv
@@ -277,7 +247,12 @@ class WorkflowRunArchiveDownloadPreparer:
                 }
             )
             self.cache.save(failed)
-            _log_preparation_progress(failed, "attempt_limit_reached")
+            logger.warning(
+                "Workflow run archive download attempt limit reached: tenant=%s download_id=%s attempts=%s",
+                task.tenant_id,
+                task.download_id,
+                task.attempt_count,
+            )
             return failed
         processing_task = task.model_copy(
             update={
@@ -291,7 +266,15 @@ class WorkflowRunArchiveDownloadPreparer:
             }
         )
         self.cache.save(processing_task)
-        _log_preparation_progress(processing_task, "execution_claimed", previous_status=task.status)
+        logger.info(
+            "Preparing workflow run archive download: tenant=%s download_id=%s execution_id=%s attempt=%s "
+            "previous_status=%s",
+            processing_task.tenant_id,
+            processing_task.download_id,
+            processing_task.execution_id,
+            processing_task.attempt_count,
+            task.status,
+        )
         return processing_task
 
     def _mark_ready(
@@ -343,15 +326,8 @@ class WorkflowRunArchiveDownloadPreparer:
                 or current.celery_task_id != processing_task.celery_task_id
                 or current.execution_id != processing_task.execution_id
             ):
-                _log_preparation_progress(
-                    processing_task,
-                    "terminal_write_skipped",
-                    attempted_status=terminal_task.status,
-                    current_execution_id=current.execution_id if current else None,
-                )
                 return current or terminal_task
             self.cache.save(terminal_task)
-            _log_preparation_progress(terminal_task, "terminal_saved")
             return terminal_task
 
 
@@ -492,24 +468,18 @@ def _append_parquet_csv(
     output: IO[bytes],
     *,
     include_header: bool,
-    task: WorkflowRunArchiveDownloadTask,
-    object_key: str,
 ) -> bool:
     """Append bounded Arrow batches to an open ZIP entry, preserving CSV escaping and optional headers.
 
     The Parquet file is already verified. Return whether a CSV schema was written; leave the caller's output open.
     """
-    started = time.monotonic()
-    rows = 0
     with pq.ParquetFile(path, pre_buffer=False, buffer_size=64 * 1024) as parquet:
         if len(parquet.schema_arrow) == 0:
             return False
         with pa_csv.CSVWriter(
             output, parquet.schema_arrow, write_options=pa_csv.WriteOptions(include_header=include_header)
         ) as writer:
-            for index, batch in enumerate(
-                parquet.iter_batches(batch_size=_PARQUET_BATCH_SIZE, use_threads=False), start=1
-            ):
+            for batch in parquet.iter_batches(batch_size=_PARQUET_BATCH_SIZE, use_threads=False):
                 for column_index, field in enumerate(batch.schema):
                     if pa.types.is_string(field.type) or pa.types.is_large_string(field.type):
                         sanitized = pc.replace_substring_regex(  # pyrefly: ignore[missing-attribute]
@@ -520,34 +490,7 @@ def _append_parquet_csv(
                         )
                         batch = batch.set_column(column_index, field, sanitized)
                 writer.write_batch(batch)
-                rows += batch.num_rows
-                if index % 64 == 0:
-                    _log_preparation_progress(
-                        task, "csv_progress", object_key=object_key, rows=rows, batch_bytes=batch.nbytes
-                    )
-    _log_preparation_progress(
-        task, "parquet_finished", object_key=object_key, rows=rows, elapsed_seconds=time.monotonic() - started
-    )
     return True
-
-
-def _log_preparation_progress(task: WorkflowRunArchiveDownloadTask, stage: str, **metrics: object) -> None:
-    """Temporary SNP-1129 staging diagnostics; remove this helper and its calls after acceptance."""
-    rss_divisor = 1024 * 1024 if sys.platform == "darwin" else 1024
-    attributes = {
-        "event": "archive_download_debug",
-        "stage": stage,
-        "tenant_id": task.tenant_id,
-        "download_id": task.download_id,
-        "celery_task_id": task.celery_task_id,
-        "execution_id": task.execution_id,
-        "attempt": task.attempt_count,
-        "status": task.status,
-        "rss_peak_mib": round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / rss_divisor, 2),
-        "arrow_allocated_bytes": pa.total_allocated_bytes(),
-        **metrics,
-    }
-    logger.info("archive_download_debug %s", attributes, extra={"attributes": attributes})
 
 
 def _run_archive_cpu_work[T](work: Callable[[], T]) -> T:

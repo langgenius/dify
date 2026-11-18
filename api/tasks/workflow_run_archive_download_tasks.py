@@ -35,9 +35,8 @@ def prepare_workflow_run_archive_download_task(self: Task, tenant_id: str, downl
     celery_task_id = self.request.id
     if celery_task_id is None:
         raise ValueError("A Celery request id is required for archive download preparation")
-    # Temporary SNP-1129 diagnostics, alongside archive_download_preparation's progress logs.
     logger.info(
-        "archive_download_debug received tenant=%s download_id=%s celery_task_id=%s redelivered=%s retries=%s",
+        "Received workflow run archive download: tenant=%s download_id=%s celery_task_id=%s redelivered=%s retries=%s",
         tenant_id,
         download_id,
         celery_task_id,
