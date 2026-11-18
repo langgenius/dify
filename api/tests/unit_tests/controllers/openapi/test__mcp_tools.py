@@ -42,8 +42,8 @@ from models import Account
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobPatch, JobStatus
-from services.run_job_service import JobOpening, RunJobService
+from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job_service import RunJobService, RunResult
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -410,9 +410,10 @@ def paused_job(
     monkeypatch: pytest.MonkeyPatch,
 ) -> _PausedJob:
     store = RedisRunJobStore(redis_client=InMemoryRedis())
+    results = InMemoryRunResults()
     service = RunJobService(
         store=store,
-        results=InMemoryRunResults(),
+        results=results,
         tasks=RecordingTaskControl(),
         max_background_runs=10,
         max_waiters=4,
@@ -427,9 +428,12 @@ def paused_job(
         caller_role=CreatorUserRole.ACCOUNT,
         caller_id=caller.id,
     )
-    opened = service.open(JobOpening(owner=owner, mode=AppMode.WORKFLOW, op="start.x", idempotency_key=None))
-    store.patch(opened.record.id, JobPatch(status=JobStatus.PAUSED, task_id="t1", run_id="r1", form=_PAUSED_FORM))
-    return _PausedJob(app_id=admitted_bearer.app_id, job_id=opened.record.id)
+    job = JobRecord(id=str(uuid.uuid4()), owner=owner, mode=AppMode.WORKFLOW, op="start.x")
+    store.create(job)
+    store.record_ids(job.id, JobIds(task_id="t1", run_id="r1"))
+    results.runs[(owner.tenant_id, "r1")] = RunResult(status=JobStatus.PAUSED)
+    results.forms[(owner.tenant_id, owner.app_id, "r1", AppMode.WORKFLOW)] = _PAUSED_FORM
+    return _PausedJob(app_id=admitted_bearer.app_id, job_id=job.id)
 
 
 def _hint_ops(body: dict[str, object]) -> list[object]:
