@@ -15,6 +15,7 @@ from models.model import AppMode
 from services.run_job_contracts import (
     ALIVE_TTL_SECONDS,
     JOB_TTL_SECONDS,
+    JobFailure,
     JobOwner,
     JobPatch,
     JobRecord,
@@ -86,6 +87,8 @@ def _decode_record(raw: Mapping[bytes | str, bytes | str]) -> JobRecord | None:
     )
     fields["mode"] = AppMode(fields["mode"])
     fields["status"] = JobStatus(fields["status"])
+    if fields["failure"] is not None:
+        fields["failure"] = JobFailure(fields["failure"])
     return JobRecord(**fields)
 
 

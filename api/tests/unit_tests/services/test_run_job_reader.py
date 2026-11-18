@@ -10,7 +10,7 @@ from graphon.enums import WorkflowExecutionStatus
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobPatch, JobRecord, JobStatus
+from services.run_job_contracts import JobFailure, JobOwner, JobPatch, JobRecord, JobStatus
 from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, read_to_end
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
 
@@ -230,7 +230,7 @@ def test_a_stream_that_ends_without_a_result_fails_a_message_job(
     record = _read(store, stopper, [PING])
 
     assert record.status is JobStatus.FAILED
-    assert record.error == "run ended without a result"
+    assert (record.failure, record.error) == (JobFailure.NO_RESULT, None)
 
 
 def test_a_stream_that_ends_without_a_result_leaves_a_graph_job_running(
@@ -252,7 +252,7 @@ def test_a_stream_that_raises_fails_a_message_job_and_leaves_a_graph_job_running
     graph_job = _read(store, stopper, RaisingFrames([PING]))
 
     assert message_job.status is JobStatus.FAILED
-    assert message_job.error == "run ended without a result"
+    assert message_job.failure is JobFailure.NO_RESULT
     assert graph_job.status is JobStatus.RUNNING
 
 
