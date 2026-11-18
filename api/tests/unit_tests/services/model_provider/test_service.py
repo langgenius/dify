@@ -240,6 +240,24 @@ class TestModelProviderServiceCases:
         }
 
     @staticmethod
+    @pytest.mark.parametrize("pinned_model", ["gpt-4o", "missing-model"])
+    def test_initialize_pinned_llm_requires_the_exact_active_model(
+        sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, pinned_model: str
+    ) -> None:
+        service, _manager, configurations = _create_service_with_fake_manager(monkeypatch)
+        configurations.models = [_build_available_llm("gpt-4o-mini"), _build_available_llm("gpt-4o")]
+        pinned = ("langgenius/openai/openai", pinned_model)
+
+        if pinned_model == "missing-model":
+            with pytest.raises(ValueError, match="pinned default LLM is not active"):
+                service.initialize_default_llm("tenant-1", pinned=pinned)
+            assert sqlite_session.query(TenantDefaultModel).count() == 0
+        else:
+            service.initialize_default_llm("tenant-1", pinned=pinned)
+            record = sqlite_session.query(TenantDefaultModel).one()
+            assert (record.provider_name, record.model_name) == pinned
+
+    @staticmethod
     def test_initialize_default_llm_preserves_existing_selection(
         sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -253,7 +271,7 @@ class TestModelProviderServiceCases:
         sqlite_session.commit()
         service, manager, _configurations = _create_service_with_fake_manager(monkeypatch)
 
-        service.initialize_default_llm("tenant-1")
+        service.initialize_default_llm("tenant-1", pinned=("langgenius/tokener/tokener", "gpt-4o-mini"))
 
         assert manager.get_configurations_calls == []
         sqlite_session.refresh(saved_default)

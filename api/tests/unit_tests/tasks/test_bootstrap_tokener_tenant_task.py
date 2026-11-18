@@ -131,8 +131,8 @@ def provider_effects(mocker: MockerFixture, sqlite_session_factory: sessionmaker
                 row.credential_id, row.is_valid = credential_id, True
         effects.activated.append((tenant_id, credential_id))
 
-    def set_default(*, tenant_id: str, model_type: str, provider: str, model: str) -> None:
-        assert model_type == "llm"
+    def set_default(*, tenant_id: str, pinned: tuple[str, str]) -> None:
+        provider, model = pinned
         assert provider == PROVIDER
         with sqlite_session_factory.begin() as session:
             session.add(
@@ -144,8 +144,8 @@ def provider_effects(mocker: MockerFixture, sqlite_session_factory: sessionmaker
 
     mocker.patch.object(module.ModelProviderService, "_get_provider_configuration", side_effect=configuration)
     mocker.patch.object(ProviderConfiguration, "validate_provider_credentials", side_effect=validate)
-    mocker.patch.object(module.ModelProviderService, "switch_active_provider_credential", side_effect=activate)
-    mocker.patch.object(module.ModelProviderService, "update_default_model_of_model_type", side_effect=set_default)
+    mocker.patch.object(module.ModelProviderService, "activate_unselected_provider_credential", side_effect=activate)
+    mocker.patch.object(module.ModelProviderService, "initialize_default_llm", side_effect=set_default)
     return effects
 
 
