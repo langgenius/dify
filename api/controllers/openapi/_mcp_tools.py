@@ -16,7 +16,7 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Any, Final
 
-from constants.oauth_bearer import Scope, TokenType
+from constants.oauth_bearer import TokenType
 from controllers.openapi._catalog import Bind, CatalogOp, op_registry
 from controllers.openapi._mcp_call import (
     FileInputUnsupported,
@@ -27,7 +27,6 @@ from controllers.openapi._mcp_call import (
     UnsafePathValue,
     call_op,
 )
-from controllers.openapi.auth.requirements import CheckScope, CheckSubject
 from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import STRUCTURED_OUTPUT_MIN_VERSION
@@ -125,32 +124,11 @@ def _hides_required_file_input(candidate: _Candidate) -> bool:
     return bool(required & _file_names(candidate.entry))
 
 
-def _hides_other_subjects(candidate: _Candidate) -> bool:
-    """Hides ops whose subject check admits no class of the token kind's subject: the op would answer 403."""
-    token_type = candidate.token_type
-    if token_type is None:
+def _hides_refused_kinds(candidate: _Candidate) -> bool:
+    """Hides ops the route would refuse for the token kind: its subject, scope or PAT policy answers 403."""
+    if candidate.token_type is None:
         return False
-    checks = [requirement for requirement in candidate.spec.requirements if isinstance(requirement, CheckSubject)]
-    return any(not _admits(check, token_type) for check in checks)
-
-
-def _hides_out_of_scope(candidate: _Candidate) -> bool:
-    """Hides ops that need a scope the token kind's subject lacks (a subject with ``Scope.FULL`` lacks none)."""
-    token_type = candidate.token_type
-    if token_type is None:
-        return False
-    scopes = token_type.subject.scopes
-    if Scope.FULL in scopes:
-        return False
-    checks = [requirement for requirement in candidate.spec.requirements if isinstance(requirement, CheckScope)]
-    return any(check.scope not in scopes for check in checks)
-
-
-def _hides_without_pat_policy(candidate: _Candidate) -> bool:
-    """Hides ops with no PAT policy from personal access tokens: the op refuses every PAT."""
-    if candidate.token_type is not TokenType.PERSONAL_ACCESS:
-        return False
-    return candidate.spec.pat_policy is None
+    return not candidate.spec.admits(candidate.token_type)
 
 
 _ENTRY_RULES: Final[tuple[_HiddenWhen, ...]] = (
@@ -158,17 +136,7 @@ _ENTRY_RULES: Final[tuple[_HiddenWhen, ...]] = (
     _hides_flagged_ops,
     _hides_required_file_input,
 )
-_CALLER_RULES: Final[tuple[_HiddenWhen, ...]] = (
-    _hides_other_subjects,
-    _hides_out_of_scope,
-    _hides_without_pat_policy,
-)
-_RULES: Final[tuple[_HiddenWhen, ...]] = (*_ENTRY_RULES, *_CALLER_RULES)
-
-
-def _admits(requirement: CheckSubject, token_type: TokenType) -> bool:
-    """Postcondition: True when one of the subject classes the check allows is the token kind's subject."""
-    return any(subject.subject_type == token_type.subject for subject in requirement.allowed)
+_RULES: Final[tuple[_HiddenWhen, ...]] = (*_ENTRY_RULES, _hides_refused_kinds)
 
 
 def _file_names(entry: CatalogOp) -> set[str]:
