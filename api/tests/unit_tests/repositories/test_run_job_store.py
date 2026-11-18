@@ -1,5 +1,6 @@
 from collections.abc import Callable, Mapping
 from dataclasses import replace
+from typing import override
 
 import pytest
 
@@ -178,9 +179,10 @@ def test_stale_idempotency_key_is_replaced_once(store: RedisRunJobStore, redis: 
 class RetakingRedis(InMemoryRedis):
     """Another opener binds the key to a live job right before the compare-and-delete runs."""
 
-    def register_script(self, _script: str) -> Callable[..., int]:
+    @override
+    def register_script(self, script: str) -> Callable[..., int]:
         self.values[IDEM_NAME] = "job-5"
-        return super().register_script(_script)
+        return super().register_script(script)
 
 
 def test_stale_key_retaken_by_another_opener_is_not_overwritten() -> None:

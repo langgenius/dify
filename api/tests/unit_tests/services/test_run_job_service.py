@@ -1,6 +1,8 @@
 import json
 import threading
+from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import override
 
 import pytest
 from flask import Flask
@@ -9,6 +11,7 @@ from core.app.entities.task_entities import StreamEvent
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
+from services.app_task_service import WorkflowStopOutcome
 from services.run_job_contracts import JobOwner, JobPatch, JobRecord, JobStatus, OpenedJob
 from services.run_job_service import (
     POLL_INTERVAL_SECONDS,
@@ -41,21 +44,23 @@ class FakeClock:
         self.now += seconds
 
 
-class DiscardFailsStore:
-    def __init__(self, inner: RedisRunJobStore) -> None:
-        self._inner = inner
+class DiscardFailsStore(RedisRunJobStore):
+    def __init__(self) -> None:
+        super().__init__(redis_client=InMemoryRedis())
         self.fail = True
 
-    def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
-        return self._inner.open(record, idempotency_key=idempotency_key)
-
+    @override
     def discard(self, job_id: str, *, idempotency_key: str | None) -> None:
         if self.fail:
             raise ConnectionError("redis down")
-        self._inner.discard(job_id, idempotency_key=idempotency_key)
+        super().discard(job_id, idempotency_key=idempotency_key)
 
 
-class BrokenStore:
+class BrokenStore(RedisRunJobStore):
+    def __init__(self) -> None:
+        super().__init__(redis_client=InMemoryRedis())
+
+    @override
     def open(self, record: JobRecord, *, idempotency_key: str | None) -> OpenedJob:
         raise ConnectionError(f"redis down for {record.id} {idempotency_key}")
 
@@ -93,13 +98,13 @@ def _opening(mode: AppMode = AppMode.WORKFLOW, key: str | None = None) -> JobOpe
 
 
 @pytest.fixture
-def request_context():
+def request_context() -> Iterator[None]:
     with Flask(__name__).test_request_context():
         yield
 
 
 @pytest.mark.usefixtures("request_context")
-def test_open_fails_before_any_run_when_the_store_is_unavailable():
+def test_open_fails_before_any_run_when_the_store_is_unavailable() -> None:
     broken = RunJobService(
         store=BrokenStore(),
         results=InMemoryRunResults(),
@@ -117,8 +122,8 @@ def test_open_fails_before_any_run_when_the_store_is_unavailable():
     assert working.service.open(_opening()).created is True
 
 
-def test_discard_releases_the_slot_even_when_the_store_raises():
-    store = DiscardFailsStore(RedisRunJobStore(redis_client=InMemoryRedis()))
+def test_discard_releases_the_slot_even_when_the_store_raises() -> None:
+    store = DiscardFailsStore()
     service = RunJobService(
         store=store, results=InMemoryRunResults(), tasks=RecordingTaskControl(), max_background_runs=1, max_waiters=1
     )
@@ -132,7 +137,7 @@ def test_discard_releases_the_slot_even_when_the_store_raises():
 
 
 @pytest.mark.usefixtures("request_context")
-def test_attach_refuses_a_job_it_holds_no_slot_for():
+def test_attach_refuses_a_job_it_holds_no_slot_for() -> None:
     harness = _harness(max_background_runs=1)
     first = harness.service.open(_opening(key="k"))
     again = harness.service.open(_opening(key="k"))
@@ -144,7 +149,7 @@ def test_attach_refuses_a_job_it_holds_no_slot_for():
     assert harness.service.open(_opening()).created is True
 
 
-def test_view_of_a_finished_graph_run_drops_the_stale_record_form():
+def test_view_of_a_finished_graph_run_drops_the_stale_record_form() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1", form={"form_id": "old"}))
@@ -155,7 +160,7 @@ def test_view_of_a_finished_graph_run_drops_the_stale_record_form():
     assert view.form is None
 
 
-def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record():
+def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1", status=JobStatus.PAUSED, form={"form_id": "f"}))
@@ -166,7 +171,7 @@ def test_view_of_a_graph_job_with_an_invisible_run_uses_the_record():
     assert view.form == {"form_id": "f"}
 
 
-def test_stop_of_a_final_job_sends_nothing():
+def test_stop_of_a_final_job_sends_nothing() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -181,7 +186,7 @@ def test_stop_of_a_final_job_sends_nothing():
     assert stored.stop_requested is False
 
 
-def test_stop_of_a_paused_job_still_stops_the_run():
+def test_stop_of_a_paused_job_still_stops_the_run() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -192,7 +197,7 @@ def test_stop_of_a_paused_job_still_stops_the_run():
     assert [stop.run_id for stop in harness.tasks.workflow_stops] == ["run-1"]
 
 
-def test_open_refuses_a_new_job_at_the_background_cap():
+def test_open_refuses_a_new_job_at_the_background_cap() -> None:
     harness = _harness(max_background_runs=1)
     first = harness.service.open(_opening())
 
@@ -202,7 +207,7 @@ def test_open_refuses_a_new_job_at_the_background_cap():
     assert harness.store.get(first.record.id) is not None
 
 
-def test_open_with_a_used_key_does_not_take_a_slot():
+def test_open_with_a_used_key_does_not_take_a_slot() -> None:
     harness = _harness(max_background_runs=1)
     first = harness.service.open(_opening(key="k"))
 
@@ -214,7 +219,7 @@ def test_open_with_a_used_key_does_not_take_a_slot():
     assert harness.service.open(_opening()).created is True
 
 
-def test_discard_releases_the_reserved_slot():
+def test_discard_releases_the_reserved_slot() -> None:
     harness = _harness(max_background_runs=1)
     first = harness.service.open(_opening())
     harness.service.discard(first, idempotency_key=None)
@@ -223,7 +228,7 @@ def test_discard_releases_the_reserved_slot():
     assert harness.service.open(_opening()).created is True
 
 
-def test_refused_open_leaves_no_job_and_no_slot_behind():
+def test_refused_open_leaves_no_job_and_no_slot_behind() -> None:
     harness = _harness(max_background_runs=1)
     first = harness.service.open(_opening())
     with pytest.raises(JobCapacityError):
@@ -235,7 +240,7 @@ def test_refused_open_leaves_no_job_and_no_slot_behind():
 
 
 @pytest.mark.usefixtures("request_context")
-def test_attach_reads_the_stream_on_another_thread_and_frees_its_slot():
+def test_attach_reads_the_stream_on_another_thread_and_frees_its_slot() -> None:
     harness = _harness(max_background_runs=1)
     opened = harness.service.open(_opening(AppMode.CHAT))
     frame = f"data: {json.dumps({'event': StreamEvent.MESSAGE_END.value, 'task_id': 'task-1'})}\n\n"
@@ -252,7 +257,7 @@ def test_attach_reads_the_stream_on_another_thread_and_frees_its_slot():
     assert harness.service.open(_opening()).created is True
 
 
-def test_view_hides_a_job_from_another_owner():
+def test_view_hides_a_job_from_another_owner() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -262,7 +267,7 @@ def test_view_hides_a_job_from_another_owner():
         harness.service.view(OWNER, "missing")
 
 
-def test_view_of_a_graph_job_reads_status_and_outputs_from_the_run():
+def test_view_of_a_graph_job_reads_status_and_outputs_from_the_run() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -275,7 +280,7 @@ def test_view_of_a_graph_job_reads_status_and_outputs_from_the_run():
     assert view.error is None
 
 
-def test_view_of_a_paused_graph_job_carries_the_pending_form():
+def test_view_of_a_paused_graph_job_carries_the_pending_form() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -288,7 +293,7 @@ def test_view_of_a_paused_graph_job_carries_the_pending_form():
     assert view.form == {"form_id": "f1"}
 
 
-def test_view_of_a_graph_job_without_a_run_id_uses_the_record():
+def test_view_of_a_graph_job_without_a_run_id_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -302,7 +307,7 @@ def _lapse_alive_key(harness: Harness, job_id: str) -> None:
     harness.redis.delete(f"openapi:job:{job_id}:alive")
 
 
-def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_saved():
+def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_saved() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     _lapse_alive_key(harness, opened.record.id)
@@ -316,7 +321,7 @@ def test_view_of_a_graph_job_without_a_run_id_and_without_a_reader_fails_and_is_
     assert (stored.status, stored.error) == (JobStatus.FAILED, RUN_NOT_CONFIRMED)
 
 
-def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running():
+def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_running() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -326,7 +331,7 @@ def test_view_of_a_graph_job_without_a_run_id_and_with_a_live_reader_keeps_runni
     assert view.error is None
 
 
-def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key():
+def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -340,7 +345,7 @@ def test_view_of_a_graph_job_with_a_run_id_ignores_the_alive_key():
     assert view.error is None
 
 
-def test_wait_returns_at_once_for_a_graph_job_whose_run_start_was_not_confirmed():
+def test_wait_returns_at_once_for_a_graph_job_whose_run_start_was_not_confirmed() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     _lapse_alive_key(harness, opened.record.id)
@@ -351,7 +356,7 @@ def test_wait_returns_at_once_for_a_graph_job_whose_run_start_was_not_confirmed(
     assert harness.clock.slept == []
 
 
-def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_later():
+def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_later() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     _lapse_alive_key(harness, opened.record.id)
@@ -366,7 +371,7 @@ def test_a_graph_job_reported_not_confirmed_never_changes_when_its_run_appears_l
     assert (later.status, later.error, later.outputs) == (JobStatus.FAILED, RUN_NOT_CONFIRMED, None)
 
 
-def test_view_of_a_message_job_uses_the_record():
+def test_view_of_a_message_job_uses_the_record() -> None:
     harness = _harness()
     opened = harness.service.open(_opening(AppMode.CHAT))
     harness.store.patch(opened.record.id, JobPatch(status=JobStatus.FAILED, error="boom"))
@@ -377,7 +382,7 @@ def test_view_of_a_message_job_uses_the_record():
     assert view.error == "boom"
 
 
-def test_wait_zero_never_sleeps():
+def test_wait_zero_never_sleeps() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -387,7 +392,7 @@ def test_wait_zero_never_sleeps():
     assert harness.clock.slept == []
 
 
-def test_wait_returns_as_soon_as_the_job_is_final():
+def test_wait_returns_as_soon_as_the_job_is_final() -> None:
     harness = _harness()
     opened = harness.service.open(_opening(AppMode.CHAT))
     harness.store.patch(opened.record.id, JobPatch(status=JobStatus.SUCCEEDED))
@@ -398,7 +403,7 @@ def test_wait_returns_as_soon_as_the_job_is_final():
     assert harness.clock.slept == []
 
 
-def test_wait_gives_up_after_wait_seconds_and_reports_running():
+def test_wait_gives_up_after_wait_seconds_and_reports_running() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -408,7 +413,7 @@ def test_wait_gives_up_after_wait_seconds_and_reports_running():
     assert harness.clock.slept == [POLL_INTERVAL_SECONDS] * 3
 
 
-def test_wait_is_clamped_to_the_cap():
+def test_wait_is_clamped_to_the_cap() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -417,7 +422,7 @@ def test_wait_is_clamped_to_the_cap():
     assert sum(harness.clock.slept) == WAIT_MAX_SECONDS
 
 
-def test_wait_returns_when_the_job_pauses():
+def test_wait_returns_when_the_job_pauses() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -431,7 +436,7 @@ def test_wait_returns_when_the_job_pauses():
     assert harness.clock.slept == []
 
 
-def test_wait_keeps_polling_a_paused_job_without_a_waiting_form():
+def test_wait_keeps_polling_a_paused_job_without_a_waiting_form() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
     harness.store.patch(opened.record.id, JobPatch(run_id="run-1"))
@@ -443,7 +448,7 @@ def test_wait_keeps_polling_a_paused_job_without_a_waiting_form():
     assert harness.clock.slept == [POLL_INTERVAL_SECONDS] * 3
 
 
-def test_wait_answers_at_once_when_the_waiter_cap_is_full():
+def test_wait_answers_at_once_when_the_waiter_cap_is_full() -> None:
     clock = FakeClock()
     nested: dict[str, object] = {}
 
@@ -471,7 +476,7 @@ def test_wait_answers_at_once_when_the_waiter_cap_is_full():
     assert nested["before"] == nested["after"]
 
 
-def test_wait_releases_its_waiter_slot():
+def test_wait_releases_its_waiter_slot() -> None:
     harness = _harness(max_waiters=1)
     opened = harness.service.open(_opening())
 
@@ -481,7 +486,7 @@ def test_wait_releases_its_waiter_slot():
     assert harness.clock.slept == [POLL_INTERVAL_SECONDS] * 2
 
 
-def test_stop_before_the_ids_arrive_only_records_the_request():
+def test_stop_before_the_ids_arrive_only_records_the_request() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -494,7 +499,7 @@ def test_stop_before_the_ids_arrive_only_records_the_request():
     assert harness.tasks.message_stops == []
 
 
-def test_stop_of_a_graph_job_stops_the_run_and_of_a_message_job_the_task():
+def test_stop_of_a_graph_job_stops_the_run_and_of_a_message_job_the_task() -> None:
     harness = _harness()
     graph = harness.service.open(_opening(AppMode.WORKFLOW))
     message = harness.service.open(_opening(AppMode.CHAT))
@@ -511,7 +516,7 @@ def test_stop_of_a_graph_job_stops_the_run_and_of_a_message_job_the_task():
     assert view.record.stop_requested is True
 
 
-def test_stop_hides_a_job_from_another_owner():
+def test_stop_hides_a_job_from_another_owner() -> None:
     harness = _harness()
     opened = harness.service.open(_opening())
 
@@ -524,12 +529,29 @@ class StopFlipsRunTaskControl(RecordingTaskControl):
         super().__init__()
         self._results = results
 
-    def stop_workflow_run(self, **kwargs):
-        self._results.runs[(kwargs["tenant_id"], kwargs["run_id"])] = RunResult(status=JobStatus.STOPPED)
-        return super().stop_workflow_run(**kwargs)
+    @override
+    def stop_workflow_run(
+        self,
+        *,
+        tenant_id: str,
+        app_id: str,
+        run_id: str,
+        app_mode: AppMode,
+        caller_role: CreatorUserRole,
+        caller_id: str,
+    ) -> WorkflowStopOutcome:
+        self._results.runs[(tenant_id, run_id)] = RunResult(status=JobStatus.STOPPED)
+        return super().stop_workflow_run(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            run_id=run_id,
+            app_mode=app_mode,
+            caller_role=caller_role,
+            caller_id=caller_id,
+        )
 
 
-def test_stop_returns_the_view_after_the_stop():
+def test_stop_returns_the_view_after_the_stop() -> None:
     harness = _harness()
     harness.service._stopper = TaskControlStopper(StopFlipsRunTaskControl(harness.results))
     opened = harness.service.open(_opening())
@@ -547,13 +569,14 @@ def test_stop_returns_the_view_after_the_stop():
 class IdsArriveWhileStoppingStore(RedisRunJobStore):
     """Stores the run ids right after the stop flag, as the reader thread would."""
 
+    @override
     def patch(self, job_id: str, patch: JobPatch) -> None:
         super().patch(job_id, patch)
         if patch.stop_requested:
             super().patch(job_id, JobPatch(run_id="run-1", task_id="task-1"))
 
 
-def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_request():
+def test_stop_sends_the_stop_when_the_ids_arrive_while_it_is_recording_the_request() -> None:
     harness = _harness()
     racing = IdsArriveWhileStoppingStore(redis_client=InMemoryRedis())
     service = RunJobService(

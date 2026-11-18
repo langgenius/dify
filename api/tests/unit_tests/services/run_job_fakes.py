@@ -17,6 +17,7 @@ class InMemoryRedis:
     values: dict[str, str] = field(default_factory=dict)
     hashes: dict[str, dict[str, str]] = field(default_factory=dict)
     ttls: dict[str, int] = field(default_factory=dict)
+    scripts: list[str] = field(default_factory=list)
 
     def set(self, name: str, value: str, ex: int | None = None, nx: bool = False) -> bool | None:
         if nx and name in self.values:
@@ -45,7 +46,9 @@ class InMemoryRedis:
             self.ttls[name] = time
         return exists
 
-    def register_script(self, _script: str) -> Callable[..., int]:
+    def register_script(self, script: str) -> Callable[..., int]:
+        self.scripts.append(script)
+
         def delete_if_equal(*, keys: list[str], args: list[str]) -> int:
             if self.values.get(keys[0]) != args[0]:
                 return 0
