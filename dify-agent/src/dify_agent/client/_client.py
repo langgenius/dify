@@ -843,10 +843,12 @@ class Client:
                     for line in line_decoder.decode(text):
                         event = decoder.feed_line(line)
                         if event is not None:
+                            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                             yield event
                 for line in line_decoder.flush():
                     event = decoder.feed_line(line)
                     if event is not None:
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                         yield event
         except DifyAgentHTTPError:
             raise
@@ -886,10 +888,12 @@ class Client:
                     for line in line_decoder.decode(text):
                         event = decoder.feed_line(line)
                         if event is not None:
+                            _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                             yield event
                 for line in line_decoder.flush():
                     event = decoder.feed_line(line)
                     if event is not None:
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                         yield event
         except DifyAgentHTTPError:
             raise

@@ -983,6 +983,73 @@ def test_stream_events_observes_caller_stop_on_heartbeat() -> None:
     assert stop_checks == 2
 
 
+@pytest.mark.parametrize("sync", [True, False])
+@pytest.mark.parametrize("stop_reason", ["cancel", "timeout", None])
+@pytest.mark.parametrize("frame_ending", ["\n", "\r"])
+def test_stream_events_checks_stop_between_buffered_events(
+    monkeypatch: pytest.MonkeyPatch, sync: bool, stop_reason: str | None, frame_ending: str
+) -> None:
+    now = 0.0
+    stopped = False
+    responses: list[httpx.Response] = []
+    monkeypatch.setattr(client_module.time, "monotonic", lambda: now)
+    body = _event_frame(RunStartedEvent(id="1-0", run_id="run-1")) + _event_frame(_run_succeeded_event())
+    body = body[:-1] + frame_ending
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        response = httpx.Response(
+            200, stream=httpx.ByteStream(body.encode()), headers={"content-type": "text/event-stream"}
+        )
+        responses.append(response)
+        return response
+
+    def stop_after_first_event() -> None:
+        nonlocal now, stopped
+        if stop_reason == "cancel":
+            stopped = True
+        elif stop_reason == "timeout":
+            now = 1.0
+
+    expected_error = DifyAgentStreamError if stop_reason == "cancel" else DifyAgentTimeoutError
+    expected_message = "cancelled by the caller" if stop_reason == "cancel" else "exceeded its timeout"
+
+    async def scenario() -> None:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", async_http_client=http_client)
+            events = client.stream_events("run-1", should_stop=lambda: stopped, timeout_seconds=1)
+            try:
+                assert (await anext(events)).type == "run_started"
+                stop_after_first_event()
+                if stop_reason is None:
+                    assert [event.type async for event in events] == ["run_succeeded"]
+                else:
+                    with pytest.raises(expected_error, match=expected_message):
+                        await anext(events)
+                    assert responses[0].is_closed
+            finally:
+                await events.aclose()
+
+    if sync:
+        with httpx.Client(transport=httpx.MockTransport(handler)) as http_client:
+            client = Client(base_url="http://testserver", sync_http_client=http_client)
+            events = client.stream_events_sync("run-1", should_stop=lambda: stopped, timeout_seconds=1)
+            try:
+                assert next(events).type == "run_started"
+                stop_after_first_event()
+                if stop_reason is None:
+                    assert [event.type for event in events] == ["run_succeeded"]
+                else:
+                    with pytest.raises(expected_error, match=expected_message):
+                        next(events)
+                    assert responses[0].is_closed
+            finally:
+                events.close()
+    else:
+        asyncio.run(scenario())
+
+    assert len(responses) == 1
+
+
 def test_malformed_sse_frame_does_not_reconnect() -> None:
     calls = 0
 
