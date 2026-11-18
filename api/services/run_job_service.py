@@ -358,7 +358,7 @@ class RunJobService:
         without a run id whose reader has ended and which is not final is FAILED as RUN_NOT_CONFIRMED, and that
         is saved; once saved it is final for good, even if a run id and a run row appear later. Without a visible
         run row, and for
-        MESSAGE jobs, the record's own status, error and form are used. Raises JobNotFoundError when the job is
+        MESSAGE jobs, the record's own status and error are used, with no form. Raises JobNotFoundError when the job is
         missing or owned by someone else.
         """
         record = self._store.get(job_id)
@@ -374,7 +374,7 @@ class RunJobService:
         Precondition: record is stored.
         Postcondition: see view.
         """
-        fallback = JobView(record=record, status=record.status, error=record.reported_error, form=record.form)
+        fallback = JobView(record=record, status=record.status, error=record.reported_error)
         if record.family is not JobFamily.GRAPH:
             return fallback
         if record.failure is not None:
@@ -382,9 +382,7 @@ class RunJobService:
             return fallback
         if record.run_id is None:
             unconfirmed = fail_if_reader_dead(self._store, record, JobFailure.RUN_NOT_CONFIRMED)
-            return JobView(
-                record=unconfirmed, status=unconfirmed.status, error=unconfirmed.reported_error, form=unconfirmed.form
-            )
+            return JobView(record=unconfirmed, status=unconfirmed.status, error=unconfirmed.reported_error)
         run = self._results.run(tenant_id=record.owner.tenant_id, run_id=record.run_id)
         if run is None:
             return fallback

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Final, Protocol
+from typing import Final, Protocol
 
 from models.enums import CreatorUserRole
 from models.model import AppMode
@@ -85,7 +84,6 @@ class JobRecord:
     run_id: str | None = None
     message_id: str | None = None
     conversation_id: str | None = None
-    form: Mapping[str, Any] | None = None
     error: str | None = None
     failure: JobFailure | None = None
     stop_requested: bool = False
@@ -114,7 +112,6 @@ class JobPatch:
     run_id: str | None = None
     message_id: str | None = None
     conversation_id: str | None = None
-    form: Mapping[str, Any] | None = None
     error: str | None = None
     failure: JobFailure | None = None
     stop_requested: bool | None = None

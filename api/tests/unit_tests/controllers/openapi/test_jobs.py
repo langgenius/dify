@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import dataclasses
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
 import pytest
@@ -161,10 +161,15 @@ def test_a_running_job_hints_wait_job_with_its_ids(world: World) -> None:
     assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
+def _pause_run(world: World, form: Mapping[str, object] | None) -> None:
+    world.results.runs[(world.client.workspace_id, RUN_ID)] = RunResult(status=JobStatus.PAUSED)
+    if form is not None:
+        world.results.forms[(world.client.workspace_id, world.client.app_id, RUN_ID, AppMode.WORKFLOW)] = form
+
+
 def test_a_paused_job_hints_the_form_submit_op_then_wait(world: World) -> None:
-    job_id = world.open_job(
-        patch=JobPatch(status=JobStatus.PAUSED, task_id=TASK_ID, run_id=RUN_ID, form=FORM),
-    )
+    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    _pause_run(world, FORM)
 
     body = world.wait(job_id).get_json()
 
@@ -186,15 +191,17 @@ def test_a_paused_job_hints_the_form_submit_op_then_wait(world: World) -> None:
 
 
 def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(status=JobStatus.PAUSED, run_id=RUN_ID))
+    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    _pause_run(world, None)
 
     body = world.wait(job_id).get_json()
 
     assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
-def test_a_paused_job_with_a_form_missing_ids_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(patch=JobPatch(status=JobStatus.PAUSED, form=FORM))
+def test_a_paused_job_with_a_form_missing_its_task_id_hints_only_wait(world: World) -> None:
+    job_id = world.open_job(patch=JobPatch(run_id=RUN_ID))
+    _pause_run(world, FORM)
 
     body = world.wait(job_id).get_json()
 
@@ -202,9 +209,8 @@ def test_a_paused_job_with_a_form_missing_ids_hints_only_wait(world: World) -> N
 
 
 def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(
-        patch=JobPatch(status=JobStatus.PAUSED, task_id=TASK_ID, run_id=RUN_ID, form={"unexpected": 1}),
-    )
+    job_id = world.open_job(patch=JobPatch(task_id=TASK_ID, run_id=RUN_ID))
+    _pause_run(world, {"unexpected": 1})
 
     body = world.wait(job_id).get_json()
 

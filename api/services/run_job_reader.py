@@ -75,27 +75,6 @@ def _run_finished(context: _FrameContext) -> JobPatch | None:
     return JobPatch(status=status, error=error)
 
 
-def _run_paused(context: _FrameContext) -> JobPatch | None:
-    """Mark the job paused.
-
-    Precondition: none.
-    Postcondition: a patch setting PAUSED.
-    """
-    return JobPatch(status=JobStatus.PAUSED)
-
-
-def _form_required(context: _FrameContext) -> JobPatch | None:
-    """Keep the human input form of a paused run.
-
-    Precondition: context.payload is a decoded human_input_required frame.
-    Postcondition: a patch holding the frame's data as the form, or None when it has no data object.
-    """
-    data = context.payload.get("data")
-    if not isinstance(data, Mapping):
-        return None
-    return JobPatch(form=data)
-
-
 def _message_ended(context: _FrameContext) -> JobPatch | None:
     """Finish a message job at the end of its answer.
 
@@ -122,8 +101,6 @@ def _run_errored(context: _FrameContext) -> JobPatch | None:
 
 
 EVENT_HANDLERS: Final[Mapping[str, _Handler]] = {
-    StreamEvent.HUMAN_INPUT_REQUIRED.value: _form_required,
-    StreamEvent.WORKFLOW_PAUSED.value: _run_paused,
     StreamEvent.WORKFLOW_FINISHED.value: _run_finished,
     StreamEvent.MESSAGE_END.value: _message_ended,
     StreamEvent.ERROR.value: _run_errored,
@@ -175,7 +152,7 @@ def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper
     """Apply one frame to the job.
 
     Precondition: the job exists.
-    Postcondition: ids, form and status from the frame are stored;
+    Postcondition: ids and status from the frame are stored;
     ids count as stored only after the store accepted them, so a failed save is retried by the next frame that
     carries them; a pending stop is sent once when the task id is first stored.
     """
@@ -261,7 +238,7 @@ def read_to_end(
     """Consume a run's SSE frames and record them as job state.
 
     Precondition: the job exists.
-    Postcondition: every frame was consumed, ids and form details are stored, a MESSAGE job has a final status, and
+    Postcondition: every frame was consumed, ids are stored, a MESSAGE job has a final status, and
     frames is closed when it has a close method. For as long as this call runs, whether or not frames arrive, the
     alive key is refreshed every alive_refresh_seconds; the refresh stops before it returns. A frame whose handling
     raises is logged and skipped; a stream that raises is logged and treated as ended.

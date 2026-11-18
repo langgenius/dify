@@ -1,4 +1,4 @@
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import replace
 from typing import override
 
@@ -32,19 +32,18 @@ def store(redis: InMemoryRedis) -> RedisRunJobStore:
     return RedisRunJobStore(redis_client=redis)
 
 
-def _record(job_id: str = "job-1", *, caller_id: str = "acct-1", form: Mapping[str, object] | None = None) -> JobRecord:
+def _record(job_id: str = "job-1", *, caller_id: str = "acct-1") -> JobRecord:
     return JobRecord(
         id=job_id,
         owner=JobOwner(tenant_id="t1", app_id="app-1", caller_role=CreatorUserRole.ACCOUNT, caller_id=caller_id),
         mode=AppMode.WORKFLOW,
         op="start.console_app.workflow",
         status=JobStatus.RUNNING,
-        form=form,
     )
 
 
 def test_open_then_get_returns_the_same_record(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
-    job = _record(form={"form_id": "f1", "fields": [1, 2]})
+    job = _record()
 
     opened = store.open(job, idempotency_key=None)
 
