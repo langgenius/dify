@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Final, Protocol, runtime_checkable
+from collections.abc import Iterable
+from typing import Final
 
 from flask_restx import Resource
 
@@ -19,8 +20,7 @@ from controllers.openapi.jobs import job_owner, job_state
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_application_services import application_services
 from models.model import AppMode
-from services.run_job_contracts import OpenedJob
-from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening, RunJobService
+from services.run_job_service import JobCapacityError, JobNotFoundError, JobOpening
 
 WORKFLOW_START_OP: Final = "start.console_app.workflow"
 ADVANCED_CHAT_START_OP: Final = "start.console_app.advanced_chat"
@@ -29,42 +29,24 @@ _JOB_STATE: Final = (200, JobState, "Job state")
 APPS_SURFACE: Final = "apps"
 
 
-@runtime_checkable
-class _Closable(Protocol):
-    def close(self) -> None: ...
-
-
 type StartPayload = WorkflowStartPayload | AdvancedChatStartPayload
 
 
-def _launch(ctx: Context, body: StartPayload, *, run_jobs: RunJobService, opened: OpenedJob, key: str | None) -> None:
-    """Start the run behind a job this call created.
+def _launch(ctx: Context, body: StartPayload) -> Iterable[str]:
+    """Start the run and audit it, as the run route does.
 
-    Precondition: opened.created is true and attach was not called for it.
-    Postcondition: the run's reader is attached; when the run cannot be generated, audited or attached, the job
-    is discarded, the stream (if any) is closed, and the error propagates.
+    Precondition: the guards admitted the caller and the app's mode was checked.
+    Postcondition: the run's SSE frames; errors of the run service propagate.
     """
-    try:
-        stream = _stream(ctx, _generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
-    except BaseException:
-        run_jobs.discard(opened, idempotency_key=key)
-        raise
-    try:
-        emit_app_run(
-            app_id=ctx.app.id,
-            tenant_id=ctx.app.tenant_id,
-            caller_kind=ctx.subject.caller_role,
-            mode=str(ctx.app.mode),
-            surface=APPS_SURFACE,
-        )
-        run_jobs.attach(opened.record.id, stream)
-    except BaseException:
-        try:
-            if isinstance(stream, _Closable):
-                stream.close()
-        finally:
-            run_jobs.discard(opened, idempotency_key=key)
-        raise
+    stream = _stream(ctx, _generate_args(ctx, body, exclude=_START_FIELDS), InvokeFrom.OPENAPI)
+    emit_app_run(
+        app_id=ctx.app.id,
+        tenant_id=ctx.app.tenant_id,
+        caller_kind=ctx.subject.caller_role,
+        mode=str(ctx.app.mode),
+        surface=APPS_SURFACE,
+    )
+    return stream
 
 
 def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode, ...]) -> JobState:
@@ -76,17 +58,15 @@ def start_job(ctx: Context, body: StartPayload, *, op: str, modes: tuple[AppMode
     """
     _require_mode(ctx.app, *modes)
     owner = job_owner(ctx)
-    key = body.idempotency_key
+    opening = JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=body.idempotency_key)
     run_jobs = application_services().run_jobs
     try:
-        opened = run_jobs.open(JobOpening(owner=owner, mode=AppMode.value_of(ctx.app.mode), op=op, idempotency_key=key))
+        record = run_jobs.start(opening, lambda: _launch(ctx, body))
     except JobCapacityError as ex:
         raise JobCapacityReached() from ex
-    if opened.created:
-        _launch(ctx, body, run_jobs=run_jobs, opened=opened, key=key)
     end_read_transaction(ctx.session)
     try:
-        view = run_jobs.wait(owner, opened.record.id, wait_seconds=body.wait_seconds)
+        view = run_jobs.wait(owner, record.id, wait_seconds=body.wait_seconds)
     except JobNotFoundError as ex:
         raise JobNotFound() from ex
     return job_state(view, app_id=ctx.app.id)

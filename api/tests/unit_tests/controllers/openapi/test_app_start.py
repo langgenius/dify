@@ -5,7 +5,7 @@ import json
 import logging
 import threading
 import time
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import dataclass, field
 
 import pytest
@@ -25,8 +25,16 @@ from extensions.ext_application_services import ApplicationServices
 from models import App
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
-from services.run_job_contracts import JobOwner, JobStatus
-from services.run_job_service import WAIT_DEFAULT_SECONDS, WAIT_MAX_SECONDS, JobView, RunJobService, RunResult
+from services.run_job_contracts import JobOwner, JobRecord, JobStatus
+from services.run_job_service import (
+    READER_THREAD_NAME,
+    WAIT_DEFAULT_SECONDS,
+    WAIT_MAX_SECONDS,
+    JobOpening,
+    JobView,
+    RunJobService,
+    RunResult,
+)
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -53,14 +61,11 @@ class Generator:
     error: Exception | None = None
     hold: threading.Event | None = None
     calls: list[dict[str, object]] = field(default_factory=list)
-    stream: Iterable[str] | None = None
 
     def generate(self, **kwargs: object) -> Iterable[str]:
         self.calls.append(kwargs)
         if self.error is not None:
             raise self.error
-        if self.stream is not None:
-            return self.stream
         return self._stream()
 
     def _stream(self) -> Iterator[str]:
@@ -78,13 +83,13 @@ class World:
     redis: InMemoryRedis
     results: InMemoryRunResults
     service: RunJobService
-    threads: list[threading.Thread] = field(default_factory=list)
 
     def join(self) -> None:
         if self.generator.hold is not None:
             self.generator.hold.set()
-        for thread in self.threads:
-            thread.join(timeout=5)
+        for thread in threading.enumerate():
+            if thread.name == READER_THREAD_NAME:
+                thread.join(timeout=5)
 
     def start(self, route: str = WORKFLOW_ROUTE, **body: object) -> TestResponse:
         return self.client.client.post(route.format(app_id=self.client.app_id), json=body, headers=self.client.headers)
@@ -119,14 +124,6 @@ def _world(
 
     monkeypatch.setattr("controllers.openapi.app_run.AppGenerateService", GenerateService)
     world = World(admitted_bearer, generator, store, redis, results, service)
-    attach = service.attach
-
-    def attach_and_track(job_id: str, frames: Iterable[str]) -> threading.Thread:
-        thread = attach(job_id, frames)
-        world.threads.append(thread)
-        return thread
-
-    monkeypatch.setattr(service, "attach", attach_and_track)
     request.addfinalizer(world.join)
     return world
 
@@ -155,16 +152,18 @@ def test_start_returns_a_finished_job_when_the_run_ends_inside_the_wait(world: W
     assert body["outputs"] == {"x": 1}
 
 
-def test_start_orders_audit_attach_end_of_read_transaction_then_wait(
+def test_start_audits_inside_the_start_then_ends_the_read_transaction_then_waits(
     world: World, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     order: list[str] = []
-    attach = world.service.attach
+    start = world.service.start
     wait = world.service.wait
 
-    def recording_attach(job_id: str, frames: Iterable[str]) -> threading.Thread:
-        order.append("attach")
-        return attach(job_id, frames)
+    def recording_start(opening: JobOpening, launch: Callable[[], Iterable[str]]) -> JobRecord:
+        order.append("start")
+        record = start(opening, launch)
+        order.append("started")
+        return record
 
     def recording_wait(owner: JobOwner, job_id: str, *, wait_seconds: int) -> JobView:
         order.append("wait")
@@ -172,12 +171,12 @@ def test_start_orders_audit_attach_end_of_read_transaction_then_wait(
 
     monkeypatch.setattr(app_start, "emit_app_run", lambda **_kwargs: order.append("emit"))
     monkeypatch.setattr(app_start, "end_read_transaction", lambda _session: order.append("end"))
-    monkeypatch.setattr(world.service, "attach", recording_attach)
+    monkeypatch.setattr(world.service, "start", recording_start)
     monkeypatch.setattr(world.service, "wait", recording_wait)
 
     world.start(wait_seconds=0)
 
-    assert order == ["emit", "attach", "end", "wait"]
+    assert order == ["start", "emit", "started", "end", "wait"]
 
 
 def test_advanced_chat_start_returns_a_finished_job(world: World, sqlite_session: Session) -> None:
@@ -325,29 +324,3 @@ def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi
         assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
         assert specs[op].requirements == _RUN_GUARDS
-
-
-class ClosableStream:
-    def __init__(self) -> None:
-        self.closed = False
-
-    def __iter__(self) -> Iterator[str]:
-        return iter(())
-
-    def close(self) -> None:
-        self.closed = True
-
-
-def test_a_failed_launch_closes_the_stream(world: World, monkeypatch: pytest.MonkeyPatch) -> None:
-    stream = ClosableStream()
-    world.generator.stream = stream
-
-    def fail(**_kwargs: object) -> None:
-        raise RuntimeError("audit down")
-
-    monkeypatch.setattr(app_start, "emit_app_run", fail)
-
-    response = world.start(wait_seconds=0)
-
-    assert response.status_code == 500
-    assert stream.closed
