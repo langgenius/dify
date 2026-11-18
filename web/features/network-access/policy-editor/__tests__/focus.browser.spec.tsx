@@ -9,23 +9,24 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 
-const requests = {
-  currentIp: vi.fn<() => Promise<{ client_ip: string }>>(),
-}
-
 vi.unmock('react-i18next')
 
-beforeEach(() => {
-  requests.currentIp.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: { networkAccessGroups: { currentIp: { get: () => requests.currentIp() } } },
+function installCurrentIpApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          networkAccessGroups: { currentIp: { get: async () => ({ client_ip: '203.0.113.42' }) } },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installCurrentIpApi>
+
+beforeEach(() => {
+  fake = installCurrentIpApi()
+  onTestFinished(fake)
 })
 
 async function renderEditor(props: Partial<ComponentProps<typeof IpPolicyDialog>> = {}) {
@@ -72,7 +73,9 @@ it.each([0, 1])(
       await expect
         .element(screen.getByRole('button', { name: 'Remove entry', exact: true }))
         .toHaveFocus()
-      expect(requests.currentIp).not.toHaveBeenCalled()
+      expect(
+        fake.console.workspaces.current.networkAccessGroups.currentIp.get,
+      ).not.toHaveBeenCalled()
     } finally {
       await screen.unmount()
       queryClient.clear()
@@ -86,7 +89,8 @@ it.each([false, true])(
   'retains current-IP action focus through retry (already allowed: %s)',
   async (alreadyAllowed) => {
     const response = createDeferred<{ client_ip: string }>()
-    requests.currentIp
+    const currentIp = fake.console.workspaces.current.networkAccessGroups.currentIp.get
+    currentIp
       .mockRejectedValueOnce(
         apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'IP unavailable' }),
       )
@@ -110,9 +114,9 @@ it.each([false, true])(
 
       await expect.element(retry).toHaveAttribute('aria-disabled', 'true')
       await expect.element(retry).toHaveFocus()
-      await expect.poll(() => requests.currentIp.mock.calls.length).toBe(2)
+      await expect.poll(() => currentIp.mock.calls.length).toBe(2)
       await userEvent.keyboard('{Enter}')
-      expect(requests.currentIp).toHaveBeenCalledTimes(2)
+      expect(currentIp).toHaveBeenCalledTimes(2)
 
       response.resolve({ client_ip: '203.0.113.42' })
       const addCurrentIp = screen.getByRole('button', { name: 'Add it', exact: true })
@@ -132,7 +136,7 @@ it.each([false, true])(
       await expect
         .element(screen.getByRole('button', { name: 'Cancel', exact: true }))
         .toHaveFocus()
-      expect(requests.currentIp).toHaveBeenCalledTimes(2)
+      expect(currentIp).toHaveBeenCalledTimes(2)
     } finally {
       response.resolve({ client_ip: '203.0.113.42' })
       await screen.unmount()

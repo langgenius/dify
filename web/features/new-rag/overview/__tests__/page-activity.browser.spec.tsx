@@ -33,100 +33,77 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
 
 let queryData = createOverviewData()
 
-const server = {
-  calls: { activity: vi.fn() },
-}
-
 function installOverviewApi() {
   const respond =
     <T,>(data: () => T) =>
     () =>
       structuredClone(data())
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            byControlSpaceId: {
-              backgroundTasks: {
-                get: respond(() => ({ data: queryData.tasks, next_cursor: null })),
-              },
-              overview: {
-                activity: {
-                  get: (input) => {
-                    server.calls.activity(input)
-                    return structuredClone(queryData.activity)
-                  },
-                },
-                attention: { get: respond(() => queryData.attention) },
-                inventory: { get: respond(() => queryData.inventory) },
-                queryOutcomes: { get: respond(() => queryData.outcomes) },
-                stats: { get: respond(() => queryData.stats) },
-              },
-              settings: {
-                get: () => ({
-                  active_profile_available: true,
-                  active_profile_revisions: { embedding: 1, retrieval: 1 },
-                  capabilities: {
-                    deep: true,
-                    index: true,
-                    ingest: true,
-                    query: true,
-                    research: true,
-                    source_sync: true,
-                  },
-                  configuration_state: 'active',
-                  embedding: null,
-                  issues: [],
-                  retrieval: null,
-                  revision: 1,
-                }),
-              },
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            backgroundTasks: {
+              get: respond(() => ({ data: queryData.tasks, next_cursor: null })),
             },
-          },
-        },
-        workspaces: {
-          current: {
-            members: {
+            overview: {
+              activity: { get: () => structuredClone(queryData.activity) },
+              attention: { get: respond(() => queryData.attention) },
+              inventory: { get: respond(() => queryData.inventory) },
+              queryOutcomes: { get: respond(() => queryData.outcomes) },
+              stats: { get: respond(() => queryData.stats) },
+            },
+            settings: {
               get: () => ({
-                accounts: [
-                  {
-                    avatar_url: null,
-                    email: 'ada@example.com',
-                    id: 'member-1',
-                    name: 'Ada',
-                    role: 'normal',
-                    status: 'active',
-                  },
-                ],
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
               }),
             },
           },
         },
       },
-    }),
-  )
+      workspaces: {
+        current: {
+          members: {
+            get: () => ({
+              accounts: [
+                {
+                  avatar_url: null,
+                  email: 'ada@example.com',
+                  id: 'member-1',
+                  name: 'Ada',
+                  role: 'normal',
+                  status: 'active',
+                },
+              ],
+            }),
+          },
+        },
+      },
+    },
+  })
 }
-type ActivityQuery = Record<string, unknown>
-const lastActivityQuery = () =>
-  (
-    server.calls.activity.mock.lastCall?.[0] as
-      | {
-          query: ActivityQuery
-        }
-      | undefined
-  )?.query
+let fake: ReturnType<typeof installOverviewApi>
+const activityCalls = () =>
+  fake.console.knowledgeFs.spaces.byControlSpaceId.overview.activity.get.mock.calls
+const lastActivityQuery = () => activityCalls().at(-1)?.[0].query
 const drawerActivityQueries = () =>
-  server.calls.activity.mock.calls
-    .map(
-      ([input]) =>
-        (
-          input as {
-            query: ActivityQuery
-          }
-        ).query,
-    )
-    .filter((query) => 'from_at' in query)
+  activityCalls()
+    .map(([input]) => input.query)
+    .filter((query) => query && 'from_at' in query)
 async function renderOverview({
   deploymentEdition = 'COMMUNITY',
   searchParams = '',
@@ -165,7 +142,8 @@ describe('KnowledgeOverviewPage activity', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
     queryData = createOverviewData()
-    installOverviewApi()
+    fake = installOverviewApi()
+    onTestFinished(fake)
   })
 
   afterEach(() => {

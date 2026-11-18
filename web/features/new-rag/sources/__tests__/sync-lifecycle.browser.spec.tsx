@@ -1,3 +1,4 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
@@ -7,13 +8,14 @@ import {
   renderSources as render,
 } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { resetSourceServer, sourceResponse, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -54,7 +56,9 @@ describe('Sources: sync-lifecycle', () => {
     await page.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.syncSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+      ).toHaveBeenCalledWith({
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
@@ -168,12 +172,14 @@ describe('Sources: sync-lifecycle', () => {
         },
       ],
     }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        status: 'active',
-        updatedAt: '2026-07-20T10:01:00Z',
-        version: 4,
-      }),
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          status: 'active',
+          updatedAt: '2026-07-20T10:01:00Z',
+          version: 4,
+        }),
+      ),
     )
     sourceResponses.refresh.mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
@@ -287,7 +293,11 @@ describe('Sources: sync-lifecycle', () => {
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page.getByRole('button', { name: 'common.operation.retry' }).click()
 
-    await vi.waitFor(async () => expect(clientMock.syncSource).toHaveBeenCalledOnce())
+    await vi.waitFor(async () =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+      ).toHaveBeenCalledOnce(),
+    )
     await expect
       .element(page.getByRole('row', { name: /Product documentation/ }).getByRole('status'))
       .toMatchTextContent('knowledgeSpace.sourceStatus.syncing')

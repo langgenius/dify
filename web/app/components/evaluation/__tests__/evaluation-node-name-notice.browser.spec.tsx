@@ -1,5 +1,4 @@
 import type { EvaluationNodeInfoResponse } from '@dify/contracts/api/console/evaluate-target-type/types.gen'
-import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { userEvent } from 'vite-plus/test/browser'
@@ -12,11 +11,6 @@ import { createTestQueryClient } from '@/test/query-client'
 import EvaluationNodeNameNotice from '../evaluation-node-name-notice'
 
 const TARGET_ID = '5a6b7c8d-9e0f-4a1b-8c2d-3e4f5a6b7c8d'
-const api = {
-  nodeInfo:
-    vi.fn<typeof consoleClient.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post>(),
-}
-
 vi.unmock('react-i18next')
 
 const duplicateNodes: EvaluationNodeInfoResponse = {
@@ -33,18 +27,18 @@ const distinctNodes: EvaluationNodeInfoResponse = {
   ],
 }
 
-async function renderNotice(resourceType: 'apps' | 'snippets') {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        byEvaluateTargetType: {
-          byEvaluateTargetId: {
-            evaluation: { nodeInfo: { post: (input) => api.nodeInfo(input) } },
-          },
-        },
+function installNodeInfoApi() {
+  return installFakeApi({
+    console: {
+      byEvaluateTargetType: {
+        byEvaluateTargetId: { evaluation: { nodeInfo: { post: async () => distinctNodes } } },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installNodeInfoApi>
+
+async function renderNotice(resourceType: 'apps' | 'snippets') {
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -63,17 +57,24 @@ async function renderNotice(resourceType: 'apps' | 'snippets') {
   )
 }
 
-beforeEach(() => api.nodeInfo.mockReset())
+beforeEach(() => {
+  fake = installNodeInfoApi()
+  onTestFinished(fake)
+})
 
 it('opens app evaluation and warns about duplicate node names in a dismissible dialog', async () => {
-  api.nodeInfo.mockResolvedValue(duplicateNodes)
+  fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mockResolvedValue(
+    duplicateNodes,
+  )
   const screen = await renderNotice('apps')
 
   const dialog = screen.getByRole('dialog', { name: 'Duplicate node names' })
   await expect.element(dialog).toBeVisible()
   await expect.element(dialog.getByText(/same name \(Answer\)/)).toBeVisible()
   await expect.element(screen.getByText('Evaluation ready')).toBeInTheDocument()
-  expect(api.nodeInfo).toHaveBeenCalledWith(
+  expect(
+    fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post,
+  ).toHaveBeenCalledWith(
     expect.objectContaining({
       params: { evaluate_target_type: 'apps', evaluate_target_id: TARGET_ID },
       body: { metrics: [] },
@@ -86,7 +87,9 @@ it('opens app evaluation and warns about duplicate node names in a dismissible d
 })
 
 it('opens evaluation without a notice when published node names are distinct', async () => {
-  api.nodeInfo.mockResolvedValue(distinctNodes)
+  fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mockResolvedValue(
+    distinctNodes,
+  )
   const screen = await renderNotice('apps')
 
   await expect.element(screen.getByText('Evaluation ready')).toBeVisible()
@@ -94,7 +97,9 @@ it('opens evaluation without a notice when published node names are distinct', a
 })
 
 it('also warns for duplicate metric-capable snippet nodes without blocking evaluation', async () => {
-  api.nodeInfo.mockResolvedValue(duplicateNodes)
+  fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post.mockResolvedValue(
+    duplicateNodes,
+  )
   const screen = await renderNotice('snippets')
 
   await expect.element(screen.getByRole('dialog', { name: 'Duplicate node names' })).toBeVisible()
@@ -102,7 +107,7 @@ it('also warns for duplicate metric-capable snippet nodes without blocking evalu
 })
 
 it('keeps evaluation available and lets users retry a failed node-name check', async () => {
-  api.nodeInfo
+  fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post
     .mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Network unavailable' }),
     )
@@ -117,6 +122,8 @@ it('keeps evaluation available and lets users retry a failed node-name check', a
   await userEvent.click(dialog.getByRole('button', { name: 'Try Again' }))
 
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.nodeInfo).toHaveBeenCalledTimes(2)
+  expect(
+    fake.console.byEvaluateTargetType.byEvaluateTargetId.evaluation.nodeInfo.post,
+  ).toHaveBeenCalledTimes(2)
   await expect.element(screen.getByText('Evaluation ready')).toBeVisible()
 })

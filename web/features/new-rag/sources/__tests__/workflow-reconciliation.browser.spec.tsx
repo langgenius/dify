@@ -1,3 +1,4 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
@@ -6,14 +7,15 @@ import {
   measurePollIntervalFor,
   renderSources as render,
 } from './source-browser-env'
-import { source, sourceWorkflow, workflow } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { source, sourceWorkflow } from './source-fixtures'
+import { resetSourceServer, sourceResponses, workflowResponse } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -111,12 +113,14 @@ describe('Sources: workflow-reconciliation', () => {
 
   it('tracks an older workflow when the server has retried it', async () => {
     sourceResponses.data = { pages: [{ items: [source({})] }] }
-    clientMock.syncSource.mockResolvedValue({
-      ...workflow('completed'),
-      created_at: '2026-07-20T11:00:00Z',
-      id: 'newer-terminal-workflow',
-      updated_at: '2026-07-20T11:01:00Z',
-    })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post.mockResolvedValue(
+      {
+        ...workflowResponse('completed'),
+        created_at: '2026-07-20T11:00:00Z',
+        id: 'newer-terminal-workflow',
+        updated_at: '2026-07-20T11:01:00Z',
+      },
+    )
 
     const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const { queryClient } = rendered
@@ -150,12 +154,14 @@ describe('Sources: workflow-reconciliation', () => {
     sourceResponses.data = {
       pages: [{ items: [source({ syncWorkflow: sourceWorkflow('completed') })] }],
     }
-    clientMock.syncSource.mockResolvedValue({
-      ...workflow(),
-      created_at: '2026-07-20T11:00:00Z',
-      id: 'workflow-2',
-      updated_at: '2026-07-20T11:00:00Z',
-    })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post.mockResolvedValue(
+      {
+        ...workflowResponse(),
+        created_at: '2026-07-20T11:00:00Z',
+        id: 'workflow-2',
+        updated_at: '2026-07-20T11:00:00Z',
+      },
+    )
     sourceResponses.refresh.mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
     )

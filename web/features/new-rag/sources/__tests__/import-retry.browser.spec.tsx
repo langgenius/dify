@@ -1,4 +1,5 @@
 import type { SourceWorkflowRun } from '../source-models'
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
 import {
@@ -6,14 +7,15 @@ import {
   measurePollIntervalFor,
   renderSources as render,
 } from './source-browser-env'
-import { source, sourceWorkflow, workflow } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { source, sourceWorkflow } from './source-fixtures'
+import { resetSourceServer, sourceResponses, workflowResponse } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -42,10 +44,12 @@ describe('Sources: import-retry', () => {
         },
       ],
     }
-    clientMock.retrySourceWorkflow.mockResolvedValue({
-      ...workflow(),
-      id: 'initial-workflow',
-    })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post.mockResolvedValue(
+      {
+        ...workflowResponse(),
+        id: 'initial-workflow',
+      },
+    )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
 
@@ -60,10 +64,14 @@ describe('Sources: import-retry', () => {
     await expect
       .element(sourceRow.getByRole('button', { name: 'common.operation.retry' }))
       .not.toBeInTheDocument()
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post,
+    ).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'initial-workflow' },
     })
-    expect(clientMock.syncSource).not.toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+    ).not.toHaveBeenCalled()
 
     await sourceRow
       .getByRole('button', {
@@ -97,11 +105,13 @@ describe('Sources: import-retry', () => {
         },
       ],
     }
-    clientMock.retrySourceWorkflow.mockResolvedValue({
-      ...workflow(),
-      execution_attempts: 2,
-      updated_at: '2026-07-20T10:01:00Z',
-    })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post.mockResolvedValue(
+      {
+        ...workflowResponse(),
+        execution_attempts: 2,
+        updated_at: '2026-07-20T10:01:00Z',
+      },
+    )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const sourceRow = page.getByRole('row', { name: /Failed connected source/ })
@@ -115,11 +125,19 @@ describe('Sources: import-retry', () => {
       .not.toBeInTheDocument()
     await page.getByRole('menuitem', { name: 'common.operation.retry' }).click()
 
-    await vi.waitFor(async () => expect(clientMock.retrySourceWorkflow).toHaveBeenCalledOnce())
-    expect(clientMock.retrySourceWorkflow).toHaveBeenCalledWith({
+    await vi.waitFor(async () =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post,
+      ).toHaveBeenCalledOnce(),
+    )
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post,
+    ).toHaveBeenCalledWith({
       params: { control_space_id: 'space-1', run_id: 'import-workflow' },
     })
-    expect(clientMock.syncSource).not.toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+    ).not.toHaveBeenCalled()
     await expect
       .element(sourceRow.getByRole('status'))
       .toMatchTextContent('knowledgeSpace.sourceStatus.syncing')
@@ -171,12 +189,14 @@ describe('Sources: import-retry', () => {
       syncWorkflow: staleFailedWorkflow,
     })
     sourceResponses.data = { pages: [{ items: [staleFailedSource] }] }
-    clientMock.retrySourceWorkflow.mockResolvedValue({
-      ...workflow(),
-      execution_attempts: 2,
-      id: 'initial-workflow',
-      updated_at: '2026-07-20T10:01:00Z',
-    })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post.mockResolvedValue(
+      {
+        ...workflowResponse(),
+        execution_attempts: 2,
+        id: 'initial-workflow',
+        updated_at: '2026-07-20T10:01:00Z',
+      },
+    )
 
     const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     const { queryClient } = view

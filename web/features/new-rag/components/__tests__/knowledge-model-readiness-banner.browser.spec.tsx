@@ -5,8 +5,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { KnowledgeModelReadinessBanner } from '../knowledge-model-readiness-banner'
 
-const getSettings = vi.fn<() => Promise<KnowledgeFsSettingsResponse>>()
-
 vi.mock('@/next/navigation', () => ({
   usePathname: () => '/datasets/new/space-1/documents',
   useSearchParams: () => new URLSearchParams('status=failed'),
@@ -45,19 +43,20 @@ async function renderBanner(capability?: 'index') {
   )
 }
 
+function installSettingsApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: { spaces: { byControlSpaceId: { settings: { get: () => readiness() } } } },
+    },
+  })
+}
+
 describe('KnowledgeModelReadinessBanner', () => {
+  let fake: ReturnType<typeof installSettingsApi>
   beforeEach(async () => {
     await page.viewport(800, 600)
-    getSettings.mockReset()
-    onTestFinished(
-      installFakeApi({
-        console: {
-          knowledgeFs: {
-            spaces: { byControlSpaceId: { settings: { get: () => getSettings() } } },
-          },
-        },
-      }),
-    )
+    fake = installSettingsApi()
+    onTestFinished(fake)
   })
 
   it.each([
@@ -70,17 +69,19 @@ describe('KnowledgeModelReadinessBanner', () => {
       }),
     ],
   ])('stays hidden after settings settle when %s', async (_, response) => {
-    getSettings.mockResolvedValue(response)
+    fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get.mockReturnValue(response)
     const screen = await renderBanner('index')
 
-    await vi.waitFor(() => expect(getSettings).toHaveBeenCalledOnce())
+    await vi.waitFor(() =>
+      expect(fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get).toHaveBeenCalledOnce(),
+    )
     await expect.element(screen.getByRole('status')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
     await expect.element(screen.getByRole('button', { name: 'After readiness' })).toBeVisible()
   })
 
   it('shows configuration guidance when no model profile can serve the capability', async () => {
-    getSettings.mockResolvedValue(
+    fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get.mockReturnValue(
       readiness({
         active_profile_available: false,
         active_profile_revisions: { embedding: null, retrieval: null },
@@ -99,7 +100,7 @@ describe('KnowledgeModelReadinessBanner', () => {
   })
 
   it('offers the current page as the return target and exposes the action to the keyboard', async () => {
-    getSettings.mockResolvedValue(
+    fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get.mockReturnValue(
       readiness({
         capabilities: { ...allCapabilities, index: false },
         configuration_state: 'validation-failed',
@@ -126,11 +127,9 @@ describe('KnowledgeModelReadinessBanner', () => {
   })
 
   it('removes a transient error after the user retries successfully', async () => {
-    getSettings
-      .mockRejectedValueOnce(
-        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'unavailable' }),
-      )
-      .mockResolvedValue(readiness())
+    fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get.mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'unavailable' }),
+    )
     const screen = await renderBanner()
 
     const retry = screen.getByRole('button', { name: 'common.operation.retry' })
@@ -139,6 +138,6 @@ describe('KnowledgeModelReadinessBanner', () => {
 
     await expect.element(retry).not.toBeInTheDocument()
     await expect.element(screen.getByRole('alert')).not.toBeInTheDocument()
-    expect(getSettings).toHaveBeenCalledTimes(2)
+    expect(fake.console.knowledgeFs.spaces.byControlSpaceId.settings.get).toHaveBeenCalledTimes(2)
   })
 })

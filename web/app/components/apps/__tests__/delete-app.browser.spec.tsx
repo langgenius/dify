@@ -1,5 +1,4 @@
 import type { AppPartial } from '@dify/contracts/api/console/apps/types.gen'
-import type { consoleClient } from '@/service/console'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { createInstance } from 'i18next'
@@ -19,11 +18,6 @@ import { createAppDetailFixture } from '@/test/fixtures/app'
 import { AppACLPermission } from '@/utils/permission'
 import { List } from '../list'
 
-const api = {
-  apps: vi.fn<typeof consoleClient.apps.get>(),
-  starred: vi.fn<typeof consoleClient.apps.starred.get>(),
-  delete: vi.fn<(input: { params: { app_id: string } }) => Promise<void>>(),
-}
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -57,26 +51,24 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
   await page.viewport(1024, 768)
   let apps = initialApps
   let starredApps = initialStarredApps
-  api.apps.mockReset().mockImplementation(async () => appPage(apps))
-  api.starred.mockReset().mockImplementation(async () => appPage(starredApps))
-  api.delete.mockReset().mockImplementation(async ({ params }) => {
-    apps = apps.filter(({ id }) => id !== params.app_id)
-    starredApps = starredApps.filter(({ id }) => id !== params.app_id)
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: {
-          get: (input) => api.apps(input),
-          starred: { get: (input) => api.starred(input) },
-          byAppId: { delete: (input) => api.delete(input) },
+  const fake = installFakeApi({
+    console: {
+      apps: {
+        get: () => appPage(apps),
+        starred: { get: () => appPage(starredApps) },
+        byAppId: {
+          delete: ({ params }) => {
+            apps = apps.filter(({ id }) => id !== params.app_id)
+            starredApps = starredApps.filter(({ id }) => id !== params.app_id)
+          },
         },
-        features: { get: () => zGetFeaturesResponse.parse({}) },
-        tags: { get: () => [] },
-        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
       },
-    }),
-  )
+      features: { get: () => zGetFeaturesResponse.parse({}) },
+      tags: { get: () => [] },
+      workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+    },
+  })
+  onTestFinished(fake)
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -118,14 +110,17 @@ async function setup(initialApps: AppPartial[], initialStarredApps: AppPartial[]
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.poll(() => menu.isConnected).toBe(false)
   }
-  return { screen, queryClient, openDelete, actions }
+  return { screen, queryClient, openDelete, actions, fake }
 }
 
 it('keeps the delete dialog pending after its starred source unmounts until both app lists finish refreshing', async () => {
   const target = app('target', 'Shared App')
   const next = app('next', 'Next Starred App')
-  const { screen, queryClient, openDelete, actions } = await setup([target, next], [target, next])
-  const refresh = createDeferred<Awaited<ReturnType<typeof consoleClient.apps.get>>>()
+  const { screen, queryClient, openDelete, actions, fake } = await setup(
+    [target, next],
+    [target, next],
+  )
+  const refresh = createDeferred<ReturnType<typeof appPage>>()
   try {
     const starredLink = screen
       .getByRole('list', { name: 'Starred' })
@@ -135,7 +130,7 @@ it('keeps the delete dialog pending after its starred source unmounts until both
       .getByRole('list', { name: 'All Apps' })
       .getByRole('link', { name: target.name })
       .element()
-    api.apps.mockReturnValueOnce(refresh.promise)
+    fake.console.apps.get.mockReturnValueOnce(refresh.promise)
     await openDelete('Starred', target.name)
     const dialog = screen.getByRole('alertdialog').element()
     await screen.getByRole('button', { name: 'Autofill' }).click()
@@ -152,7 +147,9 @@ it('keeps the delete dialog pending after its starred source unmounts until both
     await expect
       .element(screen.getByRole('list', { name: 'Starred' }).getByRole('link', { name: next.name }))
       .toHaveFocus()
-    expect(api.delete).toHaveBeenCalledExactlyOnceWith({ params: { app_id: target.id } })
+    expect(fake.console.apps.byAppId.delete).toHaveBeenCalledExactlyOnceWith({
+      params: { app_id: target.id },
+    })
     await openDelete('Starred', next.name)
     const nextDialog = screen.getByRole('alertdialog').element()
     await screen.getByRole('button', { name: 'Cancel', exact: true }).click()
@@ -168,7 +165,7 @@ it.each(['pointer', 'keyboard'] as const)(
   'restores the %s card action after cancellation and keeps it keyboard-operable',
   async (interaction) => {
     const target = app('target', 'Research App')
-    const { screen, queryClient, actions } = await setup([target])
+    const { screen, queryClient, actions, fake } = await setup([target])
     try {
       const trigger = actions('All Apps', target.name)
       await expect.element(trigger).toBeInTheDocument()
@@ -199,7 +196,7 @@ it.each(['pointer', 'keyboard'] as const)(
       await expect.element(trigger).toBeVisible()
       await userEvent.keyboard('{Enter}')
       await expect.element(screen.getByRole('menu')).toBeVisible()
-      expect(api.delete).not.toHaveBeenCalled()
+      expect(fake.console.apps.byAppId.delete).not.toHaveBeenCalled()
     } finally {
       queryClient.clear()
     }
@@ -208,7 +205,7 @@ it.each(['pointer', 'keyboard'] as const)(
 
 it('hands focus from the card context menu to deletion and restores the card link on cancel', async () => {
   const target = app('target', 'Research App')
-  const { screen, queryClient } = await setup([target])
+  const { screen, queryClient, fake } = await setup([target])
   try {
     const link = screen.getByRole('link', { name: target.name })
     await link.click({ button: 'right' })
@@ -222,7 +219,7 @@ it('hands focus from the card context menu to deletion and restores the card lin
     await screen.getByRole('button', { name: 'Cancel', exact: true }).click()
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(link).toHaveFocus()
-    expect(api.delete).not.toHaveBeenCalled()
+    expect(fake.console.apps.byAppId.delete).not.toHaveBeenCalled()
   } finally {
     queryClient.clear()
   }

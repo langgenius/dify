@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -14,8 +13,15 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: navigation.replace }),
 }))
 
-const sendResetLink = vi.fn<typeof consoleClient.forgotPassword.post>()
-const fetchInitStatus = vi.fn<typeof consoleClient.init.get>()
+function installApi() {
+  return installFakeApi({
+    console: {
+      forgotPassword: { post: () => ({ result: 'success', data: 'ok' }) },
+      init: { get: () => ({ status: 'finished' }) },
+    },
+  })
+}
+let fake: ReturnType<typeof installApi>
 
 async function renderForm() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
@@ -27,21 +33,13 @@ async function renderForm() {
 }
 
 beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        forgotPassword: { post: (input) => sendResetLink(input) },
-        init: { get: (input) => fetchInitStatus(input) },
-      },
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
   navigation.replace.mockReset()
-  sendResetLink.mockReset()
-  fetchInitStatus.mockReset().mockResolvedValue({ status: 'finished' })
 })
 
 it('renders the labelled native email form without waiting for the init query', async () => {
-  fetchInitStatus.mockReturnValue(new Promise(() => {}))
+  fake.console.init.get.mockReturnValue(new Promise(() => {}))
 
   const screen = await renderForm()
   const email = screen.getByLabelText('login.email')
@@ -68,7 +66,7 @@ it('keeps invalid and missing email errors associated with the focused native fi
   const nativeEmail = (await email.element()) as HTMLInputElement
   expect(nativeEmail.validity.typeMismatch).toBe(false)
   expect(nativeEmail.validity.customError).toBe(true)
-  expect(sendResetLink).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.post).not.toHaveBeenCalled()
 
   await userEvent.fill(email, '')
   await userEvent.click(submit)
@@ -76,11 +74,10 @@ it('keeps invalid and missing email errors associated with the focused native fi
   await expect.element(email).toHaveAccessibleDescription('login.error.emailInValid')
   await expect.element(email).toHaveFocus()
   expect(((await email.element()) as HTMLInputElement).validity.valueMissing).toBe(true)
-  expect(sendResetLink).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.post).not.toHaveBeenCalled()
 })
 
 it('submits with Enter and replaces the form with the sign-in destination', async () => {
-  sendResetLink.mockResolvedValue({ result: 'success', data: 'ok' })
   const screen = await renderForm()
   const email = screen.getByLabelText('login.email')
 
@@ -88,7 +85,7 @@ it('submits with Enter and replaces the form with the sign-in destination', asyn
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(sendResetLink).toHaveBeenCalledWith(
+    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith(
       expect.objectContaining({ body: { email: 'test@example.com' } }),
     ),
   )
@@ -101,7 +98,7 @@ it('submits with Enter and replaces the form with the sign-in destination', asyn
 
 it('prevents a second submission while the reset request is pending', async () => {
   const request = createDeferred<{ result: 'success'; data: string }>()
-  sendResetLink.mockReturnValue(request.promise)
+  fake.console.forgotPassword.post.mockReturnValue(request.promise)
   const screen = await renderForm()
   await userEvent.fill(screen.getByLabelText('login.email'), 'test@example.com')
   const submit = screen.getByRole('button', { name: /login\.sendResetLink/ })
@@ -110,14 +107,14 @@ it('prevents a second submission while the reset request is pending', async () =
   await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
   await userEvent.click(screen.getByLabelText('login.email'))
   await userEvent.keyboard('{Enter}')
-  await vi.waitFor(() => expect(sendResetLink).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(fake.console.forgotPassword.post).toHaveBeenCalledTimes(1))
 
   request.resolve({ result: 'success', data: 'ok' })
   await expect.element(screen.getByRole('link', { name: /login\.backToSignIn/ })).toBeVisible()
 })
 
 it('keeps the entered email actionable after a failed response', async () => {
-  sendResetLink.mockResolvedValue({ result: 'fail', data: 'error' })
+  fake.console.forgotPassword.post.mockResolvedValue({ result: 'fail', data: 'error' })
   const screen = await renderForm()
   const email = screen.getByLabelText('login.email')
   const submit = screen.getByRole('button', { name: /login\.sendResetLink/ })
@@ -125,13 +122,13 @@ it('keeps the entered email actionable after a failed response', async () => {
   await userEvent.fill(email, 'test@example.com')
   await userEvent.click(submit)
 
-  await vi.waitFor(() => expect(sendResetLink).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(fake.console.forgotPassword.post).toHaveBeenCalledTimes(1))
   await expect.element(email).toHaveValue('test@example.com')
   await expect.element(submit).not.toHaveAttribute('aria-disabled', 'true')
 })
 
 it('redirects an instance that still needs its initial password', async () => {
-  fetchInitStatus.mockResolvedValue({ status: 'not_started' })
+  fake.console.init.get.mockResolvedValue({ status: 'not_started' })
 
   await renderForm()
 

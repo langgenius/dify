@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -6,24 +5,20 @@ import { installFakeApi } from '@/test/fake-api'
 import { renderFeature } from '../../__tests__/feature-browser-test-env'
 import AnnotationCtrlButton from '../annotation-ctrl-button'
 
-const api = {
-  addAnnotation: vi.fn<typeof consoleClient.apps.byAppId.annotations.post>(),
-}
 // The contract requires a UUID app id.
 const appId = '4d5e6f7a-8b9c-4d0e-8f1a-2b3c4d5e6f7a'
 const annotationId = '7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d'
 vi.unmock('react-i18next')
 
+const installApi = () =>
+  installFakeApi({
+    console: { apps: { byAppId: { annotations: { post: () => ({ id: annotationId }) } } } },
+  })
+let fake: ReturnType<typeof installApi>
 beforeEach(async () => {
   await page.viewport(1100, 800)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { byAppId: { annotations: { post: (input) => api.addAnnotation(input) } } },
-      },
-    }),
-  )
-  api.addAnnotation.mockReset().mockResolvedValue({ id: annotationId })
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 function Answer({ answer = 'test answer' }: { answer?: string }) {
@@ -61,7 +56,7 @@ it('creates an annotation from the answer and displays the returned identity and
     .element(screen.getByRole('status', { name: 'Added annotation' }))
     .toHaveTextContent(`${annotationId}:`)
   await expect.element(screen.getByRole('dialog', { name: 'Action succeeded' })).toBeVisible()
-  expect(api.addAnnotation).toHaveBeenCalledExactlyOnceWith({
+  expect(fake.console.apps.byAppId.annotations.post).toHaveBeenCalledExactlyOnceWith({
     params: { app_id: appId },
     body: { message_id: 'msg-1', question: 'test query', answer: 'test answer' },
   })
@@ -81,7 +76,7 @@ it('opens the real quota modal instead of posting an annotation and restores tri
   await trigger.click()
   const dialog = screen.getByRole('dialog')
   await expect.element(dialog.getByText('Upgrade your plan to', { exact: true })).toBeVisible()
-  expect(api.addAnnotation).not.toHaveBeenCalled()
+  expect(fake.console.apps.byAppId.annotations.post).not.toHaveBeenCalled()
   const close = dialog.getByRole('button', { name: 'Close', exact: true })
   await expect.element(close).toBeVisible()
   const button = close.element()

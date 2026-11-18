@@ -9,11 +9,6 @@ import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import MembersPage from '../index'
 
-const api = {
-  features: vi.fn<typeof consoleClient.features.get>(),
-  members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
-  remove: vi.fn<typeof consoleClient.workspaces.current.members.byMemberId.delete>(),
-}
 const flags = vi.hoisted(() => ({ contactsEnabled: vi.fn(() => false) }))
 // boundary: switch the deployment feature flag per scenario.
 vi.mock('@/features/contacts/management/feature-flag', () => ({
@@ -43,31 +38,30 @@ afterEach(() => vi.unstubAllGlobals())
 
 async function setup(ids: string[]) {
   let accounts = ids.map(member)
-  api.members.mockReset().mockImplementation(async () => ({ accounts }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    accounts = accounts.filter((item) => item.id !== params.member_id)
-    return { result: 'success', tenant_id: 'tenant-1' }
-  })
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'COMMUNITY' },
     workspacePermissionKeys: ['workspace.member.manage'],
   })
-  api.features.mockResolvedValue(queryClient.getQueryData(consoleQuery.features.get.queryKey())!)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        features: { get: (input) => api.features(input) },
-        workspaces: {
-          current: {
-            members: {
-              get: (input) => api.members(input),
-              byMemberId: { delete: (input) => api.remove(input) },
+  const features = queryClient.getQueryData(consoleQuery.features.get.queryKey())!
+  const fake = installFakeApi({
+    console: {
+      features: { get: async () => features },
+      workspaces: {
+        current: {
+          members: {
+            get: async () => ({ accounts }),
+            byMemberId: {
+              delete: async ({ params }) => {
+                accounts = accounts.filter((item) => item.id !== params.member_id)
+                return { result: 'success', tenant_id: 'tenant-1' }
+              },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <MembersPage />
@@ -81,35 +75,36 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   }
-  return { screen, open }
+  return { screen, open, fake }
 }
 
 it('returns focus after deleting a member with Contacts enabled, using the supported member API', async () => {
   flags.contactsEnabled.mockReturnValue(true)
-  const { screen, open } = await setup(['Alpha', 'Beta'])
+  const { screen, open, fake } = await setup(['Alpha', 'Beta'])
   await open('Alpha')
   await expect.element(screen.getByRole('checkbox')).not.toBeInTheDocument()
   await screen.getByRole('button', { name: 'contacts.memberRemoval.remove', exact: true }).click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  expect(api.remove).toHaveBeenCalledExactlyOnceWith(
+  expect(fake.console.workspaces.current.members.byMemberId.delete).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ params: { member_id: memberId('Alpha') } }),
   )
 })
 
 it('removes the member before a slow list refresh completes', async () => {
-  const { screen, open } = await setup(['Alpha', 'Beta'])
+  const { screen, open, fake } = await setup(['Alpha', 'Beta'])
   await open('Alpha')
-  const list = api.members.getMockImplementation()!
+  const members = fake.console.workspaces.current.members.get
+  const list = members.getMockImplementation()!
   const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-  api.members.mockReturnValueOnce(refresh.promise)
+  members.mockReturnValueOnce(refresh.promise)
   await screen.getByRole('button', { name: /operation\.confirm$/ }).click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: 'Alpha', exact: true }))
     .not.toBeInTheDocument()
   await expect.element(screen.getByRole('button', { name: 'Beta', exact: true })).toHaveFocus()
-  refresh.resolve(await list())
+  refresh.resolve(await list({}))
 })
 
 it.each([
@@ -132,12 +127,12 @@ it.each([
 })
 
 it('keeps focus and blocks Escape/cancel during removal, then reports a retryable failure', async () => {
-  const { screen, open } = await setup(['Alpha'])
+  const { screen, open, fake } = await setup(['Alpha'])
   const request =
     createDeferred<
       Awaited<ReturnType<typeof consoleClient.workspaces.current.members.byMemberId.delete>>
     >()
-  api.remove.mockReturnValueOnce(request.promise)
+  fake.console.workspaces.current.members.byMemberId.delete.mockReturnValueOnce(request.promise)
   await open('Alpha')
   const confirm = screen.getByRole('button', { name: /operation\.confirm$/ })
   await confirm.click()
@@ -145,7 +140,9 @@ it('keeps focus and blocks Escape/cancel during removal, then reports a retryabl
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('button', { name: /operation\.cancel$/ })).toBeDisabled()
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-  await expect.poll(() => api.remove).toHaveBeenCalledTimes(1)
+  await expect
+    .poll(() => fake.console.workspaces.current.members.byMemberId.delete)
+    .toHaveBeenCalledTimes(1)
   request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
   await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await confirm.click()
@@ -154,7 +151,7 @@ it('keeps focus and blocks Escape/cancel during removal, then reports a retryabl
 })
 
 it('returns to the menu button when cancelled', async () => {
-  const { screen, open } = await setup(['Alpha'])
+  const { screen, open, fake } = await setup(['Alpha'])
   await open('Alpha')
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
@@ -166,5 +163,5 @@ it('returns to the menu button when cancelled', async () => {
       }),
     )
     .toHaveFocus()
-  expect(api.remove).not.toHaveBeenCalled()
+  expect(fake.console.workspaces.current.members.byMemberId.delete).not.toHaveBeenCalled()
 })

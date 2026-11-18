@@ -1,6 +1,5 @@
 import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
@@ -9,7 +8,6 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import AgentLogModal from '../index'
 import { renderAgentLog } from './browser-test-env'
 
-const fetchAgentLogDetail = vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>()
 // The contract requires UUID app ids.
 const appId = '0f8e2c1a-7b3d-4e5f-8a9b-0c1d2e3f4a5b'
 const oldAppId = '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d'
@@ -81,17 +79,20 @@ function ControlledModal({ floating = false }: { floating?: boolean }) {
   )
 }
 
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { byAppId: { agent: { logs: { get: (input) => fetchAgentLogDetail(input) } } } },
+const installApi = () =>
+  installFakeApi({
+    console: {
+      apps: {
+        byAppId: { agent: { logs: { get: () => response('User') } } },
       },
-    }),
-  )
+    },
+  })
+let fake: ReturnType<typeof installApi>
+
+beforeEach(() => {
+  fake = installApi()
+  onTestFinished(fake)
   toast.dismiss()
-  fetchAgentLogDetail.mockReset()
-  fetchAgentLogDetail.mockResolvedValue(response('User'))
 })
 
 it('closes and reopens the portalled dialog through its real controls', async () => {
@@ -121,8 +122,8 @@ it('closes the inline viewer only for an outside interaction', async () => {
 
 it('keeps the new record visible when the previous response arrives late', async () => {
   const oldResponse = createDeferred<AgentLogResponse>()
-  fetchAgentLogDetail.mockImplementationOnce(() => oldResponse.promise)
-  fetchAgentLogDetail.mockResolvedValueOnce(response('New executor'))
+  fake.console.apps.byAppId.agent.logs.get.mockImplementationOnce(() => oldResponse.promise)
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValueOnce(response('New executor'))
   const { rerender, screen } = await renderAgentLog(
     <AgentLogModal appId={oldAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
@@ -156,7 +157,7 @@ it('preserves the selected tracing view when another message replaces the record
   )
   await expect.element(screen.getByText('Final Processing')).toBeVisible()
   await expect.element(tracing).toHaveFocus()
-  expect(fetchAgentLogDetail).toHaveBeenLastCalledWith(
+  expect(fake.console.apps.byAppId.agent.logs.get).toHaveBeenLastCalledWith(
     expect.objectContaining({
       params: { app_id: appId },
       query: { conversation_id: 'conv-id', message_id: 'next-message' },
@@ -166,7 +167,7 @@ it('preserves the selected tracing view when another message replaces the record
 
 it('ignores a failed request after its record has been replaced', async () => {
   const oldResponse = createDeferred<AgentLogResponse>()
-  fetchAgentLogDetail.mockImplementationOnce(() => oldResponse.promise)
+  fake.console.apps.byAppId.agent.logs.get.mockImplementationOnce(() => oldResponse.promise)
   const { rerender, screen } = await renderAgentLog(
     <AgentLogModal appId={oldAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )

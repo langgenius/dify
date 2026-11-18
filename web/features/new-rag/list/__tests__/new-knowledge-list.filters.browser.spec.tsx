@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { apiError, installFakeApi } from '@/test/fake-api'
@@ -12,66 +11,55 @@ import {
   spacesPage,
 } from './new-knowledge-list-test-env'
 
-const api = {
-  spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
-  deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
-  members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
-  upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
-  upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
-  datasets: vi.fn<typeof consoleClient.datasets.get>(),
+function installListApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async () => spacesPage(),
+          byControlSpaceId: { delete: async () => {} },
+        },
+      },
+      workspaces: { current: { members: { get: async () => ({ accounts: members }) } } },
+      datasets: {
+        get: async () => datasetsPage([]),
+        knowledgeFsUpgradeJobs: {
+          get: async () => ({ data: [] }),
+        },
+        byDatasetId: {
+          knowledgeFsUpgrades: {
+            byJobId: { get: () => new Promise(() => {}) },
+          },
+        },
+        apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+        externalKnowledgeApi: {
+          get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+        },
+      },
+      tags: {
+        get: () => [
+          { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+          { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+        ],
+      },
+    },
+  })
 }
+let fake: ReturnType<typeof installListApi>
 
-const lastSpacesQuery = () => api.spaces.mock.calls.at(-1)?.[0]?.query
+const lastSpacesQuery = () => fake.console.knowledgeFs.spaces.get.mock.calls.at(-1)?.[0]?.query
 
 describe('NewKnowledgeList filters', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(
-      installFakeApi({
-        console: {
-          knowledgeFs: {
-            spaces: {
-              get: (input) => api.spaces(input),
-              byControlSpaceId: {
-                delete: async (input) => {
-                  await api.deleteSpace(input)
-                },
-              },
-            },
-          },
-          workspaces: { current: { members: { get: (input) => api.members(input) } } },
-          datasets: {
-            get: (input) => api.datasets(input),
-            knowledgeFsUpgradeJobs: { get: (input) => api.upgradeJobs(input) },
-            byDatasetId: {
-              knowledgeFsUpgrades: { byJobId: { get: (input) => api.upgradeJob(input) } },
-            },
-            apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
-            externalKnowledgeApi: {
-              get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
-            },
-          },
-          tags: {
-            get: () => [
-              { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-              { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-            ],
-          },
-        },
-      }),
-    )
-    api.spaces.mockResolvedValue(spacesPage())
-    api.deleteSpace.mockResolvedValue(undefined)
-    api.members.mockResolvedValue({ accounts: members })
-    api.upgradeJobs.mockResolvedValue({ data: [] })
-    api.upgradeJob.mockImplementation(() => new Promise(() => {}))
-    api.datasets.mockResolvedValue(datasetsPage([]))
+    fake = installListApi()
+    onTestFinished(fake)
   })
 
   describe('filters', () => {
     it('syncs tag and search filters to the URL and collection request', async () => {
       const user = userEvent
-      api.spaces.mockImplementation(async (input) =>
+      fake.console.knowledgeFs.spaces.get.mockImplementation(async (input) =>
         spacesPage([
           input?.query?.query
             ? space('search-result', 'Customer support search')
@@ -122,7 +110,7 @@ describe('NewKnowledgeList filters', () => {
       await setup({ searchParams: '?tag_ids=tag-1%3Btag-2&creator_ids=account-2' })
 
       await vi.waitFor(() =>
-        expect(api.spaces).toHaveBeenCalledWith({
+        expect(fake.console.knowledgeFs.spaces.get).toHaveBeenCalledWith({
           query: { creator_ids: ['account-2'], limit: 30, page: 1, tag_ids: ['tag-1', 'tag-2'] },
         }),
       )
@@ -132,7 +120,7 @@ describe('NewKnowledgeList filters', () => {
     })
 
     it('shows the no-results state for a restored search and clears it', async () => {
-      api.spaces.mockImplementation(async (input) =>
+      fake.console.knowledgeFs.spaces.get.mockImplementation(async (input) =>
         input?.query?.query ? spacesPage() : spacesPage([space('space-1', 'Support knowledge')]),
       )
       const { onUrlUpdate } = await setup({ searchParams: '?query=no%20matching%20knowledge' })
@@ -186,7 +174,7 @@ describe('NewKnowledgeList filters', () => {
         id: `account-${index + 1}`,
         name: `Member ${index + 1}`,
       }))
-      api.members.mockResolvedValue({ accounts })
+      fake.console.workspaces.current.members.get.mockResolvedValue({ accounts })
       await setup({
         searchParams: `?creator_ids=${accounts.map((account) => account.id).join(';')}`,
       })
@@ -207,7 +195,7 @@ describe('NewKnowledgeList filters', () => {
       await user.click(page.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
       await expect.element(page.getByRole('option', { name: /Alice/ })).toBeVisible()
 
-      api.members.mockRejectedValueOnce(
+      fake.console.workspaces.current.members.get.mockRejectedValueOnce(
         apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'request failed' }),
       )
       await refresh(consoleQuery.workspaces.current.members.get.key())

@@ -12,7 +12,6 @@ import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { CrawlSelectionForm } from '../crawl-selection-form'
 
-const clientMock = { asyncImport: vi.fn() }
 const routerMock = vi.hoisted(() => ({ push: vi.fn() }))
 const settingsState = {
   configurationState: 'active' as 'active' | 'setup-required',
@@ -66,29 +65,6 @@ vi.mock('@/next/navigation', () => ({
   useRouter: () => routerMock,
 }))
 
-function installSourceApi() {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            byControlSpaceId: {
-              settings: { get: () => settingsResponse() },
-              sources: {
-                bySourceId: {
-                  asyncImport: {
-                    post: async (input) => workflowApiResponse(await clientMock.asyncImport(input)),
-                  },
-                },
-              },
-            },
-          },
-        },
-      },
-    }),
-  )
-}
-
 const source: Source = {
   connectionId: 'connection-1',
   createdAt: '2026-07-20T10:00:00Z',
@@ -119,6 +95,29 @@ const run: SourceWorkflowRun = {
   state: 'succeeded',
   updatedAt: '2026-07-20T10:01:00Z',
 }
+
+function installSourceApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            settings: { get: () => settingsResponse() },
+            sources: {
+              bySourceId: {
+                asyncImport: {
+                  post: async () =>
+                    workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }),
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+}
+let fake: ReturnType<typeof installSourceApi>
 
 const pages = [
   {
@@ -215,8 +214,8 @@ async function selectSyncPolicy(user: typeof userEvent, mode: 'custom' | 'interv
 describe('CrawlSelectionForm', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    installSourceApi()
-    clientMock.asyncImport.mockResolvedValue({ ...run, checkpoint: 'import', state: 'queued' })
+    fake = installSourceApi()
+    onTestFinished(fake)
     settingsState.configurationState = 'active'
   })
 
@@ -231,7 +230,9 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    expect(clientMock.asyncImport).not.toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+    ).not.toHaveBeenCalled()
     await user.click(
       page.getByRole('button', { name: 'modelProvider.modelProvider.selector.configure' }),
     )
@@ -300,8 +301,15 @@ describe('CrawlSelectionForm', () => {
     await user.click(page.getByRole('checkbox', { name: 'knowledgeSources.selectAll' }))
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].body.pageIds).toHaveLength(200)
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledOnce(),
+    )
+    const [{ body }] =
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]!
+    expect('pageIds' in body && body.pageIds).toHaveLength(200)
   })
 
   it('submits custom policy in one request and navigates on acceptance', async () => {
@@ -324,7 +332,9 @@ describe('CrawlSelectionForm', () => {
     await vi.waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),
     )
-    expect(clientMock.asyncImport).toHaveBeenCalledWith({
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+    ).toHaveBeenCalledWith({
       body: {
         kind: 'crawl-preview-selection',
         pageIds: ['page-1'],
@@ -353,13 +363,22 @@ describe('CrawlSelectionForm', () => {
     await selectSyncPolicy(user, mode)
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledOnce())
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].body.syncPolicy).toEqual({ enabled, mode })
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledOnce(),
+    )
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]?.[0].body.syncPolicy,
+    ).toEqual({ enabled, mode })
   })
 
   it('keeps the form locked only until the async submission is accepted', async () => {
-    const request = createDeferred<SourceWorkflowRun>()
-    clientMock.asyncImport.mockReturnValue(request.promise)
+    const request = createDeferred<ReturnType<typeof workflowApiResponse>>()
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mockReturnValue(
+      request.promise,
+    )
     const user = userEvent
     await renderSelectionForm()
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
@@ -372,7 +391,7 @@ describe('CrawlSelectionForm', () => {
     await expect
       .element(page.getByRole('combobox', { name: 'knowledgeSources.syncPolicy' }))
       .toBeDisabled()
-    request.resolve({ ...run, checkpoint: 'import', state: 'queued' })
+    request.resolve(workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }))
     await expect
       .element(page.getByRole('status', { name: 'Accepted import' }))
       .toHaveTextContent('run-1: queued')
@@ -383,11 +402,11 @@ describe('CrawlSelectionForm', () => {
   })
 
   it('reuses the idempotency key when an async import response is lost', async () => {
-    clientMock.asyncImport
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post
       .mockRejectedValueOnce(
         apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
       )
-      .mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'queued' })
+      .mockResolvedValueOnce(workflowApiResponse({ ...run, checkpoint: 'import', state: 'queued' }))
     const user = userEvent
     await renderSelectionForm()
     await user.click(page.getByRole('checkbox', { name: 'Getting started' }))
@@ -405,9 +424,17 @@ describe('CrawlSelectionForm', () => {
       .toBeDisabled()
     await user.click(page.getByRole('button', { name: 'knowledgeSpace.addSource' }))
 
-    await vi.waitFor(() => expect(clientMock.asyncImport).toHaveBeenCalledTimes(2))
-    expect(clientMock.asyncImport.mock.calls[0]?.[0].headers).toEqual(
-      clientMock.asyncImport.mock.calls[1]?.[0].headers,
+    await vi.waitFor(() =>
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post,
+      ).toHaveBeenCalledTimes(2),
+    )
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[0]?.[0].headers,
+    ).toEqual(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.asyncImport.post.mock
+        .calls[1]?.[0].headers,
     )
     await vi.waitFor(() =>
       expect(routerMock.push).toHaveBeenCalledWith('/datasets/new/space-1/sources'),

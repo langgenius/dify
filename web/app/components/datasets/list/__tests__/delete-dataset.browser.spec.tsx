@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -13,11 +12,6 @@ import Datasets from '../datasets'
 
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-const api = {
-  list: vi.fn<typeof consoleClient.datasets.get>(),
-  remove: vi.fn<typeof consoleClient.datasets.byDatasetId.delete>(),
-  usage: vi.fn<typeof consoleClient.datasets.byDatasetId.useCheck.get>(),
-}
 // Dataset routes take UUID path parameters; names stay readable for the accessible queries.
 const datasetId = (name: string) =>
   `00000000-0000-4000-8000-${String(['Alpha', 'Beta', 'Gamma'].indexOf(name) + 1).padStart(12, '0')}`
@@ -52,33 +46,27 @@ async function setup(ids: string[]) {
       runtime_mode: 'general',
     }),
   )
-  api.list.mockReset().mockImplementation(async () => ({
-    data: datasets,
-    page: 1,
-    total: datasets.length,
-    limit: 30,
-    has_more: false,
-  }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    datasets = datasets.filter((item) => item.id !== params.dataset_id)
-  })
-  api.usage.mockReset().mockResolvedValue({ is_using: false })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          get: (input) => api.list(input),
-          byDatasetId: {
-            delete: async (input) => {
-              await api.remove(input)
-            },
-            useCheck: { get: (input) => api.usage(input) },
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        get: async () => ({
+          data: datasets,
+          page: 1,
+          total: datasets.length,
+          limit: 30,
+          has_more: false,
+        }),
+        byDatasetId: {
+          delete: async ({ params }) => {
+            datasets = datasets.filter((item) => item.id !== params.dataset_id)
           },
+          useCheck: { get: () => ({ is_using: false }) },
         },
-        tags: { get: () => [] },
       },
-    }),
-  )
+      tags: { get: () => [] },
+    },
+  })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -95,42 +83,43 @@ async function setup(ids: string[]) {
     // The modal hides the menu from the accessibility tree before its exit animation unmounts it.
     await expect.element(screen.getByRole('menu', { includeHidden: true })).not.toBeInTheDocument()
   }
-  return { screen, open }
+  return { screen, open, fake }
 }
 describe('Classic dataset deletion', () => {
   it('removes the confirmed item and restores focus before the list refresh completes', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const list = api.list.getMockImplementation()!
+    const getDatasets = fake.console.datasets.get
+    const list = getDatasets.getMockImplementation()!
     const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    api.list.mockReturnValueOnce(refresh.promise)
+    getDatasets.mockReturnValueOnce(refresh.promise)
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ query: { page: 1, limit: 30 } }))
+    refresh.resolve(await list({ query: { page: 1, limit: 30, include_all: false } }))
   })
 
   it('reports a failed usage check without changing the confirmation action', async () => {
-    const { screen, open } = await setup(['Alpha'])
-    api.usage.mockRejectedValueOnce(
+    const { screen, open, fake } = await setup(['Alpha'])
+    fake.console.datasets.byDatasetId.useCheck.get.mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Usage check failed' }),
     )
     await open('Alpha')
     await expect.element(screen.getByRole('alert')).toBeVisible()
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(fake.console.datasets.byDatasetId.delete).not.toHaveBeenCalled()
     await screen.getByRole('button', { name: 'common.operation.retry' }).click()
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    expect(api.remove).toHaveBeenCalledTimes(1)
+    expect(fake.console.datasets.byDatasetId.delete).toHaveBeenCalledTimes(1)
   })
 
   it('ignores an earlier usage check that completes after another deletion opens', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     const earlier = createDeferred<{ is_using: boolean }>()
-    api.usage.mockReturnValueOnce(earlier.promise)
+    fake.console.datasets.byDatasetId.useCheck.get.mockReturnValueOnce(earlier.promise)
     await open('Alpha')
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.confirm' }))
@@ -142,7 +131,7 @@ describe('Classic dataset deletion', () => {
     await earlier.promise
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    expect(api.remove).toHaveBeenCalledWith(
+    expect(fake.console.datasets.byDatasetId.delete).toHaveBeenCalledWith(
       expect.objectContaining({ params: { dataset_id: datasetId('Beta') } }),
     )
     await expect.element(screen.getByRole('link', { name: 'Alpha', exact: true })).toBeVisible()
@@ -167,9 +156,9 @@ describe('Classic dataset deletion', () => {
       .toHaveFocus()
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, fake } = await setup(['Alpha'])
     const request = createDeferred<void>()
-    api.remove.mockReturnValueOnce(request.promise)
+    fake.console.datasets.byDatasetId.delete.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
     await confirm.click()
@@ -186,19 +175,19 @@ describe('Classic dataset deletion', () => {
     await expect.element(screen.getByRole('region')).toHaveFocus()
   })
   it('rechecks usage after cancellation and returns focus to the surviving menu button', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, fake } = await setup(['Alpha'])
     await open('Alpha')
     await screen.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.more' }))
       .toHaveFocus()
-    api.usage.mockResolvedValueOnce({ is_using: true })
+    fake.console.datasets.byDatasetId.useCheck.get.mockResolvedValueOnce({ is_using: true })
     await open('Alpha')
     await expect
       .element(screen.getByText('dataset.datasetUsedByApp', { exact: true }))
       .toBeVisible()
-    expect(api.usage).toHaveBeenCalledTimes(2)
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(fake.console.datasets.byDatasetId.useCheck.get).toHaveBeenCalledTimes(2)
+    expect(fake.console.datasets.byDatasetId.delete).not.toHaveBeenCalled()
   })
 })

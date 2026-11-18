@@ -1,6 +1,5 @@
 import type { KnowledgeFsUpgradeJobResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { KnowledgeUpgrade } from '../knowledge-upgrade-context-value'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -11,10 +10,6 @@ import { upgradeDataset, upgradeJob } from '@/test/new-rag-upgrade'
 import { KnowledgeUpgradeCard } from '../knowledge-upgrade-card'
 import { KnowledgeUpgradeProvider } from '../knowledge-upgrade-context'
 import { useKnowledgeUpgrade } from '../knowledge-upgrade-context-value'
-
-const api = {
-  status: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
-}
 
 // The upgrade status contract addresses datasets by UUID.
 const datasetId = '3f0b6c8e-2a4d-4e8f-9b1a-7c5d2e6f8a90'
@@ -72,20 +67,23 @@ function PollingOwner() {
   )
 }
 
-beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            knowledgeFsUpgrades: { byJobId: { get: (input) => api.status(input) } },
-          },
+function installUpgradeApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          knowledgeFsUpgrades: { byJobId: { get: () => new Promise(() => {}) } },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installUpgradeApi>
+
+beforeEach(async ({ onTestFinished }) => {
+  fake = installUpgradeApi()
+  onTestFinished(fake)
   await page.viewport(640, 600)
-  api.status.mockReset().mockImplementation(() => new Promise(() => {}))
   // Only the query polling interval is controlled; browser input and rendering stay real.
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
 })
@@ -93,7 +91,9 @@ afterEach(() => vi.useRealTimers())
 
 it('replaces live progress with the completed total and a usable knowledge link after polling settles', async () => {
   const response = createDeferred<KnowledgeFsUpgradeJobResponse>()
-  api.status.mockReturnValue(response.promise)
+  fake.console.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.mockReturnValue(
+    response.promise,
+  )
   const { wrapper: QueryProvider } = createConsoleQueryWrapper()
   await render(
     <QueryProvider>
@@ -107,7 +107,9 @@ it('replaces live progress with the completed total and a usable knowledge link 
     .element(page.getByText('knowledgeUpgrade.upgrade.statusUpgrading', { exact: true }))
     .toBeVisible()
   await vi.advanceTimersByTimeAsync(2000)
-  await expect.poll(() => api.status.mock.calls.length).toBe(1)
+  await expect
+    .poll(() => fake.console.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get.mock.calls.length)
+    .toBe(1)
   response.resolve({ ...job, completed_documents: 52, stage: 'completed', status: 'succeeded' })
 
   const link = page.getByRole('link', { name: 'Support knowledge', exact: true })
@@ -137,7 +139,7 @@ it.each(['failed', 'succeeded'] as const)(
     })
     await expect.element(page.getByLabelText('knowledgeSpace.documents: 52')).toBeVisible()
     await vi.advanceTimersByTimeAsync(4000)
-    expect(api.status).not.toHaveBeenCalled()
+    expect(fake.console.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get).not.toHaveBeenCalled()
   },
 )
 

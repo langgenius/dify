@@ -1,5 +1,5 @@
+import type { FileScanPolicyResponse } from '@dify/contracts/api/console/datasets/types.gen'
 import type { FileScanProviderResponse } from '@dify/contracts/api/console/file-scan/types.gen'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -7,12 +7,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { FileScanSetting } from '../file-scan-setting'
 import { useFileScanPolicyController } from '../use-file-scan-policy'
-
-const api = {
-  getPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.get>(),
-  listProviders: vi.fn<typeof consoleClient.fileScan.providers.get>(),
-  putPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.put>(),
-}
 
 // Dataset ids are UUIDs in the contract.
 const datasetId = '00000000-0000-4000-8000-000000000001'
@@ -33,12 +27,12 @@ function scanner(overrides: Partial<FileScanProviderResponse> = {}): FileScanPro
   }
 }
 
-const disabledPolicy = {
+const disabledPolicy: FileScanPolicyResponse = {
   enabled: false,
   provider_id: null,
   on_unavailable: 'block',
   on_unscannable: 'block',
-} as const
+}
 
 /** Stands in for a settings page: it owns the only Save and Cancel buttons. */
 function SettingsPage({ readonly }: { readonly: boolean }) {
@@ -75,24 +69,20 @@ async function renderSetting({
   readonly?: boolean
   role?: 'normal' | 'owner'
 } = {}) {
-  api.getPolicy.mockResolvedValue(disabledPolicy)
-  api.listProviders.mockResolvedValue({ data: providers })
-  api.putPolicy.mockImplementation(async ({ body }) => ({ ...disabledPolicy, ...body }))
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            fileScanPolicy: {
-              get: (input) => api.getPolicy(input),
-              put: (input) => api.putPolicy(input),
-            },
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          fileScanPolicy: {
+            get: () => disabledPolicy,
+            put: ({ body }) => ({ ...disabledPolicy, ...body }),
           },
         },
-        fileScan: { providers: { get: () => api.listProviders() } },
       },
-    }),
-  )
+      fileScan: { providers: { get: () => ({ data: providers }) } },
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     currentWorkspace: { role },
     features: { enable_file_scan: enabled },
@@ -102,6 +92,12 @@ async function renderSetting({
       <SettingsPage readonly={readonly} />
     </ConsoleProvider>,
   )
+  const { fileScanPolicy } = fake.console.datasets.byDatasetId
+  return {
+    getPolicy: fileScanPolicy.get,
+    putPolicy: fileScanPolicy.put,
+    listProviders: fake.console.fileScan.providers.get,
+  }
 }
 
 const enableSwitch = () => page.getByRole('switch', { name: 'fileScan.policy.enable' })
@@ -110,20 +106,16 @@ const pageSave = () => page.getByRole('button', { name: 'page save' })
 const draftState = () => page.getByRole('status', { name: 'draft' })
 const saveResult = () => page.getByRole('status', { name: 'result' })
 
-beforeEach(() => {
-  vi.clearAllMocks()
-})
-
 it('renders nothing and loads nothing while the workspace has the feature turned off', async () => {
-  await renderSetting({ enabled: false })
+  const { getPolicy, listProviders } = await renderSetting({ enabled: false })
 
   await expect.element(enableSwitch()).not.toBeInTheDocument()
-  expect(api.getPolicy).not.toHaveBeenCalled()
-  expect(api.listProviders).not.toHaveBeenCalled()
+  expect(getPolicy).not.toHaveBeenCalled()
+  expect(listProviders).not.toHaveBeenCalled()
 })
 
 it('starts off, reveals the options when turned on and saves the chosen policy', async () => {
-  await renderSetting({
+  const { getPolicy, putPolicy } = await renderSetting({
     providers: [scanner(), scanner({ id: 'scanner-2', name: 'Backup scanner', status: 'error' })],
   })
   await expect.element(enableSwitch()).not.toBeChecked()
@@ -135,7 +127,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
   await pageSave().click()
   await expect.element(draftState()).toHaveTextContent('clean')
   await expect.element(saveResult()).toHaveTextContent('unchanged')
-  expect(api.putPolicy).not.toHaveBeenCalled()
+  expect(putPolicy).not.toHaveBeenCalled()
 
   await enableSwitch().click()
   // The section has no Save button of its own: the page saves it.
@@ -155,7 +147,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
   await expect.element(page.getByText('fileScan.policy.scannerRequired')).toBeVisible()
   await expect.element(draftState()).toHaveTextContent('dirty')
   await expect.element(saveResult()).toHaveTextContent('invalid')
-  expect(api.putPolicy).not.toHaveBeenCalled()
+  expect(putPolicy).not.toHaveBeenCalled()
 
   await page.getByRole('combobox', { name: 'fileScan.policy.scanner' }).click()
   // A scanner whose last check failed stays selectable and is marked.
@@ -164,7 +156,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
     .toBeVisible()
   await page.getByRole('option', { name: /Office scanner/ }).click()
   await unscannable.getByRole('radio', { name: 'fileScan.policy.allow' }).click()
-  api.getPolicy.mockResolvedValue({
+  getPolicy.mockReturnValue({
     enabled: true,
     provider_id: 'scanner-1',
     on_unavailable: 'block',
@@ -173,7 +165,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
   await pageSave().click()
 
   await expect
-    .poll(() => api.putPolicy.mock.calls.at(-1)?.[0])
+    .poll(() => putPolicy.mock.calls.at(-1)?.[0])
     .toEqual({
       body: {
         enabled: true,
@@ -189,7 +181,7 @@ it('starts off, reveals the options when turned on and saves the chosen policy',
 })
 
 it('drops the unsaved changes when the page cancels', async () => {
-  await renderSetting()
+  const { putPolicy } = await renderSetting()
 
   await enableSwitch().click()
   await expect.element(draftState()).toHaveTextContent('dirty')
@@ -197,12 +189,12 @@ it('drops the unsaved changes when the page cancels', async () => {
 
   await expect.element(enableSwitch()).not.toBeChecked()
   await expect.element(draftState()).toHaveTextContent('clean')
-  expect(api.putPolicy).not.toHaveBeenCalled()
+  expect(putPolicy).not.toHaveBeenCalled()
 })
 
 it('shows the reason the backend gives when the policy is rejected', async () => {
-  await renderSetting()
-  api.putPolicy.mockRejectedValue(
+  const { putPolicy } = await renderSetting()
+  putPolicy.mockRejectedValue(
     apiError({ status: 400, code: 'bad_request', message: 'Scanner "Office scanner" is gone.' }),
   )
 
@@ -243,11 +235,11 @@ it('links an owner to the scanners in Integrations when no scanner exists', asyn
 })
 
 it('cannot be changed by a member who may only view the settings', async () => {
-  await renderSetting({ readonly: true })
+  const { putPolicy } = await renderSetting({ readonly: true })
 
   await expect.element(enableSwitch()).toBeDisabled()
   await pageSave().click()
   await expect.element(draftState()).toHaveTextContent('clean')
   await expect.element(saveResult()).toHaveTextContent('unchanged')
-  expect(api.putPolicy).not.toHaveBeenCalled()
+  expect(putPolicy).not.toHaveBeenCalled()
 })

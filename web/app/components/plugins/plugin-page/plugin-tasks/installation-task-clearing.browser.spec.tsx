@@ -8,9 +8,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi } from '@/test/fake-api'
 import PluginTasks from './index'
 
-const clearTask = vi.fn((_input: { params: { task_id: string; identifier: string } }) => ({
-  success: true,
-}))
 const task = {
   id: 'task-1',
   status: TaskStatus.success,
@@ -41,24 +38,23 @@ it('clears a completed plugin installation task using the keyboard and returns f
     keySeparator: false,
     resources: { 'en-US': { plugin } },
   })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            // Completed tasks refresh the workspace model lists.
-            models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
-            plugin: {
-              tasks: {
-                get: () => ({ tasks: [task] }),
-                byTaskId: { delete: { byIdentifier: { post: (input) => clearTask(input) } } },
-              },
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          // Completed tasks refresh the workspace model lists.
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+          plugin: {
+            tasks: {
+              get: () => ({ tasks: [task] }),
+              byTaskId: { delete: { byIdentifier: { post: () => ({ success: true }) } } },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['plugin.install'],
   })
@@ -84,7 +80,7 @@ it('clears a completed plugin installation task using the keyboard and returns f
   await expect.poll(() => clear.element().checkVisibility({ checkOpacity: true })).toBe(true)
   await userEvent.keyboard('{Enter}')
   await expect
-    .poll(() => clearTask)
+    .poll(() => fake.console.workspaces.current.plugin.tasks.byTaskId.delete.byIdentifier.post)
     .toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({ params: { task_id: 'task-1', identifier: 'plugin-1' } }),
     )

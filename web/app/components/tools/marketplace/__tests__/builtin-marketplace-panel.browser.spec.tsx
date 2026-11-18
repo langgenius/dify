@@ -9,12 +9,6 @@ import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { BuiltinMarketplacePanel } from '../builtin-marketplace-panel'
 
-const requests = {
-  installed: vi.fn(),
-  search: vi.fn(),
-  collections: vi.fn(),
-  collectionPlugins: vi.fn(),
-}
 // boundary: Next routing is unavailable in the standalone browser page.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
@@ -30,16 +24,35 @@ const collection: MarketplaceCollection = {
   search_params: {},
 }
 
-beforeEach(() => {
-  requests.installed.mockReset().mockResolvedValue({ plugin_ids: [] })
-  requests.search.mockReset().mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-  requests.collections.mockReset().mockResolvedValue({ data: { collections: [collection] } })
-  requests.collectionPlugins
-    .mockReset()
-    .mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-})
+function installMarketplaceApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          plugin: {
+            permission: {
+              fetch: {
+                get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
+              },
+            },
+            installedIds: { get: () => ({ plugin_ids: [] }) },
+            list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
+          },
+        },
+      },
+    },
+    marketplace: {
+      collections: () => ({ data: { collections: [collection] } }),
+      collectionPlugins: () => ({ data: { plugins: [plugin], total: 1 } }),
+      searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+    },
+  })
+}
+let fake: ReturnType<typeof installMarketplaceApi>
 
 beforeEach(async () => {
+  fake = installMarketplaceApi()
+  onTestFinished(fake)
   await page.viewport(1200, 800)
 })
 
@@ -77,8 +90,8 @@ async function renderPanel(keywords = '', tagFilterValue: string[] = [], belowFo
 it('loads marketplace tools when native scrolling reveals the catalog', async () => {
   const screen = await renderPanel('', [], true)
   await expect.element(screen.getByText('Installed tools')).toBeVisible()
-  expect(requests.installed).not.toHaveBeenCalled()
-  expect(requests.collections).not.toHaveBeenCalled()
+  expect(fake.console.workspaces.current.plugin.installedIds.get).not.toHaveBeenCalled()
+  expect(fake.marketplace.collections).not.toHaveBeenCalled()
   const tools = screen.getByRole('region', { name: 'Tools' })
   tools.element().scrollTo({ top: tools.element().scrollHeight })
   await expect.element(screen.getByText('Weather Tool', { exact: true })).toBeVisible()
@@ -93,13 +106,13 @@ it.each([
   async ({ keywords, tags }) => {
     const screen = await renderPanel(keywords, tags, true)
     await expect.element(screen.getByText('Weather Tool', { exact: true })).toBeInTheDocument()
-    expect(requests.search).toHaveBeenCalledWith(
+    expect(fake.marketplace.searchAdvanced).toHaveBeenCalledWith(
       expect.objectContaining({
         params: { kind: 'plugins' },
         body: expect.objectContaining({ query: keywords, tags, category: 'tool' }),
       }),
     )
-    expect(requests.collections).not.toHaveBeenCalled()
+    expect(fake.marketplace.collections).not.toHaveBeenCalled()
   },
 )
 
@@ -118,31 +131,4 @@ it('scrolls the catalog into view from the real marketplace arrow', async () => 
     .poll(() => heading.element().getBoundingClientRect().top)
     .toBeGreaterThanOrEqual(bounds.top)
   expect(heading.element().getBoundingClientRect().bottom).toBeLessThanOrEqual(bounds.bottom)
-})
-
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            plugin: {
-              permission: {
-                fetch: {
-                  get: () => ({ install_permission: 'everyone', debug_permission: 'everyone' }),
-                },
-              },
-              installedIds: { get: (input) => requests.installed(input) },
-              list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
-            },
-          },
-        },
-      },
-      marketplace: {
-        collections: (input) => requests.collections(input),
-        collectionPlugins: (input) => requests.collectionPlugins(input),
-        searchAdvanced: (input) => requests.search(input),
-      },
-    }),
-  )
 })

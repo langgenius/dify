@@ -1,5 +1,4 @@
 import type { InstalledAppResponse } from '@dify/contracts/api/console/installed-apps/types.gen'
-import type { consoleClient } from '@/service/console'
 import { Suspense } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -7,10 +6,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
 import WebAppsSection from '../web-apps-section'
-
-const service = {
-  list: vi.fn<typeof consoleClient.installedApps.get>(),
-}
 
 // boundary: Browser Mode has no Next App Router; the list consumes the current pathname.
 vi.mock('@/next/navigation', () => ({ usePathname: () => '/' }))
@@ -40,18 +35,19 @@ async function renderSection(count = 40) {
   onTestFinished(
     installFakeApi({
       console: {
-        installedApps: { get: (input) => service.list(input) },
+        installedApps: {
+          get: () => ({
+            installed_apps: Array.from({ length: count }, (_, index) => createApp(index)),
+            has_more: false,
+            next_cursor: null,
+          }),
+        },
       },
     }),
   )
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { rbac_enabled: true },
     workspacePermissionKeys: ['app_library.access'],
-  })
-  service.list.mockResolvedValue({
-    installed_apps: Array.from({ length: count }, (_, index) => createApp(index)),
-    has_more: false,
-    next_cursor: null,
   })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -73,10 +69,6 @@ async function renderSection(count = 40) {
     .toBeVisible()
   return { screen, queryClient }
 }
-
-beforeEach(() => {
-  vi.clearAllMocks()
-})
 
 it('keeps a focused app mounted when the list scrolls away', async () => {
   const { screen } = await renderSection()

@@ -1,28 +1,25 @@
 import type { SourceSyncPolicy } from '../source-models'
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
-import {
-  clearSourceClients,
-  lastInput,
-  renderSources as render,
-  settle,
-} from './source-browser-env'
+import { clearSourceClients, renderSources as render, settle } from './source-browser-env'
 import { firecrawlDatasourcePlugin, notionDatasourcePlugin, source } from './source-fixtures'
 import {
-  clientMock,
   connectionResponses,
   pluginResponses,
   resetSourceServer,
   serveNotionConnection,
   serveWebsitePreview,
+  sourceResponse,
   sourceResponses,
 } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -76,13 +73,15 @@ describe('Sources: edit-metadata', () => {
           },
         ],
       }
-      clientMock.patchSource.mockResolvedValue(
-        source({
-          name: 'Renamed documentation',
-          syncPolicy: dailyPolicy,
-          type,
-          version: 4,
-        }),
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+        sourceResponse(
+          source({
+            name: 'Renamed documentation',
+            syncPolicy: dailyPolicy,
+            type,
+            version: 4,
+          }),
+        ),
       )
 
       await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -102,7 +101,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: 'common.operation.save' }).click()
 
       await vi.waitFor(async () =>
-        expect(clientMock.patchSource).toHaveBeenCalledWith({
+        expect(
+          fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+        ).toHaveBeenCalledWith({
           body: {
             expectedVersion: 3,
             name: 'Renamed documentation',
@@ -111,7 +112,7 @@ describe('Sources: edit-metadata', () => {
           params: { control_space_id: 'space-1', source_id: 'source-1' },
         }),
       )
-      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
+      expect(fake.console.knowledgeFs.sourceProviderPreview.jobs.post).not.toHaveBeenCalled()
       await expect
         .element(page.getByRole('row', { name: /Renamed documentation/ }))
         .toBeInTheDocument()
@@ -160,8 +161,8 @@ describe('Sources: edit-metadata', () => {
           },
         ],
       }
-      clientMock.patchSource.mockResolvedValue(
-        source({ name: 'Renamed documentation', version: 4 }),
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+        sourceResponse(source({ name: 'Renamed documentation', version: 4 })),
       )
 
       await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -196,7 +197,9 @@ describe('Sources: edit-metadata', () => {
       await page.getByRole('button', { name: 'common.operation.save' }).click()
 
       await vi.waitFor(async () =>
-        expect(clientMock.patchSource).toHaveBeenCalledWith({
+        expect(
+          fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+        ).toHaveBeenCalledWith({
           body: {
             expectedVersion: 3,
             name: 'Renamed documentation',
@@ -205,7 +208,7 @@ describe('Sources: edit-metadata', () => {
           params: { control_space_id: 'space-1', source_id: 'source-1' },
         }),
       )
-      expect(clientMock.startPreviewJob).not.toHaveBeenCalled()
+      expect(fake.console.knowledgeFs.sourceProviderPreview.jobs.post).not.toHaveBeenCalled()
     },
   )
 
@@ -233,8 +236,10 @@ describe('Sources: edit-metadata', () => {
       uri: 'upload://1',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({ name: 'Renamed documentation', syncPolicy: manualPolicy, version: 4 }),
+      ),
     )
 
     const { refresh } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -274,7 +279,9 @@ describe('Sources: edit-metadata', () => {
     await saveButton.click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Renamed documentation',
@@ -426,7 +433,9 @@ describe('Sources: edit-metadata', () => {
     await page.getByRole('menuitem', { name: 'common.operation.edit' }).click()
 
     await settle()
-    expect(lastInput('connections')).toEqual({
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sourceConnections.get.mock.lastCall?.[0],
+    ).toEqual({
       params: { control_space_id: 'control-space-1' },
       query: { limit: 200 },
     })

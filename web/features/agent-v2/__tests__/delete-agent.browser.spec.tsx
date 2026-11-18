@@ -1,5 +1,4 @@
 import type { AgentAppPartial } from '@dify/contracts/api/console/agent/types.gen'
-import type { consoleClient } from '@/service/console'
 import { zAgentAppPagination } from '@dify/contracts/api/console/agent/zod.gen'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
@@ -17,10 +16,6 @@ import { installFakeApi } from '@/test/fake-api'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import RosterPage from '../roster/page'
 
-const api = {
-  agents: vi.fn<typeof consoleClient.agent.get>(),
-  delete: vi.fn<typeof consoleClient.agent.byAgentId.delete>(),
-}
 vi.unmock('react-i18next')
 
 // Agent ids are UUIDs in the contract; derive a stable one from each readable key.
@@ -62,24 +57,19 @@ afterEach(() => {
 async function setup(initialAgents: AgentAppPartial[]) {
   await page.viewport(1024, 768)
   let agents = initialAgents
-  api.agents.mockReset().mockImplementation(async () => agentPage(agents))
-  api.delete.mockReset().mockImplementation(async ({ params }) => {
-    agents = agents.filter(({ id }) => id !== params.agent_id)
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        agent: {
-          get: (input) => api.agents(input),
-          byAgentId: {
-            delete: async (input) => {
-              await api.delete(input)
-            },
+  const fake = installFakeApi({
+    console: {
+      agent: {
+        get: () => agentPage(agents),
+        byAgentId: {
+          delete: ({ params }) => {
+            agents = agents.filter(({ id }) => id !== params.agent_id)
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -113,16 +103,17 @@ async function setup(initialAgents: AgentAppPartial[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.poll(() => menu.isConnected).toBe(false)
   }
-  return { screen, queryClient, openDelete, actions }
+  return { screen, queryClient, openDelete, actions, fake }
 }
 
 it('focuses the next agent after deletion and keeps the next canceled action keyboard-operable', async () => {
   const target = agent('target', 'Research Agent')
   const remaining = agent('remaining', 'Writing Agent')
-  const { screen, queryClient, openDelete, actions } = await setup([target, remaining])
+  const { screen, queryClient, openDelete, actions, fake } = await setup([target, remaining])
   const pending = createDeferred<void>()
-  const deleteAgent = api.delete.getMockImplementation()!
-  api.delete.mockImplementationOnce(async (input) => {
+  const deleteRequest = fake.console.agent.byAgentId.delete
+  const deleteAgent = deleteRequest.getMockImplementation()!
+  deleteRequest.mockImplementationOnce(async (input) => {
     await pending.promise
     return deleteAgent(input)
   })
@@ -134,7 +125,7 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await screen.getByRole('button', { name: 'Autofill' }).click()
     await input.click()
     await userEvent.keyboard('{Enter}')
-    await expect.poll(() => api.delete.mock.calls.length).toBe(1)
+    await expect.poll(() => deleteRequest.mock.calls.length).toBe(1)
     await expect.element(input).toHaveFocus()
     pending.resolve()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
@@ -151,7 +142,7 @@ it('focuses the next agent after deletion and keeps the next canceled action key
     await expect.element(actions(remaining.name)).toBeVisible()
     await userEvent.keyboard('{Enter}')
     await expect.element(screen.getByRole('menu')).toBeVisible()
-    expect(api.delete).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: target.id } })
+    expect(deleteRequest).toHaveBeenCalledExactlyOnceWith({ params: { agent_id: target.id } })
   } finally {
     pending.resolve()
     queryClient.clear()

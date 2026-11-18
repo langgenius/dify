@@ -1,12 +1,9 @@
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { installFakeApi } from '@/test/fake-api'
 import CheckCode from '../page'
-
-const verifyCode = vi.fn<typeof consoleClient.emailRegister.validity.post>()
 
 const navigation = vi.hoisted(() => ({
   back: vi.fn(),
@@ -33,17 +30,22 @@ async function renderPage() {
   )
 }
 
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: { emailRegister: { validity: { post: (input) => verifyCode(input) } } },
-    }),
-  )
-  verifyCode.mockReset().mockResolvedValue({
-    email: 'user@example.com',
-    is_valid: true,
-    token: 'verified-token',
+function installApi() {
+  return installFakeApi({
+    console: {
+      emailRegister: {
+        validity: {
+          post: () => ({ email: 'user@example.com', is_valid: true, token: 'verified-token' }),
+        },
+      },
+    },
   })
+}
+let fake: ReturnType<typeof installApi>
+
+beforeEach(() => {
+  fake = installApi()
+  onTestFinished(fake)
   navigation.back.mockReset()
   navigation.push.mockReset()
   navigation.replace.mockReset()
@@ -73,7 +75,7 @@ it('focuses the one-time code field and submits the native form with Enter', asy
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(verifyCode).toHaveBeenCalledWith(
+    expect(fake.console.emailRegister.validity.post).toHaveBeenCalledWith(
       expect.objectContaining({
         body: {
           code: '123456',
@@ -83,7 +85,7 @@ it('focuses the one-time code field and submits the native form with Enter', asy
       }),
     ),
   )
-  expect(verifyCode).toHaveBeenCalledTimes(1)
+  expect(fake.console.emailRegister.validity.post).toHaveBeenCalledTimes(1)
   await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledTimes(1))
   const destination = new URL(navigation.push.mock.calls[0]![0], window.location.origin)
   expect(destination.pathname).toBe('/signup/set-password')
@@ -104,5 +106,5 @@ it('keeps native pattern failure associated with the focused code field', async 
   await expect.element(code).toHaveAccessibleDescription('login.checkCode.invalidCode')
   await expect.element(code).toHaveFocus()
   expect(((await code.element()) as HTMLInputElement).validity.patternMismatch).toBe(true)
-  expect(verifyCode).not.toHaveBeenCalled()
+  expect(fake.console.emailRegister.validity.post).not.toHaveBeenCalled()
 })

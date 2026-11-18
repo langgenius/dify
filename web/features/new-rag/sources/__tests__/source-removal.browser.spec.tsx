@@ -1,15 +1,17 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -28,10 +30,14 @@ describe('Source removal confirmation', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.removeSource' }).click()
 
-    expect(clientMock.deleteSource).not.toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,
+    ).not.toHaveBeenCalled()
     await page.getByRole('button', { name: 'knowledgeSources.removeSource' }).click()
     await vi.waitFor(async () =>
-      expect(clientMock.deleteSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,
+      ).toHaveBeenCalledWith({
         body: { expectedRevision: 3 },
         headers: { 'Idempotency-Key': expect.any(String) },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
@@ -62,7 +68,9 @@ describe('Source removal confirmation', () => {
     ],
   ])('keeps the removal confirmation open and reports %s', async (_scenario, error, message) => {
     sourceResponses.data = { pages: [{ items: [source({})] }] }
-    clientMock.deleteSource.mockRejectedValue(error)
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete.mockRejectedValue(
+      error,
+    )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page
@@ -74,7 +82,9 @@ describe('Source removal confirmation', () => {
     await page.getByRole('button', { name: 'knowledgeSources.removeSource' }).click()
 
     await expect.element(page.getByText(message, { exact: true })).toBeVisible()
-    expect(clientMock.deleteSource).toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.delete,
+    ).toHaveBeenCalled()
     await expect
       .element(page.getByRole('button', { name: 'knowledgeSources.removeSource' }))
       .toBeInTheDocument()

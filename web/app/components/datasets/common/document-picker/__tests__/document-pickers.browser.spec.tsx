@@ -10,8 +10,6 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import { DocumentPicker } from '../index'
 import PreviewDocumentPicker from '../preview-document-picker'
 
-const getDocuments = vi.fn()
-
 const createDocument = (
   overrides: Partial<DocumentWithSegmentsResponse> = {},
 ): DocumentWithSegmentsResponse => ({
@@ -101,16 +99,15 @@ function PreviewOwner({ files = previewDocuments }: { files?: DocumentItem[] }) 
   )
 }
 
+function installDocumentsApi() {
+  return installFakeApi({
+    console: { datasets: { byDatasetId: { documents: { get: async () => response() } } } },
+  })
+}
+let fake: ReturnType<typeof installDocumentsApi>
 beforeEach(() => {
-  getDocuments.mockReset()
-  getDocuments.mockResolvedValue(response())
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: { byDatasetId: { documents: { get: (input) => getDocuments(input) } } },
-      },
-    }),
-  )
+  fake = installDocumentsApi()
+  onTestFinished(fake)
 })
 
 it('shows the current document contract and links every available document', async () => {
@@ -138,11 +135,11 @@ it('shows the current document contract and links every available document', asy
 
 it('shows only settled search results while keeping native keyboard focus in the menu', async () => {
   const pending = createDeferred<ReturnType<typeof response>>()
-  getDocuments.mockImplementation(({ params, query }) => {
-    if (params.dataset_id === CUSTOM_DATASET_ID && query?.keyword === 'report')
-      return pending.promise
-    return Promise.resolve(response())
-  })
+  fake.console.datasets.byDatasetId.documents.get.mockImplementation(({ params, query }) =>
+    params.dataset_id === CUSTOM_DATASET_ID && query?.keyword === 'report'
+      ? pending.promise
+      : response(),
+  )
   const screen = await renderDocumentPicker({ datasetId: CUSTOM_DATASET_ID })
 
   await screen.getByRole('button', { name: 'Document 1' }).click()
@@ -164,7 +161,7 @@ it('shows only settled search results while keeping native keyboard focus in the
 })
 
 it('announces a failed search and retries without closing the menu', async () => {
-  getDocuments.mockRejectedValueOnce(
+  fake.console.datasets.byDatasetId.documents.get.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Search unavailable' }),
   )
   const screen = await renderDocumentPicker()

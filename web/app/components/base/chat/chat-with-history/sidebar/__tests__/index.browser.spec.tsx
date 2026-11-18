@@ -17,24 +17,20 @@ vi.mock('@/next/navigation', () => ({
   usePathname: () => '/chat/app-1',
 }))
 
-type ConversationPage = {
-  data: ReturnType<typeof conversation>[]
-  has_more: boolean
-  limit: number
-}
-const api = {
-  conversations: vi.fn<(pinned: boolean) => ConversationPage>(),
-  pin: vi.fn<(id: string) => unknown>(),
-  unpin: vi.fn<(id: string) => unknown>(),
-  rename: vi.fn<(id: string, name: string) => unknown>(),
-  remove: vi.fn<(id: string) => unknown>(),
-}
 const conversation = (id: string, name: string) => ({ id, name, inputs: {}, introduction: '' })
 const conversations = [
   conversation('1', 'First conversation'),
   conversation('2', 'Second conversation'),
 ]
 const pinnedConversations = [conversation('p1', 'Pinned conversation')]
+// Answers the conversation list for the `pinned` query with the given rows.
+const conversationLists =
+  (pinned: ReturnType<typeof conversation>[], unpinned: ReturnType<typeof conversation>[]) =>
+  ({ url }: { url: URL }) => ({
+    data: url.searchParams.get('pinned') === 'true' ? pinned : unpinned,
+    has_more: false,
+    limit: 100,
+  })
 const customLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="40" height="20"><rect width="40" height="20" fill="blue"/></svg>')}`
 const workspaceLogo = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="20"><rect width="60" height="20" fill="red"/></svg>')}`
 const noBranding = { enabled: false, workspace_logo: '' }
@@ -45,23 +41,31 @@ const appInfo: AppData = {
   custom_config: { replace_webapp_logo: customLogo },
 }
 
+const success = () => ({ result: 'success' })
+let fake: ReturnType<typeof installFakeApi>
+const conversationsRoute = () => fake.route('GET', 'public', '/conversations')
+const pinRoute = () => fake.route('PATCH', 'public', '/conversations/:id/pin')
+const unpinRoute = () => fake.route('PATCH', 'public', '/conversations/:id/unpin')
+const renameRoute = () => fake.route('POST', 'public', '/conversations/:id/name')
+const deleteRoute = () => fake.route('DELETE', 'public', '/conversations/:id')
+
 beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(
-    installFakeApi({
-      routes: [
-        route('GET', 'public', '/messages', () => ({ data: [] })),
-        route('GET', 'public', '/conversations', ({ url }) =>
-          api.conversations(url.searchParams.get('pinned') === 'true'),
-        ),
-        route('PATCH', 'public', '/conversations/:id/pin', ({ params }) => api.pin(params.id!)),
-        route('PATCH', 'public', '/conversations/:id/unpin', ({ params }) => api.unpin(params.id!)),
-        route('POST', 'public', '/conversations/:id/name', async ({ params, request }) =>
-          api.rename(params.id!, ((await request.json()) as { name: string }).name),
-        ),
-        route('DELETE', 'public', '/conversations/:id', ({ params }) => api.remove(params.id!)),
-      ],
-    }),
-  )
+  fake = installFakeApi({
+    routes: [
+      route('GET', 'public', '/messages', () => ({ data: [] })),
+      route(
+        'GET',
+        'public',
+        '/conversations',
+        conversationLists(pinnedConversations, conversations),
+      ),
+      route('PATCH', 'public', '/conversations/:id/pin', success),
+      route('PATCH', 'public', '/conversations/:id/unpin', success),
+      route('POST', 'public', '/conversations/:id/name', success),
+      route('DELETE', 'public', '/conversations/:id', success),
+    ],
+  })
+  onTestFinished(fake)
   const oldUrl = window.location.href
   window.history.replaceState({}, '', '/')
   onTestFinished(() => {
@@ -71,13 +75,6 @@ beforeEach(async ({ onTestFinished }) => {
   localStorage.removeItem(CONVERSATION_ID_INFO)
   sessionStorage.removeItem(TAB_CONVERSATION_ID_INFO)
   localStorage.removeItem('webappSidebarCollapse')
-  api.conversations.mockReset().mockImplementation((pinned) => ({
-    data: pinned ? pinnedConversations : conversations,
-    has_more: false,
-    limit: 100,
-  }))
-  for (const action of [api.pin, api.unpin, api.rename, api.remove])
-    action.mockReset().mockReturnValue({ result: 'success' })
   await page.viewport(900, 700)
 })
 afterEach(() => {
@@ -174,14 +171,14 @@ it('applies pin changes without changing the selected conversation', async () =>
   await expect
     .element(currentConversation().getByRole('button', { name: 'Pinned conversation' }))
     .toBeVisible()
-  api.conversations.mockImplementation((pinned) => ({
-    data: pinned ? [...pinnedConversations, conversations[0]!] : [conversations[1]!],
-    has_more: false,
-    limit: 100,
-  }))
+  conversationsRoute().mockImplementation(
+    conversationLists([...pinnedConversations, conversations[0]!], [conversations[1]!]),
+  )
   await operate('First conversation', 'pin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  await expect.poll(() => api.pin).toHaveBeenCalledExactlyOnceWith('1')
+  await expect
+    .poll(pinRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: '1' } }))
   // Wait for the refreshed lists so the row is not moved while its operations are opened.
   await expect
     .poll(() => conversationHistory().element().textContent)
@@ -192,14 +189,14 @@ it('applies pin changes without changing the selected conversation', async () =>
     .toBeVisible()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  api.conversations.mockImplementation((pinned) => ({
-    data: pinned ? [conversations[0]!] : [conversations[1]!, ...pinnedConversations],
-    has_more: false,
-    limit: 100,
-  }))
+  conversationsRoute().mockImplementation(
+    conversationLists([conversations[0]!], [conversations[1]!, ...pinnedConversations]),
+  )
   await operate('Pinned conversation', 'unpin')
   await expect.element(page.getByRole('menu')).not.toBeInTheDocument()
-  await expect.poll(() => api.unpin).toHaveBeenCalledExactlyOnceWith('p1')
+  await expect
+    .poll(unpinRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: 'p1' } }))
   await expect
     .poll(() => conversationHistory().element().textContent)
     .toMatch(/pinnedTitle.*First conversation.*unpinnedTitle.*Second.*Pinned conversation/)
@@ -264,7 +261,7 @@ it('keeps desktop collapse actions out of the mobile sidebar', async () => {
 
 it('keeps the chosen conversation until deletion succeeds, then removes its dialog and row', async () => {
   const pending = createDeferred<unknown>()
-  api.remove.mockReturnValueOnce(pending.promise)
+  deleteRoute().mockReturnValueOnce(pending.promise)
   await renderSidebar({ currentConversationId: '2' }, noBranding, true)
   await expect
     .element(currentConversation().getByRole('button', { name: 'Second conversation' }))
@@ -272,16 +269,16 @@ it('keeps the chosen conversation until deletion succeeds, then removes its dial
   await operate('Second conversation', 'delete')
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await expect.element(dialog).toBeVisible()
-  expect(api.remove).not.toHaveBeenCalled()
+  expect(deleteRoute()).not.toHaveBeenCalled()
   await dialog.getByRole('button', { name: 'common.operation.confirm' }).click()
-  await expect.poll(() => api.remove).toHaveBeenCalledExactlyOnceWith('2')
+  await expect
+    .poll(deleteRoute)
+    .toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ params: { id: '2' } }))
   await expect.element(dialog).toBeVisible()
   expect(selectedConversation()).toBe('2')
-  api.conversations.mockImplementation((pinned) => ({
-    data: pinned ? pinnedConversations : [conversations[0]!],
-    has_more: false,
-    limit: 100,
-  }))
+  conversationsRoute().mockImplementation(
+    conversationLists(pinnedConversations, [conversations[0]!]),
+  )
   pending.resolve({ result: 'success' })
   await expect.element(dialog).not.toBeInTheDocument()
   await expect
@@ -300,7 +297,7 @@ it('cancels deletion without changing the conversation', async () => {
   const dialog = page.getByRole('alertdialog', { name: 'share.chat.deleteConversation.title' })
   await dialog.getByRole('button', { name: 'common.operation.cancel' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.remove).not.toHaveBeenCalled()
+  expect(deleteRoute()).not.toHaveBeenCalled()
   await expect
     .element(currentConversation().getByRole('button', { name: 'First conversation' }))
     .toBeVisible()
@@ -312,7 +309,7 @@ it('cancels deletion without changing the conversation', async () => {
 
 it('submits the chosen conversation name and blocks native Enter and click resubmission until saved', async () => {
   const pending = createDeferred<unknown>()
-  api.rename.mockReturnValueOnce(pending.promise)
+  renameRoute().mockReturnValueOnce(pending.promise)
   await renderSidebar({}, noBranding, true)
   await operate('Second conversation', 'rename')
   const input = page.getByRole('textbox', { name: 'common.chat.conversationName' })
@@ -320,7 +317,12 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await expect.element(input).toHaveFocus()
   await input.fill('New name')
   await userEvent.keyboard('{Enter}')
-  await expect.poll(() => api.rename).toHaveBeenCalledExactlyOnceWith('2', 'New name')
+  await expect.poll(renameRoute).toHaveBeenCalledExactlyOnceWith(
+    expect.objectContaining({
+      params: { id: '2' },
+      body: expect.objectContaining({ name: 'New name' }),
+    }),
+  )
   const save = page.getByRole('button', { name: 'common.operation.save' })
   await expect.element(save).toHaveAttribute('aria-disabled', 'true')
   await userEvent.tab()
@@ -329,7 +331,7 @@ it('submits the chosen conversation name and blocks native Enter and click resub
   await userEvent.keyboard(' ')
   await input.click()
   await userEvent.keyboard('{Enter}')
-  expect(api.rename).toHaveBeenCalledTimes(1)
+  expect(renameRoute()).toHaveBeenCalledTimes(1)
   pending.resolve({ result: 'success' })
   await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
   await expect.element(page.getByRole('button', { name: 'New name' })).toBeVisible()
@@ -355,7 +357,7 @@ it('discards a cancelled rename before opening another conversation', async () =
   await operate('Second conversation', 'rename')
   await expect.element(input).toHaveValue('Second conversation')
   await expect.element(input).toHaveFocus()
-  expect(api.rename).not.toHaveBeenCalled()
+  expect(renameRoute()).not.toHaveBeenCalled()
 })
 
 it.each([

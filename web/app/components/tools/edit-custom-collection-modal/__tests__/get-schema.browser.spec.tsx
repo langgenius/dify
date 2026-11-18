@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -8,21 +7,6 @@ import { createDeferred } from '@/test/deferred'
 import { installFakeApi } from '@/test/fake-api'
 import examples from '../examples'
 import GetSchema from '../get-schema'
-
-const importSchema = vi.fn<typeof consoleClient.workspaces.current.toolProvider.api.remote.get>()
-
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: { toolProvider: { api: { remote: { get: (input) => importSchema(input) } } } },
-        },
-      },
-    }),
-  )
-  importSchema.mockReset()
-})
 
 function SchemaEditor() {
   // GetSchema is a controlled import action: the consumer owns the editable schema.
@@ -39,18 +23,29 @@ function SchemaEditor() {
   )
 }
 async function setup() {
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          toolProvider: { api: { remote: { get: async () => ({ schema: 'fetched-schema' }) } } },
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
   const { wrapper: Providers } = createConsoleQueryWrapper()
-  return render(
+  const screen = await render(
     <Providers>
       <SchemaEditor />
     </Providers>,
   )
+  return { screen, importSchema: fake.console.workspaces.current.toolProvider.api.remote.get }
 }
 
 it('validates the URL, prevents duplicate imports, then replaces the editable schema', async () => {
-  const pending = createDeferred<Awaited<ReturnType<typeof importSchema>>>()
-  importSchema.mockReturnValue(pending.promise)
-  const screen = await setup()
+  const { screen, importSchema } = await setup()
+  const pending = createDeferred<{ schema: string }>()
+  importSchema.mockReturnValueOnce(pending.promise)
   const trigger = screen.getByRole('button', { name: 'tools.createTool.importFromUrl' })
   const schema = screen.getByRole('textbox', { name: 'Tool schema' })
   await trigger.click()
@@ -89,7 +84,7 @@ it('validates the URL, prevents duplicate imports, then replaces the editable sc
 })
 
 it('replaces the editable schema with the selected example', async () => {
-  const screen = await setup()
+  const { screen } = await setup()
   await screen.getByRole('button', { name: 'tools.createTool.examples' }).click()
   await screen
     .getByRole('menuitem', { name: `tools.createTool.exampleOptions.${examples[0].key}` })

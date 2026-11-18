@@ -1,4 +1,4 @@
-import type { TagType } from '@dify/contracts/api/console/tags/types.gen'
+import type { TagResponse, TagType } from '@dify/contracts/api/console/tags/types.gen'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
@@ -7,7 +7,6 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import { TagManagementModal } from '../components/tag-management-modal'
 import { renderWithTags } from './render-browser'
 
-const createTag = vi.fn()
 const tags = [
   { id: 'tag-1', name: 'Frontend', type: 'app' as const, binding_count: '' },
   { id: 'tag-2', name: 'Backend', type: 'app' as const, binding_count: '' },
@@ -29,10 +28,20 @@ function renderModal(
 }
 const input = () => page.getByRole('textbox', { name: 'common.tag.addNew' })
 const dialog = () => page.getByRole('dialog', { name: 'common.tag.manageTags' })
+function installTagApi() {
+  return installFakeApi({
+    console: {
+      tags: {
+        get: () => tags,
+        post: ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }),
+      },
+    },
+  })
+}
+let fake: ReturnType<typeof installTagApi>
 beforeEach(() => {
-  createTag
-    .mockReset()
-    .mockImplementation(async ({ body }) => ({ id: 'new-tag', binding_count: '', ...body }))
+  fake = installTagApi()
+  onTestFinished(fake)
 })
 afterEach(() => {
   toast.dismiss()
@@ -45,14 +54,16 @@ it.each(['app', 'knowledge', 'snippet'] as const)(
     await input().fill('NewTag')
     await userEvent.keyboard('{Enter}')
     await expect.element(input()).toHaveValue('')
-    expect(createTag).toHaveBeenCalledExactlyOnceWith({ body: { name: 'NewTag', type } })
+    expect(fake.console.tags.post).toHaveBeenCalledExactlyOnceWith({
+      body: { name: 'NewTag', type },
+    })
     await expect.element(page.getByText('common.tag.created', { exact: true })).toBeVisible()
   },
 )
 
 it('submits on blur and locks the pending draft against edits and duplicate submission', async () => {
-  const pending = createDeferred<unknown>()
-  createTag.mockReturnValueOnce(pending.promise)
+  const pending = createDeferred<TagResponse>()
+  fake.console.tags.post.mockReturnValueOnce(pending.promise)
   await renderModal()
   await expect.element(page.getByText('Frontend', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Backend', { exact: true })).toBeVisible()
@@ -63,14 +74,14 @@ it('submits on blur and locks the pending draft against edits and duplicate subm
   await userEvent.keyboard('changed{Enter}')
   await userEvent.tab()
   await expect.element(input()).toHaveValue('Pending')
-  expect(createTag).toHaveBeenCalledOnce()
-  pending.resolve({ id: 'new-tag', name: 'Pending', type: 'app' })
+  expect(fake.console.tags.post).toHaveBeenCalledOnce()
+  pending.resolve({ id: 'new-tag', name: 'Pending', type: 'app', binding_count: '' })
   await expect.element(input()).toHaveValue('')
   await expect.element(input()).not.toHaveAttribute('readonly')
 })
 
 it('keeps a failed draft available for correction and retry', async () => {
-  createTag.mockRejectedValueOnce(
+  fake.console.tags.post.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Creation failed' }),
   )
   await renderModal()
@@ -82,7 +93,9 @@ it('keeps a failed draft available for correction and retry', async () => {
   await input().fill('Corrected')
   await userEvent.keyboard('{Enter}')
   await expect.element(input()).toHaveValue('')
-  expect(createTag).toHaveBeenLastCalledWith({ body: { name: 'Corrected', type: 'app' } })
+  expect(fake.console.tags.post).toHaveBeenLastCalledWith({
+    body: { name: 'Corrected', type: 'app' },
+  })
 })
 
 it('ignores empty submissions through Enter and blur', async () => {
@@ -90,7 +103,7 @@ it('ignores empty submissions through Enter and blur', async () => {
   await input().click()
   await userEvent.keyboard('{Enter}')
   await userEvent.tab()
-  expect(createTag).not.toHaveBeenCalled()
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
   await expect.element(dialog()).toBeVisible()
 })
 
@@ -106,13 +119,5 @@ it('hides management controls without workspace permission', async () => {
   await renderModal('app', [])
   await expect.element(dialog()).not.toBeInTheDocument()
   await expect.element(input()).not.toBeInTheDocument()
-  expect(createTag).not.toHaveBeenCalled()
-})
-
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: { tags: { get: () => tags, post: (input) => createTag(input) } },
-    }),
-  )
+  expect(fake.console.tags.post).not.toHaveBeenCalled()
 })

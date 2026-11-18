@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse } from '@dify/contracts/api/console/workspaces/zod.gen'
 import { QueryClient } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
@@ -20,38 +19,35 @@ import { channel as feishuChannel, providers, syncRun } from './fixtures/http'
 // Channel ids are UUIDs in the contract.
 const channel = { ...feishuChannel, id: '00000000-0000-4000-8000-000000000001' }
 
-const removeChannel =
-  vi.fn<typeof consoleClient.workspaces.current.humanInput.v2.channels.im.byChannelId.delete>()
 vi.unmock('react-i18next')
 
 it('deletes an IM channel through the settings API only after confirmation and refreshes the list', async () => {
   const email = channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' })
   const deletion = createDeferred<{ channel_id: string }>()
   let removed = false
-  removeChannel.mockReset().mockImplementation(() => deletion.promise)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            humanInput: {
-              v2: {
-                channelProviders: {
-                  get: () =>
-                    zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
-                },
-                channels: {
-                  get: () => ({ channels: removed ? [email] : [email, channel] }),
-                  im: { byChannelId: { delete: (input) => removeChannel(input) } },
-                },
-                imSyncRuns: { latest: { get: () => ({ run: syncRun() }) } },
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          humanInput: {
+            v2: {
+              channelProviders: {
+                get: () =>
+                  zGetWorkspacesCurrentHumanInputV2ChannelProvidersResponse.parse(providers),
               },
+              channels: {
+                get: () => ({ channels: removed ? [email] : [email, channel] }),
+                im: { byChannelId: { delete: () => deletion.promise } },
+              },
+              imSyncRuns: { latest: { get: () => ({ run: syncRun() }) } },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
+  const removeChannel = fake.console.workspaces.current.humanInput.v2.channels.im.byChannelId.delete
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })

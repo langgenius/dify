@@ -10,13 +10,9 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import { createSnippetImportResponseFixture } from '@/test/fixtures/snippet'
 import ImportSnippetDSLDialog from '../import-snippet-dsl-dialog'
 
-const api = vi.hoisted(() => ({ import: vi.fn(), confirm: vi.fn(), push: vi.fn() }))
+const router = vi.hoisted(() => ({ push: vi.fn() }))
 // boundary: Next.js owns navigation after importing a snippet.
-vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: api.push }) }))
-const response = (overrides: Parameters<typeof createSnippetImportResponseFixture>[0] = {}) => ({
-  ...createSnippetImportResponseFixture(overrides),
-  warnings: [],
-})
+vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: router.push }) }))
 
 function DirectDialog() {
   const [open, setOpen] = useState(true)
@@ -49,48 +45,58 @@ async function upload(dialog: ReturnType<typeof page.getByRole>) {
   await expect.element(dialog.getByRole('group', { name: 'snippet.yml' })).toBeVisible()
 }
 
-beforeEach(() => {
-  vi.resetAllMocks()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            customizedSnippets: {
-              imports: {
-                post: (input) => api.import(input),
-                byImportId: { confirm: { post: (input) => api.confirm(input) } },
-              },
+function installImportApi() {
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          customizedSnippets: {
+            imports: {
+              post: () => createSnippetImportResponseFixture(),
+              byImportId: { confirm: { post: () => createSnippetImportResponseFixture() } },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
+  return fake.console.workspaces.current.customizedSnippets.imports
+}
+let imports: ReturnType<typeof installImportApi>
+beforeEach(() => {
+  vi.resetAllMocks()
+  imports = installImportApi()
 })
 afterEach(() => toast.dismiss())
 
 it('imports a DSL URL from the creation menu and navigates after the dialog closes', async () => {
-  api.import.mockResolvedValue(response())
   const dialog = await setup()
   await dialog.getByRole('tab', { name: 'snippet.importFromDSLUrl' }).click()
   await dialog.getByRole('textbox', { name: 'DSL URL' }).fill('https://example.com/snippet.yml')
   await dialog.getByRole('button', { name: 'common.operation.create' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.import).toHaveBeenCalledExactlyOnceWith(
+  expect(imports.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       body: { mode: 'yaml-url', yaml_url: 'https://example.com/snippet.yml' },
     }),
   )
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-1/orchestrate')
+  expect(router.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-1/orchestrate')
 })
 
 it('reads the uploaded YAML and waits for version confirmation before navigating', async () => {
-  api.import.mockResolvedValue(
-    response({ status: 'pending', snippet_id: null, imported_dsl_version: '0.9.0' }),
+  imports.post.mockResolvedValue(
+    createSnippetImportResponseFixture({
+      status: 'pending',
+      snippet_id: null,
+      imported_dsl_version: '0.9.0',
+    }),
   )
-  api.confirm.mockResolvedValue(
-    response({ status: 'completed-with-warnings', snippet_id: 'snippet-2' }),
+  imports.byImportId.confirm.post.mockResolvedValue(
+    createSnippetImportResponseFixture({
+      status: 'completed-with-warnings',
+      snippet_id: 'snippet-2',
+    }),
   )
   const dialog = await setup()
   await upload(dialog)
@@ -99,26 +105,28 @@ it('reads the uploaded YAML and waits for version confirmation before navigating
   await expect.element(confirmation).toBeVisible()
   await expect.element(confirmation.getByText('0.9.0', { exact: true })).toBeVisible()
   await expect.element(confirmation.getByText('1.0.0', { exact: true })).toBeVisible()
-  expect(api.import).toHaveBeenCalledExactlyOnceWith(
+  expect(imports.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ body: { mode: 'yaml-content', yaml_content: 'name: snippet' } }),
   )
-  expect(api.push).not.toHaveBeenCalled()
+  expect(router.push).not.toHaveBeenCalled()
   await confirmation.getByRole('button', { name: 'common.operation.confirm' }).click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(confirmation).not.toBeInTheDocument()
-  expect(api.confirm).toHaveBeenCalledExactlyOnceWith(
+  expect(imports.byImportId.confirm.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({ params: { import_id: 'import-1' } }),
   )
-  expect(api.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-2/orchestrate')
+  expect(router.push).toHaveBeenCalledExactlyOnceWith('/snippets/snippet-2/orchestrate')
 })
 
 it.each(['import', 'confirm'])(
   'shows the HTTP %s error while preserving the import for retry',
   async (step) => {
     const error = apiError({ status: 400, code: 'INVALID_DSL', message: 'Invalid DSL' })
-    api.import.mockResolvedValue(response({ status: 'pending', snippet_id: null }))
-    if (step === 'import') api.import.mockRejectedValueOnce(error)
-    else api.confirm.mockRejectedValueOnce(error)
+    imports.post.mockResolvedValue(
+      createSnippetImportResponseFixture({ status: 'pending', snippet_id: null }),
+    )
+    if (step === 'import') imports.post.mockRejectedValueOnce(error)
+    else imports.byImportId.confirm.post.mockRejectedValueOnce(error)
     const dialog = await setup()
     await upload(dialog)
     await dialog.getByRole('button', { name: 'common.operation.create' }).click()
@@ -136,7 +144,7 @@ it.each(['import', 'confirm'])(
       await expect.element(confirmation).not.toBeInTheDocument()
     }
     await expect.element(dialog.getByRole('group', { name: 'snippet.yml' })).toBeVisible()
-    expect(api.push).not.toHaveBeenCalled()
+    expect(router.push).not.toHaveBeenCalled()
   },
 )
 
@@ -147,5 +155,5 @@ it('disables a direct import without create permission even with a URL entered',
   await expect
     .element(dialog.getByRole('button', { name: 'common.operation.create' }))
     .toBeDisabled()
-  expect(api.import).not.toHaveBeenCalled()
+  expect(imports.post).not.toHaveBeenCalled()
 })

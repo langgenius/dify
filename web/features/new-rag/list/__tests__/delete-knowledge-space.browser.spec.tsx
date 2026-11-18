@@ -12,10 +12,6 @@ type KnowledgeFsSpaceListItemResponse = Awaited<
   ReturnType<typeof consoleClient.knowledgeFs.spaces.get>
 >['data'][number]
 
-const api = {
-  list: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
-  remove: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
-}
 const space = (
   id: string,
   name: string,
@@ -50,38 +46,35 @@ async function setup(ids: string[]) {
   let datasets = ids.map((id) =>
     space(id, id, { permission_keys: ['knowledge_space_read', 'knowledge_space_delete'] }),
   )
-  api.list.mockReset().mockImplementation(async () => ({
-    data: datasets,
-    page: 1,
-    total: datasets.length,
-    limit: 30,
-    has_more: false,
-  }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    datasets = datasets.filter((item) => item.control_space_id !== params.control_space_id)
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            get: (input) => api.list(input),
-            byControlSpaceId: {
-              delete: async (input) => {
-                await api.remove(input)
-              },
+  const fake = installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async () => ({
+            data: datasets,
+            page: 1,
+            total: datasets.length,
+            limit: 30,
+            has_more: false,
+          }),
+          byControlSpaceId: {
+            delete: async ({ params }) => {
+              datasets = datasets.filter(
+                (item) => item.control_space_id !== params.control_space_id,
+              )
             },
           },
         },
-        datasets: {
-          knowledgeFsUpgradeJobs: { get: () => ({ data: [] }) },
-          apiBaseInfo: { get: () => ({ api_base_url: '' }) },
-        },
-        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
-        tags: { get: () => [] },
       },
-    }),
-  )
+      datasets: {
+        knowledgeFsUpgradeJobs: { get: () => ({ data: [] }) },
+        apiBaseInfo: { get: () => ({ api_base_url: '' }) },
+      },
+      workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      tags: { get: () => [] },
+    },
+  })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -100,22 +93,23 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
     await screen.getByRole('textbox').fill(id)
   }
-  return { screen, open }
+  const { spaces } = fake.console.knowledgeFs
+  return { screen, open, list: spaces.get, remove: spaces.byControlSpaceId.delete }
 }
 describe('Knowledge space deletion', () => {
   it('removes the confirmed item and restores focus before the list refresh completes', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, list } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const list = api.list.getMockImplementation()!
-    const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    api.list.mockReturnValueOnce(refresh.promise)
+    const listSpaces = list.getMockImplementation()!
+    const refresh = createDeferred<Awaited<ReturnType<typeof listSpaces>>>()
+    list.mockReturnValueOnce(refresh.promise)
     await screen.getByRole('button', { name: 'common.operation.confirm' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('link', { name: 'Alpha', exact: true }))
       .not.toBeInTheDocument()
     await expect.element(screen.getByRole('link', { name: 'Beta', exact: true })).toHaveFocus()
-    refresh.resolve(await list({ query: { page: 1, limit: 30 } }))
+    refresh.resolve(await listSpaces(list.mock.lastCall![0]))
   })
 
   it.each([
@@ -137,9 +131,9 @@ describe('Knowledge space deletion', () => {
       .toHaveFocus()
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, remove } = await setup(['Alpha'])
     const request = createDeferred<void>()
-    api.remove.mockReturnValueOnce(request.promise)
+    remove.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
     await confirm.click()
@@ -156,13 +150,13 @@ describe('Knowledge space deletion', () => {
     await expect.element(screen.getByRole('region')).toHaveFocus()
   })
   it('returns focus to the menu button on cancellation', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, remove } = await setup(['Alpha'])
     await open('Alpha')
     await screen.getByRole('button', { name: 'common.operation.cancel' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
       .element(screen.getByRole('button', { name: 'common.operation.more' }))
       .toHaveFocus()
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 })

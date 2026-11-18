@@ -1,21 +1,13 @@
 import type {
+  PersonalAccessTokenDetailResponse,
   PersonalAccessTokenResourceResponse,
   PersonalAccessTokenWorkspaceResponse,
 } from '@dify/contracts/api/console/account/types.gen'
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = {
-  list: vi.fn<typeof consoleClient.account.personalAccessTokens.get>(),
-  detail: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.get>(),
-  create: vi.fn<typeof consoleClient.account.personalAccessTokens.post>(),
-  update: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.patch>(),
-  resources: vi.fn<typeof consoleClient.account.personalAccessTokenResources.get>(),
-  workspaces: vi.fn<typeof consoleClient.account.personalAccessTokenWorkspaces.get>(),
-}
 vi.unmock('react-i18next')
 const workspace: PersonalAccessTokenWorkspaceResponse = {
   workspace_id: '019a0000-0000-7000-8000-000000000003',
@@ -33,34 +25,36 @@ const app: PersonalAccessTokenResourceResponse = {
   available: true,
   reason: null,
 }
-beforeEach(async () => {
-  await page.viewport(1100, 800)
-  api.list.mockReset().mockResolvedValue(tokenList())
-  api.detail.mockReset()
-  api.create.mockReset().mockResolvedValue({ ...token, secret: 'dpat_scoped' })
-  api.update.mockReset().mockResolvedValue({ token, resources: [], workspaces: [] })
-  api.resources.mockReset().mockResolvedValue({ data: [app], next_cursor: null, has_more: false })
-  api.workspaces
-    .mockReset()
-    .mockResolvedValue({ data: [workspace], next_cursor: null, has_more: false })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        account: {
-          personalAccessTokens: {
-            get: (input) => api.list(input),
-            post: (input) => api.create(input),
-            byTokenId: {
-              get: (input) => api.detail(input),
-              patch: (input) => api.update(input),
-            },
+const unscoped: PersonalAccessTokenDetailResponse = { token, resources: [], workspaces: [] }
+
+function installApi() {
+  return installFakeApi({
+    console: {
+      account: {
+        personalAccessTokens: {
+          get: () => tokenList(),
+          post: () => ({ ...token, secret: 'dpat_scoped' }),
+          byTokenId: {
+            get: () => unscoped,
+            patch: () => unscoped,
           },
-          personalAccessTokenResources: { get: (input) => api.resources(input) },
-          personalAccessTokenWorkspaces: { get: (input) => api.workspaces(input) },
+        },
+        personalAccessTokenResources: {
+          get: () => ({ data: [app], next_cursor: null, has_more: false }),
+        },
+        personalAccessTokenWorkspaces: {
+          get: () => ({ data: [workspace], next_cursor: null, has_more: false }),
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installApi>
+
+beforeEach(async () => {
+  await page.viewport(1100, 800)
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 it('requires each selected scope and preserves selections while switching the expanded picker', async () => {
@@ -97,7 +91,7 @@ it('requires each selected scope and preserves selections while switching the ex
   await expect
     .element(dialog.getByRole('textbox', { name: 'Token', exact: true }))
     .toHaveValue('dpat_scoped')
-  expect(api.create).toHaveBeenCalledWith(
+  expect(fake.console.account.personalAccessTokens.post).toHaveBeenCalledWith(
     expect.objectContaining({
       body: {
         name: 'workspace',
@@ -122,8 +116,8 @@ it('duplicates expired access while excluding unavailable resources and workspac
     workspace_count: 2,
     unavailable_count: 2,
   }
-  api.list.mockResolvedValue(tokenList([expired]))
-  api.detail.mockResolvedValue({
+  fake.console.account.personalAccessTokens.get.mockResolvedValue(tokenList([expired]))
+  fake.console.account.personalAccessTokens.byTokenId.get.mockResolvedValue({
     token: expired,
     resources: [app, { ...app, resource_id: token.id, available: false, reason: 'access_removed' }],
     workspaces: [workspace, { ...workspace, workspace_id: token.id, available: false }],
@@ -141,7 +135,7 @@ it('duplicates expired access while excluding unavailable resources and workspac
   await expect
     .element(dialog.getByRole('textbox', { name: 'Token', exact: true }))
     .toHaveValue('dpat_scoped')
-  expect(api.create).toHaveBeenCalledWith(
+  expect(fake.console.account.personalAccessTokens.post).toHaveBeenCalledWith(
     expect.objectContaining({
       body: expect.objectContaining({
         resource_scope: {
@@ -155,8 +149,8 @@ it('duplicates expired access while excluding unavailable resources and workspac
 })
 
 it('keeps a selected resource through loading, failure, and retry with no remaining candidates', async () => {
-  api.list.mockResolvedValue(tokenList([token]))
-  api.detail.mockResolvedValue({
+  fake.console.account.personalAccessTokens.get.mockResolvedValue(tokenList([token]))
+  fake.console.account.personalAccessTokens.byTokenId.get.mockResolvedValue({
     token: { ...token, workspace_scope_mode: 'none' },
     resources: [app],
     workspaces: [],
@@ -166,7 +160,7 @@ it('keeps a selected resource through loading, failure, and retry with no remain
     next_cursor: null
     has_more: false
   }>()
-  api.resources
+  fake.console.account.personalAccessTokenResources.get
     .mockReturnValueOnce(request.promise)
     .mockResolvedValue({ data: [], next_cursor: null, has_more: false })
   const { screen } = await renderTokenPage()
@@ -194,13 +188,13 @@ it('keeps saved dataset resources on save while offering only apps and deploymen
   }
   const dataset = { ...app, resource_type: 'dataset' as const, display_name: 'Handbook' }
   const appWithDeployments = { ...app, app_deployments: [deployment] }
-  api.list.mockResolvedValue(tokenList([token]))
-  api.detail.mockResolvedValue({
+  fake.console.account.personalAccessTokens.get.mockResolvedValue(tokenList([token]))
+  fake.console.account.personalAccessTokens.byTokenId.get.mockResolvedValue({
     token,
     resources: [appWithDeployments, dataset],
     workspaces: [workspace],
   })
-  api.resources.mockResolvedValue({
+  fake.console.account.personalAccessTokenResources.get.mockResolvedValue({
     data: [appWithDeployments],
     next_cursor: null,
     has_more: false,
@@ -218,7 +212,7 @@ it('keeps saved dataset resources on save while offering only apps and deploymen
   await expect.element(dialog.getByRole('checkbox', { name: 'Built-in' })).toBeChecked()
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledWith(
+  expect(fake.console.account.personalAccessTokens.byTokenId.patch).toHaveBeenCalledWith(
     expect.objectContaining({
       body: expect.objectContaining({
         resource_scope: {

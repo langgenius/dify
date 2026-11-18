@@ -1,14 +1,16 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
-import { clearSourceClients, lastInput, renderSources as render } from './source-browser-env'
+import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
 import { resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -23,7 +25,7 @@ describe('Sources: list-browsing', () => {
 
     await expect.element(page.getByRole('progressbar')).toBeInTheDocument()
     await expect
-      .poll(() => lastInput('sources'))
+      .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.sources.get.mock.lastCall?.[0])
       .toEqual({
         params: { control_space_id: 'space-1' },
         query: { limit: 200 },

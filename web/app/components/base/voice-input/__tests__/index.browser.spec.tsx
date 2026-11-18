@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import type { MicrophoneFixture } from '@/test/browser-media'
 import { useEffect, useRef, useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
@@ -8,12 +7,13 @@ import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import VoiceInput from '../index'
 
-const api = {
-  transcribe: vi.fn<typeof consoleClient.apps.byAppId.audioToText.post>(),
-}
-
 // The contract requires a UUID app id.
 const appId = '8b9c0d1e-2f3a-4b4c-8d5e-6f7a8b9c0d1e'
+const installApi = () =>
+  installFakeApi({
+    console: { apps: { byAppId: { audioToText: { post: () => ({ text: 'transcribed text' }) } } } },
+  })
+let fake: ReturnType<typeof installApi>
 const target = { type: 'consoleApp' as const, appId }
 const microphones: MicrophoneFixture[] = []
 const recorderCloseGates: Array<ReturnType<typeof createDeferred<void>>> = []
@@ -88,12 +88,8 @@ const waitForRecording = async (screen: Awaited<ReturnType<typeof render>>) => {
 }
 
 beforeEach(() => {
-  api.transcribe.mockReset().mockResolvedValue({ text: 'transcribed text' })
-  onTestFinished(
-    installFakeApi({
-      console: { apps: { byAppId: { audioToText: { post: (input) => api.transcribe(input) } } } },
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
   beforeTranscribeCalls = 0
   beforeTranscribe = async () => {
     beforeTranscribeCalls++
@@ -167,7 +163,7 @@ it('publishes a decodable recorded MP3 through the caller and restores keyboard 
   await expect.element(screen.getByLabelText('Draft text')).toHaveTextContent('transcribed text')
   await expect.element(screen.getByRole('button', { name: 'Start voice input' })).toHaveFocus()
 
-  const [input] = api.transcribe.mock.calls[0]!
+  const [input] = fake.console.apps.byAppId.audioToText.post.mock.calls[0]!
   const file = input.body.file
   expect(input.params).toEqual({ app_id: appId })
   expect(file).toBeInstanceOf(File)
@@ -210,7 +206,7 @@ it('keeps the original draft when cancelled during recorder completion', async (
 
   await expect.element(screen.getByLabelText('Draft text')).toHaveTextContent('original draft')
   await expect.element(screen.getByRole('button', { name: 'Start voice input' })).toBeVisible()
-  expect(api.transcribe).not.toHaveBeenCalled()
+  expect(fake.console.apps.byAppId.audioToText.post).not.toHaveBeenCalled()
 })
 
 it('keeps the original draft when cancelled during the caller draft-save callback', async () => {
@@ -231,18 +227,18 @@ it('keeps the original draft when cancelled during the caller draft-save callbac
 
   await expect.element(screen.getByLabelText('Draft text')).toHaveTextContent('original draft')
   await expect.element(screen.getByRole('button', { name: 'Start voice input' })).toBeVisible()
-  expect(api.transcribe).not.toHaveBeenCalled()
+  expect(fake.console.apps.byAppId.audioToText.post).not.toHaveBeenCalled()
 })
 
 it('keeps the original draft and aborts HTTP when cancelled during transcription', async () => {
   const response = createDeferred<{ text: string }>()
   // Hold the HTTP response so cancellation can abort it in flight.
-  api.transcribe.mockReturnValueOnce(response.promise)
+  fake.console.apps.byAppId.audioToText.post.mockReturnValueOnce(response.promise)
   const screen = await renderCaller()
   await waitForRecording(screen)
   await screen.getByRole('button', { name: 'common.voiceInput.stop' }).click()
   await expect.element(screen.getByText('common.voiceInput.converting')).toBeVisible()
-  await expect.poll(() => api.transcribe.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.apps.byAppId.audioToText.post.mock.calls.length).toBe(1)
   const [sent, init] = vi
     .mocked(fetch)
     .mock.calls.find(([input]) =>
@@ -281,7 +277,7 @@ it('shows a microphone setup failure without replacing the draft', async () => {
 })
 
 it('reports a transcription transport failure without replacing the draft', async () => {
-  api.transcribe.mockRejectedValueOnce(
+  fake.console.apps.byAppId.audioToText.post.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'API failed' }),
   )
   const screen = await renderCaller()
@@ -297,7 +293,7 @@ it('stops at the ten-minute limit and publishes the visible result', async () =>
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
   const response = createDeferred<{ text: string }>()
   // Hold the HTTP response while observing the converting state.
-  api.transcribe.mockReturnValueOnce(response.promise)
+  fake.console.apps.byAppId.audioToText.post.mockReturnValueOnce(response.promise)
   const screen = await renderCaller()
   await waitForRecording(screen)
   await expect.element(screen.getByRole('timer')).toHaveTextContent('00:00')
@@ -305,7 +301,7 @@ it('stops at the ten-minute limit and publishes the visible result', async () =>
   await expect.element(screen.getByRole('button', { name: 'common.voiceInput.stop' })).toBeVisible()
   await vi.advanceTimersByTimeAsync(5_000)
   await expect.element(screen.getByText('common.voiceInput.converting')).toBeVisible()
-  await expect.poll(() => api.transcribe.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.apps.byAppId.audioToText.post.mock.calls.length).toBe(1)
   response.resolve({ text: 'transcribed text' })
   await expect.element(screen.getByLabelText('Draft text')).toHaveTextContent('transcribed text')
 })

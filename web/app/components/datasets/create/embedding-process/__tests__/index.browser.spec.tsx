@@ -28,11 +28,6 @@ vi.mock('@/next/link', () => ({
   ),
 }))
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
-const api = {
-  status: vi.fn<typeof consoleClient.datasets.byDatasetId.batch.byBatch.indexingStatus.get>(),
-  rule: vi.fn<typeof consoleClient.datasets.processRule.get>(),
-  documents: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
-}
 const document = zDocumentResponse.parse({
   id: 'document-1',
   name: 'report.pdf',
@@ -73,25 +68,25 @@ const rule = {
   },
 } satisfies Awaited<ReturnType<typeof consoleClient.datasets.processRule.get>>
 
-beforeEach(() => {
-  api.status.mockReset().mockResolvedValue({ data: [status()] })
-  api.rule.mockReset().mockResolvedValue(rule)
-  api.documents
-    .mockReset()
-    .mockResolvedValue({ data: [], total: 2, has_more: false, page: 1, limit: 20 })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          processRule: { get: (input) => api.rule(input) },
-          byDatasetId: {
-            documents: { get: (input) => api.documents(input) },
-            batch: { byBatch: { indexingStatus: { get: (input) => api.status(input) } } },
+function installIndexingApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        processRule: { get: async () => rule },
+        byDatasetId: {
+          documents: {
+            get: async () => ({ data: [], total: 2, has_more: false, page: 1, limit: 20 }),
           },
+          batch: { byBatch: { indexingStatus: { get: async () => ({ data: [status()] }) } } },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installIndexingApi>
+beforeEach(() => {
+  fake = installIndexingApi()
+  onTestFinished(fake)
 })
 afterEach(() => vi.useRealTimers())
 
@@ -141,7 +136,7 @@ async function setup({
 
 it('polls real indexing progress and announces completion without retaining a progress bar', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-  api.status.mockResolvedValueOnce({
+  fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mockResolvedValueOnce({
     data: [status({ indexing_status: 'indexing', completed_segments: 50, total_segments: 100 })],
   })
   const screen = await setup()
@@ -154,7 +149,9 @@ it('polls real indexing progress and announces completion without retaining a pr
     .toBeVisible()
   await vi.advanceTimersByTimeAsync(2499)
   await expect.element(progress).toHaveAttribute('aria-valuenow', '50')
-  expect(api.status).toHaveBeenCalledTimes(1)
+  expect(fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get).toHaveBeenCalledTimes(
+    1,
+  )
   await vi.advanceTimersByTimeAsync(1)
   await expect.element(progress).not.toBeInTheDocument()
   await expect
@@ -165,13 +162,17 @@ it('polls real indexing progress and announces completion without retaining a pr
     )
     .toHaveTextContent('report.pdf: datasetDocuments.embedding.completed')
   await vi.advanceTimersByTimeAsync(5000)
-  expect(api.status).toHaveBeenCalledTimes(2)
+  expect(fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get).toHaveBeenCalledTimes(
+    2,
+  )
 })
 
 it.each(['Parse failed', null])(
   'reveals the full indexing error and restores keyboard focus (%s)',
   async (error) => {
-    api.status.mockResolvedValue({ data: [status({ indexing_status: 'error', error })] })
+    fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mockResolvedValue({
+      data: [status({ indexing_status: 'error', error })],
+    })
     const screen = await setup()
     const trigger = screen.getByRole('button', { name: 'common.error', exact: true })
     await trigger.click()
@@ -189,7 +190,7 @@ it.each([
 ] as const)(
   'shows the vector admission explanation without an upgrade for $edition/$plan',
   async ({ edition, plan }) => {
-    api.status.mockResolvedValue({
+    fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mockResolvedValue({
       data: [
         status({
           indexing_status: 'error',
@@ -214,7 +215,7 @@ it.each([
 )
 
 it('keeps other indexing errors out of the vector-space admission alert', async () => {
-  api.status.mockResolvedValue({
+  fake.console.datasets.byDatasetId.batch.byBatch.indexingStatus.get.mockResolvedValue({
     data: [
       status({
         indexing_status: 'error',
@@ -275,7 +276,7 @@ it('loads the real custom segmentation summary and only enabled cleaning rules',
 })
 
 it('summarizes parent and child chunk limits from the process rule response', async () => {
-  api.rule.mockResolvedValue({
+  fake.console.datasets.processRule.get.mockResolvedValue({
     ...rule,
     mode: ProcessMode.parentChild,
     rules: {

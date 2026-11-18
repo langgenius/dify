@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -21,8 +20,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
-const verifyToken = vi.fn<(body: { token: string }) => TokenValidity | Promise<TokenValidity>>()
-const changePassword = vi.fn<typeof consoleClient.forgotPassword.resets.post>()
 const validPassword = 'ValidPass123!'
 
 async function renderForm() {
@@ -34,30 +31,31 @@ async function renderForm() {
   )
 }
 
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: { forgotPassword: { resets: { post: (input) => changePassword(input) } } },
-      routes: [
-        route('POST', 'console', '/forgot-password/validity', async ({ request }) =>
-          verifyToken(await request.json()),
-        ),
-      ],
-    }),
-  )
-  navigation.search = 'token=url-token-t1'
-  verifyToken.mockReset().mockResolvedValue({
-    result: 'success',
-    is_valid: true,
-    email: 'user@example.com',
-    token: 'verified-token-t2',
+function installApi() {
+  return installFakeApi({
+    console: { forgotPassword: { resets: { post: () => ({ result: 'success' }) } } },
+    routes: [
+      route('POST', 'console', '/forgot-password/validity', () => ({
+        result: 'success',
+        is_valid: true,
+        email: 'user@example.com',
+        token: 'verified-token-t2',
+      })),
+    ],
   })
-  changePassword.mockReset().mockResolvedValue({ result: 'success' })
+}
+let fake: ReturnType<typeof installApi>
+const verifyToken = () => fake.route('POST', 'console', '/forgot-password/validity')
+
+beforeEach(() => {
+  fake = installApi()
+  onTestFinished(fake)
+  navigation.search = 'token=url-token-t1'
 })
 
 it('keeps the real token query pending before showing the password form', async () => {
   const verification = createDeferred<TokenValidity>()
-  verifyToken.mockReturnValue(verification.promise)
+  verifyToken().mockReturnValue(verification.promise)
 
   const screen = await renderForm()
 
@@ -65,7 +63,11 @@ it('keeps the real token query pending before showing the password form', async 
   await expect
     .element(screen.getByRole('heading', { level: 1, name: 'login.changePassword' }))
     .not.toBeInTheDocument()
-  await vi.waitFor(() => expect(verifyToken).toHaveBeenCalledWith({ token: 'url-token-t1' }))
+  await vi.waitFor(() =>
+    expect(verifyToken()).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { token: 'url-token-t1' } }),
+    ),
+  )
 
   verification.resolve({
     result: 'success',
@@ -95,7 +97,7 @@ it('submits the verified token through the native password form', async () => {
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(changePassword).toHaveBeenCalledWith(
+    expect(fake.console.forgotPassword.resets.post).toHaveBeenCalledWith(
       expect.objectContaining({
         body: {
           token: 'verified-token-t2',
@@ -128,7 +130,7 @@ it('replaces invalid and missing password errors on the same focused field', asy
   const nativePassword = (await password.element()) as HTMLInputElement
   expect(nativePassword.validity.patternMismatch).toBe(false)
   expect(nativePassword.validity.customError).toBe(true)
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 
   await userEvent.fill(password, '')
   await userEvent.click(submit)
@@ -137,7 +139,7 @@ it('replaces invalid and missing password errors on the same focused field', asy
   await expect.element(password).toHaveFocus()
   expect(((await password.element()) as HTMLInputElement).validity.valueMissing).toBe(true)
   await expect.element(screen.getByText('login.error.passwordInvalid')).not.toBeInTheDocument()
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 })
 
 it('revalidates confirmation when the native password value changes', async () => {
@@ -152,18 +154,18 @@ it('revalidates confirmation when the native password value changes', async () =
   await expect.element(confirmation).toHaveAttribute('aria-invalid', 'true')
   await expect.element(confirmation).toHaveAccessibleDescription('accountSettings.account.notEqual')
   await expect.element(confirmation).toHaveFocus()
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 
   await userEvent.fill(password, 'DifferentPass123!')
 
   await expect.element(confirmation).not.toHaveAttribute('aria-invalid', 'true')
   await expect.element(screen.getByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
-  expect(changePassword).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.resets.post).not.toHaveBeenCalled()
 })
 
 it('prevents a second submission while the password change is pending', async () => {
   const request = createDeferred<{ result: 'success' }>()
-  changePassword.mockReturnValue(request.promise)
+  fake.console.forgotPassword.resets.post.mockReturnValue(request.promise)
   const screen = await renderForm()
   await userEvent.fill(screen.getByLabelText('accountSettings.account.newPassword'), validPassword)
   await userEvent.fill(
@@ -176,7 +178,7 @@ it('prevents a second submission while the password change is pending', async ()
   await expect.element(submit).toHaveAttribute('aria-disabled', 'true')
   await userEvent.click(screen.getByLabelText('accountSettings.account.newPassword'))
   await userEvent.keyboard('{Enter}')
-  await vi.waitFor(() => expect(changePassword).toHaveBeenCalledTimes(1))
+  await vi.waitFor(() => expect(fake.console.forgotPassword.resets.post).toHaveBeenCalledTimes(1))
 
   request.resolve({ result: 'success' })
   await expect
@@ -185,7 +187,7 @@ it('prevents a second submission while the password change is pending', async ()
 })
 
 it('shows the invalid-token state after the real token query settles', async () => {
-  verifyToken.mockResolvedValue({
+  verifyToken().mockResolvedValue({
     result: 'success',
     is_valid: false,
     email: '',

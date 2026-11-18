@@ -4,8 +4,6 @@ import { apiError, installFakeApi, route } from '@/test/fake-api'
 import { renderDevicePage } from '../../__tests__/device-page-fixture'
 
 const api = vi.hoisted(() => ({ search: new URLSearchParams() }))
-const approveAccount = vi.fn<(userCode: string) => unknown>()
-const denyAccount = vi.fn<(userCode: string) => unknown>()
 // boundary: Next routing supplies the authorization landing URL in the running app.
 vi.mock('@/next/navigation', () => ({
   useSearchParams: () => api.search,
@@ -16,31 +14,29 @@ vi.mock('@/next/navigation', () => ({
   }),
   usePathname: () => '/device',
 }))
-const userCode = async (request: Request) =>
-  ((await request.json()) as { user_code: string }).user_code
+function installApi() {
+  return installFakeApi({
+    routes: [
+      route('POST', 'origin', '/openapi/v1/oauth/device/approve', () => ({ status: 'approved' })),
+      route('POST', 'origin', '/openapi/v1/oauth/device/deny', () => ({ status: 'denied' })),
+    ],
+  })
+}
+let fake: ReturnType<typeof installApi>
+const deviceAction = (action: 'approve' | 'deny') =>
+  fake.route('POST', 'origin', `/openapi/v1/oauth/device/${action}`)
+const withCode = expect.objectContaining({ body: { user_code: 'ABCD-3456' } })
 beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      routes: [
-        route('POST', 'origin', '/openapi/v1/oauth/device/approve', async ({ request }) =>
-          approveAccount(await userCode(request)),
-        ),
-        route('POST', 'origin', '/openapi/v1/oauth/device/deny', async ({ request }) =>
-          denyAccount(await userCode(request)),
-        ),
-      ],
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
   api.search = new URLSearchParams({ user_code: 'ABCD-3456' })
-  approveAccount.mockReset().mockResolvedValue({ status: 'approved' })
-  denyAccount.mockReset().mockResolvedValue({ status: 'denied' })
 })
 
 it.each(['approve', 'deny'] as const)(
   'finishes %s only after the request succeeds and locks both actions while pending',
   async (action) => {
     const pending = createDeferred<unknown>()
-    const request = action === 'approve' ? approveAccount : denyAccount
+    const request = deviceAction(action)
     request.mockReturnValueOnce(pending.promise)
     const { screen } = await renderDevicePage({ signedIn: true })
     await expect.element(screen.getByText('Gareth Chen')).toBeVisible()
@@ -54,7 +50,7 @@ it.each(['approve', 'deny'] as const)(
     await expect
       .element(screen.getByRole('heading', { name: 'deviceFlow.authorize.title' }))
       .toBeVisible()
-    await vi.waitFor(() => expect(request).toHaveBeenCalledExactlyOnceWith('ABCD-3456'))
+    await vi.waitFor(() => expect(request).toHaveBeenCalledExactlyOnceWith(withCode))
     pending.resolve({ status: action === 'approve' ? 'approved' : 'denied' })
     await expect
       .element(
@@ -73,7 +69,7 @@ it.each(['approve', 'deny'] as const)(
 
 // TODO(https://github.com/langgenius/dify/issues/46700): pending Approve drops keyboard focus to <body>.
 it.fails('keeps the account and code available after failure and completes a native keyboard retry', async () => {
-  approveAccount.mockRejectedValueOnce(
+  deviceAction('approve').mockRejectedValueOnce(
     apiError({
       status: 400,
       code: 'unexpected',
@@ -91,5 +87,5 @@ it.fails('keeps the account and code available after failure and completes a nat
   await expect
     .element(screen.getByRole('heading', { name: 'deviceFlow.success.title' }), { timeout: 1000 })
     .toBeVisible()
-  expect(approveAccount).toHaveBeenLastCalledWith('ABCD-3456')
+  expect(deviceAction('approve')).toHaveBeenLastCalledWith(withCode)
 })

@@ -6,7 +6,6 @@ import { installFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
 
-const uploadImage = vi.fn<(request: { body: { file: Blob } }) => Promise<PostFilesUploadResponse>>()
 // The contract requires UUID file ids; derive a stable one from each readable key.
 const fileId = (key: string) =>
   `00000000-0000-4000-8000-${Array.from(key, (char) => char.charCodeAt(0).toString(16))
@@ -89,14 +88,26 @@ function deferNextCanvasBlob() {
   }
 }
 
+const installApi = () =>
+  installFakeApi({
+    console: {
+      files: {
+        upload: {
+          post: ({ body }) => ({
+            id: fileId('uploaded'),
+            name: 'uploaded-image',
+            size: body.file.size,
+          }),
+        },
+      },
+    },
+  })
+let fake: ReturnType<typeof installApi>
 beforeEach(() => {
   vi.clearAllMocks()
   vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false)
-  onTestFinished(
-    installFakeApi({
-      console: { files: { upload: { post: (input) => uploadImage(input) } } },
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
 })
 afterEach(() => {
   vi.restoreAllMocks()
@@ -127,7 +138,7 @@ it('ignores crop completion during the closing animation while Cancel remains av
   await cancel.click()
   expect(await exitFrame).toBeGreaterThan(0)
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(uploadImage).not.toHaveBeenCalled()
+  expect(fake.console.files.upload.post).not.toHaveBeenCalled()
   expect(onConfirm).not.toHaveBeenCalled()
   await expect.element(trigger).toHaveFocus()
   await userEvent.keyboard('{Enter}')
@@ -145,11 +156,11 @@ it('ignores an old upload when reopened as soon as keyboard focus returns', asyn
   const pendingUpload = new Promise<PostFilesUploadResponse>((resolve) => {
     finishUpload = resolve
   })
-  uploadImage.mockReturnValueOnce(pendingUpload)
+  fake.console.files.upload.post.mockReturnValueOnce(pendingUpload)
   const { client, trigger, dialog, save, file, onConfirm } = await openImageSession()
   await save.click()
-  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
-  const uploadedFile = uploadImage.mock.calls[0]![0].body.file
+  await expect.poll(() => fake.console.files.upload.post.mock.calls.length).toBe(1)
+  const uploadedFile = fake.console.files.upload.post.mock.calls[0]![0].body.file
   const bitmap = await createImageBitmap(uploadedFile)
   expect({ width: bitmap.width, height: bitmap.height }).toEqual({ width: 80, height: 80 })
   bitmap.close()
@@ -164,7 +175,7 @@ it('ignores an old upload when reopened as soon as keyboard focus returns', asyn
   await pendingUpload
   await search.fill('new session')
   expect(onConfirm).not.toHaveBeenCalled()
-  expect(uploadImage).toHaveBeenCalledTimes(1)
+  expect(fake.console.files.upload.post).toHaveBeenCalledTimes(1)
   await expect.element(dialog).toBeVisible()
   await expect.element(search).toHaveValue('new session')
   await expect

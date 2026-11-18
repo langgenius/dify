@@ -1,5 +1,4 @@
 import type { GetAccountProfileResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -18,11 +17,6 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const profileRequests = {
-  update: vi.fn<typeof consoleClient.account.profile.patch>(),
-  get: vi.fn<typeof consoleClient.account.profile.get>(),
-}
-
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -30,23 +24,6 @@ vi.mock('@/next/navigation', () => ({
   useParams: () => ({}),
   useSearchParams: () => new URLSearchParams(),
 }))
-
-beforeEach(() => {
-  profileRequests.update.mockReset()
-  profileRequests.get.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        account: {
-          profile: {
-            get: (input) => profileRequests.get(input),
-            patch: (input) => profileRequests.update(input),
-          },
-        },
-      },
-    }),
-  )
-})
 
 async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shanghai' } = {}) {
   await page.viewport(width, 800)
@@ -72,7 +49,18 @@ async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shangh
     currentWorkspace: { role: 'owner' },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
-  profileRequests.get.mockResolvedValue(profile)
+  let savedProfile = profile
+  const fake = installFakeApi({
+    console: {
+      account: {
+        profile: {
+          get: () => savedProfile,
+          patch: ({ body }) => (savedProfile = { ...savedProfile, ...body }),
+        },
+      },
+    },
+  })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -86,18 +74,17 @@ async function renderPreferencesSettings({ width = 1280, timezone = 'Asia/Shangh
       </I18nextProvider>
     </QueryClientTestProvider>,
   )
-  return { screen, queryClient, profile }
+  return { screen, queryClient, profile, profileApi: fake.console.account.profile }
 }
 
 it.each(['Time Zone', 'Display Language'])(
   'keeps %s and the other profile picker in keyboard order while a save is read-only',
   async (field) => {
     // Chromium exposes lost popup return focus and disabled controls skipped by native Tab.
-    const { screen, queryClient, profile } = await renderPreferencesSettings()
+    const { screen, queryClient, profile, profileApi } = await renderPreferencesSettings()
     const save = createDeferred<GetAccountProfileResponse>()
     const refetch = createDeferred<GetAccountProfileResponse>()
-    profileRequests.update.mockReturnValue(save.promise)
-    profileRequests.get.mockReturnValue(refetch.promise)
+    profileApi.patch.mockReturnValueOnce(save.promise)
     const appearance = screen.getByRole('combobox', { name: 'Appearance', exact: true })
     const language = screen.getByRole('combobox', { name: 'Display Language', exact: true })
     const timezone = screen.getByRole('combobox', { name: 'Time Zone', exact: true })
@@ -145,7 +132,7 @@ it.each(['Time Zone', 'Display Language'])(
       await expect.element(trigger).toHaveFocus()
       await expect.element(language).toHaveAttribute('aria-readonly', 'true')
       await expect.element(timezone).toHaveAttribute('aria-readonly', 'true')
-      await expect.poll(() => profileRequests.update.mock.calls.length).toBe(1)
+      await expect.poll(() => profileApi.patch.mock.calls.length).toBe(1)
       await expectProfileTabOrder(field)
 
       // Both popup implementations remain browsable, but neither may commit a second value.
@@ -160,7 +147,7 @@ it.each(['Time Zone', 'Display Language'])(
             : screen.getByRole('option').last()
         await expect.element(option).toBeVisible()
         await option.click()
-        expect(profileRequests.update).toHaveBeenCalledOnce()
+        expect(profileApi.patch).toHaveBeenCalledOnce()
         expect(language.element().textContent).toBe(savedLanguage)
         expect(timezone.element().textContent).toBe(savedTimezone)
         await userEvent.keyboard('{Escape}')
@@ -169,9 +156,10 @@ it.each(['Time Zone', 'Display Language'])(
       }
 
       if (field === 'Time Zone') {
-        const updatedProfile = { ...profile, ...profileRequests.update.mock.calls[0]?.[0].body }
+        const updatedProfile = { ...profile, ...profileApi.patch.mock.calls[0]?.[0].body }
+        profileApi.get.mockReturnValueOnce(refetch.promise)
         save.resolve(updatedProfile)
-        await expect.poll(() => profileRequests.get.mock.calls.length).toBe(1)
+        await expect.poll(() => profileApi.get.mock.calls.length).toBe(1)
         await expect.element(language).toHaveAttribute('aria-readonly', 'true')
         await expect.element(timezone).toHaveAttribute('aria-readonly', 'true')
         await expectProfileTabOrder('Display Language')
@@ -192,13 +180,8 @@ it.each(['Time Zone', 'Display Language'])(
       await expect.element(timezone).not.toHaveAttribute('aria-readonly')
 
       // Successful saves and failed saves both unlock the next edit.
-      profileRequests.update.mockImplementation(async ({ body }) => ({ ...profile, ...body }))
-      profileRequests.get.mockImplementation(async () => ({
-        ...profile,
-        ...profileRequests.update.mock.calls.at(-1)?.[0].body,
-      }))
       await choosePreference('Midway')
-      await expect.poll(() => profileRequests.update.mock.calls.length).toBe(2)
+      await expect.poll(() => profileApi.patch.mock.calls.length).toBe(2)
       await expect.element(trigger).toHaveFocus()
       await expect.element(trigger).not.toHaveAttribute('aria-readonly')
     } finally {
@@ -225,7 +208,7 @@ function expectReadableText(text: Element, control: Element) {
 it('keeps full timezone city names readable at 320px without changing the saved selection', async () => {
   // The real Settings sidebar and portal constrain both surfaces. DOM text alone missed clipping.
   const timezone = timezones.find((item) => item.value === 'America/Santo_Domingo')!
-  const { screen, queryClient } = await renderPreferencesSettings({
+  const { screen, queryClient, profileApi } = await renderPreferencesSettings({
     width: 320,
     timezone: timezone.value,
   })
@@ -249,7 +232,7 @@ it('keeps full timezone city names readable at 320px without changing the saved 
     await expect.element(trigger).toHaveAttribute('aria-expanded', 'false')
     await expect.element(trigger).toHaveFocus()
     await expect.element(savedValue).toBeVisible()
-    expect(profileRequests.update).not.toHaveBeenCalled()
+    expect(profileApi.patch).not.toHaveBeenCalled()
   } finally {
     await screen.unmount()
     queryClient.clear()

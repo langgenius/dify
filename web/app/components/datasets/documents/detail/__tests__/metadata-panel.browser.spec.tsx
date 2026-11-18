@@ -35,7 +35,6 @@ const fields = [
     value: 1759780800,
   },
 ]
-const save = vi.fn<(input: unknown) => void>()
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
 const DOCUMENT_ID = '9f1e3b5d-6c3d-4e4f-8a5b-3c4d5e6f7081'
 
@@ -62,6 +61,32 @@ const documentDetail = zDocumentDetailResponse.parse({
   dataset_process_rule: null,
 })
 
+function installDocumentApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          documents: {
+            byDocumentId: {
+              get: ({ query }) =>
+                query?.metadata === 'only'
+                  ? { ...documentDetail, doc_metadata: fields }
+                  : documentDetail,
+              segments: {
+                get: () => ({ data: [], total: 0, total_pages: 0, page: 1, limit: 10 }),
+              },
+            },
+            metadata: { post: () => {} },
+          },
+          metadata: { get: () => ({ doc_metadata: fields, built_in_field_enabled: false }) },
+        },
+      },
+      files: { upload: { get: () => createFileUploadConfigFixture() } },
+    },
+  })
+}
+let fake: ReturnType<typeof installDocumentApi>
+
 const renderDocumentDetail = async () => {
   const i18n = createInstance()
   await i18n.init({
@@ -72,30 +97,6 @@ const renderDocumentDetail = async () => {
   const { wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: [],
   })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            documents: {
-              byDocumentId: {
-                get: ({ query }) =>
-                  query?.metadata === 'only'
-                    ? { ...documentDetail, doc_metadata: fields }
-                    : documentDetail,
-                segments: {
-                  get: () => ({ data: [], total: 0, total_pages: 0, page: 1, limit: 10 }),
-                },
-              },
-              metadata: { post: (input) => save(input) },
-            },
-            metadata: { get: () => ({ doc_metadata: fields, built_in_field_enabled: false }) },
-          },
-        },
-        files: { upload: { get: () => createFileUploadConfigFixture() } },
-      },
-    }),
-  )
   const dataset = createDatasetFixture({
     id: DATASET_ID,
     embedding_available: true,
@@ -124,7 +125,8 @@ const clickRightEdge = async (control: Locator) => {
 }
 
 beforeEach(() => {
-  save.mockReset()
+  fake = installDocumentApi()
+  onTestFinished(fake)
 })
 
 it('keeps edit controls clickable beside the metadata scrollbar and reaches the last field', async () => {
@@ -141,8 +143,9 @@ it('keeps edit controls clickable beside the metadata scrollbar and reaches the 
 
   const saveButton = screen.getByRole('button', { name: 'Save' })
   await clickRightEdge(saveButton)
-  await expect.poll(() => save.mock.calls.length).toBe(1)
-  expect(save.mock.calls[0]?.[0]).toMatchObject({
+  const save = fake.console.datasets.byDatasetId.documents.metadata.post
+  await expect.poll(() => save).toHaveBeenCalledOnce()
+  expect(save.mock.calls[0]![0]).toMatchObject({
     body: {
       operation_data: [
         {

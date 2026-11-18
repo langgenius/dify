@@ -1,16 +1,18 @@
 import type { SourceSyncPolicy } from '../source-models'
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { resetSourceServer, sourceResponse, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -30,12 +32,16 @@ describe('Sources: source-updates', () => {
       ],
     }
 
-    clientMock.patchSource
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch
       .mockResolvedValueOnce(
-        source({ id: 'active-source', name: 'Active source', status: 'disabled', version: 4 }),
+        sourceResponse(
+          source({ id: 'active-source', name: 'Active source', status: 'disabled', version: 4 }),
+        ),
       )
       .mockResolvedValueOnce(
-        source({ id: 'disabled', name: 'Disabled source', status: 'active', version: 4 }),
+        sourceResponse(
+          source({ id: 'disabled', name: 'Disabled source', status: 'active', version: 4 }),
+        ),
       )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -48,7 +54,9 @@ describe('Sources: source-updates', () => {
     await activeSourceActions.click()
     await page.getByRole('menuitem', { name: 'knowledgeSpace.disableSource' }).click()
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: { expectedVersion: 3, status: 'disabled' },
         params: { control_space_id: 'space-1', source_id: 'active-source' },
       }),
@@ -61,7 +69,9 @@ describe('Sources: source-updates', () => {
     await disabledSourceActions.click()
     await page.getByRole('menuitem', { name: 'dataset.enable' }).click()
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenLastCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenLastCalledWith({
         body: { expectedVersion: 3, status: 'active' },
         params: { control_space_id: 'space-1', source_id: 'disabled' },
       }),
@@ -90,20 +100,24 @@ describe('Sources: source-updates', () => {
     sourceResponses.refresh.mockRejectedValue(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
     )
-    clientMock.patchSource
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch
       .mockResolvedValueOnce(
-        source({
-          status: 'disabled',
-          updatedAt: '2026-07-20T10:01:00Z',
-          version: 4,
-        }),
+        sourceResponse(
+          source({
+            status: 'disabled',
+            updatedAt: '2026-07-20T10:01:00Z',
+            version: 4,
+          }),
+        ),
       )
       .mockResolvedValueOnce(
-        source({
-          status: 'active',
-          updatedAt: '2026-07-20T10:02:00Z',
-          version: 5,
-        }),
+        sourceResponse(
+          source({
+            status: 'active',
+            updatedAt: '2026-07-20T10:02:00Z',
+            version: 5,
+          }),
+        ),
       )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -132,7 +146,9 @@ describe('Sources: source-updates', () => {
     await page.getByRole('menuitem', { name: 'dataset.enable' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenLastCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenLastCalledWith({
         body: { expectedVersion: 4, status: 'active' },
         params: { control_space_id: 'space-1', source_id: 'source-1' },
       }),
@@ -157,7 +173,9 @@ describe('Sources: source-updates', () => {
       version: 4,
     })
     sourceResponses.data = { pages: [{ items: [source({ syncPolicy: dailyPolicy })] }] }
-    clientMock.patchSource.mockResolvedValue(updatedSource)
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(updatedSource),
+    )
 
     const view = await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await page

@@ -1,5 +1,4 @@
 import type { Role } from '@/models/access-control'
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
@@ -13,42 +12,39 @@ import {
 // Role routes take UUID path parameters.
 const customRole = { ...customRoleFixture, id: '1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d' }
 const builtinRole = { ...builtinRoleFixture, id: '2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6e' }
-const api = {
-  list: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.get>(),
-  create: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.post>(),
-  update: vi.fn<typeof consoleClient.workspaces.current.rbac.roles.byRoleId.put>(),
-}
 let roles: Role[]
-beforeEach(() => {
-  roles = [customRole]
-  api.list.mockReset().mockImplementation(async () => rolePage(roles))
-  api.create.mockReset().mockImplementation(async ({ body }) => {
-    const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
-    roles = [...roles, saved]
-    return saved
-  })
-  api.update.mockReset().mockImplementation(async ({ params, body }) => {
-    const saved = { ...customRole, ...body, id: params.role_id }
-    roles = roles.map((role) => (role.id === saved.id ? saved : role))
-    return saved
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            rbac: {
-              roles: {
-                get: (input) => api.list(input),
-                post: (input) => api.create(input),
-                byRoleId: { put: (input) => api.update(input) },
+function installRoleApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          rbac: {
+            roles: {
+              get: async () => rolePage(roles),
+              post: async ({ body }) => {
+                const saved = { ...customRole, ...body, id: '4d5e6f7a-8b9c-4d0e-9f1a-2b3c4d5e6f70' }
+                roles = [...roles, saved]
+                return saved
+              },
+              byRoleId: {
+                put: async ({ params, body }) => {
+                  const saved = { ...customRole, ...body, id: params.role_id }
+                  roles = roles.map((role) => (role.id === saved.id ? saved : role))
+                  return saved
+                },
               },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installRoleApi>
+beforeEach(() => {
+  roles = [customRole]
+  fake = installRoleApi()
+  onTestFinished(fake)
 })
 async function setup(canManage = true) {
   const view = await renderRolePage(canManage)
@@ -122,8 +118,9 @@ it('keeps the selected built-in role read-only across grouped rows', async () =>
 
 it('preserves trimmed role fields and permission selection across a pending failure, then refreshes the list on retry', async () => {
   const pending = createDeferred<void>()
-  const create = api.create.getMockImplementation()!
-  api.create.mockImplementationOnce(async (...args) => {
+  const createRole = fake.console.workspaces.current.rbac.roles.post
+  const create = createRole.getMockImplementation()!
+  createRole.mockImplementationOnce(async (...args) => {
     await pending.promise
     return create(...args)
   })
@@ -134,8 +131,8 @@ it('preserves trimmed role fields and permission selection across a pending fail
   await confirm.click()
   await expect.element(confirm).toBeDisabled()
   await expect.element(dialog).toBeVisible()
-  await expect.poll(() => api.create).toHaveBeenCalledOnce()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith(
+  await expect.poll(() => createRole).toHaveBeenCalledOnce()
+  expect(createRole).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       body: {
         name: 'New manager',
@@ -180,7 +177,7 @@ it('updates the selected role and preserves its existing permission selection', 
   await expect.element(screen.getByText('Updated manager', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Updated description', { exact: true })).toBeVisible()
   await expect.element(screen.getByText('Custom manager', { exact: true })).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenCalledWith(
+  expect(fake.console.workspaces.current.rbac.roles.byRoleId.put).toHaveBeenCalledWith(
     expect.objectContaining({
       params: { role_id: customRole.id },
       body: {

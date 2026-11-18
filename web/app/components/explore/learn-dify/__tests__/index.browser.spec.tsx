@@ -2,7 +2,6 @@ import type {
   GetExploreAppsLearnDifyResponse,
   RecommendedAppResponse,
 } from '@dify/contracts/api/console/explore/types.gen'
-import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
 import { render } from 'vitest-browser-react'
@@ -14,7 +13,6 @@ import { installFakeApi } from '@/test/fake-api'
 import LearnDify from '../index'
 import { LEARN_DIFY_HIDDEN_STORAGE_KEY } from '../storage'
 
-const getLessons = vi.fn<typeof consoleClient.explore.apps.learnDify.get>()
 vi.unmock('react-i18next')
 
 async function renderLessons(ui: React.ReactElement, enabled = true) {
@@ -43,21 +41,27 @@ const createApp = (name: string, position: number | null = 1): RecommendedAppRes
   position,
 })
 
+function installLessonsApi() {
+  return installFakeApi({
+    console: {
+      explore: {
+        apps: { learnDify: { get: () => ({ recommended_apps: [createApp('Learn Dify App')] }) } },
+      },
+    },
+  })
+}
+let fake: ReturnType<typeof installLessonsApi>
 beforeEach(() => {
   localStorage.clear()
-  getLessons.mockReset().mockResolvedValue({ recommended_apps: [createApp('Learn Dify App')] })
-  onTestFinished(
-    installFakeApi({
-      console: { explore: { apps: { learnDify: { get: (input) => getLessons(input) } } } },
-    }),
-  )
+  fake = installLessonsApi()
+  onTestFinished(fake)
 })
 
 it('defers a hidden catalog until the tour forces it visible', async () => {
   localStorage.setItem(LEARN_DIFY_HIDDEN_STORAGE_KEY, 'true')
   const { screen, rerender } = await renderLessons(<LearnDify />)
   await expect.element(screen.getByRole('region', { name: 'Learn Dify' })).not.toBeInTheDocument()
-  expect(getLessons).not.toHaveBeenCalled()
+  expect(fake.console.explore.apps.learnDify.get).not.toHaveBeenCalled()
   await rerender(<LearnDify forceVisible stepByStepTourTarget={STEP_BY_STEP_TOUR_TARGETS.home} />)
   await expect.element(screen.getByRole('heading', { name: 'Learn Dify App' })).toBeVisible()
   await expect.element(screen.getByRole('button', { name: 'Hide' })).not.toBeInTheDocument()
@@ -68,11 +72,11 @@ it('keeps the catalog unavailable when its system feature is off, even for a tou
   await expect
     .element(screen.getByRole('heading', { name: 'Learn Dify App' }))
     .not.toBeInTheDocument()
-  expect(getLessons).not.toHaveBeenCalled()
+  expect(fake.console.explore.apps.learnDify.get).not.toHaveBeenCalled()
 })
 
 it('orders recommendations before limiting the visible catalog', async () => {
-  getLessons.mockResolvedValue({
+  fake.console.explore.apps.learnDify.get.mockResolvedValue({
     recommended_apps: [
       createApp('Last', 5),
       createApp('Null position', null),
@@ -94,13 +98,9 @@ it('orders recommendations before limiting the visible catalog', async () => {
 })
 
 it('shows the current language catalog and reuses the previous language when switching back', async () => {
-  getLessons.mockImplementation(
-    async ({
-      query,
-    }: NonNullable<Parameters<typeof consoleClient.explore.apps.learnDify.get>[0]> = {}) => ({
-      recommended_apps: [createApp(query?.language === 'pt-BR' ? 'Português' : 'English')],
-    }),
-  )
+  fake.console.explore.apps.learnDify.get.mockImplementation(async (input) => ({
+    recommended_apps: [createApp(input?.query?.language === 'pt-BR' ? 'Português' : 'English')],
+  }))
   const { screen, i18n } = await renderLessons(<LearnDify dismissible={false} />)
   await expect.element(screen.getByRole('heading', { name: 'English' })).toBeVisible()
   await i18n.changeLanguage('pt-BR')
@@ -108,12 +108,14 @@ it('shows the current language catalog and reuses the previous language when swi
   await expect.element(screen.getByRole('heading', { name: 'English' })).not.toBeInTheDocument()
   await i18n.changeLanguage('en-US')
   await expect.element(screen.getByRole('heading', { name: 'English' })).toBeVisible()
-  expect(getLessons.mock.calls.map(([input]) => input?.query?.language)).toEqual(['en-US', 'pt-BR'])
+  expect(
+    fake.console.explore.apps.learnDify.get.mock.calls.map(([input]) => input?.query?.language),
+  ).toEqual(['en-US', 'pt-BR'])
 })
 
 it('removes its loading message without leaving an empty catalog', async () => {
   const response = createDeferred<GetExploreAppsLearnDifyResponse>()
-  getLessons.mockReturnValue(response.promise)
+  fake.console.explore.apps.learnDify.get.mockReturnValue(response.promise)
   const { screen } = await renderLessons(
     <LearnDify loadingFallback={<div role="status">Loading lessons</div>} />,
   )

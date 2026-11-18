@@ -17,44 +17,41 @@ import { TracingConfiguration } from '../configuration'
 it('preserves provider focus during an async save and allows keyboard selection after saving', async () => {
   const save = createDeferred<void>()
   let status: AppTraceResponse = { enabled: true, tracing_provider: 'langfuse' }
-  const writes: unknown[] = []
-  onTestFinished(
-    installFakeApi({
-      console: {
-        systemFeatures: { get: () => createSystemFeaturesFixture() },
-        apps: {
-          byAppId: {
-            trace: {
-              get: () => status,
-              post: async ({ body }) => {
-                writes.push(body)
-                if (writes.length === 1) await save.promise
-                status = body
-                return { result: 'success' }
-              },
+  const fake = installFakeApi({
+    console: {
+      systemFeatures: { get: () => createSystemFeaturesFixture() },
+      apps: {
+        byAppId: {
+          trace: {
+            get: () => status,
+            post: async ({ body }) => {
+              await save.promise
+              status = body
+              return { result: 'success' }
             },
-            traceConfig: {
-              get: ({ query }): TraceAppConfigResponse =>
-                query.tracing_provider === 'langfuse'
+          },
+          traceConfig: {
+            get: ({ query }): TraceAppConfigResponse =>
+              query.tracing_provider === 'langfuse'
+                ? {
+                    tracing_config: { host: 'https://cloud.langfuse.com' },
+                    configured_secrets: ['public_key', 'secret_key'],
+                  }
+                : query.tracing_provider === 'langsmith'
                   ? {
-                      tracing_config: { host: 'https://cloud.langfuse.com' },
-                      configured_secrets: ['public_key', 'secret_key'],
+                      tracing_config: {
+                        project: 'project',
+                        endpoint: 'https://api.smith.langchain.com',
+                      },
+                      configured_secrets: ['api_key'],
                     }
-                  : query.tracing_provider === 'langsmith'
-                    ? {
-                        tracing_config: {
-                          project: 'project',
-                          endpoint: 'https://api.smith.langchain.com',
-                        },
-                        configured_secrets: ['api_key'],
-                      }
-                    : { has_not_configured: true },
-            },
+                  : { has_not_configured: true },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const QueryProvider = createQueryClientWrapper(createTestQueryClient())
   const { wrapper: NuqsProvider } = createNuqsTestWrapper({ hasMemory: true })
   const screen = await render(
@@ -74,25 +71,25 @@ it('preserves provider focus during an async save and allows keyboard selection 
   await langfuse.click()
   await expect.element(langfuse).toHaveFocus()
   await userEvent.keyboard('{ArrowRight}')
-  await expect.poll(() => writes.length).toBe(1)
+  await expect.poll(() => fake.console.apps.byAppId.trace.post).toHaveBeenCalledOnce()
   await expect.element(langsmith).toBeChecked()
   await expect.element(langsmith).toHaveFocus()
   await userEvent.keyboard('{ArrowLeft}')
   await expect.element(langfuse).toHaveFocus()
   await expect.element(langsmith).toBeChecked()
   await userEvent.keyboard(' ')
-  expect(writes).toHaveLength(1)
+  expect(fake.console.apps.byAppId.trace.post).toHaveBeenCalledOnce()
   await userEvent.keyboard('{ArrowRight}')
   await expect.element(langsmith).toHaveFocus()
   save.resolve()
   await expect.element(group).not.toHaveAttribute('aria-readonly', 'true')
   await expect.element(langsmith).toHaveFocus()
   await userEvent.keyboard('{ArrowLeft}')
-  await expect.poll(() => writes.length).toBe(2)
+  await expect.poll(() => fake.console.apps.byAppId.trace.post).toHaveBeenCalledTimes(2)
   await expect.element(langfuse).toBeChecked()
   await expect.element(langfuse).toHaveFocus()
-  expect(writes).toEqual([
-    expect.objectContaining({ tracing_provider: 'langsmith' }),
-    expect.objectContaining({ tracing_provider: 'langfuse' }),
+  expect(fake.console.apps.byAppId.trace.post.mock.calls).toEqual([
+    [expect.objectContaining({ body: expect.objectContaining({ tracing_provider: 'langsmith' }) })],
+    [expect.objectContaining({ body: expect.objectContaining({ tracing_provider: 'langfuse' }) })],
   ])
 })

@@ -1,3 +1,4 @@
+import type { FakeApiHandle, FakeRoute } from '@/test/fake-api'
 import type { HumanInputFormData } from '@/types/workflow'
 import { useState } from 'react'
 import { page } from 'vite-plus/test/browser'
@@ -11,8 +12,6 @@ import { TransferMethod } from '@/types/app'
 import HumanInputForm from '../human-input-form'
 import { UnsubmittedHumanInputContent } from '../unsubmitted'
 
-// The production file picker still uploads through XMLHttpRequest; the fake API answers it.
-const upload = vi.fn<(file: File) => { id: string } | Promise<{ id: string }>>()
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 const currentTimestamp = Math.floor(Date.now() / 1000)
@@ -47,17 +46,18 @@ async function renderWithQueries(ui: React.ReactElement) {
   return render(<Query>{ui}</Query>)
 }
 
+const uploadedFile = (body: unknown) => (body as FormData).get('file') as File
+let fake: FakeApiHandle<{ routes: FakeRoute[] }>
 beforeEach(() => {
-  upload.mockReset().mockImplementation((file) => ({ id: `uploaded-${file.name}` }))
-  onTestFinished(
-    installFakeApi({
-      routes: [
-        route('POST', 'console', '/files/upload', async ({ request }) =>
-          upload((await request.formData()).get('file') as File),
-        ),
-      ],
-    }),
-  )
+  // The production file picker still uploads through XMLHttpRequest; the fake API answers it.
+  fake = installFakeApi({
+    routes: [
+      route('POST', 'console', '/files/upload', ({ body }) => ({
+        id: `uploaded-${uploadedFile(body).name}`,
+      })),
+    ],
+  })
+  onTestFinished(fake)
 })
 
 it('submits the visible form values and keeps them available after a failed attempt', async () => {
@@ -102,9 +102,11 @@ it('submits the visible form values and keeps them available after a failed atte
 it('waits for every rendered select and file upload before enabling submission', async () => {
   const singleUpload = createDeferred<{ id: string }>()
   const listUpload = createDeferred<{ id: string }>()
-  upload.mockImplementation((file) => {
-    return file.name === 'main.png' ? singleUpload.promise : listUpload.promise
-  })
+  fake
+    .route('POST', 'console', '/files/upload')
+    .mockImplementation(({ body }) =>
+      uploadedFile(body).name === 'main.png' ? singleUpload.promise : listUpload.promise,
+    )
   const onSubmit = vi.fn().mockResolvedValue(undefined)
   await renderWithQueries(
     <HumanInputForm

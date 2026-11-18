@@ -1,5 +1,4 @@
 import type { DocumentStatusResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -8,8 +7,6 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import RetryButton from '../index-failed'
 
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
-const getErrorDocs = vi.fn<typeof consoleClient.datasets.byDatasetId.errorDocs.get>()
-const retryErrorDocs = vi.fn<typeof consoleClient.datasets.byDatasetId.retry.post>()
 
 const document = (id: string): DocumentStatusResponse => ({
   id,
@@ -37,34 +34,31 @@ async function renderRetryButton() {
   )
 }
 
-beforeEach(() => {
-  getErrorDocs.mockReset()
-  retryErrorDocs.mockReset()
-  getErrorDocs.mockResolvedValue(errors)
-  retryErrorDocs.mockResolvedValue(undefined)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            errorDocs: { get: (input) => getErrorDocs(input) },
-            retry: {
-              post: async (input) => {
-                await retryErrorDocs(input)
-              },
-            },
-          },
+function installErrorDocsApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          errorDocs: { get: async () => errors },
+          retry: { post: async () => {} },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installErrorDocsApi>
+beforeEach(() => {
+  fake = installErrorDocsApi()
+  onTestFinished(fake)
 })
 
 it('reveals settled failures, blocks repeated native activation and disappears after refresh', async () => {
   const statusResponse = createDeferred<typeof errors>()
   const retryResponse = createDeferred<void>()
-  getErrorDocs.mockReturnValueOnce(statusResponse.promise).mockResolvedValue(noErrors)
-  retryErrorDocs.mockReturnValue(retryResponse.promise)
+  fake.console.datasets.byDatasetId.errorDocs.get
+    .mockReturnValueOnce(statusResponse.promise)
+    .mockResolvedValue(noErrors)
+  fake.console.datasets.byDatasetId.retry.post.mockReturnValue(retryResponse.promise)
   const screen = await renderRetryButton()
 
   await expect
@@ -78,8 +72,8 @@ it('reveals settled failures, blocks repeated native activation and disappears a
   await retry.click()
   await expect.element(retry).toBeDisabled()
   await userEvent.keyboard('{Enter}')
-  await expect.poll(() => retryErrorDocs).toHaveBeenCalledOnce()
-  expect(retryErrorDocs).toHaveBeenCalledExactlyOnceWith(
+  await expect.poll(() => fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledOnce()
+  expect(fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       params: { dataset_id: DATASET_ID },
       body: { document_ids: ['doc1', 'doc2'] },
@@ -91,10 +85,12 @@ it('reveals settled failures, blocks repeated native activation and disappears a
 })
 
 it('keeps retry available after a failed request and recovers on the next attempt', async () => {
-  retryErrorDocs.mockRejectedValueOnce(
+  fake.console.datasets.byDatasetId.retry.post.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Retry failed' }),
   )
-  getErrorDocs.mockResolvedValueOnce(errors).mockResolvedValue(noErrors)
+  fake.console.datasets.byDatasetId.errorDocs.get
+    .mockResolvedValueOnce(errors)
+    .mockResolvedValue(noErrors)
   const screen = await renderRetryButton()
   const retry = screen.getByRole('button', { name: 'dataset.retry' })
 
@@ -102,11 +98,11 @@ it('keeps retry available after a failed request and recovers on the next attemp
   await expect.element(retry).toBeEnabled()
   await retry.click()
   await expect.element(retry).not.toBeInTheDocument()
-  expect(retryErrorDocs).toHaveBeenCalledTimes(2)
+  expect(fake.console.datasets.byDatasetId.retry.post).toHaveBeenCalledTimes(2)
 })
 
 it('offers recovery when loading the failed-document status itself fails', async () => {
-  getErrorDocs.mockRejectedValue(
+  fake.console.datasets.byDatasetId.errorDocs.get.mockRejectedValue(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
   )
   const screen = await renderRetryButton()

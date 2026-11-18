@@ -8,8 +8,6 @@ import SnippetList from '..'
 
 type ListSnippets = typeof consoleClient.workspaces.current.customizedSnippets.get
 
-const api = { list: vi.fn<ListSnippets>() }
-
 // boundary: Studio list navigation stops at the unavailable Next App Router.
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ push: vi.fn() }),
@@ -47,7 +45,15 @@ const renderSnippetList = async () => {
       console: {
         workspaces: {
           current: {
-            customizedSnippets: { get: (input) => api.list(input) },
+            customizedSnippets: {
+              get: (input) => ({
+                data: input?.query?.keyword ? [] : [snippet],
+                has_more: false,
+                limit: 30,
+                page: 1,
+                total: input?.query?.keyword ? 0 : 1,
+              }),
+            },
             members: {
               get: () => ({
                 accounts: [
@@ -90,17 +96,6 @@ const renderSnippetList = async () => {
 }
 
 describe('Snippet list reflow', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    api.list.mockImplementation(async (input: Parameters<ListSnippets>[0]) => ({
-      data: input?.query?.keyword ? [] : [snippet],
-      has_more: false,
-      limit: 30,
-      page: 1,
-      total: input?.query?.keyword ? 0 : 1,
-    }))
-  })
-
   afterEach(async () => {
     await page.viewport(1280, 720)
   })

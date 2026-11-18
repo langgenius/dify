@@ -10,16 +10,11 @@ import { createPluginEntity } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import DifyCreatorProfile from '../dify-profile'
 
-const api = vi.hoisted(() => ({
-  push: vi.fn(),
-  searchPlugins: vi.fn(),
-  searchTemplates: vi.fn(),
-  installed: vi.fn(),
-}))
+const router = vi.hoisted(() => ({ push: vi.fn() }))
 
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ push: api.push }),
+  useRouter: () => ({ push: router.push }),
 }))
 
 // boundary: embedded Marketplace documents stay local while preserving their real route parameters.
@@ -146,15 +141,6 @@ async function chooseSearchResult(
   query: string,
   name: RegExp,
 ) {
-  api.searchPlugins.mockResolvedValue({
-    data: { plugins: query === 'search' ? [searchPlugin] : [], total: query === 'search' ? 1 : 0 },
-  })
-  api.searchTemplates.mockResolvedValue({
-    data: {
-      templates: query === 'template' ? [template] : [],
-      total: query === 'template' ? 1 : 0,
-    },
-  })
   const search = screen.getByPlaceholder('plugin.marketplace.creatorProfile.searchPlaceholder')
   await search.fill(query)
   await expect.element(screen.getByRole('option', { name })).toBeVisible()
@@ -166,29 +152,34 @@ async function chooseSearchResult(
 beforeEach(async () => {
   await page.viewport(1280, 900)
   vi.clearAllMocks()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            plugin: { list: { installations: { ids: { post: (input) => api.installed(input) } } } },
-          },
-        },
-      },
-      marketplace: {
-        searchAdvanced: (input) => api.searchPlugins(input),
-        templateSearch: (input) => api.searchTemplates(input),
-      },
-    }),
-  )
   const installed = createPluginEntity({
     id: 'installed-deep-research',
     plugin_id: 'dify/deep_research',
     plugin_unique_identifier: 'dify/deep_research:0.0.1@test',
   })
-  api.installed.mockResolvedValue({ plugins: [installed] })
-  api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
-  api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
+  onTestFinished(
+    installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            plugin: {
+              list: { installations: { ids: { post: () => ({ plugins: [installed] }) } } },
+            },
+          },
+        },
+      },
+      marketplace: {
+        searchAdvanced: ({ body }) => {
+          const plugins = body.query === 'search' ? [searchPlugin] : []
+          return { data: { plugins, total: plugins.length } }
+        },
+        templateSearch: ({ body }) => {
+          const templates = body.query === 'template' ? [template] : []
+          return { data: { templates, total: templates.length } }
+        },
+      },
+    }),
+  )
 })
 
 it('runs the Cloud header, installed card, close/reopen focus, and search result through one owner', async () => {
@@ -236,7 +227,7 @@ it('imports a template only after the real embedded dialog sends its install mes
   )
 
   await expect
-    .poll(() => api.push)
+    .poll(() => router.push)
     .toHaveBeenCalledExactlyOnceWith('/apps?template-id=template-one')
   await expect.element(dialog).not.toBeInTheDocument()
 })

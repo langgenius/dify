@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -6,8 +5,6 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import InitPasswordPopup from '../InitPasswordPopup'
 
 const replace = vi.hoisted(() => vi.fn())
-const validatePassword = vi.fn<typeof consoleClient.init.post>()
-const getInitStatus = vi.fn<typeof consoleClient.init.get>()
 
 // boundary: Next.js navigation context is not mounted in a focused Browser Mode component render.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
@@ -21,20 +18,22 @@ const renderPopup = () => {
   )
 }
 
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        init: {
-          get: (input) => getInitStatus(input),
-          post: (input) => validatePassword(input),
-        },
+function installApi() {
+  return installFakeApi({
+    console: {
+      init: {
+        get: () => ({ status: 'not_started' }),
+        post: () => ({ result: 'success' }),
       },
-    }),
-  )
-  validatePassword.mockReset()
+    },
+  })
+}
+let fake: ReturnType<typeof installApi>
+
+beforeEach(() => {
+  fake = installApi()
+  onTestFinished(fake)
   replace.mockReset()
-  getInitStatus.mockReset().mockResolvedValue({ status: 'not_started' })
 })
 
 it('puts the cursor in the password field on arrival', async () => {
@@ -52,11 +51,11 @@ it('asks for the password before submitting', async () => {
   await expect
     .element(screen.getByLabelText('login.adminInitPassword'))
     .toHaveAccessibleDescription('login.error.passwordEmpty')
-  expect(validatePassword).not.toHaveBeenCalled()
+  expect(fake.console.init.post).not.toHaveBeenCalled()
 })
 
 it('reports an incorrect password on the field until it is edited', async () => {
-  validatePassword.mockRejectedValue(
+  fake.console.init.post.mockRejectedValue(
     apiError({ status: 401, code: 'init_validate_failed', message: 'Invalid password' }),
   )
   const screen = await renderPopup()
@@ -75,7 +74,7 @@ it('reports an incorrect password on the field until it is edited', async () => 
 })
 
 it('reports other failures inside the form until the password is edited', async () => {
-  validatePassword.mockRejectedValue(
+  fake.console.init.post.mockRejectedValue(
     apiError({ status: 500, code: 'internal_error', message: 'Internal error' }),
   )
   const screen = await renderPopup()
@@ -93,7 +92,6 @@ it('reports other failures inside the form until the password is edited', async 
 })
 
 it('continues to install once after a correct password', async () => {
-  validatePassword.mockResolvedValue({ result: 'success' })
   const screen = await renderPopup()
 
   await userEvent.fill(screen.getByLabelText('login.adminInitPassword'), 'correct')
@@ -104,10 +102,10 @@ it('continues to install once after a correct password', async () => {
 })
 
 it('sends an already validated instance to install', async () => {
-  getInitStatus.mockResolvedValue({ status: 'finished' })
+  fake.console.init.get.mockResolvedValue({ status: 'finished' })
 
   await renderPopup()
 
   await vi.waitFor(() => expect(replace).toHaveBeenCalledWith('/install'))
-  expect(validatePassword).not.toHaveBeenCalled()
+  expect(fake.console.init.post).not.toHaveBeenCalled()
 })

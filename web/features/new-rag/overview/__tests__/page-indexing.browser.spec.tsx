@@ -3,7 +3,7 @@ import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
-import { apiError, installFakeApi } from '@/test/fake-api'
+import { installFakeApi } from '@/test/fake-api'
 import { createKnowledgeSpaceFixture, KnowledgeSpaceTestProvider } from '@/test/knowledge-space'
 import { createOverviewData } from '@/test/new-rag-overview'
 import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
@@ -31,123 +31,89 @@ vi.mock('@/next/navigation', async (importOriginal) => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-type OverviewResource =
-  | 'activity'
-  | 'attention'
-  | 'inventory'
-  | 'members'
-  | 'outcomes'
-  | 'source'
-  | 'stats'
-  | 'tasks'
 let queryData = createOverviewData()
-
-const server = {
-  calls: {
-    activity: vi.fn(),
-    attention: vi.fn(),
-    inventory: vi.fn(),
-    members: vi.fn(),
-    outcomes: vi.fn(),
-    source: vi.fn(),
-    stats: vi.fn(),
-    tasks: vi.fn(),
-  },
-  failing: new Set<string>(),
-  held: new Map<string, Promise<void>>(),
-}
 
 function installOverviewApi() {
   const respond =
-    <T,>(resource: OverviewResource, data: () => T) =>
-    async (input: unknown): Promise<T> => {
-      server.calls[resource](input)
-      await server.held.get(resource)
-      if (server.failing.has(resource))
-        throw apiError({
-          status: 503,
-          code: 'SERVICE_UNAVAILABLE',
-          message: `${resource} unavailable`,
-        })
-      return structuredClone(data())
-    }
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            byControlSpaceId: {
-              backgroundTasks: {
-                get: respond('tasks', () => ({ data: queryData.tasks, next_cursor: null })),
-              },
-              sources: {
-                bySourceId: {
-                  get: respond('source', () => ({
-                    created_at: '2026-07-29T08:00:00Z',
-                    id: 'source-1',
-                    knowledge_space_id: 'knowledge-1',
-                    metadata: {},
-                    permission_scope: [],
-                    status: 'active' as const,
-                    type: 'connector' as const,
-                    updated_at: '2026-07-29T08:00:00Z',
-                    uri: 'notion://support-sop',
-                    version: 1,
-                    ...queryData.source,
-                  })),
-                },
-              },
-              overview: {
-                activity: { get: respond('activity', () => queryData.activity) },
-                attention: { get: respond('attention', () => queryData.attention) },
-                inventory: { get: respond('inventory', () => queryData.inventory) },
-                queryOutcomes: { get: respond('outcomes', () => queryData.outcomes) },
-                stats: { get: respond('stats', () => queryData.stats) },
-              },
-              settings: {
-                get: () => ({
-                  active_profile_available: true,
-                  active_profile_revisions: { embedding: 1, retrieval: 1 },
-                  capabilities: {
-                    deep: true,
-                    index: true,
-                    ingest: true,
-                    query: true,
-                    research: true,
-                    source_sync: true,
-                  },
-                  configuration_state: 'active',
-                  embedding: null,
-                  issues: [],
-                  retrieval: null,
-                  revision: 1,
-                }),
+    <T,>(data: () => T) =>
+    async () =>
+      structuredClone(data())
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            backgroundTasks: {
+              get: respond(() => ({ data: queryData.tasks, next_cursor: null })),
+            },
+            sources: {
+              bySourceId: {
+                get: respond(() => ({
+                  created_at: '2026-07-29T08:00:00Z',
+                  id: 'source-1',
+                  knowledge_space_id: 'knowledge-1',
+                  metadata: {},
+                  permission_scope: [],
+                  status: 'active' as const,
+                  type: 'connector' as const,
+                  updated_at: '2026-07-29T08:00:00Z',
+                  uri: 'notion://support-sop',
+                  version: 1,
+                  ...queryData.source,
+                })),
               },
             },
-          },
-        },
-        workspaces: {
-          current: {
-            members: {
-              get: respond('members', () => ({
-                accounts: [
-                  {
-                    avatar_url: null,
-                    email: 'ada@example.com',
-                    id: 'member-1',
-                    name: 'Ada',
-                    role: 'normal',
-                    status: 'active',
-                  },
-                ],
-              })),
+            overview: {
+              activity: { get: respond(() => queryData.activity) },
+              attention: { get: respond(() => queryData.attention) },
+              inventory: { get: respond(() => queryData.inventory) },
+              queryOutcomes: { get: respond(() => queryData.outcomes) },
+              stats: { get: respond(() => queryData.stats) },
+            },
+            settings: {
+              get: () => ({
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
+              }),
             },
           },
         },
       },
-    }),
-  )
+      workspaces: {
+        current: {
+          members: {
+            get: respond(() => ({
+              accounts: [
+                {
+                  avatar_url: null,
+                  email: 'ada@example.com',
+                  id: 'member-1',
+                  name: 'Ada',
+                  role: 'normal',
+                  status: 'active',
+                },
+              ],
+            })),
+          },
+        },
+      },
+    },
+  })
 }
+let fake: ReturnType<typeof installOverviewApi>
 async function renderOverview({
   deploymentEdition = 'COMMUNITY',
   searchParams = '',
@@ -195,9 +161,8 @@ const emptyKnowledgeBase = () => {
 describe('KnowledgeOverviewPage indexing', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    installOverviewApi()
-    server.failing.clear()
-    server.held.clear()
+    fake = installOverviewApi()
+    onTestFinished(fake)
     queryData = createOverviewData()
   })
 
@@ -226,9 +191,12 @@ describe('KnowledgeOverviewPage indexing', () => {
     await vi.advanceTimersByTimeAsync(2000)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
     await expect.poll(() => queryClient.isFetching()).toBe(0)
-    const caughtUp = server.calls.stats.mock.calls.length
+    const caughtUp =
+      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get.mock.calls.length
     await vi.advanceTimersByTimeAsync(6000)
-    expect(server.calls.stats).toHaveBeenCalledTimes(caughtUp)
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get,
+    ).toHaveBeenCalledTimes(caughtUp)
     await expect.element(page.getByText('13', { exact: true })).toBeVisible()
   })
 

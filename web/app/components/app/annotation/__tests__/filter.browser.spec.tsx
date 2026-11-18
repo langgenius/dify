@@ -1,5 +1,4 @@
 import type { QueryParam } from '../filter'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -7,8 +6,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi } from '@/test/fake-api'
 import Filter from '../filter'
-
-const countAnnotations = vi.fn<typeof consoleClient.apps.byAppId.annotations.count.get>()
 
 const appId = '019a0000-0000-7000-8000-000000000001'
 
@@ -22,7 +19,12 @@ function ControlledFilter() {
   )
 }
 
-async function renderFilter() {
+async function renderFilter(count: () => { count: number } | Promise<{ count: number }>) {
+  onTestFinished(
+    installFakeApi({
+      console: { apps: { byAppId: { annotations: { count: { get: count } } } } },
+    }),
+  )
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   return render(
     <ConsoleProvider>
@@ -31,21 +33,9 @@ async function renderFilter() {
   )
 }
 
-beforeEach(() => {
-  countAnnotations.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { byAppId: { annotations: { count: { get: (input) => countAnnotations(input) } } } },
-      },
-    }),
-  )
-})
-
 it('withholds filters until the annotation count arrives', async () => {
   const request = createDeferred<{ count: number }>()
-  countAnnotations.mockReturnValue(request.promise)
-  const screen = await renderFilter()
+  const screen = await renderFilter(() => request.promise)
   await expect.element(screen.getByRole('searchbox')).not.toBeInTheDocument()
   await expect
     .element(screen.getByRole('button', { name: 'Add annotation' }))
@@ -60,8 +50,7 @@ it('withholds filters until the annotation count arrives', async () => {
 it.each([0, 20])(
   'edits and clears the search after count %i loads without losing input focus',
   async (count) => {
-    countAnnotations.mockResolvedValue({ count })
-    const screen = await renderFilter()
+    const screen = await renderFilter(() => ({ count }))
     const input = screen.getByRole('searchbox', { name: 'common.operation.search' })
     await expect.element(input).toHaveValue('initial')
     await input.fill('updated')

@@ -1,3 +1,4 @@
+import type { MarketplacePlugin, SearchAdvancedResponse } from '@dify/contracts/marketplace'
 import type { ReactNode } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
@@ -10,6 +11,7 @@ import appMessages from '@/i18n/locales/en-US/app.json'
 import commonMessages from '@/i18n/locales/en-US/common.json'
 import navigationMessages from '@/i18n/locales/en-US/navigation.json'
 import pluginMessages from '@/i18n/locales/en-US/plugin.json'
+import { createDeferred } from '@/test/deferred'
 import { installFakeApi } from '@/test/fake-api'
 import { MARKETPLACE_CONTAINER_ID } from '../../constants'
 import HomeCatalogNavigation from '../home-catalog-navigation'
@@ -21,11 +23,6 @@ import {
   MarketplaceSearchForm,
 } from '../marketplace-search-autocomplete'
 
-const api = {
-  searchPlugins: vi.fn(),
-  searchTemplates: vi.fn(),
-}
-
 vi.unmock('react-i18next')
 
 const plugin = {
@@ -35,7 +32,7 @@ const plugin = {
   label: { en_US: 'Google Search' },
   brief: { en_US: 'Search the web from your workflow.' },
   category: 'tool',
-}
+} as Partial<MarketplacePlugin> as MarketplacePlugin
 
 const template = {
   id: 'template-1',
@@ -50,7 +47,17 @@ const template = {
 }
 
 let queryClient: QueryClient
+let fake: ReturnType<typeof installSearchApi>
 let i18n: ReturnType<typeof createInstance>
+
+function installSearchApi() {
+  return installFakeApi({
+    marketplace: {
+      searchAdvanced: () => ({ data: { plugins: [], total: 0 } }),
+      templateSearch: () => ({ data: { templates: [], total: 0 } }),
+    },
+  })
+}
 
 function Wrapper({ children }: { children: ReactNode }) {
   return (
@@ -135,16 +142,8 @@ describe('Marketplace search autocomplete', () => {
       },
     })
     vi.clearAllMocks()
-    onTestFinished(
-      installFakeApi({
-        marketplace: {
-          searchAdvanced: (input) => api.searchPlugins(input),
-          templateSearch: (input) => api.searchTemplates(input),
-        },
-      }),
-    )
-    api.searchPlugins.mockResolvedValue({ data: { plugins: [], total: 0 } })
-    api.searchTemplates.mockResolvedValue({ data: { templates: [], total: 0 } })
+    fake = installSearchApi()
+    onTestFinished(fake)
   })
 
   it('keeps the pinned catalog layout stable while the results popup opens', async () => {
@@ -229,8 +228,12 @@ describe('Marketplace search autocomplete', () => {
   })
 
   it('groups mixed results and selects the highlighted option without submitting its owner', async () => {
-    api.searchPlugins.mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-    api.searchTemplates.mockResolvedValue({ data: { templates: [template], total: 1 } })
+    fake.use({
+      marketplace: {
+        searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+        templateSearch: () => ({ data: { templates: [template], total: 1 } }),
+      },
+    })
     const screen = await render(
       <Wrapper>
         <SelectionOwner />
@@ -259,13 +262,12 @@ describe('Marketplace search autocomplete', () => {
   })
 
   it('keeps prior results during refresh but does not reopen after the user dismisses them', async () => {
-    let resolveRefresh!: (value: unknown) => void
-    api.searchPlugins.mockImplementation((input: { body: { query: string } }) => {
-      if (input.body.query === 'google')
-        return Promise.resolve({ data: { plugins: [plugin], total: 1 } })
-      return new Promise((resolve) => {
-        resolveRefresh = resolve
-      })
+    const refresh = createDeferred<SearchAdvancedResponse>()
+    fake.use({
+      marketplace: {
+        searchAdvanced: ({ body }) =>
+          body.query === 'google' ? { data: { plugins: [plugin], total: 1 } } : refresh.promise,
+      },
     })
     const screen = await render(
       <Wrapper>
@@ -280,11 +282,15 @@ describe('Marketplace search autocomplete', () => {
     await input.fill('google drive')
     await expect.element(screen.getByText('Google Search')).toBeVisible()
     await expect.element(screen.getByText('Loading')).toBeVisible()
-    await expect.poll(() => typeof resolveRefresh).toBe('function')
+    await expect
+      .poll(() => fake.marketplace.searchAdvanced)
+      .toHaveBeenCalledWith(
+        expect.objectContaining({ body: expect.objectContaining({ query: 'google drive' }) }),
+      )
 
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
-    resolveRefresh({ data: { plugins: [plugin], total: 1 } })
+    refresh.resolve({ data: { plugins: [plugin], total: 1 } })
     await expect.element(screen.getByRole('listbox')).not.toBeInTheDocument()
   })
 
@@ -310,6 +316,6 @@ describe('Marketplace search autocomplete', () => {
 
     await expect.element(input).toHaveValue('')
     await expect.element(input).toHaveFocus()
-    expect(api.searchTemplates).not.toHaveBeenCalled()
+    expect(fake.marketplace.templateSearch).not.toHaveBeenCalled()
   })
 })

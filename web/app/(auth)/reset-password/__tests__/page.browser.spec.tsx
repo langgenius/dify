@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/storage'
@@ -16,8 +15,6 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
-const sendResetCode = vi.fn<typeof consoleClient.forgotPassword.post>()
-
 async function renderPage() {
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper()
   return render(
@@ -27,13 +24,18 @@ async function renderPage() {
   )
 }
 
+function installApi() {
+  return installFakeApi({
+    console: { forgotPassword: { post: () => ({ result: 'success', data: 'reset-token' }) } },
+  })
+}
+let fake: ReturnType<typeof installApi>
+
 beforeEach(() => {
-  onTestFinished(
-    installFakeApi({ console: { forgotPassword: { post: (input) => sendResetCode(input) } } }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
   navigation.push.mockReset()
   navigation.search = ''
-  sendResetCode.mockReset().mockResolvedValue({ result: 'success', data: 'reset-token' })
   localStorage.removeItem(COUNT_DOWN_KEY)
 })
 
@@ -50,7 +52,7 @@ it('submits the labelled email form with Enter and preserves the reset session',
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(sendResetCode).toHaveBeenCalledWith(
+    expect(fake.console.forgotPassword.post).toHaveBeenCalledWith(
       expect.objectContaining({ body: { email: 'user@example.com', language: 'en-US' } }),
     ),
   )
@@ -73,7 +75,7 @@ it('replaces an invalid-email error with the required error on the same focused 
   await expect.element(email).toHaveFocus()
   const nativeEmail = (await email.element()) as HTMLInputElement
   expect(nativeEmail.validity.typeMismatch).toBe(true)
-  expect(sendResetCode).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.post).not.toHaveBeenCalled()
 
   await userEvent.fill(email, '')
   await userEvent.click(screen.getByRole('button', { name: 'login.sendVerificationCode' }))
@@ -82,5 +84,5 @@ it('replaces an invalid-email error with the required error on the same focused 
   await expect.element(email).toHaveFocus()
   expect(nativeEmail.validity.valueMissing).toBe(true)
   await expect.element(screen.getByText('login.error.emailInValid')).not.toBeInTheDocument()
-  expect(sendResetCode).not.toHaveBeenCalled()
+  expect(fake.console.forgotPassword.post).not.toHaveBeenCalled()
 })

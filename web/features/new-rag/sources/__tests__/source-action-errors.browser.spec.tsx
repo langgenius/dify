@@ -1,15 +1,17 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { apiError } from '@/test/fake-api'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source, sourceWorkflow } from './source-fixtures'
-import { clientMock, resetSourceServer, sourceResponses } from './source-server'
+import { resetSourceServer, sourceResponses } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -41,7 +43,10 @@ describe('Source sync quota failures', () => {
           },
         ],
       }
-      const mutation = action === 'retry' ? clientMock.retrySourceWorkflow : clientMock.syncSource
+      const mutation =
+        action === 'retry'
+          ? fake.console.knowledgeFs.spaces.byControlSpaceId.sourceWorkflows.byRunId.retry.post
+          : fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post
       mutation.mockRejectedValueOnce(
         apiError({
           status,

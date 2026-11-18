@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { zDocumentWithSegmentsListResponse } from '@dify/contracts/api/console/datasets/zod.gen'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { userEvent } from 'vite-plus/test/browser'
@@ -20,10 +19,6 @@ vi.mock('@/next/navigation', () => ({
 }))
 
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
-const api = {
-  list: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.get>(),
-  remove: vi.fn<typeof consoleClient.datasets.byDatasetId.documents.delete>(),
-}
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -46,37 +41,32 @@ async function setup(ids: string[]) {
     limit: 10,
     has_more: false,
   }).data
-  api.list.mockReset().mockImplementation(async () => ({
-    data: datasets,
-    page: 1,
-    total: datasets.length,
-    limit: 30,
-    has_more: false,
-  }))
-  api.remove.mockReset().mockImplementation(async ({ query }) => {
-    datasets = datasets.filter((item) => !query?.document_id?.includes(item.id))
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            documents: {
-              get: (input) => api.list(input),
-              delete: async (input) => {
-                await api.remove(input)
-              },
+  const fake = installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          documents: {
+            get: async () => ({
+              data: datasets,
+              page: 1,
+              total: datasets.length,
+              limit: 30,
+              has_more: false,
+            }),
+            delete: async ({ query }) => {
+              datasets = datasets.filter((item) => !query?.document_id?.includes(item.id))
             },
-            metadata: { get: () => ({ doc_metadata: [], built_in_field_enabled: false }) },
-            autoDisableLogs: { get: () => ({ document_ids: [], count: 0 }) },
-            errorDocs: { get: () => ({ data: [], total: 0 }) },
           },
-          metadata: { builtIn: { get: () => ({ fields: [] }) } },
+          metadata: { get: () => ({ doc_metadata: [], built_in_field_enabled: false }) },
+          autoDisableLogs: { get: () => ({ document_ids: [], count: 0 }) },
+          errorDocs: { get: () => ({ data: [], total: 0 }) },
         },
-        tags: { get: () => [] },
+        metadata: { builtIn: { get: () => ({ fields: [] }) } },
       },
-    }),
-  )
+      tags: { get: () => [] },
+    },
+  })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({ systemFeatures: { rbac_enabled: true } })
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
@@ -112,15 +102,16 @@ async function setup(ids: string[]) {
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
     await expect.element(screen.getByRole('menu')).not.toBeInTheDocument()
   }
-  return { screen, open }
+  return { screen, open, fake }
 }
 describe('Classic document deletion', () => {
   it('removes the item before a slow list refresh completes', async () => {
-    const { screen, open } = await setup(['Alpha', 'Beta'])
+    const { screen, open, fake } = await setup(['Alpha', 'Beta'])
     await open('Alpha')
-    const list = api.list.getMockImplementation()!
+    const getDocuments = fake.console.datasets.byDatasetId.documents.get
+    const list = getDocuments.getMockImplementation()!
     const refresh = createDeferred<Awaited<ReturnType<typeof list>>>()
-    api.list.mockReturnValueOnce(refresh.promise)
+    getDocuments.mockReturnValueOnce(refresh.promise)
     await screen.getByRole('button', { name: 'common.operation.sure' }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
     await expect
@@ -149,9 +140,9 @@ describe('Classic document deletion', () => {
       .toHaveFocus()
   })
   it('retains focus while pending and leaves a failed deletion retryable', async () => {
-    const { screen, open } = await setup(['Alpha'])
+    const { screen, open, fake } = await setup(['Alpha'])
     const request = createDeferred<void>()
-    api.remove.mockReturnValueOnce(request.promise)
+    fake.console.datasets.byDatasetId.documents.delete.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.sure' })
     await confirm.click()

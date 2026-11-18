@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import {
   zKnowledgeFsDurableDeletionAcceptedResponse,
   zKnowledgeFsLogicalDocumentListResponse,
@@ -20,13 +19,6 @@ import { DocumentsStateBoundary } from '../state/boundary'
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))
-const api = {
-  list: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.get>(),
-  remove:
-    vi.fn<
-      typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete
-    >(),
-}
 beforeEach(() => vi.stubGlobal('BASE_UI_ANIMATIONS_DISABLED', false))
 afterEach(() => vi.unstubAllGlobals())
 async function setup(ids: string[]) {
@@ -45,41 +37,40 @@ async function setup(ids: string[]) {
     })),
     next_cursor: null,
   }).data
-  api.list.mockReset().mockImplementation(async () => ({ data: documents, next_cursor: null }))
-  api.remove.mockReset().mockImplementation(async ({ params }) => {
-    documents = documents.filter((item) => item.id !== params.document_id)
-    return zKnowledgeFsDurableDeletionAcceptedResponse.parse({
-      status_url: '/deletion',
-      job: {
-        id: 'delete-1',
-        checkpoint: 'requested',
-        created_at: '2026-07-20T10:00:00Z',
-        updated_at: '2026-07-20T10:00:00Z',
-        knowledge_space_id: 'space-1',
-        target_id: params.document_id,
-        target_type: 'logical_document',
-        run_state: 'queued',
-      },
-    })
-  })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            byControlSpaceId: {
-              logicalDocuments: {
-                get: (input) => api.list(input),
-                byDocumentId: { delete: (input) => api.remove(input) },
+  const fake = installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            logicalDocuments: {
+              get: () => ({ data: documents, next_cursor: null }),
+              byDocumentId: {
+                delete: async ({ params }) => {
+                  documents = documents.filter((item) => item.id !== params.document_id)
+                  return zKnowledgeFsDurableDeletionAcceptedResponse.parse({
+                    status_url: '/deletion',
+                    job: {
+                      id: 'delete-1',
+                      checkpoint: 'requested',
+                      created_at: '2026-07-20T10:00:00Z',
+                      updated_at: '2026-07-20T10:00:00Z',
+                      knowledge_space_id: 'space-1',
+                      target_id: params.document_id,
+                      target_type: 'logical_document',
+                      run_state: 'queued',
+                    },
+                  })
+                },
               },
-              sources: { get: () => ({ data: [], next_cursor: null }) },
-              backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
             },
+            sources: { get: () => ({ data: [], next_cursor: null }) },
+            backgroundTasks: { get: () => ({ data: [], next_cursor: null }) },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: 'ENTERPRISE' },
     features: { enable_knowledge_fs: true },
@@ -109,6 +100,7 @@ async function setup(ids: string[]) {
     screen,
     open,
     actions,
+    remove: fake.console.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete,
     removeElsewhere: async () => {
       documents = []
       await queryClient.invalidateQueries({
@@ -125,7 +117,7 @@ async function setup(ids: string[]) {
 }
 describe('Knowledge document deletion', () => {
   it('closes safely if the document was removed elsewhere while confirmation was open', async () => {
-    const { screen, open, removeElsewhere } = await setup(['Alpha'])
+    const { screen, open, remove, removeElsewhere } = await setup(['Alpha'])
     await open('Alpha')
     await removeElsewhere()
     await screen.getByRole('button', { name: 'common.operation.delete', exact: true }).click()
@@ -133,18 +125,16 @@ describe('Knowledge document deletion', () => {
     await expect
       .element(screen.getByRole('region', { name: 'knowledgeSpace.documents', exact: true }))
       .toHaveFocus()
-    expect(api.remove).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
   })
 
   it('uses the latest revision when the list refreshes with confirmation open', async () => {
-    const { screen, open, refreshRevision } = await setup(['Alpha'])
+    const { screen, open, remove, refreshRevision } = await setup(['Alpha'])
     await open('Alpha')
     await refreshRevision()
     await screen.getByRole('button', { name: 'common.operation.delete', exact: true }).click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()
-    expect(api.remove).toHaveBeenCalledWith(
-      expect.objectContaining({ body: { expectedRevision: 2 } }),
-    )
+    expect(remove).toHaveBeenCalledWith(expect.objectContaining({ body: { expectedRevision: 2 } }))
   })
 
   it.each([
@@ -166,16 +156,9 @@ describe('Knowledge document deletion', () => {
       .toHaveFocus()
   })
   it('holds focus and prevents dismissal while deletion is pending', async () => {
-    const { screen, open } = await setup(['Alpha'])
-    const request =
-      createDeferred<
-        Awaited<
-          ReturnType<
-            typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.logicalDocuments.byDocumentId.delete
-          >
-        >
-      >()
-    api.remove.mockReturnValueOnce(request.promise)
+    const { screen, open, remove } = await setup(['Alpha'])
+    const request = createDeferred<Awaited<ReturnType<typeof remove>>>()
+    remove.mockReturnValueOnce(request.promise)
     await open('Alpha')
     const confirm = screen.getByRole('button', { name: 'common.operation.delete', exact: true })
     await confirm.click()

@@ -23,6 +23,18 @@ describe('installFakeApi', () => {
     fake()
   })
 
+  it('types spies from the contract, so a sync default can later answer with a deferred', async () => {
+    const fake = installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+    const spy = fake.console.workspaces.current.networkAccessGroups.get
+    spy.mockReturnValueOnce(Promise.resolve({ ...groupList, groups: [] }))
+
+    expect((await consoleClient.workspaces.current.networkAccessGroups.get({})).groups).toEqual([])
+    expect(spy.mock.calls[0]![0]).toEqual(expect.objectContaining({ query: {} }))
+    fake()
+  })
+
   it('overrides and adds handlers mid-test with use()', async () => {
     const fake = installFakeApi({
       console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
@@ -256,6 +268,27 @@ describe('installFakeApi', () => {
       'Failed to fetch',
     )
     teardown()
+  })
+
+  it('gives routes the parsed body and returns typed spies for handlers added with use()', async () => {
+    const fake = installFakeApi({
+      routes: [route('POST', 'console', '/forgot-password/validity', () => ({ is_valid: true }))],
+    })
+    await fetch('http://localhost:5001/console/api/forgot-password/validity', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: 'abc' }),
+    })
+    const added = fake.use({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+    await consoleClient.workspaces.current.networkAccessGroups.get({})
+
+    expect(fake.route('POST', 'console', '/forgot-password/validity')).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { token: 'abc' } }),
+    )
+    expect(added.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledOnce()
+    fake()
   })
 
   it('fails the test when a handler returns data outside the contract', async () => {

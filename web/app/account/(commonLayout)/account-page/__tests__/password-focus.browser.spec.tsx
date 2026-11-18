@@ -7,19 +7,14 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import { createTestQueryClient } from '@/test/query-client'
 import { ChangePasswordDialog } from '../change-password-dialog'
 
-const changePassword = vi.fn<typeof consoleClient.account.password.post>()
-
 it('keeps native submit focus during password saving and supports retry without leaving the dialog', async () => {
   // Chromium proves native Enter submission and focus preservation when pending controls change.
   type Profile = Awaited<ReturnType<typeof consoleClient.account.password.post>>
   const firstSave = createDeferred<Profile>()
   const retry = createDeferred<Profile>()
-  changePassword.mockReturnValueOnce(firstSave.promise).mockReturnValueOnce(retry.promise)
-  onTestFinished(
-    installFakeApi({
-      console: { account: { password: { post: (input) => changePassword(input) } } },
-    }),
-  )
+  const fake = installFakeApi({ console: { account: { password: { post: () => retry.promise } } } })
+  onTestFinished(fake)
+  fake.console.account.password.post.mockReturnValueOnce(firstSave.promise)
   const screen = await render(
     <QueryClientProvider client={createTestQueryClient()}>
       <ChangePasswordDialog isPasswordSet />
@@ -41,7 +36,7 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(confirmPassword).toHaveFocus()
-  await vi.waitFor(() => expect(changePassword).toHaveBeenCalledOnce())
+  await vi.waitFor(() => expect(fake.console.account.password.post).toHaveBeenCalledOnce())
 
   firstSave.reject(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Password update failed' }),
@@ -56,7 +51,7 @@ it('keeps native submit focus during password saving and supports retry without 
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
   await expect.element(save).toHaveFocus()
-  await vi.waitFor(() => expect(changePassword).toHaveBeenCalledTimes(2))
+  await vi.waitFor(() => expect(fake.console.account.password.post).toHaveBeenCalledTimes(2))
 
   retry.resolve({
     id: 'user-id',

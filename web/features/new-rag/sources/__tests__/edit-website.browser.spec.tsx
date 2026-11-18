@@ -1,20 +1,22 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { firecrawlDatasourcePlugin, source } from './source-fixtures'
 import {
-  clientMock,
   pluginResponses,
   resetSourceServer,
   serveWebsitePreview,
+  sourceResponse,
   sourceResponses,
 } from './source-server'
 
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -40,20 +42,22 @@ describe('Sources: edit-website', () => {
       uri: 'https://docs.example.com/',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        metadata: {
-          ...websiteSource.metadata,
-          crawlOptions: { includeSubpages: true, limit: 50 },
-          parameters: {
-            crawl_subpages: true,
-            limit: 50,
-            url: 'https://handbook.example.com/',
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          metadata: {
+            ...websiteSource.metadata,
+            crawlOptions: { includeSubpages: true, limit: 50 },
+            parameters: {
+              crawl_subpages: true,
+              limit: 50,
+              url: 'https://handbook.example.com/',
+            },
           },
-        },
-        uri: 'https://handbook.example.com/',
-        version: 4,
-      }),
+          uri: 'https://handbook.example.com/',
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -79,7 +83,9 @@ describe('Sources: edit-website', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',
@@ -163,18 +169,20 @@ describe('Sources: edit-website', () => {
       uri: 'https://docs.example.com/',
     })
     sourceResponses.data = { pages: [{ items: [websiteSource] }] }
-    clientMock.patchSource.mockResolvedValue(
-      source({
-        metadata: {
-          ...websiteSource.metadata,
-          parameters: {
-            crawl_subpages: true,
-            limit: 100,
-            url: 'https://docs.example.com/',
+    fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch.mockResolvedValue(
+      sourceResponse(
+        source({
+          metadata: {
+            ...websiteSource.metadata,
+            parameters: {
+              crawl_subpages: true,
+              limit: 100,
+              url: 'https://docs.example.com/',
+            },
           },
-        },
-        version: 4,
-      }),
+          version: 4,
+        }),
+      ),
     )
 
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -193,7 +201,9 @@ describe('Sources: edit-website', () => {
     await page.getByRole('button', { name: 'common.operation.save' }).click()
 
     await vi.waitFor(async () =>
-      expect(clientMock.patchSource).toHaveBeenCalledWith({
+      expect(
+        fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.patch,
+      ).toHaveBeenCalledWith({
         body: {
           expectedVersion: 3,
           name: 'Product documentation',

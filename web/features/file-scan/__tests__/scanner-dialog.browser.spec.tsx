@@ -2,7 +2,6 @@ import type {
   FileScanProviderResponse,
   FileScanProviderTypeResponse,
 } from '@dify/contracts/api/console/file-scan/types.gen'
-import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -10,10 +9,6 @@ import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { FileScanProviderDialog } from '../scanner-dialog'
 
-const api = {
-  createProvider: vi.fn<typeof consoleClient.fileScan.providers.post>(),
-  updateProvider: vi.fn<typeof consoleClient.fileScan.providers.byProviderId.patch>(),
-}
 // Provider ids are UUIDs in the contract.
 const scannerId = '00000000-0000-4000-8000-000000000001'
 
@@ -64,20 +59,23 @@ const apiSecretField = () => page.getByLabelText('fileScan.dialog.apiSecret')
 const endpointUrlField = () => page.getByLabelText('fileScan.dialog.endpointUrl')
 const saveButton = () => page.getByRole('button', { name: 'common.operation.save' })
 
-beforeEach(() => {
-  vi.clearAllMocks()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        fileScan: {
-          providers: {
-            post: (input) => api.createProvider(input),
-            byProviderId: { patch: (input) => api.updateProvider(input) },
-          },
+function installScannerApi() {
+  return installFakeApi({
+    console: {
+      fileScan: {
+        providers: {
+          post: async ({ body }) => scanner({ name: body.name, provider_type: body.provider_type }),
+          byProviderId: { patch: () => scanner() },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installScannerApi>
+
+beforeEach(() => {
+  fake = installScannerApi()
+  onTestFinished(fake)
 })
 
 it('offers only the available services and swaps the fields with the selected one', async () => {
@@ -151,7 +149,6 @@ it.each([
 })
 
 it('saves a custom endpoint only once its address is an http or https URL', async () => {
-  api.createProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
   const { onSaved } = await renderDialog()
 
   await typeCard('fileScan.type.customEndpoint').click()
@@ -161,13 +158,13 @@ it('saves a custom endpoint only once its address is an http or https URL', asyn
   await saveButton().click()
 
   await expect.element(page.getByText('fileScan.dialog.endpointUrlInvalid')).toBeVisible()
-  expect(api.createProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.post).not.toHaveBeenCalled()
 
   await endpointUrlField().fill(' https://scanner.example.com/scan ')
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.createProvider).toHaveBeenCalledWith({
+  expect(fake.console.fileScan.providers.post).toHaveBeenCalledWith({
     body: {
       name: 'In-house scanner',
       provider_type: 'api',
@@ -181,7 +178,7 @@ it.each([
   ['api', 'fileScan.dialog.endpointUrl'],
   ['cloudmersive', 'fileScan.dialog.endpoint'],
 ])('asks for the API key again when the address of a %s scanner changes', async (type, label) => {
-  api.updateProvider.mockRejectedValue(
+  fake.console.fileScan.providers.byProviderId.patch.mockRejectedValue(
     apiError({
       status: 400,
       code: 'bad_request',
@@ -208,14 +205,14 @@ it.each([
   await saveButton().click()
 
   await expect.element(apiKeyField()).toHaveFocus()
-  expect(api.updateProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.byProviderId.patch).not.toHaveBeenCalled()
 
   await apiKeyField().fill('key-for-new-address')
   await saveButton().click()
 
   await expect
-    .poll(() => api.updateProvider.mock.calls.at(-1)?.[0])
-    .toEqual({
+    .poll(() => fake.console.fileScan.providers.byProviderId.patch)
+    .toHaveBeenLastCalledWith({
       params: { provider_id: scannerId },
       body: {
         name: 'Office scanner',
@@ -230,7 +227,6 @@ it.each([
 })
 
 it('keeps the stored key of a custom endpoint whose address is unchanged', async () => {
-  api.updateProvider.mockImplementation(async () => scanner({ provider_type: 'api' }))
   const { onSaved } = await renderDialog(
     scanner({
       provider_type: 'api',
@@ -243,7 +239,7 @@ it('keeps the stored key of a custom endpoint whose address is unchanged', async
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.updateProvider).toHaveBeenCalledWith({
+  expect(fake.console.fileScan.providers.byProviderId.patch).toHaveBeenCalledWith({
     params: { provider_id: scannerId },
     body: { name: 'Renamed scanner', config: { endpoint: 'https://old.example.com/scan' } },
   })
@@ -251,7 +247,7 @@ it('keeps the stored key of a custom endpoint whose address is unchanged', async
 
 it('keeps save busy during the live check and shows the backend reason when it fails', async () => {
   const check = createDeferred<FileScanProviderResponse>()
-  api.createProvider.mockReturnValue(check.promise)
+  fake.console.fileScan.providers.post.mockReturnValueOnce(check.promise)
   const { onSaved } = await renderDialog()
 
   await typeCard('Scanii').click()
@@ -264,7 +260,7 @@ it('keeps save busy during the live check and shows the backend reason when it f
 
   await expect.element(saveButton()).toBeDisabled()
   await expect
-    .poll(() => api.createProvider)
+    .poll(() => fake.console.fileScan.providers.post)
     .toHaveBeenCalledWith({
       body: {
         name: 'Office scanner',
@@ -296,11 +292,10 @@ it('requires the secrets of a new scanner before it contacts the backend', async
   await saveButton().click()
 
   await expect.element(apiKeyField()).toHaveFocus()
-  expect(api.createProvider).not.toHaveBeenCalled()
+  expect(fake.console.fileScan.providers.post).not.toHaveBeenCalled()
 })
 
 it('keeps stored secrets when they are left blank while editing', async () => {
-  api.updateProvider.mockImplementation(async () => scanner({ name: 'Renamed scanner' }))
   const { onSaved } = await renderDialog(scanner())
 
   // The service of an existing scanner cannot be changed.
@@ -313,7 +308,7 @@ it('keeps stored secrets when they are left blank while editing', async () => {
   await saveButton().click()
 
   await expect.poll(() => onSaved.mock.calls.length).toBe(1)
-  expect(api.updateProvider).toHaveBeenCalledWith({
+  expect(fake.console.fileScan.providers.byProviderId.patch).toHaveBeenCalledWith({
     params: { provider_id: scannerId },
     body: {
       name: 'Renamed scanner',

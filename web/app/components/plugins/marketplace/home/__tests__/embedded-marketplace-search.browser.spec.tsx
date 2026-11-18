@@ -14,11 +14,7 @@ import { installFakeApi } from '@/test/fake-api'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import EmbeddedMarketplaceSearch from '../embedded-marketplace-search'
 
-const boundary = vi.hoisted(() => ({
-  push: vi.fn(),
-  searchPlugins: vi.fn(),
-  searchTemplates: vi.fn(),
-}))
+const boundary = vi.hoisted(() => ({ push: vi.fn() }))
 
 vi.unmock('react-i18next')
 
@@ -91,27 +87,29 @@ async function renderSearch(edition: 'CLOUD' | 'COMMUNITY' | 'ENTERPRISE' = 'CLO
   return { onUrlUpdate, screen }
 }
 
+function installSearchApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
+        },
+      },
+    },
+    marketplace: {
+      searchAdvanced: () => ({ data: { plugins: [plugin], total: 1 } }),
+      templateSearch: () => ({ data: { templates: [template], total: 1 } }),
+    },
+  })
+}
+
 describe('Embedded Marketplace search', () => {
+  let fake: ReturnType<typeof installSearchApi>
   beforeEach(async () => {
     await page.viewport(1000, 800)
     vi.clearAllMocks()
-    onTestFinished(
-      installFakeApi({
-        console: {
-          workspaces: {
-            current: {
-              plugin: { list: { installations: { ids: { post: () => ({ plugins: [] }) } } } },
-            },
-          },
-        },
-        marketplace: {
-          searchAdvanced: (input) => boundary.searchPlugins(input),
-          templateSearch: (input) => boundary.searchTemplates(input),
-        },
-      }),
-    )
-    boundary.searchPlugins.mockResolvedValue({ data: { plugins: [plugin], total: 1 } })
-    boundary.searchTemplates.mockResolvedValue({ data: { templates: [template], total: 1 } })
+    fake = installSearchApi()
+    onTestFinished(fake)
   })
 
   it('opens both Cloud result dialogs, closes them, and leaves catalog filters untouched', async () => {
@@ -158,13 +156,17 @@ describe('Embedded Marketplace search', () => {
     'opens a %s %s on the official site without changing the catalog',
     async (edition, kind, label) => {
       const open = vi.spyOn(window, 'open').mockReturnValue(null)
-      boundary.searchPlugins.mockResolvedValue({
-        data: { plugins: kind === 'plugin' ? [plugin] : [], total: kind === 'plugin' ? 1 : 0 },
-      })
-      boundary.searchTemplates.mockResolvedValue({
-        data: {
-          templates: kind === 'template' ? [template] : [],
-          total: kind === 'template' ? 1 : 0,
+      fake.use({
+        marketplace: {
+          searchAdvanced: () => ({
+            data: { plugins: kind === 'plugin' ? [plugin] : [], total: kind === 'plugin' ? 1 : 0 },
+          }),
+          templateSearch: () => ({
+            data: {
+              templates: kind === 'template' ? [template] : [],
+              total: kind === 'template' ? 1 : 0,
+            },
+          }),
         },
       })
       const { onUrlUpdate, screen } = await renderSearch(edition)

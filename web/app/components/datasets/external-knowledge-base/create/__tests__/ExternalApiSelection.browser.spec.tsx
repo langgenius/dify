@@ -1,5 +1,4 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { useState } from 'react'
 import { render } from 'vitest-browser-react'
 import { AppToaster } from '@/app/notifications/app-toaster'
@@ -8,10 +7,6 @@ import { installFakeApi } from '@/test/fake-api'
 import ExternalApiSelection from '../ExternalApiSelection'
 
 const mocks = vi.hoisted(() => ({ refresh: vi.fn() }))
-const api = {
-  getApis: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
-  create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}
 // boundary: Browser Mode has no Next App Router; creation keeps the real modal and query owners.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 
@@ -46,21 +41,19 @@ function KnowledgeConnectionForm() {
   )
 }
 
-beforeEach(() => {
-  api.getApis.mockReset().mockResolvedValue(response)
-  api.create.mockReset().mockResolvedValue(response.data[0]!)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          externalKnowledgeApi: {
-            get: (input) => api.getApis(input),
-            post: (input) => api.create(input),
-          },
-        },
+function installExternalApiApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        externalKnowledgeApi: { get: async () => response, post: async () => response.data[0]! },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installExternalApiApi>
+beforeEach(() => {
+  fake = installExternalApiApi()
+  onTestFinished(fake)
 })
 async function setup() {
   const { wrapper: Providers } = createConfigurationModalTestWrapper()
@@ -89,7 +82,7 @@ it('defaults to the first API and keeps the chosen API while entering the knowle
 it.each(['empty list', 'selector'] as const)(
   'refreshes APIs after creation from the %s',
   async (entry) => {
-    api.getApis.mockResolvedValueOnce({
+    fake.console.datasets.externalKnowledgeApi.get.mockResolvedValueOnce({
       ...response,
       data: entry === 'empty list' ? [] : [response.data[1]!],
       total: entry === 'empty list' ? 0 : 1,
@@ -107,7 +100,7 @@ it.each(['empty list', 'selector'] as const)(
     await dialog.getByLabelText(/API Key/).fill('secret-key')
     await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
     await expect.element(dialog).not.toBeInTheDocument()
-    expect(api.create).toHaveBeenCalledExactlyOnceWith(
+    expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith(
       expect.objectContaining({
         body: {
           name: 'API One',

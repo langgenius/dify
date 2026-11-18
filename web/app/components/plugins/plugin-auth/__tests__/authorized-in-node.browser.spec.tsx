@@ -8,7 +8,7 @@ import { installFakeApi, route } from '@/test/fake-api'
 import AuthorizedInNode from '../authorized-in-node'
 import { createCredential, credentialInfo, pluginPayload } from './credential-fixtures'
 
-const api = { info: vi.fn<() => Promise<ReturnType<typeof credentialInfo>>>() }
+type CredentialInfo = ReturnType<typeof credentialInfo>
 
 function NodeCredential({ initialId }: { initialId?: string }) {
   const [credentialId, setCredentialId] = useState(initialId)
@@ -21,7 +21,10 @@ function NodeCredential({ initialId }: { initialId?: string }) {
   )
 }
 
-async function setup(initialId?: string) {
+async function setup(
+  initialId?: string,
+  info: CredentialInfo | Promise<CredentialInfo> = credentialInfo(),
+) {
   const { queryClient } = createConsoleQueryWrapper({ workspacePermissionKeys: ['credential.use'] })
   onTestFinished(() => queryClient.clear())
   onTestFinished(
@@ -31,7 +34,7 @@ async function setup(initialId?: string) {
           'GET',
           'console',
           '/workspaces/current/tool-provider/builtin/test-provider/credential/info',
-          () => api.info(),
+          () => info,
         ),
       ],
     }),
@@ -42,8 +45,6 @@ async function setup(initialId?: string) {
     </QueryClientTestProvider>,
   )
 }
-
-beforeEach(() => api.info.mockReset().mockResolvedValue(credentialInfo()))
 
 it('switches a selected credential back to the workspace default and returns focus to the trigger', async () => {
   await setup('credential-1')
@@ -61,9 +62,8 @@ it('switches a selected credential back to the workspace default and returns foc
 })
 
 it('waits for credential info before reporting a removed selection and lets the user replace it', async () => {
-  const request = createDeferred<ReturnType<typeof credentialInfo>>()
-  api.info.mockReturnValueOnce(request.promise)
-  await setup('removed-key')
+  const request = createDeferred<CredentialInfo>()
+  await setup('removed-key', request.promise)
   await expect.element(page.getByRole('button', { name: 'common.loading' })).toBeVisible()
   await expect.element(page.getByText('plugin.auth.authRemoved')).not.toBeInTheDocument()
   request.resolve(credentialInfo())
@@ -86,13 +86,13 @@ it.each([
 ])(
   'keeps an unavailable $label from being selected while allowing a replacement',
   async ({ initialId, credential }) => {
-    api.info.mockResolvedValue(
+    await setup(
+      initialId,
       credentialInfo([
         createCredential({ name: 'Restricted key', ...credential }),
         createCredential({ id: 'replacement', name: 'Available key', is_default: false }),
       ]),
     )
-    await setup(initialId)
     const trigger = page.getByRole('button', { name: /plugin.auth.unavailable/ })
     await trigger.click()
     const popup = page.getByRole('dialog', { name: 'plugin.auth.authorizations' })
@@ -112,8 +112,7 @@ it.each([
 )
 
 it('shows the missing workspace default as unavailable without hiding usable named credentials', async () => {
-  api.info.mockResolvedValue(credentialInfo([createCredential({ is_default: false })]))
-  await setup()
+  await setup(undefined, credentialInfo([createCredential({ is_default: false })]))
   await page
     .getByRole('button', { name: /plugin.auth.workspaceDefault.*plugin.auth.unavailable/ })
     .click()

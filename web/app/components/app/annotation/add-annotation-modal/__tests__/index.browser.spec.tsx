@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { QueryClient } from '@tanstack/react-query'
 import { createInstance } from 'i18next'
 import { I18nextProvider } from 'react-i18next'
@@ -12,25 +11,26 @@ import { installFakeApi } from '@/test/fake-api'
 import AddAnnotationDialog from '../index'
 
 const appId = '019a0000-0000-7000-8000-000000000001'
-const addAnnotation = vi.fn<typeof consoleClient.apps.byAppId.annotations.post>()
 
 vi.unmock('react-i18next')
 
 it('resets a continuous-entry form without losing its preference or skipping native required validation', async () => {
-  addAnnotation.mockResolvedValue({ id: '019a0000-0000-7000-8000-000000000002' })
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
   const features = seedFeatures(client, { annotation_quota_limit: { size: 0, limit: 0 } })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { byAppId: { annotations: { post: (input) => addAnnotation(input) } } },
-        // Adding an annotation refreshes the quota the dialog reads.
-        features: { get: () => features },
+  const fake = installFakeApi({
+    console: {
+      apps: {
+        byAppId: {
+          annotations: { post: () => ({ id: '019a0000-0000-7000-8000-000000000002' }) },
+        },
       },
-    }),
-  )
+      // Adding an annotation refreshes the quota the dialog reads.
+      features: { get: () => features },
+    },
+  })
+  onTestFinished(fake)
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',
@@ -67,7 +67,7 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   await expect.element(question).toHaveAttribute('aria-invalid', 'true')
   await expect.element(dialog.getByText('Question is required')).toBeVisible()
   await expect.element(dialog.getByText('Answer is required')).toBeVisible()
-  expect(addAnnotation).toHaveBeenCalledOnce()
+  expect(fake.console.apps.byAppId.annotations.post).toHaveBeenCalledOnce()
 
   await question.fill('Second question')
   await answer.fill('Second answer')
@@ -75,7 +75,7 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   await submit.click()
   await expect.element(dialog).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
-  expect(addAnnotation).toHaveBeenLastCalledWith(
+  expect(fake.console.apps.byAppId.annotations.post).toHaveBeenLastCalledWith(
     expect.objectContaining({
       params: { app_id: appId },
       body: { question: 'Second question', answer: 'Second answer' },

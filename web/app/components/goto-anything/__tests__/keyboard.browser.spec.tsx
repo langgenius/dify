@@ -1,6 +1,4 @@
 import type { ReactNode } from 'react'
-import type { consoleClient } from '@/service/console'
-import type { marketplaceClient } from '@/service/marketplace'
 import { detectPlatform } from '@tanstack/react-hotkeys'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -12,13 +10,6 @@ import { installFakeApi } from '@/test/fake-api'
 import { createDatasetFixture } from '@/test/fixtures/dataset'
 import { GotoAnything } from '../index'
 
-const api = {
-  apps: vi.fn<typeof consoleClient.apps.get>(),
-  datasets: vi.fn<typeof consoleClient.datasets.get>(),
-  skills: vi.fn<typeof consoleClient.workspaces.current.skills.get>(),
-  agents: vi.fn<typeof consoleClient.agent.get>(),
-  marketplace: vi.fn<typeof marketplaceClient.searchAdvanced>(),
-}
 const navigation = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn(), pathname: '/' }))
 // boundary: Next's app router is unavailable in the standalone Vitest browser page.
 vi.mock('@/next/navigation', async (importOriginal) => ({
@@ -32,38 +23,38 @@ const emptyPage = { data: [], has_more: false, limit: 10, page: 1, total: 0 }
 const searchTitle = 'app.gotoAnything.searchTitle'
 const shortcut = detectPlatform() === 'mac' ? '{Meta>}k{/Meta}' : '{Control>}k{/Control}'
 
-beforeEach(() => {
-  api.apps.mockResolvedValue(emptyPage)
-  api.datasets.mockResolvedValue(emptyPage)
-  api.skills.mockResolvedValue(emptyPage)
-  api.agents.mockResolvedValue({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } })
-  api.marketplace.mockResolvedValue({ data: { plugins: [], total: 0 } })
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { get: (input) => api.apps(input) },
-        datasets: { get: (input) => api.datasets(input) },
-        agent: { get: (input) => api.agents(input) },
-        workspaces: {
-          current: {
-            skills: { get: (input) => api.skills(input) },
-            defaultModel: { get: () => ({ data: null }) },
-            tools: {
-              builtin: { get: () => [] },
-              api: { get: () => [] },
-              workflow: { get: () => [] },
-              mcp: { get: () => [] },
-            },
-            models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
-            plugin: {
-              list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
-            },
+function installPaletteApi() {
+  return installFakeApi({
+    console: {
+      apps: { get: () => emptyPage },
+      datasets: { get: () => emptyPage },
+      agent: {
+        get: () => ({ ...emptyPage, publication_counts: { drafts: 0, published: 0 } }),
+      },
+      workspaces: {
+        current: {
+          skills: { get: () => emptyPage },
+          defaultModel: { get: () => ({ data: null }) },
+          tools: {
+            builtin: { get: () => [] },
+            api: { get: () => [] },
+            workflow: { get: () => [] },
+            mcp: { get: () => [] },
+          },
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+          plugin: {
+            list: { installations: { ids: { post: () => ({ plugins: [] }) } } },
           },
         },
       },
-      marketplace: { searchAdvanced: (input) => api.marketplace(input) },
-    }),
-  )
+    },
+    marketplace: { searchAdvanced: () => ({ data: { plugins: [], total: 0 } }) },
+  })
+}
+let fake: ReturnType<typeof installPaletteApi>
+beforeEach(() => {
+  fake = installPaletteApi()
+  onTestFinished(fake)
 })
 
 function renderPalette(trigger: ReactNode = <MainNavSearchButton />) {
@@ -159,7 +150,11 @@ describe('desktop dialog', () => {
     await expectActiveOption(languageField, page.getByRole('option').first())
   })
   it('turns a suggested scope into a token that lists its first result highlighted', async () => {
-    api.datasets.mockResolvedValue({ ...emptyPage, data: [createDatasetFixture()], total: 1 })
+    fake.console.datasets.get.mockResolvedValue({
+      ...emptyPage,
+      data: [createDatasetFixture()],
+      total: 1,
+    })
     renderPalette()
     await openWithShortcut()
     const knowledge = 'app.gotoAnything.groups.knowledgeBases'

@@ -12,44 +12,45 @@ import { OverviewActivity } from '../overview-activity'
 import { OverviewTaskSync } from '../overview-task-sync'
 import { OverviewStateBoundary } from '../state-boundary'
 
-const service = {
-  drawerActivity: vi.fn(),
-  tasks: vi.fn(),
-}
+// Only the drawer bounds activity by date outside the cloud edition.
+const drawerActivity = vi.fn()
 
 describe('overview activity drawer', () => {
-  let client: ReturnType<typeof createConsoleQueryClient>
-  beforeEach(async () => {
-    await page.viewport(640, 600)
+  function installOverviewApi() {
     const data = createOverviewData()
-    onTestFinished(
-      installFakeApi({
-        console: {
-          knowledgeFs: {
-            spaces: {
-              byControlSpaceId: {
-                overview: {
-                  // Only the drawer bounds activity by date outside the cloud edition.
-                  activity: {
-                    get: ({ query }) =>
-                      query?.from_at ? service.drawerActivity() : { data: [], next_cursor: null },
-                  },
-                  stats: { get: () => data.stats },
-                  inventory: { get: () => data.inventory },
-                  attention: { get: () => data.attention },
-                  queryOutcomes: { get: () => data.outcomes },
+    return installFakeApi({
+      console: {
+        knowledgeFs: {
+          spaces: {
+            byControlSpaceId: {
+              overview: {
+                activity: {
+                  get: ({ query }) =>
+                    query?.from_at ? drawerActivity() : { data: [], next_cursor: null },
                 },
-                backgroundTasks: { get: () => service.tasks() },
+                stats: { get: () => data.stats },
+                inventory: { get: () => data.inventory },
+                attention: { get: () => data.attention },
+                queryOutcomes: { get: () => data.outcomes },
+              },
+              backgroundTasks: {
+                get: async () => ({ data: [task('running')], next_cursor: null }),
               },
             },
           },
-          workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
         },
-      }),
-    )
+        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+      },
+    })
+  }
+  let fake: ReturnType<typeof installOverviewApi>
+  let client: ReturnType<typeof createConsoleQueryClient>
+  beforeEach(async () => {
+    await page.viewport(640, 600)
+    fake = installOverviewApi()
+    onTestFinished(fake)
     vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval'] })
-    service.tasks.mockReset().mockResolvedValue({ data: [task('running')], next_cursor: null })
-    service.drawerActivity.mockReset().mockResolvedValue({
+    drawerActivity.mockReset().mockResolvedValue({
       data: [activity('activity-1', 1)],
       next_cursor: null,
     })
@@ -84,11 +85,14 @@ describe('overview activity drawer', () => {
   it('shows newly completed activity in the open drawer and retains earlier rows', async () => {
     const drawer = await openDrawer()
     await expect.element(drawer.getByText(/Synced 1 documents/)).toBeVisible()
-    service.drawerActivity.mockResolvedValue({
+    drawerActivity.mockResolvedValue({
       data: [activity('activity-2', 2), activity('activity-1', 1)],
       next_cursor: null,
     })
-    service.tasks.mockResolvedValue({ data: [task('completed')], next_cursor: null })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.mockResolvedValue({
+      data: [task('completed')],
+      next_cursor: null,
+    })
     await vi.advanceTimersByTimeAsync(2000)
 
     await expect.element(drawer.getByText(/Synced 2 documents/)).toBeVisible()
@@ -97,7 +101,7 @@ describe('overview activity drawer', () => {
   })
 
   it('retries a failed first request with a real control at a narrow viewport', async () => {
-    service.drawerActivity.mockRejectedValueOnce(
+    drawerActivity.mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network error' }),
     )
     const drawer = await openDrawer()
@@ -120,10 +124,13 @@ describe('overview activity drawer', () => {
   it('keeps the loaded activity readable when a task-completion refresh fails', async () => {
     const drawer = await openDrawer()
     await expect.element(drawer.getByText(/Synced 1 documents/)).toBeVisible()
-    service.drawerActivity.mockRejectedValueOnce(
+    drawerActivity.mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network error' }),
     )
-    service.tasks.mockResolvedValue({ data: [task('completed')], next_cursor: null })
+    fake.console.knowledgeFs.spaces.byControlSpaceId.backgroundTasks.get.mockResolvedValue({
+      data: [task('completed')],
+      next_cursor: null,
+    })
     await vi.advanceTimersByTimeAsync(2000)
 
     await expect

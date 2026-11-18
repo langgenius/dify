@@ -10,8 +10,6 @@ import TextGenerationImageUploader from '../text-generation-image-uploader'
 import { brokenImageUrl, imageFile, imageUrl } from './image-fixtures'
 
 vi.mock('@/next/navigation', () => ({ useParams: () => ({ token: 'shared-app' }) }))
-// Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
-const api = { upload: vi.fn<(file: File) => Promise<{ id: string }>>() }
 
 const createSettings = (overrides: Partial<VisionSettings> = {}): VisionSettings => ({
   enabled: true,
@@ -47,17 +45,14 @@ function UploadExample({
   )
 }
 
+let fake: ReturnType<typeof installFakeApi>
+const uploadRoute = () => fake.route('POST', 'public', '/files/upload')
 beforeEach(() => {
-  api.upload.mockReset().mockResolvedValue({ id: 'uploaded-image' })
-  onTestFinished(
-    installFakeApi({
-      routes: [
-        route('POST', 'public', '/files/upload', async ({ request }) =>
-          api.upload((await request.formData()).get('file') as File),
-        ),
-      ],
-    }),
-  )
+  // Public web-app uploads go through XMLHttpRequest to the public API, answered by the fake API.
+  fake = installFakeApi({
+    routes: [route('POST', 'public', '/files/upload', () => ({ id: 'uploaded-image' }))],
+  })
+  onTestFinished(fake)
 })
 afterEach(() => toast.dismiss())
 
@@ -110,7 +105,7 @@ it('explains a numeric string size limit and leaves the published list empty', a
   await expect
     .element(screen.getByRole('status', { name: 'Published images' }))
     .toHaveTextContent('[]')
-  expect(api.upload).not.toHaveBeenCalled()
+  expect(uploadRoute()).not.toHaveBeenCalled()
 })
 
 it('publishes an invalid remote link, enforces the count limit and recovers after removal', async () => {

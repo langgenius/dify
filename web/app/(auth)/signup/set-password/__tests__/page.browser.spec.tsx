@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import Cookies from 'js-cookie'
 import { userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -17,8 +16,6 @@ const navigation = vi.hoisted(() => ({
   replace: vi.fn(),
   search: 'token=register-token',
 }))
-
-const register = vi.fn<typeof consoleClient.emailRegister.post>()
 
 vi.mock('@/next/navigation', () => ({
   useRouter: () => ({ replace: navigation.replace }),
@@ -59,16 +56,21 @@ async function renderPage() {
   )
 }
 
+function installApi() {
+  return installFakeApi({
+    console: { emailRegister: { post: () => ({ result: 'fail', data: tokens }) } },
+  })
+}
+let fake: ReturnType<typeof installApi>
+
 beforeEach(() => {
-  onTestFinished(
-    installFakeApi({ console: { emailRegister: { post: (input) => register(input) } } }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
   tracking.rememberCreateAppExternalAttribution.mockReset()
   tracking.rememberRegistrationSuccess.mockReset()
   tracking.sendGAEvent.mockReset()
   navigation.replace.mockReset()
   navigation.search = 'token=register-token'
-  register.mockReset().mockResolvedValue({ result: 'fail', data: tokens })
   vi.mocked(getBrowserTimezone).mockReset().mockReturnValue('Asia/Shanghai')
   Cookies.remove('utm_info')
 })
@@ -89,7 +91,7 @@ it('submits the real locale and browser timezone through the native password for
   await userEvent.keyboard('{Enter}')
 
   await vi.waitFor(() =>
-    expect(register).toHaveBeenCalledWith(
+    expect(fake.console.emailRegister.post).toHaveBeenCalledWith(
       expect.objectContaining({
         body: {
           token: 'register-token',
@@ -115,17 +117,17 @@ it('revalidates confirmation when the native password value changes', async () =
   await expect.element(confirmation).toHaveAttribute('aria-invalid', 'true')
   await expect.element(confirmation).toHaveAccessibleDescription('accountSettings.account.notEqual')
   await expect.element(confirmation).toHaveFocus()
-  expect(register).not.toHaveBeenCalled()
+  expect(fake.console.emailRegister.post).not.toHaveBeenCalled()
 
   await userEvent.fill(password, 'DifferentPass123!')
 
   await expect.element(confirmation).not.toHaveAttribute('aria-invalid', 'true')
   await expect.element(screen.getByText('accountSettings.account.notEqual')).not.toBeInTheDocument()
-  expect(register).not.toHaveBeenCalled()
+  expect(fake.console.emailRegister.post).not.toHaveBeenCalled()
 })
 
 it('records successful registration and returns to the console home', async () => {
-  register.mockResolvedValue({ result: 'success', data: tokens })
+  fake.console.emailRegister.post.mockResolvedValue({ result: 'success', data: tokens })
   const screen = await renderPage()
   await userEvent.fill(screen.getByLabelText('accountSettings.account.newPassword'), validPassword)
   await userEvent.fill(
@@ -149,7 +151,7 @@ it('records successful registration and returns to the console home', async () =
 
 it('returns to a requested console page after registration', async () => {
   navigation.search = 'token=register-token&redirect_url=%2Fapps%3Ftag%3Dworkflow'
-  register.mockResolvedValue({ result: 'success', data: tokens })
+  fake.console.emailRegister.post.mockResolvedValue({ result: 'success', data: tokens })
   const screen = await renderPage()
   await userEvent.fill(screen.getByLabelText('accountSettings.account.newPassword'), validPassword)
   await userEvent.fill(
@@ -163,7 +165,7 @@ it('returns to a requested console page after registration', async () => {
 
 it('records UTM attribution and clears its browser cookie after registration', async () => {
   Cookies.set('utm_info', JSON.stringify({ utm_source: 'community', slug: 'partner-launch' }))
-  register.mockResolvedValue({ result: 'success', data: tokens })
+  fake.console.emailRegister.post.mockResolvedValue({ result: 'success', data: tokens })
   const screen = await renderPage()
   await userEvent.fill(screen.getByLabelText('accountSettings.account.newPassword'), validPassword)
   await userEvent.fill(

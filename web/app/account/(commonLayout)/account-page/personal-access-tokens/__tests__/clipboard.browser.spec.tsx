@@ -1,9 +1,7 @@
-import type { consoleClient } from '@/service/console'
 import copy from 'copy-to-clipboard'
 import { installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const create = vi.fn<typeof consoleClient.account.personalAccessTokens.post>()
 vi.unmock('react-i18next')
 // boundary: clipboard denial is an external failure; the real form owns retry feedback.
 vi.mock('copy-to-clipboard', () => ({ default: vi.fn() }))
@@ -12,13 +10,15 @@ it('keeps the one-time secret available after clipboard denial and clears the er
     installFakeApi({
       console: {
         account: {
-          personalAccessTokens: { get: () => tokenList(), post: (input) => create(input) },
+          personalAccessTokens: {
+            get: () => tokenList(),
+            post: () => ({ ...token, secret: 'dpat_copy_retry' }),
+          },
         },
       },
     }),
   )
   vi.mocked(copy).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
-  create.mockResolvedValue({ ...token, secret: 'dpat_copy_retry' })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Create token' }).click()
   const dialog = screen.getByRole('dialog')

@@ -1,14 +1,12 @@
 import type { AgentLogResponse } from '@dify/contracts/api/console/apps/types.gen'
 import type { ComponentProps } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import type { consoleClient } from '@/service/console'
 import { userEvent } from 'vite-plus/test/browser'
 import { toast } from '@/app/notifications'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import AgentLogDetail from '../detail'
 import { renderAgentLog } from './browser-test-env'
 
-const fetchAgentLogDetail = vi.fn<typeof consoleClient.apps.byAppId.agent.logs.get>()
 // The contract requires UUID app ids.
 const appId = '0f8e2c1a-7b3d-4e5f-8a9b-0c1d2e3f4a5b'
 
@@ -74,26 +72,29 @@ async function renderDetail(props: Partial<ComponentProps<typeof AgentLogDetail>
   )
 }
 
-beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        apps: { byAppId: { agent: { logs: { get: (input) => fetchAgentLogDetail(input) } } } },
+const installApi = () =>
+  installFakeApi({
+    console: {
+      apps: {
+        byAppId: { agent: { logs: { get: () => createResponse() } } },
       },
-    }),
-  )
+    },
+  })
+let fake: ReturnType<typeof installApi>
+
+beforeEach(() => {
+  fake = installApi()
+  onTestFinished(fake)
   toast.dismiss()
-  fetchAgentLogDetail.mockReset()
 })
 
 it('shows loading until the requested record resolves', async () => {
-  fetchAgentLogDetail.mockReturnValue(new Promise(() => {}))
+  fake.console.apps.byAppId.agent.logs.get.mockReturnValue(new Promise(() => {}))
   const { screen } = await renderDetail()
   await expect.element(screen.getByRole('progressbar')).toBeVisible()
 })
 
 it('renders the requested inputs, outputs and execution metadata in real readonly editors', async () => {
-  fetchAgentLogDetail.mockResolvedValue(createResponse())
   const { screen } = await renderDetail()
   await expect.element(screen.getByText('User')).toBeVisible()
   const editors = screen.getByTestId('monaco-editor').all()
@@ -107,7 +108,6 @@ it('renders the requested inputs, outputs and execution metadata in real readonl
 })
 
 it('switches between detail and tracing with native keyboard focus without refetching', async () => {
-  fetchAgentLogDetail.mockResolvedValue(createResponse())
   const { screen } = await renderDetail()
   const detail = screen.getByRole('button', { name: 'DETAIL' })
   const tracing = screen.getByRole('button', { name: 'TRACING' })
@@ -121,13 +121,13 @@ it('switches between detail and tracing with native keyboard focus without refet
   await expect.element(detail).toHaveFocus()
   await userEvent.keyboard('{Enter}')
   await expect.element(screen.getByText('User')).toBeVisible()
-  expect(fetchAgentLogDetail).toHaveBeenCalledOnce()
+  expect(fake.console.apps.byAppId.agent.logs.get).toHaveBeenCalledOnce()
 })
 
 it('shows a failed execution consistently in its summary and metadata', async () => {
   const failed = createResponse()
   failed.meta.status = 'failed'
-  fetchAgentLogDetail.mockResolvedValue(failed)
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValue(failed)
   const { screen } = await renderDetail()
   await expect.element(screen.getByText('Failure')).toBeVisible()
   await expect.element(screen.getByText('FAILED')).toBeVisible()
@@ -135,7 +135,7 @@ it('shows a failed execution consistently in its summary and metadata', async ()
 })
 
 it('removes loading and reports the service error', async () => {
-  fetchAgentLogDetail.mockRejectedValue(
+  fake.console.apps.byAppId.agent.logs.get.mockRejectedValue(
     apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'API Error' }),
   )
   const { screen } = await renderDetail()
@@ -144,7 +144,7 @@ it('removes loading and reports the service error', async () => {
 })
 
 it('summarizes empty and repeated trace data from the service response', async () => {
-  fetchAgentLogDetail.mockResolvedValueOnce(createResponse({ iterations: [] }))
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValueOnce(createResponse({ iterations: [] }))
   const { rerender, screen } = await renderDetail()
   await expect.element(screen.getByText('Null')).toBeVisible()
   await expect.element(screen.getByText('0', { exact: true })).toBeVisible()
@@ -160,7 +160,7 @@ it('summarizes empty and repeated trace data from the service response', async (
       ],
     },
   ]
-  fetchAgentLogDetail.mockResolvedValueOnce(repeated)
+  fake.console.apps.byAppId.agent.logs.get.mockResolvedValueOnce(repeated)
   await rerender(
     <AgentLogDetail
       appId={appId}

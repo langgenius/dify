@@ -3,7 +3,6 @@ import { render } from 'vitest-browser-react'
 import { installFakeApi } from '@/test/fake-api'
 import { PluginImg } from '../plugin-img'
 
-const request = vi.fn<(input: unknown) => Blob | Promise<Blob>>()
 // boundary: keep the unrelated marketplace image fallback local; all asset bytes still go
 // through the generated Console client and the browser's real image decoder.
 vi.mock('@/env', async (importOriginal) => {
@@ -18,14 +17,15 @@ vi.mock('@/env', async (importOriginal) => {
   }
 })
 
+const installApi = () =>
+  installFakeApi({
+    console: { workspaces: { current: { plugin: { asset: { get: () => new Blob() } } } } },
+  })
+let fake: ReturnType<typeof installApi>
+const assetRequest = () => fake.console.workspaces.current.plugin.asset.get
 beforeEach(() => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: { current: { plugin: { asset: { get: (input) => request(input) } } } },
-      },
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 async function pngAsset(width: number, height: number) {
@@ -48,8 +48,7 @@ async function pngAsset(width: number, height: number) {
 // happy-dom cannot decode an octet-stream asset, or establish that a revoked
 // object URL is unusable. These are the additional browser regression contracts.
 it('decodes binary assets and retires object URLs on source replacement and unmount', async () => {
-  request.mockReset()
-  request.mockResolvedValue(await pngAsset(2, 3))
+  assetRequest().mockResolvedValue(await pngAsset(2, 3))
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 300_000 } },
   })
@@ -71,7 +70,7 @@ it('decodes binary assets and retires object URLs on source replacement and unmo
     expect([firstImage.naturalWidth, firstImage.naturalHeight]).toEqual([2, 3])
     const firstUrl = firstImage.src
     expect(revoke).not.toHaveBeenCalled()
-    request.mockResolvedValue(await pngAsset(4, 5))
+    assetRequest().mockResolvedValue(await pngAsset(4, 5))
     await screen.rerender(view('_assets/second.png'))
     await expect
       .element(screen.getByTestId('gallery-image'), { timeout: 5_000 })
@@ -88,7 +87,7 @@ it('decodes binary assets and retires object URLs on source replacement and unmo
     const releasedImage = new Image()
     releasedImage.src = secondUrl
     await expect(releasedImage.decode()).rejects.toThrow()
-    expect(request).toHaveBeenCalledTimes(2)
+    expect(assetRequest()).toHaveBeenCalledTimes(2)
   } finally {
     await screen.unmount()
     queryClient.clear()
@@ -97,9 +96,8 @@ it('decodes binary assets and retires object URLs on source replacement and unmo
 })
 
 it('recovers after a malformed asset causes the real gallery to remove its image button', async () => {
-  request.mockReset()
-  request.mockImplementation(
-    async () => new Blob([new Uint8Array([0, 1, 2, 3])], { type: 'application/octet-stream' }),
+  assetRequest().mockReturnValue(
+    new Blob([new Uint8Array([0, 1, 2, 3])], { type: 'application/octet-stream' }),
   )
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 300_000 } },
@@ -124,7 +122,7 @@ it('recovers after a malformed asset causes the real gallery to remove its image
       .element(screen.getByRole('button', { name: /^common\.imageGallery\.previewImage/ }))
       .not.toBeInTheDocument()
 
-    request.mockResolvedValue(await pngAsset(6, 7))
+    assetRequest().mockResolvedValue(await pngAsset(6, 7))
     await screen.rerender(view('_assets/valid.png'))
     await expect
       .element(screen.getByRole('button', { name: /^common\.imageGallery\.previewImage/ }))
@@ -136,7 +134,7 @@ it('recovers after a malformed asset causes the real gallery to remove its image
     if (!(recoveredImage instanceof HTMLImageElement)) throw new TypeError('Expected an image')
     await recoveredImage.decode()
     expect([recoveredImage.naturalWidth, recoveredImage.naturalHeight]).toEqual([6, 7])
-    expect(request).toHaveBeenCalledTimes(2)
+    expect(assetRequest()).toHaveBeenCalledTimes(2)
   } finally {
     document.removeEventListener('error', handleImageError, true)
     await screen.unmount()

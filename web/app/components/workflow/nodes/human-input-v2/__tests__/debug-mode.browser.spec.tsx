@@ -15,9 +15,18 @@ import { apiError, installFakeApi } from '@/test/fake-api'
 import DebugMode from '../components/debug-mode'
 import { createChannelsQueryClient } from './channel-fixtures'
 
-const api = {
-  channels: vi.fn<() => Promise<HumanInputTestChannelsResponse>>(),
+function installChannelsApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          humanInput: { v2: { testChannels: { get: () => ({ channels: ['email', 'slack'] }) } } },
+        },
+      },
+    },
+  })
 }
+let fake: ReturnType<typeof installChannelsApi>
 
 vi.unmock('react-i18next')
 const i18n = createInstance().use(initReactI18next)
@@ -82,20 +91,11 @@ const settings = () => page.getByRole('status', { name: 'Debug settings' })
 
 beforeEach(async () => {
   await page.viewport(1100, 700)
-  api.channels.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: { humanInput: { v2: { testChannels: { get: () => api.channels() } } } },
-        },
-      },
-    }),
-  )
+  fake = installChannelsApi()
+  onTestFinished(fake)
 })
 
 it('only offers channels configured in the current workspace', async () => {
-  api.channels.mockResolvedValue({ channels: ['email', 'slack'] })
   await renderOwner(
     {},
     undefined,
@@ -106,11 +106,13 @@ it('only offers channels configured in the current workspace', async () => {
   await expect.element(channel('slack')).toBeVisible()
   await expect.element(channel('feishu')).not.toBeInTheDocument()
   expect(page.getByRole('checkbox').all()).toHaveLength(2)
-  expect(api.channels).toHaveBeenCalledTimes(1)
+  expect(fake.console.workspaces.current.humanInput.v2.testChannels.get).toHaveBeenCalledTimes(1)
 })
 
 it('reuses fresh workspace channels when another app editor opens', async () => {
-  api.channels.mockResolvedValue({ channels: ['slack'] })
+  fake.console.workspaces.current.humanInput.v2.testChannels.get.mockReturnValue({
+    channels: ['slack'],
+  })
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 5 * 60 * 1000 } },
   })
@@ -122,7 +124,7 @@ it('reuses fresh workspace channels when another app editor opens', async () => 
   await renderOwner({}, undefined, client, 'another-app')
   await configure().click()
   await expect.element(channel('slack')).toBeVisible()
-  expect(api.channels).toHaveBeenCalledTimes(1)
+  expect(fake.console.workspaces.current.humanInput.v2.testChannels.get).toHaveBeenCalledTimes(1)
 })
 
 it('explains the final channel guard and keeps its selection after pointer and keyboard activation', async () => {
@@ -172,11 +174,9 @@ it('keeps empty workspace configuration unavailable without changing the node', 
 })
 
 it('does not fall back to all channels after a load failure and can retry', async () => {
-  api.channels
-    .mockRejectedValueOnce(
-      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' }),
-    )
-    .mockResolvedValue({ channels: ['email', 'slack'] })
+  fake.console.workspaces.current.humanInput.v2.testChannels.get.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' }),
+  )
   await renderOwner(
     {},
     undefined,

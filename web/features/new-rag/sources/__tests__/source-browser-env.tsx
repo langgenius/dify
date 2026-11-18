@@ -22,7 +22,6 @@ export async function settle() {
     () => server.inflight === 0 && [...clients].every((client) => client.isFetching() === 0),
   )
 }
-export const lastInput = (resource: string) => server.inputs.get(resource)?.at(-1)
 export async function renderSources(
   ui: ReactElement,
   {

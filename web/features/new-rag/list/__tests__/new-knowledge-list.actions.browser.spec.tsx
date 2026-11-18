@@ -1,66 +1,54 @@
-import type { consoleClient } from '@/service/console'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { datasetsPage, members, setup, space, spacesPage } from './new-knowledge-list-test-env'
 
-const api = {
-  spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
-  deleteSpace: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.delete>(),
-  members: vi.fn<typeof consoleClient.workspaces.current.members.get>(),
-  upgradeJobs: vi.fn<typeof consoleClient.datasets.knowledgeFsUpgradeJobs.get>(),
-  upgradeJob: vi.fn<typeof consoleClient.datasets.byDatasetId.knowledgeFsUpgrades.byJobId.get>(),
-  datasets: vi.fn<typeof consoleClient.datasets.get>(),
+function installListApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async () => spacesPage(),
+          byControlSpaceId: { delete: async () => {} },
+        },
+      },
+      workspaces: { current: { members: { get: async () => ({ accounts: members }) } } },
+      datasets: {
+        get: async () => datasetsPage([]),
+        knowledgeFsUpgradeJobs: {
+          get: async () => ({ data: [] }),
+        },
+        byDatasetId: {
+          knowledgeFsUpgrades: {
+            byJobId: { get: () => new Promise(() => {}) },
+          },
+        },
+        apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
+        externalKnowledgeApi: {
+          get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
+        },
+      },
+      tags: {
+        get: () => [
+          { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
+          { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
+        ],
+      },
+    },
+  })
 }
+let fake: ReturnType<typeof installListApi>
 
 describe('NewKnowledgeList card actions', () => {
   beforeEach(async () => {
     await page.viewport(1000, 760)
-    onTestFinished(
-      installFakeApi({
-        console: {
-          knowledgeFs: {
-            spaces: {
-              get: (input) => api.spaces(input),
-              byControlSpaceId: {
-                delete: async (input) => {
-                  await api.deleteSpace(input)
-                },
-              },
-            },
-          },
-          workspaces: { current: { members: { get: (input) => api.members(input) } } },
-          datasets: {
-            get: (input) => api.datasets(input),
-            knowledgeFsUpgradeJobs: { get: (input) => api.upgradeJobs(input) },
-            byDatasetId: {
-              knowledgeFsUpgrades: { byJobId: { get: (input) => api.upgradeJob(input) } },
-            },
-            apiBaseInfo: { get: () => ({ api_base_url: 'https://api.example.com' }) },
-            externalKnowledgeApi: {
-              get: () => ({ data: [], has_more: false, limit: 100, page: 1, total: 0 }),
-            },
-          },
-          tags: {
-            get: () => [
-              { binding_count: '1', id: 'tag-1', name: 'Customer support', type: 'knowledge' },
-              { binding_count: '1', id: 'tag-2', name: 'Public docs', type: 'knowledge' },
-            ],
-          },
-        },
-      }),
-    )
-    api.spaces.mockResolvedValue(spacesPage())
-    api.deleteSpace.mockResolvedValue(undefined)
-    api.members.mockResolvedValue({ accounts: members })
-    api.upgradeJobs.mockResolvedValue({ data: [] })
-    api.upgradeJob.mockImplementation(() => new Promise(() => {}))
-    api.datasets.mockResolvedValue(datasetsPage([]))
+    fake = installListApi()
+    onTestFinished(fake)
   })
 
   describe('card actions', () => {
     it('keeps card actions outside the link and opens edit settings', async () => {
       const user = userEvent
-      api.spaces.mockResolvedValue(
+      fake.console.knowledgeFs.spaces.get.mockResolvedValue(
         spacesPage([
           space('space-1', 'Support knowledge', {
             permission_keys: [
@@ -86,7 +74,7 @@ describe('NewKnowledgeList card actions', () => {
 
     it('deletes after the exact name is confirmed and refreshes the collection', async () => {
       const user = userEvent
-      api.spaces
+      fake.console.knowledgeFs.spaces.get
         .mockResolvedValueOnce(
           spacesPage([
             space('space-1', 'Support knowledge', {
@@ -114,19 +102,21 @@ describe('NewKnowledgeList card actions', () => {
         .element(page.getByRole('link', { name: 'Support knowledge' }))
         .not.toBeInTheDocument()
       await expect.element(page.getByRole('region', { name: 'knowledgeSpace.new' })).toHaveFocus()
-      expect(api.deleteSpace).toHaveBeenCalledWith({ params: { control_space_id: 'space-1' } })
+      expect(fake.console.knowledgeFs.spaces.byControlSpaceId.delete).toHaveBeenCalledWith({
+        params: { control_space_id: 'space-1' },
+      })
     })
 
     it('keeps the confirmation open with the failure when deletion fails', async () => {
       const user = userEvent
-      api.spaces.mockResolvedValue(
+      fake.console.knowledgeFs.spaces.get.mockResolvedValue(
         spacesPage([
           space('space-1', 'Support knowledge', {
             permission_keys: ['knowledge_space_delete', 'knowledge_space_read'],
           }),
         ]),
       )
-      api.deleteSpace.mockRejectedValueOnce(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.delete.mockRejectedValueOnce(
         apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network down' }),
       )
       await setup()

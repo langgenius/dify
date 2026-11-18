@@ -11,30 +11,6 @@ import { createTestQueryClient } from '@/test/query-client'
 import ScopeDetails from '../scope-details'
 import { renderWithTokenMessages as render } from './browser-test-env'
 
-const responses = { call: vi.fn() }
-beforeEach(() => {
-  const answer = (operation: string) => (input: unknown) => responses.call(operation, input)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        account: {
-          personalAccessTokens: {
-            get: answer('account.personalAccessTokens.get'),
-            post: answer('account.personalAccessTokens.post'),
-            byTokenId: {
-              get: answer('account.personalAccessTokens.byTokenId.get'),
-              delete: answer('account.personalAccessTokens.byTokenId.delete'),
-            },
-          },
-          personalAccessTokenResources: { get: answer('account.personalAccessTokenResources.get') },
-          personalAccessTokenWorkspaces: {
-            get: answer('account.personalAccessTokenWorkspaces.get'),
-          },
-        },
-      },
-    }),
-  )
-})
 vi.unmock('react-i18next')
 
 beforeEach(async () => {
@@ -108,7 +84,11 @@ it.each([
     resources,
     workspaces: [],
   }
-  responses.call.mockResolvedValue(detail)
+  onTestFinished(
+    installFakeApi({
+      console: { account: { personalAccessTokens: { byTokenId: { get: () => detail } } } },
+    }),
+  )
   const queryClient = createTestQueryClient()
   seedSystemFeatures(queryClient)
   const screen = await render(
@@ -146,45 +126,54 @@ it('opens saved expired access with workspace roles and unavailable items withou
     created_at: '2026-07-01T00:00:00Z',
     expires_at: '2026-09-29T00:00:00Z',
   }
-  responses.call.mockImplementation(async (operation: string) =>
-    operation.includes('byTokenId')
-      ? {
-          token: expired,
-          resources: [
-            { ...builtIn, display_name: 'Customer FAQ Bot', workspace_name: 'Acme' },
-            {
-              ...builtIn,
-              resource_id: staging.resource_id,
-              display_name: 'Built-in app',
-              workspace_name: "fatelei's Workspace",
-              app_deployments: [],
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: () => tokenList([expired]),
+            byTokenId: {
+              get: () => ({
+                token: expired,
+                resources: [
+                  { ...builtIn, display_name: 'Customer FAQ Bot', workspace_name: 'Acme' },
+                  {
+                    ...builtIn,
+                    resource_id: staging.resource_id,
+                    display_name: 'Built-in app',
+                    workspace_name: "fatelei's Workspace",
+                    app_deployments: [],
+                  },
+                  {
+                    ...production,
+                    resource_type: 'dataset',
+                    display_name: 'Internal Docs',
+                    available: false,
+                    reason: 'access_removed',
+                  },
+                ],
+                workspaces: [
+                  {
+                    workspace_id: production.workspace_id,
+                    display_name: 'Production',
+                    role: 'owner',
+                    available: true,
+                    reason: null,
+                  },
+                  {
+                    workspace_id: staging.resource_id,
+                    display_name: 'Missing workspace',
+                    role: null,
+                    available: false,
+                    reason: null,
+                  },
+                ],
+              }),
             },
-            {
-              ...production,
-              resource_type: 'dataset',
-              display_name: 'Internal Docs',
-              available: false,
-              reason: 'access_removed',
-            },
-          ],
-          workspaces: [
-            {
-              workspace_id: production.workspace_id,
-              display_name: 'Production',
-              role: 'owner',
-              available: true,
-              reason: null,
-            },
-            {
-              workspace_id: staging.resource_id,
-              display_name: 'Missing workspace',
-              role: null,
-              available: false,
-              reason: null,
-            },
-          ],
-        }
-      : tokenList([expired]),
+          },
+        },
+      },
+    }),
   )
   const { screen } = await renderTokenPage()
   const row = screen.getByRole('row', { name: /release-pipeline/ })
@@ -223,21 +212,30 @@ it('explains cross-workspace deployment access without labeling it revoked or ex
     unavailable_count: 0,
     expires_at: '2027-01-13T00:00:00Z',
   }
-  responses.call.mockImplementation(async (operation: string) =>
-    operation.includes('byTokenId')
-      ? {
-          token: active,
-          resources: [
-            {
-              ...production,
-              workspace_name: 'Other workspace',
-              available: false,
-              reason: 'workspace_not_current',
+  onTestFinished(
+    installFakeApi({
+      console: {
+        account: {
+          personalAccessTokens: {
+            get: () => tokenList([active]),
+            byTokenId: {
+              get: () => ({
+                token: active,
+                resources: [
+                  {
+                    ...production,
+                    workspace_name: 'Other workspace',
+                    available: false,
+                    reason: 'workspace_not_current',
+                  },
+                ],
+                workspaces: [],
+              }),
             },
-          ],
-          workspaces: [],
-        }
-      : tokenList([active]),
+          },
+        },
+      },
+    }),
   )
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: token.name }).click()

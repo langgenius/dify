@@ -1,4 +1,3 @@
-import type { consoleClient } from '@/service/console'
 import { zAppPagination } from '@dify/contracts/api/console/apps/zod.gen'
 import { zGetFeaturesResponse } from '@dify/contracts/api/console/features/zod.gen'
 import { createInstance } from 'i18next'
@@ -15,9 +14,6 @@ import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { installFakeApi } from '@/test/fake-api'
 import { List } from '../list'
 
-const api = {
-  apps: vi.fn<typeof consoleClient.apps.get>(),
-}
 vi.unmock('react-i18next')
 vi.mock('@/next/navigation', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/next/navigation')>()),
@@ -34,15 +30,11 @@ async function setup(listUrl: string) {
   await page.viewport(1280, 800)
   window.history.replaceState(null, '', '/previous-page')
   window.history.pushState(null, '', listUrl)
-  api.apps
-    .mockReset()
-    .mockResolvedValue(
-      zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 }),
-    )
+  const noApps = zAppPagination.parse({ data: [], page: 1, limit: 30, has_more: false, total: 0 })
   onTestFinished(
     installFakeApi({
       console: {
-        apps: { get: (input) => api.apps(input), starred: { get: (input) => api.apps(input) } },
+        apps: { get: () => noApps, starred: { get: () => noApps } },
         explore: { apps: { get: () => ({ recommended_apps: [], categories: [] }) } },
         features: { get: () => zGetFeaturesResponse.parse({}) },
         tags: { get: () => [] },

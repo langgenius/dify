@@ -7,16 +7,15 @@ import { installFakeApi } from '@/test/fake-api'
 import { CloudPlanCard } from '../plan-card'
 import { PlanFeatureInfotip } from '../plan-card/features'
 
-const api = {
-  subscription: vi.fn<typeof consoleClient.billing.subscription.get>(),
+function installCheckoutApi() {
+  return installFakeApi({
+    console: { billing: { subscription: { get: async () => ({ url: '' }) } } },
+  })
 }
+let fake: ReturnType<typeof installCheckoutApi>
 beforeEach(() => {
-  api.subscription.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: { billing: { subscription: { get: (input) => api.subscription(input) } } },
-    }),
-  )
+  fake = installCheckoutApi()
+  onTestFinished(fake)
 })
 
 it('keeps both education checkout actions inside the dialog on a narrow phone', async () => {
@@ -87,14 +86,14 @@ it.each(['professional', 'sandbox'] as const)(
     // boundary: keep checkout pending to observe the actual loading button.
     const request =
       createDeferred<Awaited<ReturnType<typeof consoleClient.billing.subscription.get>>>()
-    api.subscription.mockReturnValue(request.promise)
+    fake.console.billing.subscription.get.mockReturnValue(request.promise)
     try {
       await action.click()
       await expect.element(action).toHaveAttribute('aria-disabled', 'true')
       await expect.element(action).toHaveFocus()
       expect(colors()).toEqual(ready)
       await userEvent.keyboard('{Enter}')
-      await expect.poll(() => api.subscription).toHaveBeenCalledTimes(1)
+      await expect.poll(() => fake.console.billing.subscription.get).toHaveBeenCalledTimes(1)
     } finally {
       request.resolve({ url: '' })
     }

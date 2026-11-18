@@ -44,16 +44,6 @@ type OverviewResource =
 let queryData = createOverviewData()
 
 const server = {
-  calls: {
-    activity: vi.fn(),
-    attention: vi.fn(),
-    inventory: vi.fn(),
-    members: vi.fn(),
-    outcomes: vi.fn(),
-    source: vi.fn(),
-    stats: vi.fn(),
-    tasks: vi.fn(),
-  },
   failing: new Set<string>(),
   held: new Map<string, Promise<void>>(),
 }
@@ -61,8 +51,7 @@ const server = {
 function installOverviewApi() {
   const respond =
     <T,>(resource: OverviewResource, data: () => T) =>
-    async (input: unknown): Promise<T> => {
-      server.calls[resource](input)
+    async (): Promise<T> => {
       await server.held.get(resource)
       if (server.failing.has(resource))
         throw apiError({
@@ -72,83 +61,82 @@ function installOverviewApi() {
         })
       return structuredClone(data())
     }
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            byControlSpaceId: {
-              backgroundTasks: {
-                get: respond('tasks', () => ({ data: queryData.tasks, next_cursor: null })),
-              },
-              sources: {
-                bySourceId: {
-                  get: respond('source', () => ({
-                    created_at: '2026-07-29T08:00:00Z',
-                    id: 'source-1',
-                    knowledge_space_id: 'knowledge-1',
-                    metadata: {},
-                    permission_scope: [],
-                    status: 'active' as const,
-                    type: 'connector' as const,
-                    updated_at: '2026-07-29T08:00:00Z',
-                    uri: 'notion://support-sop',
-                    version: 1,
-                    ...queryData.source,
-                  })),
-                },
-              },
-              overview: {
-                activity: { get: respond('activity', () => queryData.activity) },
-                attention: { get: respond('attention', () => queryData.attention) },
-                inventory: { get: respond('inventory', () => queryData.inventory) },
-                queryOutcomes: { get: respond('outcomes', () => queryData.outcomes) },
-                stats: { get: respond('stats', () => queryData.stats) },
-              },
-              settings: {
-                get: () => ({
-                  active_profile_available: true,
-                  active_profile_revisions: { embedding: 1, retrieval: 1 },
-                  capabilities: {
-                    deep: true,
-                    index: true,
-                    ingest: true,
-                    query: true,
-                    research: true,
-                    source_sync: true,
-                  },
-                  configuration_state: 'active',
-                  embedding: null,
-                  issues: [],
-                  retrieval: null,
-                  revision: 1,
-                }),
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          byControlSpaceId: {
+            backgroundTasks: {
+              get: respond('tasks', () => ({ data: queryData.tasks, next_cursor: null })),
+            },
+            sources: {
+              bySourceId: {
+                get: respond('source', () => ({
+                  created_at: '2026-07-29T08:00:00Z',
+                  id: 'source-1',
+                  knowledge_space_id: 'knowledge-1',
+                  metadata: {},
+                  permission_scope: [],
+                  status: 'active' as const,
+                  type: 'connector' as const,
+                  updated_at: '2026-07-29T08:00:00Z',
+                  uri: 'notion://support-sop',
+                  version: 1,
+                  ...queryData.source,
+                })),
               },
             },
-          },
-        },
-        workspaces: {
-          current: {
-            members: {
-              get: respond('members', () => ({
-                accounts: [
-                  {
-                    avatar_url: null,
-                    email: 'ada@example.com',
-                    id: 'member-1',
-                    name: 'Ada',
-                    role: 'normal',
-                    status: 'active',
-                  },
-                ],
-              })),
+            overview: {
+              activity: { get: respond('activity', () => queryData.activity) },
+              attention: { get: respond('attention', () => queryData.attention) },
+              inventory: { get: respond('inventory', () => queryData.inventory) },
+              queryOutcomes: { get: respond('outcomes', () => queryData.outcomes) },
+              stats: { get: respond('stats', () => queryData.stats) },
+            },
+            settings: {
+              get: () => ({
+                active_profile_available: true,
+                active_profile_revisions: { embedding: 1, retrieval: 1 },
+                capabilities: {
+                  deep: true,
+                  index: true,
+                  ingest: true,
+                  query: true,
+                  research: true,
+                  source_sync: true,
+                },
+                configuration_state: 'active',
+                embedding: null,
+                issues: [],
+                retrieval: null,
+                revision: 1,
+              }),
             },
           },
         },
       },
-    }),
-  )
+      workspaces: {
+        current: {
+          members: {
+            get: respond('members', () => ({
+              accounts: [
+                {
+                  avatar_url: null,
+                  email: 'ada@example.com',
+                  id: 'member-1',
+                  name: 'Ada',
+                  role: 'normal',
+                  status: 'active',
+                },
+              ],
+            })),
+          },
+        },
+      },
+    },
+  })
 }
+let fake: ReturnType<typeof installOverviewApi>
 /** Holds a resource's responses open until the returned release function is called. */
 function hold(resource: OverviewResource) {
   const gate = createDeferred<void>()
@@ -205,7 +193,8 @@ const emptyKnowledgeBase = () => {
 describe('KnowledgeOverviewPage metrics and readiness', () => {
   beforeEach(async () => {
     await page.viewport(1280, 900)
-    installOverviewApi()
+    fake = installOverviewApi()
+    onTestFinished(fake)
     server.failing.clear()
     server.held.clear()
     queryData = createOverviewData()
@@ -229,8 +218,12 @@ describe('KnowledgeOverviewPage metrics and readiness', () => {
       params: { control_space_id: 'space-1' },
       query: { window: '7d' },
     })
-    await expect.poll(() => server.calls.stats).toHaveBeenLastCalledWith(sevenDays)
-    expect(server.calls.outcomes).toHaveBeenLastCalledWith(sevenDays)
+    await expect
+      .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get)
+      .toHaveBeenLastCalledWith(sevenDays)
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get,
+    ).toHaveBeenLastCalledWith(sevenDays)
     await expect
       .poll(() => onUrlUpdate.mock.calls.at(-1)?.[0].searchParams.get('window'))
       .toBe('7d')
@@ -246,8 +239,12 @@ describe('KnowledgeOverviewPage metrics and readiness', () => {
       params: { control_space_id: 'space-1' },
       query: { window: '30d' },
     })
-    expect(server.calls.stats).toHaveBeenLastCalledWith(thirtyDays)
-    expect(server.calls.outcomes).toHaveBeenLastCalledWith(thirtyDays)
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.stats.get,
+    ).toHaveBeenLastCalledWith(thirtyDays)
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.overview.queryOutcomes.get,
+    ).toHaveBeenLastCalledWith(thirtyDays)
   })
 
   it('renders ratio fields from the API contract as percentages', async () => {

@@ -1,4 +1,4 @@
-import type { SnippetListItem } from '@/types/snippet'
+import type { SnippetListItemResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import { Toaster } from '@langgenius/dify-ui/toast'
 import { onTestFinished } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
@@ -15,28 +15,43 @@ import SnippetCard from '../snippet-card'
 
 // Snippet routes take UUID ids, and list items carry the author and icon fields.
 const snippetId = '00000000-0000-4000-8000-000000000001'
-const createSnippet = (overrides: Partial<SnippetListItem> = {}) =>
-  createSnippetListItemFixture({
-    id: snippetId,
-    author_name: 'Creator',
-    icon_info: null,
-    ...overrides,
-  })
+const createSnippet = (overrides: Partial<SnippetListItemResponse> = {}) =>
+  createSnippetListItemFixture({ id: snippetId, author_name: 'Creator', ...overrides })
 
 const sales = { id: 'tag-1', name: 'Sales', type: 'snippet' as const, binding_count: '0' }
 
-const api = {
-  list: vi.fn(),
-  update: vi.fn(),
-  remove: vi.fn(),
-  export: vi.fn(),
-  bindTags: vi.fn(),
-  members: vi.fn(),
-}
 // boundary: the application router is outside these list operations.
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
-let snippets: SnippetListItem[]
+let snippets: SnippetListItemResponse[]
+const members = {
+  accounts: [
+    {
+      id: 'creator-id',
+      name: 'Creator',
+      email: 'creator@example.com',
+      role: 'editor',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: null,
+      created_at: null,
+      status: 'active',
+    },
+    {
+      id: 'updater-id',
+      name: 'Updater',
+      email: 'updater@example.com',
+      role: 'editor',
+      roles: [],
+      avatar: '',
+      avatar_url: '',
+      last_login_at: null,
+      created_at: null,
+      status: 'active',
+    },
+  ],
+}
 
 async function setup({
   permissions = ['snippets.create_and_modify', 'snippets.management'],
@@ -44,7 +59,7 @@ async function setup({
   list = false,
 }: {
   permissions?: string[]
-  snippet?: SnippetListItem
+  snippet?: SnippetListItemResponse
   list?: boolean
 } = {}) {
   const { wrapper: Providers, queryClient } = createConsoleQueryWrapper({
@@ -52,7 +67,7 @@ async function setup({
   })
   queryClient.setQueryData(
     consoleQuery.workspaces.current.members.get.queryKey({ input: {} }),
-    await api.members(),
+    members,
   )
   const { wrapper: UrlState } = createNuqsTestWrapper()
   await render(
@@ -96,77 +111,51 @@ async function remove() {
   return dialog
 }
 
+function installSnippetApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          customizedSnippets: {
+            get: () => ({
+              data: snippets,
+              page: 1,
+              limit: 30,
+              total: snippets.length,
+              has_more: false,
+            }),
+            bySnippetId: {
+              patch: ({ body }) => {
+                const changes = { ...body, name: body.name ?? snippets[0]!.name }
+                snippets = snippets.map((item) => ({ ...item, ...changes }))
+                return createSnippetFixture({ id: snippetId, ...changes })
+              },
+              delete: () => {
+                snippets = []
+              },
+              export: { get: () => 'kind: snippet\nname: Tone Rewriter\n' },
+            },
+          },
+          members: { get: () => members },
+        },
+      },
+      tagBindings: {
+        post: () => {
+          snippets = snippets.map((item) => ({ ...item, tags: [sales] }))
+          return { result: 'success' }
+        },
+      },
+      tags: { get: () => [sales] },
+    },
+  })
+}
+let fake: ReturnType<typeof installSnippetApi>
+
 beforeEach(() => {
   vi.resetAllMocks()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            customizedSnippets: {
-              get: (input) => api.list(input),
-              bySnippetId: {
-                patch: (input) => api.update(input),
-                delete: (input) => api.remove(input),
-                export: { get: (input) => api.export(input) },
-              },
-            },
-            members: { get: () => api.members() },
-          },
-        },
-        tagBindings: { post: (input) => api.bindTags(input) },
-        tags: { get: () => [sales] },
-      },
-    }),
-  )
   snippets = [createSnippet()]
-  api.list.mockImplementation(async () => ({
-    data: snippets,
-    page: 1,
-    limit: 30,
-    total: snippets.length,
-    has_more: false,
-  }))
-  api.update.mockImplementation(async ({ body }) => {
-    snippets = snippets.map((item) => ({ ...item, ...body }))
-    return createSnippetFixture({ id: snippetId, icon_info: null, ...body })
-  })
-  api.remove.mockImplementation(async () => {
-    snippets = []
-  })
-  api.bindTags.mockImplementation(async () => {
-    snippets = snippets.map((item) => ({ ...item, tags: [sales] }))
-    return { result: 'success' }
-  })
-  api.export.mockResolvedValue('kind: snippet\nname: Tone Rewriter\n')
-  api.members.mockResolvedValue({
-    accounts: [
-      {
-        id: 'creator-id',
-        name: 'Creator',
-        email: 'creator@example.com',
-        role: 'editor',
-        roles: [],
-        avatar: '',
-        avatar_url: '',
-        last_login_at: null,
-        created_at: null,
-        status: 'active',
-      },
-      {
-        id: 'updater-id',
-        name: 'Updater',
-        email: 'updater@example.com',
-        role: 'editor',
-        roles: [],
-        avatar: '',
-        avatar_url: '',
-        last_login_at: null,
-        created_at: null,
-        status: 'active',
-      },
-    ],
-  })
+  fake = installSnippetApi()
+  onTestFinished(fake)
 })
 afterEach(() => {
   toast.dismiss()
@@ -216,7 +205,7 @@ it('offers neither operations nor editable tags without snippet permissions', as
   await expect
     .element(page.getByRole('combobox', { name: 'common.tag.noTag: Tone Rewriter' }))
     .toBeDisabled()
-  expect(api.bindTags).not.toHaveBeenCalled()
+  expect(fake.console.tagBindings.post).not.toHaveBeenCalled()
 })
 
 it('exports the YAML content and filename through the real download owner', async () => {
@@ -230,7 +219,9 @@ it('exports the YAML content and filename through the real download owner', asyn
   expect(download.filename).toBe('Tone Rewriter.yml')
   expect(download.blob.type).toBe('application/yaml')
   expect(await download.blob.text()).toBe('kind: snippet\nname: Tone Rewriter\n')
-  expect(api.export).toHaveBeenCalledExactlyOnceWith(
+  expect(
+    fake.console.workspaces.current.customizedSnippets.bySnippetId.export.get,
+  ).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       params: { snippet_id: snippetId },
       query: { include_secret: 'false' },
@@ -240,7 +231,7 @@ it('exports the YAML content and filename through the real download owner', asyn
 
 it('shows an export failure without starting a download', async () => {
   const downloads = captureDownloads()
-  api.export.mockRejectedValueOnce(
+  fake.console.workspaces.current.customizedSnippets.bySnippetId.export.get.mockRejectedValueOnce(
     apiError({ status: 503, code: 'EXPORT_FAILED', message: 'export failed' }),
   )
   await setup({ permissions: ['snippets.create_and_modify'] })
@@ -261,7 +252,7 @@ it('refreshes the real list with edited info after saving', async () => {
 })
 
 it('keeps an edit failure visible with the entered values and the unchanged list', async () => {
-  api.update.mockRejectedValueOnce(
+  fake.console.workspaces.current.customizedSnippets.bySnippetId.patch.mockRejectedValueOnce(
     apiError({ status: 503, code: 'UPDATE_FAILED', message: 'Update failed' }),
   )
   await setup({ list: true })
@@ -287,7 +278,7 @@ it('removes a confirmed snippet from the real list', async () => {
 })
 
 it('keeps a failed deletion open and the snippet in the list', async () => {
-  api.remove.mockRejectedValueOnce(
+  fake.console.workspaces.current.customizedSnippets.bySnippetId.delete.mockRejectedValueOnce(
     apiError({ status: 503, code: 'DELETE_FAILED', message: 'Delete failed' }),
   )
   await setup({ list: true })
@@ -308,7 +299,7 @@ it('shows the bound tag after the real list refreshes', async () => {
   await page.getByRole('option', { name: 'Sales', exact: true }).click()
   await userEvent.keyboard('{Escape}')
   await expect.element(page.getByRole('combobox', { name: 'Sales: Tone Rewriter' })).toBeVisible()
-  expect(api.bindTags).toHaveBeenCalledExactlyOnceWith(
+  expect(fake.console.tagBindings.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       body: { tag_ids: ['tag-1'], target_id: snippetId, type: 'snippet' },
     }),

@@ -1,5 +1,4 @@
 import type { DatasetDetailWithPartialMembersResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -22,12 +21,6 @@ import { DatasetACLPermission } from '@/utils/permission'
 import Form from '../index'
 
 const DATASET_ID = '7d9c1f3e-4a1b-4c2d-8e3f-1a2b3c4d5e6f'
-const api = {
-  get: vi.fn<typeof consoleClient.datasets.byDatasetId.get>(),
-  getScanPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.get>(),
-  save: vi.fn<typeof consoleClient.datasets.byDatasetId.patch>(),
-  saveScanPolicy: vi.fn<typeof consoleClient.datasets.byDatasetId.fileScanPolicy.put>(),
-}
 vi.unmock('react-i18next')
 // boundary: routing is outside the settings journey; keep the real dataset layout and refetch owner.
 vi.mock('@/next/navigation', () => ({
@@ -43,61 +36,60 @@ const scanPolicyOff = {
   on_unscannable: 'block',
 }
 
+function installDatasetApi(initial: DatasetDetailWithPartialMembersResponse) {
+  let dataset = initial
+  return installFakeApi({
+    console: {
+      datasets: {
+        byDatasetId: {
+          get: async () => dataset,
+          patch: async ({ body }) => {
+            dataset = { ...dataset, ...body } as DatasetDetailWithPartialMembersResponse
+            return dataset
+          },
+          fileScanPolicy: {
+            get: async () => scanPolicyOff,
+            put: async ({ body }) => ({ ...scanPolicyOff, ...body }),
+          },
+        },
+      },
+      fileScan: {
+        providers: {
+          get: () => ({
+            data: [
+              {
+                id: 'scanner-1',
+                name: 'Office scanner',
+                provider_type: 'cloudmersive',
+                config: {},
+                credentials_set: { api_key: true },
+                status: 'active',
+                last_error: null,
+                last_tested_at: null,
+                created_at: 1_780_000_000,
+                policy_count: 0,
+              },
+            ],
+          }),
+        },
+      },
+      workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
+    },
+  })
+}
+let fake: ReturnType<typeof installDatasetApi>
+
 async function setup(
   overrides: Partial<DatasetDetailWithPartialMembersResponse> = {},
   { fileScanEnabled = false }: { fileScanEnabled?: boolean } = {},
 ) {
-  let dataset: DatasetDetailWithPartialMembersResponse = createDatasetFixture({
+  const dataset = createDatasetFixture({
     id: DATASET_ID,
     permission_keys: [DatasetACLPermission.Edit],
     ...overrides,
   })
-  api.get.mockReset().mockImplementation(async () => dataset)
-  api.save.mockReset().mockImplementation(async ({ body }) => {
-    dataset = { ...dataset, ...body } as DatasetDetailWithPartialMembersResponse
-    return dataset
-  })
-  api.getScanPolicy.mockReset().mockResolvedValue(scanPolicyOff)
-  api.saveScanPolicy
-    .mockReset()
-    .mockImplementation(async ({ body }) => ({ ...scanPolicyOff, ...body }))
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          byDatasetId: {
-            get: (input) => api.get(input),
-            patch: (input) => api.save(input),
-            fileScanPolicy: {
-              get: (input) => api.getScanPolicy(input),
-              put: (input) => api.saveScanPolicy(input),
-            },
-          },
-        },
-        fileScan: {
-          providers: {
-            get: () => ({
-              data: [
-                {
-                  id: 'scanner-1',
-                  name: 'Office scanner',
-                  provider_type: 'cloudmersive',
-                  config: {},
-                  credentials_set: { api_key: true },
-                  status: 'active',
-                  last_error: null,
-                  last_tested_at: null,
-                  created_at: 1_780_000_000,
-                  policy_count: 0,
-                },
-              ],
-            }),
-          },
-        },
-        workspaces: { current: { members: { get: () => ({ accounts: [] }) } } },
-      },
-    }),
-  )
+  fake = installDatasetApi(dataset)
+  onTestFinished(fake)
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     accountProfile: { id: 'user-1', name: 'Current User' },
     workspacePermissionKeys: [],
@@ -145,9 +137,10 @@ async function setup(
 
 it('saves edited basic information once while pending and refreshes the dataset title', async () => {
   const screen = await setup()
-  const pending = createDeferred<Awaited<ReturnType<typeof api.save>>>()
-  const saveResponse = api.save.getMockImplementation()!
-  api.save.mockImplementationOnce(async (...args) => {
+  const pending =
+    createDeferred<Awaited<ReturnType<typeof fake.console.datasets.byDatasetId.patch>>>()
+  const saveResponse = fake.console.datasets.byDatasetId.patch.getMockImplementation()!
+  fake.console.datasets.byDatasetId.patch.mockImplementationOnce(async (...args) => {
     await pending.promise
     return saveResponse(...args)
   })
@@ -160,8 +153,8 @@ it('saves edited basic information once while pending and refreshes the dataset 
   await expect.element(save).toHaveAttribute('aria-disabled', 'true')
   await expect.element(save).toHaveFocus()
   await userEvent.keyboard('{Enter}')
-  await expect.poll(() => api.save).toHaveBeenCalledOnce()
-  expect(api.save).toHaveBeenCalledExactlyOnceWith(
+  await expect.poll(() => fake.console.datasets.byDatasetId.patch).toHaveBeenCalledOnce()
+  expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       params: { dataset_id: DATASET_ID },
       body: expect.objectContaining({
@@ -182,12 +175,12 @@ it('rejects a blank name without submitting', async () => {
   await screen.getByRole('textbox', { name: 'Knowledge Name', exact: true }).fill('   ')
   await screen.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(screen.getByText('Name cannot be empty')).toBeVisible()
-  expect(api.save).not.toHaveBeenCalled()
+  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 })
 
 it('keeps edits after a failed save and allows retrying', async () => {
   const screen = await setup()
-  api.save.mockRejectedValueOnce(
+  fake.console.datasets.byDatasetId.patch.mockRejectedValueOnce(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'offline' }),
   )
   const name = screen.getByRole('textbox', { name: 'Knowledge Name', exact: true })
@@ -199,7 +192,7 @@ it('keeps edits after a failed save and allows retrying', async () => {
   expect(document.title).not.toContain('Test Dataset updated')
   await save.click()
   await expect.poll(() => document.title).toContain('Test Dataset updated')
-  expect(api.save).toHaveBeenCalledTimes(2)
+  expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledTimes(2)
 })
 
 it('disables basic information and permissions when the embedding model is unavailable', async () => {
@@ -227,7 +220,7 @@ it('prevents readonly users from editing basic information, opening the picker o
   const save = screen.getByRole('button', { name: 'Save', exact: true })
   await expect.element(save).toBeDisabled()
   await expect.element(screen.getByRole('dialog')).not.toBeInTheDocument()
-  expect(api.save).not.toHaveBeenCalled()
+  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 })
 
 it('opens the named icon action with the keyboard and returns focus after dismissal', async () => {
@@ -254,7 +247,7 @@ it('keeps the permission field label and saves the selected visibility', async (
     .toHaveFocus()
   await screen.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
-  expect(api.save).toHaveBeenCalledWith(
+  expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledWith(
     expect.objectContaining({ body: expect.objectContaining({ permission: 'all_team_members' }) }),
   )
 })
@@ -271,24 +264,26 @@ it('saves the file scan policy with the page Save button', async () => {
   await expect
     .element(screen.getByRole('alert'))
     .toHaveTextContent(fileScan['policy.scannerRequired'])
-  expect(api.saveScanPolicy).not.toHaveBeenCalled()
-  expect(api.save).not.toHaveBeenCalled()
+  expect(fake.console.datasets.byDatasetId.fileScanPolicy.put).not.toHaveBeenCalled()
+  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 
   await screen.getByRole('combobox', { name: fileScan['policy.scanner'] }).click()
   await screen.getByRole('option', { name: /Office scanner/ }).click()
   await save.click()
 
   await expect.element(screen.getByText('Modified successfully')).toBeVisible()
-  expect(api.saveScanPolicy.mock.calls.at(-1)?.[0]).toMatchObject({
-    body: { ...scanPolicyOff, enabled: true, provider_id: 'scanner-1' },
-    params: { dataset_id: DATASET_ID },
-  })
-  expect(api.save).toHaveBeenCalledTimes(1)
+  expect(fake.console.datasets.byDatasetId.fileScanPolicy.put.mock.calls.at(-1)?.[0]).toMatchObject(
+    {
+      body: { ...scanPolicyOff, enabled: true, provider_id: 'scanner-1' },
+      params: { dataset_id: DATASET_ID },
+    },
+  )
+  expect(fake.console.datasets.byDatasetId.patch).toHaveBeenCalledTimes(1)
 })
 
 it('does not save the other settings when the file scan policy is rejected', async () => {
   const screen = await setup({}, { fileScanEnabled: true })
-  api.saveScanPolicy.mockRejectedValue(
+  fake.console.datasets.byDatasetId.fileScanPolicy.put.mockRejectedValue(
     apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'offline' }),
   )
 
@@ -297,9 +292,11 @@ it('does not save the other settings when the file scan policy is rejected', asy
   await screen.getByRole('option', { name: /Office scanner/ }).click()
   await screen.getByRole('button', { name: 'Save', exact: true }).click()
 
-  await expect.poll(() => api.saveScanPolicy.mock.calls.length).toBe(1)
+  await expect
+    .poll(() => fake.console.datasets.byDatasetId.fileScanPolicy.put.mock.calls.length)
+    .toBe(1)
   await expect
     .element(screen.getByRole('switch', { name: fileScan['policy.enable'] }))
     .toBeChecked()
-  expect(api.save).not.toHaveBeenCalled()
+  expect(fake.console.datasets.byDatasetId.patch).not.toHaveBeenCalled()
 })

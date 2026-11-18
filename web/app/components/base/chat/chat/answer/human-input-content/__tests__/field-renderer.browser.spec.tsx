@@ -1,6 +1,7 @@
 import type { HumanInputFieldValue } from '../field-renderer'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FakeApiHandle, FakeRoute } from '@/test/fake-api'
 import { useState } from 'react'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
@@ -61,21 +62,18 @@ async function renderField(field: FormInputItem, initialValue?: HumanInputFieldV
   )
 }
 
-let uploadedNames: string[] = []
+const uploadedFile = (body: unknown) => (body as FormData).get('file') as File
+let fake: FakeApiHandle<{ routes: FakeRoute[] }>
 
 beforeEach(() => {
-  uploadedNames = []
-  onTestFinished(
-    installFakeApi({
-      routes: [
-        route('POST', 'console', '/files/upload', async ({ request }) => {
-          const name = ((await request.formData()).get('file') as File).name
-          uploadedNames.push(name)
-          return { id: `uploaded-${name}` }
-        }),
-      ],
-    }),
-  )
+  fake = installFakeApi({
+    routes: [
+      route('POST', 'console', '/files/upload', ({ body }) => ({
+        id: `uploaded-${uploadedFile(body).name}`,
+      })),
+    ],
+  })
+  onTestFinished(fake)
 })
 
 it('retains the complete paragraph value in its controlled owner', async () => {
@@ -126,7 +124,11 @@ it('publishes one uploaded file as a scalar, enforces its limit, and clears it t
     .element(page.getByRole('status', { name: 'attachments saved value' }))
     .toHaveTextContent('report.pdf:uploaded-report.pdf:100')
   await expect.element(uploadButton).toBeDisabled()
-  expect(uploadedNames).toEqual(['report.pdf'])
+  expect(
+    fake
+      .route('POST', 'console', '/files/upload')
+      .mock.calls.map(([{ body }]) => uploadedFile(body).name),
+  ).toEqual(['report.pdf'])
 
   await page.getByRole('button', { name: 'common.operation.remove report.pdf' }).click()
   await expect.element(page.getByText('report.pdf')).not.toBeInTheDocument()

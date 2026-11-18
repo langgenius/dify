@@ -1,6 +1,5 @@
 import type { UploadConfig } from '@dify/contracts/api/console/files/types.gen'
 import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
-import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -12,8 +11,6 @@ import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-confi
 import { TransferMethod } from '@/types/app'
 import ConfigModal from '../index'
 
-const upload = vi.fn<(file: File) => { id: string }>()
-const uploadRemote = vi.fn<typeof consoleClient.remoteFiles.upload.post>()
 vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/apps' }))
 
 const MIB = 1024 * 1024
@@ -51,23 +48,25 @@ async function getFilePicker() {
   return page.elementLocator(uploadButton.element().querySelector('input[type="file"]')!)
 }
 
+function installApi() {
+  return installFakeApi({
+    routes: [
+      route('POST', 'console', '/files/upload', ({ body }) => {
+        const file = (body as FormData).get('file') as File
+        return { id: `uploaded-${file.name}` }
+      }),
+    ],
+  })
+}
+let fake: ReturnType<typeof installApi>
+
 beforeEach(() => {
-  upload.mockReset()
-  uploadRemote.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: { remoteFiles: { upload: { post: (input) => uploadRemote(input) } } },
-      routes: [
-        route('POST', 'console', '/files/upload', async ({ request }) =>
-          upload((await request.formData()).get('file') as File),
-        ),
-      ],
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 it('uses the server size limit when uploading a default image', async () => {
-  upload.mockResolvedValue({ id: 'uploaded-image' })
+  fake.route('POST', 'console', '/files/upload').mockResolvedValue({ id: 'uploaded-image' })
   const onConfirm = await openFileDefaults(
     {
       type: InputVarType.singleFile,
@@ -84,7 +83,7 @@ it('uses the server size limit when uploading a default image', async () => {
 
   await input.upload(createImage('over-limit.gif', 21))
   await expect.element(page.getByText(/fileUploader\.uploadFromComputerLimit/)).toBeVisible()
-  expect(upload).not.toHaveBeenCalled()
+  expect(fake.route('POST', 'console', '/files/upload')).not.toHaveBeenCalled()
 
   await input.upload(createImage('default.gif', 12))
   await expect.element(dialog.getByText('default.gif')).toBeVisible()
@@ -100,7 +99,6 @@ it('uses the server size limit when uploading a default image', async () => {
 })
 
 it('checks each document in a default file list against the configured size limit', async () => {
-  upload.mockImplementation((file) => ({ id: `uploaded-${file.name}` }))
   const onConfirm = await openFileDefaults(
     {
       type: InputVarType.multiFiles,
@@ -120,7 +118,7 @@ it('checks each document in a default file list against the configured size limi
   await expect
     .element(page.getByText(/fileUploader\.uploadFromComputerLimit.*1\.00 MB/))
     .toBeVisible()
-  expect(upload).not.toHaveBeenCalled()
+  expect(fake.route('POST', 'console', '/files/upload')).not.toHaveBeenCalled()
 
   await input.upload([
     createDocument('first.txt', (3 * MIB) / 4),
@@ -131,7 +129,7 @@ it('checks each document in a default file list against the configured size limi
   await expect.element(dialog.getByRole('progressbar')).not.toBeInTheDocument()
   await dialog.getByRole('button', { name: 'common.operation.save' }).click()
 
-  expect(upload).toHaveBeenCalledTimes(2)
+  expect(fake.route('POST', 'console', '/files/upload')).toHaveBeenCalledTimes(2)
   expect(onConfirm).toHaveBeenCalledOnce()
   const savedDefault = onConfirm.mock.lastCall?.[0].default
   expect(savedDefault).toHaveLength(2)
@@ -146,23 +144,32 @@ it('checks each document in a default file list against the configured size limi
 it('rejects an oversized file link and saves one within the configured size limit', async () => {
   const oversized = 'https://example.com/oversized.txt'
   const allowed = 'https://example.com/default.txt'
-  uploadRemote
-    .mockResolvedValueOnce({
-      ...remoteFile,
-      id: 'oversized',
-      name: 'oversized.txt',
-      mime_type: 'text/plain',
-      size: 21 * MIB,
-      url: oversized,
-    })
-    .mockResolvedValueOnce({
-      ...remoteFile,
-      id: 'uploaded-link',
-      name: 'default.txt',
-      mime_type: 'text/plain',
-      size: 16 * MIB,
-      url: allowed,
-    })
+  const added = fake.use({
+    console: {
+      remoteFiles: {
+        upload: {
+          post: ({ body }) =>
+            body.url === oversized
+              ? {
+                  ...remoteFile,
+                  id: 'oversized',
+                  name: 'oversized.txt',
+                  mime_type: 'text/plain',
+                  size: 21 * MIB,
+                  url: oversized,
+                }
+              : {
+                  ...remoteFile,
+                  id: 'uploaded-link',
+                  name: 'default.txt',
+                  mime_type: 'text/plain',
+                  size: 16 * MIB,
+                  url: allowed,
+                },
+        },
+      },
+    },
+  })
   const onConfirm = await openFileDefaults(
     {
       type: InputVarType.singleFile,
@@ -192,9 +199,16 @@ it('rejects an oversized file link and saves one within the configured size limi
   await expect.element(dialog.getByRole('progressbar')).not.toBeInTheDocument()
   await dialog.getByRole('button', { name: 'common.operation.save' }).click()
 
+  const uploadRemote = added.console.remoteFiles.upload.post
   expect(uploadRemote).toHaveBeenCalledTimes(2)
-  expect(uploadRemote.mock.calls[0]?.[0].body).toEqual({ url: oversized })
-  expect(uploadRemote.mock.calls[1]?.[0].body).toEqual({ url: allowed })
+  expect(uploadRemote).toHaveBeenNthCalledWith(
+    1,
+    expect.objectContaining({ body: { url: oversized } }),
+  )
+  expect(uploadRemote).toHaveBeenNthCalledWith(
+    2,
+    expect.objectContaining({ body: { url: allowed } }),
+  )
   expect(onConfirm).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       default: expect.objectContaining({

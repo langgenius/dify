@@ -36,6 +36,11 @@ type RouteContext = {
   request: Request
   url: URL
   params: Record<string, string>
+  /**
+   * The request body, read once so handlers and spy assertions never consume the stream: parsed
+   * JSON, `FormData` for multipart or urlencoded forms, text otherwise, or `undefined` if empty.
+   */
+  body: unknown
 }
 
 /** A REST endpoint without a generated contract, such as legacy `@/service/base` calls. */
@@ -54,11 +59,20 @@ export type FakeApi = {
 
 type AnyFunction = (...args: never[]) => unknown
 
-/** The handlers a test passed, each wrapped in a `vi.fn` spy at the same path. */
-type Spies<T> = T extends AnyFunction
-  ? Mock<T>
+/**
+ * The handlers a test passed, each wrapped in a `vi.fn` spy at the same path. Spies take the
+ * contract's handler signature (not the literal handler's), so a test can later return a deferred
+ * promise or different data from `mockReturnValueOnce` / `mockImplementation`.
+ */
+type Spies<T, Contract> = T extends AnyFunction
+  ? Mock<Contract extends AnyFunction ? Contract : T>
   : T extends object
-    ? { [K in keyof T]-?: Spies<NonNullable<T[K]>> }
+    ? {
+        [K in keyof T]-?: Spies<
+          NonNullable<T[K]>,
+          K extends keyof NonNullable<Contract> ? NonNullable<NonNullable<Contract>[K]> : unknown
+        >
+      }
     : never
 
 /**
@@ -67,10 +81,11 @@ type Spies<T> = T extends AnyFunction
  * and `fake.use(...)` overrides or adds handlers mid-test.
  */
 export type FakeApiHandle<T extends FakeApi> = (() => void) & {
-  console: Spies<NonNullable<T['console']>>
-  marketplace: Spies<NonNullable<T['marketplace']>>
+  console: Spies<NonNullable<T['console']>, FakeConsoleHandlers>
+  marketplace: Spies<NonNullable<T['marketplace']>, FakeMarketplaceHandlers>
   route: (method: RouteMethod, base: ApiBase, path: string) => Mock<FakeRoute['handler']>
-  use: (overrides: FakeApi) => void
+  /** Override or add handlers; returns typed spies for the handlers it was given. */
+  use: <const U extends FakeApi>(overrides: U) => Pick<FakeApiHandle<U>, 'console' | 'marketplace'>
 }
 
 /**
@@ -406,6 +421,22 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
   }
 }
 
+async function readBody(request: Request): Promise<unknown> {
+  if (request.method === 'GET' || request.method === 'HEAD') return undefined
+  const type = request.headers.get('content-type') ?? ''
+  const copy = request.clone()
+  if (type.includes('multipart/form-data') || type.includes('application/x-www-form-urlencoded'))
+    return copy.formData()
+  const text = await copy.text()
+  if (!text) return undefined
+  if (type.includes('json')) return JSON.parse(text)
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
+}
+
 function setAt(tree: Record<string, unknown>, path: string[], value: unknown) {
   let node = tree
   for (const key of path.slice(0, -1)) node = (node[key] ??= {}) as Record<string, unknown>
@@ -513,7 +544,7 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       const params = matchRoute(candidate.path, path)
       if (!params) continue
       try {
-        const result = await candidate.spy({ request, url, params })
+        const result = await candidate.spy({ request, url, params, body: await readBody(request) })
         return result instanceof Response ? result : Response.json(result ?? null)
       } catch (error) {
         return errorResponse(error)
@@ -547,6 +578,16 @@ export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T
       addHandlers('console', overrides.console)
       addHandlers('marketplace', overrides.marketplace)
       addRoutes(overrides.routes)
+      const pick = (contract: 'console' | 'marketplace', tree: unknown) => {
+        const picked: Record<string, unknown> = {}
+        for (const [path] of collectLeaves((tree ?? {}) as HandlerTree))
+          setAt(picked, path, spies.get(`${contract}:${path.join('.')}`))
+        return picked
+      }
+      return {
+        console: pick('console', overrides.console),
+        marketplace: pick('marketplace', overrides.marketplace),
+      }
     },
   }) as FakeApiHandle<T>
 }

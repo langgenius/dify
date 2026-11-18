@@ -1,5 +1,4 @@
 import type { GetWorkflowRunArchivesResponse } from '@dify/contracts/api/console/workflow-run-archives/types.gen'
-import type { consoleClient } from '@/service/console'
 import { createInstance } from 'i18next'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { I18nextProvider } from 'react-i18next'
@@ -17,8 +16,6 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-const archiveListRequest = vi.fn<typeof consoleClient.workflowRunArchives.get>()
-
 async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
   await page.viewport(320, 800)
   const i18n = createInstance()
@@ -32,12 +29,8 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
     features: { billing: { subscription: { plan: 'team' } } },
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
-  archiveListRequest.mockReset().mockResolvedValue(archives)
-  onTestFinished(
-    installFakeApi({
-      console: { workflowRunArchives: { get: (input) => archiveListRequest(input) } },
-    }),
-  )
+  const fake = installFakeApi({ console: { workflowRunArchives: { get: () => archives } } })
+  onTestFinished(fake)
   const screen = await render(
     <QueryClientTestProvider queryClient={queryClient}>
       <I18nextProvider i18n={i18n}>
@@ -51,7 +44,7 @@ async function renderSettings(archives: GetWorkflowRunArchivesResponse) {
       </I18nextProvider>
     </QueryClientTestProvider>,
   )
-  return { dialog: screen.getByRole('dialog', { name: 'Settings' }), queryClient }
+  return { dialog: screen.getByRole('dialog', { name: 'Settings' }), queryClient, fake }
 }
 
 it('keeps the complete empty message readable without horizontal scrolling at 320 CSS pixels', async () => {
@@ -86,7 +79,7 @@ it('keeps the complete empty message readable without horizontal scrolling at 32
 })
 
 it('keeps a refresh error above retained rows and readable while scrolling a narrow table', async () => {
-  const { dialog, queryClient } = await renderSettings({
+  const { dialog, queryClient, fake } = await renderSettings({
     summary: {
       archived_month_count: 1,
       workflow_run_count: 125,
@@ -110,7 +103,7 @@ it('keeps a refresh error above retained rows and readable while scrolling a nar
 
   try {
     await expect.element(dialog.getByRole('row', { name: /2025-03/ })).toBeVisible()
-    archiveListRequest.mockRejectedValue(
+    fake.console.workflowRunArchives.get.mockRejectedValue(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Archives unavailable' }),
     )
     await queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() })

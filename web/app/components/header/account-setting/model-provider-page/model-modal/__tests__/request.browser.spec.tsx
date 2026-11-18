@@ -15,42 +15,40 @@ import { ConfigurationMethodEnum, ModelModalModeEnum } from '../../declarations'
 import { ModelCredentialDialog } from '../dialog'
 import { modelCredentialDialog } from '../handle'
 
-const api = { save: vi.fn(), activate: vi.fn(), remove: vi.fn() }
-
-beforeEach(() => {
-  vi.resetAllMocks()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            modelProviders: {
-              byProvider: {
+function installCredentialApi() {
+  return installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          modelProviders: {
+            byProvider: {
+              credentials: {
+                get: () => ({ credentials: { api_key: 'masked' } }),
+                post: () => ({ result: 'success' }),
+                delete: async () => {},
+              },
+              models: {
                 credentials: {
-                  get: () => ({ credentials: { api_key: 'masked' } }),
-                  post: (input) => api.save(input),
-                  delete: async (input) => {
-                    await api.remove(input)
-                  },
-                },
-                models: {
-                  credentials: {
-                    get: () => ({
-                      credentials: {},
-                      available_credentials: [credential],
-                      load_balancing: { enabled: false, configs: [] },
-                    }),
-                    post: (input) => api.save(input),
-                    switch: { post: (input) => api.activate(input) },
-                  },
+                  get: () => ({
+                    credentials: {},
+                    available_credentials: [credential],
+                    load_balancing: { enabled: false, configs: [] },
+                  }),
+                  post: () => ({ result: 'success' }),
+                  switch: { post: () => ({ result: 'success' }) },
                 },
               },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installCredentialApi>
+beforeEach(() => {
+  fake = installCredentialApi()
+  onTestFinished(fake)
 })
 
 type Payload = Parameters<typeof modelCredentialDialog.openWithPayload>[0]
@@ -87,8 +85,10 @@ it.each([
     toast: 'Bad gateway',
   },
 ])('retains the draft and allows retry after $failure', async ({ error, toast }) => {
-  const failed = createDeferred()
-  api.save.mockReturnValueOnce(failed.promise).mockResolvedValueOnce({ result: 'success' })
+  const failed = createDeferred<{ result: string }>()
+  fake.console.workspaces.current.modelProviders.byProvider.credentials.post
+    .mockReturnValueOnce(failed.promise)
+    .mockResolvedValueOnce({ result: 'success' })
   const onSave = vi.fn()
   const screen = await setup({ onSave })
   const key = screen.getByLabelText(/API key/)
@@ -103,7 +103,9 @@ it.each([
     .toBeDisabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('dialog', { name: /modelProvider/ })).toBeVisible()
-  await expect.poll(() => api.save).toHaveBeenCalledOnce()
+  await expect
+    .poll(() => fake.console.workspaces.current.modelProviders.byProvider.credentials.post)
+    .toHaveBeenCalledOnce()
   failed.reject(error())
   await expect.element(screen.getByText(toast, { exact: true })).toBeVisible()
   await expect.element(key).toBeEnabled()
@@ -118,7 +120,6 @@ it.each([
 })
 
 it('submits the custom model and key together with Enter and focuses the first missing field', async () => {
-  api.save.mockResolvedValue({ result: 'success' })
   const screen = await setup({
     mode: ModelModalModeEnum.configCustomModel,
     isModelCredential: true,
@@ -128,7 +129,9 @@ it('submits the custom model and key together with Enter and focuses the first m
   await screen.getByLabelText(/API key/).fill('secret')
   await userEvent.keyboard('{Enter}')
   await expect.element(name).toHaveFocus()
-  expect(api.save).not.toHaveBeenCalled()
+  expect(
+    fake.console.workspaces.current.modelProviders.byProvider.models.credentials.post,
+  ).not.toHaveBeenCalled()
   await screen.getByRole('combobox', { name: 'Model Type' }).click()
   await screen.getByRole('option', { name: 'LLM' }).click()
   await name.click()
@@ -138,7 +141,9 @@ it('submits the custom model and key together with Enter and focuses the first m
   await expect
     .element(screen.getByRole('dialog', { name: /modelProvider/ }))
     .not.toBeInTheDocument()
-  expect(api.save).toHaveBeenCalledExactlyOnceWith(
+  expect(
+    fake.console.workspaces.current.modelProviders.byProvider.models.credentials.post,
+  ).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       params: { provider: 'openai' },
       body: expect.objectContaining({
@@ -152,7 +157,9 @@ it('submits the custom model and key together with Enter and focuses the first m
 
 it('keeps the replacement credential draft when an earlier request succeeds', async () => {
   const pending = createDeferred<{ result: string }>()
-  api.save.mockReturnValueOnce(pending.promise)
+  fake.console.workspaces.current.modelProviders.byProvider.credentials.post.mockReturnValueOnce(
+    pending.promise,
+  )
   const onSave = vi.fn()
   const screen = await setup({ onSave })
   const key = screen.getByLabelText(/API key/)
@@ -175,7 +182,9 @@ it('keeps the replacement credential draft when an earlier request succeeds', as
 
 it('leaves the new dialog host open when a save from the previous host completes', async () => {
   const pending = createDeferred<{ result: string }>()
-  api.save.mockReturnValueOnce(pending.promise)
+  fake.console.workspaces.current.modelProviders.byProvider.credentials.post.mockReturnValueOnce(
+    pending.promise,
+  )
   const onSave = vi.fn()
   const previous = await setup({ onSave })
   await previous.getByLabelText(/API key/).fill('first-key')
@@ -192,7 +201,7 @@ it('leaves the new dialog host open when a save from the previous host completes
 })
 
 it('keeps an existing credential selected when activation fails and closes after a successful retry', async () => {
-  api.activate
+  fake.console.workspaces.current.modelProviders.byProvider.models.credentials.switch.post
     .mockRejectedValueOnce(
       apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Activation failed' }),
     )
@@ -206,18 +215,28 @@ it('keeps an existing credential selected when activation fails and closes after
   await screen.getByRole('button', { name: 'Key 1' }).click()
   const add = screen.getByRole('button', { name: 'common.operation.add' })
   await add.click()
-  await expect.poll(() => api.activate.mock.calls.length).toBe(1)
+  await expect
+    .poll(
+      () =>
+        fake.console.workspaces.current.modelProviders.byProvider.models.credentials.switch.post
+          .mock.calls.length,
+    )
+    .toBe(1)
   await expect.element(screen.getByRole('button', { name: 'Key 1' })).toBeVisible()
   await add.click()
   await expect
     .element(screen.getByRole('dialog', { name: /modelProvider/ }))
     .not.toBeInTheDocument()
-  expect(api.activate).toHaveBeenCalledTimes(2)
+  expect(
+    fake.console.workspaces.current.modelProviders.byProvider.models.credentials.switch.post,
+  ).toHaveBeenCalledTimes(2)
 })
 
 it('keeps deletion confirmation pending, then allows retry after a failure', async () => {
   const failed = createDeferred()
-  api.remove.mockReturnValueOnce(failed.promise).mockResolvedValueOnce(undefined)
+  fake.console.workspaces.current.modelProviders.byProvider.credentials.delete
+    .mockReturnValueOnce(failed.promise)
+    .mockResolvedValueOnce(undefined)
   const screen = await setup({ credential })
   await screen.getByRole('button', { name: 'common.operation.remove' }).click()
   const confirm = screen.getByRole('button', { name: 'common.operation.confirm' })
@@ -225,7 +244,9 @@ it('keeps deletion confirmation pending, then allows retry after a failure', asy
   await expect.element(confirm).toBeDisabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-  await expect.poll(() => api.remove).toHaveBeenCalledOnce()
+  await expect
+    .poll(() => fake.console.workspaces.current.modelProviders.byProvider.credentials.delete)
+    .toHaveBeenCalledOnce()
   failed.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Delete failed' }))
   await expect.element(confirm).toBeEnabled()
   await confirm.click()
@@ -233,5 +254,7 @@ it('keeps deletion confirmation pending, then allows retry after a failure', asy
   await expect
     .element(screen.getByRole('dialog', { name: /modelProvider/ }))
     .not.toBeInTheDocument()
-  expect(api.remove).toHaveBeenCalledTimes(2)
+  expect(
+    fake.console.workspaces.current.modelProviders.byProvider.credentials.delete,
+  ).toHaveBeenCalledTimes(2)
 })

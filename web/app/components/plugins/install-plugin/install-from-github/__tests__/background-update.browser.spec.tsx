@@ -8,48 +8,47 @@ import { installFakeApi } from '@/test/fake-api'
 import { PluginCategoryEnum } from '../../../types'
 import { GitHubInstallDialog } from '../dialog'
 
-const updateFromGitHub = vi.fn<() => Promise<{ all_installed: boolean; task_id: string }>>()
-
 it('keeps a reopened GitHub update and its automatic fold independent of the background update', async () => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        workspaces: {
-          current: {
-            // Plugin refreshes reload the workspace model lists.
-            models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
-            plugin: {
-              upgrade: { github: { post: () => updateFromGitHub() } },
-              upload: {
-                github: {
-                  post: () => ({
-                    unique_identifier: 'github-target-id',
-                    manifest: {
-                      author: 'Dify',
-                      category: 'model',
-                      created_at: '2026-06-01T00:00:00Z',
-                      description: { en_US: 'Plugin description' },
-                      icon: 'icon.svg',
-                      label: { en_US: 'Plugin label' },
-                      meta: { version: '2.0.0' },
-                      name: 'plugin-entity',
-                      plugins: {},
-                      resource: { memory: 0 },
-                      tags: [],
-                      version: '2.0.0',
-                    },
-                  }),
-                },
+  const fake = installFakeApi({
+    console: {
+      workspaces: {
+        current: {
+          // Plugin refreshes reload the workspace model lists.
+          models: { modelTypes: { byModelType: { get: () => ({ data: [] }) } } },
+          plugin: {
+            upgrade: { github: { post: () => ({ all_installed: true, task_id: '' }) } },
+            upload: {
+              github: {
+                post: () => ({
+                  unique_identifier: 'github-target-id',
+                  manifest: {
+                    author: 'Dify',
+                    category: 'model',
+                    created_at: '2026-06-01T00:00:00Z',
+                    description: { en_US: 'Plugin description' },
+                    icon: 'icon.svg',
+                    label: { en_US: 'Plugin label' },
+                    meta: { version: '2.0.0' },
+                    name: 'plugin-entity',
+                    plugins: {},
+                    resource: { memory: 0 },
+                    tags: [],
+                    version: '2.0.0',
+                  },
+                }),
               },
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+  onTestFinished(fake)
   const first = createDeferred<{ all_installed: boolean; task_id: string }>()
   const second = createDeferred<{ all_installed: boolean; task_id: string }>()
-  updateFromGitHub.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise)
+  fake.console.workspaces.current.plugin.upgrade.github.post
+    .mockReturnValueOnce(first.promise)
+    .mockReturnValueOnce(second.promise)
   const handle = createDialogHandle<UpdatePluginPayload>()
   const onUpdated = vi.fn()
   const { wrapper } = createConsoleQueryWrapper()

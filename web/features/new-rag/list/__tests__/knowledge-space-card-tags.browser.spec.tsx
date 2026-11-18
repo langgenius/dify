@@ -14,12 +14,6 @@ type KnowledgeFsSpaceListItemResponse = Awaited<
 >['data'][number]
 type KnowledgeTag = Tag & { type: 'knowledge' }
 
-const api = {
-  putTags: vi.fn<typeof consoleClient.knowledgeFs.spaces.byControlSpaceId.tags.put>(),
-  spaces: vi.fn<typeof consoleClient.knowledgeFs.spaces.get>(),
-  tags: vi.fn<typeof consoleClient.tags.get>(),
-}
-
 const knowledgeTags: KnowledgeTag[] = [
   { binding_count: '1', id: 'tag-1', name: 'Frontend', type: 'knowledge' },
   { binding_count: '1', id: 'tag-2', name: 'Backend', type: 'knowledge' },
@@ -97,41 +91,40 @@ async function setup(permissionKeys = editable) {
   await expect.element(trigger()).toBeVisible()
   return queryClient
 }
-beforeEach(async ({ onTestFinished }) => {
-  onTestFinished(
-    installFakeApi({
-      console: {
-        knowledgeFs: {
-          spaces: {
-            get: (input) => api.spaces(input),
-            byControlSpaceId: { tags: { put: (input) => api.putTags(input) } },
+function installTagsApi() {
+  return installFakeApi({
+    console: {
+      knowledgeFs: {
+        spaces: {
+          get: async () => ({ data: [serverSpace], has_more: false, limit: 30, page: 1 }),
+          byControlSpaceId: {
+            tags: {
+              put: async ({ body }) => {
+                const tagIds = body.tag_ids ?? []
+                serverSpace = {
+                  ...serverSpace,
+                  tags: serverTags.filter((tag) => tagIds.includes(tag.id)),
+                }
+                serverTags = serverTags.map((tag) => ({
+                  ...tag,
+                  binding_count: tagIds.includes(tag.id) ? '1' : '0',
+                }))
+                return { data: serverSpace.tags ?? [] }
+              },
+            },
           },
         },
-        tags: { get: (input) => api.tags(input) },
       },
-    }),
-  )
+      tags: { get: async () => serverTags },
+    },
+  })
+}
+let fake: ReturnType<typeof installTagsApi>
+beforeEach(async ({ onTestFinished }) => {
+  fake = installTagsApi()
+  onTestFinished(fake)
   await page.viewport(640, 600)
   serverTags = knowledgeTags.map((tag) => ({ ...tag }))
-  api.tags.mockImplementation(async () => serverTags)
-  api.spaces.mockImplementation(async () => ({
-    data: [serverSpace],
-    has_more: false,
-    limit: 30,
-    page: 1,
-  }))
-  api.putTags.mockImplementation(async ({ body }) => {
-    const tagIds = body.tag_ids ?? []
-    serverSpace = {
-      ...serverSpace,
-      tags: serverTags.filter((tag) => tagIds.includes(tag.id)),
-    }
-    serverTags = serverTags.map((tag) => ({
-      ...tag,
-      binding_count: tagIds.includes(tag.id) ? '1' : '0',
-    }))
-    return { data: serverSpace.tags ?? [] }
-  })
 })
 
 it('keeps provided tags read-only without space edit permission even for a tag manager', async () => {
@@ -150,7 +143,7 @@ it('saves the final selection on close and refreshes server tags and binding cou
   await expect.element(page.getByRole('listbox')).not.toBeInTheDocument()
   await expect.element(trigger('Backend, Public docs: Public docs')).toBeVisible()
   await expect
-    .poll(() => api.putTags.mock.calls)
+    .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mock.calls)
     .toEqual([
       [
         {
@@ -178,7 +171,7 @@ it('saves the final selection on close and refreshes server tags and binding cou
 
 it('reopens with the submitted selection and serializes later edits while a replacement is pending', async () => {
   const firstReplacement = createDeferred<{ data: [] }>()
-  api.putTags.mockImplementationOnce(async () => {
+  fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mockImplementationOnce(async () => {
     await firstReplacement.promise
     serverSpace = { ...serverSpace, tags: [knowledgeTags[1]!] }
     return { data: [] }
@@ -187,17 +180,23 @@ it('reopens with the submitted selection and serializes later edits while a repl
   await trigger().click()
   await option('Frontend').click()
   await userEvent.keyboard('{Escape}')
-  await expect.poll(() => api.putTags.mock.calls.length).toBe(1)
+  await expect
+    .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mock.calls.length)
+    .toBe(1)
   await trigger('Backend: Public docs').click()
   await expect.element(option('Frontend')).toHaveAttribute('aria-selected', 'false')
   await expect.element(option('Backend')).toHaveAttribute('aria-selected', 'true')
   await option('Public docs').click()
   await userEvent.keyboard('{Escape}')
   await expect.element(trigger('Backend, Public docs: Public docs')).toBeVisible()
-  expect(api.putTags).toHaveBeenCalledOnce()
+  expect(fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put).toHaveBeenCalledOnce()
   firstReplacement.resolve({ data: [] })
   await expect
-    .poll(() => api.putTags.mock.calls.map(([input]) => input.body.tag_ids))
+    .poll(() =>
+      fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mock.calls.map(
+        ([input]) => input.body.tag_ids,
+      ),
+    )
     .toEqual([['tag-2'], ['tag-2', 'tag-3']])
   await trigger('Backend, Public docs: Public docs').click()
   await expect.element(option('Backend')).toHaveAttribute('aria-selected', 'true')
@@ -212,7 +211,7 @@ it('persists an empty selection after every tag is removed', async () => {
   await userEvent.keyboard('{Escape}')
   await expect.element(trigger('common.tag.addTag: Public docs')).toBeVisible()
   await expect
-    .poll(() => api.putTags.mock.calls)
+    .poll(() => fake.console.knowledgeFs.spaces.byControlSpaceId.tags.put.mock.calls)
     .toEqual([
       [
         {

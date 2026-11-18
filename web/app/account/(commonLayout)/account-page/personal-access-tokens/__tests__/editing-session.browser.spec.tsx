@@ -1,53 +1,53 @@
-import type { PersonalAccessTokenDetailResponse } from '@dify/contracts/api/console/account/types.gen'
-import type { consoleClient } from '@/service/console'
+import type {
+  PersonalAccessTokenDetailResponse,
+  PersonalAccessTokenResponse,
+} from '@dify/contracts/api/console/account/types.gen'
 import { page, userEvent } from 'vite-plus/test/browser'
 import { consoleQuery } from '@/service/console'
 import { createDeferred } from '@/test/deferred'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { renderTokenPage, token, tokenList } from './browser-test-env'
 
-const api = {
-  list: vi.fn<typeof consoleClient.account.personalAccessTokens.get>(),
-  detail: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.get>(),
-  update: vi.fn<typeof consoleClient.account.personalAccessTokens.byTokenId.patch>(),
-  remove: vi.fn<(input: unknown) => Promise<void>>(),
-}
 vi.unmock('react-i18next')
 const saved: PersonalAccessTokenDetailResponse = {
   token: { ...token, resource_scope_mode: 'all', workspace_scope_mode: 'all' },
   resources: [],
   workspaces: [],
 }
-beforeEach(async () => {
-  await page.viewport(1100, 800)
-  api.list.mockReset().mockResolvedValue(tokenList([token]))
-  api.detail.mockReset().mockResolvedValue(saved)
-  api.update.mockReset()
-  api.remove.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: {
-        account: {
-          personalAccessTokens: {
-            get: (input) => api.list(input),
-            byTokenId: {
-              get: (input) => api.detail(input),
-              patch: (input) => api.update(input),
-              delete: (input) => api.remove(input),
+// The server's token list, which a delete removes from.
+let tokens: PersonalAccessTokenResponse[]
+
+function installApi() {
+  return installFakeApi({
+    console: {
+      account: {
+        personalAccessTokens: {
+          get: () => tokenList(tokens),
+          byTokenId: {
+            get: () => saved,
+            patch: () => saved,
+            delete: ({ params }) => {
+              tokens = tokens.filter(({ id }) => id !== params.token_id)
             },
           },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installApi>
+
+beforeEach(async () => {
+  await page.viewport(1100, 800)
+  tokens = [token]
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 it('retains the edited name after validation failure and saves the loaded version without expiry', async () => {
-  api.update
-    .mockRejectedValueOnce(
-      apiError({ status: 400, code: 'BAD_REQUEST', message: 'Select at least one resource.' }),
-    )
-    .mockResolvedValue(saved)
+  fake.console.account.personalAccessTokens.byTokenId.patch.mockRejectedValueOnce(
+    apiError({ status: 400, code: 'BAD_REQUEST', message: 'Select at least one resource.' }),
+  )
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
   const dialog = screen.getByRole('dialog')
@@ -59,7 +59,7 @@ it('retains the edited name after validation failure and saves the loaded versio
   await expect.element(name).toHaveValue('renamed')
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.update).toHaveBeenLastCalledWith(
+  expect(fake.console.account.personalAccessTokens.byTokenId.patch).toHaveBeenLastCalledWith(
     expect.objectContaining({
       params: { token_id: token.id },
       body: {
@@ -80,11 +80,13 @@ it('returns to the edit trigger when cancelling during a background list refresh
   const dialog = screen.getByRole('dialog')
   await expect.element(dialog.getByRole('textbox', { name: 'Name' })).toBeVisible()
   const refresh = createDeferred<ReturnType<typeof tokenList>>()
-  api.list.mockReturnValueOnce(refresh.promise)
+  fake.console.account.personalAccessTokens.get.mockReturnValueOnce(refresh.promise)
   const refetch = queryClient.invalidateQueries({
     queryKey: consoleQuery.account.personalAccessTokens.get.key(),
   })
-  await vi.waitFor(() => expect(api.list).toHaveBeenCalledTimes(2))
+  await vi.waitFor(() =>
+    expect(fake.console.account.personalAccessTokens.get).toHaveBeenCalledTimes(2),
+  )
   await userEvent.keyboard('{Escape}')
   await expect.element(edit).toHaveFocus()
   refresh.resolve(tokenList([token]))
@@ -93,7 +95,7 @@ it('returns to the edit trigger when cancelling during a background list refresh
 
 it('preserves a draft through a background refresh and reloads the new version only after a conflict', async () => {
   const latest = { ...saved, token: { ...saved.token, name: 'changed elsewhere', version: 2 } }
-  api.update.mockImplementation(async ({ body }) => {
+  fake.console.account.personalAccessTokens.byTokenId.patch.mockImplementation(async ({ body }) => {
     if (body.version === 1)
       throw apiError({ status: 409, code: 'CONFLICT', message: 'Token changed' })
     return latest
@@ -103,7 +105,7 @@ it('preserves a draft through a background refresh and reloads the new version o
   const dialog = screen.getByRole('dialog')
   const name = dialog.getByRole('textbox', { name: 'Name' })
   await name.fill('my draft')
-  api.detail.mockResolvedValue(latest)
+  fake.console.account.personalAccessTokens.byTokenId.get.mockResolvedValue(latest)
   await queryClient.invalidateQueries({
     queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
       input: { params: { token_id: token.id } },
@@ -113,17 +115,24 @@ it('preserves a draft through a background refresh and reloads the new version o
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog.getByRole('alert')).toMatchTextContent(/changed.*Reload/)
   await expect.element(name).toHaveValue('my draft')
-  expect(api.update.mock.calls[0]![0].body.version).toBe(1)
+  expect(
+    fake.console.account.personalAccessTokens.byTokenId.patch.mock.calls[0]![0].body.version,
+  ).toBe(1)
   await dialog.getByRole('button', { name: 'Reload latest version', exact: true }).click()
   await expect.element(name).toHaveValue('changed elsewhere')
   await dialog.getByRole('button', { name: 'Save', exact: true }).click()
   await expect.element(dialog).not.toBeInTheDocument()
-  expect(api.update.mock.calls[1]![0].body.version).toBe(2)
+  expect(
+    fake.console.account.personalAccessTokens.byTokenId.patch.mock.calls[1]![0].body.version,
+  ).toBe(2)
 })
 
 it('keeps an expired editing draft readable and blocks further saving after the server confirms expiry', async () => {
-  api.update.mockImplementation(async () => {
-    api.detail.mockResolvedValue({ ...saved, token: { ...saved.token, status: 'expired' } })
+  fake.console.account.personalAccessTokens.byTokenId.patch.mockImplementation(async () => {
+    fake.console.account.personalAccessTokens.byTokenId.get.mockResolvedValue({
+      ...saved,
+      token: { ...saved.token, status: 'expired' },
+    })
     throw apiError({ status: 403, code: 'FORBIDDEN', message: 'Token expired' })
   })
   const { screen } = await renderTokenPage()
@@ -139,9 +148,7 @@ it('keeps an expired editing draft readable and blocks further saving after the 
 
 it('keeps deletion open after failure and removes the row after retry', async () => {
   const pending = createDeferred()
-  api.remove.mockReturnValueOnce(pending.promise).mockImplementation(async () => {
-    api.list.mockResolvedValue(tokenList())
-  })
+  fake.console.account.personalAccessTokens.byTokenId.delete.mockReturnValueOnce(pending.promise)
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')
@@ -167,8 +174,8 @@ it('keeps deletion open after failure and removes the row after retry', async ()
 
 it('clears the previous deletion error and returns focus to the current row on cancel', async () => {
   const other = { ...token, id: '019a0000-0000-7000-8000-000000000002', name: 'other-token' }
-  api.list.mockResolvedValue(tokenList([token, other]))
-  api.remove.mockRejectedValueOnce(
+  tokens = [token, other]
+  fake.console.account.personalAccessTokens.byTokenId.delete.mockRejectedValueOnce(
     apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
   )
   const { screen } = await renderTokenPage()
@@ -196,7 +203,7 @@ it('returns to Create token if a refresh removes the row while deletion is open'
   await screen.getByRole('button', { name: 'Delete', exact: true }).click()
   const dialog = screen.getByRole('alertdialog')
   await expect.element(dialog).toBeVisible()
-  api.list.mockResolvedValue(tokenList())
+  tokens = []
   await queryClient.invalidateQueries({
     queryKey: consoleQuery.account.personalAccessTokens.get.key(),
   })

@@ -1,9 +1,9 @@
+import type { SourceApi } from './source-server'
 import { page } from 'vite-plus/test/browser'
 import { SourcesPage } from '../page'
 import { clearSourceClients, renderSources as render } from './source-browser-env'
 import { source } from './source-fixtures'
 import {
-  clientMock,
   permissionState,
   resetSourceServer,
   routerMock,
@@ -14,8 +14,9 @@ import {
 // boundary: the component test controls route inputs and observes navigation destinations.
 vi.mock('@/next/navigation', async () => (await import('./source-server')).navigation)
 
+let fake: SourceApi
 beforeEach(() => {
-  resetSourceServer()
+  fake = resetSourceServer()
 })
 afterEach(() => {
   clearSourceClients()
@@ -153,7 +154,9 @@ describe('Sources: source-access', () => {
       .click()
     await page.getByRole('menuitem', { name: 'knowledgeSources.syncNow' }).click()
 
-    expect(clientMock.syncSource).not.toHaveBeenCalled()
+    expect(
+      fake.console.knowledgeFs.spaces.byControlSpaceId.sources.bySourceId.sync.post,
+    ).not.toHaveBeenCalled()
     const dialog = page.getByRole('dialog', {
       name: 'knowledgeSpace.overview.attention.modelReadiness.title',
     })

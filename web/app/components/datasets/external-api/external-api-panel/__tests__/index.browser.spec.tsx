@@ -1,5 +1,4 @@
 import type { ExternalKnowledgeApiListResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import type { consoleClient } from '@/service/console'
 import { onlineManager } from '@tanstack/react-query'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { useState } from 'react'
@@ -12,12 +11,6 @@ import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { createDeferred } from '@/test/deferred'
 import { installFakeApi, networkError } from '@/test/fake-api'
 import ExternalAPIPanel from '../index'
-
-const api = {
-  get: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get>(),
-  list: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.get>(),
-  create: vi.fn<typeof consoleClient.datasets.externalKnowledgeApi.post>(),
-}
 
 const response: ExternalKnowledgeApiListResponse = {
   data: [
@@ -38,23 +31,23 @@ const response: ExternalKnowledgeApiListResponse = {
   total: 1,
 }
 
-beforeEach(() => {
-  api.get.mockReset().mockResolvedValue(response.data[0]!)
-  api.list.mockReset().mockResolvedValue(response)
-  api.create.mockReset().mockResolvedValue(response.data[0]!)
-  onTestFinished(
-    installFakeApi({
-      console: {
-        datasets: {
-          externalKnowledgeApi: {
-            get: (input) => api.list(input),
-            post: (input) => api.create(input),
-            byExternalKnowledgeApiId: { get: (input) => api.get(input) },
-          },
+function installExternalApiApi() {
+  return installFakeApi({
+    console: {
+      datasets: {
+        externalKnowledgeApi: {
+          get: async () => response,
+          post: async () => response.data[0]!,
+          byExternalKnowledgeApiId: { get: async () => response.data[0]! },
         },
       },
-    }),
-  )
+    },
+  })
+}
+let fake: ReturnType<typeof installExternalApiApi>
+beforeEach(() => {
+  fake = installExternalApiApi()
+  onTestFinished(fake)
 })
 
 async function setup(canManage = true) {
@@ -87,7 +80,7 @@ async function setup(canManage = true) {
 
 it('replaces loading with API cards and removes the panel when closed', async () => {
   const pending = createDeferred<ExternalKnowledgeApiListResponse>()
-  api.list.mockReturnValue(pending.promise)
+  fake.console.datasets.externalKnowledgeApi.get.mockReturnValue(pending.promise)
   const screen = await setup()
   await expect.element(screen.getByLabelText('common.loading')).toBeVisible()
   pending.resolve(response)
@@ -116,12 +109,20 @@ it('shows read-only API cards without management controls', async () => {
 it('opens a blank creation form and refreshes the list from the saved API', async () => {
   const refresh = createDeferred<ExternalKnowledgeApiListResponse>()
   let saved: ExternalKnowledgeApiListResponse['data'] = []
-  api.list.mockImplementation(async () => ({ ...response, data: saved, total: saved.length }))
-  api.create.mockImplementation(async ({ body }) => {
-    const created = { ...response.data[0]!, ...body }
-    saved = [created]
-    api.list.mockReturnValue(refresh.promise)
-    return created
+  fake.use({
+    console: {
+      datasets: {
+        externalKnowledgeApi: {
+          get: async () => ({ ...response, data: saved, total: saved.length }),
+          post: async ({ body }) => {
+            const created = { ...response.data[0]!, ...body }
+            saved = [created]
+            fake.console.datasets.externalKnowledgeApi.get.mockReturnValue(refresh.promise)
+            return created
+          },
+        },
+      },
+    },
   })
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
@@ -140,7 +141,7 @@ it('opens a blank creation form and refreshes the list from the saved API', asyn
   refresh.resolve({ ...response, data: saved, total: saved.length })
   await expect.element(screen.getByText('Product knowledge')).toBeVisible()
   await expect.element(screen.getByText('https://knowledge.example.com')).toBeVisible()
-  expect(api.create).toHaveBeenCalledExactlyOnceWith(
+  expect(fake.console.datasets.externalKnowledgeApi.post).toHaveBeenCalledExactlyOnceWith(
     expect.objectContaining({
       body: {
         name: 'Product knowledge',
@@ -168,7 +169,7 @@ it('opens the card editor as the only top-level dialog', async () => {
 })
 
 it('retains the external API draft and allows cancel after an offline save fails', async () => {
-  api.create.mockRejectedValueOnce(networkError())
+  fake.console.datasets.externalKnowledgeApi.post.mockRejectedValueOnce(networkError())
   const screen = await setup()
   await screen.getByRole('button', { name: 'dataset.createExternalAPI' }).click()
   const dialog = screen.getByRole('dialog', { name: /dataset\./ })
@@ -179,21 +180,28 @@ it('retains the external API draft and allows cancel after an offline save fails
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await dialog.getByRole('button', { name: 'dataset.externalAPIForm.save' }).click()
-  await expect.poll(() => api.create.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.datasets.externalKnowledgeApi.post.mock.calls.length).toBe(1)
   await expect.element(name).toHaveValue('Draft')
   await dialog.getByRole('button', { name: /cancel/i }).click()
   await expect.element(dialog).not.toBeInTheDocument()
 })
 
 it('attempts an offline edit immediately without opening an editor on reconnect', async () => {
-  api.get.mockRejectedValueOnce(networkError())
+  fake.console.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get.mockRejectedValueOnce(
+    networkError(),
+  )
   const screen = await setup()
   const edit = screen.getByRole('button', { name: /common.operation.edit Product knowledge/ })
   await expect.element(edit).toBeVisible()
   onlineManager.setOnline(false)
   onTestFinished(() => onlineManager.setOnline(true))
   await edit.click()
-  await expect.poll(() => api.get.mock.calls.length).toBe(1)
+  await expect
+    .poll(
+      () =>
+        fake.console.datasets.externalKnowledgeApi.byExternalKnowledgeApiId.get.mock.calls.length,
+    )
+    .toBe(1)
   await expect.element(screen.getByText('common.api.actionFailed')).toBeVisible()
   onlineManager.setOnline(true)
   await expect.element(screen.getByRole('dialog', { name: /dataset\./ })).not.toBeInTheDocument()

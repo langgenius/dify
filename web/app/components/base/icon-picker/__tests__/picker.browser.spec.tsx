@@ -1,4 +1,3 @@
-import type { PostFilesUploadResponse } from '@dify/contracts/api/console/files/types.gen'
 import type { EmojiIcon } from '..'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -7,8 +6,6 @@ import { render } from 'vitest-browser-react'
 import { apiError, installFakeApi } from '@/test/fake-api'
 import { emojiCatalogOptions } from '../emoji-data'
 import { IconPickerDialog } from './harness'
-
-const uploadImage = vi.fn<(input: unknown) => Promise<PostFilesUploadResponse>>()
 
 const emojis = [
   '😀',
@@ -32,13 +29,24 @@ const emojis = [
   '🤓',
   '😎',
 ]
+const installApi = () =>
+  installFakeApi({
+    console: {
+      files: {
+        upload: {
+          post: ({ body }) => ({
+            id: '00000000-0000-4000-8000-000000000001',
+            name: 'uploaded-image',
+            size: body.file.size,
+          }),
+        },
+      },
+    },
+  })
+let fake: ReturnType<typeof installApi>
 beforeEach(() => {
-  uploadImage.mockReset()
-  onTestFinished(
-    installFakeApi({
-      console: { files: { upload: { post: (input) => uploadImage(input) } } },
-    }),
-  )
+  fake = installApi()
+  onTestFinished(fake)
 })
 
 const initial: EmojiIcon = { type: 'emoji', icon: '😀', background: '#FEF3F2' }
@@ -170,7 +178,7 @@ it('distinguishes keyboard focus from the selected color', async () => {
 
 it('locks image editing during submission and restores it after failure', async () => {
   let rejectUpload!: (reason: Error) => void
-  uploadImage.mockReturnValueOnce(
+  fake.console.files.upload.post.mockReturnValueOnce(
     new Promise((_, reject) => {
       rejectUpload = reject
     }),
@@ -199,7 +207,7 @@ it('locks image editing during submission and restores it after failure', async 
   await expect.element(crop).toHaveFocus()
   const zoom = page.getByRole('slider', { name: 'app.iconPicker.zoom' })
   await page.getByRole('button', { name: 'app.iconPicker.ok' }).click()
-  await expect.poll(() => uploadImage.mock.calls.length).toBe(1)
+  await expect.poll(() => fake.console.files.upload.post.mock.calls.length).toBe(1)
   await expect.element(zoom).toBeDisabled()
   cropElement.focus()
   expect(document.activeElement).not.toBe(cropElement)
