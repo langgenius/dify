@@ -52,16 +52,6 @@
       "count": 1
     }
   },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/chart-view.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 2
-    }
-  },
-  "web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/time-range-picker/range-selector.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 4
-    }
-  },
   "web/app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/layout-main.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -645,11 +635,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 2
-    }
-  },
-  "web/app/components/app/overview/app-chart.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/app/components/app/overview/customize/index.tsx": {
@@ -3688,11 +3673,6 @@
       "count": 1
     }
   },
-  "web/app/components/workflow/header/online-users.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 6
-    }
-  },
   "web/app/components/workflow/header/run-and-history.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1
@@ -5124,11 +5104,6 @@
     },
     "jsx-a11y/no-static-element-interactions": {
       "count": 1
-    }
-  },
-  "web/app/components/workflow/operator/control.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
     }
   },
   "web/app/components/workflow/operator/hooks.ts": {

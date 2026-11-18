@@ -29,6 +29,30 @@ const zErrorBody = /* @__PURE__ */ (() =>
     status: z.int(),
   }))()
 
+const zAlreadySubmittedError = /* @__PURE__ */ (() =>
+  zErrorBody.and(
+    z.object({
+      code: z.literal('already_submitted'),
+      status: z.literal(409),
+    }),
+  ))()
+
+const zExpiredError = /* @__PURE__ */ (() =>
+  zErrorBody.and(
+    z.object({
+      code: z.literal('expired'),
+      status: z.literal(410),
+    }),
+  ))()
+
+const zInvalidInputError = /* @__PURE__ */ (() =>
+  zErrorBody.and(
+    z.object({
+      code: z.literal('invalid_input'),
+      status: z.literal(400),
+    }),
+  ))()
+
 const zPaidPlanRequiredError = /* @__PURE__ */ (() =>
   zErrorBody.and(
     z.object({
@@ -44,6 +68,26 @@ const zServiceApiDisabledError = /* @__PURE__ */ (() =>
       status: z.literal(403),
     }),
   ))()
+
+const zWorkflowNotActiveError = /* @__PURE__ */ (() =>
+  zErrorBody.and(
+    z.object({
+      code: z.literal('workflow_not_active'),
+      status: z.literal(409),
+    }),
+  ))()
+
+export const post10Errors = {
+  already_submitted: { status: 409, data: zAlreadySubmittedError },
+  expired: { status: 410, data: zExpiredError },
+  invalid_input: { status: 400, data: zInvalidInputError },
+  workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+}
+
+export const get16Errors = {
+  already_submitted: { status: 409, data: zAlreadySubmittedError },
+  expired: { status: 410, data: zExpiredError },
+}
 
 export const post17Errors = {
   paid_plan_required: { status: 403, data: zPaidPlanRequiredError },

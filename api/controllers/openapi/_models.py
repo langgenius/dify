@@ -17,6 +17,7 @@ from controllers.openapi._upload import UploadPart, UploadParts
 from core.plugin.entities.plugin import PluginCategory
 from core.plugin.entities.plugin_daemon import PluginInstallTaskStatus
 from core.tools.entities.tool_entities import ToolProviderType
+from core.workflow.nodes.human_input.entities import FormInputConfig, UserActionConfig
 from enums import DeploymentEdition, WebAppAccessMode
 from fields.workflow_run_fields import WorkflowRunPaginationResponse
 from graphon.enums import BuiltinNodeTypes, WorkflowExecutionStatus
@@ -729,9 +730,9 @@ class OpenApiFormSubmitPayload(HumanInputFormSubmitPayload):
 
 class HumanInputFormDefinitionResponse(BaseModel):
     form_content: str
-    inputs: list[dict[str, Any]] = Field(default_factory=list)
+    inputs: list[FormInputConfig] = Field(default_factory=list)
     resolved_default_values: dict[str, str]
-    user_actions: list[dict[str, Any]] = Field(default_factory=list)
+    user_actions: list[UserActionConfig] = Field(default_factory=list)
     expiration_time: int | None = None
 
 

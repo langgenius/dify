@@ -2,7 +2,14 @@
 
 import { oc } from '@orpc/contract'
 import * as z from 'zod'
-import { zPaidPlanRequiredError, zServiceApiDisabledError } from './zod.gen.ts'
+import {
+  zAlreadySubmittedError,
+  zExpiredError,
+  zInvalidInputError,
+  zPaidPlanRequiredError,
+  zServiceApiDisabledError,
+  zWorkflowNotActiveError,
+} from './zod.gen.ts'
 import {
   zDeleteAccountSessionsBySessionIdPath,
   zDeleteAccountSessionsBySessionIdResponse,
@@ -987,6 +994,12 @@ export const post10 = oc
     }),
   )
   .output(zPostAppsByAppIdHumanInputFormsByFormTokenSubmitResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+    invalid_input: { status: 400, data: zInvalidInputError },
+    workflow_not_active: { status: 409, data: zWorkflowNotActiveError },
+  })
 
 export const submit = {
   post: post10,
@@ -1002,6 +1015,10 @@ export const get16 = oc
   })
   .input(z.object({ params: zGetAppsByAppIdHumanInputFormsByFormTokenPath }))
   .output(zGetAppsByAppIdHumanInputFormsByFormTokenResponse)
+  .errors({
+    already_submitted: { status: 409, data: zAlreadySubmittedError },
+    expired: { status: 410, data: zExpiredError },
+  })
 
 export const byFormToken = {
   get: get16,
