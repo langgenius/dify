@@ -1,8 +1,8 @@
 """Guards for a route whose workspace is optional (`get.console_app`).
 
-The membership check runs only when the request names a workspace, and then answers exactly as
-`CheckWorkspaceMember`. A personal token on a discovery route needs no workspace. An external SSO
-login carries `apps:read`, which no route that checks it admits through its subject check.
+The membership check runs only when the request addresses a workspace. An external SSO login that names one
+is refused as a non-member. A personal token that names none is authorized without one. An external SSO login
+carries `apps:read`, which no route that checks it admits through its subject check.
 """
 
 from __future__ import annotations
@@ -20,19 +20,16 @@ from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import bp as openapi_bp
 from controllers.openapi._catalog import iter_handlers
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import route_has_workspace
 from controllers.openapi.auth.personal_access import CheckPersonalAccess
-from controllers.openapi.auth.requirements import (
-    CheckNamedWorkspaceMember,
-    CheckScope,
-    CheckSubject,
-    CheckWorkspaceMember,
-)
+from controllers.openapi.auth.requirements import CheckScope, CheckSubject, CheckWorkspaceMember
 from controllers.openapi.auth.spec import spec_of
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject
 from models.account import AccountStatus, TenantAccountRole, TenantStatus
 from services.personal_access_token_service import PersonalAccessTokenGrant
 from tests.helpers.unit.controllers.openapi.auth._world import (
     ACCOUNT_ID,
+    APP_ID,
     OTHER_TENANT_ID,
     TENANT_ID,
     TOKEN_ID,
@@ -49,13 +46,13 @@ from tests.helpers.unit.controllers.openapi.auth._world import (
 APPS = "/openapi/v1/apps"
 
 
-def _outcome(requirement: CheckWorkspaceMember, subject: AccountSubject, session: Session) -> str:
+def _outcome(subject: AccountSubject, session: Session) -> str:
     ctx = make_ctx(session, subject)
     try:
-        requirement.run(subject, ctx, session)
+        CheckWorkspaceMember().run(subject, ctx, session)
     except NotFound as error:
         return f"404 {error.description}"
-    return f"admitted {ctx.loaded_workspace_id}"
+    return f"admitted {ctx.workspace.id}"
 
 
 @pytest.mark.parametrize(
@@ -70,7 +67,7 @@ def _outcome(requirement: CheckWorkspaceMember, subject: AccountSubject, session
     ids=["member", "non-member", "unknown", "not a uuid", "empty"],
 )
 @pytest.mark.parametrize("status", [AccountStatus.ACTIVE, AccountStatus.BANNED])
-def test_a_named_workspace_is_checked_exactly_as_the_membership_check(
+def test_a_named_workspace_gets_the_membership_check(
     app: Flask, sqlite_session: Session, query: str, status: AccountStatus
 ) -> None:
     persist(
@@ -80,22 +77,18 @@ def test_a_named_workspace_is_checked_exactly_as_the_membership_check(
         make_account(status=status),
         make_membership(TenantAccountRole.EDITOR),
     )
-    subject = account_subject()
-    outcomes = []
-    for requirement in (CheckWorkspaceMember(), CheckNamedWorkspaceMember()):
-        with app.test_request_context(f"{APPS}?{query}"):
-            outcomes.append(_outcome(requirement, subject, sqlite_session))
-    assert outcomes[0] == outcomes[1]
+    with app.test_request_context(f"{APPS}?{query}"):
+        outcome = _outcome(account_subject(), sqlite_session)
     expected = f"admitted {TENANT_ID}" if query.endswith(TENANT_ID) and status is AccountStatus.ACTIVE else None
-    assert outcomes[1] == (expected or "404 workspace not found")
+    assert outcome == (expected or "404 workspace not found")
 
 
-def test_an_archived_named_workspace_is_refused_as_before(app: Flask, sqlite_session: Session) -> None:
+def test_an_archived_named_workspace_is_refused(app: Flask, sqlite_session: Session) -> None:
     persist(sqlite_session, make_tenant(status=TenantStatus.ARCHIVE), make_account(), make_membership())
     subject = account_subject()
     with app.test_request_context(f"{APPS}?workspace_id={TENANT_ID}"):
         with pytest.raises(NotFound, match="workspace not found"):
-            CheckNamedWorkspaceMember().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
+            CheckWorkspaceMember().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
 def test_no_workspace_named_loads_and_checks_nothing(app: Flask, sqlite_session: Session) -> None:
@@ -103,8 +96,8 @@ def test_no_workspace_named_loads_and_checks_nothing(app: Flask, sqlite_session:
     subject = account_subject()
     ctx = make_ctx(sqlite_session, subject)
     with app.test_request_context(f"{APPS}?page=1&limit=20"):
-        CheckNamedWorkspaceMember().run(subject, ctx, sqlite_session)
-    assert ctx.loaded_workspace_id is None
+        CheckWorkspaceMember().run(subject, ctx, sqlite_session)
+    assert ctx._workspace is None
 
 
 @pytest.mark.parametrize("query", [f"workspace_id={TENANT_ID}", "workspace_id="])
@@ -113,18 +106,35 @@ def test_an_sso_login_naming_a_workspace_is_refused_as_a_non_member(
 ) -> None:
     persist(sqlite_session, make_tenant())
     subject = sso_subject()
-    ctx = make_ctx(sqlite_session, subject)
     with app.test_request_context(f"{APPS}?{query}"):
         with pytest.raises(NotFound, match="workspace not found"):
-            CheckNamedWorkspaceMember().run(subject, ctx, sqlite_session)
+            CheckWorkspaceMember().run(subject, make_ctx(sqlite_session, subject), sqlite_session)
 
 
-def test_the_loaded_workspace_is_read_without_raising(sqlite_session: Session) -> None:
-    persist(sqlite_session, make_tenant())
-    ctx = make_ctx(sqlite_session)
-    assert ctx.loaded_workspace_id is None
-    ctx._workspace = make_tenant()
-    assert ctx.loaded_workspace_id == TENANT_ID
+def test_an_sso_login_on_an_app_route_is_not_refused(app: Flask, sqlite_session: Session) -> None:
+    subject = sso_subject()
+    ctx = make_ctx(sqlite_session, subject, app_id=APP_ID)
+    with app.test_request_context(f"/openapi/v1/apps/{APP_ID}/workflow:run"):
+        CheckWorkspaceMember().run(subject, ctx, sqlite_session)
+    assert ctx._workspace is None
+
+
+@pytest.mark.parametrize(
+    ("path", "view_args", "expected"),
+    [
+        (f"{APPS}?workspace_id={TENANT_ID}", {}, True),
+        (f"{APPS}?workspace_id=", {}, True),
+        (f"{APPS}?page=1", {}, False),
+        (f"/openapi/v1/workspaces/{TENANT_ID}", {"workspace_id": TENANT_ID}, True),
+        (f"/openapi/v1/apps/{APP_ID}", {"app_id": APP_ID}, True),
+    ],
+    ids=["query", "empty query", "none", "path", "app"],
+)
+def test_a_route_has_a_workspace_through_its_app_its_path_or_its_query(
+    app: Flask, sqlite_session: Session, path: str, view_args: dict[str, str], expected: bool
+) -> None:
+    with app.test_request_context(path):
+        assert route_has_workspace(Context(account_subject(), sqlite_session, dict(view_args))) is expected
 
 
 @dataclass
@@ -160,23 +170,20 @@ def test_a_personal_token_on_a_discovery_route_needs_no_workspace(
         }
     ]
     assert ctx.personal_app_ids == frozenset({"selected-app"})
-    assert ctx.loaded_workspace_id is None
+    assert ctx._workspace is None
 
 
-@pytest.mark.parametrize(
-    "policy", [PersonalAccessTokenPolicy.WORKSPACE_OPERATIONS, PersonalAccessTokenPolicy.RESOURCE_CALLS]
-)
-def test_other_personal_token_policies_still_need_the_workspace(
-    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, policy: PersonalAccessTokenPolicy
+def test_a_personal_token_naming_a_workspace_has_it_authorized(
+    app: Flask, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    persist(sqlite_session, make_tenant())
     grants = PersonalTokenGrants()
     monkeypatch.setitem(app.extensions, "application_services", GrantServices(grants))
     subject = AccountSubject(make_auth(TokenType.PERSONAL_ACCESS))
-    ctx = Context(subject, sqlite_session, {}, pat_policy=policy)
-    with app.test_request_context(f"{APPS}?page=1"):
-        with pytest.raises(NotFound, match="workspace not found"):
-            CheckPersonalAccess().run(subject, ctx, sqlite_session)
-    assert grants.calls == []
+    ctx = Context(subject, sqlite_session, {}, pat_policy=PersonalAccessTokenPolicy.RESOURCE_DISCOVERY)
+    with app.test_request_context(f"{APPS}?workspace_id={TENANT_ID}"):
+        CheckPersonalAccess().run(subject, ctx, sqlite_session)
+    assert [call["workspace_id"] for call in grants.calls] == [TENANT_ID]
 
 
 def test_an_external_sso_login_carries_apps_read() -> None:

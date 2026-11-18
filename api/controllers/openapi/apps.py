@@ -37,9 +37,9 @@ from controllers.openapi.app_webapp import (
     WorkflowWebAppApi,
 )
 from controllers.openapi.auth.context import Context
+from controllers.openapi.auth.loaders import route_has_workspace
 from controllers.openapi.auth.requirements import (
     CheckAppApiEnabled,
-    CheckNamedWorkspaceMember,
     CheckRBACPermission,
     CheckScope,
     CheckSubject,
@@ -145,7 +145,7 @@ class AppListApi(Resource):
         requirements=(
             CheckSubject(allowed=(AccountSubject, ResourceAccessSubject, ExternalSsoSubject)),
             CheckScope(Scope.APPS_READ),
-            CheckNamedWorkspaceMember(),
+            CheckWorkspaceMember(),
         ),
         query=AppListQuery,
         returns=(HTTPStatus.OK, AppListResponse, "App list"),
@@ -168,12 +168,13 @@ class AppListApi(Resource):
 
 def _app_list_login(ctx: Context) -> AppListLogin:
     """The caller's identity as `Context.request_context` builds it, with the workspace optional."""
+    workspace_id = str(ctx.workspace.id) if route_has_workspace(ctx) else ctx.subject.bound_workspace_id(ctx)
     return AppListLogin(
         kind=ctx.subject.subject_type,
         request_id=ctx.request_id,
         trace_id=ctx.trace_id,
         account_id=str(ctx.subject.account_id or ctx.subject.token_id),
-        workspace_id=ctx.loaded_workspace_id,
+        workspace_id=workspace_id,
         resource_app_ids=ctx.resource_app_ids,
         personal_app_ids=ctx.personal_app_ids,
     )

@@ -76,11 +76,6 @@ class Context:
         return _loaded(self._workspace, "workspace")
 
     @property
-    def loaded_workspace_id(self) -> str | None:
-        """For a route whose workspace is optional: the workspace a requirement loaded, or None."""
-        return str(self._workspace.id) if self._workspace is not None else None
-
-    @property
     def workspace_role(self) -> TenantAccountRole:
         return _loaded(self._workspace_role, "workspace_role")
 
