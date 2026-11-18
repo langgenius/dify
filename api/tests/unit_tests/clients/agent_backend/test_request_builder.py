@@ -88,6 +88,7 @@ def test_request_builder_outputs_dify_agent_create_run_request() -> None:
         DIFY_EXECUTION_CONTEXT_LAYER_ID,
         DIFY_AGENT_HISTORY_LAYER_ID,
         DIFY_AGENT_MODEL_LAYER_ID,
+        "read_media",
         DIFY_AGENT_OUTPUT_LAYER_ID,
     ]
     assert request.idempotency_key == "workflow-run-1:node-execution-1"

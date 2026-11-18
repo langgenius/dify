@@ -4,6 +4,7 @@ import i18nFlatKey from './rules/i18n-flat-key.ts'
 import marketplaceBoundary from './rules/marketplace-boundary.ts'
 import noExtraKeys from './rules/no-extra-keys.ts'
 import noFileWideDisable from './rules/no-file-wide-disable.ts'
+import noModuleScopeClock from './rules/no-module-scope-clock.ts'
 import preferTailwindIcons from './rules/prefer-tailwind-icons.ts'
 import requireDisableDirectiveDescription from './rules/require-disable-directive-description.ts'
 import requireI18nNamespace from './rules/require-i18n-namespace.ts'
@@ -21,6 +22,7 @@ const plugin: ESLint.Plugin = {
     'marketplace-boundary': marketplaceBoundary,
     'no-extra-keys': noExtraKeys,
     'no-file-wide-disable': noFileWideDisable,
+    'no-module-scope-clock': noModuleScopeClock,
     'prefer-tailwind-icons': preferTailwindIcons,
     'require-disable-directive-description': requireDisableDirectiveDescription,
     'require-i18n-namespace': requireI18nNamespace,

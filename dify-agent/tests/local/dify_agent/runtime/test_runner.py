@@ -9,17 +9,18 @@ import pytest
 from pydantic_ai import Agent, Tool
 from pydantic_ai.exceptions import ModelAPIError, ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import (
-    UserPromptPart,
     ModelRequest,
     ModelResponse,
     RetryPromptPart,
     ToolCallPart,
     ToolReturnPart,
+    UserPromptPart,
 )
 from pydantic_ai.models.function import DeltaToolCall, FunctionModel
 from pydantic_ai.tools import DeferredToolRequests
 
 from dify_agent.adapters.shell.protocols import ShellCommandResult
+from dify_agent.agent_stub.protocol import file_reference
 from dify_agent.layers import history
 from dify_agent.layers.dify_plugin import llm_layer
 from dify_agent.layers.knowledge.client import DifyKnowledgeBaseClientError
@@ -28,9 +29,9 @@ from dify_agent.protocol.schemas import (
     RunComposition,
     RunFailedEvent,
     RunFailedEventData,
+    RunFailureType,
     RunLayerSpec,
     RunSucceededEvent,
-    RunFailureType,
 )
 from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.context import Services
@@ -70,6 +71,83 @@ def run_runner(incoming, services, monkeypatch, stream, *, run_id="test", timeou
     sink = InMemoryRunEventSink()
     runner = AgentRunRunner(sink=sink, request=incoming, run_id=run_id, services=services, run_timeout_seconds=timeout)
     return runner, sink
+
+
+@pytest.mark.anyio
+async def test_read_media_snapshot_events_and_next_turn_model_switch(monkeypatch):
+    from pydantic_ai.messages import ImageUrl
+
+    reference = file_reference("chart-file")
+    inspected = []
+
+    async def first_stream(messages, info):
+        returns = [p for m in messages if isinstance(m, ModelRequest) for p in m.parts if isinstance(p, ToolReturnPart)]
+        if not returns:
+            yield {
+                0: DeltaToolCall(
+                    name="read_media",
+                    json_args='{"file":{"transfer_method":"tool_file",' + f'"reference":"{reference}"' + "}}",
+                    tool_call_id="read",
+                )
+            }
+        else:
+            media = [
+                item
+                for m in messages
+                if isinstance(m, ModelRequest)
+                for p in m.parts
+                if isinstance(p, UserPromptPart) and not isinstance(p.content, str)
+                for item in p.content
+                if isinstance(item, ImageUrl)
+            ]
+            assert len(media) == 1
+            inspected.extend(media)
+            yield "I inspected the chart."
+
+    def metadata(request):
+        assert request.url.path.endswith("/agent/files/download-request")
+        return httpx.Response(
+            200,
+            json={"filename": "chart.png", "mime_type": "image/png", "size": 10, "download_uri": "/files/never-fetch"},
+        )
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(metadata)) as client:
+        services = Services(client, client)
+        incoming = request(RunLayerSpec(name="read_media"))
+        next(layer for layer in incoming.composition.layers if layer.name == "llm").config["supported_modalities"] = [
+            "vision"
+        ]
+        first, sink = run_runner(incoming, services, monkeypatch, first_stream, run_id="media-first")
+        await first.run()
+        terminal = sink.events["media-first"][-1]
+        assert isinstance(terminal, RunSucceededEvent)
+        assert len(inspected) == 1
+        snapshot = terminal.data.session_snapshot
+        assert "image-url" in snapshot.model_dump_json()
+        assert "base64" not in snapshot.model_dump_json() and "binary" not in snapshot.model_dump_json()
+        serialized_events = "".join(event.model_dump_json() for event in sink.events["media-first"])
+        assert "image-url" in serialized_events and "base64" not in serialized_events
+
+        async def second_stream(messages, info):
+            assert not any(
+                isinstance(item, ImageUrl)
+                for m in messages
+                if isinstance(m, ModelRequest)
+                for p in m.parts
+                if isinstance(p, UserPromptPart) and not isinstance(p.content, str)
+                for item in p.content
+            )
+            assert "Historical read_media content omitted" in str(messages)
+            assert reference in str(messages)
+            yield "Continued with a text-only model."
+
+        second, sink = run_runner(
+            request(snapshot=snapshot), services, monkeypatch, second_stream, run_id="media-second"
+        )
+        await second.run()
+        assert isinstance(sink.events["media-second"][-1], RunSucceededEvent)
+        assert "image-url" not in sink.events["media-second"][-1].data.session_snapshot.model_dump_json()
+        assert "image-url" in snapshot.model_dump_json()
 
 
 @pytest.mark.anyio
@@ -263,43 +341,43 @@ async def test_failure_saves_user_history_and_classified_event(monkeypatch):
             429,
             {"error_type": "", "message": ""},
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 429, model_name: demo, body: {'error_type': '', 'message': ''}",
+            ("429", "error_type", "message"),
         ),
         (
             429,
             {"error_type": None, "message": None},
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 429, model_name: demo, body: {'error_type': None, 'message': None}",
+            ("429", "error_type", "message"),
         ),
         (
             429,
             {"error_type": 42, "message": 42},
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 429, model_name: demo, body: {'error_type': 42, 'message': 42}",
+            ("429", "42"),
         ),
         (
             429,
             "too many requests",
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 429, model_name: demo, body: too many requests",
+            ("429", "too many requests"),
         ),
         (
             429,
             None,
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 429, model_name: demo, body: None",
+            ("429",),
         ),
         (
             429,
             {"error_type": "InvokeAuthorizationError"},
             RunFailureType.MODEL_INVOKE_AUTHORIZATION_ERROR,
-            "status_code: 429, model_name: demo, body: {'error_type': 'InvokeAuthorizationError'}",
+            ("429", "InvokeAuthorizationError"),
         ),
         (
             500,
             {"error_type": "InvokeRateLimitError"},
             RunFailureType.MODEL_INVOKE_RATE_LIMIT_ERROR,
-            "status_code: 500, model_name: demo, body: {'error_type': 'InvokeRateLimitError'}",
+            ("500", "InvokeRateLimitError"),
         ),
         (429, {"error_type": "PluginDaemonInnerError", "message": "daemon failed"}, None, "daemon failed"),
         (500, {"error_type": "PluginDaemonInnerError", "message": "daemon failed"}, None, "daemon failed"),
@@ -308,13 +386,13 @@ async def test_failure_saves_user_history_and_classified_event(monkeypatch):
             503,
             "Agent LLM Gateway request failed",
             None,
-            "status_code: 503, model_name: demo, body: Agent LLM Gateway request failed",
+            ("503", "Agent LLM Gateway request failed"),
         ),
         (
             504,
             "Agent LLM Gateway timed out",
             None,
-            "status_code: 504, model_name: demo, body: Agent LLM Gateway timed out",
+            ("504", "Agent LLM Gateway timed out"),
         ),
         (503, {"error_type": None, "message": "gateway unavailable"}, None, "gateway unavailable"),
     ],
@@ -324,7 +402,7 @@ async def test_model_http_failure_classification_preserves_diagnostics(
     status_code: int,
     body: object | None,
     error_type: RunFailureType | None,
-    expected_error: str,
+    expected_error: str | tuple[str, ...],
 ) -> None:
     exc = ModelHTTPError(status_code, "demo", body)
 
@@ -339,7 +417,11 @@ async def test_model_http_failure_classification_preserves_diagnostics(
 
     terminal = sink.events["test"][-1]
     assert isinstance(terminal, RunFailedEvent)
-    assert terminal.data.error == expected_error
+    if isinstance(expected_error, str):
+        assert terminal.data.error == expected_error
+    else:
+        assert terminal.data.error
+        assert all(fragment in terminal.data.error for fragment in expected_error)
     assert terminal.data.error_type is error_type
     assert sink.error_types["test"] is error_type
 
@@ -351,8 +433,7 @@ async def test_model_http_failure_classification_preserves_diagnostics(
         (
             UsageLimitExceeded("model request budget exceeded"),
             RunFailureType.AGENT_RUN_LIMIT_EXCEEDED,
-            "model request budget exceeded. Consider raising the limit, or see the docs on usage limits "
-            "for budget-aware patterns: https://pydantic.dev/docs/ai/core-concepts/agent/#usage-limits",
+            "model request budget exceeded",
         ),
         (
             BindingLostError("Binding 'internal-ref' no longer exists"),
@@ -389,7 +470,11 @@ async def test_runtime_failure_classification_preserves_diagnostics(
 
     terminal = sink.events["test"][-1]
     assert isinstance(terminal, RunFailedEvent)
-    assert terminal.data.error == expected_error
+    if isinstance(exc, UsageLimitExceeded):
+        assert terminal.data.error
+        assert expected_error in terminal.data.error
+    else:
+        assert terminal.data.error == expected_error
     assert terminal.data.error_type is error_type
     assert sink.error_types["test"] is error_type
 

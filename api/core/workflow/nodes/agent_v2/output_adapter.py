@@ -103,9 +103,6 @@ class WorkflowAgentOutputAdapter:
         own type. Inputs are not mutated and this conversion performs no I/O.
         """
         status = WorkflowNodeExecutionStatus.FAILED
-        error = "Agent backend run failed."
-        error_type = "agent_backend_run_failed"
-        terminal_status = "failed"
 
         match event:
             case AgentBackendRunFailedInternalEvent():

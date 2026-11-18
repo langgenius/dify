@@ -13,38 +13,38 @@ import logging
 import time
 from collections.abc import AsyncIterable, Callable, Mapping
 from dataclasses import dataclass
-from typing import Protocol, cast, runtime_checkable
 from types import ModuleType
+from typing import Protocol, cast, runtime_checkable
 
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from pydantic import JsonValue, TypeAdapter
 from pydantic_ai import capture_run_messages
+from pydantic_ai.capabilities import AbstractCapability
 from pydantic_ai.exceptions import ModelHTTPError, UsageLimitExceeded
 from pydantic_ai.messages import AgentStreamEvent, PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
+from pydantic_ai.toolsets import AbstractToolset
 from pydantic_ai.usage import RunUsage, UsageLimits
 
-from dify_agent.protocol.snapshot import SessionSnapshot
-from dify_agent.runtime.context import Services
-from dify_agent.runtime.modules import REGISTRY, load_modules, create_modules, snapshot_modules
-from pydantic_ai.capabilities import AbstractCapability
-from pydantic_ai.toolsets import AbstractToolset
 from dify_agent.layers import history as history_module
-from dify_agent.layers.prompt import layer as prompt_module
 from dify_agent.layers.dify_plugin import llm_layer as llm_module
-from dify_agent.layers.output import output_layer as output_module
-from dify_agent.layers.user_prompt import layer as user_prompt_module
+from dify_agent.layers.execution_context.configs import ApplicationTracingContext, DifyExecutionContextLayerConfig
 from dify_agent.layers.knowledge import layer as knowledge_module
 from dify_agent.layers.knowledge_fs import layer as knowledge_fs_module
 from dify_agent.layers.knowledge_fs.history import without_historical_knowledge_evidence
+from dify_agent.layers.output import output_layer as output_module
+from dify_agent.layers.prompt import layer as prompt_module
+from dify_agent.layers.read_media.history import without_historical_read_media_content
+from dify_agent.layers.user_prompt import layer as user_prompt_module
 from dify_agent.protocol.schemas import (
+    DIFY_AGENT_MODEL_LAYER_ID,
     AgentRunUsage,
     CreateRunRequest,
-    DIFY_AGENT_MODEL_LAYER_ID,
     RunFailureType,
 )
+from dify_agent.protocol.snapshot import SessionSnapshot
 from dify_agent.runtime.agent_factory import create_agent, normalize_user_input
 from dify_agent.runtime.compaction import build_compaction_capability
-from dify_agent.runtime_backend import BindingLostError
+from dify_agent.runtime.context import Services
 from dify_agent.runtime.event_coalescer import (
     DEFAULT_TEXT_DELTA_FLUSH_INTERVAL_SECONDS,
     DEFAULT_TEXT_DELTA_MAX_CHARS,
@@ -58,10 +58,10 @@ from dify_agent.runtime.event_sink import (
     emit_run_started,
     emit_run_succeeded,
 )
-from dify_agent.layers.execution_context.configs import ApplicationTracingContext, DifyExecutionContextLayerConfig
+from dify_agent.runtime.modules import REGISTRY, create_modules, load_modules, snapshot_modules
 from dify_agent.runtime.observability import AgentObservability, ApplicationAgentObservability
 from dify_agent.runtime.user_prompt_validation import EMPTY_USER_PROMPTS_ERROR, has_non_blank_user_prompt
-
+from dify_agent.runtime_backend import BindingLostError
 
 _AGENT_OUTPUT_ADAPTER = TypeAdapter(object)
 _MAX_AGENT_STEPS_PER_RUN = 500
@@ -321,6 +321,7 @@ class AgentRunRunner:
             if message_history:
                 # Also strip when knowledge was removed from the new Soul.
                 message_history = without_historical_knowledge_evidence(message_history)
+                message_history = without_historical_read_media_content(message_history)
             output = modules.get("output")
             if output is not None and not isinstance(output, output_module.Capability):
                 raise ValueError("The output slot must provide the output module")
