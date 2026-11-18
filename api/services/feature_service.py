@@ -76,7 +76,7 @@ class FeatureService:
         return vector_space
 
     @classmethod
-    def get_knowledge_rate_limit(cls, tenant_id: str):
+    def get_knowledge_rate_limit(cls, tenant_id: str) -> feature_entities.KnowledgeRateLimitModel:
         knowledge_rate_limit = feature_entities.KnowledgeRateLimitModel()
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
             knowledge_rate_limit.enabled = True
@@ -130,7 +130,7 @@ class FeatureService:
         return cls._fulfill_trial_models_from_env(quota_types)
 
     @classmethod
-    def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel):
+    def _fulfill_params_from_env(cls, features: feature_entities.FeatureModel) -> None:
         features.can_replace_logo = dify_config.CAN_REPLACE_LOGO
         features.model_load_balancing_enabled = dify_config.MODEL_LB_ENABLED
         features.education.enabled = (
@@ -140,7 +140,7 @@ class FeatureService:
         features.enable_knowledge_fs = get_knowledge_fs_features().enabled
 
     @classmethod
-    def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):
+    def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str) -> None:
         workspace_info = EnterpriseService.get_workspace_info(tenant_id)
         if "WorkspaceMembers" in workspace_info:
             features.workspace_members.size = workspace_info["WorkspaceMembers"]["used"]
@@ -153,7 +153,7 @@ class FeatureService:
         features: feature_entities.FeatureModel,
         tenant_id: str,
         exclude_vector_space: bool = False,
-    ):
+    ) -> None:
         if exclude_vector_space:
             billing_info = BillingService.get_info(tenant_id, exclude_vector_space=True)
         else:
@@ -201,7 +201,7 @@ class FeatureService:
     @classmethod
     def _fulfill_vector_space_from_billing_info(
         cls, vector_space: feature_entities.LimitationModel, billing_info: billing.GetSubscriptionInfoReply
-    ):
+    ) -> None:
         if billing_info.vector_space is None:
             return
 
