@@ -3,10 +3,12 @@
 import re
 from collections.abc import Callable, Iterator
 from dataclasses import replace
-from unittest.mock import MagicMock, patch
+from http import HTTPStatus
+from unittest.mock import MagicMock
 
 import pytest
-from flask import Flask
+from flask import Blueprint, Flask
+from flask.testing import FlaskClient
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
@@ -23,13 +25,16 @@ from controllers.console.error import (
 )
 from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
+from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
-from libs.login import AccountWithTenant
+from libs.external_api import ExternalApi
+from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
 from services.entities.account_activation_entities import ActivationCheckResult
+from tests.helpers.unit.config_override import config_overrides_context
 
 
 @pytest.fixture
@@ -64,15 +69,27 @@ def resolvable_activation_service(
     """Wire the real activation service over a real invitation instead of a stubbed check.
 
     The workspace and account live in SQLite and the invitation token lives in Redis, so
-    ``check`` resolves the invitation the way it does in production.
+    ``check`` resolves the invitation the way it does in production. The invitee also has a
+    current membership in another workspace so the real console identity loader can resolve them.
     """
 
     with sqlite_session_factory() as session:
         tenant = Tenant(name="Test Workspace")
         tenant.id = "workspace-123"
+        existing_tenant = Tenant(name="Existing Workspace")
+        existing_tenant.id = "workspace-existing"
         account = Account(name="Invitee", email="invitee@example.com", status=AccountStatus.PENDING)
         account.id = "account-123"
-        session.add_all([tenant, account])
+        session.add_all([tenant, existing_tenant, account])
+        session.flush()
+        session.add(
+            TenantAccountJoin(
+                tenant_id=existing_tenant.id,
+                account_id=account.id,
+                role=TenantAccountRole.NORMAL,
+                current=True,
+            )
+        )
         session.commit()
 
     _, commands = redis_transport
@@ -105,6 +122,8 @@ def bind_application_services(
         redis=redis_transport[0],
     )
     previous = app.extensions.get("application_services")
+    previous_account_loader = app.extensions.get("account_identity_loader")
+    bind_account_loader(app, services.accounts.identity.load_user)
 
     def bind(activation: AccountActivationService) -> None:
         app.extensions["application_services"] = replace(
@@ -118,6 +137,27 @@ def bind_application_services(
             app.extensions.pop("application_services", None)
         else:
             app.extensions["application_services"] = previous
+        if previous_account_loader is None:
+            app.extensions.pop("account_identity_loader", None)
+        else:
+            app.extensions["account_identity_loader"] = previous_account_loader
+
+
+@pytest.fixture
+def console_client(app: Flask) -> Iterator[FlaskClient]:
+    """Serve the real activation resource on a console route with real bearer auth."""
+    with config_overrides_context(
+        LOGIN_DISABLED=False,
+        SECRET_KEY="activate-console-test-secret-at-least-32-bytes",
+    ):
+        login_manager = DifyLoginManager()
+        login_manager.request_loader(load_user_from_request)
+        login_manager.unauthorized_handler(unauthorized_handler)
+        login_manager.init_app(app)
+        blueprint = Blueprint("console", __name__, url_prefix="/console/api")
+        ExternalApi(blueprint).add_resource(ActivateApi, "/activate")
+        app.register_blueprint(blueprint)
+        yield app.test_client()
 
 
 def _assert_activated(sqlite_session_factory: sessionmaker[Session]) -> TenantAccountJoin:
@@ -126,10 +166,13 @@ def _assert_activated(sqlite_session_factory: sessionmaker[Session]) -> TenantAc
         assert account is not None
         assert account.status == AccountStatus.ACTIVE
         assert (account.name, account.interface_language, account.timezone) == ("John Doe", "en-US", "UTC")
-        membership = session.scalar(select(TenantAccountJoin))
+        membership = session.scalar(
+            select(TenantAccountJoin).where(
+                TenantAccountJoin.tenant_id == "workspace-123",
+                TenantAccountJoin.account_id == "account-123",
+            )
+        )
         assert membership is not None
-        assert membership.tenant_id == "workspace-123"
-        assert membership.account_id == "account-123"
         assert membership.role == TenantAccountRole.NORMAL
         assert membership.current is True
         return membership
@@ -216,12 +259,12 @@ class TestActivateCheckApi:
 class TestActivateApi:
     def test_activates_the_invited_account_for_a_signed_in_session(
         self,
-        app: Flask,
+        console_client: FlaskClient,
         bind_application_services: Callable[[AccountActivationService], None],
         resolvable_activation_service: AccountActivationService,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        """A signed-in invitee activates their own invitation and lands as a member of the workspace."""
+        """A real console session activates its invitation through the registered route."""
         bind_application_services(resolvable_activation_service)
         payload = {
             "workspace_id": "workspace-123",
@@ -231,24 +274,19 @@ class TestActivateApi:
             "interface_language": "en-US",
             "timezone": "UTC",
         }
-        account = Account(name="Invitee", email="invitee@example.com")
-        account.id = "account-123"
-        with (
-            app.test_request_context("/activate", method="POST", json=payload),
-            patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
-            patch(
-                "controllers.console.auth.activate.current_account_with_tenant",
-                return_value=AccountWithTenant(account=account, tenant_id="workspace-123"),
-            ),
-        ):
-            response = ActivateApi().post()
+        headers = {
+            "Authorization": f"Bearer {PassportService().issue({'user_id': 'account-123'})}",
+        }
 
-        assert response == {"result": "success"}
+        response = console_client.post("/console/api/activate", json=payload, headers=headers)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.get_json() == {"result": "success"}
         _assert_activated(sqlite_session_factory)
 
     def test_activates_a_token_only_invitation_without_reading_the_session(
         self,
-        app: Flask,
+        console_client: FlaskClient,
         bind_application_services: Callable[[AccountActivationService], None],
         resolvable_activation_service: AccountActivationService,
         sqlite_session_factory: sessionmaker[Session],
@@ -267,26 +305,41 @@ class TestActivateApi:
             "interface_language": "en-US",
             "timezone": "UTC",
         }
-        with (
-            app.test_request_context("/activate", method="POST", json=payload),
-            patch("controllers.console.auth.activate.extract_access_token", return_value=None),
-            patch("controllers.console.auth.activate.current_account_with_tenant") as resolve_account,
-        ):
-            response = ActivateApi().post()
 
-        assert response == {"result": "success"}
-        resolve_account.assert_not_called()
+        response = console_client.post("/console/api/activate", json=payload)
+
+        assert response.status_code == HTTPStatus.OK
+        assert response.get_json() == {"result": "success"}
         _assert_activated(sqlite_session_factory)
 
     def test_refuses_a_session_that_belongs_to_another_account(
         self,
-        app: Flask,
+        console_client: FlaskClient,
         bind_application_services: Callable[[AccountActivationService], None],
         resolvable_activation_service: AccountActivationService,
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        """The invitation belongs to one account, so another signed-in account cannot consume it."""
+        """A real console session for another account cannot consume the invitation."""
         bind_application_services(resolvable_activation_service)
+        with sqlite_session_factory.begin() as session:
+            other_account = Account(
+                name="Someone Else",
+                email="someone@example.com",
+                status=AccountStatus.ACTIVE,
+            )
+            other_tenant = Tenant(name="Someone Else's Workspace")
+            session.add_all([other_account, other_tenant])
+            session.flush()
+            session.add(
+                TenantAccountJoin(
+                    tenant_id=other_tenant.id,
+                    account_id=other_account.id,
+                    role=TenantAccountRole.OWNER,
+                    current=True,
+                )
+            )
+            other_account_id = other_account.id
+
         payload = {
             "workspace_id": "workspace-123",
             "email": "invitee@example.com",
@@ -295,24 +348,23 @@ class TestActivateApi:
             "interface_language": "en-US",
             "timezone": "UTC",
         }
-        account = Account(name="Someone Else", email="someone@example.com")
-        account.id = "another-account"
-        with (
-            app.test_request_context("/activate", method="POST", json=payload),
-            patch("controllers.console.auth.activate.extract_access_token", return_value="access-token"),
-            patch(
-                "controllers.console.auth.activate.current_account_with_tenant",
-                return_value=AccountWithTenant(account=account, tenant_id="workspace-123"),
-            ),
-            pytest.raises(InvitationAccountMismatchHTTPError),
-        ):
-            ActivateApi().post()
+        headers = {
+            "Authorization": f"Bearer {PassportService().issue({'user_id': other_account_id})}",
+        }
 
+        response = console_client.post("/console/api/activate", json=payload, headers=headers)
+
+        assert response.status_code == HTTPStatus.FORBIDDEN
+        body = response.get_json()
+        assert isinstance(body, dict)
+        assert body["code"] == "invitation_account_mismatch"
         with sqlite_session_factory() as session:
             invitee = session.get(Account, "account-123")
             assert invitee is not None
             assert invitee.status == AccountStatus.PENDING
-            assert session.scalar(select(TenantAccountJoin)) is None
+            assert (
+                session.scalar(select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == "workspace-123")) is None
+            )
 
     @pytest.mark.parametrize(
         ("service_error", "http_error"),
@@ -338,7 +390,6 @@ class TestActivateApi:
 
         with (
             app.test_request_context("/activate", method="POST", json={"token": "invalid-token"}),
-            patch("controllers.console.auth.activate.extract_access_token", return_value=None),
             pytest.raises(http_error),
         ):
             ActivateApi().post()
@@ -353,12 +404,10 @@ class TestActivateApi:
         bind_application_services(activation_service)
         with (
             app.test_request_context("/activate", method="POST", json={"workspace_id": "workspace-123"}),
-            patch("controllers.console.auth.activate.extract_access_token") as extract_token,
             pytest.raises(UnprocessableEntity),
         ):
             ActivateApi().post()
 
-        extract_token.assert_not_called()
         activate = activation_service.activate
         assert isinstance(activate, MagicMock)
         activate.assert_not_called()
