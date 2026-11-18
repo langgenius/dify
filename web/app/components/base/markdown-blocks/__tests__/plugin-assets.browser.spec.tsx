@@ -4,7 +4,7 @@ import { PluginImg } from '../plugin-img'
 
 const { request } = vi.hoisted(() => ({ request: vi.fn<() => Promise<Response>>() }))
 vi.mock('@/service/base', () => ({ request }))
-// Keep the unrelated marketplace image fallback local; all asset bytes still go
+// boundary: keep the unrelated marketplace image fallback local; all asset bytes still go
 // through the generated Console client and the browser's real image decoder.
 vi.mock('@/env', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/env')>()
