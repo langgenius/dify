@@ -181,7 +181,9 @@ def test_start_orders_audit_attach_end_of_read_transaction_then_wait(
 
 
 def test_advanced_chat_start_returns_a_finished_job(world: World, sqlite_session: Session) -> None:
-    sqlite_session.get(App, world.client.app_id).mode = AppMode.ADVANCED_CHAT
+    app = sqlite_session.get(App, world.client.app_id)
+    assert app is not None
+    app.mode = AppMode.ADVANCED_CHAT
     sqlite_session.commit()
 
     response = world.start(CHATFLOW_ROUTE, query="hi", wait_seconds=5)
