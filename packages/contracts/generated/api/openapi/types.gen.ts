@@ -134,6 +134,11 @@ export type AgentWebApp = {
   use_icon_as_answer_icon?: boolean
 }
 
+export type AlreadySubmittedError = ErrorBody & {
+  code: 'already_submitted'
+  status: 409
+}
+
 export type AppDescribeInfo = {
   description?: string | null
   id: string
@@ -258,6 +263,8 @@ export type AppSettingsInfo = {
 }
 
 export type BinaryFileResponse = Blob | File
+
+export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
 export type ChatAppInfo = {
   description?: string | null
@@ -536,6 +543,28 @@ export type ErrorDetail = {
 
 export type EventStreamResponse = string
 
+export type ExpiredError = ErrorBody & {
+  code: 'expired'
+  status: 410
+}
+
+export type FileInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  output_variable_name: string
+  type?: 'file'
+}
+
+export type FileListInputConfig = {
+  allowed_file_extensions?: Array<string>
+  allowed_file_types?: Array<FileType>
+  allowed_file_upload_methods?: Array<FileTransferMethod>
+  number_limits?: number
+  output_variable_name: string
+  type?: 'file-list'
+}
+
 export type FileResponse = {
   conversation_id?: string | null
   created_at?: number | null
@@ -554,9 +583,27 @@ export type FileResponse = {
   user_id?: string | null
 }
 
+export type FileTransferMethod = 'datasource_file' | 'local_file' | 'remote_url' | 'tool_file'
+
+export type FileType = 'audio' | 'custom' | 'document' | 'image' | 'video'
+
 export type FileUploadPayload = {
   file: Blob | File
 }
+
+export type FormInputConfig =
+  | ({
+      type: 'paragraph'
+    } & ParagraphInputConfig)
+  | ({
+      type: 'select'
+    } & SelectInputConfig)
+  | ({
+      type: 'file'
+    } & FileInputConfig)
+  | ({
+      type: 'file-list'
+    } & FileListInputConfig)
 
 export type FormSubmitResponse = {
   hints?: Array<Hint>
@@ -580,15 +627,11 @@ export type Hint = {
 export type HumanInputFormDefinitionResponse = {
   expiration_time?: number | null
   form_content: string
-  inputs?: Array<{
-    [key: string]: unknown
-  }>
+  inputs?: Array<FormInputConfig>
   resolved_default_values: {
     [key: string]: string
   }
-  user_actions?: Array<{
-    [key: string]: unknown
-  }>
+  user_actions?: Array<UserActionConfig>
 }
 
 export type Import = {
@@ -604,6 +647,11 @@ export type Import = {
 }
 
 export type ImportStatus = 'completed' | 'completed-with-warnings' | 'failed' | 'pending'
+
+export type InvalidInputError = ErrorBody & {
+  code: 'invalid_input'
+  status: 400
+}
 
 export type JsonValue = unknown
 
@@ -1059,6 +1107,8 @@ export type OpenApiErrorCode =
   | 'draft_changed'
   | 'draft_not_found'
   | 'dsl_invalid'
+  | 'end_user_auth_in_trigger_workflow'
+  | 'end_user_auth_in_workflow_tool'
   | 'env_variable_not_found'
   | 'file_extension_blocked'
   | 'file_too_large'
@@ -1106,6 +1156,7 @@ export type OpenApiErrorCode =
   | 'skill_request_rejected'
   | 'skill_version_not_found'
   | 'skills_disabled'
+  | 'test_credentials_not_ready'
   | 'too_many_files'
   | 'too_many_requests'
   | 'trigger_workflow_service_mode_unavailable'
@@ -1133,6 +1184,12 @@ export type OpenApiFormSubmitPayload = {
 export type PaidPlanRequiredError = ErrorBody & {
   code: 'paid_plan_required'
   status: 403
+}
+
+export type ParagraphInputConfig = {
+  default?: StringSource | null
+  output_variable_name: string
+  type?: 'paragraph'
 }
 
 export type PermittedExternalAppsListQuery = {
@@ -1310,6 +1367,12 @@ export type RunListResponse = {
   limit: number
 }
 
+export type SelectInputConfig = {
+  option_source: StringListSource
+  output_variable_name: string
+  type?: 'select'
+}
+
 export type ServerVersionResponse = {
   edition: DeploymentEdition
   version: string
@@ -1469,6 +1532,18 @@ export type SkillVersionRow = {
   version_number: number
 }
 
+export type StringListSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: Array<string>
+}
+
+export type StringSource = {
+  selector?: Array<string>
+  type: ValueSourceType
+  value?: string
+}
+
 export type SubjectType = 'account' | 'external_sso' | 'resource_access'
 
 export type SupportedAppType = 'advanced-chat' | 'agent-chat' | 'chat' | 'completion' | 'workflow'
@@ -1585,6 +1660,14 @@ export type UsageInfo = {
   total_tokens?: number
 }
 
+export type UserActionConfig = {
+  button_style?: ButtonStyle
+  id: string
+  title: string
+}
+
+export type ValueSourceType = 'constant' | 'variable'
+
 export type VersionListQuery = {
   limit?: number
   named_only?: boolean
@@ -1663,6 +1746,11 @@ export type WorkflowDiff = {
   nodes_changed: Array<NodeChange>
   nodes_removed: Array<NodeChange>
   published: boolean
+}
+
+export type WorkflowNotActiveError = ErrorBody & {
+  code: 'workflow_not_active'
+  status: 409
 }
 
 export type WorkflowRunData = {
@@ -2625,6 +2713,8 @@ export type GetAppsByAppIdHumanInputFormsByFormTokenData = {
 }
 
 export type GetAppsByAppIdHumanInputFormsByFormTokenErrors = {
+  409: AlreadySubmittedError | ErrorBody
+  410: ExpiredError | ErrorBody
   default: ErrorBody
 }
 
@@ -2649,6 +2739,9 @@ export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitData = {
 }
 
 export type PostAppsByAppIdHumanInputFormsByFormTokenSubmitErrors = {
+  400: InvalidInputError | ErrorBody
+  409: AlreadySubmittedError | WorkflowNotActiveError | ErrorBody
+  410: ExpiredError | ErrorBody
   422: ErrorBody
   default: ErrorBody
 }

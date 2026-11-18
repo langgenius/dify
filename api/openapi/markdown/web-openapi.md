@@ -1625,7 +1625,8 @@ except it is intended for use by the web app, instead of the console dashboard.
 
 Authentication configuration must be available before the authentication flow can be selected.
 No Account, App Passport, or app code is required. Return the configured
-Account sign-in URL, preserving its base path, or null when disabled.
+Web console endpoint URL, independent of login enablement, so clients can
+compose the Account sign-in route. Preserve deployment base paths.
 Read deployment settings without issuing credentials or changing state;
 feature-query failures propagate unchanged.
 
@@ -2621,18 +2622,6 @@ The file extension is blocked for security reasons.
 | ---- | ---- | ----------- | -------- |
 | FileExtensionBlockedError |  | The file extension is blocked for security reasons. |  |
 
-#### FileInput
-
-Resolved single-file input constraints.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
 #### FileInputConfig
 
 | Name | Type | Description | Required |
@@ -2640,19 +2629,6 @@ Resolved single-file input constraints.
 | allowed_file_extensions | [ string ] |  | No |
 | allowed_file_types | [ [FileType](#filetype) ] |  | No |
 | allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | No |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
-
-#### FileListInput
-
-Resolved multi-file input constraints and effective number limit.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| allowed_file_extensions | [ string ] |  | Yes |
-| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
-| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
-| number_limits | integer |  | Yes |
 | output_variable_name | string |  | Yes |
 | type | string |  | No |
 
@@ -2779,12 +2755,6 @@ Response body containing a resolved human-input form definition.
 | ---- | ---- | ----------- | -------- |
 | FormInputConfig | [ParagraphInputConfig](#paragraphinputconfig)<br>[SelectInputConfig](#selectinputconfig)<br>[FileInputConfig](#fileinputconfig)<br>[FileListInputConfig](#filelistinputconfig) |  |  |
 
-#### FormPart
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| FormPart | [MarkdownFragment](#markdownfragment)<br>[ParagraphInput](#paragraphinput)<br>[SelectInput](#selectinput)<br>[FileInput](#fileinput)<br>[FileListInput](#filelistinput) |  |  |
-
 #### FormSubmitResponse
 
 Empty response body returned after a Human Input v2 form submission.
@@ -2818,6 +2788,14 @@ Response body returned when issuing a Human Input v2 upload token.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | HumanInputAccessRateLimitExceededError |  |  |  |
+
+#### HumanInputActionResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
+| id | string |  | Yes |
+| title | string |  | Yes |
 
 #### HumanInputChallengeExpiredError
 
@@ -3096,15 +3074,6 @@ The upload token is malformed.
 | ---- | ---- | ----------- | -------- |
 | MalformedUploadTokenError |  | The upload token is malformed. |  |
 
-#### MarkdownFragment
-
-One source-ordered Markdown fragment in a resolved form.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| text | string |  | Yes |
-| type | string |  | No |
-
 #### MessageFeedbackPayload
 
 | Name | Type | Description | Required |
@@ -3216,16 +3185,6 @@ Please check if your Workflow app mode matches the right API route.
 | ---- | ---- | ----------- | -------- |
 | label | [I18nObject](#i18nobject) | The label of the option | Yes |
 | value | string | The value of the option | Yes |
-
-#### ParagraphInput
-
-Resolved multiline text input.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### ParagraphInputConfig
 
@@ -3411,16 +3370,67 @@ New password and repeat password does not match.
 | ---- | ---- | ----------- | -------- |
 | RepeatPasswordNotMatchError |  | New password and repeat password does not match. |  |
 
-#### ResolvedForm
-
-Immutable authoritative presentation snapshot for one v2 form.
+#### ResolvedFileListResponse
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| actions | [ [UserAction](#useraction) ] |  | Yes |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| number_limits | integer |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedFileResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| allowed_file_extensions | [ string ] |  | Yes |
+| allowed_file_types | [ [FileType](#filetype) ] |  | Yes |
+| allowed_file_upload_methods | [ [FileTransferMethod](#filetransfermethod) ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedForm
+
+Keep the existing resolved-form wire shape without exposing storage metadata.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| actions | [ [HumanInputActionResponse](#humaninputactionresponse) ] |  | Yes |
 | legacy_form_content | string |  | Yes |
-| parts | [ [FormPart](#formpart) ] |  | Yes |
+| parts | [ [ResolvedPartResponse](#resolvedpartresponse) ] |  | Yes |
 | title | string |  | Yes |
+
+#### ResolvedMarkdownResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| text | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedParagraphResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
+
+#### ResolvedPartResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ResolvedPartResponse | [ResolvedMarkdownResponse](#resolvedmarkdownresponse)<br>[ResolvedParagraphResponse](#resolvedparagraphresponse)<br>[ResolvedSelectResponse](#resolvedselectresponse)<br>[ResolvedFileResponse](#resolvedfileresponse)<br>[ResolvedFileListResponse](#resolvedfilelistresponse) |  |  |
+
+#### ResolvedSelectResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| default_value | string |  | Yes |
+| options | [ string ] |  | Yes |
+| output_variable_name | string |  | Yes |
+| type | string |  | Yes |
 
 #### ResultResponse
 
@@ -3497,17 +3507,6 @@ Immutable authoritative presentation snapshot for one v2 form.
 | ---- | ---- | ----------- | -------- |
 | last_id | string |  | No |
 | limit | integer, <br>**Default:** 20 |  | No |
-
-#### SelectInput
-
-Resolved single-choice input with immutable concrete options.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| default_value | string |  | Yes |
-| options | [ string ] |  | Yes |
-| output_variable_name | string |  | Yes |
-| type | string |  | No |
 
 #### SelectInputConfig
 
@@ -3651,16 +3650,6 @@ Upload token is required.
 | ---- | ---- | ----------- | -------- |
 | UploadTokenRequiredError |  | Upload token is required. |  |
 
-#### UserAction
-
-Resolved action values required for presentation and submission validation.
-
-| Name | Type | Description | Required |
-| ---- | ---- | ----------- | -------- |
-| button_style | [ButtonStyle](#buttonstyle) |  | Yes |
-| id | string |  | Yes |
-| title | string |  | Yes |
-
 #### UserActionConfig
 
 User action configuration.
@@ -3789,11 +3778,11 @@ Personal settings only; credentials, login IPs and Builder lifecycle stay privat
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | account_login_enabled | boolean | Whether explicit Account login and Passport exchange are enabled. | Yes |
-| account_login_url | string | Account-origin sign-in page for the existing Web App login flow | Yes |
 | allow_anonymous_end_user_auth | boolean | Whether Guest identities may manage and use personal Connections; does not control App entry. | Yes |
 | annotation_reply | { **"enabled"**: boolean } |  | Yes |
 | connection_requirements | [ [WebAppConnectionRequirement](#webappconnectionrequirement) ] | Authorization requirements and exact plugin artifacts in connection_revision, without personal state. | Yes |
 | connection_revision | string | Opaque revision of connection requirements, plugin artifacts and OAuth Client configurations; null for other app modes. Return it unchanged in connection requests and runs. | Yes |
+| console_web_url | string | Web console base URL, preserving its deployment base path; independent of whether Account login is enabled. An empty string means the same-origin root. | Yes |
 | file_upload | { **"allowed_file_extensions"**: [ string ], **"allowed_file_types"**: [ string, <br>**Available values:** "audio", "custom", "document", "image", "video" ], **"allowed_file_upload_methods"**: [ string, <br>**Available values:** "local_file", "remote_url" ], **"enabled"**: boolean, **"image"**: { **"detail"**: string, **"enabled"**: boolean, **"number_limits"**: integer, **"transfer_methods"**: [ string ] }, **"number_limits"**: integer } |  | Yes |
 | more_like_this | { **"enabled"**: boolean } |  | Yes |
 | opening_statement | string |  | No |
@@ -3907,13 +3896,13 @@ Web App login is temporarily unavailable. Please retry.
 
 #### WebSystemFeatureResponse
 
-Extend public bootstrap with the Web-only Account sign-in entry point.
+Extend public bootstrap with the Web-only Account login entry point.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| account_login_url | string | Account-origin sign-in page for the existing Web App login flow; null when Account login is disabled. | Yes |
 | agent_tracing_api_collection_enabled | boolean | Deployment-level API gate for Agent trace collection, independent of workspace and provider configuration. Does not indicate Agent runtime, worker, or provider health or confirm trace delivery. | Yes |
 | branding | [BrandingModel](#brandingmodel) |  | Yes |
+| console_web_url | string | Web console base URL, preserving its deployment base path; independent of whether Account login is enabled. An empty string means the same-origin root. | Yes |
 | deployment_edition | [DeploymentEdition](#deploymentedition) |  | Yes |
 | enable_app_deploy | boolean |  | Yes |
 | enable_change_email | boolean, <br>**Default:** true |  | Yes |

@@ -78,6 +78,26 @@ def test_non_builder_execution_never_uses_test_credential(invoke_from: InvokeFro
         )
 
 
+def test_caller_without_a_connection_context_is_told_where_the_app_runs() -> None:
+    """An OpenAPI run carries no connection context; the failure has to name the surface that can."""
+    graph = {"nodes": [tool_node("a")]}
+    spec = SimpleNamespace(
+        provider_type=ToolProviderType.BUILT_IN, provider_id="vendor/calendar/calendar", tool_name="read"
+    )
+    context = DifyRunContext(
+        tenant_id=SCOPE.tenant_id,
+        app_id=SCOPE.app_id,
+        user_id=SCOPE.account_id,
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.OPENAPI,
+    )
+
+    with pytest.raises(ToolRuntimeResolutionError, match="Run the app from the WebApp"):
+        get_tool_runtime(
+            run_context=context, workflow_id="workflow", graph=graph, node_id="a", spec=spec, variable_pool=None
+        )
+
+
 def test_installed_app_resolves_workspace_selection_without_using_preview_credential(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

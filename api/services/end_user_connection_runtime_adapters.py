@@ -125,7 +125,12 @@ def get_tool_runtime(
         else:
             context = run_context.connection_context
             if context is None:
-                raise ConnectionRequiredError()
+                # Only a caller that carries no connection context lands here: it cannot
+                # choose a personal connection, so name the surface that can.
+                raise ConnectionRequiredError(
+                    f"Node {node_id} needs EndUser tool authorization, and this caller cannot supply a "
+                    "connection. Run the app from the WebApp instead."
+                )
             if (
                 run_context.invoke_from != InvokeFrom.WEB_APP
                 or run_context.user_from != UserFrom.END_USER

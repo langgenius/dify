@@ -44,6 +44,7 @@ from clients.agent_backend import (
     FakeAgentBackendScenario,
 )
 from core.app.entities.app_invoke_entities import DIFY_RUN_CONTEXT_KEY, DifyRunContext, InvokeFrom, UserFrom
+from core.app.llm.model_access import ModelRuntimeProfile
 from core.workflow.agent_log_events import AgentLogEvent, NodeRunAgentLogEvent
 from core.workflow.file_reference import build_file_reference
 from core.workflow.nodes.agent_v2 import DifyAgentNode
@@ -89,10 +90,10 @@ from services.agent.workspace_service import AgentWorkspaceNotFoundError
 
 
 @pytest.fixture(autouse=True)
-def _stub_model_context_window(monkeypatch: pytest.MonkeyPatch) -> None:
+def _stub_model_runtime_profile(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
-        "core.workflow.nodes.agent_v2.runtime_request_builder.resolve_model_context_window",
-        lambda **_kwargs: None,
+        "core.app.llm.model_access.resolve_model_runtime_profile",
+        lambda **_kwargs: ModelRuntimeProfile(None, []),
     )
 
 

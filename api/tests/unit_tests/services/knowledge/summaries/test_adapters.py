@@ -12,10 +12,15 @@ from sqlalchemy import event, func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import services.knowledge.summaries.adapters as summary_module
+from core.app.apps.exc import ModerationInvocationError
+from core.model_manager import ModelManager
 from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from models.dataset import Dataset, Document, DocumentSegment, DocumentSegmentSummary
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus, SummaryStatus
 from services.knowledge.summaries.adapters import SummaryIndexAdapter
+from services.moderation_service import ModerationPhase
+from tests.helpers.unit.core.model_fixtures import make_model_config
+from tests.helpers.unit.core.model_moderation_fixtures import make_failing_moderated_model, make_moderated_manager
 
 TENANT_ID = "tenant-1"
 OTHER_TENANT_ID = "tenant-2"
@@ -549,6 +554,38 @@ class TestBatchAndGeneration:
 
         sqlite_session.refresh(summary)
         assert (summary.status, summary.error) == (SummaryStatus.ERROR, "LLM failed")
+
+    @pytest.mark.parametrize("phase", ["input", "output"])
+    @pytest.mark.parametrize("unavailable", [False, True])
+    def test_moderation_failure_marks_summary_error_without_saving_content(
+        self, sqlite_session: Session, monkeypatch: pytest.MonkeyPatch, phase: ModerationPhase, unavailable: bool
+    ) -> None:
+        dataset = _persist_dataset(sqlite_session, tenant_id="test-tenant-id")
+        document = _persist_document(sqlite_session, dataset)
+        segment = _persist_segment(sqlite_session, dataset, document)
+        summary = _persist_summary(
+            sqlite_session, dataset, document, segment, content=None, status=SummaryStatus.NOT_STARTED
+        )
+        instance, _ = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+        assert instance.moderation is not None
+        manager, _, provider = make_moderated_manager(moderation=instance.moderation, cache=False, system=False)
+        schema = make_model_config(provider="test-provider", model="test-model", mode="chat").model_schema
+        monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
+        monkeypatch.setattr(provider, "get_model_schema", lambda _model, _credentials: schema)
+
+        with pytest.raises(ModerationInvocationError) as rejected:
+            SummaryIndexAdapter.generate_and_vectorize_summary(
+                segment,
+                dataset,
+                {"enable": True, "model_name": "test-model", "model_provider_name": "test-provider"},
+                session=sqlite_session,
+            )
+        sqlite_session.refresh(summary)
+        assert summary.status == SummaryStatus.ERROR
+        assert summary.summary_content is None
+        assert summary.summary_index_node_id is None
+        assert summary.error == str(rejected.value)
+        assert provider.invocations == (0 if phase == "input" else 1)
 
     @pytest.mark.parametrize(
         ("technique", "enabled", "doc_form"),

@@ -5,20 +5,34 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from typing import cast
+from urllib.parse import urlsplit
 
+from dify_agent.layers.read_media import normalize_media_mime
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy.orm import Session
 
-from core.app.entities.app_invoke_entities import get_credit_usage_app_type
+from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom, get_credit_usage_app_type
+from core.app.file_access import DatabaseFileAccessController, FileAccessScope, bind_file_access_scope
 from core.credit_usage import CreditUsageAppType, CreditUsageCreatedBy
 from core.db.session_factory import session_factory as default_session_factory
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
 from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.workflow.file_reference import is_canonical_file_reference
+from factories.file_factory.builders import build_from_mapping
+from graphon.file import FileTransferMethod, FileType, file_manager
 from graphon.model_runtime.entities.llm_entities import LLMResultChunk
-from graphon.model_runtime.entities.message_entities import PromptMessage
+from graphon.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    MultiModalPromptMessageContent,
+    PromptMessage,
+    PromptMessageContentUnionTypes,
+)
 from graphon.model_runtime.entities.model_entities import ModelType
 from models.model import App
 from services.entities.agent_llm_inner import AgentLLMInvokeRequest
+
+_PROMPT_CONTENT_ADAPTER = TypeAdapter(PromptMessageContentUnionTypes)
 
 
 class AgentLLMInnerServiceError(RuntimeError):
@@ -34,6 +48,9 @@ class PreparedAgentLLMInvocation:
     request: AgentLLMInvokeRequest
     model_instance: ModelInstance
     app_type: CreditUsageAppType = CreditUsageAppType.UNKNOWN
+    # None supports callers invoking an already-resolved, ordinary request.
+    # prepare() always supplies a list, preserving the original wire payload.
+    prompt_messages: list[dict[str, JsonValue]] | None = None
 
     @property
     def created_by(self) -> CreditUsageCreatedBy:
@@ -51,6 +68,12 @@ class AgentLLMInnerService:
         self._session_factory = session_factory or default_session_factory.create_session
 
     def prepare(self, request: AgentLLMInvokeRequest) -> PreparedAgentLLMInvocation:
+        """Resolve a validated caller/model and any managed media references.
+
+        Managed content is rebuilt under caller file-access scope before SSE
+        starts. Invalid/deleted/inaccessible references raise ValueError for the
+        controller's existing HTTP 400 mapping. Ordinary URLs stay unchanged.
+        """
         caller = request.caller
         target = request.target
         app = self._validate_app_tenant(app_id=caller.app_id, tenant_id=caller.tenant_id)
@@ -80,12 +103,20 @@ class AgentLLMInnerService:
             request=request,
             model_instance=model_instance,
             app_type=get_credit_usage_app_type(app.mode),
+            prompt_messages=_resolve_agent_media_prompt_messages(request),
         )
 
     def invoke(self, prepared: PreparedAgentLLMInvocation) -> Generator[LLMResultChunk]:
+        """Invoke a prepared model with API-resolved messages and original caller metadata.
+
+        Does not mutate the wire request; provider errors and streamed chunks
+        retain the gateway's existing behavior.
+        """
         request = prepared.request
         caller = request.caller
         target = request.target
+        if prepared.prompt_messages is not None:
+            target = target.model_copy(update={"prompt_messages": prepared.prompt_messages})
         result = prepared.model_instance.invoke_llm(
             prompt_messages=cast(list[PromptMessage], target.prompt_messages),
             model_parameters=target.model_parameters,
@@ -129,4 +160,94 @@ class AgentLLMInnerService:
             return app
 
 
-__all__ = ["AgentLLMInnerService", "AgentLLMInnerServiceError", "PreparedAgentLLMInvocation"]
+def _resolve_agent_media_prompt_messages(request: AgentLLMInvokeRequest) -> list[dict[str, JsonValue]]:
+    """Resolve only dify-file URL blocks; leave other content and URLs intact.
+
+    Requires a validated trusted gateway request. Managed file metadata is
+    reconstructed under current tenant/user authorization, never from storage
+    keys in a wire reference. Authoritative MIME must agree with the input
+    modality, and filename suffixes cannot override it. Conversion uses the
+    normal model file runtime; resulting bytes stay at the API/provider boundary.
+    """
+    messages = request.target.prompt_messages
+    caller = request.caller
+    scope = FileAccessScope(
+        tenant_id=caller.tenant_id,
+        user_id=caller.user_id,
+        user_from=UserFrom(caller.user_from),
+        invoke_from=InvokeFrom.value_of(caller.invoke_from),
+    )
+    controller = DatabaseFileAccessController()
+    resolved: list[dict[str, JsonValue]] = []
+    has_managed_media = False
+    with bind_file_access_scope(scope):
+        for message in messages:
+            content = message.get("content")
+            if isinstance(content, list):
+                converted: list[JsonValue] = []
+                for item in content:
+                    if (
+                        isinstance(item, dict)
+                        and isinstance(item.get("url"), str)
+                        and item["url"].startswith("dify-file://")
+                    ):
+                        has_managed_media = True
+                        parsed = urlsplit(item["url"])
+                        reference = parsed.path.removeprefix("/")
+                        if parsed.netloc not in {"tool_file", "local_file", "datasource_file"} or (
+                            parsed.query or parsed.fragment or not is_canonical_file_reference(reference)
+                        ):
+                            raise ValueError("Invalid managed media reference")
+                        media = _PROMPT_CONTENT_ADAPTER.validate_python(item)
+                        if not isinstance(media, MultiModalPromptMessageContent):
+                            raise ValueError("Managed media reference requires a multimodal content block")
+                        file = build_from_mapping(
+                            mapping={"transfer_method": parsed.netloc, "reference": reference},
+                            tenant_id=caller.tenant_id,
+                            access_controller=controller,
+                        )
+                        authoritative_mime = normalize_media_mime(file.mime_type)
+                        requested_mime = normalize_media_mime(media.mime_type)
+                        expected_type = requested_mime.split("/", 1)[0]
+                        if expected_type not in {"image", "audio", "video"}:
+                            expected_type = "document"
+                        if media.type.value != expected_type or (
+                            authoritative_mime not in {"", "application/octet-stream"}
+                            and authoritative_mime != requested_mime
+                        ):
+                            raise ValueError("Managed media MIME does not match the requested content type")
+                        # File factories may classify by filename suffix first.
+                        # The validated media MIME/type must survive that lookup.
+                        # Datasource files live in UploadFile, so rendering must
+                        # use its preview URL and storage path rather than ToolFile.
+                        file = file.model_copy(
+                            update={
+                                "transfer_method": FileTransferMethod.LOCAL_FILE
+                                if file.transfer_method == FileTransferMethod.DATASOURCE_FILE
+                                else file.transfer_method,
+                                "mime_type": media.mime_type,
+                                "extension": "." + media.format,
+                                "type": FileType(media.type.value),
+                            }
+                        )
+                        converted.append(
+                            file_manager.to_prompt_message_content(
+                                file,
+                                image_detail_config=media.detail
+                                if isinstance(media, ImagePromptMessageContent)
+                                else None,
+                            ).model_dump(mode="json")
+                        )
+                    else:
+                        converted.append(item)
+                resolved.append({**message, "content": converted})
+            else:
+                resolved.append(message)
+    return resolved if has_managed_media else messages
+
+
+__all__ = [
+    "AgentLLMInnerService",
+    "AgentLLMInnerServiceError",
+    "PreparedAgentLLMInvocation",
+]

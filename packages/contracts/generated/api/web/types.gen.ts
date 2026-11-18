@@ -629,29 +629,12 @@ export type FileExtensionBlockedError = ErrorResponse & {
   status: 400
 }
 
-export type FileInput = {
-  allowed_file_extensions: Array<string>
-  allowed_file_types: Array<FileType>
-  allowed_file_upload_methods: Array<FileTransferMethod>
-  output_variable_name: string
-  type?: 'file_input'
-}
-
 export type FileInputConfig = {
   allowed_file_extensions?: Array<string>
   allowed_file_types?: Array<FileType>
   allowed_file_upload_methods?: Array<FileTransferMethod>
   output_variable_name: string
   type?: 'file'
-}
-
-export type FileListInput = {
-  allowed_file_extensions: Array<string>
-  allowed_file_types: Array<FileType>
-  allowed_file_upload_methods: Array<FileTransferMethod>
-  number_limits: number
-  output_variable_name: string
-  type?: 'file_list_input'
 }
 
 export type FileListInputConfig = {
@@ -753,23 +736,6 @@ export type FormInputConfig =
       type: 'file-list'
     } & FileListInputConfig)
 
-export type FormPart =
-  | ({
-      type: 'markdown_fragment'
-    } & MarkdownFragment)
-  | ({
-      type: 'paragraph_input'
-    } & ParagraphInput)
-  | ({
-      type: 'select_input'
-    } & SelectInput)
-  | ({
-      type: 'file_input'
-    } & FileInput)
-  | ({
-      type: 'file_list_input'
-    } & FileListInput)
-
 export type FormSubmitResponse = {
   [key: string]: unknown
 }
@@ -789,6 +755,12 @@ export type HumanInputAccessDeliveryFailedError = ErrorResponse & {
 export type HumanInputAccessRateLimitExceededError = ErrorResponse & {
   code: 'human_input_access_rate_limit_exceeded'
   status: 429
+}
+
+export type HumanInputActionResponse = {
+  button_style: ButtonStyle
+  id: string
+  title: string
 }
 
 export type HumanInputChallengeExpiredError = ErrorResponse & {
@@ -996,11 +968,6 @@ export type MalformedUploadTokenError = ErrorResponse & {
   status: 400
 }
 
-export type MarkdownFragment = {
-  text: string
-  type?: 'markdown_fragment'
-}
-
 export type MessageFeedbackPayload = {
   content?: string | null
   rating?: 'dislike' | 'like' | null
@@ -1077,12 +1044,6 @@ export type NotWorkflowAppError = ErrorResponse & {
 export type Option = {
   label: I18nObject
   value: string
-}
-
-export type ParagraphInput = {
-  default_value: string | null
-  output_variable_name: string
-  type?: 'paragraph_input'
 }
 
 export type ParagraphInputConfig = {
@@ -1213,11 +1174,63 @@ export type RepeatPasswordNotMatchError = ErrorResponse & {
   status: 400
 }
 
+export type ResolvedFileListResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type: 'file_list_input'
+}
+
+export type ResolvedFileResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type: 'file_input'
+}
+
 export type ResolvedForm = {
-  actions: Array<UserAction>
+  actions: Array<HumanInputActionResponse>
   legacy_form_content: string
-  parts: Array<FormPart>
+  parts: Array<ResolvedPartResponse>
   title: string
+}
+
+export type ResolvedMarkdownResponse = {
+  text: string
+  type: 'markdown_fragment'
+}
+
+export type ResolvedParagraphResponse = {
+  default_value: string | null
+  output_variable_name: string
+  type: 'paragraph_input'
+}
+
+export type ResolvedPartResponse =
+  | ({
+      type: 'markdown_fragment'
+    } & ResolvedMarkdownResponse)
+  | ({
+      type: 'paragraph_input'
+    } & ResolvedParagraphResponse)
+  | ({
+      type: 'select_input'
+    } & ResolvedSelectResponse)
+  | ({
+      type: 'file_input'
+    } & ResolvedFileResponse)
+  | ({
+      type: 'file_list_input'
+    } & ResolvedFileListResponse)
+
+export type ResolvedSelectResponse = {
+  default_value: string | null
+  options: Array<string>
+  output_variable_name: string
+  type: 'select_input'
 }
 
 export type ResultResponse = {
@@ -1284,13 +1297,6 @@ export type SavedMessageItem = {
 export type SavedMessageListQuery = {
   last_id?: string | null
   limit?: number
-}
-
-export type SelectInput = {
-  default_value: string | null
-  options: Array<string>
-  output_variable_name: string
-  type?: 'select_input'
 }
 
 export type SelectInputConfig = {
@@ -1398,12 +1404,6 @@ export type UploadTokenRequiredError = ErrorResponse & {
   status: 401
 }
 
-export type UserAction = {
-  button_style: ButtonStyle
-  id: string
-  title: string
-}
-
 export type UserActionConfig = {
   button_style?: ButtonStyle
   id: string
@@ -1497,13 +1497,13 @@ export type WebAppHumanInputV2SubmitResponse = {
 
 export type WebAppParametersResponse = {
   account_login_enabled: boolean
-  account_login_url: string | null
   allow_anonymous_end_user_auth: boolean
   annotation_reply: {
     enabled?: boolean
   }
   connection_requirements: Array<WebAppConnectionRequirement>
   connection_revision: string | null
+  console_web_url: string
   file_upload: {
     allowed_file_extensions?: Array<string>
     allowed_file_types?: Array<'audio' | 'custom' | 'document' | 'image' | 'video'>
@@ -1912,9 +1912,9 @@ export type WebSiteResponse = {
 }
 
 export type WebSystemFeatureResponse = {
-  account_login_url: string | null
   agent_tracing_api_collection_enabled: boolean
   branding: BrandingModel
+  console_web_url: string
   deployment_edition: DeploymentEdition
   enable_app_deploy: boolean
   enable_change_email: boolean

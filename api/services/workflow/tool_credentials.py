@@ -141,3 +141,8 @@ def get_tool_authorization_requirements(graph: Mapping[str, Any]) -> tuple[Autho
 class WorkflowToolEndUserAuthError(ValueError):
     def __init__(self, node_id: str) -> None:
         super().__init__(f"Node {node_id}: EndUser credentials are not supported in workflow tools.")
+
+
+class WorkflowTriggerEndUserAuthError(ValueError):
+    def __init__(self, node_id: str) -> None:
+        super().__init__(f"Node {node_id}: EndUser credentials are not supported in trigger workflows.")

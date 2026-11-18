@@ -85,7 +85,12 @@ class ConnectionAssetQuery(BaseModel):
 
 
 class WebAppParametersResponse(Parameters, ResponseModel):
-    account_login_url: str | None = Field(description="Account-origin sign-in page for the existing Web App login flow")
+    console_web_url: str = Field(
+        description=(
+            "Web console base URL, preserving its deployment base path; independent of whether Account login "
+            "is enabled. An empty string means the same-origin root."
+        )
+    )
     allow_anonymous_end_user_auth: bool = Field(
         description="Whether Guest identities may manage and use personal Connections; does not control App entry."
     )
@@ -151,9 +156,7 @@ class AppParameterApi(WebApiResource):
                 **parameters,
                 "allow_anonymous_end_user_auth": dify_config.END_USER_AUTH_ALLOW_ANONYMOUS,
                 "account_login_enabled": dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED,
-                "account_login_url": f"{dify_config.CONSOLE_WEB_URL.rstrip('/')}/signin"
-                if dify_config.WEBAPP_ACCOUNT_PASSPORT_ENABLED
-                else None,
+                "console_web_url": dify_config.CONSOLE_WEB_URL.rstrip("/"),
             },
         )
 

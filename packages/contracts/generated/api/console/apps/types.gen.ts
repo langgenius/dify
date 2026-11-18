@@ -3043,8 +3043,8 @@ export type AppModelSelectionResponse = {
     [key: string]: JsonValue
   }
   mode?: LlmMode | ''
-  name?: string
-  provider?: string
+  name?: string | null
+  provider?: string | null
   [key: string]: unknown
 }
 
@@ -5236,6 +5236,32 @@ export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses = {
 
 export type GetAppsByAppIdAdvancedChatWorkflowRunsCountResponse =
   GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses[keyof GetAppsByAppIdAdvancedChatWorkflowRunsCountResponses]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireData = {
+  body?: never
+  path: {
+    app_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/advanced-chat/workflows/draft/conversations/workspaces/retire'
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors = {
+  401: ErrorResponse
+  403: ErrorResponse
+  404: AppNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireError =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireErrors]
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses = {
+  204: void
+}
+
+export type PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponse =
+  PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses[keyof PostAppsByAppIdAdvancedChatWorkflowsDraftConversationsWorkspacesRetireResponses]
 
 export type PostAppsByAppIdAdvancedChatWorkflowsDraftHumanInputNodesByNodeIdFormPreviewData = {
   body: HumanInputFormPreviewPayload

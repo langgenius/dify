@@ -12,6 +12,23 @@ parameters, response schemas, and Swagger documentation.
 - Do not add new Flask-RESTX `fields.*` dictionaries, `Namespace.model(...)` exports, or `@marshal_with(...)` for migrated or new endpoints.
 - Do not use `@ns.expect(...)` for GET query parameters. Flask-RESTX documents that as a request body.
 
+## Console EndUser auth discovery
+
+The authenticated Console `/console/api/features` endpoint uses `ConsoleFeatureResponse` to extend workspace features
+with the required boolean `end_user_auth_enabled`. It reports `CONSOLE_END_USER_AUTH_ENABLED`, which defaults to false
+in every deployment edition and controls whether Console exposes EndUser authentication configuration for workflow
+tool nodes. The response field has no default: a missing field or failed query is unknown configuration, not a
+confirmed disabled capability.
+
+This is a Console frontend entry-point gate, not a runtime authorization switch. It is independent of
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED` and `END_USER_AUTH_ALLOW_ANONYMOUS`; it neither enables WebApp login or Guest personal
+Connections nor disables execution of existing workflows. Web `/api/parameters` retains its separate
+`account_login_enabled` and `allow_anonymous_end_user_auth` policies.
+
+This adds one scalar to the existing authenticated workspace feature request, with no additional I/O or state changes.
+Account admission, query failure behavior, SSR timing, and cache ownership are unchanged. The shared `FeatureModel`,
+public Console and Web `/system-features` responses, and backend authorization rules remain unchanged.
+
 ## Public System Features Contract
 
 The Console and Web `/system-features` endpoints share `SystemFeatureModel`. They are unauthenticated and may be
@@ -47,17 +64,19 @@ Route excluded values to their actual owner:
 ### Web Account login discovery
 
 The Web `/api/system-features` endpoint extends the shared snapshot with a Web-only
-`WebSystemFeatureResponse`. Its required nullable `account_login_url` lets anonymous
-WebApp clients discover the Account-origin sign-in page even when `/account/profile`
-returns 401. It is derived only from `CONSOLE_WEB_URL` and
-`WEBAPP_ACCOUNT_PASSPORT_ENABLED`; null means Account login is disabled. The Console
-endpoint and shared `SystemFeatureModel` remain unchanged.
+`WebSystemFeatureResponse`. Its required `console_web_url` lets anonymous WebApp
+clients discover the Web console base endpoint that hosts the Account login flow even
+when `/account/profile` returns 401. It comes from `CONSOLE_WEB_URL` regardless of
+`WEBAPP_ACCOUNT_PASSPORT_ENABLED`, preserves deployment base paths, removes trailing
+slashes, and uses an empty string for the same-origin root. The `/signin` route belongs
+to the Console; WebApp clients compose it from the base URL and keep owning their return
+targets and PKCE proofs. The Console endpoint and shared `SystemFeatureModel` remain
+unchanged.
 
 This extension adds one scalar to the existing Web bootstrap request, no extra I/O,
 and no credentials. Existing SSR timing, caching ownership, and query failure behavior
 are unchanged. Clients must not interpret a failed bootstrap request or a missing
-field as confirmed disabled login. App-specific return targets and PKCE proofs remain
-owned by the existing login handoff, not the public bootstrap response.
+field as confirmed disabled login.
 
 ### Console WebApp discovery
 

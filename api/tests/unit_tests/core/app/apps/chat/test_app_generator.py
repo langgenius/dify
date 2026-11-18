@@ -437,44 +437,6 @@ class TestChatAppRunner:
         assert annotation_query.call_args.kwargs["session"] is sqlite_session
         mock_direct.assert_called_once()
 
-    def test_run_returns_when_hosting_moderation_blocks(self, sqlite_session: Session):
-        _, conversation, message = _persist_records(sqlite_session)
-        runner = ChatAppRunner()
-        app_config = SimpleNamespace(
-            app_id="app-1",
-            tenant_id="tenant-1",
-            prompt_template=None,
-            external_data_variables=[],
-            dataset=None,
-            additional_features=None,
-        )
-        app_generate_entity = DummyGenerateEntity(
-            app_config=app_config,
-            model_conf=SimpleNamespace(provider_model_bundle=None, model=None, parameters={}, app_model_config_dict={}),
-            inputs={},
-            query="hi",
-            files=[],
-            file_upload_config=None,
-            conversation_id=None,
-            stream=False,
-            user_id="user-1",
-            invoke_from=InvokeFrom.SERVICE_API,
-        )
-
-        with (
-            patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
-            patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
-            patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
-            patch.object(ChatAppRunner, "check_hosting_moderation", return_value=True),
-        ):
-            runner.run(
-                app_generate_entity,
-                DummyQueueManager(),
-                conversation,
-                message,
-                sqlite_session,
-            )
-
     def test_run_closes_explicit_session_before_stream_consumption(self, sqlite_session: Session):
         _, conversation, message = _persist_records(sqlite_session)
         runner = ChatAppRunner()
@@ -521,7 +483,6 @@ class TestChatAppRunner:
                 patch.object(ChatAppRunner, "organize_prompt_messages", return_value=([], [])),
                 patch.object(ChatAppRunner, "moderation_for_inputs", return_value=(None, {}, "hi")),
                 patch.object(ChatAppRunner, "query_app_annotations_to_reply", return_value=None),
-                patch.object(ChatAppRunner, "check_hosting_moderation", return_value=False),
                 patch.object(ChatAppRunner, "recalc_llm_max_tokens"),
                 patch.object(
                     ChatAppRunner,
@@ -543,4 +504,5 @@ class TestChatAppRunner:
             message_id="m1",
             user_id="user-1",
             tenant_id="tenant-1",
+            app_id="app-1",
         )

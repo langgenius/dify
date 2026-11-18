@@ -39,6 +39,7 @@ from core.workflow.node_factory import (
 from core.workflow.node_runtime import (
     apply_dify_debug_email_recipient,
 )
+from core.workflow.nodes.agent_v2.workspace_retirement_layer import retire_standalone_node_execution_workspaces
 from core.workflow.nodes.human_input.callback import (
     DifyHITLCallback,
     render_form_content_before_submission,
@@ -120,6 +121,7 @@ from services.workflow.tool_credential_validation import check_tool_credentials
 from services.workflow.tool_credentials import (
     ToolCredentialConfig,
     WorkflowToolEndUserAuthError,
+    WorkflowTriggerEndUserAuthError,
     first_end_user_tool_node,
 )
 from services.workflow.workflow_converter import WorkflowConverter
@@ -935,7 +937,7 @@ class WorkflowService:
             if config.credential_source != "end_user":
                 continue
             if has_trigger:
-                raise ValueError(f"Node {node_id}: EndUser credentials are not supported in trigger workflows.")
+                raise WorkflowTriggerEndUserAuthError(str(node_id))
             assert config.end_user_auth is not None
             try:
                 provider = providers.provider(workflow.tenant_id, data["provider_id"])
@@ -1659,6 +1661,15 @@ class WorkflowService:
                         "Agent preview terminal persistence failed (%s)", type(persistence_error).__name__
                     )
             raise
+        finally:
+            if is_agent_preview and started_event is not None:
+                # Single-step previews bypass the Workflow Run retirement layer and
+                # cannot pause, so the sandbox is retired as soon as the node ends.
+                retire_standalone_node_execution_workspaces(
+                    tenant_id=app_model.tenant_id,
+                    app_id=app_model.id,
+                    node_execution_id=started_event.id,
+                )
 
         node_execution.workflow_id = draft_workflow.id
         if started_event is not None:
