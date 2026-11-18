@@ -89,7 +89,7 @@ function AgentSelectorList({
   const searchText = use(SearchTextContext)
   const keyword = useDebounce(searchText.trim(), { wait: 300 })
   const [tagIds, setTagIds] = useState<string[]>([])
-  const tagFilterContainerRef = useRef<HTMLDivElement>(null)
+  const tagPortalRef = useRef<HTMLDivElement>(null)
   const agentsQuery = useInfiniteQuery(
     consoleQuery.agent.inviteOptions.get.infiniteOptions({
       input: (page: number) => ({
@@ -140,13 +140,12 @@ function AgentSelectorList({
           placeholder={t(($) => $['roster.nodeSelector.searchPlaceholder'], { ns: 'agentRoster' })}
         />
       </MenuInputGroup>
-      {/* The hover-open menu keeps pointer interaction inside its popup, including the tags. */}
-      <div ref={tagFilterContainerRef} className="mx-1 mb-1">
+      <div className="mx-1 mb-1">
         <TagFilter
           type="agent"
           value={tagIds}
           onChange={setTagIds}
-          portalProps={{ container: tagFilterContainerRef }}
+          portalProps={{ container: tagPortalRef }}
           showTagManagement={false}
         />
       </div>
@@ -225,6 +224,8 @@ function AgentSelectorList({
           </span>
         </MenuLinkItem>
       </MenuList>
+      {/* Keep the tag popup inside the hover menu, after the items it needs to cover. */}
+      <div ref={tagPortalRef} />
     </>
   )
 }

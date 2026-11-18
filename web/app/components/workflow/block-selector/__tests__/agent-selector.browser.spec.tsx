@@ -37,10 +37,12 @@ function agent(name: string): AgentInviteOptionResponse {
     source: 'roster',
     status: 'active',
     active_config_snapshot_id: 'snapshot',
+    icon_type: 'emoji',
+    icon: '🦊',
   }
 }
 
-it('combines the workflow search and tags, pages through matching candidates and clears only tags', async () => {
+async function openAgentSelector() {
   onTestFinished(guardUnexpectedFetch())
   const { queryClient, wrapper: Wrapper } = createConsoleQueryWrapper({
     workspacePermissionKeys: ['agent.tag.manage'],
@@ -49,6 +51,61 @@ it('combines the workflow search and tags, pages through matching candidates and
     { id: 'research', name: 'Research', type: 'agent', binding_count: '2' },
     { id: 'finance', name: 'Finance', type: 'agent', binding_count: '1' },
   ])
+  await render(
+    <Wrapper>
+      <EditorResourceScope
+        resource={{
+          kind: 'app',
+          appId: 'workflow-1',
+          mode: 'workflow',
+          collaborationEnabled: false,
+        }}
+      >
+        <AgentSelectorMenu>
+          <AgentSelectorMenuTrigger openOnHover>Choose agent</AgentSelectorMenuTrigger>
+          <AgentSelectorMenuContent onSelect={vi.fn()} onStartFromScratch={vi.fn()} />
+        </AgentSelectorMenu>
+      </EditorResourceScope>
+    </Wrapper>,
+  )
+
+  await page.getByRole('button', { name: 'Choose agent' }).hover()
+}
+
+it('keeps the tag popup above the Agent avatar and both footer action icons', async () => {
+  listAgents.mockResolvedValue(
+    zAgentInviteOptionsResponse.parse({
+      data: [agent('Fox')],
+      page: 1,
+      limit: 8,
+      total: 1,
+      has_more: false,
+    }),
+  )
+  await openAgentSelector()
+
+  const footerActionNames = [/startFromScratch/, /manageInAgentConsole/]
+  const avatar = page.getByText('🦊')
+  await expect.element(avatar).toBeVisible()
+  const icons = [
+    avatar.element(),
+    ...footerActionNames.map((name) => {
+      const action = page.getByRole('menuitem', { name }).element()
+      return action.querySelector('[aria-hidden="true"]')!
+    }),
+  ]
+
+  await page.getByRole('combobox', { name: 'common.tag.placeholder' }).click()
+  const popup = page.getByRole('dialog', { name: 'common.tag.placeholder' })
+  await expect.element(popup.getByRole('option', { name: 'Finance' })).toBeVisible()
+  for (const icon of icons) {
+    const { x, y, width, height } = icon.getBoundingClientRect()
+    const hit = document.elementFromPoint(x + width / 2, y + height / 2)
+    expect(popup.element().contains(hit)).toBe(true)
+  }
+})
+
+it('combines the workflow search and tags, pages through matching candidates and clears only tags', async () => {
   listAgents.mockImplementation(async (input) => {
     const { page = 1, limit = 8, keyword, tag_ids = [] } = input?.query ?? {}
     const candidates =
@@ -66,25 +123,7 @@ it('combines the workflow search and tags, pages through matching candidates and
     })
   })
 
-  await render(
-    <Wrapper>
-      <EditorResourceScope
-        resource={{
-          kind: 'app',
-          appId: 'workflow-1',
-          mode: 'workflow',
-          collaborationEnabled: false,
-        }}
-      >
-        <AgentSelectorMenu>
-          <AgentSelectorMenuTrigger openOnHover>Choose agent</AgentSelectorMenuTrigger>
-          <AgentSelectorMenuContent onSelect={vi.fn()} />
-        </AgentSelectorMenu>
-      </EditorResourceScope>
-    </Wrapper>,
-  )
-
-  await page.getByRole('button', { name: 'Choose agent' }).hover()
+  await openAgentSelector()
   const search = page.getByRole('searchbox')
   await search.fill('Company')
   await expect.element(page.getByRole('menuitem', { name: 'Company agent' })).toBeVisible()
