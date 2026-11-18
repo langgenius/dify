@@ -9,7 +9,7 @@ from typing import Protocol
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
-from werkzeug.test import EnvironBuilder, run_wsgi_app
+from werkzeug.test import EnvironBuilder, TestResponse, run_wsgi_app
 
 from controllers.openapi import account as account_module
 from controllers.openapi import mcp as mcp_module
@@ -53,11 +53,11 @@ def _initialize(version: str = "2025-11-25") -> dict[str, object]:
     )
 
 
-def _post(client: FlaskClient, body: object, headers: dict[str, str] | None = None):
+def _post(client: FlaskClient, body: object, headers: dict[str, str] | None = None) -> TestResponse:
     return client.post(MCP_PATH, data=json.dumps(body), content_type="application/json", headers=headers or {})
 
 
-def _error_code(response) -> int:
+def _error_code(response: TestResponse) -> int:
     return response.get_json()["error"]["code"]
 
 
@@ -345,7 +345,7 @@ def _post_without_content_length(app: Flask, body: object) -> tuple[int, dict[st
         method="POST",
         input_stream=io.BytesIO(json.dumps(body).encode()),
         content_type="application/json",
-        headers={"Authorization": "Bearer dfoa_x"},
+        headers=[("Authorization", "Bearer dfoa_x")],
     )
     environ = builder.get_environ()
     del environ["CONTENT_LENGTH"]
@@ -368,7 +368,9 @@ def test_a_chunked_body_over_the_cap_is_cut_at_the_cap_and_is_a_parse_error(
     status, payload = _post_without_content_length(openapi_app, _oversize_call())
 
     assert status == 400
-    assert payload["error"]["code"] == mcp_types.PARSE_ERROR
+    error = payload["error"]
+    assert isinstance(error, dict)
+    assert error["code"] == mcp_types.PARSE_ERROR
     assert recorder.calls == []
 
 

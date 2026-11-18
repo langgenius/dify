@@ -11,7 +11,7 @@ import dataclasses
 import json
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 
 import pytest
 from flask import Flask
@@ -35,6 +35,7 @@ from controllers.openapi._mcp_tools import (
     tool_list,
 )
 from controllers.openapi.auth.spec import Effect
+from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import extract_bearer
 from models import Account
@@ -60,7 +61,7 @@ _FILE_REQUIRED = "upload.console_app.file"
 
 
 @pytest.fixture
-def in_request(openapi_app: Flask):
+def in_request(openapi_app: Flask) -> Iterator[None]:
     with openapi_app.test_request_context():
         yield
 
@@ -222,7 +223,7 @@ def _run(
     *,
     authorization: str | None = _BEARER,
     protocol_version: str = _LATEST,
-):
+) -> mcp_types.CallToolResult:
     return run_tool(
         name,
         arguments,
@@ -233,9 +234,11 @@ def _run(
     )
 
 
-def _text(result) -> str:
+def _text(result: mcp_types.CallToolResult) -> str:
     assert len(result.content) == 1
-    return result.content[0].text
+    block = result.content[0]
+    assert isinstance(block, mcp_types.TextContent)
+    return block.text
 
 
 def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
@@ -273,6 +276,7 @@ def test_find_without_op_searches_and_with_op_describes(openapi_app: Flask) -> N
     assert found.isError is False
     assert "get.workspace" in [item["op"] for item in json.loads(_text(found))["ops"]]
     assert json.loads(_text(described))["op"] == "get.workspace"
+    assert described.structuredContent is not None
     assert described.structuredContent["op"] == "get.workspace"
     assert unknown.isError is True
     assert _text(unknown) == "No operation `no.such.op`. Use dify_find to search."
@@ -427,6 +431,12 @@ def paused_job(
     return _PausedJob(app_id=admitted_bearer.app_id, job_id=opened.record.id)
 
 
+def _hint_ops(body: dict[str, object]) -> list[object]:
+    hints = body["hints"]
+    assert isinstance(hints, list)
+    return [hint["op"] for hint in hints]
+
+
 def _wait_paused(paused_job: _PausedJob) -> dict[str, object]:
     arguments = {
         "op": _WAIT_JOB_OP,
@@ -439,7 +449,7 @@ def test_hints_are_kept_when_the_token_can_call_their_ops(openapi_app: Flask, pa
     with openapi_app.test_request_context():
         body = _wait_paused(paused_job)
 
-    assert [hint["op"] for hint in body["hints"]] == [_SUBMIT_FORM_OP, _WAIT_JOB_OP]
+    assert _hint_ops(body) == [_SUBMIT_FORM_OP, _WAIT_JOB_OP]
 
 
 def test_hints_the_token_cannot_call_are_dropped_from_a_result(
@@ -458,7 +468,7 @@ def test_hints_the_token_cannot_call_are_dropped_from_a_result(
     with openapi_app.test_request_context():
         body = _wait_paused(paused_job)
 
-    assert [hint["op"] for hint in body["hints"]] == [_WAIT_JOB_OP]
+    assert _hint_ops(body) == [_WAIT_JOB_OP]
     assert asked == ["dfoa_admitted"]
 
 
@@ -486,7 +496,7 @@ def _canned(status: int, body: dict[str, object]) -> Callable[[OpCall], OpResult
 def test_hints_the_token_cannot_call_are_dropped_from_an_error_body(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    error = {
+    error: dict[str, object] = {
         "code": "service_api_disabled",
         "message": "off",
         "status": 403,
@@ -510,7 +520,12 @@ def _canned_with_headers(
     return answer
 
 
-_RATE_LIMITED = {"code": "rate_limited", "message": "slow down", "status": 429, "hints": [_UNCALLABLE_HINT]}
+_RATE_LIMITED: dict[str, object] = {
+    "code": "rate_limited",
+    "message": "slow down",
+    "status": 429,
+    "hints": [_UNCALLABLE_HINT],
+}
 
 
 @pytest.mark.usefixtures("admitted_bearer")
@@ -525,7 +540,9 @@ def test_a_429_with_retry_after_adds_the_wait_as_a_second_block(
 
     assert result.isError is True
     assert [block.text for block in result.content][1:] == ["Retry after 30 seconds."]
-    assert json.loads(result.content[0].text) == {**_RATE_LIMITED, "hints": []}
+    first = result.content[0]
+    assert isinstance(first, mcp_types.TextContent)
+    assert json.loads(first.text) == {**_RATE_LIMITED, "hints": []}
 
 
 @pytest.mark.usefixtures("admitted_bearer")
@@ -579,7 +596,7 @@ def test_a_403_is_a_tool_error_not_an_exception(openapi_app: Flask, monkeypatch:
 def test_an_oversize_error_body_is_capped_after_hint_dropping(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    error = {"code": "x", "message": "m" * 100, "hints": [_UNCALLABLE_HINT]}
+    error: dict[str, object] = {"code": "x", "message": "m" * 100, "hints": [_UNCALLABLE_HINT]}
     monkeypatch.setattr(_mcp_tools, "call_op", _canned(422, error))
     monkeypatch.setattr(_mcp_tools, "TOOL_RESULT_MAX_CHARS", 200)
     with openapi_app.test_request_context():
@@ -637,10 +654,11 @@ def test_every_tool_has_a_description_and_the_call_tools_name_their_effect() -> 
     tools = {tool.name: tool for tool in tool_list()}
 
     assert all(tool.description for tool in tools.values())
+    descriptions = {name: tool.description or "" for name, tool in tools.items()}
     for call_tool in CallTool:
-        assert call_tool.effect.value in tools[call_tool].description
-    assert "cannot be undone" in tools[CallTool.DESTRUCTIVE].description
-    assert "cannot be undone" not in tools[CallTool.WRITE].description
+        assert call_tool.effect.value in descriptions[call_tool]
+    assert "cannot be undone" in descriptions[CallTool.DESTRUCTIVE]
+    assert "cannot be undone" not in descriptions[CallTool.WRITE]
 
 
 def test_the_instructions_say_what_to_do_when_the_workspace_list_is_empty() -> None:
