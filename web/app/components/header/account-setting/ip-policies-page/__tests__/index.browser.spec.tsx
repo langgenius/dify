@@ -55,11 +55,16 @@ async function renderPoliciesSettings(width = 320) {
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
   const groups = [
-    createNetworkAccessGroupFixture({ name: 'Internal Network', used_by_count: 2 }),
+    createNetworkAccessGroupFixture({
+      name: 'Internal Network',
+      used_by_count: 2,
+      updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    }),
     createNetworkAccessGroupFixture({
       id: 'group-2',
       name: 'Engineering Office',
       allowed_cidrs: ['192.0.2.0/24'],
+      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     }),
   ]
   seedNetworkAccessGroups(queryClient, { groups })
@@ -149,6 +154,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
         table.getByRole('columnheader', { name, exact: true }).element(),
         viewport,
       )
+    const updatedLabels = ['2 hours ago', '3 days ago']
     for (const [index, group] of groups.entries()) {
       const cells = table
         .getByRole('row')
@@ -157,7 +163,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
       await expect.element(cells.nth(0)).toHaveTextContent(group.name)
       await expect.element(cells.nth(1)).toHaveTextContent(String(group.allowed_cidrs.length))
       await expect.element(cells.nth(2)).toHaveTextContent(`${group.used_by_count} apps`)
-      expect(cells.nth(3).element().textContent?.trim()).toBeTruthy()
+      await expect.element(cells.nth(3)).toHaveTextContent(updatedLabels[index]!)
       for (let column = 0; column < 4; column++)
         await expectReadableText(cells.nth(column).element(), viewport)
     }

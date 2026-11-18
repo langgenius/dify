@@ -200,11 +200,10 @@ it('updates same-name parallel calls out of order and keeps per-call request/res
   await expect.element(page.getByText('result-a', { exact: true })).toBeVisible()
   await expect.element(page.getByText('result-b', { exact: true })).toBeVisible()
 
-  const expectedValues = ['{"q":"a"}', 'result-a', '{"q":"b"}', 'result-b']
-  const values = [...page.getByTestId('workflow-tool-activity').element().querySelectorAll('div')]
-    .map((element) => element.textContent?.trim())
-    .filter((text): text is string => expectedValues.includes(text ?? ''))
-  expect(values).toEqual(expectedValues)
+  // Each call keeps its own input beside its output, in call order.
+  await expect
+    .element(page.getByTestId('workflow-tool-activity'))
+    .toMatchTextContent(/\{"q":"a"\}[\s\S]*result-a[\s\S]*\{"q":"b"\}[\s\S]*result-b/)
 })
 
 it('shows readable failed, cancelled, and interrupted statuses with the original tool label', async () => {
