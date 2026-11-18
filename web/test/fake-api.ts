@@ -19,19 +19,19 @@ type HandlerResult<T> = T | Promise<T>
  * (`params`, `query`, `body`, `headers`) and returns a response that must satisfy the
  * contract's output schema. Throw `apiError(...)` to answer with an error status.
  */
-export type ContractHandlers<T> = T extends AnyContractProcedure
+type ContractHandlers<T> = T extends AnyContractProcedure
   ? (
       input: InferSchemaOutput<T['~orpc']['inputSchema']>,
     ) => HandlerResult<InferSchemaInput<T['~orpc']['outputSchema']>>
   : { [K in keyof T]?: ContractHandlers<T[K]> }
 
-export type FakeConsoleHandlers = ContractHandlers<typeof consoleRouterContract>
-export type FakeMarketplaceHandlers = ContractHandlers<typeof marketplaceRouterContract>
+type FakeConsoleHandlers = ContractHandlers<typeof consoleRouterContract>
+type FakeMarketplaceHandlers = ContractHandlers<typeof marketplaceRouterContract>
 
 type ApiBase = 'console' | 'public' | 'marketplace' | 'origin'
 type RouteMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
-export type RouteContext = {
+type RouteContext = {
   request: Request
   url: URL
   params: Record<string, string>
