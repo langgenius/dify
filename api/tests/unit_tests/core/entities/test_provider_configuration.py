@@ -394,6 +394,70 @@ class TestEntitiesProviderConfigurationCases:
         assert all(c.kwargs["provider"] == "openai" for c in mock_check.call_args_list)
 
     @staticmethod
+    def test_get_current_credentials_checks_the_policy_of_a_credential_once_per_configuration() -> None:
+        def configuration_with_current_credential() -> ProviderConfiguration:
+            configuration = _build_provider_configuration()
+            configuration.using_provider_type = ProviderType.CUSTOM
+            configuration.custom_configuration.provider = CustomProviderConfiguration(
+                credentials={"api_key": "provider-key"},
+                current_credential_id="credential-1",
+                current_credential_name="Primary",
+                available_credentials=[],
+            )
+            return configuration
+
+        configuration = configuration_with_current_credential()
+        with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
+            first = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            second = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            # Another configuration is another request's snapshot and checks for itself.
+            configuration_with_current_credential().get_current_credentials(ModelType.LLM, "gpt-4o")
+
+        assert first == second == {"api_key": "provider-key"}
+        assert [c.kwargs["credential_id"] for c in mock_check.call_args_list] == ["credential-1", "credential-1"]
+
+    @staticmethod
+    def test_get_current_credentials_checks_each_available_credential_once_per_configuration() -> None:
+        configuration = _build_provider_configuration()
+        configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.custom_configuration.provider = CustomProviderConfiguration(
+            credentials={"api_key": "provider-key"},
+            available_credentials=[
+                CredentialConfiguration(credential_id="cred-1", credential_name="First"),
+                CredentialConfiguration(credential_id="cred-2", credential_name="Second"),
+            ],
+        )
+
+        with patch("core.helper.credential_utils.check_credential_policy_compliance") as mock_check:
+            configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+        assert [c.kwargs["credential_id"] for c in mock_check.call_args_list] == ["cred-1", "cred-2"]
+
+    @staticmethod
+    def test_get_current_credentials_checks_a_credential_again_after_its_policy_check_failed() -> None:
+        configuration = _build_provider_configuration()
+        configuration.using_provider_type = ProviderType.CUSTOM
+        configuration.custom_configuration.provider = CustomProviderConfiguration(
+            credentials={"api_key": "provider-key"},
+            current_credential_id="credential-1",
+            current_credential_name="Primary",
+            available_credentials=[],
+        )
+
+        with patch(
+            "core.helper.credential_utils.check_credential_policy_compliance",
+            side_effect=[ValueError("not allowed"), None],
+        ) as mock_check:
+            with pytest.raises(ValueError, match="not allowed"):
+                configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            credentials = configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+            configuration.get_current_credentials(ModelType.LLM, "gpt-4o")
+
+        assert credentials == {"api_key": "provider-key"}
+        assert mock_check.call_count == 2
+
+    @staticmethod
     def test_get_system_configuration_status_returns_none_when_current_quota_missing() -> None:
         configuration = _build_provider_configuration()
         configuration.system_configuration.current_quota_type = ProviderQuotaType.FREE

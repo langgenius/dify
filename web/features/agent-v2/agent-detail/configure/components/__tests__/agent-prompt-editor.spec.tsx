@@ -67,14 +67,14 @@ describe('AgentPromptEditor', () => {
   })
 
   it.each([
-    ['skill', 'skills%2Fplaywright%2FSKILL.md'],
-    ['file', 'drive%2Fspec.md'],
-    ['knowledge', 'retrieval-1'],
-    ['tool', 'duckduckgo/ddg_search'],
-    ['tool-all', 'duckduckgo/*'],
+    ['skill', 'skills%2Fplaywright%2FSKILL.md', 'Playwright'],
+    ['file', 'drive%2Fspec.md', 'Configured'],
+    ['knowledge', 'retrieval-1', 'Configured'],
+    ['tool', 'duckduckgo/ddg_search', 'Configured'],
+    ['tool-all', 'duckduckgo/*', 'Configured'],
   ])(
     'warns about missing %s references while recognizing configured references',
-    async (kind, configuredId) => {
+    async (kind, configuredId, expectedLabel) => {
       const user = userEvent.setup()
       renderEditor({
         draft: {
@@ -95,7 +95,7 @@ describe('AgentPromptEditor', () => {
       const editor = within(screen.getByRole('textbox'))
       await user.hover(await editor.findByText('Missing'))
       expect(await screen.findByText(/agentDetail.configure.prompt.referenceMissing/)).toBeVisible()
-      await user.hover(editor.getByText('Configured'))
+      await user.hover(editor.getByText(expectedLabel))
       await waitFor(() =>
         expect(
           screen.queryByText(/agentDetail.configure.prompt.referenceMissing/),

@@ -1,4 +1,4 @@
-import type { SnippetListItem } from '@/types/snippet'
+import type { consoleClient } from '@/service/console'
 import { page } from 'vite-plus/test/browser'
 import { render } from 'vitest-browser-react'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
@@ -6,21 +6,20 @@ import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import SnippetList from '..'
 
-const mockUseInfiniteSnippetList = vi.hoisted(() => vi.fn())
+type ListSnippets = typeof consoleClient.workspaces.current.customizedSnippets.get
 
-// boundary: snippet pagination stops at the snippet service hook.
-vi.mock('@/service/use-snippets', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@/service/use-snippets')>()),
-  useInfiniteSnippetList: (params: unknown, options: unknown) =>
-    mockUseInfiniteSnippetList(params, options),
-}))
+const api = vi.hoisted(() => ({ list: vi.fn<ListSnippets>() }))
 
-// boundary: member and tag reads stop at the generated console transport.
+// boundary: generated operation responses supply snippet pagination, member and tag data.
 vi.mock('@/service/console', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/service/console')>()
-  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  const { withConsoleResponses, withConsoleClientResponses } =
+    await import('@/test/console/service-responses')
   return {
     ...actual,
+    consoleClient: withConsoleClientResponses(actual.consoleClient, {
+      'workspaces.current.customizedSnippets.get': api.list,
+    }),
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'workspaces.current.members.get': async () => ({
         accounts: [{ avatar_url: null, id: 'creator-1', name: 'Alice', status: 'active' }],
@@ -36,9 +35,11 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }))
 
-const snippet: SnippetListItem = {
+const snippet: Awaited<ReturnType<ListSnippets>>['data'][number] = {
   created_at: 1704067200,
   created_by: 'creator-1',
+  author_name: 'Alice',
+  icon_info: null,
   description: 'Builds a sales follow-up.',
   id: 'snippet-1',
   is_published: true,
@@ -85,26 +86,13 @@ const renderSnippetList = async () => {
 describe('Snippet list reflow', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockUseInfiniteSnippetList.mockReturnValue({
-      data: {
-        pages: [
-          {
-            data: [snippet],
-            has_more: false,
-            limit: 30,
-            page: 1,
-            total: 1,
-          },
-        ],
-      },
-      error: null,
-      fetchNextPage: vi.fn(),
-      hasNextPage: false,
-      isFetching: false,
-      isFetchingNextPage: false,
-      isLoading: false,
-      refetch: vi.fn(),
-    })
+    api.list.mockImplementation(async (input: Parameters<ListSnippets>[0]) => ({
+      data: input?.query?.keyword ? [] : [snippet],
+      has_more: false,
+      limit: 30,
+      page: 1,
+      total: input?.query?.keyword ? 0 : 1,
+    }))
   })
 
   afterEach(async () => {
@@ -137,24 +125,18 @@ describe('Snippet list reflow', () => {
     await expect.element(createAction).toBeVisible()
     await expect.element(card).toBeVisible()
     await expect.poll(() => document.title).toContain('workflow.tabs.snippets')
-    expect(mockUseInfiniteSnippetList).toHaveBeenCalledWith(
-      { keyword: '', limit: 30, page: 1 },
-      { enabled: true },
-    )
-
-    await search.fill('sales')
-    await expect
-      .poll(() => mockUseInfiniteSnippetList.mock.calls.at(-1)?.[0])
-      .toEqual({ keyword: 'sales', limit: 30, page: 1 })
-
     const mainElement = main.element()
-    const gridElement = card.element().closest('[aria-busy]')
-    if (!gridElement) throw new Error('Snippet card did not render inside the list grid')
-
     expect(mainElement.scrollWidth).toBe(mainElement.clientWidth)
-    expect(gridElement.scrollWidth).toBe(gridElement.clientWidth)
     ;[creatorFilter, statusFilter, tagFilter, search, createAction, card].forEach((locator) => {
       expectWithinHorizontalBounds(locator.element(), mainElement)
     })
+
+    await search.fill('no matching snippet')
+    await expect
+      .element(screen.getByRole('status'))
+      .toHaveTextContent('workflow.tabs.noSnippetsFound')
+    await expect.element(card).not.toBeInTheDocument()
+    await search.clear()
+    await expect.element(card).toBeVisible()
   })
 })

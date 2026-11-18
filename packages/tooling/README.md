@@ -1,6 +1,6 @@
 # Repository Tooling
 
-Vite+ provides the primary static check through `vp check`, which combines Oxfmt formatting and Oxlint code-quality rules. TypeScript diagnostics run separately through each package's `type-check` script using tsrs. The root command also runs ESLint for non-code file types that Oxlint cannot parse.
+Vite+ provides the primary static check through `vp check`, which combines Oxfmt formatting, Oxlint code-quality rules, and TypeScript diagnostics for the files Oxlint checks. Each package's `type-check` script still runs its full tsconfig scope separately. The root command also runs ESLint for non-code file types that Oxlint cannot parse.
 
 `@dify/tooling` is the private workspace package that owns JS/TS linting, formatting,
 custom rules, and dead-code tooling. Edit the implementations here:
@@ -42,7 +42,8 @@ vp run -w check:fix
 CI and local development use the same root `vite.config.ts` configuration.
 
 The root `check` script delegates to the `check:cached` Vite Task. Formatting and linting
-reuse successful results when their tracked inputs are unchanged.
+reuse successful results when their tracked inputs are unchanged. The task runs
+`vp check --continue-on-error`, so one run reports formatting, lint, and type errors together.
 `CI`, `NODE_ENV`, and `TAILWIND_CANONICAL_CLASSES` are included in the cache key;
 check results never restore files into the working tree. Fix commands remain uncached.
 To force a fresh check, run `vp run -w --no-cache check`.
@@ -59,6 +60,14 @@ To narrow formatting and linting, pass paths directly to Vite+:
 ```sh
 vp check web/app/components packages/dify-ui/src/button
 vp check --fix web/app/components packages/dify-ui/src/button
+```
+
+`--fix` applies only safe fixes. Oxlint reports fixes that can change behavior as
+suggestions; apply them with `--fix-dangerously` on a narrow path and review the diff
+before committing:
+
+```sh
+vp check --fix-dangerously packages/dify-ui/src/button
 ```
 
 Run only the Web JSX accessibility rules for selected files or directories with
@@ -106,7 +115,9 @@ The non-code baseline and its repository-wide file scope live in `packages/tooli
 
 ### Type-aware Linting
 
-The root configuration enables `typeAware` and disables `typeCheck`, so `vp check` and `vp lint` run type-aware rules without reporting TypeScript compiler diagnostics. Run a package's `type-check` script separately for tsrs diagnostics, for example `vp run dify-web#type-check`.
+The root configuration enables `typeAware` and `typeCheck`, so `vp check` and `vp lint` run type-aware rules and report TypeScript compiler diagnostics, including for path-scoped runs. These diagnostics cover only files inside Oxlint's scope: `packages/contracts/**`, declaration files, and other `ignorePatterns` entries are skipped, and the OpenAPI content mapper's own check uses the official compiler. Run a package's `type-check` script for its full tsconfig scope, for example `vp run dify-web#type-check`.
+
+Vite+ runs type-aware rules through the `tsrs-lint` executable from its bundled tsrs. The catalog pins the same tsrs version for the `type-check` scripts, so both paths use one checker build.
 
 Run tsrs for the root tooling configuration and all workspace packages with:
 
@@ -114,7 +125,13 @@ Run tsrs for the root tooling configuration and all workspace packages with:
 vp run -r type-check
 ```
 
-The TS Common CI job runs this command separately from formatting and linting.
+The TS Common CI job runs this command after the static check to cover the files outside Oxlint's scope.
+
+tsrs 7.1.0-beta.tsrs2 targets TypeScript 7.1 beta and uses the upstream checker defaults. Keep
+the default mode rather than `--fast`, whose optimizations can change diagnostics.
+The OpenAPI content mapper package and the example VS Code configuration continue
+to use the official TypeScript 7.1 beta compiler and language server, including
+content mapper execution. Updating tsrs does not change that editor contract.
 
 The shared `packages/tsconfig/base.json` enforces erasable TypeScript syntax through
 `erasableSyntaxOnly`. Root tooling and TypeScript packages inherit this contract; enum

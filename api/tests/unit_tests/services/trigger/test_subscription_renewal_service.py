@@ -9,11 +9,13 @@ import pytest
 
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.trigger.utils.encryption import delete_cache_for_subscription
+from core.plugin.impl.trigger import PluginTriggerClient
 from extensions.ext_application_services import application_services
 from models.trigger import TriggerSubscription
 from repositories.trigger.subscription_repository import TriggerSubscriptionRepository
+from services.trigger.credential_encryption import delete_cache_for_subscription
 from services.trigger.oauth_gateway import PluginTriggerOAuthGateway
+from services.trigger.provider_loader import PluginTriggerProviderLoader
 from services.trigger.subscription_codec import ProviderTriggerSubscriptionCodec
 from services.trigger.subscription_gateway import PluginTriggerSubscriptionGateway, invalidate_subscription_properties
 from services.trigger.subscription_renewal_service import TriggerSubscriptionRenewalService
@@ -34,8 +36,12 @@ def _refresh(harness: _Harness, tenant_id: str, subscription_id: str, locks: _Lo
         with harness.app.app_context():
             renewal = TriggerSubscriptionRenewalService(
                 subscriptions=TriggerSubscriptionRepository(session_factory=harness.session_factory),
-                providers=PluginTriggerSubscriptionGateway(),
-                oauth=PluginTriggerOAuthGateway(oauth=OAuthHandler()),
+                providers=PluginTriggerSubscriptionGateway(
+                    providers=PluginTriggerProviderLoader(client=PluginTriggerClient())
+                ),
+                oauth=PluginTriggerOAuthGateway(
+                    oauth=OAuthHandler(), providers=PluginTriggerProviderLoader(client=PluginTriggerClient())
+                ),
                 clients=application_services().triggers.oauth_clients,
                 locks=locks or _Locks(),
                 codec=ProviderTriggerSubscriptionCodec(),
@@ -105,7 +111,9 @@ def test_oauth_renewal_serializes_other_mutations(harness: _Harness, daemon: _Da
                     with harness.app.app_context():
                         management = TriggerSubscriptionService(
                             subscriptions=TriggerSubscriptionRepository(session_factory=harness.session_factory),
-                            providers=PluginTriggerSubscriptionGateway(),
+                            providers=PluginTriggerSubscriptionGateway(
+                                providers=PluginTriggerProviderLoader(client=PluginTriggerClient())
+                            ),
                             locks=locks,
                             codec=ProviderTriggerSubscriptionCodec(),
                             invalidate_cache=delete_cache_for_subscription,
