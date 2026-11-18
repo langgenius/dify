@@ -99,6 +99,7 @@ const setup = ({
   readOnly = false,
 }: { nodes?: Node[]; edges?: Edge[]; actions?: ReactNode; readOnly?: boolean } = {}) => {
   const { queryClient, wrapper: ConsoleQueryWrapper } = createConsoleQueryWrapper({
+    features: { end_user_auth_enabled: true },
     workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
   })
   const { wrapper: UrlState } = createNuqsTestWrapper()

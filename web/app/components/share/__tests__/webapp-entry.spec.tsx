@@ -55,7 +55,7 @@ const requirement: WebAppConnectionRequirement = {
 
 const makeParameters = (overrides: Partial<EntryParameters> = {}): EntryParameters => ({
   account_login_enabled: true,
-  account_login_url: '/signin',
+  console_web_url: '',
   allow_anonymous_end_user_auth: true,
   connection_revision: null,
   requires_end_user_connections: false,
@@ -233,13 +233,12 @@ describe('Web App entry policy', () => {
 })
 
 describe('SignIn entry integration', () => {
-  it('uses the API Account sign-in origin and deployment prefix while preserving its other parameters', async () => {
+  it('uses the current Console origin and deployment prefix after the entry changes', async () => {
     const user = userEvent.setup()
     const assign = vi.spyOn(window.location, 'assign').mockImplementation(() => {})
     const input = makeEntryInput({
       parameters: makeParameters({
-        account_login_url:
-          'https://accounts.example/console/signin?source=webapp&redirect_url=old&is_end_user=0',
+        console_web_url: 'https://accounts.example/console',
       }),
     })
     const { rerender } = render(
@@ -252,7 +251,6 @@ describe('SignIn entry integration', () => {
     const getDestination = () => new URL(assign.mock.lastCall![0].toString())
     expect(getDestination().origin).toBe('https://accounts.example')
     expect(getDestination().pathname).toBe('/console/signin')
-    expect(getDestination().searchParams.get('source')).toBe('webapp')
     expect(getDestination().searchParams.get('is_end_user')).toBe('1')
     expect(getDestination().searchParams.get('redirect_url')).toBe(
       new URL('/chat/app-code', window.location.origin).href,
@@ -262,7 +260,7 @@ describe('SignIn entry integration', () => {
         value={getWebAppEntryState({
           ...input,
           parameters: makeParameters({
-            account_login_url: 'https://other-accounts.example/base/signin',
+            console_web_url: 'https://other-accounts.example/base',
           }),
         })}
       >

@@ -33,7 +33,7 @@ const profile: WebAccountProfileResponse = {
 }
 const features = {
   ...createSystemFeaturesFixture(),
-  account_login_url: 'https://console.example.com/dify/signin',
+  console_web_url: 'https://console.example.com/dify',
 } satisfies WebSystemFeatureResponse
 const clients: ReturnType<typeof createTestQueryClient>[] = []
 
@@ -99,9 +99,9 @@ describe('sidebar workspace entry', () => {
     expect(request.headers.has('x-app-passport')).toBe(false)
   })
 
-  it('keeps the path prefix of a relative Console sign-in URL', async () => {
+  it('keeps the path prefix of a relative Console base URL', async () => {
     mockRequests({
-      systemFeatures: () => Response.json({ ...features, account_login_url: '/dify/signin' }),
+      systemFeatures: () => Response.json({ ...features, console_web_url: '/dify' }),
     })
     const screen = await renderSidebar()
 
@@ -135,27 +135,37 @@ describe('sidebar workspace entry', () => {
       .toHaveAttribute('href', '/my-account')
   })
 
-  it.each(['missing', 'failed'] as const)(
-    'hides the workspace entry when the Console sign-in URL is %s',
-    async (state) => {
+  it.each([
+    { hasTenant: true, destination: '/' },
+    { hasTenant: false, destination: '/create-workspace' },
+  ])(
+    'uses $destination for an empty same-origin Console prefix',
+    async ({ hasTenant, destination }) => {
       mockRequests({
-        account: () => Response.json({ ...profile, has_tenant: true }),
-        systemFeatures: () =>
-          state === 'missing'
-            ? Response.json({ ...features, account_login_url: null })
-            : Response.json({ message: 'Features unavailable.' }, { status: 503 }),
+        account: () => Response.json({ ...profile, has_tenant: hasTenant }),
+        systemFeatures: () => Response.json({ ...features, console_web_url: '' }),
       })
       const screen = await renderSidebar()
 
-      await expect.element(screen.getByText(profile.name)).toBeVisible()
       await expect
         .element(screen.getByRole('link', { name: buildAppLabel }))
-        .not.toBeInTheDocument()
-      await expect
-        .element(screen.getByRole('link', { name: accountLabel }))
-        .toHaveAttribute('href', '/my-account')
+        .toHaveAttribute('href', destination)
     },
   )
+
+  it('hides the workspace entry when Console discovery fails', async () => {
+    mockRequests({
+      account: () => Response.json({ ...profile, has_tenant: true }),
+      systemFeatures: () => Response.json({ message: 'Features unavailable.' }, { status: 503 }),
+    })
+    const screen = await renderSidebar()
+
+    await expect.element(screen.getByText(profile.name)).toBeVisible()
+    await expect.element(screen.getByRole('link', { name: buildAppLabel })).not.toBeInTheDocument()
+    await expect
+      .element(screen.getByRole('link', { name: accountLabel }))
+      .toHaveAttribute('href', '/my-account')
+  })
 
   it('treats unavailable membership as no workspace', async () => {
     mockRequests({ account: () => Response.json({ ...profile, has_tenant: null }) })

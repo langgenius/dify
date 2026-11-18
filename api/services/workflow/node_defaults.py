@@ -85,7 +85,7 @@ class _HumanInputV2NodeSpec(HumanInputV2NodeData):
     debug_mode: _HumanInputV2DebugMode
 
 
-# The v1 runtime parses delivery methods separately; v2 has its own authoring contract.
+# Editor schemas retain application-owned tool policy and version-specific human-input contracts.
 _DIFY_NODE_DATA: Final[Mapping[tuple[str, str], type[BaseModel]]] = {
     (BuiltinNodeTypes.HUMAN_INPUT, "1"): HumanInputNodeSpec,
     (BuiltinNodeTypes.HUMAN_INPUT, HUMAN_INPUT_V2_VERSION): _HumanInputV2NodeSpec,

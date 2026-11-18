@@ -10,7 +10,7 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
-  account_login_url: '/signin',
+  console_web_url: '',
   allow_anonymous_end_user_auth: false,
   connection_revision: 'published-workflow',
   requires_end_user_connections: true,
@@ -94,7 +94,7 @@ describe('Web App entry queries', () => {
     })
     expect(result.current.parameters.data).toMatchObject({
       account_login_enabled: true,
-      account_login_url: '/signin',
+      console_web_url: '',
       allow_anonymous_end_user_auth: false,
       connection_revision: 'published-workflow',
       requires_end_user_connections: true,

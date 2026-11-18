@@ -1,0 +1,258 @@
+import type { GetFeaturesResponse } from '@dify/contracts/api/console/features/types.gen'
+import type { ReactFlowInstance } from 'reactflow'
+import type { ToolAuthorizationData } from '@/app/components/workflow/nodes/tool/authorization-config'
+import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import { TooltipProvider } from '@langgenius/dify-ui/tooltip'
+import { Suspense, useEffect } from 'react'
+import ReactFlow, { ReactFlowProvider, useReactFlow } from 'reactflow'
+import { render } from 'vitest-browser-react'
+import { CollectionType } from '@/app/components/tools/types'
+import { createNode } from '@/app/components/workflow/__tests__/fixtures'
+import {
+  createStoresFromOptions,
+  createWorkflowWrapper,
+} from '@/app/components/workflow/__tests__/workflow-test-providers'
+import { ToolCredentialSource } from '@/app/components/workflow/nodes/tool/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { consoleQuery } from '@/service/console'
+import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { createDeferred } from '@/test/deferred'
+import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
+import ToolAuthorization from '../tool-authorization'
+
+const requests = vi.hoisted(() => ({
+  features: vi.fn<() => Promise<GetFeaturesResponse>>(),
+}))
+
+// boundary: credential lookup uses the legacy network service; the selector and workflow owner stay real.
+vi.mock('@/service/base', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/service/base')>()),
+  get: async (url: string) => {
+    if (url.startsWith('/workspaces/current/tool-provider/builtin/provider-a/credential/info')) {
+      return {
+        credentials: [
+          {
+            id: 'workspace-key',
+            name: 'Workspace connection',
+            provider: 'provider-a',
+            credential_type: 'api-key',
+            is_default: true,
+          },
+          {
+            id: 'replacement-key',
+            name: 'Replacement connection',
+            provider: 'provider-a',
+            credential_type: 'api-key',
+            is_default: false,
+          },
+        ],
+        supported_credential_types: ['api-key'],
+        allow_custom_token: true,
+        is_oauth_custom_client_enabled: false,
+      }
+    }
+    throw new Error(`Unexpected credential request: ${url}`)
+  },
+}))
+
+// boundary: provider schema retrieval is external data and is not the feature-gate contract.
+vi.mock('@/service/console', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/service/console')>()
+  const { withConsoleResponses } = await import('@/test/console/service-responses')
+  return {
+    ...actual,
+    consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'features.get': () => requests.features(),
+      'workspaces.current.toolProvider.builtin.byProvider.credential.schema.byCredentialType.get':
+        () => [],
+    }),
+  }
+})
+
+function authorizationData(data: Partial<ToolNodeType>): ToolAuthorizationData {
+  return {
+    credential_source: data.credential_source,
+    credential_id: data.credential_id,
+    end_user_auth: data.end_user_auth,
+    reuse_node_id: data.reuse_node_id,
+    test_credential_id: data.test_credential_id,
+  }
+}
+
+async function setup(
+  enabled: boolean,
+  saved: Partial<ToolNodeType> = {},
+  featureRequest?: Promise<GetFeaturesResponse>,
+) {
+  onTestFinished(guardUnexpectedFetch())
+  const { queryClient, wrapper: ConsoleProviders } = createConsoleQueryWrapper({
+    features: { end_user_auth_enabled: enabled },
+    workspacePermissionKeys: ['credential.use', 'credential.create', 'credential.manage'],
+  })
+  onTestFinished(() => queryClient.clear())
+  const stores = createStoresFromOptions({
+    // boundary: the editor's draft transport is injected; graph mutation and synchronization hooks remain real.
+    hooksStoreProps: { doSyncWorkflowDraft: vi.fn(async () => ({ hash: 'saved', updatedAt: 1 })) },
+  })
+  onTestFinished(() => stores.store.getState().debouncedSyncWorkflowDraft.cancel?.())
+  const WorkflowProviders = createWorkflowWrapper(stores, undefined, queryClient)
+  const { wrapper: UrlState } = createNuqsTestWrapper()
+  const featureResponse = queryClient.getQueryData<GetFeaturesResponse>(
+    consoleQuery.features.get.queryKey(),
+  )
+  if (!featureResponse) throw new Error('Expected the initial feature response fixture')
+  if (featureRequest) {
+    requests.features.mockReturnValue(featureRequest)
+    queryClient.removeQueries({ queryKey: consoleQuery.features.get.queryKey(), exact: true })
+  }
+  let graph: ReactFlowInstance<ToolNodeType> | undefined
+  function GraphBoundary() {
+    const flow = useReactFlow<ToolNodeType>()
+    useEffect(() => {
+      graph = flow
+    }, [flow])
+    return null
+  }
+  const node = createNode({
+    id: 'current-tool',
+    type: 'default',
+    data: {
+      type: BlockEnum.Tool,
+      title: 'Current tool',
+      provider_id: 'provider-id-a',
+      provider_name: 'provider-a',
+      provider_type: CollectionType.builtIn,
+      plugin_id: 'plugin-a',
+      tool_name: 'search',
+      tool_label: 'Search',
+      tool_parameters: {},
+      tool_configurations: {},
+      ...saved,
+    },
+  })
+  const screen = await render(
+    <ConsoleProviders>
+      <WorkflowProviders>
+        <UrlState>
+          <TooltipProvider>
+            <ReactFlowProvider>
+              <div style={{ width: 800, height: 1 }}>
+                <ReactFlow defaultNodes={[node]} defaultEdges={[]} />
+              </div>
+              <GraphBoundary />
+              <section aria-label="Current node authorization">
+                <Suspense fallback={<p role="status">Loading authorization configuration</p>}>
+                  <ToolAuthorization
+                    nodeId={node.id}
+                    providerId="provider-id-a"
+                    pluginPayload={{ category: 'tool', provider: 'provider-a' }}
+                    nodeAuth={{
+                      providerName: 'Example provider',
+                      onAuthorizationItemClick: vi.fn(),
+                    }}
+                    showAuthorizationTabs
+                  />
+                </Suspense>
+              </section>
+            </ReactFlowProvider>
+          </TooltipProvider>
+        </UrlState>
+      </WorkflowProviders>
+    </ConsoleProviders>,
+  )
+  return {
+    screen,
+    featureResponse,
+    readAuthorization: () => {
+      const current = graph?.getNode(node.id)
+      if (!current) throw new Error('Expected the current workflow node')
+      return authorizationData(current.data)
+    },
+  }
+}
+
+it.each([
+  {
+    mode: 'App user',
+    saved: {
+      credential_source: ToolCredentialSource.EndUser,
+      end_user_auth: { allowed_credential_types: ['api-key' as const], purpose: 'Saved purpose' },
+      test_credential_id: 'saved-test-key',
+    },
+  },
+  {
+    mode: 'Reuse from node',
+    saved: { credential_source: ToolCredentialSource.ReuseNode, reuse_node_id: 'saved-source' },
+  },
+])(
+  'shows only Workspace auth with the flag off while preserving saved $mode until selection',
+  async ({ saved }) => {
+    const { screen, readAuthorization } = await setup(false, saved)
+    const panel = screen.getByRole('region', { name: 'Current node authorization' })
+    await expect
+      .element(panel.getByRole('heading', { name: 'plugin.auth.authorization' }))
+      .toBeVisible()
+    await expect.element(panel.getByRole('tablist')).not.toBeInTheDocument()
+    await expect.element(panel.getByRole('button', { name: /Workspace connection/ })).toBeVisible()
+    expect(readAuthorization()).toEqual(authorizationData(saved))
+
+    await panel.getByRole('button', { name: /Workspace connection/ }).click()
+    await screen
+      .getByRole('dialog', { name: 'plugin.auth.authorization' })
+      .getByRole('button', { name: /^Replacement connection/ })
+      .click()
+    await expect
+      .element(panel.getByRole('button', { name: /Replacement connection/ }))
+      .toBeVisible()
+    await expect.poll(readAuthorization).toEqual({
+      credential_source: ToolCredentialSource.Workspace,
+      credential_id: 'replacement-key',
+      end_user_auth: undefined,
+      reuse_node_id: undefined,
+      test_credential_id: undefined,
+    })
+  },
+)
+
+it('exposes all three authorization modes when the Console feature flag is enabled', async () => {
+  const { screen, readAuthorization } = await setup(true, {
+    credential_source: ToolCredentialSource.Workspace,
+    credential_id: 'workspace-key',
+  })
+  const panel = screen.getByRole('region', { name: 'Current node authorization' })
+  await expect.element(panel.getByRole('tab', { name: 'plugin.auth.workspaceAuth' })).toBeVisible()
+  await expect.element(panel.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeVisible()
+  await expect.element(panel.getByRole('tab', { name: 'plugin.auth.reuseFromNode' })).toBeVisible()
+  await panel.getByRole('tab', { name: 'plugin.auth.appUserAuth' }).click()
+  await expect
+    .element(panel.getByRole('textbox', { name: 'plugin.auth.appUser.connectionDescription' }))
+    .toBeVisible()
+  await expect.poll(() => readAuthorization().credential_source).toBe(ToolCredentialSource.EndUser)
+})
+
+it('waits for the Console feature response before exposing any authorization controls', async () => {
+  const response = createDeferred<GetFeaturesResponse>()
+  const saved = {
+    credential_source: ToolCredentialSource.EndUser,
+    end_user_auth: { allowed_credential_types: ['api-key' as const], purpose: 'Existing purpose' },
+    test_credential_id: 'saved-test-key',
+  }
+  const { screen, featureResponse, readAuthorization } = await setup(true, saved, response.promise)
+  const panel = screen.getByRole('region', { name: 'Current node authorization' })
+  try {
+    await expect
+      .element(panel.getByRole('status'))
+      .toHaveTextContent('Loading authorization configuration')
+    await expect.element(panel.getByRole('tablist')).not.toBeInTheDocument()
+    await expect
+      .element(panel.getByRole('button', { name: /Workspace connection/ }))
+      .not.toBeInTheDocument()
+    expect(readAuthorization()).toEqual(authorizationData(saved))
+  } finally {
+    response.resolve(featureResponse)
+  }
+  await expect.element(panel.getByRole('tab', { name: 'plugin.auth.appUserAuth' })).toBeVisible()
+  await expect.element(panel.getByRole('status')).not.toBeInTheDocument()
+  expect(readAuthorization()).toEqual(authorizationData(saved))
+})

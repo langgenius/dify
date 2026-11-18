@@ -24,15 +24,28 @@ def test_auth_tokens_and_connections_merge_has_no_schema_operations() -> None:
     assert migration.downgrade() is None
 
 
+def test_auth_and_evaluation_merge_has_no_schema_operations() -> None:
+    """Verify that the upstream evaluation merge retains both parents without schema changes."""
+    migration = import_module("migrations.versions.2026_11_17_1200-3b7a9d1e6c42_merge_end_user_auth_and_evaluation")
+
+    assert set(migration.down_revision) == {"92d7a3f1c6e8", "f8b6e2c4a901"}
+    assert migration.upgrade() is None
+    assert migration.downgrade() is None
+
+
 def test_merge_has_one_head_and_preserves_all_histories_without_schema_operations() -> None:
-    """Require the combined deployment head to retain every existing migration without schema changes."""
-    migration = import_module("migrations.versions.2026_11_17_1300-a83f1c6d2e90_merge_end_user_auth_frontend_histories")
+    """Check that either deployed parent can converge using only the two no-op merge revisions."""
+    migration = import_module("migrations.versions.2026_11_18_0700-5fc8a1d9b207_merge_enterprise_end_user_auth_heads")
     configuration = Config()
     configuration.set_main_option("script_location", str(Path(__file__).resolve().parents[3] / "migrations"))
     scripts = ScriptDirectory.from_config(configuration)
 
     assert scripts.get_heads() == [migration.revision]
-    assert set(migration.down_revision) == {"b6d8f2a4c901", "3b7a9d1e6c42"}
+    assert set(migration.down_revision) == {"a83f1c6d2e90", "a7e4c9d2b610"}
+    for parent, sibling in (migration.down_revision, migration.down_revision[::-1]):
+        steps = scripts._upgrade_revs(migration.revision, parent)
+        assert [step.revision.revision for step in steps] == [sibling, migration.revision]
+        assert steps[0].migration_fn() is None
     reachable_revisions = {revision.revision for revision in scripts.iterate_revisions(migration.revision, "base")}
     assert set(migration.down_revision) <= reachable_revisions
     assert reachable_revisions == {revision.revision for revision in scripts.walk_revisions()}

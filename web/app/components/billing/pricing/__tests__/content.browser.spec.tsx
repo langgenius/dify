@@ -56,7 +56,12 @@ it('keeps prices and interval selection available while purchases wait for featu
   await expect.element(screen.getByText('$590', { exact: true })).toBeInTheDocument()
   await expect.element(purchase).toBeDisabled()
   const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
-  request.resolve(zGetFeaturesResponse.parse({ billing: { subscription: { plan: 'team' } } }))
+  request.resolve(
+    zGetFeaturesResponse.parse({
+      end_user_auth_enabled: false,
+      billing: { subscription: { plan: 'team' } },
+    }),
+  )
   await expect
     .element(screen.getByRole('button', { name: 'billing.plansCommon.manageSubscription' }))
     .toBeEnabled()
@@ -138,7 +143,7 @@ it('keeps prices readable after features fail and restores purchases through Ret
   const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   api.features
     .mockRejectedValueOnce(new Error('Unavailable'))
-    .mockResolvedValue(zGetFeaturesResponse.parse({}))
+    .mockResolvedValue(zGetFeaturesResponse.parse({ end_user_auth_enabled: false }))
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')
   const purchase = screen.getByRole('button', { name: 'billing.plansCommon.upgradeToProfessional' })

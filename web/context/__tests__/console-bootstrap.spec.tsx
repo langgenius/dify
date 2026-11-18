@@ -404,6 +404,7 @@ describe('Console bootstrap', () => {
           queryClient.setQueryData(
             consoleQuery.features.get.queryKey(),
             zGetFeaturesResponse.parse({
+              end_user_auth_enabled: false,
               billing: { subscription: { plan: 'professional', interval: 'month' } },
             }),
           ),
@@ -418,6 +419,7 @@ describe('Console bootstrap', () => {
           queryClient.setQueryData(
             consoleQuery.features.get.queryKey(),
             zGetFeaturesResponse.parse({
+              end_user_auth_enabled: false,
               billing: { subscription: { plan: 'team', interval: 'month' } },
             }),
           ),

@@ -18,6 +18,7 @@ import {
   InstalledConnectionControls,
   InstalledConnectionSetup,
 } from '@/app/components/explore/installed-app/connections'
+import UnofficialAppWarning from '@/app/components/share/connections/unofficial-app-warning'
 import WebAppConnectionControls from '@/app/components/share/connections/webapp-connection-controls'
 import WebAppConnectionSetup from '@/app/components/share/connections/webapp-connection-setup'
 import { appDefaultIconBackground } from '@/config'
@@ -292,6 +293,11 @@ const TextGenerationSidebar: FC<TextGenerationSidebarProps> = ({
           </>
         )}
       </div>
+      {!isInstalledApp && (
+        <UnofficialAppWarning
+          className={cn('bg-components-panel-bg', isBelowMd ? 'px-4' : 'px-8')}
+        />
+      )}
       {(showAccountFooter || !customConfig?.remove_webapp_brand) && (
         <div
           className={cn(

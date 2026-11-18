@@ -5632,6 +5632,7 @@ export default interface Resources {
     'appNotAccessible.ipAddress': 'Your IP address: <ip>{{ip}}</ip>'
     'appNotAccessible.title': 'This app doesn’t exist or isn’t accessible from your network.'
     'auth.signIn': 'Sign in'
+    'auth.unofficialAppWarning': 'This app was published by a third-party developer. Only share sensitive information if you trust the developer.'
     'chat.chatFormTip': 'Chat settings cannot be modified after the chat has started.'
     'chat.chatSettingsTitle': 'New chat setup'
     'chat.collapse': 'Collapse'

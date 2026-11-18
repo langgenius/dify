@@ -10,7 +10,7 @@ import WebAppSignInHandoff from '../webapp-sign-in-handoff'
 const anonymousEntry = getWebAppEntryState({
   parameters: {
     account_login_enabled: true,
-    account_login_url: 'https://accounts.example/account-prefix/signin',
+    console_web_url: 'https://accounts.example/account-prefix',
     allow_anonymous_end_user_auth: true,
     connection_revision: null,
     requires_end_user_connections: false,
@@ -50,46 +50,49 @@ describe('Web app SignIn', () => {
     sessionStorage.clear()
   })
 
-  it('starts PKCE on the API Account origin and prefix while preserving the full Web return URL', async () => {
-    const user = userEvent.setup()
-    navigate('/workflow/demo', '', '#earlier-conversation')
-    const entry = getWebAppEntryState({
-      parameters: {
-        account_login_enabled: true,
-        account_login_url: 'https://accounts.example/account-prefix/signin?source=webapp',
-        allow_anonymous_end_user_auth: true,
-        connection_revision: null,
-        requires_end_user_connections: false,
-        connection_requirements: [],
-      },
-      loginStatus: { logged_in: false, app_logged_in: true },
-      canAccess: true,
-      appDataReady: true,
-      hasError: false,
-    })
-    render(
-      <WebAppEntryContext value={entry}>
-        <SignIn />
-      </WebAppEntryContext>,
-    )
+  it.each(['https://accounts.example/account-prefix', '/console-prefix', ''])(
+    'starts PKCE using the Console prefix %s while preserving the full Web return URL',
+    async (consoleWebUrl) => {
+      const user = userEvent.setup()
+      navigate('/workflow/demo', '', '#earlier-conversation')
+      const entry = getWebAppEntryState({
+        parameters: {
+          account_login_enabled: true,
+          console_web_url: consoleWebUrl,
+          allow_anonymous_end_user_auth: true,
+          connection_revision: null,
+          requires_end_user_connections: false,
+          connection_requirements: [],
+        },
+        loginStatus: { logged_in: false, app_logged_in: true },
+        canAccess: true,
+        appDataReady: true,
+        hasError: false,
+      })
+      render(
+        <WebAppEntryContext value={entry}>
+          <SignIn />
+        </WebAppEntryContext>,
+      )
 
-    expect(window.location.assign).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
+      expect(window.location.assign).not.toHaveBeenCalled()
+      await user.click(screen.getByRole('button', { name: 'share.auth.signIn' }))
 
-    await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
-    const destination = new URL(vi.mocked(window.location.assign).mock.calls[0]![0])
-    expect(destination.origin).toBe('https://accounts.example')
-    expect(destination.pathname).toBe('/account-prefix/signin')
-    expect(destination.searchParams.get('source')).toBe('webapp')
-    expect(destination.searchParams.get('is_end_user')).toBe('1')
-    expect(destination.searchParams.get('app_code')).toBe('demo')
-    expect(destination.searchParams.get('code_challenge_method')).toBe('S256')
-    expect(destination.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
-    expect(destination.searchParams.has('code_verifier')).toBe(false)
-    expect(destination.searchParams.get('redirect_url')).toBe(
-      new URL('/workflow/demo#earlier-conversation', window.location.origin).href,
-    )
-  })
+      await waitFor(() => expect(window.location.assign).toHaveBeenCalledOnce())
+      const destination = new URL(vi.mocked(window.location.assign).mock.calls[0]![0])
+      const expected = new URL(`${consoleWebUrl}/signin`, window.location.origin)
+      expect(destination.origin).toBe(expected.origin)
+      expect(destination.pathname).toBe(expected.pathname)
+      expect(destination.searchParams.get('is_end_user')).toBe('1')
+      expect(destination.searchParams.get('app_code')).toBe('demo')
+      expect(destination.searchParams.get('code_challenge_method')).toBe('S256')
+      expect(destination.searchParams.get('code_challenge')).toMatch(/^[\w-]{43}$/)
+      expect(destination.searchParams.has('code_verifier')).toBe(false)
+      expect(destination.searchParams.get('redirect_url')).toBe(
+        new URL('/workflow/demo#earlier-conversation', window.location.origin).href,
+      )
+    },
+  )
 
   it('preserves Unicode and special query characters when starting sign-in', async () => {
     const user = userEvent.setup()

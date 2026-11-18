@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "IP adresiniz: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Bu uygulama mevcut değil veya ağınızdan erişilemiyor.",
   "auth.signIn": "Giriş yap",
+  "auth.unofficialAppWarning": "Bu uygulama üçüncü taraf bir geliştirici tarafından yayımlanmıştır. Hassas bilgileri yalnızca geliştiriciye güveniyorsanız paylaşın.",
   "chat.chatFormTip": "Sohbet başladıktan sonra sohbet ayarları değiştirilemez.",
   "chat.chatSettingsTitle": "Yeni sohbet kurulumu",
   "chat.collapse": "Kısıtla",

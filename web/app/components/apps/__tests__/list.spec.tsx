@@ -43,7 +43,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
-      'features.get': async () => zGetFeaturesResponse.parse({}),
+      'features.get': async () => zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
       'apps.get': api.apps,
       'apps.byAppId.delete': api.delete,
       'apps.starred.get': api.starred,

@@ -111,7 +111,9 @@ describe('ContactsManagementRuntimeProvider capability', () => {
         resolveWorkspace = resolve
       }),
     )
-    service.getFeatures.mockResolvedValue(zGetFeaturesResponse.parse({}))
+    service.getFeatures.mockResolvedValue(
+      zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
+    )
     renderRuntime('COMMUNITY', false)
     await user.type(screen.getByRole('textbox', { name: 'Unsaved draft' }), 'Keep my edits')
     await act(async () =>
@@ -134,7 +136,7 @@ describe('ContactsManagementRuntimeProvider capability', () => {
     'uses features rather than $edition edition when centrally managed is $managed',
     async ({ edition, managed, expected }) => {
       const features = {
-        ...zGetFeaturesResponse.parse({}),
+        ...zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
         im_centrally_managed: managed,
       }
       service.getFeatures.mockResolvedValue(features)
@@ -163,7 +165,9 @@ describe('ContactsManagementRuntimeProvider capability', () => {
     expect(screen.getByLabelText('Contacts management capability')).toHaveTextContent(
       'Loading capabilities',
     )
-    await act(async () => resolveFeatures?.(zGetFeaturesResponse.parse({})))
+    await act(async () =>
+      resolveFeatures?.(zGetFeaturesResponse.parse({ end_user_auth_enabled: false })),
+    )
 
     await waitFor(() =>
       expect(screen.getByLabelText('Contacts management capability')).toHaveTextContent(
@@ -183,7 +187,10 @@ describe('ContactsManagementRuntimeProvider capability', () => {
       'Loading capabilities',
     )
 
-    const features = { ...zGetFeaturesResponse.parse({}), im_centrally_managed: true }
+    const features = {
+      ...zGetFeaturesResponse.parse({ end_user_auth_enabled: false }),
+      im_centrally_managed: true,
+    }
     service.getFeatures.mockResolvedValue(features)
     await user.click(screen.getByRole('button', { name: 'Retry capabilities' }))
 

@@ -31,7 +31,7 @@ const authenticatedEntry: WebAppEntryState = {
   account: 'authenticated',
   parameters: {
     account_login_enabled: true,
-    account_login_url: '/signin',
+    console_web_url: '',
     allow_anonymous_end_user_auth: true,
     connection_revision: null,
     requires_end_user_connections: false,

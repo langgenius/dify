@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Vaš naslov IP: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Ta aplikacija ne obstaja ali ni dostopna iz vašega omrežja.",
   "auth.signIn": "Prijavi se",
+  "auth.unofficialAppWarning": "To aplikacijo je objavil neodvisni razvijalec. Občutljive podatke delite le, če zaupate razvijalcu.",
   "chat.chatFormTip": "Nastavitve klepeta ni mogoče spremeniti po začetku klepeta.",
   "chat.chatSettingsTitle": "Nova nastavitev klepeta",
   "chat.collapse": "Skrči",

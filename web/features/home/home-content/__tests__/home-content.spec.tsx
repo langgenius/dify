@@ -124,7 +124,8 @@ vi.mock('@/service/console', async (importOriginal) => {
           ? new Promise<never>(() => {})
           : { recommended_apps: mockLearnDifyApps },
       'explore.apps.byAppId.get': mockGetRecommendedApp,
-      'features.get': async () => zGetFeaturesResponse.parse({ apps: { size: 0, limit: 100 } }),
+      'features.get': async () =>
+        zGetFeaturesResponse.parse({ end_user_auth_enabled: false, apps: { size: 0, limit: 100 } }),
       'apps.recent.get': async () => ({ data: mockWorkspaceApps.slice(0, 8) }),
       'apps.imports.post': importDSL,
       'apps.imports.byImportId.confirm.post': confirmImport,

@@ -2,6 +2,7 @@ import type { AppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-
 import type { PluginAuthProps } from '@/app/components/plugins/plugin-auth/plugin-auth'
 import type { Collection } from '@/app/components/tools/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { useNodes, useReactFlow } from 'reactflow'
 import { createAppUserAuthDraft } from '@/app/components/plugins/plugin-auth/app-user-auth/draft'
@@ -18,6 +19,7 @@ import {
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
+import { consoleQuery } from '@/service/console'
 import { getReusableToolNodes } from './reusable-tool-nodes'
 
 type ToolAuthorizationProps = Omit<
@@ -30,6 +32,11 @@ type ToolAuthorizationProps = Omit<
 }
 
 const ToolAuthorization = ({ nodeId, providerId, toolIcon, ...props }: ToolAuthorizationProps) => {
+  const { data: endUserAuthEnabled } = useSuspenseQuery(
+    consoleQuery.features.get.queryOptions({
+      select: (features) => features.end_user_auth_enabled,
+    }),
+  )
   const provider = props.pluginPayload.provider
   const nodes = useNodes<ToolNodeType>()
   const graph = useReactFlow<ToolNodeType>()
@@ -85,6 +92,7 @@ const ToolAuthorization = ({ nodeId, providerId, toolIcon, ...props }: ToolAutho
   return (
     <PluginAuth
       {...props}
+      endUserAuthEnabled={endUserAuthEnabled}
       nodeAuth={
         props.nodeAuth && {
           ...props.nodeAuth,
@@ -94,7 +102,7 @@ const ToolAuthorization = ({ nodeId, providerId, toolIcon, ...props }: ToolAutho
             if (
               !current ||
               getNodesReadOnly() ||
-              getToolAuthorizationTab(current.data) !== 'workspace-auth'
+              (endUserAuthEnabled && getToolAuthorizationTab(current.data) !== 'workspace-auth')
             )
               return
             workflowStore
