@@ -40,6 +40,8 @@ beforeEach(() => {
       if (pathname.endsWith('/features'))
         return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
       if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })
+      if (pathname.endsWith('/members/pending-invitations'))
+        return Response.json({ invitations: [] })
       throw new Error(`Unexpected request: ${pathname}`)
     }),
   )

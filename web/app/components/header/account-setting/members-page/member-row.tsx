@@ -77,7 +77,7 @@ const MemberRow = ({
               </DialogTrigger>
               {member.status === 'pending' && (
                 <span className="ms-1 system-xs-medium text-text-warning">
-                  {t(($) => $['members.pending'], { ns: 'workspaceMembers' })}
+                  {t(($) => $['members.awaitingAccountActivation'], { ns: 'workspaceMembers' })}
                 </span>
               )}
               {isCurrentUser && (

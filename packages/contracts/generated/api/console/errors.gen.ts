@@ -60,6 +60,7 @@ export { get12Errors as 'GET /rag/pipelines/{pipeline_id}/workflows/draft/enviro
 export { get12Errors as 'GET /trial-apps/{app_id}/export' } from './trial-apps/errors.gen.ts'
 export { get130Errors as 'GET /workspaces/current/trigger-provider/{provider}/oauth/client' } from './workspaces/errors.gen.ts'
 export { get134Errors as 'GET /workspaces/current/trigger-provider/{provider}/subscriptions/oauth/authorize' } from './workspaces/errors.gen.ts'
+export { get138Errors as 'GET /workspaces/{workspace_id}/members/pending-invitations' } from './workspaces/errors.gen.ts'
 export { get13Errors as 'GET /agent/{agent_id}/config/skills/{name}/download' } from './agent/errors.gen.ts'
 export { get13Errors as 'GET /apps/{app_id}/agent/config/skills/{name}/files/preview' } from './apps/errors.gen.ts'
 export { get13Errors as 'GET /datasets/{dataset_id}/batch/{batch}/indexing-estimate' } from './datasets/errors.gen.ts'

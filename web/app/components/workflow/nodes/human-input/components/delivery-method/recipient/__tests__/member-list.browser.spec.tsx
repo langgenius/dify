@@ -39,7 +39,9 @@ it('filters members and applies selection so the same recipient cannot be added 
   await expect.element(page.getByText('workspaceMembers.members.you')).toBeVisible()
   await expect.element(page.getByText('Pending User')).not.toBeInTheDocument()
   await search.fill('pending')
-  await expect.element(page.getByText('workspaceMembers.members.pending')).toBeVisible()
+  await expect
+    .element(page.getByText('workspaceMembers.members.awaitingAccountActivation'))
+    .toBeVisible()
   const pending = page.getByRole('button', { name: /Pending User/ })
   await pending.click()
   await expect.element(pending).toBeDisabled()

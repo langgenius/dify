@@ -38,6 +38,7 @@ vi.mock('@/service/console', async (importOriginal) => {
         (await import('@dify/contracts/api/console/features/zod.gen')).zGetFeaturesResponse.parse({
           is_allow_transfer_workspace: true,
         }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': membersRequest,
       'workspaces.current.rbac.roles.get': rolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,

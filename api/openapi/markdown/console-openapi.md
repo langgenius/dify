@@ -19433,6 +19433,23 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/{workspace_id}/members/pending-invitations
+**List pending invitations for the active workspace**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PendingWorkspaceInvitationListResponse](#pendingworkspaceinvitationlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
 #### Parameters
 
@@ -33836,6 +33853,20 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
+
+#### PendingWorkspaceInvitationListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitations | [ [PendingWorkspaceInvitationResponse](#pendingworkspaceinvitationresponse) ] |  | Yes |
+
+#### PendingWorkspaceInvitationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### Permission
 

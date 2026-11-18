@@ -1,10 +1,11 @@
 from collections.abc import Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from http import HTTPStatus
 from importlib import import_module
 from inspect import unwrap
 from typing import NamedTuple, override
 from unittest.mock import Mock, create_autospec
+from uuid import uuid4
 
 import pytest
 from flask import Flask
@@ -12,6 +13,7 @@ from flask_restx import Api, Resource
 from pydantic import ValidationError
 from werkzeug.exceptions import Forbidden, NotFound
 
+from controllers.common.errors import ForbiddenError
 from controllers.console.auth.error import (
     CannotTransferOwnerToSelfError,
     EmailCodeError,
@@ -33,11 +35,14 @@ from controllers.console.workspace.members import (
     MemberUpdateRoleApi,
     OwnerTransfer,
     OwnerTransferCheckApi,
+    PendingWorkspaceInvitationListApi,
     SendOwnerTransferEmailApi,
 )
+from enums.account import TenantAccountRole
 from libs.external_api import register_external_error_handlers
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
+from services.entities.account_activation_entities import PendingWorkspaceInvitation
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
     CannotOperateSelfError,
@@ -168,6 +173,28 @@ def services(monkeypatch: pytest.MonkeyPatch) -> Mock:
         importlib.import_module("controllers.console.workspace.members"), "application_services", lambda: services
     )
     return services
+
+
+def test_pending_invitation_endpoint_scopes_to_active_workspace_and_omits_tokens(app: Flask, services: Mock) -> None:
+    workspace_id = uuid4()
+    context = RequestContext("request", None, "actor", str(workspace_id))
+    api = PendingWorkspaceInvitationListApi()
+    get = unwrap(api.get)
+    services.workspaces.invitations.list_pending.return_value = (
+        PendingWorkspaceInvitation(
+            "account-1", "invitee@example.com", TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        ),
+    )
+    with app.test_request_context("/"):
+        with pytest.raises(ForbiddenError):
+            get(api, context, uuid4())
+        services.workspaces.invitations.list_pending.assert_not_called()
+        response, status = get(api, context, workspace_id)
+
+    assert status == HTTPStatus.OK
+    assert response == {
+        "invitations": [{"email": "invitee@example.com", "role": "editor", "expires_at": "2026-12-01T00:00:00Z"}]
+    }
 
 
 @pytest.mark.parametrize("operation", ["remove", "update_role"])

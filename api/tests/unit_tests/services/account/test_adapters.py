@@ -97,6 +97,39 @@ def test_invitation_token_store_reads_global_invitation_payload(
     commands.assert_called_once_with("GET", "member_invite:token:token-1", keys=["member_invite:token:token-1"])
 
 
+def test_pending_invitations_show_latest_live_unconsumed_link(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    redis, commands = redis_transport
+    monkeypatch.setattr("services.account.adapters.time", lambda: 100.0)
+    workspace = "workspace-1"
+    key = f"member_invite:pending:{workspace}"
+
+    def payload(email: str, role: str) -> bytes:
+        return (
+            f'{{"account_id":"account-1","email":"{email}","workspace_id":"{workspace}",'
+            f'"role":"{role}","requires_setup":false}}'
+        ).encode()
+
+    commands.side_effect = [
+        [(b"old", 110.0), (b"latest", 120.0), (b"redeemed", 130.0), (b"revoked", 140.0)],
+        None,
+        payload("accepted@example.com", "normal"),
+        b"1",
+        payload("Invitee@example.com", "editor"),
+        None,
+        payload("invitee@example.com", "admin"),
+    ]
+
+    (invitation,) = RedisInvitationTokenStore(redis=redis).list_pending(workspace)
+
+    assert invitation.email == "Invitee@example.com"
+    assert invitation.role == TenantAccountRole.EDITOR
+    assert invitation.expires_at == datetime.fromtimestamp(120, UTC)
+    assert commands.call_args_list[0].args == ("ZRANGEBYSCORE", key, "(100.0", "+inf", "WITHSCORES")
+
+
 def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
     redis, commands = redis_transport
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")

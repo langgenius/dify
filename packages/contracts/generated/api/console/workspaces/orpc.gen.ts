@@ -104,6 +104,8 @@ import {
   zDeleteWorkspacesCurrentTriggerProviderByProviderOauthClientResponse,
   zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangPath,
   zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangResponse,
+  zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath,
+  zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse,
   zGetWorkspacesCurrentAgentProviderByProviderNamePath,
   zGetWorkspacesCurrentAgentProviderByProviderNameResponse,
   zGetWorkspacesCurrentAgentProvidersResponse,
@@ -6463,7 +6465,35 @@ export const byTenantId = {
   modelProviders: modelProviders2,
 }
 
+/**
+ * List pending invitations for the active workspace
+ */
 export const get138 = oc
+  .route({
+    inputStructure: 'detailed',
+    method: 'GET',
+    operationId: 'getWorkspacesByWorkspaceIdMembersPendingInvitations',
+    path: '/workspaces/{workspace_id}/members/pending-invitations',
+    summary: 'List pending invitations for the active workspace',
+    tags: ['console'],
+  })
+  .input(z.object({ params: zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath }))
+  .output(zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse)
+  .errors({ forbidden: { status: 403, data: zForbiddenError } })
+
+export const pendingInvitations = {
+  get: get138,
+}
+
+export const members4 = {
+  pendingInvitations,
+}
+
+export const byWorkspaceId = {
+  members: members4,
+}
+
+export const get139 = oc
   .route({
     inputStructure: 'detailed',
     method: 'GET',
@@ -6474,12 +6504,13 @@ export const get138 = oc
   .output(zGetWorkspacesResponse)
 
 export const workspaces = {
-  get: get138,
+  get: get139,
   current,
   customConfig,
   info: info4,
   switch: switch3,
   byTenantId,
+  byWorkspaceId,
 }
 
 export const contract = {

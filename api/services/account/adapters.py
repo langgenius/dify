@@ -5,8 +5,9 @@ import secrets
 import uuid
 from collections.abc import Generator, Sequence
 from contextlib import contextmanager
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from hashlib import sha256
+from time import time
 from typing import assert_never, override
 
 from pydantic import TypeAdapter, ValidationError
@@ -16,6 +17,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from enums import DeploymentEdition
+from enums.account import TenantAccountRole
 from extensions.ext_redis import RedisClientWrapper
 from libs.datetime_utils import naive_utc_now
 from libs.helper import RateLimiter, TokenManager
@@ -59,7 +61,7 @@ from services.billing_client import billing
 from services.billing_service import BillingService
 from services.enterprise.account_deletion_sync import sync_account_deletion_memberships
 from services.enterprise.enterprise_service import try_join_default_workspace
-from services.entities.account_activation_entities import InvitationLookup, InvitationToken
+from services.entities.account_activation_entities import InvitationLookup, InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import (
     AccountChangeEmailNewEmailToken,
     AccountChangeEmailNewEmailVerifiedToken,
@@ -178,6 +180,46 @@ class RedisInvitationTokenStore(InvitationTokenStore):
             _invitation_token_adapter.dump_json(invitation),
         )
         return token
+
+    def track_pending(self, workspace_id: str, token: str) -> None:
+        """Index a delivered legacy invitation for the remaining lifetime of its token."""
+        now = time()
+        ttl_ms = self._redis.pttl(self._invitation_token_key(token))
+        if ttl_ms <= 0:
+            return
+        key = self._pending_workspace_key(workspace_id)
+        self._redis.zremrangebyscore(key, "-inf", now)
+        self._redis.zadd(key, {token: now + ttl_ms / 1000})
+        self._redis.expire(key, dify_config.INVITE_EXPIRY_HOURS * 60 * 60)
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
+        """Return live invitations for this workspace with the latest outstanding link per email."""
+        entries = self._redis.zrangebyscore_withscores(self._pending_workspace_key(workspace_id), f"({time()}", "+inf")
+        pending: dict[str, PendingWorkspaceInvitation] = {}
+        for token_bytes, expiry in reversed(entries):
+            lookup = InvitationLookup(workspace_id=None, email=None, token=token_bytes.decode())
+            invitation = self.find(lookup)
+            if (
+                invitation is not None
+                and invitation.workspace_id == workspace_id
+                and invitation.requires_setup is False
+                and invitation.role is not None
+                and invitation.role != TenantAccountRole.OWNER
+                and TenantAccountRole.is_valid_role(invitation.role)
+                and invitation.email.lower() not in pending
+                and not self.is_membership_consumed(lookup)
+            ):
+                pending[invitation.email.lower()] = PendingWorkspaceInvitation(
+                    account_id=invitation.account_id,
+                    email=invitation.email,
+                    role=TenantAccountRole(invitation.role),
+                    expires_at=datetime.fromtimestamp(expiry, UTC),
+                )
+        return tuple(pending.values())
+
+    @staticmethod
+    def _pending_workspace_key(workspace_id: str) -> str:
+        return f"member_invite:pending:{workspace_id}"
 
     @override
     def find(self, invitation: InvitationLookup) -> InvitationToken | None:

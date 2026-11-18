@@ -32,7 +32,7 @@ from services.credit_pool_service import CreditPoolBalance, CreditPoolService
 from services.enterprise import rbac_service as enterprise_rbac_service
 from services.enterprise.enterprise_service import EnterpriseService
 from services.enterprise.rbac_service import RBACService
-from services.entities.account_activation_entities import InvitationToken
+from services.entities.account_activation_entities import InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
@@ -188,6 +188,14 @@ class WorkspaceInvitationGateway:
 
     def create(self, invitation: InvitationToken) -> str:
         return self._tokens.create(invitation)
+
+    def track_pending(self, workspace_id: str, token: str) -> None:
+        """Record a sent invitation for the lifetime of the issued link."""
+        self._tokens.track_pending(workspace_id, token)
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]:
+        """List the outstanding invitation links indexed for this workspace."""
+        return self._tokens.list_pending(workspace_id)
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None:
         send_invite_member_mail_task.delay(

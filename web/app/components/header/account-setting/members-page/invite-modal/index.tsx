@@ -184,6 +184,11 @@ export function InviteModal({ isEmailSetup, onSend }: InviteModalProps) {
         void queryClient.invalidateQueries({
           queryKey: consoleQuery.workspaces.current.members.get.key(),
         })
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key({
+            input: { params: { workspace_id: response.tenant_id } },
+          }),
+        })
         onSend(response.invitation_results)
         actionsRef.current?.close()
       },

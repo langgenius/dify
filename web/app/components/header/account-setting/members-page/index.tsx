@@ -46,6 +46,7 @@ import InvitationResultsContent from './invitation-results-content'
 import { InviteModal } from './invite-modal'
 import MemberDetailsContent from './member-details-content'
 import MemberRow from './member-row'
+import PendingInvitations from './pending-invitations'
 
 const MembersPageContent = () => {
   const { t } = useTranslation([
@@ -274,6 +275,9 @@ const MembersPageContent = () => {
                 </tbody>
               </table>
             </div>
+            {canManageMembers && currentWorkspace.id && (
+              <PendingInvitations workspaceId={currentWorkspace.id} />
+            )}
           </div>
           <AlertDialog
             handle={removeDialog}
