@@ -108,7 +108,8 @@ it('restores focus to the version menu after cancelling and after installing a v
   await expect
     .element(dialog.getByRole('button', { name: 'workflowAgent.nodes.agent.installPlugin.cancel' }))
     .toBeDisabled()
-  await userEvent.click(document.body, { position: { x: 4, y: 4 }, force: true })
+  // Click whatever the user would hit outside the dialog, so the backdrop receives the press.
+  await userEvent.click(document.elementFromPoint(4, 4)!, { position: { x: 4, y: 4 } })
   await expect.element(dialog).toBeVisible()
   expect(api.upgrade).toHaveBeenCalledExactlyOnceWith({
     body: {

@@ -16,20 +16,6 @@ import AccountSetting from '../../index'
 
 vi.unmock('react-i18next')
 
-// boundary: analytics must not emit product telemetry from a browser test.
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
-  usePathname: () => '/account/settings',
-  useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams(),
-}))
-// boundary: next-themes requires a Next document and persisted browser theme outside this journey.
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
-}))
-
 async function renderPoliciesSettings(width = 320) {
   await page.viewport(width, 800)
   const i18n = createInstance()
@@ -45,11 +31,16 @@ async function renderPoliciesSettings(width = 320) {
     systemFeatures: { deployment_edition: 'CLOUD', rbac_enabled: false },
   })
   const groups = [
-    createNetworkAccessGroupFixture({ name: 'Internal Network', used_by_count: 2 }),
+    createNetworkAccessGroupFixture({
+      name: 'Internal Network',
+      used_by_count: 2,
+      updated_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    }),
     createNetworkAccessGroupFixture({
       id: 'group-2',
       name: 'Engineering Office',
       allowed_cidrs: ['192.0.2.0/24'],
+      updated_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
     }),
   ]
   onTestFinished(
@@ -143,6 +134,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
         table.getByRole('columnheader', { name, exact: true }).element(),
         viewport,
       )
+    const updatedLabels = ['2 hours ago', '3 days ago']
     for (const [index, group] of groups.entries()) {
       const cells = table
         .getByRole('row')
@@ -151,7 +143,7 @@ it('keeps policy data readable and keyboard scrollable inside Settings at 320 px
       await expect.element(cells.nth(0)).toHaveTextContent(group.name)
       await expect.element(cells.nth(1)).toHaveTextContent(String(group.allowed_cidrs.length))
       await expect.element(cells.nth(2)).toHaveTextContent(`${group.used_by_count} apps`)
-      expect(cells.nth(3).element().textContent?.trim()).toBeTruthy()
+      await expect.element(cells.nth(3)).toHaveTextContent(updatedLabels[index]!)
       for (let column = 0; column < 4; column++)
         await expectReadableText(cells.nth(column).element(), viewport)
     }

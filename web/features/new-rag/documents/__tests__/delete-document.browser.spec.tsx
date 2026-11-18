@@ -16,6 +16,7 @@ import { QueryTestingAdapter } from '@/test/query-state-testing-adapter'
 import { DocumentResultsSurface } from '../results/surface'
 import { DocumentsStateBoundary } from '../state/boundary'
 
+// boundary: the readiness banner needs model-provider queries outside the delete flow and has its own spec.
 vi.mock('../../components/knowledge-model-readiness-banner', () => ({
   KnowledgeModelReadinessBanner: () => null,
 }))

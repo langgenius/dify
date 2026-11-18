@@ -34,7 +34,17 @@ async function openPricing() {
   )
 }
 
+// A pinned popup must outlast the Infotip's 200 ms hover-close delay, so advance past that window.
+async function outlastHoverCloseDelay() {
+  await vi.advanceTimersByTimeAsync(300)
+}
+
 it('reanchors a pinned explanation to a hovered feature in the same or another plan', async () => {
+  // boundary: advance only the hover delays; pointer events and positioning stay real.
+  vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'clearTimeout'] })
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
   await openPricing()
   const runs = page.getByRole('button', { name: '500 app runs / month' })
   const title = page.getByRole('heading', { name: 'Dify Cloud' })
@@ -45,8 +55,7 @@ it('reanchors a pinned explanation to a hovered feature in the same or another p
     const next = page.getByRole('button', { name: label }).first()
     await runs.click()
     await title.hover()
-    // A pinned popup must outlast the Infotip's 200 ms hover-close delay.
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await outlastHoverCloseDelay()
     await expect.element(page.getByText(billing['pricing.runs.tooltip'])).toBeVisible()
     await next.hover()
     const popup = page.getByRole('dialog', { name: label })
@@ -67,7 +76,7 @@ it('reanchors a pinned explanation to a hovered feature in the same or another p
       })
       .toBeLessThan(2)
     await popup.hover()
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await outlastHoverCloseDelay()
     await expect.element(popup).toBeVisible()
     await title.hover()
     await expect.element(popup).not.toBeInTheDocument()
@@ -75,7 +84,7 @@ it('reanchors a pinned explanation to a hovered feature in the same or another p
     await expect.element(popup).toBeVisible()
     await next.click()
     await title.hover()
-    await new Promise((resolve) => setTimeout(resolve, 300))
+    await outlastHoverCloseDelay()
     await expect.element(popup).toBeVisible()
     await next.click()
     await expect.element(popup).not.toBeInTheDocument()
