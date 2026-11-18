@@ -36,8 +36,11 @@ vi.mock('@/app/notifications', async (importOriginal) => {
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelModalHandler: () => mockOpenModelModal,
   useRefreshModel: () => ({ handleRefreshModel: mockHandleRefreshModel }),
+}))
+
+vi.mock('../../../model-modal/handle', () => ({
+  modelCredentialDialog: { openWithPayload: (...args: unknown[]) => mockOpenModelModal(...args) },
 }))
 
 describe('useAuth', () => {
@@ -266,14 +269,14 @@ describe('useAuth', () => {
     })
 
     expect(mockOpenModelModal).toHaveBeenCalledWith(
-      provider,
-      ConfigurationMethodEnum.customizableModel,
-      fixedFields,
       expect.objectContaining({
+        provider,
+        configurateMethod: ConfigurationMethodEnum.customizableModel,
+        currentCustomConfigurationModelFixedFields: fixedFields,
         isModelCredential: true,
         credential,
         model,
-        onUpdate,
+        onSave: onUpdate,
       }),
     )
   })

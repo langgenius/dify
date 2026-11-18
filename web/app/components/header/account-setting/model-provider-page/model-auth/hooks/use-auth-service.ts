@@ -54,30 +54,38 @@ export const useAuthService = (provider: string) => {
   const params = { provider }
 
   const { mutateAsync: addProviderCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: ProviderCredential) => client.credentials.post({ params, body }),
   })
   const { mutateAsync: editProviderCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: ProviderCredential) => client.credentials.put({ params, body }),
   })
   const { mutateAsync: deleteProviderCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: { credential_id: string }) => client.credentials.delete({ params, body }),
   })
   const { mutateAsync: activeProviderCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: { credential_id: string }) =>
       client.credentials.switch.post({ params, body }),
   })
 
   const { mutateAsync: addModelCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: ModelCredentialPayload) => client.models.credentials.post({ params, body }),
   })
   const { mutateAsync: activeModelCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: ModelCredentialRef) =>
       client.models.credentials.switch.post({ params, body }),
   })
   const { mutateAsync: deleteModelCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (query: ModelCredentialRef) => client.models.credentials.delete({ params, query }),
   })
   const { mutateAsync: editModelCredential } = useMutation({
+    networkMode: 'always',
     mutationFn: (body: ModelCredentialPayload & { credential_id: string }) =>
       client.models.credentials.put({ params, body }),
   })

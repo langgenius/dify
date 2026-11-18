@@ -1,15 +1,12 @@
 import type { ExternalKnowledgeApiResponse } from '@dify/contracts/api/console/datasets/types.gen'
-import { screen, waitFor } from '@testing-library/react'
+import { screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryClient, renderWithConsoleQuery } from '@/test/console/query-data'
 import ExternalKnowledgeBaseCreate from '../index'
 
-const { replace, showApiModal } = vi.hoisted(() => ({ replace: vi.fn(), showApiModal: vi.fn() }))
+const { replace } = vi.hoisted(() => ({ replace: vi.fn() }))
 vi.mock('@/next/navigation', () => ({ useRouter: () => ({ replace }) }))
-vi.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({ setShowExternalKnowledgeAPIModal: showApiModal }),
-}))
 const apis: ExternalKnowledgeApiResponse[] = ['First', 'Second'].map((name, index) => ({
   id: `api-${index + 1}`,
   tenant_id: 'tenant-1',
@@ -129,12 +126,5 @@ it('offers API creation when there are no APIs to connect', async () => {
   const user = userEvent.setup()
   setup({ available: false })
   await user.click(screen.getByRole('button', { name: 'dataset.noExternalKnowledge' }))
-  await waitFor(() =>
-    expect(showApiModal).toHaveBeenCalledWith(
-      expect.objectContaining({
-        isEditMode: false,
-        payload: { name: '', settings: { endpoint: '', api_key: '' } },
-      }),
-    ),
-  )
+  expect(await screen.findByRole('dialog')).toBeInTheDocument()
 })

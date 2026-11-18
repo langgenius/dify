@@ -151,7 +151,7 @@ it('validates an external tool in the real modal and inserts the saved variable 
   )
   const dialog = await screen.findByRole('dialog')
   await user.type(
-    within(dialog).getByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
+    await within(dialog).findByPlaceholderText('appDebug.feature.tools.modal.name.placeholder'),
     'Search',
   )
   const variableName = within(dialog).getByPlaceholderText(
@@ -171,7 +171,7 @@ it('validates an external tool in the real modal and inserts the saved variable 
   await user.type(variableName, 'search_api')
   await user.click(within(dialog).getByRole('button', { name: 'common.operation.save' }))
   await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
-  await waitFor(() => expect(screen.getByRole('textbox')).toHaveTextContent('search_api'))
+  await waitFor(() => expect(screen.getByRole('textbox').textContent).toBe('{{search_api}}'))
 })
 
 it('applies generated prompt, variables and opening statement after confirming the real result', async () => {

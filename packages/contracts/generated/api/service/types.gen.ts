@@ -1329,12 +1329,35 @@ export type HitTestingSegment = {
   word_count: number
 }
 
+export type HumanInputActionResponse = {
+  button_style: ButtonStyle
+  id: string
+  title: string
+}
+
 export type HumanInputContent = {
   form_definition?: HumanInputFormDefinition | null
   form_submission_data?: HumanInputFormSubmissionData | null
   submitted: boolean
   type?: ExecutionContentType
   workflow_run_id: string
+}
+
+export type HumanInputFileListResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  number_limits: number
+  output_variable_name: string
+  type: 'file-list'
+}
+
+export type HumanInputFileResponse = {
+  allowed_file_extensions: Array<string>
+  allowed_file_types: Array<FileType>
+  allowed_file_upload_methods: Array<FileTransferMethod>
+  output_variable_name: string
+  type: 'file'
 }
 
 export type HumanInputFormDefinition = {
@@ -1356,11 +1379,11 @@ export type HumanInputFormDefinition = {
 export type HumanInputFormDefinitionResponse = {
   expiration_time?: number | null
   form_content: string
-  inputs: Array<FormInputConfig>
+  inputs: Array<HumanInputResponse>
   resolved_default_values: {
     [key: string]: string
   }
-  user_actions: Array<UserActionConfig>
+  user_actions: Array<HumanInputActionResponse>
 }
 
 export type HumanInputFormExpiredError = ErrorResponse & {
@@ -1395,12 +1418,50 @@ export type HumanInputFormSubmitPayloadWithUser = {
 }
 
 export type HumanInputFormSubmitResponse = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type HumanInputFormSubmittedError = ErrorResponse & {
   code: 'human_input_form_submitted'
   status: 412
+}
+
+export type HumanInputParagraphResponse = {
+  default: HumanInputStringSourceResponse | null
+  output_variable_name: string
+  type: 'paragraph'
+}
+
+export type HumanInputResponse =
+  | ({
+      type: 'paragraph'
+    } & HumanInputParagraphResponse)
+  | ({
+      type: 'select'
+    } & HumanInputSelectResponse)
+  | ({
+      type: 'file'
+    } & HumanInputFileResponse)
+  | ({
+      type: 'file-list'
+    } & HumanInputFileListResponse)
+
+export type HumanInputSelectResponse = {
+  option_source: HumanInputStringListSourceResponse
+  output_variable_name: string
+  type: 'select'
+}
+
+export type HumanInputStringListSourceResponse = {
+  selector: Array<string>
+  type: ValueSourceType
+  value: Array<string>
+}
+
+export type HumanInputStringSourceResponse = {
+  selector: Array<string>
+  type: ValueSourceType
+  value: string
 }
 
 export type IndexInfoResponse = {
@@ -1775,6 +1836,8 @@ export type KnowledgeFsDocumentProcessingTaskResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2152,6 +2215,8 @@ export type KnowledgeFsPublicFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2576,6 +2641,8 @@ export type KnowledgeFsSourceCredentialTestResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -2752,6 +2819,8 @@ export type KnowledgeFsSourceImportFailureResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -3045,6 +3114,8 @@ export type KnowledgeFsSourceWorkflowResponse = {
     | 'DOCUMENT_PARSER_UNAVAILABLE'
     | 'DOCUMENT_PARSER_UNSUPPORTED_TYPE'
     | 'DOCUMENT_PDF_RENDER_FAILED'
+    | 'DOCUMENT_SEMANTIC_GROUNDING_FAILED'
+    | 'DOCUMENT_SOURCE_NOT_FOUND'
     | 'DURABLE_DELETION_IDEMPOTENCY_CONFLICT'
     | 'EMBEDDING_DIMENSION_INVALID'
     | 'EMBEDDING_DIMENSION_UNSUPPORTED'
@@ -4534,7 +4605,7 @@ export type WorkspaceNotFoundError = ErrorResponse & {
 }
 
 export type HumanInputFormSubmitResponseWritable = {
-  [key: string]: never
+  [key: string]: unknown
 }
 
 export type MessageInfiniteScrollPaginationWritable = {

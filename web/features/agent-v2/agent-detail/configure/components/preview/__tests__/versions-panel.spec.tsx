@@ -64,9 +64,7 @@ function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfi
   const { wrapper: NuqsWrapper } = createNuqsTestWrapper({ onUrlUpdate: exportState.onUrlUpdate })
   const { queryClient } = createConsoleQueryWrapper({
     systemFeatures: { deployment_edition: exportState.edition },
-    features: exportState.plan
-      ? { billing: { subscription: { plan: exportState.plan } } }
-      : undefined,
+    features: exportState.plan ? { billing: { subscription: { plan: exportState.plan } } } : null,
   })
   queryClient.setQueryData(
     consoleQuery.agent.byAgentId.versions.get.queryKey({
@@ -74,7 +72,11 @@ function render(ui: ReactElement, options?: Parameters<typeof renderAccountProfi
     }),
     { data: versions },
   )
-  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, { ...options, queryClient })
+  return renderAccountProfile(<NuqsWrapper>{ui}</NuqsWrapper>, {
+    ...options,
+    queryClient,
+    features: null,
+  })
 }
 
 vi.mock('@/hooks/use-timestamp', () => ({

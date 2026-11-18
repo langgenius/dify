@@ -84,6 +84,22 @@ class ComposeEnvironmentTests(unittest.TestCase):
             }.items():
                 self.assertEqual(values[key], expected, f"{name}.{key}")
         self.assertEqual(services["plugin_daemon"]["environment"]["DB_DATABASE"], "dify_plugin")
+        for name in (
+            "web",
+            "api",
+            "api_websocket",
+            "worker",
+            "worker_knowledge_fs_upgrade",
+            "worker_beat",
+            "knowledge_fs_document_worker",
+            "knowledge_fs_source_worker",
+            "knowledge_fs_research_worker",
+            "knowledge_fs_maintenance_worker",
+            "knowledge_fs_dispatch_worker",
+        ):
+            for key in ("CONSOLE_API_URL", "CONSOLE_WEB_URL", "SERVICE_API_URL", "APP_API_URL", "APP_WEB_URL"):
+                # These must be explicitly empty to override localhost ENV values baked into images.
+                self.assertEqual(services[name]["environment"].get(key), "", f"{name}.{key}")
         self.assertEqual(services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001")
         self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_AGENT_V2"], "true")
         self.assertEqual(
@@ -516,7 +532,6 @@ class ComposeEnvironmentTests(unittest.TestCase):
         assert_connections(defaults)
         for source, target in (
             ("core-services/api-worker.defaults", "core-services/api-worker.env"),
-            ("core-services/api-worker.defaults", "core-services/shared.env"),
             ("vectorstores/weaviate.defaults", "vectorstores/weaviate.env"),
         ):
             with self.subTest(source=target):
@@ -597,8 +612,8 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     root.write_text(original)
 
         self.override_root({"VECTOR_STORE": "qdrant"})
-        legacy = self.project / "envs/core-services/shared.env"
-        legacy.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
+        override = self.project / "envs/core-services/api-worker.env"
+        override.write_text("QDRANT_URL=http://existing-qdrant:6333\nQDRANT_API_KEY=\n")
         services = self.render()
         for name in ("api", "worker", "worker_beat"):
             values = services[name]["environment"]
@@ -683,7 +698,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
         # Compare the entire configuration, including extra variables introduced by an unsafe copy.
         self.assertEqual(self.render(), baseline)
 
-    def test_api_worker_overrides_preserve_legacy_settings_and_precedence(self):
+    def test_shared_env_is_ignored_until_migrated_to_api_worker_env(self):
         consumers = (
             "api",
             "api_websocket",
@@ -700,30 +715,21 @@ class ComposeEnvironmentTests(unittest.TestCase):
         baseline = self.render()
         legacy = self.project / "envs/core-services/shared.env"
         legacy.write_text("DB_HOST=legacy-db\n")
+        self.assertEqual(self.render(), baseline, "Removed shared.env must not affect current settings")
 
+        target = self.project / "envs/core-services/api-worker.env"
+        legacy.rename(target)
         services = self.render()
         for name in consumers:
             self.assertEqual(services[name]["environment"]["DB_HOST"], "legacy-db", name)
-
-        source = "envs/core-services/api-worker.defaults"
-        target = "envs/core-services/api-worker.env"
-        # An unchanged copy must not mask existing shared.env customizations.
-        self.copy_template(source, target)
-        self.assertEqual(self.render(), services)
-
-        self.copy_template(source, target, {"DB_HOST": "api-worker-db"})
-        services = self.render()
-        for name in consumers:
-            self.assertEqual(services[name]["environment"]["DB_HOST"], "api-worker-db", name)
         for name in baseline.keys() - set(consumers):
             self.assertEqual(services[name], baseline[name], name)
 
-        # Change only the root file while retaining both local override files.
         self.override_root({"DB_HOST": "root-db"})
         services = self.render()
         for name in consumers:
             self.assertEqual(services[name]["environment"]["DB_HOST"], "root-db", name)
-        self.assertEqual(legacy.read_text(), "DB_HOST=legacy-db\n")
+        self.assertEqual(target.read_text(), "DB_HOST=legacy-db\n")
 
     def test_consolidated_settings_reach_consumers_and_respect_root_precedence(self):
         api_services = ("api", "api_websocket")
@@ -738,6 +744,17 @@ class ComposeEnvironmentTests(unittest.TestCase):
         )
         vector_clients = (*api_services, "worker", "worker_knowledge_fs_upgrade", "worker_beat")
         cases = [
+            (
+                "core-services/urls.defaults",
+                ("web", *api_services, *worker_services, "worker_beat"),
+                {
+                    "CONSOLE_API_URL": ("https://console-api.example.test", ""),
+                    "CONSOLE_WEB_URL": ("https://console.example.test", "https://root-console.example.test"),
+                    "SERVICE_API_URL": ("https://service.example.test", "https://root-service.example.test"),
+                    "APP_API_URL": ("https://app-api.example.test", "https://root-app-api.example.test"),
+                    "APP_WEB_URL": ("https://app.example.test", "https://root-app.example.test"),
+                },
+            ),
             (
                 "core-services/api-worker.defaults",
                 (*api_services, *worker_services, "worker_beat"),
@@ -808,7 +825,44 @@ class ComposeEnvironmentTests(unittest.TestCase):
                     (self.project / target).unlink(missing_ok=True)
                     root.write_text(initial_root)
 
-    def test_existing_shared_overrides_and_empty_value_cleanup(self):
+    def test_shared_urls_preserve_service_overrides_until_explicitly_changed(self):
+        for name in ("api-worker", "api", "worker", "worker-beat", "web"):
+            (self.project / f"envs/core-services/{name}.env").write_text(
+                f"CONSOLE_API_URL=https://{name}.example.test\n"
+            )
+        baseline = self.render()
+        source = "envs/core-services/urls.defaults"
+        target = "envs/core-services/urls.env"
+        self.copy_template(source, target)
+        self.assertEqual(self.render(), baseline, "An unchanged copy must preserve existing overrides")
+
+        expected = {
+            "web": "web",
+            "api": "api",
+            "api_websocket": "api",
+            "worker": "worker",
+            "worker_knowledge_fs_upgrade": "worker",
+            "worker_beat": "worker-beat",
+            "knowledge_fs_document_worker": "worker",
+            "knowledge_fs_source_worker": "worker",
+            "knowledge_fs_research_worker": "worker",
+            "knowledge_fs_maintenance_worker": "worker",
+            "knowledge_fs_dispatch_worker": "worker",
+        }
+        for name, origin in expected.items():
+            self.assertEqual(baseline[name]["environment"]["CONSOLE_API_URL"], f"https://{origin}.example.test")
+
+        for value in ("https://dify.example.test:8443", ""):
+            with self.subTest(value=value):
+                self.copy_template(source, target, {"CONSOLE_API_URL": value})
+                services = self.render()
+                for name in expected:
+                    self.assertEqual(services[name]["environment"]["CONSOLE_API_URL"], value, name)
+                self.assertEqual(services["web"]["environment"]["SERVER_CONSOLE_API_URL"], "http://api:5001")
+                for name in baseline.keys() - expected.keys():
+                    self.assertEqual(services[name], baseline[name], name)
+
+    def test_existing_api_worker_overrides_and_empty_value_cleanup(self):
         values = {
             "API_WEBSOCKET_WORKER_AMOUNT": "3",
             "CELERY_MAX_WORKERS": "5",
@@ -819,7 +873,7 @@ class ComposeEnvironmentTests(unittest.TestCase):
             "SERVER_WORKER_CLASS": "",
             "GUNICORN_TIMEOUT": "",
         }
-        override = self.project / "envs/core-services/shared.env"
+        override = self.project / "envs/core-services/api-worker.env"
         override.write_text("\n".join(f"{key}={value}" for key, value in values.items()) + "\n")
         services = self.render()
         for name in ("api", "api_websocket", "worker", "worker_knowledge_fs_upgrade", "worker_beat"):
@@ -1106,6 +1160,36 @@ class ComposeEnvironmentTests(unittest.TestCase):
         (self.project / ".env").write_text("COMPOSE_PROFILES=custom\n")
         subprocess.run(command, check=True, capture_output=True)
         self.assertEqual((self.project / ".env").read_text(), "COMPOSE_PROFILES=custom\n")
+
+    def test_human_input_overrides_reach_their_services(self):
+        self.copy_template(
+            "envs/core-services/api-worker.defaults",
+            "envs/core-services/api-worker.env",
+            {"HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE": "STREAM", "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS": "3600"},
+        )
+        self.copy_template(
+            "envs/core-services/web.defaults",
+            "envs/core-services/web.env",
+            {"NEXT_PUBLIC_ENABLE_HITL_IM": "false"},
+        )
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_beat", "worker_knowledge_fs_upgrade"):
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"], "STREAM", name)
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS"], "3600", name)
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "false")
+
+        self.override_root(
+            {
+                "HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE": "WEBHOOK",
+                "HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS": "7200",
+                "NEXT_PUBLIC_ENABLE_HITL_IM": "true",
+            }
+        )
+        services = self.render()
+        for name in ("api", "api_websocket", "worker", "worker_beat", "worker_knowledge_fs_upgrade"):
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_IM_EVENT_TRANSPORT_MODE"], "WEBHOOK", name)
+            self.assertEqual(services[name]["environment"]["HUMAN_INPUT_GLOBAL_TIMEOUT_SECONDS"], "7200", name)
+        self.assertEqual(services["web"]["environment"]["NEXT_PUBLIC_ENABLE_HITL_IM"], "true")
 
     def test_runtime_secrets_stay_in_their_service(self):
         self.copy_template(

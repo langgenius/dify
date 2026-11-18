@@ -14,6 +14,7 @@ from controllers.common.errors import (
     NotFoundError,
     UnauthorizedError,
     register_credential_refresh_error_handler,
+    register_moderation_error_handlers,
     register_permission_error_handler,
 )
 from controllers.console.error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
@@ -38,6 +39,7 @@ api = ExternalApi(
 )
 register_permission_error_handler(api)
 register_credential_refresh_error_handler(api)
+register_moderation_error_handlers(api)
 # Errors the Console client handles centrally (bootstrap redirects, forced logout, malformed
 # input); any operation may answer with them, so no operation lists them. The shared
 # ``not_found``, ``unauthorized`` and ``internal_server_error`` codes are the ones Werkzeug's own
@@ -141,8 +143,10 @@ def _register_controllers() -> tuple[ModuleType, ...]:
     # Import other controllers
     from . import (
         apikey,
+        evaluation,
         extension,
         feature,
+        file_scan,
         human_input_form,
         init_validate,
         notification,
@@ -269,7 +273,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
     return (
         apikey,
+        evaluation,
         extension,
+        file_scan,
         feature,
         human_input_form,
         human_input_channel,
@@ -374,7 +380,9 @@ def _register_controllers() -> tuple[ModuleType, ...]:
 
 (
     apikey,
+    evaluation,
     extension,
+    file_scan,
     feature,
     human_input_form,
     human_input_channel,
@@ -516,9 +524,11 @@ __all__ = [
     "datasource_content_preview",
     "email_register",
     "endpoint",
+    "evaluation",
     "extension",
     "external",
     "feature",
+    "file_scan",
     "forgot_password",
     "generator",
     "hit_testing",

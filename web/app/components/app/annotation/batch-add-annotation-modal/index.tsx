@@ -11,13 +11,12 @@ import {
   DialogTitle,
 } from '@langgenius/dify-ui/dialog'
 import { useQuery } from '@tanstack/react-query'
-import { useAtomValue } from 'jotai'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { getCountQuota, isQuotaReached } from '@/app/components/billing/quota'
 import { toast } from '@/app/notifications'
-import { deploymentEditionAtom } from '@/features/system-features/state'
 import { annotationBatchImport } from '@/service/annotation'
 import { consoleClient, consoleQuery } from '@/service/console'
 import CSVDownloader from './csv-downloader'
@@ -41,21 +40,13 @@ export type IBatchModalProps = {
 
 const BatchModal: FC<IBatchModalProps> = ({ appId, isShow, onCancel, onAdded }) => {
   const { t } = useTranslation(['appAnnotation', 'common'])
-  const deploymentEdition = useAtomValue(deploymentEditionAtom)
   const { data: annotationQuota } = useQuery(
     consoleQuery.features.get.queryOptions({
-      enabled: deploymentEdition === 'CLOUD',
-      select: (data) => data.annotation_quota_limit,
+      select: (data) => getCountQuota(data.annotation_quota_limit),
     }),
   )
-  const isAnnotationQuotaUnavailable =
-    deploymentEdition === 'CLOUD' && annotationQuota === undefined
-  // A limit of 0 means unlimited.
-  const isAnnotationFull =
-    deploymentEdition === 'CLOUD' &&
-    annotationQuota !== undefined &&
-    annotationQuota.limit > 0 &&
-    annotationQuota.size >= annotationQuota.limit
+  const isAnnotationQuotaUnavailable = annotationQuota === undefined
+  const isAnnotationFull = annotationQuota !== undefined && isQuotaReached(annotationQuota)
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 

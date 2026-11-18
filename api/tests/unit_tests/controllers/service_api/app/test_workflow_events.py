@@ -841,6 +841,7 @@ class TestHitlServiceApi:
             pause_entity=pause_entity,
             resumption_context=resumption_context,
             session_maker=sqlite_session_maker,
+            human_input_surface=HumanInputSurface.SERVICE_API,
             node_executions={},
         )
 
