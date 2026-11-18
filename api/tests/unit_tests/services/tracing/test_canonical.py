@@ -170,7 +170,7 @@ def test_message_record_becomes_a_root_span_with_one_llm_child() -> None:
     assert root.start_time.tzinfo is UTC
 
 
-def test_message_llm_with_zero_price_has_no_cost() -> None:
+def test_message_llm_with_zero_price_keeps_explicit_cost() -> None:
     record = _message_record()
     message = record.message_data.model_copy(update={"total_price": Decimal(0)})
     record = record.model_copy(update={"message_data": message})
@@ -179,7 +179,8 @@ def test_message_llm_with_zero_price_has_no_cost() -> None:
 
     assert trace is not None
     llm = next(span for span in trace.spans if span.kind is SpanKind.LLM)
-    assert llm.cost is None
+    assert llm.cost is not None
+    assert (llm.cost.amount, llm.cost.currency) == (0.0, "USD")
 
 
 def test_caller_trace_id_names_the_trace_and_is_kept_verbatim() -> None:

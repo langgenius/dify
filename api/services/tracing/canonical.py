@@ -53,17 +53,22 @@ def _status(error: str | None, status: object) -> SpanStatus:
 
 
 def _cost(amount: Decimal | float | None, currency: str | None) -> Cost | None:
-    """Return a cost only when a finite, positive amount and currency are available.
-
-    Provider SDKs use zero as the default when model pricing is unavailable, so
-    omitting zero lets trace destinations apply their own model-price inference.
-    """
     if amount is None or not currency:
         return None
     value = float(amount)
-    if not math.isfinite(value) or value <= 0:
+    if not math.isfinite(value) or value < 0:
         return None
     return Cost(amount=value, currency=currency)
+
+
+def _workflow_cost(amount: Decimal | float | None, currency: str | None) -> Cost | None:
+    """Return a positive workflow cost, or None if it is zero, missing, or invalid.
+
+    Provider SDKs may default missing prices to zero. Omitting this ambiguous
+    zero lets destinations infer workflow costs from token usage and model pricing.
+    """
+    cost = _cost(amount, currency)
+    return cost if cost is not None and cost.amount > 0 else None
 
 
 def _usage(prompt: object, completion: object, total: object) -> TokenUsage | None:
@@ -368,7 +373,9 @@ class CanonicalTraceBuilder:
             model_name=process_data.get("model_name") if kind is SpanKind.LLM else None,
             model_provider=process_data.get("model_provider") if kind is SpanKind.LLM else None,
             usage=usage if kind is SpanKind.LLM else None,
-            cost=_cost(metadata.get("total_price"), metadata.get("currency")) if kind is SpanKind.LLM else None,
+            cost=_workflow_cost(metadata.get("total_price"), metadata.get("currency"))
+            if kind is SpanKind.LLM
+            else None,
             time_to_first_token=_seconds(time_to_first_token) if kind is SpanKind.LLM else None,
             attributes=_attributes(
                 {
