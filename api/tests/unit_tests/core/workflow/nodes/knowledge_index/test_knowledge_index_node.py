@@ -8,8 +8,9 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
-from core.rag.index_processor.constant.index_type import IndexTechniqueType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
+from core.rag.models.document import GeneralChunk, MultimodalGeneralStructureChunk
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
@@ -75,7 +76,9 @@ class RecordingIndexProcessor:
     ``index_and_clean`` after the request is recorded; otherwise it reports the document as indexed.
     """
 
-    preview: Preview = field(default_factory=lambda: Preview(chunk_structure="general_structure", total_segments=0))
+    preview: Preview = field(
+        default_factory=lambda: Preview(chunk_structure=IndexStructureType.PARAGRAPH_INDEX, total_segments=0)
+    )
     index_error: Exception | None = None
     preview_sessions: list[Session] = field(default_factory=list)
     index_calls: list[IndexCall] = field(default_factory=list)
@@ -155,20 +158,27 @@ def sample_node_data() -> KnowledgeIndexNodeData:
     return KnowledgeIndexNodeData(
         title="Knowledge Index",
         type="knowledge-index",
-        chunk_structure="general_structure",
+        chunk_structure=IndexStructureType.PARAGRAPH_INDEX,
         index_chunk_variable_selector=["start", "chunks"],
         indexing_technique=IndexTechniqueType.HIGH_QUALITY,
         summary_index_setting=None,
     )
 
 
+def _general_chunks(*contents: str) -> dict[str, object]:
+    """Serialize chunks in the ``MultimodalGeneralStructureChunk`` shape that the paragraph processor parses.
+
+    The node forwards the chunk variable unparsed, so tests store the serialized form in the variable pool.
+    """
+    return MultimodalGeneralStructureChunk(
+        general_chunks=[GeneralChunk(content=content) for content in contents]
+    ).model_dump()
+
+
 @pytest.fixture
 def sample_chunks() -> dict[str, object]:
     """Create sample chunks data."""
-    return {
-        "general_chunks": ["Chunk 1 content", "Chunk 2 content"],
-        "data_source_info": {"file_id": str(uuid.uuid4())},
-    }
+    return _general_chunks("Chunk 1 content", "Chunk 2 content")
 
 
 def _build_node(
@@ -335,7 +345,7 @@ class TestKnowledgeIndexNode:
 
         # Mock preview output
         mock_preview = Preview(
-            chunk_structure="general_structure",
+            chunk_structure=IndexStructureType.PARAGRAPH_INDEX,
             preview=[PreviewItem(content="Chunk 1"), PreviewItem(content="Chunk 2")],
             total_segments=2,
         )
@@ -613,7 +623,7 @@ class TestKnowledgeIndexNode:
         document_id = str(uuid.uuid4())
         original_document_id = str(uuid.uuid4())
         batch = "batch_123"
-        chunks = {"general_chunks": ["content"]}
+        chunks = _general_chunks("content")
 
         node_id = str(uuid.uuid4())
         config = {
@@ -699,7 +709,7 @@ class TestInvokeKnowledgeIndex:
         document_id = str(uuid.uuid4())
         original_document_id = str(uuid.uuid4())
         batch = "batch_123"
-        chunks = {"general_chunks": ["content"]}
+        chunks = _general_chunks("content")
         summary_setting: SummaryIndexSettingDict = {"enable": True}
 
         node_id = str(uuid.uuid4())
