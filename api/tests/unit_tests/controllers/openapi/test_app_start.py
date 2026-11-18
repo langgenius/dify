@@ -329,6 +329,7 @@ def test_chat_start_passes_query_and_conversation_and_drops_start_fields(world: 
 
     assert response.status_code == 200
     args = world.generator.calls[0]["args"]
+    assert isinstance(args, dict)
     assert args["query"] == "hi"
     assert args["conversation_id"] == conversation_id
     assert "wait_seconds" not in args
