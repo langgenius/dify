@@ -13,6 +13,7 @@ from unittest.mock import MagicMock, Mock, patch, sentinel
 from uuid import uuid4
 
 import pytest
+from pydantic import ValidationError
 from sqlalchemy import Engine, event
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -1538,20 +1539,68 @@ class TestNodeRuntimeCases:
         assert apply_dify_debug_email_recipient(method, enabled=enabled, actor_id="actor-id") is method
 
     @staticmethod
-    def test_dify_file_reference_factory_passes_tenant_id(monkeypatch: pytest.MonkeyPatch) -> None:
-        build_from_mapping = MagicMock(return_value=sentinel.file)
-        monkeypatch.setattr(node_runtime.file_factory, "build_from_mapping", build_from_mapping)
+    def test_dify_file_reference_factory_validates_mapping_before_building(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        builder_calls: list[tuple[Mapping[str, object], str, object]] = []
 
+        def build_from_mapping(*, mapping: Mapping[str, object], tenant_id: str, access_controller: object) -> File:
+            builder_calls.append((mapping, tenant_id, access_controller))
+            raise AssertionError("file builder must not run for an invalid mapping")
+
+        monkeypatch.setattr(node_runtime.file_factory, "build_from_mapping", build_from_mapping)
         factory = DifyFileReferenceFactory(_build_run_context())
 
-        result = factory.build_from_mapping(mapping={"id": "upload-file"})
+        with pytest.raises(ValidationError):
+            factory.build_from_mapping(mapping={"upload_file_id": "upload-file"})
 
-        assert result is sentinel.file
-        build_from_mapping.assert_called_once_with(
-            mapping={"id": "upload-file"},
-            tenant_id="tenant-id",
-            access_controller=node_runtime._file_access_controller,
+        assert builder_calls == []
+
+    @staticmethod
+    def test_dify_file_reference_factory_passes_validated_mapping_and_tenant_id(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        builder_calls: list[tuple[Mapping[str, object], str, object]] = []
+        expected_file = File(
+            file_type=FileType.DOCUMENT,
+            transfer_method=FileTransferMethod.LOCAL_FILE,
+            reference="file-reference",
+            filename="resume.pdf",
+            extension=".pdf",
+            mime_type="application/pdf",
+            size=128,
         )
+
+        def build_from_mapping(*, mapping: Mapping[str, object], tenant_id: str, access_controller: object) -> File:
+            builder_calls.append((mapping, tenant_id, access_controller))
+            return expected_file
+
+        monkeypatch.setattr(node_runtime.file_factory, "build_from_mapping", build_from_mapping)
+        factory = DifyFileReferenceFactory(_build_run_context())
+        mapping = {"transfer_method": "local_file", "upload_file_id": "upload-file"}
+
+        result = factory.build_from_mapping(mapping=mapping)
+
+        assert result is expected_file
+        assert builder_calls == [(mapping, "tenant-id", node_runtime._file_access_controller)]
+
+    @staticmethod
+    def test_dify_tool_node_runtime_rejects_mapping_without_transfer_method(
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        builder_calls: list[tuple[Mapping[str, object], str, object]] = []
+
+        def build_from_mapping(*, mapping: Mapping[str, object], tenant_id: str, access_controller: object) -> File:
+            builder_calls.append((mapping, tenant_id, access_controller))
+            raise AssertionError("file builder must not run for an invalid mapping")
+
+        monkeypatch.setattr(node_runtime.file_factory, "build_from_mapping", build_from_mapping)
+        runtime = DifyToolNodeRuntime(_build_run_context())
+
+        with pytest.raises(ValidationError):
+            runtime.build_file_reference(mapping={"tool_file_id": "tool-file"})
+
+        assert builder_calls == []
 
     @staticmethod
     def test_dify_prepared_llm_wraps_model_instance_calls() -> None:

@@ -6,7 +6,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Literal, Protocol, cast, overload, override
 
 from flask import current_app
-from pydantic import JsonValue
+from pydantic import JsonValue, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -130,6 +130,7 @@ if TYPE_CHECKING:
 
 
 _file_access_controller = DatabaseFileAccessController()
+_file_mapping_adapter = TypeAdapter(file_factory.FileMapping)
 
 
 def resolve_dify_run_context(run_context: Mapping[str, Any] | DifyRunContext) -> DifyRunContext:
@@ -177,16 +178,18 @@ class DifyFileReferenceFactory(FileReferenceFactoryProtocol):
     def build_from_mapping(self, *, mapping: Mapping[str, Any]) -> File:
         """Resolve a workflow file mapping into the graph-layer ``File``.
 
-        Preconditions: ``mapping`` carries a ``transfer_method`` recognised by the
-        file factory, and ``self._run_context.tenant_id`` names the owning tenant.
+        Preconditions: ``mapping`` is a mapping payload and
+        ``self._run_context.tenant_id`` names the owning tenant. The payload is
+        validated against the product ``FileMapping`` union before file resolution.
         Postconditions: the result is a ``File`` rebuilt from the persisted record
         for that tenant, so callers never receive the raw mapping back.
-        Failure behavior: an unknown transfer method, an unresolvable record id or
-        a record outside the tenant raises ``ValueError`` and yields no value; no
+        Failure behavior: an invalid mapping raises ``ValidationError``; a valid
+        mapping with an unknown or inaccessible record raises ``ValueError``. No
         state is mutated on either path.
         """
+        parsed_mapping = _file_mapping_adapter.validate_python(mapping)
         return file_factory.build_from_mapping(
-            mapping=mapping,
+            mapping=parsed_mapping,
             tenant_id=self._run_context.tenant_id,
             access_controller=_file_access_controller,
         )
@@ -600,7 +603,8 @@ class DifyToolNodeRuntime(ToolNodeRuntimeProtocol):
 
         Preconditions and postconditions are those of
         ``DifyFileReferenceFactory.build_from_mapping``: the returned value is a
-        ``File``, never the mapping itself, and failure raises ``ValueError``.
+        ``File``, never the mapping itself; invalid mapping shapes raise
+        ``ValidationError`` and unresolved records raise ``ValueError``.
         """
         return self._file_reference_factory.build_from_mapping(mapping=mapping)
 

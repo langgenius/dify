@@ -5,15 +5,14 @@ from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
-from pydantic import TypeAdapter, ValidationError
+from pydantic import ValidationError
 from pytest_mock import MockerFixture
 from sqlalchemy.orm import Session
 
-from core.app.file_access import DatabaseFileAccessController
+from core.app.entities.app_invoke_entities import DifyRunContext, InvokeFrom, UserFrom
 from core.workflow.file_reference import resolve_file_record_id
-from core.workflow.node_runtime import DifyToolFileManager
+from core.workflow.node_runtime import DifyToolFileManager, DifyToolNodeRuntime
 from core.workflow.system_variables import build_system_variables
-from factories.file_factory import ToolFileMapping, build_from_mapping
 from graphon.file import File, FileTransferMethod, FileType
 from graphon.model_runtime.entities.llm_entities import LLMUsage
 from graphon.node_events import StreamChunkEvent, StreamCompletedEvent
@@ -25,25 +24,24 @@ from graphon.variables.segments import ArrayFileSegment
 from models.tools import ToolFile
 from tests.workflow_test_utils import build_test_graph_init_params, build_test_variable_pool
 
-# The production boundary shape for tool-produced file mappings, imported rather
-# than re-declared here: a change to the factory's accepted keys must reach this
-# contract test instead of silently drifting apart from it.
-_TOOL_FILE_MAPPING_ADAPTER = TypeAdapter(ToolFileMapping)
-
 # One tenant identity shared by the graph init params and the persisted tool-file
 # row, so the factory's tenant filter is exercised instead of bypassed.
 _TENANT_ID = "tenant-id"
 
 
 class _StubToolRuntime:
-    """Tool runtime stub: only the capabilities `graphon`'s ToolNode calls.
-
-    Invariant: ``build_file_reference`` returns a ``File``, never the incoming
-    mapping, so the stub cannot hide a contract the production runtime honours.
-    """
+    """Stub non-file tool capabilities while retaining the production file boundary."""
 
     def __init__(self, *, tenant_id: str) -> None:
-        self._tenant_id = tenant_id
+        self._file_runtime = DifyToolNodeRuntime(
+            DifyRunContext(
+                tenant_id=tenant_id,
+                app_id="app-id",
+                user_id="user-id",
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+            )
+        )
 
     def get_runtime(
         self,
@@ -72,22 +70,8 @@ class _StubToolRuntime:
         return LLMUsage.empty_usage()
 
     def build_file_reference(self, *, mapping: Mapping[str, Any]) -> File:
-        """Parse the tool mapping at the boundary, then build the real ``File``.
-
-        Preconditions: ``mapping`` validates against the production
-        ``ToolFileMapping`` shape and the referenced ``ToolFile`` row exists for
-        ``self._tenant_id``. Postconditions: the result is a ``File`` rebuilt from
-        that row, so the node's file output is the production value rather than a
-        hand-built stand-in. Failure behavior: a mapping that does not parse
-        raises ``ValidationError`` and an unknown record raises ``ValueError``;
-        neither path returns the mapping.
-        """
-        parsed = _TOOL_FILE_MAPPING_ADAPTER.validate_python(mapping)
-        return build_from_mapping(
-            mapping=parsed,
-            tenant_id=self._tenant_id,
-            access_controller=DatabaseFileAccessController(),
-        )
+        """Delegate file mappings through the production Dify runtime boundary."""
+        return self._file_runtime.build_file_reference(mapping=mapping)
 
     def resolve_provider_icons(
         self,
