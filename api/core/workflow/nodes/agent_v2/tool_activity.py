@@ -6,18 +6,17 @@ fields. ``output_tool_*`` events are structured output, not tool activity.
 
 from __future__ import annotations
 
-import hashlib
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
 from dify_agent.protocol.tool_call_limits import (
-    TOOL_CALL_LIMIT_METADATA_KEY,
-    TOOL_EXECUTION_FAILED_METADATA_KEY,
-    TOOL_VALIDATION_FAILED_METADATA_KEY,
     ToolCallLimitMetadata,
     ToolCallLimitSnapshot,
+    runtime_tool_failed,
+    unconfirmed_reservation,
+    validated_call_limit,
 )
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError
 
@@ -184,7 +183,7 @@ class WorkflowAgentToolActivityProjector:
         for (run_id, _tool_call_id), state in self._calls.items():
             if state.status in {"started", "running"}:
                 if state.call_limit is None and call_limits:
-                    state.call_limit = _unconfirmed_reservation(state.tool_call_id, call_limits)
+                    state.call_limit = unconfirmed_reservation(state.tool_call_id, call_limits)
                 if status == "cancelled":
                     state.status = "cancelled"
                     state.error = bounded_error
@@ -314,7 +313,7 @@ class WorkflowAgentToolActivityProjector:
         else:
             output = _bounded_text(part.content)
             state.tool_output = output
-            state.call_limit = _validated_call_limit(part.metadata)
+            state.call_limit = validated_call_limit(part.metadata)
             if state.call_limit is not None and state.call_limit.execution_status == "not_executed":
                 state.status = "not_executed"
                 state.error = (
@@ -322,7 +321,9 @@ class WorkflowAgentToolActivityProjector:
                     if state.call_limit.reason == "call_limit_reached"
                     else "Duplicate tool call. This request was not executed."
                 )
-            elif part.outcome == "failure" or _runtime_failed(part.metadata, has_quota=state.call_limit is not None):
+            elif part.outcome == "failure" or runtime_tool_failed(
+                part.metadata, has_quota=state.call_limit is not None
+            ):
                 state.status = "failed"
                 state.error = output or None
             else:
@@ -347,44 +348,3 @@ class WorkflowAgentToolActivityProjector:
                 call_limit=state.call_limit,
             ),
         )
-
-
-def _validated_call_limit(metadata: JsonValue) -> ToolCallLimitMetadata | None:
-    """Accept only structured runtime annotations, never infer execution from text."""
-    if not isinstance(metadata, dict):
-        return None
-    raw = metadata.get(TOOL_CALL_LIMIT_METADATA_KEY)
-    try:
-        return ToolCallLimitMetadata.model_validate(raw) if isinstance(raw, dict) else None
-    except ValidationError:
-        return None
-
-
-def _runtime_failed(metadata: JsonValue, *, has_quota: bool) -> bool:
-    """Recognize only boolean runtime failure annotations, independently of text."""
-    return isinstance(metadata, dict) and (
-        metadata.get(TOOL_VALIDATION_FAILED_METADATA_KEY) is True
-        or (has_quota and metadata.get(TOOL_EXECUTION_FAILED_METADATA_KEY) is True)
-    )
-
-
-def _unconfirmed_reservation(
-    tool_call_id: str, call_limits: Mapping[str, ToolCallLimitSnapshot]
-) -> ToolCallLimitMetadata | None:
-    """Match a known native call to a terminal reservation without claiming dispatch.
-
-    The authenticated terminal event supplies validated snapshots. Exactly one
-    matching call digest is required; absent or ambiguous matches stay unknown.
-    No arguments, configuration or execution results are reconstructed.
-    """
-    digest = hashlib.sha256(tool_call_id.encode()).hexdigest()
-    matches = [snapshot for snapshot in call_limits.values() if digest in snapshot.call_ids]
-    if len(matches) != 1:
-        return None
-    snapshot = matches[0]
-    return ToolCallLimitMetadata(
-        tool_identity=snapshot.tool_identity,
-        limit=snapshot.limit,
-        used=snapshot.call_ids[digest],
-        execution_status="unconfirmed",
-    )

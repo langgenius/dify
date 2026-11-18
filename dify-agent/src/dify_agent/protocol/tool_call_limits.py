@@ -4,14 +4,19 @@ These values describe runtime dispatch decisions, never a model's claim that a
 tool ran. They are metadata on ToolReturnPart and are not sent to the model.
 """
 
+import hashlib
+from collections.abc import Mapping
 from typing import Annotated, Literal, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, JsonValue, ValidationError, field_validator, model_validator
 
 
 TOOL_CALL_LIMIT_METADATA_KEY = "dify_tool_call_limit"
 TOOL_EXECUTION_FAILED_METADATA_KEY = "dify_tool_execution_failed"
 TOOL_VALIDATION_FAILED_METADATA_KEY = "dify_tool_validation_failed"
+AGENT_TOOL_ACTIVITY_META_KEY = "agent_v2_tool_activity"
+
+AgentToolActivityStatus = Literal["started", "running", "succeeded", "failed", "cancelled", "not_executed"]
 
 
 class ToolCallLimitMetadata(BaseModel):
@@ -77,3 +82,96 @@ class ToolCallLimitSnapshot(BaseModel):
         ):
             raise ValueError("tool reservation ordinals must exactly cover committed usage within the limit")
         return self
+
+
+class AgentToolActivity(BaseModel):
+    """One native tool call's application-owned, persistable display metadata.
+
+    Native call identity is independent of its display name and the SQL thought
+    row. Tool inputs, credentials and successful observations remain outside
+    this sidecar; ``error`` is a bounded failure description for display.
+    Missing metadata on older thoughts conveys no execution or quota claim.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str = Field(min_length=1)
+    run_id: str = Field(min_length=1)
+    tool_call_id: str = Field(min_length=1)
+    tool_name: str = Field(min_length=1)
+    status: AgentToolActivityStatus
+    error: str | None = None
+    call_limit: ToolCallLimitMetadata | None = None
+
+    @model_validator(mode="after")
+    def validate_identity_and_outcome(self) -> Self:
+        """Reject inconsistent identities or an unsupported execution assertion."""
+        if self.id != f"{self.run_id}:{self.tool_call_id}":
+            raise ValueError("tool activity identity must include its native run and call ids")
+        denied = self.call_limit is not None and self.call_limit.execution_status == "not_executed"
+        if (self.status == "not_executed") != denied:
+            raise ValueError("an unexecuted tool activity requires authoritative rejection metadata")
+        if (
+            self.call_limit is not None
+            and self.call_limit.execution_status == "unconfirmed"
+            and self.status not in {"failed", "cancelled"}
+        ):
+            raise ValueError("unconfirmed reservations require an interrupted tool activity")
+        return self
+
+
+def agent_tool_activity_from_metadata(metadata: object) -> AgentToolActivity | None:
+    """Read the allowlisted thought sidecar, tolerating absent or invalid old data.
+
+    Only a validated structured value under the application-owned key is
+    returned. This function never inspects observation text or returns unrelated
+    historical tool metadata, which may contain provider-specific configuration.
+    """
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get(AGENT_TOOL_ACTIVITY_META_KEY)
+    try:
+        return AgentToolActivity.model_validate(value) if isinstance(value, dict) else None
+    except ValidationError:
+        return None
+
+
+def validated_call_limit(metadata: JsonValue) -> ToolCallLimitMetadata | None:
+    """Read only valid structured runtime annotations without inferring from text."""
+    if not isinstance(metadata, dict):
+        return None
+    value = metadata.get(TOOL_CALL_LIMIT_METADATA_KEY)
+    try:
+        return ToolCallLimitMetadata.model_validate(value) if isinstance(value, dict) else None
+    except ValidationError:
+        return None
+
+
+def runtime_tool_failed(metadata: JsonValue, *, has_quota: bool) -> bool:
+    """Recognize boolean runtime failure flags, independently of model content."""
+    return isinstance(metadata, dict) and (
+        metadata.get(TOOL_VALIDATION_FAILED_METADATA_KEY) is True
+        or (has_quota and metadata.get(TOOL_EXECUTION_FAILED_METADATA_KEY) is True)
+    )
+
+
+def unconfirmed_reservation(
+    tool_call_id: str, call_limits: Mapping[str, ToolCallLimitSnapshot]
+) -> ToolCallLimitMetadata | None:
+    """Match a native call to exactly one terminal reservation without claiming dispatch.
+
+    Preconditions: summaries came from the validated owning run's terminal
+    event. Absent or ambiguous hashes return no metadata; no configuration,
+    arguments or external results are reconstructed.
+    """
+    digest = hashlib.sha256(tool_call_id.encode()).hexdigest()
+    matches = [snapshot for snapshot in call_limits.values() if digest in snapshot.call_ids]
+    if len(matches) != 1:
+        return None
+    snapshot = matches[0]
+    return ToolCallLimitMetadata(
+        tool_identity=snapshot.tool_identity,
+        limit=snapshot.limit,
+        used=snapshot.call_ids[digest],
+        execution_status="unconfirmed",
+    )

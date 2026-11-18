@@ -11,19 +11,116 @@ from uuid import uuid4
 from zoneinfo import ZoneInfo
 
 import pytest
+from dify_agent.protocol.tool_call_limits import AGENT_TOOL_ACTIVITY_META_KEY, AgentToolActivity, ToolCallLimitMetadata
 from sqlalchemy import Engine, event
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from models import Account
 from models.agent import Agent, AgentScope, AgentSource
-from models.enums import ConversationFromSource, MessageStatus
-from models.model import App, AppMode
+from models.enums import ConversationFromSource, CreatorUserRole, MessageStatus
+from models.model import App, AppMode, MessageAgentThought
 from services.enterprise.base import EnterpriseRequest
 from tests.helpers.unit.config_override import config_overrides_context
 from tests.helpers.unit.model_factories import make_conversation, make_message
 from tests.unit_tests.controllers.console.agent.test_api_access import Harness
 
 pytest_plugins = ("tests.unit_tests.controllers.console.agent.test_api_access",)
+
+
+def test_agent_chat_history_and_logs_return_persisted_activity_without_tracing(harness: Harness) -> None:
+    agent_id, app_id = harness.create_agent()
+    conversation_id, message_id = str(uuid4()), str(uuid4())
+    activity = AgentToolActivity(
+        id="runtime-1:search-4",
+        run_id="runtime-1",
+        tool_call_id="search-4",
+        tool_name="search",
+        status="not_executed",
+        error="Call limit reached (3 per run). This request was not executed.",
+        call_limit=ToolCallLimitMetadata(
+            tool_identity="provider-operation",
+            limit=3,
+            used=3,
+            execution_status="not_executed",
+            reason="call_limit_reached",
+        ),
+    )
+    with harness.sessions.begin() as session:
+        session.add(
+            make_conversation(
+                conversation_id=conversation_id,
+                app_id=app_id,
+                mode=AppMode.AGENT,
+                name="With quota",
+                inputs={},
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=harness.account_id,
+                invoke_from=InvokeFrom.EXPLORE,
+            )
+        )
+        session.add(
+            make_message(
+                message_id=message_id,
+                app_id=app_id,
+                conversation_id=conversation_id,
+                inputs={},
+                query="Research",
+                message={},
+                answer="Partial result",
+                status=MessageStatus.NORMAL,
+                from_source=ConversationFromSource.CONSOLE,
+                from_account_id=harness.account_id,
+                invoke_from=InvokeFrom.EXPLORE,
+                currency="USD",
+            )
+        )
+        session.add_all(
+            [
+                MessageAgentThought(
+                    message_id=message_id,
+                    position=2,
+                    tool="search",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=harness.account_id,
+                    tool_meta_str=json.dumps(
+                        {
+                            AGENT_TOOL_ACTIVITY_META_KEY: activity.model_dump(mode="json"),
+                            "old_tool_config": {"credential": "private-config"},
+                        }
+                    ),
+                ),
+                MessageAgentThought(
+                    message_id=message_id,
+                    position=1,
+                    tool="legacy",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=harness.account_id,
+                    observation="3/3 not executed",
+                ),
+            ]
+        )
+    base = f"/console/api/agent/{agent_id}"
+    with config_overrides_context(OPS_AGENT_TRACE_ENABLED=False):
+        logs = harness.client.get(f"{base}/logs/{conversation_id}/messages?sources=console", headers=harness.headers)
+        history = harness.client.get(f"{base}/chat-messages?conversation_id={conversation_id}", headers=harness.headers)
+    for response in (logs, history):
+        assert response.status_code == HTTPStatus.OK
+        message = response.get_json()["data"][0]
+        assert message["id"] == message_id
+        assert [thought["position"] for thought in message["agent_thoughts"]] == [1, 2]
+        assert "tool_activity" not in message["agent_thoughts"][0]
+        assert message["agent_thoughts"][1]["tool_activity"] == activity.model_dump(mode="json")
+        assert "private-config" not in response.get_data(as_text=True)
+    assert logs.get_json()["data"][0]["status"] == "success"
+    foreign_agent_id, _foreign_app_id = harness.create_agent(tenant_id=str(uuid4()))
+    for path in (
+        f"logs/{conversation_id}/messages?sources=console",
+        f"chat-messages?conversation_id={conversation_id}",
+    ):
+        assert (
+            harness.client.get(f"/console/api/agent/{foreign_agent_id}/{path}", headers=harness.headers).status_code
+            == HTTPStatus.NOT_FOUND
+        )
 
 
 def test_logs_and_messages_respect_agent_scope_and_account_timezone(harness: Harness) -> None:
