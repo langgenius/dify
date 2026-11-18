@@ -117,6 +117,13 @@ def handle_user_connect(sid, data):
     return {"msg": "connected", "user_id": user_id, "sid": sid, "isLeader": is_leader}
 
 
+@_sio_on("get_online_user_avatars")
+def handle_get_online_user_avatars(sid: str, _data: object = None) -> dict[str, str]:
+    """Return avatar URLs to the requesting socket using its server-side room membership."""
+    with sio.app.app_context():
+        return collaboration_service.get_online_user_avatars(sid, avatar_service=application_services().accounts.avatar)
+
+
 @observe_workflow_event("disconnect", sio)
 def _handle_disconnect(sid):
     """Remove the session from online users and observe the result."""
