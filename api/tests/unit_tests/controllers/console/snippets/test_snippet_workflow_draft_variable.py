@@ -241,6 +241,46 @@ def test_variable_patch_returns_persisted_variable_without_committing_when_no_ch
     assert result["id"] == variable.id
 
 
+def test_variable_get_returns_decoded_persisted_value(app: Flask, sqlite_session: Session) -> None:
+    """Given a persisted snippet variable, return its decoded value through the caller's session."""
+    variable = _make_node_variable("var-1")
+    _persist_variables(sqlite_session, variable)
+    sqlite_session.expunge_all()
+    api = module.SnippetVariableApi()
+    handler = unwrap(api.get)
+
+    with app.test_request_context("/"):
+        result = handler(api, sqlite_session, _make_account(), snippet=_make_snippet(), variable_id="var-1")
+
+    assert result["id"] == "var-1"
+    assert result["value"] == "value-var-1"
+
+
+def test_variable_patch_persists_and_returns_decoded_updated_value(app: Flask, sqlite_session: Session) -> None:
+    """Given a persisted snippet variable, update its value and return the decoded result without losing the row."""
+    variable = _make_node_variable("var-1")
+    _persist_variables(sqlite_session, variable)
+    sqlite_session.expunge_all()
+    api = module.SnippetVariableApi()
+    handler = unwrap(api.patch)
+
+    with app.test_request_context("/", method="PATCH", json={"value": "updated-value"}):
+        result = handler(
+            api,
+            module.WorkflowDraftVariableUpdatePayload(value="updated-value"),
+            sqlite_session,
+            _make_account(),
+            snippet=_make_snippet(),
+            variable_id="var-1",
+        )
+
+    assert result["value"] == "updated-value"
+    sqlite_session.expire_all()
+    stored = sqlite_session.get(WorkflowDraftVariable, "var-1")
+    assert stored is not None
+    assert stored.get_value(session=sqlite_session).value == "updated-value"
+
+
 def test_variable_delete_deletes_persisted_variable(
     app: Flask,
     sqlite_session: Session,

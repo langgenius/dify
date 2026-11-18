@@ -7,8 +7,6 @@
 # Shared configuration using YAML anchors and env_file
 x-shared-api-config: &shared-api-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -67,10 +65,13 @@ x-shared-api-config: &shared-api-config
       required: false
     - path: ./envs/core-services/api.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/api.defaults
   networks:
     - ssrf_proxy_network
@@ -79,8 +80,6 @@ x-shared-api-config: &shared-api-config
 
 x-shared-worker-config: &shared-worker-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -139,10 +138,13 @@ x-shared-worker-config: &shared-worker-config
       required: false
     - path: ./envs/core-services/worker.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker.defaults
   networks:
     - ssrf_proxy_network
@@ -152,15 +154,13 @@ x-shared-worker-config: &shared-worker-config
 # KNOWLEDGE_FS_WORKER_IMAGE must bundle the KnowledgeFS engine at KNOWLEDGE_FS_BACKGROUND_ENGINE_PATH;
 # standard Dify API images do not, and the worker entrypoint exits without it.
 x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
-  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.19.0}
+  image: ${KNOWLEDGE_FS_WORKER_IMAGE:-langgenius/dify-api:1.20.0}
   profiles:
     - knowledge-fs-celery
   restart: always
   # Match the two-hour default task deadline plus shutdown margin for long document jobs.
   stop_grace_period: 125m
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -177,8 +177,11 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
       required: false
     - path: ./envs/core-services/worker.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker.defaults
   environment: &knowledge-fs-celery-environment
     MODE: worker
@@ -200,8 +203,6 @@ x-knowledge-fs-celery-worker: &knowledge-fs-celery-worker
 
 x-shared-worker-beat-config: &shared-worker-beat-config
   env_file:
-    - path: ./envs/core-services/shared.env
-      required: false
     - path: ./envs/core-services/api-worker.env
       required: false
     - path: ./envs/security.env
@@ -260,10 +261,13 @@ x-shared-worker-beat-config: &shared-worker-beat-config
       required: false
     - path: ./envs/core-services/worker-beat.env
       required: false
+    - path: ./envs/core-services/urls.env
+      required: false
     - ./.env
     - path: ./envs/vectorstores/${VECTOR_STORE:-weaviate}.defaults
       required: false
     - ./envs/core-services/api-worker.defaults
+    - ./envs/core-services/urls.defaults
     - ./envs/core-services/worker-beat.defaults
   networks:
     - ssrf_proxy_network
@@ -296,7 +300,7 @@ services:
   # API service
   api:
     <<: *shared-api-config
-    image: langgenius/dify-api:1.19.0
+    image: langgenius/dify-api:1.20.0
     environment:
       MODE: api
     depends_on:
@@ -334,7 +338,7 @@ services:
   # WebSocket service for workflow collaboration.
   api_websocket:
     <<: *shared-api-config
-    image: langgenius/dify-api:1.19.0
+    image: langgenius/dify-api:1.20.0
     profiles:
       - collaboration
     environment:
@@ -370,7 +374,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.19.0
+    image: langgenius/dify-api:1.20.0
     environment:
       MODE: worker
     depends_on:
@@ -410,7 +414,7 @@ services:
   # Keep this queue out of the generic worker so large file copies cannot starve existing jobs.
   worker_knowledge_fs_upgrade:
     <<: *shared-worker-config
-    image: langgenius/dify-api:1.19.0
+    image: langgenius/dify-api:1.20.0
     profiles:
       - knowledge-fs
     environment:
@@ -440,7 +444,7 @@ services:
   # Celery beat for scheduling periodic tasks.
   worker_beat:
     <<: *shared-worker-beat-config
-    image: langgenius/dify-api:1.19.0
+    image: langgenius/dify-api:1.20.0
     environment:
       MODE: beat
     depends_on:
@@ -473,14 +477,17 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.19.0
+    image: langgenius/dify-web:1.20.0
     restart: always
     env_file:
       - path: ./envs/core-services/web.env
         required: false
       - path: ./envs/security.env
         required: false
+      - path: ./envs/core-services/urls.env
+        required: false
       - ./.env
+      - ./envs/core-services/urls.defaults
       - ./envs/core-services/web.defaults
 
   # The PostgreSQL database.
@@ -592,7 +599,7 @@ services:
   # on port 3128, which only allows agent_backend /agent-stub/ and the Dify API
   # /files/* endpoints (see ssrf_proxy/squid-agent.conf.template).
   local_sandbox:
-    image: langgenius/dify-agent-local-sandbox:1.19.0
+    image: langgenius/dify-agent-local-sandbox:1.20.0
     command: ["shellctl", "serve", "--listen", "0.0.0.0:5004", "--require-auth-token"]
     restart: always
     env_file:
@@ -618,11 +625,9 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.6.14-local
+    image: langgenius/dify-plugin-daemon:0.6.15-local
     restart: always
     env_file:
-      - path: ./envs/core-services/shared.env
-        required: false
       - path: ./envs/core-services/api-worker.env
         required: false
       - path: ./envs/core-services/plugin-daemon.env
@@ -750,7 +755,7 @@ services:
 
   # Dify Agent backend service.
   agent_backend:
-    image: langgenius/dify-agent-backend:1.19.0
+    image: langgenius/dify-agent-backend:1.20.0
     restart: always
     env_file:
       - path: ./envs/security.env

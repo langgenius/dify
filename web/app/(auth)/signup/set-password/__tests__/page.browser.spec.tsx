@@ -25,19 +25,23 @@ vi.mock('@/next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(navigation.search),
 }))
 
+// boundary: pin the browser timezone so the submitted profile is deterministic.
 vi.mock('@/utils/timezone', () => ({
   getBrowserTimezone: vi.fn(),
 }))
 
+// boundary: analytics stops at the Google tag adapter.
 vi.mock('@/utils/gtag', () => ({
   sendGAEvent: (...args: unknown[]) => tracking.sendGAEvent(...args),
 }))
 
+// boundary: analytics stops at the Amplitude registration adapter.
 vi.mock('@/app/components/base/amplitude/registration-tracking', () => ({
   rememberRegistrationSuccess: (...args: unknown[]) =>
     tracking.rememberRegistrationSuccess(...args),
 }))
 
+// boundary: attribution tracking stops at its storage adapter.
 vi.mock('@/utils/create-app-tracking', () => ({
   rememberCreateAppExternalAttribution: (...args: unknown[]) =>
     tracking.rememberCreateAppExternalAttribution(...args),

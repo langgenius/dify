@@ -3,8 +3,6 @@ import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { ControlMode } from '../../types'
 import { initialNodes, mod, redo, setupWorkflowCanvas, undo } from './workflow-canvas-test-env'
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
-
 describe('Workflow canvas focus and shortcut ownership', () => {
   it('admits and releases keyboard focus while keeping mode and zoom shortcuts inside the canvas', async () => {
     const screen = await setupWorkflowCanvas({}, true)

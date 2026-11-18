@@ -58,6 +58,43 @@ def _get(
 
 
 class TestFilePreviewApi:
+    @pytest.mark.parametrize("as_attachment", [False, True])
+    @pytest.mark.parametrize(
+        ("mime_type", "name", "extension", "svg_preview"),
+        [
+            ("image/svg+xml", "image.txt", "txt", True),
+            ("image/png", "image.SVG", "png", True),
+            ("image/png", "image.png", ".SVG", True),
+            ("text/xml", "image.svg", "bin", True),
+            ("application/xml", "image.bin", ".SVG", True),
+            ("application/xml", "image.xml", "xml", False),
+            ("text/xml", "image.xml", "xml", False),
+            (None, "a", "bin", False),
+            ("", "a", "bin", False),
+            ("image/svg+xml", "image.SVGZ", "svg", False),
+            ("image/svg+xml", "image.svg", "SVGZ", False),
+        ],
+    )
+    def test_active_content_preview_respects_download_mode(
+        self, mime_type: str | None, name: str, extension: str, svg_preview: bool, as_attachment: bool
+    ) -> None:
+        preview = _preview(mime_type=mime_type, name=name, extension=extension)
+
+        response = FilePreviewApi()._build_file_response(preview=preview, as_attachment=as_attachment)
+
+        if svg_preview and not as_attachment:
+            assert response.headers["Content-Disposition"] == "inline"
+            assert response.headers["Content-Type"] == "image/svg+xml"
+            assert response.headers["Content-Security-Policy"] == (
+                "default-src 'none'; style-src 'unsafe-inline'; img-src data:; sandbox"
+            )
+        else:
+            assert response.headers["Content-Disposition"].startswith("attachment")
+            assert response.headers["Content-Type"] == "application/octet-stream"
+            assert response.headers["Content-Security-Policy"] == "default-src 'none'; sandbox"
+        assert response.headers["X-Content-Type-Options"] == "nosniff"
+        assert response.response is preview.content
+
     @patch("controllers.service_api.app.file_preview.application_services")
     def test_get_uses_authenticated_app_scope(self, mock_application_services: Mock) -> None:
         app_model = _app()

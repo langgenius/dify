@@ -1,10 +1,5 @@
+from controllers.common.errors import PaidPlanRequiredError  # noqa: F401 - Preserve the Console import path.
 from libs.exception import BaseHTTPException
-
-
-class PaidPlanRequiredError(BaseHTTPException):
-    error_code = "paid_plan_required"
-    description = "This feature requires a paid plan."
-    code = 403
 
 
 class AlreadySetupError(BaseHTTPException):

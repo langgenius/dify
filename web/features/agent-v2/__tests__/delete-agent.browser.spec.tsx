@@ -176,22 +176,24 @@ it('focuses the next card without moving the roster scroll position', async () =
   const targetName = 'Agent 15'
   const { screen, queryClient, openDelete } = await setup(agents)
   try {
-    const viewport = screen
-      .getByRole('region', { name: 'Agents', exact: true })
-      .element().parentElement!
-    await expect.poll(() => viewport.scrollHeight).toBeGreaterThan(viewport.clientHeight)
-    viewport.scrollTo({ top: 600 })
-    await expect.poll(() => viewport.scrollTop).toBeGreaterThan(0)
+    const target = screen.getByRole('link', { name: targetName, exact: true })
+    await expect.element(target).toBeInTheDocument()
+    target.element().scrollIntoView({ block: 'center' })
+    // A surviving card above the deletion keeps the same painted position only if
+    // restoring focus does not scroll the roster.
+    const anchor = screen.getByRole('link', { name: 'Agent 12', exact: true })
+    await expect.element(anchor).toBeInTheDocument()
+    const anchorElement = anchor.element()
     const deletedCard = screen.getByRole('link', { name: targetName, exact: true }).element()
     await openDelete(targetName)
-    const scrollTop = viewport.scrollTop
+    const anchorTop = anchorElement.getBoundingClientRect().top
     const dialog = screen.getByRole('alertdialog').element()
     await screen.getByRole('button', { name: 'Autofill' }).click()
     await screen.getByRole('button', { name: 'Confirm', exact: true }).click()
     await expect.poll(() => deletedCard.isConnected).toBe(false)
     await expect.poll(() => dialog.isConnected).toBe(false)
     await expect.element(screen.getByRole('link', { name: 'Agent 16', exact: true })).toHaveFocus()
-    expect(viewport.scrollTop).toBe(scrollTop)
+    expect(anchorElement.getBoundingClientRect().top).toBeCloseTo(anchorTop)
   } finally {
     queryClient.clear()
   }

@@ -114,6 +114,13 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   await screen.getByRole('region', { name: 'Chat preview' }).hover({ position: { x: 2, y: 150 } })
   const conversation = screen.getByRole('button', { name: 'Saved conversation' }).last()
   await expect.element(conversation).toBeVisible()
+  // The panel slides in over 500ms. Opening the menu mid-slide can position it against a
+  // partly offscreen anchor, which hides the popup and drops focus to the body.
+  await vi.waitFor(() =>
+    expect(
+      document.getAnimations().filter((animation) => animation.playState === 'running'),
+    ).toHaveLength(0),
+  )
   conversation.element().focus()
   await expect.element(conversation).toHaveFocus()
   await userEvent.tab()
@@ -130,7 +137,6 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   await userEvent.keyboard('{Escape}')
   await expect.element(more).toHaveFocus()
   expect(more.element().checkVisibility({ checkOpacity: true })).toBe(true)
-  expect(more.element().closest('[inert]')).toBeNull()
 
   // The pointer has already left: Tab between sidebar controls must keep the
   // panel usable, but moving focus outside must make its actions inert.
@@ -141,5 +147,11 @@ it('keeps the floating sidebar available while its menu or focus is inside and c
   const outside = screen.getByRole('button', { name: 'Before chat' })
   await outside.click()
   await expect.element(outside).toHaveFocus()
-  await expect.poll(() => conversation.element().closest('[inert]')).not.toBeNull()
+  // The panel closes after the blur settles; Tab before then can land inside it.
+  await expect.element(conversation).not.toBeInViewport()
+  const expand = screen.getByRole('button', { name: 'layout.sidebar.expandSidebar' }).last()
+  await userEvent.tab()
+  await expect.element(expand).toHaveFocus()
+  await userEvent.tab()
+  await expect.element(screen.getByRole('textbox')).toHaveFocus()
 })

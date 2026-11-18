@@ -4,7 +4,7 @@
     "title": "",
     "version": "0.0.1"
   },
-  "x-dify-saas-commit": "2d358b5a0555440b30d8601f5e786a15e28a2345",
+  "x-dify-saas-commit": "72ee562e43bd39cd8f7cf414d545efca646c27cf",
   "paths": {
     "/v1/subscription/info": {
       "get": {
@@ -836,7 +836,8 @@
           "CREATE_SUBSCRIPTION_PAYMENT_LINK_FAILED",
           "INVALID_KNOWLEDGE_RATE_LIMIT_REQUEST",
           "TENANT_IDS_COUNT_TOO_LARGE",
-          "DOCUMENT_USAGE_UNAVAILABLE"
+          "DOCUMENT_USAGE_UNAVAILABLE",
+          "ANNUAL_DISCOUNT_ACTIVE"
         ],
         "type": "string",
         "description": "Reasons returned by the BillingSubscription service: values of the proto enums dify.saas.api.billing.CommonErrorReason and dify.saas.api.billing.BillingSubscriptionErrorReason, plus the reasons emitted by Kratos itself: CODEC and VALIDATOR (400), UNKNOWN (500, recovered panic) and an empty string (500, unclassified error).",
@@ -992,6 +993,13 @@
         "description": "Error body returned with every non-2xx response."
       },
       "GetEducationIdentityStatusReply": {
+        "required": [
+          "result",
+          "is_student",
+          "expire_at",
+          "allow_refresh",
+          "can_redeem_discount"
+        ],
         "type": "object",
         "properties": {
           "result": {
@@ -1010,14 +1018,12 @@
           "allow_refresh": {
             "type": "boolean",
             "description": "True when the latest education identity expires within the configured number of refresh days\n before or after now. False when the account has no education identity."
+          },
+          "can_redeem_discount": {
+            "type": "boolean",
+            "description": "True when the account has an active education identity and has not redeemed its discount in any workspace during the current verification period."
           }
-        },
-        "required": [
-          "result",
-          "is_student",
-          "expire_at",
-          "allow_refresh"
-        ]
+        }
       },
       "GetInvoicesReply": {
         "type": "object",
