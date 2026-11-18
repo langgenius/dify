@@ -19,7 +19,7 @@ from controllers.openapi._catalog import build_catalog, iter_handlers
 from controllers.openapi._errors import OpenApiErrorCode
 from controllers.openapi._models import IDEMPOTENCY_KEY_MAX_LENGTH, AdvancedChatStartPayload, WorkflowStartPayload
 from controllers.openapi.app_run import RUN_GUARDS
-from controllers.openapi.app_start import ADVANCED_CHAT_START_OP, WORKFLOW_START_OP
+from controllers.openapi.app_start import START_MODES, START_OP_PREFIX
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from extensions.ext_application_services import ApplicationServices
 from models import App
@@ -35,6 +35,7 @@ from services.run_job_service import (
     RunJobService,
     RunResult,
 )
+from services.workflow.graph_check import GRAPH_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
 
@@ -314,12 +315,20 @@ def test_start_payloads_bound_the_start_fields_and_forbid_extras(model: type) ->
     assert {"wait_seconds", "idempotency_key"} <= set(schema)
 
 
+def test_the_start_ops_are_the_catalogs_and_each_graph_mode_has_exactly_one(openapi_app: Flask) -> None:
+    ops = build_catalog(openapi_app)["ops"]
+
+    assert {op for op in ops if op.startswith(START_OP_PREFIX)} == set(START_MODES)
+    for mode in GRAPH_MODES:
+        assert len([op for op, modes in START_MODES.items() if mode in modes]) == 1, mode
+
+
 def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi_app: Flask) -> None:
     from constants.personal_access_token import PersonalAccessTokenPolicy
 
     ops = build_catalog(openapi_app)["ops"]
     specs = {spec.catalog.op: spec for _, _, fn in iter_handlers(openapi_app) if (spec := spec_of(fn)) is not None}
-    for op in (WORKFLOW_START_OP, ADVANCED_CHAT_START_OP):
+    for op in START_MODES:
         assert ops[op]["kind"] == Kind.OBJECT.value
         assert ops[op]["effect"] == Effect.WRITE.value
         assert specs[op].pat_policy is PersonalAccessTokenPolicy.RESOURCE_CALLS
