@@ -41,7 +41,11 @@ from core.evaluation.entities.evaluation_entity import (
 )
 from core.evaluation.entities.judgment_entity import JudgmentConfig
 from core.evaluation.evaluation_manager import EvaluationManager
-from core.evaluation.exceptions import EvaluationWorkflowVersionNotFoundError
+from core.evaluation.exceptions import (
+    EvaluationErrorCode,
+    EvaluationWorkflowVersionNotFoundError,
+    new_public_evaluation_error,
+)
 from domain.workflow.agent_node import is_dify_agent_node_data
 from extensions.ext_storage import storage
 from graphon.enums import WorkflowNodeExecutionMetadataKey
@@ -71,6 +75,7 @@ from services.errors.evaluation import (
     EvaluationMaxConcurrentRunsError,
     EvaluationNotFoundError,
 )
+from services.evaluation_template_i18n import EvaluationTemplateCopy, get_evaluation_template_copy
 from services.snippet_service import SnippetService
 from services.workflow_service import WorkflowService
 
@@ -201,22 +206,30 @@ class EvaluationService:
         target_type: str,
         data: EvaluationConfigData,
         session: Session,
+        language: str = "en-US",
     ) -> tuple[bytes, str]:
         """
         Generate evaluation dataset template as XLSX bytes.
 
         Creates an XLSX file with headers based on the evaluation target's input parameters
-        and the selected evaluation metrics.
+        and the selected evaluation metrics, followed by a help row to delete before upload.
 
         :param target: App, CustomizedSnippet, or Agent instance
         :param target_type: Target type string ("apps", "snippets", or "agents")
         :param data: Evaluation configuration used to determine reference columns
         :param session: Database session used to resolve target inputs
+        :param language: The current interface language; unsupported values use English
         :return: Tuple of (xlsx_content_bytes, filename)
         :raises ValueError: If target type is not supported or app mode is excluded
         """
         columns = cls.get_dataset_column_names(target, target_type, data, session)
-        xlsx_content = cls._generate_xlsx_template(columns, target.name)
+        retrieval_output_columns = frozenset(
+            f"{node.title} : expected_output"
+            for metric in data.default_metrics
+            for node in metric.node_info_list
+            if cls.NODE_TYPE_CATEGORY_MAPPING.get(node.type) == EvaluationCategory.RETRIEVAL
+        )
+        xlsx_content = cls._generate_xlsx_template(columns, target.name, retrieval_output_columns, language=language)
 
         # Build filename
         truncated_name = target.name[:10] + "..." if len(target.name) > 10 else target.name
@@ -272,23 +285,53 @@ class EvaluationService:
 
         return []
 
+    @staticmethod
+    def _template_column_help(
+        column_name: str,
+        retrieval_output_columns: frozenset[str],
+        copy: EvaluationTemplateCopy,
+    ) -> str:
+        """Map a generated column name to help text without changing the column schema.
+
+        The caller supplies generated columns; unrecognized names are input fields
+        and receive the generic input help. The copy is generated from the
+        matching Web locale resources.
+        """
+        if column_name == "index":
+            return copy["index"]
+
+        field_name = column_name.rsplit(":", 1)[-1].strip()
+        if field_name == "expected_output":
+            if column_name in retrieval_output_columns:
+                return copy["retrievalExpectedOutput"]
+            return copy["expectedOutput"]
+        if field_name == "success_criteria":
+            return copy["successCriteria"]
+        if field_name == "expected_tool_calls":
+            return copy["expectedToolCalls"]
+        return copy["input"]
+
     @classmethod
     def _generate_xlsx_template(
         cls,
         columns: Sequence[EvaluationTemplateColumn],
         target_name: str,
+        retrieval_output_columns: frozenset[str] = frozenset(),
+        *,
+        language: str = "en-US",
     ) -> bytes:
         """
-        Generate XLSX template file content.
+        Generate XLSX bytes from ordered columns and known retrieval references.
 
-        Creates a workbook with:
-        - First row as header row with the provided template column names
-        - Styled header with background color and borders
-        - Empty data rows ready for user input
+        The first row remains the upload schema. The second row explains each
+        field and must be deleted before upload; its trailing, headerless notice
+        column makes an unchanged template invalid as a dataset.
 
-        :param columns: Ordered template column definitions
-        :param target_name: Name of the target (for sheet name)
-        :return: XLSX file content as bytes
+        :param columns: Nonempty ordered template columns, starting with ``index``.
+        :param target_name: Target name retained for the template call contract.
+        :param retrieval_output_columns: Output columns belonging to retrieval nodes.
+        :param language: The current interface language; unsupported values use English.
+        :return: XLSX bytes with unchanged headers and one removable help row.
         """
         wb = Workbook()
         ws = wb.active
@@ -309,6 +352,7 @@ class EvaluationService:
         )
 
         headers = [column["name"] for column in columns]
+        copy = get_evaluation_template_copy(language)
 
         # Write header row
         for col_idx, header in enumerate(headers, start=1):
@@ -318,18 +362,33 @@ class EvaluationService:
             cell.alignment = header_alignment
             cell.border = thin_border
 
-        # Set column widths
-        ws.column_dimensions["A"].width = 10  # index column
-        for col_idx in range(2, len(headers) + 1):
-            ws.column_dimensions[get_column_letter(col_idx)].width = 20
-
-        # Add one empty row with row number for user reference
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=2, column=col_idx, value="")
+        help_font = Font(color="7A5C00", italic=True)
+        help_fill = PatternFill(start_color="FFF2CC", end_color="FFF2CC", fill_type="solid")
+        help_alignment = Alignment(vertical="top", wrap_text=True)
+        ws.row_dimensions[2].height = 90
+        for col_idx, header in enumerate(headers, start=1):
+            ws.column_dimensions[get_column_letter(col_idx)].width = 32 if col_idx == 1 else 44
+            cell = ws.cell(
+                row=2,
+                column=col_idx,
+                value=cls._template_column_help(header, retrieval_output_columns, copy),
+            )
+            cell.font = help_font
+            cell.fill = help_fill
+            cell.alignment = help_alignment
             cell.border = thin_border
-            if col_idx == 1:
-                cell.value = 1
-                cell.alignment = Alignment(horizontal="center")
+
+        notice_col_idx = len(headers) + 1
+        ws.column_dimensions[get_column_letter(notice_col_idx)].width = 48
+        notice_cell = ws.cell(
+            row=2,
+            column=notice_col_idx,
+            value=copy["notice"],
+        )
+        notice_cell.font = Font(bold=True, color="9C4D00")
+        notice_cell.fill = help_fill
+        notice_cell.alignment = help_alignment
+        notice_cell.border = thin_border
 
         # Save to bytes
         output = io.BytesIO()
@@ -339,55 +398,25 @@ class EvaluationService:
         return output.getvalue()
 
     @classmethod
-    def generate_retrieval_dataset_template(cls) -> tuple[bytes, str]:
+    def generate_retrieval_dataset_template(cls, language: str = "en-US") -> tuple[bytes, str]:
         """Generate evaluation dataset XLSX template for knowledge base retrieval.
 
-        The template contains three columns: ``index``, ``query``, and
-        ``expected_output``.  Callers upload a filled copy and start an
-        evaluation run with ``target_type="knowledge_base"``.
+        The template contains ``index``, ``query``, and ``expected_output``
+        headers plus a removable help row. Callers delete that row, fill data,
+        and start a run with ``target_type="knowledge_base"``.
 
+        :param language: The current interface language; unsupported values use English.
         :returns: (xlsx_content_bytes, filename)
         """
-        wb = Workbook()
-        ws = wb.active
-        if ws is None:
-            ws = wb.create_sheet("Evaluation Dataset")
-        ws.title = "Evaluation Dataset"
-
-        header_font = Font(bold=True, color="FFFFFF")
-        header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
-        header_alignment = Alignment(horizontal="center", vertical="center")
-        thin_border = Border(
-            left=Side(style="thin"),
-            right=Side(style="thin"),
-            top=Side(style="thin"),
-            bottom=Side(style="thin"),
+        columns: list[EvaluationTemplateColumn] = [
+            {"name": "index", "type": "number"},
+            {"name": "query", "type": "string"},
+            {"name": "expected_output", "type": "string"},
+        ]
+        content = cls._generate_xlsx_template(
+            columns, "Knowledge base", frozenset({"expected_output"}), language=language
         )
-
-        headers = ["index", "query", "expected_output"]
-        for col_idx, header in enumerate(headers, start=1):
-            cell = ws.cell(row=1, column=col_idx, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = header_alignment
-            cell.border = thin_border
-
-        ws.column_dimensions["A"].width = 10
-        ws.column_dimensions["B"].width = 30
-        ws.column_dimensions["C"].width = 30
-
-        # Add one sample row
-        for col_idx in range(1, len(headers) + 1):
-            cell = ws.cell(row=2, column=col_idx, value="")
-            cell.border = thin_border
-            if col_idx == 1:
-                cell.value = 1
-                cell.alignment = Alignment(horizontal="center")
-
-        output = io.BytesIO()
-        wb.save(output)
-        output.seek(0)
-        return output.getvalue(), "retrieval-evaluation-dataset.xlsx"
+        return content, "retrieval-evaluation-dataset.xlsx"
 
     # ---- Evaluation Configuration CRUD ----
 
@@ -536,7 +565,12 @@ class EvaluationService:
         data: EvaluationConfigData,
         target_workflow: Workflow | None = None,
     ) -> None:
-        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator."""
+        """Validate supported metrics, target-specific metric scopes, and the optional custom evaluator.
+
+        Precondition: ``data`` is a parsed configuration for the supplied tenant and target.
+        Postcondition: selected workflow nodes exist in the published target; a missing node
+        raises ``ValueError`` with its submitted title and ID.
+        """
         normalized_target_type = EvaluationTargetType(target_type)
         if not data.default_metrics and data.customized_metrics is None:
             raise ValueError("At least one default or customized metric is required.")
@@ -633,7 +667,9 @@ class EvaluationService:
                 for node in metric.node_info_list:
                     published_node = published_nodes.get(node.node_id)
                     if published_node is None:
-                        raise ValueError(f"Node '{node.node_id}' is not in the published target workflow.")
+                        raise ValueError(
+                            f"Node '{node.title} ({node.node_id})' is not in the published target workflow."
+                        )
                     if is_dify_agent_node_data(published_node) and metric.metric not in {
                         name.value for name in NATIVE_AGENT_METRIC_NAMES
                     }:
@@ -1015,6 +1051,10 @@ class EvaluationService:
         before creating the run. A file-only request reuses the latest saved
         evaluation config, including its framework. A customized evaluator
         must be runnable by the current caller before any run state is written.
+
+        Precondition: caller, target, dataset, and evaluator permissions are validated.
+        Postcondition: a dispatched run is returned, or dispatch failure leaves
+        the run failed with a public diagnostic while re-raising the cause.
         """
         resolved_run_request = cls.resolve_run_request_config(
             session=session,
@@ -1152,9 +1192,11 @@ class EvaluationService:
                 args=(run_data.model_dump(mode="json"),),
                 task_id=celery_task_id,
             )
-        except Exception as exc:
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_DISPATCH_FAILED)
+            logger.exception("Failed to dispatch evaluation run %s (error_id=%s)", evaluation_run.id, failure.error_id)
             evaluation_run.status = EvaluationRunStatus.FAILED
-            evaluation_run.error = f"Failed to dispatch evaluation task: {exc}"[:2000]
+            evaluation_run.error = failure.text
             evaluation_run.completed_at = naive_utc_now()
             session.commit()
             raise
@@ -1178,6 +1220,10 @@ class EvaluationService:
 
         The immutable snapshot and row checkpoints are retained. Denial leaves
         the failed run unchanged and does not enqueue another task.
+
+        Precondition: the caller owns a failed run and may use its evaluator.
+        Postcondition: dispatch succeeds or the failed run retains only a
+        public diagnostic; prior row checkpoints remain unchanged.
         """
         run = cls.get_evaluation_run_detail(session, tenant_id, target_type, target_id, run_id)
         if run.status != EvaluationRunStatus.FAILED:
@@ -1359,9 +1405,11 @@ class EvaluationService:
                 args=(run_data.model_dump(mode="json"),),
                 task_id=celery_task_id,
             )
-        except Exception as exc:
+        except Exception:
+            failure = new_public_evaluation_error(EvaluationErrorCode.RUN_DISPATCH_FAILED)
+            logger.exception("Failed to dispatch evaluation run %s (error_id=%s)", locked_run.id, failure.error_id)
             locked_run.status = EvaluationRunStatus.FAILED
-            locked_run.error = f"Failed to dispatch evaluation task: {exc}"[:2000]
+            locked_run.error = failure.text
             locked_run.completed_at = naive_utc_now()
             session.commit()
             raise
@@ -2445,6 +2493,10 @@ class EvaluationService:
             the *i*-th element corresponds to ``input_list[i]``.
             workflow_run_ids: ordered list of workflow_run_id strings (or None)
             for each input item.
+
+        Precondition: each input belongs to the scoped target and supplied tenant.
+        Postcondition: returned per-row failures contain only public diagnostics;
+        provider exception details remain in server logs.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -2493,13 +2545,15 @@ class EvaluationService:
                         return node_results, workflow_run_id, None
                     except EvaluationWorkflowVersionNotFoundError:
                         raise
-                    except Exception as exc:
+                    except Exception:
+                        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
                         logger.exception(
-                            "Target execution failed for item %d (target=%s)",
+                            "Target execution failed for item %d (target=%s, error_id=%s)",
                             item.index,
                             target_id,
+                            failure.error_id,
                         )
-                        return {}, None, str(exc) or type(exc).__name__
+                        return {}, None, failure.text
 
         worker_count = max_workers or dify_config.EVALUATION_MAX_PARALLEL_TARGETS
         executor = ThreadPoolExecutor(max_workers=worker_count)
@@ -2523,9 +2577,12 @@ class EvaluationService:
                         node_result, workflow_run_id, error = future.result()
                     except EvaluationWorkflowVersionNotFoundError:
                         raise
-                    except Exception as exc:
-                        logger.exception("Unexpected error collecting target execution result")
-                        node_result, workflow_run_id, error = {}, None, str(exc) or type(exc).__name__
+                    except Exception:
+                        failure = new_public_evaluation_error(EvaluationErrorCode.TARGET_FAILED)
+                        logger.exception(
+                            "Unexpected error collecting target execution result (error_id=%s)", failure.error_id
+                        )
+                        node_result, workflow_run_id, error = {}, None, failure.text
                     ordered_results[position] = node_result
                     ordered_workflow_run_ids[position] = workflow_run_id
                     ordered_errors[position] = error
@@ -2814,8 +2871,21 @@ class EvaluationService:
         *,
         input_types: Mapping[str, str] | None = None,
     ) -> list[EvaluationDatasetInput]:
-        """Normalize spreadsheet rows into dataset items with index validation."""
+        """Normalize rows after the caller validates the ``index`` header.
+
+        Empty trailing columns left by deleting the help row are ignored. A
+        nonempty or interior headerless column still fails; accepted rows keep
+        unique indices and the original input/reference values.
+        """
         headers = [str(h).strip() if h is not None else "" for h in rows[0]]
+        last_header_index = max((index for index, header in enumerate(headers) if header), default=-1)
+        if any(
+            row[col_idx] is not None and str(row[col_idx]).strip()
+            for row in rows[1:]
+            for col_idx in range(last_header_index + 1, min(len(row), len(headers)))
+        ):
+            raise EvaluationDatasetInvalidError("Dataset headers must not be empty.")
+        headers = headers[: last_header_index + 1]
         input_headers = headers[1:]
         if any(not header for header in input_headers):
             raise EvaluationDatasetInvalidError("Dataset headers must not be empty.")
@@ -2825,7 +2895,7 @@ class EvaluationService:
         items: list[EvaluationDatasetInput] = []
         seen_indices: set[int] = set()
         for row_idx, row in enumerate(rows[1:], start=1):
-            values = list(row)
+            values = list(row[: len(headers)])
             if all(v is None or str(v).strip() == "" for v in values):
                 continue
 
@@ -3076,6 +3146,10 @@ class EvaluationService:
 
         :returns: Ordered retrieval results and per-row errors. Failed rows
             remain ``None`` and are never scored as a successful empty retrieval.
+
+        Precondition: the account may run hit testing for this tenant's dataset.
+        Postcondition: each failed row has a public error and no provider
+        exception text is returned to the evaluation task.
         """
         from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 
@@ -3156,10 +3230,16 @@ class EvaluationService:
                     position = future_positions[future]
                     try:
                         results[position] = future.result()
-                    except Exception as exc:
+                    except Exception:
                         item = input_list[position]
-                        logger.exception("Retrieval test failed for item %d (dataset=%s)", item.index, dataset_id)
-                        errors[position] = str(exc) or type(exc).__name__
+                        failure = new_public_evaluation_error(EvaluationErrorCode.RETRIEVAL_FAILED)
+                        logger.exception(
+                            "Retrieval test failed for item %d (dataset=%s, error_id=%s)",
+                            item.index,
+                            dataset_id,
+                            failure.error_id,
+                        )
+                        errors[position] = failure.text
                     completed += 1
                     if progress_callback is not None:
                         progress_callback(completed, len(input_list))
