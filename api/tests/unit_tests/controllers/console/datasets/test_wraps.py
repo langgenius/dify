@@ -151,16 +151,13 @@ def test_pipeline_id_removed_from_kwargs(
 ) -> None:
     pipeline = _persist_pipeline(sqlite_session, tenant_id=str(uuid4()))
 
+    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: pipeline.tenant_id)
     def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str = "") -> str:
         assert pipeline is not None
         assert pipeline_id == ""
         return pipeline.name
 
-    view = get_rag_pipeline(
-        dummy_view, session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: pipeline.tenant_id
-    )
-
-    assert view(pipeline_id=pipeline.id) == pipeline.name
+    assert dummy_view(pipeline_id=pipeline.id) == pipeline.name
     assert _committed_name(sqlite_session_factory, pipeline.id) == pipeline.name
 
 
@@ -170,13 +167,13 @@ def test_pipeline_id_is_loaded_as_a_string(
     tenant_id = str(uuid4())
     pipeline = _persist_pipeline(sqlite_session, tenant_id=tenant_id, pipeline_id="123")
 
+    @get_rag_pipeline(session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: tenant_id)
     def dummy_view(pipeline: Pipeline | None = None, pipeline_id: str | int = "") -> Pipeline:
         assert pipeline is not None
         assert pipeline_id == ""
         return pipeline
 
-    view = get_rag_pipeline(dummy_view, session_factory=lambda: sqlite_session, resolve_tenant_id=lambda: tenant_id)
-    loaded = view(pipeline_id=123)
+    loaded = dummy_view(pipeline_id=123)
 
     assert loaded.id == "123"
     assert object_session(loaded) is sqlite_session
@@ -192,6 +189,7 @@ def test_loads_through_the_session_injected_above_it(
     def unused_session_factory() -> Session:
         raise AssertionError("injected session path must not open the legacy session")
 
+    @get_rag_pipeline(session_factory=unused_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
     def dummy_view(
         _self: _Resource,
         session: Session,
@@ -202,10 +200,7 @@ def test_loads_through_the_session_injected_above_it(
         assert pipeline_id == ""
         return session, pipeline
 
-    view = get_rag_pipeline(
-        dummy_view, session_factory=unused_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id
-    )
-    handler_session, loaded = view(_Resource(), sqlite_session, pipeline_id=pipeline.id)
+    handler_session, loaded = dummy_view(_Resource(), sqlite_session, pipeline_id=pipeline.id)
 
     assert handler_session is sqlite_session
     assert loaded.id == pipeline.id
@@ -222,6 +217,7 @@ def test_unmigrated_handler_uses_the_session_factory(
     account = Account(name="Test User", email="test@example.com")
     account.id = "account-1"
 
+    @get_rag_pipeline(session_factory=sqlite_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id)
     def dummy_view(
         _self: _Resource,
         current_user: Account,
@@ -233,10 +229,7 @@ def test_unmigrated_handler_uses_the_session_factory(
         assert pipeline_id == ""
         return pipeline
 
-    view = get_rag_pipeline(
-        dummy_view, session_factory=sqlite_session_factory, resolve_tenant_id=lambda: pipeline.tenant_id
-    )
-    loaded = view(_Resource(), account, pipeline_id=pipeline.id)
+    loaded = dummy_view(_Resource(), account, pipeline_id=pipeline.id)
     loaded_session = object_session(loaded)
 
     assert loaded.id == pipeline.id

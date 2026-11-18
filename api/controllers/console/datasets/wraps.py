@@ -99,12 +99,21 @@ def get_rag_pipeline[T: Resource, **P, R](
 ) -> Callable[Concatenate[T, P], R]: ...
 
 
+@overload
 def get_rag_pipeline[**P, R](
-    view: Callable[P, R],
+    view: None = None,
+    *,
+    session_factory: Callable[[], Session] = ...,
+    resolve_tenant_id: Callable[[], str] = ...,
+) -> Callable[[Callable[P, R]], Callable[P, R]]: ...
+
+
+def get_rag_pipeline[**P, R](
+    view: Callable[P, R] | None = None,
     *,
     session_factory: Callable[[], Session] = _scoped_session,
     resolve_tenant_id: Callable[[], str] = _request_tenant_id,
-) -> Callable[P, R]:
+) -> Callable[P, R] | Callable[[Callable[P, R]], Callable[P, R]]:
     """Replace the ``pipeline_id`` path parameter with the tenant's ``Pipeline``.
 
     A handler that composes ``@with_session`` directly above this decorator loads
@@ -112,8 +121,9 @@ def get_rag_pipeline[**P, R](
     loads it through the application's scoped session, the same one those handlers
     later commit and the fallback this refactor removes once every caller injects.
 
-    Tests pass the ``session_factory`` that owns their fixture row and the tenant
-    they persisted it under, so no dependency is patched.
+    Like ``with_session``, it works bare (``@get_rag_pipeline``) and configured
+    (``@get_rag_pipeline(session_factory=...)``). Tests pass the factory that owns
+    their fixture row and the tenant they persisted it under, so nothing is patched.
 
     Precondition: ``pipeline_id`` is a keyword argument, ``session_factory`` returns
     an open session, and ``resolve_tenant_id`` returns the signed-in tenant.
@@ -122,19 +132,24 @@ def get_rag_pipeline[**P, R](
     raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    @wraps(view)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
-        if not kwargs.get("pipeline_id"):
-            raise ValueError("missing pipeline_id in path parameters")
+    def decorator(view: Callable[P, R]) -> Callable[P, R]:
+        @wraps(view)
+        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+            if not kwargs.get("pipeline_id"):
+                raise ValueError("missing pipeline_id in path parameters")
 
-        pipeline_id = str(kwargs.get("pipeline_id"))
-        del kwargs["pipeline_id"]
-        kwargs["pipeline"] = _pipeline_for_call(
-            args,
-            pipeline_id,
-            session_factory=session_factory,
-            resolve_tenant_id=resolve_tenant_id,
-        )
-        return view(*args, **kwargs)
+            pipeline_id = str(kwargs.get("pipeline_id"))
+            del kwargs["pipeline_id"]
+            kwargs["pipeline"] = _pipeline_for_call(
+                args,
+                pipeline_id,
+                session_factory=session_factory,
+                resolve_tenant_id=resolve_tenant_id,
+            )
+            return view(*args, **kwargs)
 
-    return document_errors(decorated_view, PipelineNotFoundError)
+        return document_errors(decorated_view, PipelineNotFoundError)
+
+    if view is None:
+        return decorator
+    return decorator(view)
