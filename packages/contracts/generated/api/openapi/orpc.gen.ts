@@ -465,15 +465,18 @@ export const advancedChat = {
 }
 
 /**
- * Delete the key; a malformed or unknown id answers 404, not a 500
+ * Delete an API key of the app
+ *
+ * Answers 404 when `api_key_id` is not a valid id or names no key of this app.
  */
 export const delete3 = oc
   .route({
+    description: 'Answers 404 when `api_key_id` is not a valid id or names no key of this app.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppIdApiKeysByApiKeyId',
     path: '/apps/{app_id}/api-keys/{api_key_id}',
-    summary: 'Delete the key; a malformed or unknown id answers 404, not a 500',
+    summary: 'Delete an API key of the app',
     tags: ['openapi'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdApiKeysByApiKeyIdPath }))
@@ -484,41 +487,42 @@ export const byApiKeyId = {
 }
 
 /**
- * Precondition: admission resolved `app_id`'s app and its workspace
+ * List the app's API keys
  *
- * Postcondition: every key of the app is returned with its full token,
- * as the console's list does; a missing app or key scope answers 404.
+ * Every key is returned with its full token. Answers 404 when the app does
+ * not exist in the workspace or the token cannot reach it.
  */
 export const get6 = oc
   .route({
     description:
-      "Postcondition: every key of the app is returned with its full token,\nas the console's list does; a missing app or key scope answers 404.",
+      'Every key is returned with its full token. Answers 404 when the app does\nnot exist in the workspace or the token cannot reach it.',
     inputStructure: 'detailed',
     method: 'GET',
     operationId: 'getAppsByAppIdApiKeys',
     path: '/apps/{app_id}/api-keys',
-    summary: "Precondition: admission resolved `app_id`'s app and its workspace",
+    summary: "List the app's API keys",
     tags: ['openapi'],
   })
   .input(z.object({ params: zGetAppsByAppIdApiKeysPath }))
   .output(zGetAppsByAppIdApiKeysResponse)
 
 /**
- * Precondition: admission resolved `app_id`'s app and its workspace
+ * Create an API key for the app
  *
- * Postcondition: the new key's full token is returned once; the per-app
- * key limit answers 400 and an unpublished agent app answers 409.
+ * The full token is returned only in this response; store it securely.
+ * Answers 400 when the app has reached its API key limit and 409 when the
+ * app is an agent app that has not been published.
  */
 export const post2 = oc
   .route({
     description:
-      "Postcondition: the new key's full token is returned once; the per-app\nkey limit answers 400 and an unpublished agent app answers 409.",
+      'The full token is returned only in this response; store it securely.\nAnswers 400 when the app has reached its API key limit and 409 when the\napp is an agent app that has not been published.',
     inputStructure: 'detailed',
     method: 'POST',
     operationId: 'postAppsByAppIdApiKeys',
     path: '/apps/{app_id}/api-keys',
     successStatus: 201,
-    summary: "Precondition: admission resolved `app_id`'s app and its workspace",
+    summary: 'Create an API key for the app',
     tags: ['openapi'],
   })
   .input(z.object({ params: zPostAppsByAppIdApiKeysPath }))
@@ -1587,18 +1591,20 @@ export const publish = {
 }
 
 /**
- * Delete the app; admission already proved `app_id` names a live app in
+ * Delete the app
  *
- * this workspace, so the canonical form is safe to hand to the service.
+ * Answers 404 when the app does not exist in the workspace and 403 when the
+ * caller is not allowed to delete it.
  */
 export const delete5 = oc
   .route({
-    description: 'this workspace, so the canonical form is safe to hand to the service.',
+    description:
+      'Answers 404 when the app does not exist in the workspace and 403 when the\ncaller is not allowed to delete it.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteAppsByAppId',
     path: '/apps/{app_id}',
-    summary: 'Delete the app; admission already proved `app_id` names a live app in',
+    summary: 'Delete the app',
     tags: ['openapi'],
   })
   .input(z.object({ params: zDeleteAppsByAppIdPath }))
@@ -2252,18 +2258,20 @@ export const members = {
 }
 
 /**
- * Delete the credential; an id the workspace's credential list does not
+ * Delete a saved model provider credential
  *
- * show answers 404, matching what `describe.model_provider` advertises.
+ * Answers 404 when `credential_id` is not among the credentials that
+ * `describe.model_provider` lists for this provider.
  */
 export const delete7 = oc
   .route({
-    description: 'show answers 404, matching what `describe.model_provider` advertises.',
+    description:
+      'Answers 404 when `credential_id` is not among the credentials that\n`describe.model_provider` lists for this provider.',
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteWorkspacesByWorkspaceIdModelProvidersByProviderCredentialsByCredentialId',
     path: '/workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}',
-    summary: "Delete the credential; an id the workspace's credential list does not",
+    summary: 'Delete a saved model provider credential',
     tags: ['openapi'],
   })
   .input(
@@ -2614,18 +2622,20 @@ export const skills = {
 }
 
 /**
- * Delete the credential; an id the workspace's credential list does not
+ * Delete a saved tool provider credential
  *
- * show answers 404 before the service is asked to remove it.
+ * Answers 404 when `credential_id` is not among the provider's saved
+ * credentials in this workspace.
  */
 export const delete9 = oc
   .route({
-    description: 'show answers 404 before the service is asked to remove it.',
+    description:
+      "Answers 404 when `credential_id` is not among the provider's saved\ncredentials in this workspace.",
     inputStructure: 'detailed',
     method: 'DELETE',
     operationId: 'deleteWorkspacesByWorkspaceIdToolProvidersByProviderCredentialsByCredentialId',
     path: '/workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}',
-    summary: "Delete the credential; an id the workspace's credential list does not",
+    summary: 'Delete a saved tool provider credential',
     tags: ['openapi'],
   })
   .input(

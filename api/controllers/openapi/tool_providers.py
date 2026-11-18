@@ -359,8 +359,10 @@ class ToolProviderCredentialApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "Credential deleted"),
     )
     def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        """Delete the credential; an id the workspace's credential list does not
-        show answers 404 before the service is asked to remove it.
+        """Delete a saved tool provider credential.
+
+        Answers 404 when `credential_id` is not among the provider's saved
+        credentials in this workspace.
         """
         _visible_credential(ctx, provider, credential_id)
         BuiltinToolManageService.delete_builtin_tool_provider(ctx.workspace.id, provider, credential_id)

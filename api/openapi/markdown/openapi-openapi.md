@@ -111,9 +111,10 @@ workspace filter. This handler is read-only and does not change membership.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [DELETE] /apps/{app_id}
-**Delete the app; admission already proved `app_id` names a live app in**
+**Delete the app**
 
-this workspace, so the canonical form is safe to hand to the service.
+Answers 404 when the app does not exist in the workspace and 403 when the
+caller is not allowed to delete it.
 
 #### Parameters
 
@@ -166,10 +167,10 @@ this workspace, so the canonical form is safe to hand to the service.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [GET] /apps/{app_id}/api-keys
-**Precondition: admission resolved `app_id`'s app and its workspace**
+**List the app's API keys**
 
-Postcondition: every key of the app is returned with its full token,
-as the console's list does; a missing app or key scope answers 404.
+Every key is returned with its full token. Answers 404 when the app does
+not exist in the workspace or the token cannot reach it.
 
 #### Parameters
 
@@ -185,10 +186,11 @@ as the console's list does; a missing app or key scope answers 404.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [POST] /apps/{app_id}/api-keys
-**Precondition: admission resolved `app_id`'s app and its workspace**
+**Create an API key for the app**
 
-Postcondition: the new key's full token is returned once; the per-app
-key limit answers 400 and an unpublished agent app answers 409.
+The full token is returned only in this response; store it securely.
+Answers 400 when the app has reached its API key limit and 409 when the
+app is an agent app that has not been published.
 
 #### Parameters
 
@@ -204,7 +206,9 @@ key limit answers 400 and an unpublished agent app answers 409.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [DELETE] /apps/{app_id}/api-keys/{api_key_id}
-**Delete the key; a malformed or unknown id answers 404, not a 500**
+**Delete an API key of the app**
+
+Answers 404 when `api_key_id` is not a valid id or names no key of this app.
 
 #### Parameters
 
@@ -1914,9 +1918,10 @@ Returns a depth- and page-size-bounded tree rooted at path, equivalent to difyct
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [DELETE] /workspaces/{workspace_id}/model-providers/{provider}/credentials/{credential_id}
-**Delete the credential; an id the workspace's credential list does not**
+**Delete a saved model provider credential**
 
-show answers 404, matching what `describe.model_provider` advertises.
+Answers 404 when `credential_id` is not among the credentials that
+`describe.model_provider` lists for this provider.
 
 #### Parameters
 
@@ -2245,9 +2250,10 @@ so an edit made in the same second as the export is not detected.
 | default | Error | **application/json**: [ErrorBody](#errorbody)<br> |
 
 ### [DELETE] /workspaces/{workspace_id}/tool-providers/{provider}/credentials/{credential_id}
-**Delete the credential; an id the workspace's credential list does not**
+**Delete a saved tool provider credential**
 
-show answers 404 before the service is asked to remove it.
+Answers 404 when `credential_id` is not among the provider's saved
+credentials in this workspace.
 
 #### Parameters
 

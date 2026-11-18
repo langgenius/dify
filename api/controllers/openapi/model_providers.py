@@ -344,8 +344,10 @@ class ModelProviderCredentialApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "Credential deleted"),
     )
     def delete(self, ctx: Context, workspace_id: str, provider: str, credential_id: str):
-        """Delete the credential; an id the workspace's credential list does not
-        show answers 404, matching what `describe.model_provider` advertises.
+        """Delete a saved model provider credential.
+
+        Answers 404 when `credential_id` is not among the credentials that
+        `describe.model_provider` lists for this provider.
         """
         visible = ModelProviderService().get_provider_available_credentials(
             ctx.workspace.id, provider, ctx.account, credential_query=application_services().credential_queries

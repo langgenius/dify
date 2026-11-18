@@ -115,9 +115,10 @@ class AppApiKeysApi(Resource):
         returns=(HTTPStatus.OK, AppApiKeyListResponse, "API keys"),
     )
     def get(self, ctx: RequestContext, app_id: str):
-        """Precondition: admission resolved `app_id`'s app and its workspace.
-        Postcondition: every key of the app is returned with its full token,
-        as the console's list does; a missing app or key scope answers 404.
+        """List the app's API keys.
+
+        Every key is returned with its full token. Answers 404 when the app does
+        not exist in the workspace or the token cannot reach it.
         """
         with _api_key_errors():
             keys = application_services().app_api_keys.list_keys(ctx, str(UUID(app_id)))
@@ -134,9 +135,11 @@ class AppApiKeysApi(Resource):
         returns=(HTTPStatus.CREATED, AppApiKeyRow, "API key created"),
     )
     def post(self, ctx: RequestContext, app_id: str):
-        """Precondition: admission resolved `app_id`'s app and its workspace.
-        Postcondition: the new key's full token is returned once; the per-app
-        key limit answers 400 and an unpublished agent app answers 409.
+        """Create an API key for the app.
+
+        The full token is returned only in this response; store it securely.
+        Answers 400 when the app has reached its API key limit and 409 when the
+        app is an agent app that has not been published.
         """
         with _api_key_create_errors():
             key = application_services().app_api_keys.create_key(ctx, str(UUID(app_id)))
@@ -157,7 +160,10 @@ class AppApiKeyApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "API key deleted"),
     )
     def delete(self, ctx: RequestContext, app_id: str, api_key_id: str):
-        """Delete the key; a malformed or unknown id answers 404, not a 500."""
+        """Delete an API key of the app.
+
+        Answers 404 when `api_key_id` is not a valid id or names no key of this app.
+        """
         try:
             key_id = str(UUID(api_key_id))
         except ValueError as error:

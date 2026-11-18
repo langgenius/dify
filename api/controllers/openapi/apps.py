@@ -146,8 +146,10 @@ class AppDescribeApi(Resource):
         returns=(HTTPStatus.OK, SimpleResultResponse, "App deleted"),
     )
     def delete(self, ctx: RequestContext, app_id: str):
-        """Delete the app; admission already proved `app_id` names a live app in
-        this workspace, so the canonical form is safe to hand to the service.
+        """Delete the app.
+
+        Answers 404 when the app does not exist in the workspace and 403 when the
+        caller is not allowed to delete it.
         """
         try:
             application_services().apps.console.delete(ctx, str(UUID(app_id)))
