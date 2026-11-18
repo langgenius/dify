@@ -7,7 +7,7 @@ Revises: 3bb4ecc03baa
 import sqlalchemy as sa
 from alembic import op
 
-import models
+import models.types
 
 revision = "1916ebb22474"
 down_revision = "3bb4ecc03baa"
@@ -16,6 +16,7 @@ depends_on = None
 
 
 def upgrade():
+    """Create the signup schema, retaining the consumption CHECK where its SET NULL foreign key permits it."""
     op.create_table(
         "account_tokener_signup_intents",
         sa.Column("account_id", models.types.StringUUID(), nullable=False),
@@ -27,9 +28,17 @@ def upgrade():
         sa.ForeignKeyConstraint(["consumed_tenant_id"], ["tenants.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("account_id", name="account_tokener_signup_intent_pkey"),
         sa.UniqueConstraint("consumed_tenant_id", name="account_tokener_signup_intent_tenant_key"),
-        sa.CheckConstraint(
-            "consumed_tenant_id IS NULL OR consumed_at IS NOT NULL",
-            name="account_tokener_signup_intent_consumed_check",
+        # MySQL rejects CHECKs on an ON DELETE SET NULL foreign-key column
+        # (error 3823). Its consumption owner writes both fields atomically.
+        *(
+            [
+                sa.CheckConstraint(
+                    "consumed_tenant_id IS NULL OR consumed_at IS NOT NULL",
+                    name="account_tokener_signup_intent_consumed_check",
+                )
+            ]
+            if op.get_context().dialect.name != "mysql"
+            else []
         ),
     )
 

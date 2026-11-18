@@ -149,7 +149,7 @@ export const seedFeatures = (
   queryClient: QueryClient,
   overrides: DeepPartial<GetFeaturesResponse> = {},
 ): GetFeaturesResponse => {
-  const data = zGetFeaturesResponse.parse(overrides)
+  const data = zGetFeaturesResponse.parse({ tokener_bootstrap_status: null, ...overrides })
   queryClient.setQueryData(consoleQuery.features.get.queryKey(), data)
   return data
 }

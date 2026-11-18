@@ -69,3 +69,48 @@ def test_non_cloud_features_keep_legacy_without_a_profile_database_dependency(
 
     monkeypatch.setattr(model_billing, "build_model_billing_profiles", forbidden)
     assert FeatureService.get_model_billing_resolution("legacy-tenant").uses_legacy_message_credits
+
+
+@pytest.mark.parametrize("tenant_id", [None, ""])
+def test_tenantless_cloud_defaults_do_not_read_profiles_or_billing(
+    monkeypatch: pytest.MonkeyPatch,
+    tenant_id: str | None,
+) -> None:
+    from extensions.application_services import model_billing
+    from services.billing_service import BillingService
+    from services.feature_service import FeatureService
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    apply_config_overrides(
+        monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, TOKENER_NEW_TENANT_COHORT_ENABLED=True
+    )
+
+    def forbidden(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("tenant-less feature defaults must not access a profile or Billing")
+
+    monkeypatch.setattr(model_billing, "build_model_billing_profiles", forbidden)
+    monkeypatch.setattr(BillingService, "get_info", forbidden)
+    assert FeatureService.get_model_billing_resolution(tenant_id).uses_legacy_message_credits
+    features = FeatureService.get_features(tenant_id or "")
+    assert features.model_billing_source == "legacy_message_credits"
+    assert features.tokener_bootstrap_status is None
+    assert features.members.limit == 1
+    assert features.apps.limit == 10
+
+
+@pytest.mark.parametrize("admission", [False, True])
+def test_real_cloud_scope_still_fails_closed_when_profile_store_is_unavailable(
+    monkeypatch: pytest.MonkeyPatch,
+    admission: bool,
+) -> None:
+    from extensions.application_services import model_billing
+    from services.feature_service import FeatureService
+    from tests.helpers.unit.config_override import apply_config_overrides
+
+    apply_config_overrides(
+        monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD, TOKENER_NEW_TENANT_COHORT_ENABLED=admission
+    )
+    service = ModelBillingProfileService(profiles=ProfileQuery(None, fail=True))
+    monkeypatch.setattr(model_billing, "build_model_billing_profiles", lambda: service)
+    with pytest.raises(ModelBillingProfileResolutionError, match="model_billing_profile_unavailable"):
+        FeatureService.get_model_billing_resolution("real-tenant-scope")

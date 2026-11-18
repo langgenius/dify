@@ -12,9 +12,14 @@ from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 class FeatureService:
     @staticmethod
-    def get_model_billing_resolution(tenant_id: str) -> TenantModelBillingResolution:
-        """Resolve this tenant's persisted billing feature without plan/usage HTTP calls."""
-        if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
+    def get_model_billing_resolution(tenant_id: str | None) -> TenantModelBillingResolution:
+        """Resolve a scoped Cloud profile; tenant-less defaults need no database.
+
+        A blank/missing scope is the existing default-feature query, not tenant
+        invocation admission. Real Cloud tenant lookups still fail closed even
+        when new signup admission is disabled.
+        """
+        if not tenant_id or dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
             return TenantModelBillingResolution(ModelBillingSource.LEGACY_MESSAGE_CREDITS)
         from extensions.application_services.model_billing import build_model_billing_profiles
 

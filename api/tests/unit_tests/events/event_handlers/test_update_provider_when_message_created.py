@@ -21,10 +21,13 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.credit_usage import CreditUsageAppType
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit, SystemConfiguration
+from enums.model_billing import ModelBillingSource
 from events.event_handlers import update_provider_when_message_created
 from models import AppMode, Message, TenantCreditPool
 from models.enums import ProviderQuotaType as ModelProviderQuotaType
 from models.provider import ProviderType
+from services.entities.model_billing import TenantModelBillingResolution
+from services.model_billing_profile_service import ModelBillingProfileResolutionError
 from tests.helpers.unit.core.model_fixtures import make_model_config
 
 
@@ -56,11 +59,27 @@ def credit_pool_session_factory(sqlite_session_factory: sessionmaker[Session]) -
         yield sqlite_session_factory
 
 
-def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_insufficient(
+@pytest.mark.parametrize("cohort", ["legacy", "tokener", "unavailable"])
+def test_message_created_only_caps_a_confirmed_legacy_trial_debit(
     credit_pool_session_factory: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+    cohort: str,
 ) -> None:
-    """Given a complete trial invocation and limited balance, cap the debit at the remaining balance."""
+    """Cap debits to legacy balance; a native or unknown cohort must not debit that pool."""
     tenant_id = str(uuid4())
+    if cohort != "legacy":
+
+        def read_billing_scope(requested_tenant_id: str) -> TenantModelBillingResolution:
+            assert requested_tenant_id == tenant_id
+            if cohort == "unavailable":
+                raise ModelBillingProfileResolutionError("profile unavailable")
+            return TenantModelBillingResolution(ModelBillingSource.TOKENER)
+
+        monkeypatch.setattr(
+            update_provider_when_message_created.FeatureService,
+            "get_model_billing_resolution",
+            read_billing_scope,
+        )
     pool_id = str(uuid4())
     pool = TenantCreditPool(
         tenant_id=tenant_id,
@@ -109,7 +128,7 @@ def test_message_created_trial_credit_accounting_does_not_raise_when_balance_is_
     with credit_pool_session_factory() as session:
         quota_used = session.scalar(select(TenantCreditPool.quota_used).where(TenantCreditPool.id == pool_id))
 
-    assert quota_used == 10
+    assert quota_used == (10 if cohort == "legacy" else 9)
 
 
 def test_message_created_paid_credit_accounting_uses_paid_pool() -> None:

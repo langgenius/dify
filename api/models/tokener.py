@@ -4,6 +4,7 @@ from datetime import datetime
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func, text
+from sqlalchemy.engine import Dialect
 from sqlalchemy.orm import Mapped, mapped_column
 
 from enums.model_billing import TenantTokenerIntegrationStatus
@@ -73,6 +74,20 @@ class TenantTokenerIntegration(TypeBase):
     )
 
 
+def _supports_signup_consumption_check(
+    ddl: object,
+    target: object,
+    bind: object,
+    tables: object = None,
+    state: object = None,
+    *,
+    dialect: Dialect,
+    **kwargs: object,
+) -> bool:
+    """Emit this schema invariant only when the active dialect supports its SET NULL foreign key."""
+    return dialect.name != "mysql"
+
+
 class AccountTokenerSignupIntent(TypeBase):
     """Account-creation proof; consumed_at permanently fences deletion/retry replay."""
 
@@ -80,10 +95,13 @@ class AccountTokenerSignupIntent(TypeBase):
     __table_args__ = (
         sa.PrimaryKeyConstraint("account_id", name="account_tokener_signup_intent_pkey"),
         sa.UniqueConstraint("consumed_tenant_id", name="account_tokener_signup_intent_tenant_key"),
+        # MySQL cannot CHECK an ON DELETE SET NULL foreign-key column.
+        # Keep metadata aligned with the dialect-aware migration; consumption
+        # still writes consumed_tenant_id and consumed_at in one transaction.
         sa.CheckConstraint(
             "consumed_tenant_id IS NULL OR consumed_at IS NOT NULL",
             name="account_tokener_signup_intent_consumed_check",
-        ),
+        ).ddl_if(callable_=_supports_signup_consumption_check),
     )
     account_id: Mapped[str] = mapped_column(
         StringUUID,

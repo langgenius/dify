@@ -11,11 +11,19 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.entities.provider_configuration import ProviderConfiguration
+from core.plugin.entities.plugin import (
+    PluginCategory,
+    PluginDeclaration,
+    PluginEntity,
+    PluginInstallationSource,
+    PluginResourceRequirements,
+)
 from core.plugin.entities.plugin_daemon import (
     PluginInstallTask,
     PluginInstallTaskStartResponse,
     PluginInstallTaskStatus,
 )
+from core.tools.entities.common_entities import I18nObject
 from enums.model_billing import TenantTokenerIntegrationStatus
 from extensions.ext_redis import RedisClientWrapper
 from graphon.model_runtime.entities.model_entities import ModelType
@@ -468,3 +476,159 @@ def test_inflight_install_task_never_starts_a_duplicate_install(sqlite_session: 
     with pytest.raises(module._BootstrapStepError, match="^tokener_plugin_install_pending$"):
         module._ensure_plugin_installed(snapshot(integration))
     install.assert_not_called()
+
+
+def test_failed_install_is_cleared_only_for_a_later_retry(sqlite_session: Session, mocker: MockerFixture) -> None:
+    integration = persist_native(sqlite_session, install_task_id="failed-install")
+    stamp = datetime(2026, 1, 1, tzinfo=UTC)
+    failed = PluginInstallTask(
+        id="failed-install",
+        created_at=stamp,
+        updated_at=stamp,
+        status=PluginInstallTaskStatus.Failed,
+        total_plugins=1,
+        completed_plugins=0,
+        plugins=[],
+    )
+    mocker.patch.object(module.PluginService, "list", return_value=[])
+    mocker.patch.object(module.PluginService, "fetch_install_task", return_value=failed)
+    install = mocker.patch.object(module.PluginService, "install_from_marketplace_pkg")
+    with pytest.raises(module._BootstrapStepError, match="^tokener_plugin_install_failed$") as caught:
+        module._ensure_plugin_installed(snapshot(integration))
+    assert caught.value.retryable is True
+    sqlite_session.expire_all()
+    assert integration.plugin_install_task_id is None
+    assert integration.status == TenantTokenerIntegrationStatus.INSTALLING_PLUGIN
+    install.assert_not_called()
+
+
+def test_pinned_package_install_requires_a_daemon_task_receipt(
+    sqlite_session: Session, mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    apply_config_overrides(monkeypatch, TOKENER_PLUGIN_INSTALL_SOURCE="package")
+    integration = persist_native(sqlite_session)
+    mocker.patch.object(module.PluginService, "list", return_value=[])
+    install = mocker.patch.object(
+        module.PluginService,
+        "install_from_local_pkg",
+        return_value=PluginInstallTaskStartResponse(all_installed=False, task_id=""),
+    )
+    marketplace = mocker.patch.object(module.PluginService, "install_from_marketplace_pkg")
+    with pytest.raises(module._BootstrapStepError, match="^tokener_plugin_install_task_missing$") as caught:
+        module._ensure_plugin_installed(snapshot(integration))
+    assert caught.value.retryable is True
+    install.assert_called_once_with(integration.tenant_id, [PLUGIN_UID])
+    marketplace.assert_not_called()
+
+
+@pytest.mark.parametrize("same_package", [True, False])
+def test_installed_package_is_reused_but_not_replaced_with_a_different_version(
+    sqlite_session: Session, mocker: MockerFixture, same_package: bool
+) -> None:
+    integration = persist_native(sqlite_session, install_task_id="old-install-task")
+    stamp = datetime(2026, 1, 1, tzinfo=UTC)
+    version = "0.4.4" if same_package else "0.4.3"
+    package_id = PLUGIN_UID if same_package else f"langgenius/tokener:{version}@{'b' * 64}"
+    plugin = PluginEntity(
+        id="fixture-plugin",
+        created_at=stamp,
+        updated_at=stamp,
+        tenant_id=integration.tenant_id,
+        endpoints_setups=0,
+        endpoints_active=0,
+        runtime_type="local",
+        source=PluginInstallationSource.Package,
+        meta={},
+        plugin_id="langgenius/tokener",
+        plugin_unique_identifier=package_id,
+        version=version,
+        checksum=package_id.split("@", 1)[1],
+        name="Tokener",
+        installation_id="fixture-installation",
+        declaration=PluginDeclaration(
+            version=version,
+            author="langgenius",
+            name="tokener",
+            description=I18nObject(en_US="Test package"),
+            icon="icon.svg",
+            label=I18nObject(en_US="Tokener"),
+            category=PluginCategory.Model,
+            created_at=stamp,
+            resource=PluginResourceRequirements(memory=512),
+            plugins=PluginDeclaration.Plugins(models=["tokener.yaml"]),
+            meta=PluginDeclaration.Meta(version=version),
+        ),
+    )
+    mocker.patch.object(module.PluginService, "list", return_value=[plugin])
+    install = mocker.patch.object(module.PluginService, "install_from_marketplace_pkg")
+    fetch = mocker.patch.object(module.PluginService, "fetch_install_task")
+    if same_package:
+        module._ensure_plugin_installed(snapshot(integration))
+        sqlite_session.expire_all()
+        assert integration.plugin_install_task_id is None
+    else:
+        with pytest.raises(module._BootstrapStepError, match="^tokener_plugin_version_conflict$") as caught:
+            module._ensure_plugin_installed(snapshot(integration))
+        assert caught.value.retryable is False
+    install.assert_not_called()
+    fetch.assert_not_called()
+
+
+def test_missing_plugin_pin_is_terminal_before_any_install_or_grant(
+    sqlite_session: Session,
+    mocker: MockerFixture,
+    redis_transport: tuple[RedisClientWrapper, object],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    integration = persist_native(sqlite_session)
+    integration.plugin_unique_identifier = None
+    sqlite_session.commit()
+    redis, _commands = redis_transport
+    monkeypatch.setattr(module, "redis_client", redis)
+    mocker.patch.object(Lock, "acquire", return_value=True)
+    release = mocker.patch.object(Lock, "release")
+    plugins = mocker.patch.object(module.PluginService, "list")
+    upstream = mocker.patch.object(module.BillingService, "bootstrap_tokener_tenant")
+    with pytest.raises(module._BootstrapStepError, match="^tokener_plugin_not_configured$") as caught:
+        module.bootstrap_tokener_tenant_task.run(integration.tenant_id)
+    assert caught.value.retryable is False
+    sqlite_session.expire_all()
+    assert integration.status == TenantTokenerIntegrationStatus.FAILED
+    assert integration.last_error_code == "tokener_plugin_not_configured"
+    assert integration.provider_credential_id is None
+    plugins.assert_not_called()
+    upstream.assert_not_called()
+    release.assert_called_once()
+
+
+@pytest.mark.parametrize("unavailable", [False, True])
+def test_duplicate_or_unavailable_lock_retries_before_provisioning(
+    sqlite_session: Session,
+    mocker: MockerFixture,
+    redis_transport: tuple[RedisClientWrapper, object],
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    unavailable: bool,
+) -> None:
+    integration = persist_native(sqlite_session)
+    redis, _commands = redis_transport
+    monkeypatch.setattr(module, "redis_client", redis)
+    mocker.patch.object(
+        Lock, "acquire", return_value=False, side_effect=RuntimeError(TEST_KEY) if unavailable else None
+    )
+    release = mocker.patch.object(Lock, "release")
+    provider = mocker.patch.object(module.PluginService, "list")
+    retry = mocker.patch.object(module.bootstrap_tokener_tenant_task, "retry", side_effect=Retry())
+    with pytest.raises(Retry):
+        module.bootstrap_tokener_tenant_task.run(integration.tenant_id)
+    call = retry.call_args
+    assert call is not None
+    reason = call.kwargs["exc"]
+    assert isinstance(reason, module._BootstrapStepError)
+    assert reason.error_code == ("tokener_bootstrap_lock_unavailable" if unavailable else "tokener_bootstrap_locked")
+    assert reason.retryable is True
+    assert TEST_KEY not in caplog.text
+    sqlite_session.expire_all()
+    assert integration.attempt_count == 0
+    provider.assert_not_called()
+    release.assert_not_called()
