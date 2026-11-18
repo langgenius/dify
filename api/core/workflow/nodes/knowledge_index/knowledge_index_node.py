@@ -21,6 +21,7 @@ from .entities import KnowledgeIndexNodeData
 from .exc import (
     KnowledgeIndexNodeError,
 )
+from .protocols import IndexProcessorProtocol, SummaryIndexServiceProtocol
 
 if TYPE_CHECKING:
     from graphon.runtime import InitParams, RuntimeState
@@ -40,15 +41,28 @@ class KnowledgeIndexNode(Node[KnowledgeIndexNodeData]):
         *,
         init_params: "InitParams",
         runtime_state: "RuntimeState",
+        index_processor: IndexProcessorProtocol | None = None,
+        summary_index_service: SummaryIndexServiceProtocol | None = None,
     ) -> None:
+        """Build the node with its indexing and summary dependencies.
+
+        ``index_processor`` previews or indexes the chunks, and ``summary_index_service``
+        generates their summaries. ``None`` selects the production ``IndexProcessor`` and
+        ``SummaryIndex``, as the workflow node factory does; tests pass their own
+        implementations of these protocols. Construction performs no I/O.
+        """
         super().__init__(
             node_id=node_id,
             data=data,
             init_params=init_params,
             runtime_state=runtime_state,
         )
-        self.index_processor = IndexProcessor()
-        self.summary_index_service = SummaryIndex()
+        self.index_processor: IndexProcessorProtocol = (
+            index_processor if index_processor is not None else IndexProcessor()
+        )
+        self.summary_index_service: SummaryIndexServiceProtocol = (
+            summary_index_service if summary_index_service is not None else SummaryIndex()
+        )
 
     @override
     def _run(self) -> NodeRunResult:

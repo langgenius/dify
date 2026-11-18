@@ -1,23 +1,24 @@
 import time
 import uuid
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
 import pytest
-from pytest_mock import MockerFixture, MockType
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import InvokeFrom, UserFrom
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
-from core.rag.index_processor.index_processor import IndexProcessor
 from core.rag.index_processor.index_processor_base import SummaryIndexSettingDict
-from core.rag.summary_index.summary_index import SummaryIndex
 from core.workflow.nodes.knowledge_index.entities import KnowledgeIndexNodeData
 from core.workflow.nodes.knowledge_index.exc import KnowledgeIndexNodeError
 from core.workflow.nodes.knowledge_index.knowledge_index_node import KnowledgeIndexNode
 from core.workflow.nodes.knowledge_index.protocols import (
+    IndexingResultDict,
+    IndexProcessorProtocol,
     Preview,
     PreviewItem,
+    SummaryIndexServiceProtocol,
 )
 from core.workflow.system_variables import SystemVariableKey, build_system_variables
 from graphon.enums import WorkflowNodeExecutionStatus
@@ -54,55 +55,98 @@ def mock_graph_runtime_state() -> RuntimeState:
 
 
 @dataclass(frozen=True)
-class IndexProcessorPatches:
-    """Patched I/O boundaries of the real ``IndexProcessor`` the node resolves.
+class IndexCall:
+    """One ``index_and_clean`` request, as the node sent it."""
 
-    Each field is the mock that replaced the bound method of the same name, so
-    tests program results and assert calls through typed attributes.
+    dataset_id: str
+    document_id: str
+    original_document_id: str
+    chunks: Mapping[str, object]
+    batch: object
+    summary_index_setting: SummaryIndexSettingDict | None
+    session: Session
+
+
+@dataclass
+class RecordingIndexProcessor:
+    """An ``IndexProcessorProtocol`` that records requests instead of reading or writing datasets.
+
+    ``preview`` answers preview requests. ``index_error``, when set, is raised by
+    ``index_and_clean`` after the request is recorded; otherwise it reports the document as indexed.
     """
 
-    get_preview_output: MockType
-    index_and_clean: MockType
+    preview: Preview = field(default_factory=lambda: Preview(chunk_structure="general_structure", total_segments=0))
+    index_error: Exception | None = None
+    preview_sessions: list[Session] = field(default_factory=list)
+    index_calls: list[IndexCall] = field(default_factory=list)
+
+    def format_preview(self, chunk_structure: str, chunks: object) -> Preview:
+        return self.preview.model_copy(update={"chunk_structure": chunk_structure})
+
+    def index_and_clean(
+        self,
+        dataset_id: str,
+        document_id: str,
+        original_document_id: str,
+        chunks: Mapping[str, object],
+        batch: object,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
+        *,
+        session: Session,
+    ) -> IndexingResultDict:
+        self.index_calls.append(
+            IndexCall(dataset_id, document_id, original_document_id, chunks, batch, summary_index_setting, session)
+        )
+        if self.index_error is not None:
+            raise self.index_error
+        return {
+            "dataset_id": dataset_id,
+            "dataset_name": "Dataset",
+            "batch": batch,
+            "document_id": document_id,
+            "document_name": "Document",
+            "created_at": 0.0,
+            "display_status": "completed",
+        }
+
+    def get_preview_output(
+        self,
+        chunks: object,
+        dataset_id: str,
+        document_id: str,
+        chunk_structure: str,
+        summary_index_setting: SummaryIndexSettingDict | None,
+        *,
+        session: Session,
+    ) -> Preview:
+        self.preview_sessions.append(session)
+        return self.preview
 
 
-@dataclass(frozen=True)
-class SummaryIndexPatches:
-    """Patched generation boundary of the real ``SummaryIndex`` the node resolves."""
+@dataclass
+class RecordingSummaryIndexService:
+    """A ``SummaryIndexServiceProtocol`` that records summary requests instead of generating summaries."""
 
-    generate_and_vectorize_summary: MockType
+    calls: list[tuple[str, str, bool, SummaryIndexSettingDict | None]] = field(default_factory=list)
+
+    def generate_and_vectorize_summary(
+        self,
+        dataset_id: str,
+        document_id: str,
+        is_preview: bool,
+        summary_index_setting: SummaryIndexSettingDict | None = None,
+    ) -> None:
+        self.calls.append((dataset_id, document_id, is_preview, summary_index_setting))
 
 
 @pytest.fixture
-def mock_index_processor(mocker: MockerFixture) -> IndexProcessorPatches:
-    """Use the real processor with indexing and preview I/O boundaries patched.
-
-    For the test's duration the node module's ``IndexProcessor()`` returns this
-    one instance, so the returned mocks observe every call the node makes.
-    """
-    processor = IndexProcessor()
-    get_preview_output = mocker.patch.object(processor, "get_preview_output")
-    index_and_clean = mocker.patch.object(processor, "index_and_clean")
-    mocker.patch(
-        "core.workflow.nodes.knowledge_index.knowledge_index_node.IndexProcessor",
-        return_value=processor,
-    )
-    return IndexProcessorPatches(get_preview_output=get_preview_output, index_and_clean=index_and_clean)
+def index_processor() -> RecordingIndexProcessor:
+    return RecordingIndexProcessor()
 
 
 @pytest.fixture
-def mock_summary_index_service(mocker: MockerFixture) -> SummaryIndexPatches:
-    """Use the real summary service with generation patched.
-
-    For the test's duration the node module's ``SummaryIndex()`` returns this
-    one instance, so the returned mock observes every generation request.
-    """
-    service = SummaryIndex()
-    generate_and_vectorize_summary = mocker.patch.object(service, "generate_and_vectorize_summary")
-    mocker.patch(
-        "core.workflow.nodes.knowledge_index.knowledge_index_node.SummaryIndex",
-        return_value=service,
-    )
-    return SummaryIndexPatches(generate_and_vectorize_summary=generate_and_vectorize_summary)
+def summary_index_service() -> RecordingSummaryIndexService:
+    return RecordingSummaryIndexService()
 
 
 @pytest.fixture
@@ -133,6 +177,8 @@ def _build_node(
     node_data: KnowledgeIndexNodeData | dict[str, object],
     init_params: InitParams,
     runtime_state: RuntimeState,
+    index_processor: IndexProcessorProtocol,
+    summary_index_service: SummaryIndexServiceProtocol,
 ) -> KnowledgeIndexNode:
     return KnowledgeIndexNode(
         node_id=node_id,
@@ -143,6 +189,8 @@ def _build_node(
         ),
         init_params=init_params,
         runtime_state=runtime_state,
+        index_processor=index_processor,
+        summary_index_service=summary_index_service,
     )
 
 
@@ -155,8 +203,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
     ) -> None:
         """Test _run raises KnowledgeIndexNodeError when dataset_id is not provided."""
@@ -172,6 +220,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act & Assert
@@ -182,8 +232,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
     ) -> None:
         """Test _run raises KnowledgeIndexNodeError when index chunk variable is not provided."""
@@ -205,6 +255,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act & Assert
@@ -215,8 +267,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
     ) -> None:
         """Test _run fails when chunks is empty."""
@@ -241,6 +293,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -254,8 +308,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sample_chunks: dict[str, object],
     ) -> None:
@@ -285,7 +339,7 @@ class TestKnowledgeIndexNode:
             preview=[PreviewItem(content="Chunk 1"), PreviewItem(content="Chunk 2")],
             total_segments=2,
         )
-        mock_index_processor.get_preview_output.return_value = mock_preview
+        index_processor.preview = mock_preview
         node_id = str(uuid.uuid4())
         config = {
             "id": node_id,
@@ -297,6 +351,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -305,14 +361,16 @@ class TestKnowledgeIndexNode:
         # Assert
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs is not None
-        assert isinstance(mock_index_processor.get_preview_output.call_args.kwargs["session"], Session)
+        assert len(index_processor.preview_sessions) == 1
+        assert index_processor.index_calls == []
+        assert summary_index_service.calls == []
 
     def test_run_production_mode_success(
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sample_chunks: dict[str, object],
     ) -> None:
@@ -346,9 +404,6 @@ class TestKnowledgeIndexNode:
         )
         mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
 
-        # Mock index_and_clean output
-        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
-
         node_id = str(uuid.uuid4())
         config = {
             "id": node_id,
@@ -360,6 +415,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -368,15 +425,15 @@ class TestKnowledgeIndexNode:
         # Assert
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs is not None
-        assert mock_summary_index_service.generate_and_vectorize_summary.called
-        assert mock_index_processor.index_and_clean.called
+        assert len(summary_index_service.calls) == 1
+        assert len(index_processor.index_calls) == 1
 
     def test_run_production_mode_without_batch(
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sample_chunks: dict[str, object],
     ) -> None:
@@ -411,6 +468,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -424,8 +483,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sample_chunks: dict[str, object],
     ) -> None:
@@ -455,7 +514,7 @@ class TestKnowledgeIndexNode:
         mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
 
         # Mock to raise KnowledgeIndexNodeError
-        mock_index_processor.index_and_clean.side_effect = KnowledgeIndexNodeError("Indexing failed")
+        index_processor.index_error = KnowledgeIndexNodeError("Indexing failed")
 
         node_id = str(uuid.uuid4())
         config = {
@@ -468,6 +527,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -482,8 +543,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sample_chunks: dict[str, object],
     ) -> None:
@@ -513,7 +574,7 @@ class TestKnowledgeIndexNode:
         mock_graph_runtime_state.variable_pool.add(chunks_selector, sample_chunks)
 
         # Mock to raise generic exception
-        mock_index_processor.index_and_clean.side_effect = Exception("Unexpected error")
+        index_processor.index_error = Exception("Unexpected error")
 
         node_id = str(uuid.uuid4())
         config = {
@@ -526,6 +587,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -540,8 +603,8 @@ class TestKnowledgeIndexNode:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sqlite_session: Session,
     ) -> None:
@@ -551,8 +614,6 @@ class TestKnowledgeIndexNode:
         original_document_id = str(uuid.uuid4())
         batch = "batch_123"
         chunks = {"general_chunks": ["content"]}
-
-        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
 
         node_id = str(uuid.uuid4())
         config = {
@@ -565,6 +626,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -583,17 +646,17 @@ class TestKnowledgeIndexNode:
         )
 
         # Assert
-        assert mock_summary_index_service.generate_and_vectorize_summary.called
-        assert mock_index_processor.index_and_clean.called
+        assert len(summary_index_service.calls) == 1
+        assert len(index_processor.index_calls) == 1
         assert commits == ["commit"]
-        assert result == {"status": "indexed"}
+        assert (result["document_id"], result["batch"]) == (document_id, batch)
 
     def test_get_streaming_template(
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
     ) -> None:
         """Test get_streaming_template method."""
@@ -609,6 +672,8 @@ class TestKnowledgeIndexNode:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -624,8 +689,8 @@ class TestInvokeKnowledgeIndex:
         self,
         mock_graph_init_params: InitParams,
         mock_graph_runtime_state: RuntimeState,
-        mock_index_processor: IndexProcessorPatches,
-        mock_summary_index_service: SummaryIndexPatches,
+        index_processor: RecordingIndexProcessor,
+        summary_index_service: RecordingSummaryIndexService,
         sample_node_data: KnowledgeIndexNodeData,
         sqlite_session: Session,
     ) -> None:
@@ -636,8 +701,6 @@ class TestInvokeKnowledgeIndex:
         batch = "batch_123"
         chunks = {"general_chunks": ["content"]}
         summary_setting: SummaryIndexSettingDict = {"enable": True}
-
-        mock_index_processor.index_and_clean.return_value = {"status": "indexed"}
 
         node_id = str(uuid.uuid4())
         config = {
@@ -650,6 +713,8 @@ class TestInvokeKnowledgeIndex:
             node_data=config["data"],
             init_params=mock_graph_init_params,
             runtime_state=mock_graph_runtime_state,
+            index_processor=index_processor,
+            summary_index_service=summary_index_service,
         )
 
         # Act
@@ -668,17 +733,9 @@ class TestInvokeKnowledgeIndex:
         )
 
         # Assert
-        mock_summary_index_service.generate_and_vectorize_summary.assert_called_once_with(
-            dataset_id, document_id, False, summary_setting
-        )
-        mock_index_processor.index_and_clean.assert_called_once_with(
-            dataset_id,
-            document_id,
-            original_document_id,
-            chunks,
-            batch,
-            summary_setting,
-            session=session,
-        )
+        assert summary_index_service.calls == [(dataset_id, document_id, False, summary_setting)]
+        assert index_processor.index_calls == [
+            IndexCall(dataset_id, document_id, original_document_id, chunks, batch, summary_setting, session)
+        ]
         assert commits == ["commit"]
-        assert result == {"status": "indexed"}
+        assert (result["document_id"], result["batch"]) == (document_id, batch)
