@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from croniter import croniter
 
@@ -40,7 +40,7 @@ def calculate_next_run_at(
 
     try:
         tz = ZoneInfo(timezone)
-    except (ValueError, OSError):
+    except (ValueError, OSError, ZoneInfoNotFoundError):
         raise ValueError(f"Invalid timezone: {timezone!r}") from None
 
     if base_time is None:

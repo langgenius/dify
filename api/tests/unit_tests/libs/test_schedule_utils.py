@@ -249,10 +249,16 @@ class TestTimezoneCompatibility(unittest.TestCase):
     def test_invalid_timezone_handling(self) -> None:
         """Test handling of invalid timezones."""
         expression = "0 12 * * *"
-        invalid_timezone = "Invalid/Timezone"
+        invalid_timezones = [
+            "Invalid/Timezone",
+            "GMT+8",  # UTC-offset style names are not IANA keys
+            "America/NewYork",  # typo of America/New_York
+        ]
 
-        with pytest.raises((ValueError, Exception)):  # Should raise an exception
-            calculate_next_run_at(expression, invalid_timezone, self.base_time)
+        for invalid_timezone in invalid_timezones:
+            with self.subTest(timezone=invalid_timezone):
+                with pytest.raises(ValueError, match="Invalid timezone"):
+                    calculate_next_run_at(expression, invalid_timezone, self.base_time)
 
 
 class TestFrontendBackendIntegration(unittest.TestCase):
