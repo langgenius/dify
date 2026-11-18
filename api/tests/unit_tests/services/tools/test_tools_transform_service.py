@@ -83,10 +83,6 @@ class TestMcpToolsTransformCases:
             sse_read_timeout=300,
         )
         provider.id = "provider-id-123"
-        provider.provider_icon = "icon.png"  # pyrefly: ignore[missing-attribute]
-        provider.masked_server_url = "https://*****.com/mcp"  # pyrefly: ignore[missing-attribute]
-        provider.masked_headers = {"Authorization": "Bearer *****"}  # pyrefly: ignore[missing-attribute]
-        provider.decrypted_headers = {"Authorization": "Bearer secret-token"}  # pyrefly: ignore[missing-attribute]
 
         # Mock timestamp
         mock_updated_at = Mock()
@@ -956,7 +952,7 @@ class TestToolsTransformServiceCases:
                 {"oneOf": [{"type": "integer"}, {"type": "number"}]},
             ],
         )
-        def test_single_type_union_has_no_input_schema(self, prop: dict[str, object]) -> None:
+        def test_single_type_union_has_no_input_schema(self, prop: dict[str, JsonValue]) -> None:
             schema = {"type": "object", "properties": {"f": prop}, "required": list[str]()}
             assert ToolTransformService.convert_mcp_schema_to_parameter(schema)[0].input_schema is None
 
