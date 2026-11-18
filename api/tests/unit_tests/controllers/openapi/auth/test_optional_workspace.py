@@ -194,10 +194,8 @@ def test_apps_read_admits_an_external_sso_login_only_where_pinned() -> None:
     app = Flask(__name__)
     app.register_blueprint(openapi_bp)
     reachable = set()
-    for _, _, handler in iter_handlers(app):
-        spec = spec_of(handler)
-        if spec is None:
-            continue
+    specs = [spec for _, _, handler in iter_handlers(app) if (spec := spec_of(handler)) is not None]
+    for spec in specs:
         checks_apps_read = any(isinstance(r, CheckScope) and r.scope is Scope.APPS_READ for r in spec.requirements)
         subject_checks = [r for r in spec.requirements if isinstance(r, CheckSubject)]
         admits_sso = all(issubclass(ExternalSsoSubject, tuple(r.allowed)) for r in subject_checks)

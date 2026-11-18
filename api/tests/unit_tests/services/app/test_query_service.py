@@ -385,15 +385,15 @@ def login(
 def every_page(
     service: AppDiscoveryService, who: AppListLogin, limit: int, *, mode: str | None = None, name: str | None = None
 ) -> tuple[list[str], int]:
-    ids: list[str] = []
-    page = 1
-    while True:
-        result = service.list_apps_for(who, AppDiscoveryQuery(page, limit, mode, name))
-        assert (result.page, result.per_page) == (page, limit)
-        ids += [entry.app.id for entry in result.items]
-        if page * limit >= result.total:
-            return ids, result.total
-        page += 1
+    first = service.list_apps_for(who, AppDiscoveryQuery(1, limit, mode, name))
+    results = [first] + [
+        service.list_apps_for(who, AppDiscoveryQuery(page, limit, mode, name))
+        for page in range(2, -(-first.total // limit) + 1)
+    ]
+    assert [(result.page, result.per_page) for result in results] == [
+        (page, limit) for page in range(1, len(results) + 1)
+    ]
+    return [entry.app.id for result in results for entry in result.items], first.total
 
 
 @dataclass(frozen=True)
