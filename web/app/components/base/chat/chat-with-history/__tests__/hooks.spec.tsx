@@ -1311,7 +1311,6 @@ describe('useChatWithHistory', () => {
       expect(answerNode?.workflow_run_id).toBe('wf-run-active')
       expect(answerNode?.workflow_run_is_running).toBe(true)
     })
-    })
 
     it('should parse human input payloads regardless of message status', async () => {
       const listData = createConversationData({
