@@ -22,6 +22,9 @@ export default defineConfig({
       '**/pnpm-lock.yaml',
       '**/pnpm-workspace.yaml',
       '**/patches/**',
+      // `tsconfigPaths` resolves aliases from these files.
+      '**/packages/dify-ui/tsconfig.json',
+      '**/packages/tsconfig/**',
       // The setup file loads global styles through CSS imports, which the module graph does not track.
       '**/packages/dify-ui/vitest.css',
       '**/packages/dify-ui/src/{styles,themes,plugins}/**',

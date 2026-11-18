@@ -1,14 +1,11 @@
 // @vitest-environment node
 
 import { execFileSync } from 'node:child_process'
-import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { getTranslationSourceKey } from '@dify/tooling/i18n-plurals'
 import { describe, expect, it } from 'vite-plus/test'
-import checkI18nValuesSource from '../check-i18n-values.ts?raw'
-// Raw imports keep the copied CLI in the module graph, so `--changed` reruns this spec for it.
-import checkI18nSource from '../check-i18n.js?raw'
 
 describe('locale-specific plural keys', () => {
   const sourceKeys = new Set(['skill.references_one', 'skill.references_other', 'skill.title'])
@@ -57,11 +54,12 @@ describe('locale-specific plural keys', () => {
         path.join(directory, 'node_modules'),
         'junction',
       )
-      await writeFile(path.join(directory, 'scripts', 'check-i18n.js'), checkI18nSource)
-      await writeFile(
-        path.join(directory, 'scripts', 'check-i18n-values.ts'),
-        checkI18nValuesSource,
-      )
+      for (const file of ['check-i18n.js', 'check-i18n-values.ts']) {
+        await copyFile(
+          new URL(`../${file}`, import.meta.url),
+          path.join(directory, 'scripts', file),
+        )
+      }
       for (const locale of ['en-US', 'ru-RU'])
         await mkdir(path.join(directory, 'i18n', 'locales', locale), { recursive: true })
       await writeFile(path.join(directory, 'package.json'), '{"type":"module"}')

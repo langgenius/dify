@@ -12,11 +12,21 @@ const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
 // `--changed` follows source imports, so inputs outside the module graph rerun every test.
+// Keep coverage-counted sources out of `?raw` imports: those report zero lines.
 const forceRerunTriggers = [
   ...configDefaults.forceRerunTriggers,
   '**/pnpm-lock.yaml',
   '**/pnpm-workspace.yaml',
   '**/patches/**',
+  // `tsconfigPaths` resolves aliases from these files.
+  '**/web/tsconfig.json',
+  '**/packages/tsconfig/**',
+  // Specs read these from disk or copy them into a temporary project.
+  '**/web/public/embed{,.min}.js',
+  '**/web/i18n/locales/*/{skill,deployments}.json',
+  '**/web/i18n/lib.{client,server}.ts',
+  '**/web/app/route-metadata.ts',
+  '**/web/scripts/check-i18n{.js,-values.ts}',
   // Tests and the Vite plugin load this workspace package from its built `dist`.
   '**/packages/openapi-content-mapper/src/**',
   // Browser setup loads global styles through CSS imports, which the module graph does not track.
