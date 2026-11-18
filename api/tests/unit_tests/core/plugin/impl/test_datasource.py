@@ -162,7 +162,13 @@ class TestPluginDatasourceManager:
         assert result.declaration.datasources[0].identity.provider == "org/plugin/provider"
 
     def test_list_transformer_keeps_providers_without_declaration_or_identity(self, mocker: MockerFixture) -> None:
-        manager = PluginDatasourceManager(get_plugin_icon_url=PluginService.get_plugin_icon_url)
+        icon_url_calls: list[tuple[str, str]] = []
+
+        def get_plugin_icon_url(tenant_id: str, filename: str) -> str:
+            icon_url_calls.append((tenant_id, filename))
+            return f"https://custom-icon-resolver.example/{tenant_id}/{filename}"
+
+        manager = PluginDatasourceManager(get_plugin_icon_url=get_plugin_icon_url)
         providers: list[PluginDatasourceProviderEntity] = []
 
         def fake_request(
@@ -210,13 +216,14 @@ class TestPluginDatasourceManager:
 
         mocker.patch.object(manager, "_request_with_plugin_daemon_response", side_effect=fake_request)
 
-        manager.fetch_datasource_providers("tenant-1")
-        manager.fetch_installed_datasource_providers("tenant-1")
+        listed_providers = manager.fetch_datasource_providers("tenant-1")
+        installed_providers = manager.fetch_installed_datasource_providers("tenant-1")
 
-        expected_icon_url = PluginService.get_plugin_icon_url(tenant_id="tenant-1", filename="icon.svg")
-        assert expected_icon_url != "icon.svg"
+        expected_icon_url = "https://custom-icon-resolver.example/tenant-1/icon.svg"
         assert len(providers) == 2
-        assert [provider.declaration.identity.icon for provider in providers] == [expected_icon_url, expected_icon_url]
+        assert icon_url_calls == [("tenant-1", "icon.svg"), ("tenant-1", "icon.svg")]
+        assert listed_providers[1].declaration.identity.icon == expected_icon_url
+        assert installed_providers[0].declaration.identity.icon == expected_icon_url
 
     def test_single_transformer_tolerates_missing_data_and_declaration(self, mocker: MockerFixture) -> None:
         manager = PluginDatasourceManager()
