@@ -10,18 +10,24 @@ the framing or for the flattened ids, so only the contract test guards them.
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from typing import Any, Final, Literal
 
 from pydantic import BaseModel, ValidationError
 
-from core.app.entities.task_entities import StreamEvent, StreamResponse, WorkflowFinishStreamResponse
+from core.app.entities.task_entities import (
+    HumanInputRequiredResponse,
+    StreamEvent,
+    StreamResponse,
+    WorkflowFinishStreamResponse,
+)
 from graphon.enums import WorkflowExecutionStatus
 from services.run_job_contracts import JobIds
 
 DATA_PREFIX: Final = "data: "
 _EVENT_KEY: Final = "event"
+_PAUSE_OR_FINISH: Final = frozenset({StreamEvent.WORKFLOW_PAUSED, StreamEvent.WORKFLOW_FINISHED})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -116,3 +122,29 @@ def _ids(frame: _StreamIds, *, task_id: str | None) -> JobIds:
         message_id=frame.message_id,
         conversation_id=frame.conversation_id,
     )
+
+
+def pending_form(events: Iterable[Mapping[str, Any] | str]) -> HumanInputRequiredResponse | None:
+    """Read a paused run's replayed events up to its first pause or finish.
+
+    Precondition: events are the event mappings of a run's snapshot stream; its pings are strings.
+    Postcondition: the last human_input_required event read, as core's model; None when there is none or the last
+    one does not fit. Events after the first workflow_paused or workflow_finished are not read.
+    """
+    form: HumanInputRequiredResponse | None = None
+    for event in events:
+        if isinstance(event, Mapping):
+            name = event.get(_EVENT_KEY)
+            if name in _PAUSE_OR_FINISH:
+                return form
+            if name == StreamEvent.HUMAN_INPUT_REQUIRED:
+                form = _human_input(event)
+    return form
+
+
+def _human_input(event: Mapping[str, Any]) -> HumanInputRequiredResponse | None:
+    """Postcondition: the event as core's HumanInputRequiredResponse, or None when it does not fit."""
+    try:
+        return HumanInputRequiredResponse.model_validate(event)
+    except ValidationError:
+        return None

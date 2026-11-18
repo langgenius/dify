@@ -3,6 +3,7 @@
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.app_task_service import WorkflowStopOutcome
@@ -75,13 +76,26 @@ class RecordingJobStopper:
 @dataclass
 class InMemoryRunResults:
     runs: dict[tuple[str, str], RunResult] = field(default_factory=dict)
-    forms: dict[tuple[str, str, str, AppMode], Mapping[str, object]] = field(default_factory=dict)
+    forms: dict[tuple[str, str, str, AppMode], HumanInputRequiredResponse] = field(default_factory=dict)
 
     def run(self, *, tenant_id: str, run_id: str) -> RunResult | None:
         return self.runs.get((tenant_id, run_id))
 
-    def pending_form(self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode) -> Mapping[str, object] | None:
+    def pending_form(
+        self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
+    ) -> HumanInputRequiredResponse | None:
         return self.forms.get((tenant_id, app_id, run_id, mode))
+
+
+def human_input_form(form_id: str = "f1") -> HumanInputRequiredResponse:
+    """A pending form as core's snapshot reports it."""
+    return HumanInputRequiredResponse(
+        task_id="task-1",
+        workflow_run_id="run-1",
+        data=HumanInputRequiredResponse.Data(
+            form_id=form_id, node_id="n1", node_title="Review", form_content="", expiration_time=4102444800
+        ),
+    )
 
 
 @dataclass(frozen=True)

@@ -2,12 +2,10 @@
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Mapping
-from typing import Any, Final, Protocol
+from typing import Final, Protocol
 
 from flask_restx import Resource
-from pydantic import ValidationError
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.openapi import openapi_ns
@@ -18,12 +16,9 @@ from controllers.openapi._models import Hint, JobState, JobWaitQuery
 from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.context import Context
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi, form_hints
-from core.app.entities.task_entities import HumanInputRequiredResponse
 from extensions.ext_application_services import application_services
 from services.run_job_contracts import JobOwner, JobStatus
 from services.run_job_service import WAIT_DEFAULT_SECONDS, JobNotFoundError, JobView
-
-logger = logging.getLogger(__name__)
 
 WAIT_JOB_OP: Final = "wait.job"
 STOP_JOB_OP: Final = "stop.job"
@@ -77,30 +72,6 @@ def _running_hints(view: JobView, *, app_id: str) -> list[Hint]:
     return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
 
 
-def _form_response(view: JobView) -> HumanInputRequiredResponse | None:
-    """Rebuild the pause event of a paused job from its stored form and the ids on its record.
-
-    Precondition: none.
-    Postcondition: the event, or None when the job has no form, the record lacks the task or run id, or the stored
-    form is not a human input form.
-    """
-    form: Mapping[str, Any] | None = view.form
-    if form is None:
-        return None
-    record = view.record
-    if record.task_id is None:
-        return None
-    if record.run_id is None:
-        return None
-    try:
-        return HumanInputRequiredResponse.model_validate(
-            {"task_id": record.task_id, "workflow_run_id": record.run_id, "data": form}
-        )
-    except ValidationError:
-        logger.warning("Job %s holds a form that is not a human input form", record.id)
-        return None
-
-
 def _paused_hints(view: JobView, *, app_id: str) -> list[Hint]:
     """Offer the pending form's actions, then waiting.
 
@@ -108,10 +79,9 @@ def _paused_hints(view: JobView, *, app_id: str) -> list[Hint]:
     Postcondition: one hint per form action followed by a wait hint that says it follows a submit; when no form
     hints can be built, only the plain wait hint.
     """
-    response = _form_response(view)
-    if response is None:
+    if view.form is None:
         return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
-    hints = form_hints(op=op_of(OpenApiWorkflowHumanInputFormSubmitApi.post), app_id=app_id, response=response)
+    hints = form_hints(op=op_of(OpenApiWorkflowHumanInputFormSubmitApi.post), app_id=app_id, response=view.form)
     if not hints:
         return [_wait_hint(view, app_id=app_id, summary=WAIT_HINT_SUMMARY)]
     return [*hints, _wait_hint(view, app_id=app_id, summary=RESUMED_WAIT_HINT_SUMMARY)]

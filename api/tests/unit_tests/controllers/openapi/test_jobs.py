@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 import time
 import uuid
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
@@ -23,6 +23,7 @@ from controllers.openapi.app_run import RUN_GUARDS
 from controllers.openapi.auth.spec import Effect, Kind, spec_of
 from controllers.openapi.human_input_form import OpenApiWorkflowHumanInputFormSubmitApi
 from controllers.openapi.jobs import STOP_JOB_OP, WAIT_JOB_OP
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from extensions.ext_application_services import ApplicationServices
 from models import Account
 from models.enums import CreatorUserRole
@@ -43,16 +44,22 @@ STOP_ROUTE = "/openapi/v1/apps/{app_id}/jobs/{job_id}:stop"
 CALLER_EMAIL = "caller@example.com"
 RUN_ID = "r1"
 TASK_ID = "t1"
-FORM = {
-    "form_id": "f1",
-    "node_id": "n1",
-    "node_title": "Review",
-    "form_content": "",
-    "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
-    "actions": [{"id": "approve", "title": "Approve"}, {"id": "reject", "title": ""}],
-    "form_token": "ft-1",
-    "expiration_time": 4102444800,
-}
+FORM = HumanInputRequiredResponse.model_validate(
+    {
+        "task_id": TASK_ID,
+        "workflow_run_id": RUN_ID,
+        "data": {
+            "form_id": "f1",
+            "node_id": "n1",
+            "node_title": "Review",
+            "form_content": "",
+            "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
+            "actions": [{"id": "approve", "title": "Approve"}, {"id": "reject", "title": ""}],
+            "form_token": "ft-1",
+            "expiration_time": 4102444800,
+        },
+    }
+)
 
 
 def _record(owner: JobOwner) -> JobRecord:
@@ -168,7 +175,7 @@ def test_a_running_job_hints_wait_job_with_its_ids(world: World) -> None:
     assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
 
 
-def _pause_run(world: World, form: Mapping[str, object] | None) -> None:
+def _pause_run(world: World, form: HumanInputRequiredResponse | None) -> None:
     world.results.runs[(world.client.workspace_id, RUN_ID)] = RunResult(status=JobStatus.PAUSED)
     if form is not None:
         world.results.forms[(world.client.workspace_id, world.client.app_id, RUN_ID, AppMode.WORKFLOW)] = form
@@ -200,24 +207,6 @@ def test_a_paused_job_hints_the_form_submit_op_then_wait(world: World) -> None:
 def test_a_paused_job_without_a_form_hints_only_wait(world: World) -> None:
     job_id = world.open_job(ids=JobIds(task_id=TASK_ID, run_id=RUN_ID))
     _pause_run(world, None)
-
-    body = world.wait(job_id).get_json()
-
-    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
-
-
-def test_a_paused_job_with_a_form_missing_its_task_id_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(ids=JobIds(run_id=RUN_ID))
-    _pause_run(world, FORM)
-
-    body = world.wait(job_id).get_json()
-
-    assert body["hints"] == [_wait_hint(job_id, world.client.app_id, jobs.WAIT_HINT_SUMMARY)]
-
-
-def test_a_paused_job_with_an_unreadable_form_hints_only_wait(world: World) -> None:
-    job_id = world.open_job(ids=JobIds(task_id=TASK_ID, run_id=RUN_ID))
-    _pause_run(world, {"unexpected": 1})
 
     body = world.wait(job_id).get_json()
 
