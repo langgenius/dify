@@ -243,18 +243,22 @@ return {1, "cancelled", event_id}
 
 
 class RedisRunStore(RunEventSink):
-    """Async Redis implementation for run records and event logs.
+    """Async Redis implementation for run records, event logs, and cancellation intents.
 
-    ``run_retention_seconds`` is applied to both the run record key and the
-    per-run Redis stream. Every public stream write applies an approximate
-    maximum length before refreshing both TTLs, so active runs cannot grow one
-    Redis key without bound without paying the CPU cost of exact per-entry
-    trimming. The transaction also ensures a newly created stream is not left
-    without expiration if the client is interrupted between commands.
+    ``run_retention_seconds`` is shared by the run record key, per-run event
+    stream, and pending cancellation intent. Every public event stream write
+    applies an approximate maximum length before refreshing the stream and
+    record TTLs, so active runs cannot grow one Redis key without bound without
+    paying the CPU cost of exact per-entry trimming. The transaction also
+    ensures a newly created stream is not left without expiration if the
+    client is interrupted between commands.
     Event writes refresh the record TTL so long-running runs that keep producing
-    events do not lose their status record mid-run. Active writes also refresh
-    the admission claim when it is absent or still owned by that run. A newer
-    owner is preserved, and passive admission replays do not refresh any TTL.
+    events do not lose their status record mid-run. Non-terminal event appends
+    while the run is ``running`` also atomically refresh any existing pending
+    cancellation intent's TTL without creating one when absent. Rejected appends
+    after a terminal transition do not refresh retention. Active writes also
+    refresh the admission claim when it is absent or still owned by that run.
+    A newer owner is preserved, and passive admission replays do not refresh any TTL.
     """
 
     redis: Redis
