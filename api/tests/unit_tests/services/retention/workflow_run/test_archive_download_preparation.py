@@ -36,7 +36,7 @@ from services.retention.workflow_run.archive_download_task import (
     build_pending_archive_download_task,
 )
 from services.retention.workflow_run.archive_log_service import WorkflowRunArchiveBundleRecord
-from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease
+from services.retention.workflow_run.archive_month_lock import WorkflowRunArchiveMonthLease, WorkflowRunArchiveMonthLock
 from services.retention.workflow_run.constants import ARCHIVE_BUNDLE_FORMAT, ARCHIVE_BUNDLE_SCHEMA_VERSION
 
 TENANT_ID = "1251fe32-c0c7-4fe2-a7bd-a8105267faf5"
@@ -198,6 +198,7 @@ def _preparer(
     cache: FakeTaskCache,
     lease: WorkflowRunArchiveMonthLease,
     bundles: list[WorkflowRunArchiveBundleRecord] | None = None,
+    month_lock: WorkflowRunArchiveMonthLock | None = None,
 ) -> WorkflowRunArchiveDownloadPreparer:
     source_storage = archive_storage or storage
     target_storage = download_storage or storage
@@ -208,7 +209,7 @@ def _preparer(
         bundles=FakeBundleQuery(tuple([_bundle()] if bundles is None else bundles)),
         cache=cache,
         download_storage_provider=lambda: cast(ArchiveStorage, target_storage),
-        month_lock=lambda **_kwargs: nullcontext(lease),
+        month_lock=month_lock or (lambda **_kwargs: nullcontext(lease)),
     )
 
 
@@ -455,11 +456,10 @@ def test_prepare_workflow_run_archive_download_serializes_duplicate_delivery(
         with mutex:
             yield month_lease
 
-    preparer = WorkflowRunArchiveDownloadPreparer(
-        archive_storage_provider=lambda: cast(ArchiveStorage, storage),
-        download_storage_provider=lambda: cast(ArchiveStorage, storage),
+    preparer = _preparer(
+        storage=storage,
         cache=cache,
-        bundles=FakeBundleQuery((_bundle(),)),
+        lease=month_lease,
         month_lock=month_lock,
     )
     with ThreadPoolExecutor(max_workers=2) as executor:
