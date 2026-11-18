@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from collections import deque
-from collections.abc import Generator, Iterable, Iterator, Mapping
+from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
 from typing import override
 
 import pytest
@@ -26,6 +26,7 @@ from core.app.entities.task_entities import (
     AppStreamResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
+    HumanInputRequiredResponse,
     MessageEndStreamResponse,
     MessageStreamResponse,
     PingStreamResponse,
@@ -42,6 +43,7 @@ from models.enums import CreatorUserRole
 from models.model import AppMode
 from repositories.run_job_store import RedisRunJobStore
 from services.run_job_contracts import JobIds, JobOwner, JobRecord, JobStatus
+from services.run_job_frames import pending_form
 from services.run_job_reader import read_to_end
 from tasks.app_generate import workflow_execute_task
 from tests.unit_tests.services.run_job_fakes import InMemoryRedis, RecordingJobStopper
@@ -95,13 +97,13 @@ def _converted[R: AppBlockingResponse](
     return (frame for frame in frames)
 
 
-def _graph_frames[R: AppBlockingResponse](
+def _graph_events[R: AppBlockingResponse](
     monkeypatch: pytest.MonkeyPatch,
     mode: AppMode,
     converter: type[AppGenerateResponseConverter[R]],
     responses: list[AppStreamResponse],
-) -> list[str]:
-    """The frames a graph job's reader gets: worker publish, topic reader, convert_to_event_stream."""
+) -> list[Mapping[str, object] | str]:
+    """The events the API reads from a graph run's topic: the worker publishes them, the topic reader yields them."""
     topic = _RecordedTopic()
     monkeypatch.setattr(
         workflow_execute_task.MessageBasedAppGenerator, "get_response_topic", lambda *_args, **_kwargs: topic
@@ -109,8 +111,18 @@ def _graph_frames[R: AppBlockingResponse](
     workflow_execute_task._publish_streaming_response(
         _converted(converter, responses), RUN_ID, mode, WORKFLOW_ID, {}, WorkflowStartReason.INITIAL
     )
-    events = stream_topic_events(subscription=_Replay(topic.published), idle_timeout=0)
-    return list(BaseAppGenerator.convert_to_event_stream(events))
+    return list(stream_topic_events(subscription=_Replay(topic.published), idle_timeout=0))
+
+
+def _graph_frames[R: AppBlockingResponse](
+    monkeypatch: pytest.MonkeyPatch,
+    mode: AppMode,
+    converter: type[AppGenerateResponseConverter[R]],
+    responses: list[AppStreamResponse],
+) -> list[str]:
+    """The frames a graph job's reader gets: the topic's events through convert_to_event_stream."""
+    events = _graph_events(monkeypatch, mode, converter, responses)
+    return list(BaseAppGenerator.convert_to_event_stream(event for event in events))
 
 
 def _read(mode: AppMode, frames: list[str], caplog: pytest.LogCaptureFixture) -> JobRecord:
@@ -218,17 +230,58 @@ def test_a_workflow_job_takes_its_ids_and_ending_from_cores_stream(
     assert (record.status, record.error) == (expected, error)
 
 
-def test_a_paused_workflow_job_keeps_its_ids_and_stays_running(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    frames = _graph_frames(
-        monkeypatch, AppMode.WORKFLOW, WorkflowAppGenerateResponseConverter, _workflow_stream(_started(), _paused())
+def _form() -> HumanInputRequiredResponse:
+    return HumanInputRequiredResponse.model_validate(
+        {
+            "task_id": TASK_ID,
+            "workflow_run_id": RUN_ID,
+            "data": {
+                "form_id": "f1",
+                "node_id": "n1",
+                "node_title": "Review",
+                "form_content": "Approve?",
+                "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
+                "actions": [{"id": "approve", "title": "Approve"}],
+                "form_token": "ft-1",
+                "expiration_time": 4102444800,
+            },
+        }
     )
 
-    record = _read(AppMode.WORKFLOW, frames, caplog)
 
-    assert _ids(record) == JobIds(task_id=TASK_ID, run_id=RUN_ID)
+type Events = list[Mapping[str, object] | str]
+
+
+def _paused_workflow(monkeypatch: pytest.MonkeyPatch) -> Events:
+    stream = _workflow_stream(_started(), _form(), _paused())
+    return _graph_events(monkeypatch, AppMode.WORKFLOW, WorkflowAppGenerateResponseConverter, stream)
+
+
+def _paused_chatflow(monkeypatch: pytest.MonkeyPatch) -> Events:
+    stream = _chat_stream(_started(), _form(), _paused())
+    return _graph_events(monkeypatch, AppMode.ADVANCED_CHAT, AdvancedChatAppGenerateResponseConverter, stream)
+
+
+@pytest.mark.parametrize(
+    ("mode", "events_of"),
+    [(AppMode.WORKFLOW, _paused_workflow), (AppMode.ADVANCED_CHAT, _paused_chatflow)],
+    ids=["workflow", "chatflow"],
+)
+def test_a_paused_graph_job_keeps_its_ids_stays_running_and_its_form_parses(
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    mode: AppMode,
+    events_of: Callable[[pytest.MonkeyPatch], Events],
+) -> None:
+    events = events_of(monkeypatch)
+
+    record = _read(mode, list(BaseAppGenerator.convert_to_event_stream(event for event in events)), caplog)
+
+    assert (record.task_id, record.run_id) == (TASK_ID, RUN_ID)
     assert record.status is JobStatus.RUNNING
+    with caplog.at_level(logging.ERROR, logger="services.run_job_frames"):
+        assert pending_form(events) == _form()
+    assert "does not fit" not in caplog.text
 
 
 def test_a_workflow_that_fails_before_it_starts_fails_the_job_with_its_error(
