@@ -27,6 +27,7 @@ vi.mock('@/service/console', async (importOriginal) => {
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
       'features.get': fetchFeatures,
       'workspaces.current.rbac.roles.get': fetchRoles,
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.inviteEmail.post': (input: unknown) =>
         validate({
           context: {},

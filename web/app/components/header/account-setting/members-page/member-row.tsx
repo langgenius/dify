@@ -8,7 +8,6 @@ import { memo, useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { getAvatarInitial } from '@/utils/avatar'
-import { InvitedStatus } from './invited-row'
 import { MemberMenu } from './member-menu'
 import { RoleBadges } from './role-badges'
 
@@ -94,11 +93,7 @@ export const MemberRow = memo(
           </div>
         </td>
         <td className="py-2 system-sm-regular text-text-secondary">
-          {member.status === 'pending' ? (
-            <InvitedStatus />
-          ) : (
-            formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)
-          )}
+          {formatTimeFromNow(Number(member.last_active_at || member.created_at) * 1000)}
         </td>
         <td className="px-3 py-2">
           <RoleBadges roleNames={roleNames} />

@@ -1,6 +1,7 @@
 'use client'
 import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
+import type { Invitee } from './invited-row'
 import {
   AlertDialog,
   AlertDialogBody,
@@ -17,20 +18,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
 import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
-import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { safe } from '@orpc/client'
+import { useMutation, useQuery, useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
 import { useAtomValue } from 'jotai'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
 import { WorkspaceAvatar } from '@/app/components/base/workspace-avatar'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { toast } from '@/app/notifications'
 import { workspacePermissionKeysAtom } from '@/context/permission-state'
 import { currentWorkspaceAtom, isCurrentWorkspaceOwnerAtom } from '@/context/workspace-state'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { isContactsManagementEnabled } from '@/features/contacts/management/feature-flag'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { getAccessControlTemplateLanguage, LanguagesSupported } from '@/i18n/language'
-import { consoleQuery } from '@/service/console'
+import { consoleClient, consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceContent } from './edit-workspace-content'
@@ -38,6 +41,11 @@ import { InviteModal } from './invite-modal'
 import { InvitedRow } from './invited-row'
 import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
+
+type RevocationOutcome =
+  | { status: 'revoked' }
+  | { status: 'gone' }
+  | { status: 'failed'; message: string }
 
 const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
 
@@ -81,6 +89,7 @@ const MembersPageContent = () => {
     }),
   )
   const accounts = data?.accounts || []
+  const joinedAccounts = accounts.filter((account) => account.status !== 'pending')
   const deploymentEdition = systemFeatures.deployment_edition
   const { data: features } = useQuery(
     consoleQuery.features.get.queryOptions({
@@ -94,11 +103,6 @@ const MembersPageContent = () => {
 
   const isNotUnlimitedMemberPlan =
     deploymentEdition === 'CLOUD' && features !== undefined && features.plan !== 'team'
-  // A limit of 0 means unlimited.
-  const isMemberFull =
-    isNotUnlimitedMemberPlan &&
-    features.members.limit > 0 &&
-    accounts.length >= features.members.limit
   const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
@@ -109,6 +113,67 @@ const MembersPageContent = () => {
     enabled: canManageMembers && Boolean(currentWorkspace.id),
     select: (data) => data.invitations,
   })
+  const invitees: Invitee[] = [
+    ...accounts
+      .filter((account) => account.status === 'pending')
+      .map((account) => ({
+        email: account.email,
+        role: account.roles?.[0]?.id ?? account.role,
+        roleName: account.roles?.[0]?.name ?? account.role,
+        memberId: account.id,
+      })),
+    ...(invitations ?? []).map((invitation) => ({
+      email: invitation.email,
+      role: invitation.role,
+      roleName: invitation.role,
+      expiresAt: invitation.expires_at,
+    })),
+  ]
+  const usedSeats = joinedAccounts.length + invitees.length
+  // A limit of 0 means unlimited.
+  const isMemberFull =
+    isNotUnlimitedMemberPlan && features.members.limit > 0 && usedSeats >= features.members.limit
+  const [revokeDialog] = useState(() => createAlertDialogHandle<Invitee>())
+  const queryClient = useQueryClient()
+  // Resolve documented outcomes instead of throwing so each one keeps its contract type.
+  const revocation = useMutation({
+    mutationFn: async (invitee: Invitee): Promise<RevocationOutcome> => {
+      const [error, , isDefined] = invitee.memberId
+        ? await safe(
+            consoleClient.workspaces.current.members.byMemberId.delete(
+              { params: { member_id: invitee.memberId } },
+              { context: { silent: true } },
+            ),
+          )
+        : await safe(
+            consoleClient.workspaces.byWorkspaceId.members.pendingInvitations.revoke.post(
+              { params: { workspace_id: currentWorkspace.id }, body: { email: invitee.email } },
+              { context: { silent: true } },
+            ),
+          )
+      if (!error) return { status: 'revoked' }
+      if (!isDefined) throw error
+      // Accepted, expired or revoked elsewhere: nothing is left to revoke.
+      if (error.code === 'pending_invitation_not_found') return { status: 'gone' }
+      return { status: 'failed', message: error.message }
+    },
+    // The list is stale after every outcome, including an invitation that no longer exists.
+    onSettled: () => {
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.current.members.get.key(),
+      })
+      void queryClient.invalidateQueries({
+        queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
+      })
+      void queryClient.invalidateQueries({ queryKey: consoleQuery.features.get.queryKey() })
+    },
+  })
+  const revocationError =
+    revocation.data?.status === 'failed'
+      ? revocation.data.message
+      : revocation.isError
+        ? t(($) => $['api.actionFailed'], { ns: 'common' })
+        : null
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
@@ -180,10 +245,10 @@ const MembersPageContent = () => {
                       <div className="flex flex-wrap gap-x-1">
                         <div>
                           {t(($) => $['plansCommon.member'], { ns: 'billing' })}
-                          {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                          {locale !== LanguagesSupported[1] && usedSeats > 1 && 's'}
                         </div>
                         <div className="flex gap-x-1">
-                          <span>{accounts.length}</span>
+                          <span>{usedSeats}</span>
                           <span>/</span>
                           <span>
                             {features.members.limit === 0
@@ -191,14 +256,32 @@ const MembersPageContent = () => {
                               : features.members.limit}
                           </span>
                         </div>
+                        {invitees.length > 0 && (
+                          <div>
+                            ·{' '}
+                            {t(($) => $['members.seatsIncludingInvited'], {
+                              ns: 'workspaceMembers',
+                              count: invitees.length,
+                            })}
+                          </div>
+                        )}
                       </div>
                     ) : (
                       <div className="flex gap-x-1">
-                        <div className="shrink-0">{accounts.length}</div>
+                        <div className="shrink-0">{joinedAccounts.length}</div>
                         <div>
                           {t(($) => $['plansCommon.memberAfter'], { ns: 'billing' })}
-                          {locale !== LanguagesSupported[1] && accounts.length > 1 && 's'}
+                          {locale !== LanguagesSupported[1] && joinedAccounts.length > 1 && 's'}
                         </div>
+                        {invitees.length > 0 && (
+                          <div>
+                            ·{' '}
+                            {t(($) => $['members.invitedCount'], {
+                              ns: 'workspaceMembers',
+                              count: invitees.length,
+                            })}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -245,7 +328,7 @@ const MembersPageContent = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {accounts.map((account) => (
+                  {joinedAccounts.map((account) => (
                     <MemberRow
                       key={account.id}
                       ref={invitedEmails.has(account.email.toLowerCase()) ? revealRow : undefined}
@@ -271,20 +354,87 @@ const MembersPageContent = () => {
                       allowMultipleRoles={systemFeatures.rbac_enabled}
                     />
                   ))}
-                  {invitations?.map((invitation) => (
+                  {invitees.map((invitee) => (
                     <InvitedRow
-                      key={invitation.email}
-                      ref={
-                        invitedEmails.has(invitation.email.toLowerCase()) ? revealRow : undefined
-                      }
-                      invitation={invitation}
+                      key={invitee.email}
+                      ref={invitedEmails.has(invitee.email.toLowerCase()) ? revealRow : undefined}
+                      invitee={invitee}
                       canManage={canManageMembers}
+                      onRevoke={() => {
+                        revocation.reset()
+                        revokeDialog.openWithPayload(invitee)
+                      }}
                     />
                   ))}
                 </tbody>
               </table>
             </div>
           </div>
+          <AlertDialog
+            handle={revokeDialog}
+            onOpenChange={(open, details) => {
+              if (!open && revocation.isPending && details.reason !== 'imperative-action')
+                details.cancel()
+            }}
+          >
+            {({ payload: invitee }) => (
+              <AlertDialogContent
+                backdropProps={{ forceRender: true }}
+                finalFocus={() => {
+                  if (revocation.data?.status === 'failed' || !revocation.isSuccess) return true
+                  listRef.current?.focus({ preventScroll: true })
+                  return false
+                }}
+              >
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    {t(($) => $['members.revokeInvitationTitle'], {
+                      ns: 'workspaceMembers',
+                      email: invitee?.email ?? '',
+                    })}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    {t(($) => $['members.revokeInvitationDescription'], {
+                      ns: 'workspaceMembers',
+                    })}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                {revocationError && (
+                  <AlertDialogBody>
+                    <p role="alert" className="text-text-destructive">
+                      {revocationError}
+                    </p>
+                  </AlertDialogBody>
+                )}
+                <AlertDialogFooter>
+                  <AlertDialogCancelButton disabled={revocation.isPending}>
+                    {t(($) => $['operation.cancel'], { ns: 'common' })}
+                  </AlertDialogCancelButton>
+                  <AlertDialogConfirmButton
+                    loading={revocation.isPending}
+                    onClick={() => {
+                      if (!invitee || revocation.isPending) return
+                      revocation.mutate(invitee, {
+                        onSuccess: ({ status }) => {
+                          if (status === 'failed') return
+                          revokeDialog.close()
+                          if (status === 'gone')
+                            toast.warning(
+                              t(($) => $['members.invitationNoLongerPending'], {
+                                ns: 'workspaceMembers',
+                                email: invitee.email,
+                              }),
+                            )
+                        },
+                      })
+                    }}
+                  >
+                    {t(($) => $['members.revokeInvitation'], { ns: 'workspaceMembers' })}
+                  </AlertDialogConfirmButton>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            )}
+          </AlertDialog>
           <AlertDialog
             handle={removeDialog}
             onOpenChange={(open, details) => {

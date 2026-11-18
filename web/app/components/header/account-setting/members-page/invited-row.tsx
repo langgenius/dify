@@ -1,11 +1,25 @@
 'use client'
-import type { PendingWorkspaceInvitationResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { Ref } from 'react'
 import { Avatar, AvatarFallback } from '@langgenius/dify-ui/avatar'
+import { IconButton } from '@langgenius/dify-ui/icon-button'
+import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
+import { isDefinedError } from '@orpc/client'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
+import { toast } from '@/app/notifications'
+import { consoleQuery } from '@/service/console'
 import { getAvatarInitial } from '@/utils/avatar'
 import { RoleBadges } from './role-badges'
+
+export type Invitee = {
+  email: string
+  role: string
+  roleName: string
+  expiresAt?: string
+  // Present for people who were joined as unactivated members before invitations became records.
+  memberId?: string
+}
 
 export const InvitedStatus = ({ expiresAt }: { expiresAt?: string }) => {
   const { t } = useTranslation(['workspaceMembers'])
@@ -34,28 +48,111 @@ export const InvitedStatus = ({ expiresAt }: { expiresAt?: string }) => {
 
 type InvitedRowProps = {
   ref?: Ref<HTMLTableRowElement>
-  invitation: PendingWorkspaceInvitationResponse
+  invitee: Invitee
   canManage: boolean
+  onRevoke: () => void
 }
 
-export const InvitedRow = ({ ref, invitation, canManage }: InvitedRowProps) => (
-  <tr ref={ref} className="border-b border-divider-subtle">
-    <td className="px-3 py-2">
-      <div className="flex min-w-0 items-center">
-        <Avatar size="sm" className="me-2" aria-hidden="true">
-          <AvatarFallback>{getAvatarInitial(invitation.email)}</AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 system-sm-medium wrap-anywhere text-text-secondary">
-          <span dir="ltr">{invitation.email}</span>
+export const InvitedRow = ({ ref, invitee, canManage, onRevoke }: InvitedRowProps) => {
+  const { t } = useTranslation(['common', 'workspaceMembers'])
+  const locale = useLocale()
+  const queryClient = useQueryClient()
+  const resend = useMutation(
+    consoleQuery.workspaces.current.members.inviteEmail.post.mutationOptions({
+      context: { silent: true },
+      onSuccess: (response) => {
+        void queryClient.invalidateQueries({
+          queryKey: consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.key(),
+        })
+        const result = response.invitation_results.find(
+          ({ email }) => email.toLowerCase() === invitee.email.toLowerCase(),
+        )
+        if (result?.status === 'success') {
+          toast.success(
+            t(($) => $['members.invitationResent'], {
+              ns: 'workspaceMembers',
+              email: invitee.email,
+            }),
+          )
+          return
+        }
+        if (result?.status === 'already_member') {
+          // They joined while the list was open; refresh so the row becomes a member.
+          void queryClient.invalidateQueries({
+            queryKey: consoleQuery.workspaces.current.members.get.key(),
+          })
+          toast.warning(
+            t(($) => $['members.alreadyJoined'], { ns: 'workspaceMembers', email: invitee.email }),
+          )
+          return
+        }
+        toast.error(result?.message || t(($) => $['api.actionFailed'], { ns: 'common' }))
+      },
+      onError: (error) => {
+        const code = isDefinedError(error) ? error.code : undefined
+        toast.error(
+          code === 'limit_exceeded'
+            ? t(($) => $['members.inviteLimitExceeded'], { ns: 'workspaceMembers' })
+            : code === 'invalid_role'
+              ? t(($) => $['members.invalidRole'], { ns: 'workspaceMembers' })
+              : t(($) => $['api.actionFailed'], { ns: 'common' }),
+        )
+      },
+    }),
+  )
+
+  return (
+    <tr ref={ref} className="border-b border-divider-subtle">
+      <td className="px-3 py-2">
+        <div className="flex min-w-0 items-center">
+          <Avatar size="sm" className="me-2" aria-hidden="true">
+            <AvatarFallback>{getAvatarInitial(invitee.email)}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0 system-sm-medium wrap-anywhere text-text-secondary">
+            <span dir="ltr">{invitee.email}</span>
+          </div>
         </div>
-      </div>
-    </td>
-    <td className="py-2">
-      <InvitedStatus expiresAt={invitation.expires_at} />
-    </td>
-    <td className="px-3 py-2">
-      <RoleBadges roleNames={[invitation.role]} />
-    </td>
-    {canManage && <td />}
-  </tr>
-)
+      </td>
+      <td className="py-2">
+        <InvitedStatus expiresAt={invitee.expiresAt} />
+      </td>
+      <td className="px-3 py-2">
+        <RoleBadges roleNames={[invitee.roleName]} />
+      </td>
+      {canManage && (
+        <td className="px-3 py-2">
+          <Menu>
+            <MenuTrigger
+              render={
+                <IconButton
+                  size="lg"
+                  aria-label={`${t(($) => $['members.invitationActions'], { ns: 'workspaceMembers' })}: ${invitee.email}`}
+                  className="data-popup-open:bg-state-base-hover"
+                >
+                  <span aria-hidden className="i-ri-more-fill size-4 text-text-tertiary" />
+                </IconButton>
+              }
+            />
+            <MenuContent align="end" className="min-w-45 rounded-xl">
+              <MenuItem
+                className="system-sm-medium text-text-secondary"
+                disabled={resend.isPending}
+                onClick={() =>
+                  resend.mutate({
+                    body: { emails: [invitee.email], role: invitee.role, language: locale },
+                  })
+                }
+              >
+                {t(($) => $['members.resendInvitation'], { ns: 'workspaceMembers' })}
+              </MenuItem>
+              <MenuSeparator />
+              <MenuItem variant="destructive" className="system-sm-medium" onClick={onRevoke}>
+                {t(($) => $['members.revokeInvitation'], { ns: 'workspaceMembers' })}
+              </MenuItem>
+            </MenuContent>
+          </Menu>
+        </td>
+      )}
+    </tr>
+  )
+}
