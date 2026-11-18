@@ -1,7 +1,7 @@
 import logging
 from collections.abc import Callable, Generator, Iterable, Mapping, Sequence
 from copy import deepcopy
-from typing import IO, Any, Literal, Optional, ParamSpec, TypeVar, cast, overload, override
+from typing import IO, Any, Literal, Optional, ParamSpec, Protocol, TypeVar, cast, overload, override
 from uuid import UUID
 
 from configs import dify_config
@@ -19,7 +19,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from core.model_context import get_credit_usage_metadata
-from core.plugin.impl.model_runtime_factory import create_plugin_provider_manager
+from core.plugin.impl.model_runtime_factory import bind_model_moderation_policy, create_plugin_provider_manager
 from core.provider_manager import ProviderManager
 from extensions.ext_redis import redis_client
 from graphon.model_runtime.callbacks.base_callback import Callback
@@ -42,9 +42,31 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 
+class LLMModerationPolicy(Protocol):
+    """Tenant-bound checks injected during model assembly, never overridden by an invocation."""
+
+    @property
+    def tenant_id(self) -> str: ...
+
+    def check_inputs(self, prompt_messages: Sequence[PromptMessage]) -> None:
+        """Approve model inputs or raise before provider invocation and quota reservation."""
+        ...
+
+    def check_result(self, result: LLMResult) -> None:
+        """Approve a completed result or raise without modifying it or refunding settled quota."""
+        ...
+
+    def check_output(self, response: LLMResult | Generator) -> LLMResult | Generator:
+        """Return approved results or a guarded stream; unavailable checks must fail closed."""
+        ...
+
+
 class ModelInstance:
     """
-    Model instance class.
+    A model instance with an assembly-bound, tenant-scoped moderation boundary.
+
+    Subclasses extend _invoke_llm for execution and accounting rather than
+    replacing the public invocation boundary that enforces the bound policy.
     """
 
     def __init__(
@@ -53,7 +75,23 @@ class ModelInstance:
         model: str,
         credentials: dict | None = None,
         request_metadata: Mapping[str, object] | None = None,
+        *,
+        moderation: LLMModerationPolicy | None = None,
     ) -> None:
+        """Assemble a model with an optional tenant-matched LLM policy.
+
+        None selects automatic platform moderation where enabled and
+        leaves other instances unmoderated. Explicit policies supplement rather
+        than replace enabled automatic platform moderation. A bound policy is immutable
+        through the public invocation API and cannot be bound across tenants or
+        to non-LLM capabilities. Invalid bindings fail before credential lookup.
+        """
+        if moderation is not None:
+            if provider_model_bundle.model_type_instance.model_type != ModelType.LLM:
+                raise ValueError("Moderation policies can only be bound to LLM instances.")
+            if moderation.tenant_id != provider_model_bundle.configuration.tenant_id:
+                raise ValueError("Moderation policy tenant does not match the model tenant.")
+        self._moderation = bind_model_moderation_policy(provider_model_bundle, moderation)
         self.provider_model_bundle = provider_model_bundle
         self.model_name = model
         self.provider = provider_model_bundle.configuration.provider.provider
@@ -71,6 +109,11 @@ class ModelInstance:
             model=model,
             credentials=self.credentials,
         )
+
+    @property
+    def moderation(self) -> LLMModerationPolicy | None:
+        """Return the assembly-bound policy; None means this instance has no moderation policy."""
+        return self._moderation
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
         bound_request_metadata = self._request_metadata
@@ -199,6 +242,38 @@ class ModelInstance:
         :param callbacks: callbacks
         :param request_metadata: optional request metadata
         :return: full response or stream response chunk generator result
+
+        Requires an LLM instance. An assembly-bound policy checks inputs before
+        any provider or quota effects and outputs after accounting, before caller
+        delivery. Rejection and unavailable checks propagate without model retry.
+        """
+        if self._moderation is not None:
+            self._moderation.check_inputs(prompt_messages)
+        response = self._invoke_llm(
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            callbacks=callbacks,
+            request_metadata=request_metadata,
+        )
+        return self._moderation.check_output(response) if self._moderation is not None else response
+
+    def _invoke_llm(
+        self,
+        prompt_messages: Sequence[PromptMessage],
+        model_parameters: dict[str, Any] | None,
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: bool,
+        callbacks: list[Callback] | None,
+        request_metadata: Mapping[str, object] | None,
+    ) -> LLMResult | Generator:
+        """Execute already-admitted LLM inputs; subclasses own accounting before results return.
+
+        Called only by the public guarded invocation path. Provider and load
+        balancing failures propagate; this step performs no moderation itself.
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
             raise Exception("Model type instance is not LargeLanguageModel")
@@ -587,53 +662,23 @@ class QuotaManagedModelInstance(ModelInstance):
         finally:
             self.release_quota_safely(reservation)
 
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: Literal[True] = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> Generator: ...
-
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: Literal[False] = False,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult: ...
-
-    @overload
-    def invoke_llm(
-        self,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: list[str] | None = None,
-        stream: bool = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
-    ) -> LLMResult | Generator: ...
-
     @override
-    def invoke_llm(
+    def _invoke_llm(
         self,
         prompt_messages: Sequence[PromptMessage],
-        model_parameters: dict[str, Any] | None = None,
-        tools: Sequence[PromptMessageTool] | None = None,
-        stop: Sequence[str] | None = None,
-        stream: bool = True,
-        callbacks: list[Callback] | None = None,
-        request_metadata: Mapping[str, object] | None = None,
+        model_parameters: dict[str, Any] | None,
+        tools: Sequence[PromptMessageTool] | None,
+        stop: Sequence[str] | None,
+        stream: bool,
+        callbacks: list[Callback] | None,
+        request_metadata: Mapping[str, object] | None,
     ) -> LLMResult | Generator:
+        """Execute admitted inputs within quota accounting before output moderation.
+
+        The public invocation has already checked input. Successful model usage
+        is committed before returning or yielding, and outstanding reservations
+        are released on failure. Output checks belong to the inherited boundary.
+        """
         normalized_prompt_messages = list(prompt_messages)
         normalized_stop = list(stop) if stop else None
         if stream:
@@ -649,7 +694,7 @@ class QuotaManagedModelInstance(ModelInstance):
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         reservation = self._reserve_quota_for_request(effective_request_metadata)
         try:
-            response = super().invoke_llm(
+            response = super()._invoke_llm(
                 prompt_messages=normalized_prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -679,7 +724,7 @@ class QuotaManagedModelInstance(ModelInstance):
         reservation = self._reserve_quota_for_request(effective_request_metadata)
         usage: LLMUsage | None = None
         try:
-            response = super().invoke_llm(
+            response = super()._invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -842,8 +887,16 @@ class ModelManager:
         *,
         enable_credentials_cache: bool = False,
         request_metadata: Mapping[str, object] | None = None,
+        moderation: LLMModerationPolicy | None = None,
     ) -> None:
+        """Bind dependencies and an optional LLM policy for every model assembled by this manager.
+
+        None delegates to deployment policy selection during model construction.
+        Explicit policy tenant validation occurs when an LLM is constructed;
+        non-LLM models never inherit this policy.
+        """
         self._provider_manager = provider_manager
+        self._moderation = moderation
         self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
         self._enable_credentials_cache = enable_credentials_cache
         self._request_metadata = dict(request_metadata) if request_metadata else None
@@ -855,12 +908,22 @@ class ModelManager:
         user_id: str | None = None,
         *,
         request_metadata: Mapping[str, object] | None = None,
+        moderation: LLMModerationPolicy | None = None,
     ) -> "ModelManager":
+        """Construct a tenant runtime with an optional assembly-bound LLM policy.
+
+        A policy from another tenant is rejected before runtime construction.
+        None permits automatic platform moderation during model assembly.
+        Credit metadata behavior is unchanged.
+        """
+        if moderation is not None and moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         if request_metadata is None:
             request_metadata = get_credit_usage_metadata()
         return cls(
             provider_manager=create_plugin_provider_manager(tenant_id=tenant_id, user_id=user_id),
             request_metadata=request_metadata,
+            moderation=moderation,
         )
 
     def _resolve_request_metadata(self, request_metadata: Mapping[str, object] | None) -> Mapping[str, object] | None:
@@ -919,8 +982,14 @@ class ModelManager:
         :param provider: provider name
         :param model_type: model type
         :param model: model name
-        :return:
+        :return: a model carrying the manager policy for LLM capabilities only
+
+        A bound LLM policy must match tenant_id before provider lookup. The same
+        policy is applied with or without credential caching; callers cannot
+        replace it via request metadata or model invocation arguments.
         """
+        if model_type == ModelType.LLM and self._moderation is not None and self._moderation.tenant_id != tenant_id:
+            raise ValueError("Moderation policy tenant does not match the model tenant.")
         if not provider:
             return self.get_default_model_instance(tenant_id, model_type)
 
@@ -930,6 +999,7 @@ class ModelManager:
         self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
         model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
+        moderation = self._moderation if model_type == ModelType.LLM else None
 
         cred_cache_key = (tenant_id, provider, model_type.value, model)
 
@@ -939,9 +1009,12 @@ class ModelManager:
                 model,
                 deepcopy(self._credentials_cache[cred_cache_key]),
                 effective_request_metadata,
+                moderation=moderation,
             )
 
-        ret = model_instance_class(provider_model_bundle, model, request_metadata=effective_request_metadata)
+        ret = model_instance_class(
+            provider_model_bundle, model, request_metadata=effective_request_metadata, moderation=moderation
+        )
         if self._enable_credentials_cache:
             self._credentials_cache[cred_cache_key] = deepcopy(ret.credentials)
         return ret

@@ -711,10 +711,10 @@ class HttpConfig(BaseSettings):
     OPENAPI_ENABLED: bool = Field(
         description=(
             "Enable the /openapi/v1/* endpoint group used by difyctl and other "
-            "programmatic clients. Set to true to activate; disabled by default."
+            "programmatic clients. Enabled by default; set to false to disable."
         ),
         validation_alias=AliasChoices("OPENAPI_ENABLED"),
-        default=False,
+        default=True,
     )
 
     inner_openapi_cors_allow_origins: str = Field(
@@ -1211,8 +1211,13 @@ class ModerationConfig(BaseSettings):
     """
 
     MODERATION_BUFFER_SIZE: PositiveInt = Field(
-        description="Size of the buffer for content moderation processing",
+        description="Characters buffered before streaming moderation checks",
         default=300,
+    )
+
+    MODERATION_NON_STREAM_SEGMENT_SIZE: PositiveInt = Field(
+        description="Maximum characters checked per moderation request for input or non-streaming output",
+        default=2000,
     )
 
 

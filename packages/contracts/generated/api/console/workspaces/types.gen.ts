@@ -208,6 +208,14 @@ export type EmailChannelMutationResponse = {
   summary: ChannelSummary
 }
 
+export type ChannelProviderBadRequestResponse = {
+  code: string
+  message: string
+  provider_error_code?: string | null
+  provider_request_id?: string | null
+  status: number
+}
+
 export type EmailChannelTestPayload = {
   credentials: EmailProviderCredentials
   sender_email: string
@@ -215,6 +223,8 @@ export type EmailChannelTestPayload = {
 }
 
 export type ChannelTestResponse = {
+  provider_error_code?: string | null
+  provider_request_id?: string | null
   status: ChannelStatus
   status_description: string
 }
@@ -405,6 +415,10 @@ export type ListOrganizationCandidatesResponse = {
   limit: number
   page: number
   total: number
+}
+
+export type HumanInputTestChannelsResponse = {
+  channels: Array<DebugChannel>
 }
 
 export type MemberInvitePayload = {
@@ -2154,6 +2168,15 @@ export type OrganizationCandidate = {
   id: string
   name: string
 }
+
+export type DebugChannel =
+  | 'ding_talk'
+  | 'email'
+  | 'feishu'
+  | 'lark'
+  | 'ms_teams'
+  | 'slack'
+  | 'we_com'
 
 export type MemberInviteSuccessResponse = {
   email: string
@@ -4011,15 +4034,6 @@ export type FileListInputConfig = {
 
 export type ButtonStyle = 'accent' | 'default' | 'ghost' | 'primary'
 
-export type DebugChannel =
-  | 'ding_talk'
-  | 'email'
-  | 'feishu'
-  | 'lark'
-  | 'ms_teams'
-  | 'slack'
-  | 'we_com'
-
 export type FormOption = {
   label: ModelRuntimeI18nObject
   show_on?: Array<FormShowOnObject>
@@ -5085,6 +5099,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsEmailData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsEmailErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5178,6 +5193,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsEmailByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5224,6 +5240,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   default: ErrorResponse
 }
 
@@ -5317,6 +5334,7 @@ export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdData = {
 }
 
 export type PutWorkspacesCurrentHumanInputV2ChannelsImByChannelIdErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5341,6 +5359,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementDat
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdReplacementErrors = {
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5365,7 +5384,7 @@ export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestData = {
 }
 
 export type PostWorkspacesCurrentHumanInputV2ChannelsImByChannelIdTestErrors = {
-  400: ErrorResponse
+  400: ChannelProviderBadRequestResponse | ErrorResponse
   409: ChannelConflictResponse | ErrorResponse
   default: ErrorResponse
 }
@@ -5839,6 +5858,27 @@ export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses = {
 
 export type GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponse =
   GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses[keyof GetWorkspacesCurrentHumanInputV2OrganizationCandidatesResponses]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: '/workspaces/current/human-input/v2/test-channels'
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsErrors = {
+  default: ErrorResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsError =
+  GetWorkspacesCurrentHumanInputV2TestChannelsErrors[keyof GetWorkspacesCurrentHumanInputV2TestChannelsErrors]
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponses = {
+  200: HumanInputTestChannelsResponse
+}
+
+export type GetWorkspacesCurrentHumanInputV2TestChannelsResponse =
+  GetWorkspacesCurrentHumanInputV2TestChannelsResponses[keyof GetWorkspacesCurrentHumanInputV2TestChannelsResponses]
 
 export type GetWorkspacesCurrentMembersData = {
   body?: never
