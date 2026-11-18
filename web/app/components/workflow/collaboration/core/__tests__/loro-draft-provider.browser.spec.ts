@@ -1,6 +1,7 @@
 import type { LoroDraftIdentity } from '../loro-draft-provider'
 import type { LoroDraftRetirement } from '../loro-draft-storage'
 import type { Edge, Node, PromptItem } from '@/app/components/workflow/types'
+import { deleteDB, openDB } from 'idb'
 import { LoroDoc, LoroMap, VersionVector } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { CollaborationManager } from '../collaboration-manager'
@@ -25,11 +26,7 @@ afterEach(async () => {
   managers.splice(0).forEach((manager) => manager.destroy())
   providers.splice(0).forEach((provider) => provider.destroy())
   vi.restoreAllMocks()
-  await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase('dify-workflow-loro')
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
-  })
+  await deleteDB('dify-workflow-loro')
 })
 
 function sourceDocument(title = 'Before') {
@@ -411,6 +408,51 @@ it('restores offline edits after reopening and merges the other editor on reconn
   expect(server.document().toJSON()).toEqual(reopened.doc.toJSON())
   expect((await server.read()).edits).toEqual([])
   expect(reopened.onPendingChange).toHaveBeenLastCalledWith(false)
+})
+
+it('recovers and synchronizes a pending edit from an existing version 1 database', async () => {
+  const server = createDraftServer()
+  const saved = server.document()
+  const edited = new LoroDoc()
+  edited.import(saved.export({ mode: 'snapshot' }))
+  edited.getMap('nodes').set('offline', { title: 'Saved offline' })
+  edited.commit()
+  const db = await openDB('dify-workflow-loro', 1, {
+    upgrade(db) {
+      db.createObjectStore('drafts', { keyPath: ['scope', 'id'] }).createIndex('scope', 'scope')
+    },
+  })
+  try {
+    const scope = server.scope()
+    const tx = db.transaction('drafts', 'readwrite')
+    await Promise.all([
+      tx.store.add({
+        scope,
+        id: 'checkpoint',
+        kind: 'checkpoint',
+        snapshot: saved.export({ mode: 'snapshot' }),
+        version: saved.version().encode(),
+      }),
+      tx.store.add({
+        scope,
+        id: 'offline-edit',
+        kind: 'edit',
+        bytes: edited.export({ mode: 'update', from: saved.version() }),
+        endVersion: edited.version().encode(),
+      }),
+      tx.done,
+    ])
+  } finally {
+    db.close()
+  }
+
+  const reopened = await server.open(server.identity, false)
+  expect(reopened.doc.toJSON()).toEqual(edited.toJSON())
+  reopened.socket.connected = true
+  reopened.provider.join()
+  await reopened.provider.flush()
+  expect(server.document().toJSON()).toEqual(edited.toJSON())
+  expect((await server.read()).edits).toEqual([])
 })
 
 it('retries a committed edit after a lost acknowledgement without creating another revision', async () => {

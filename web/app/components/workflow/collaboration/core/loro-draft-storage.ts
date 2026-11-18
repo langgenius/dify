@@ -1,3 +1,5 @@
+import type { DBSchema, IDBPDatabase, IDBPTransaction } from 'idb'
+import { openDB } from 'idb'
 import { VersionVector } from 'loro-crdt'
 
 const DB_NAME = 'dify-workflow-loro'
@@ -33,6 +35,16 @@ type DraftRecord =
   | RetirementTask
   | RetiredDraft
 
+type DraftDB = DBSchema & {
+  drafts: {
+    key: [string, string]
+    value: DraftRecord
+    indexes: { scope: string }
+  }
+}
+
+type DraftTransaction = IDBPTransaction<DraftDB, [typeof STORE], 'readwrite'>
+
 const retirementTask = (scope: string, draft: LoroDraftRetirement): RetirementTask => ({
   kind: 'retirement',
   scope,
@@ -40,43 +52,37 @@ const retirementTask = (scope: string, draft: LoroDraftRetirement): RetirementTa
   draft,
 })
 
-const result = <T>(request: IDBRequest<T>) =>
-  new Promise<T>((resolve, reject) => {
-    request.onsuccess = () => resolve(request.result)
-    request.onerror = () => reject(request.error)
-  })
-
-const committed = (tx: IDBTransaction) =>
-  new Promise<void>((resolve, reject) => {
-    tx.oncomplete = () => resolve()
-    tx.onabort = () => reject(tx.error ?? new Error('Loro draft storage transaction aborted.'))
-  })
-
 export class LoroDraftStorage {
-  private readonly db: IDBDatabase
+  private readonly db: IDBPDatabase<DraftDB>
   private readonly scope: string
 
-  private constructor(db: IDBDatabase, scope: string) {
+  private constructor(db: IDBPDatabase<DraftDB>, scope: string) {
     this.db = db
     this.scope = scope
   }
 
   static async open(scope: string) {
-    const request = indexedDB.open(DB_NAME, 1)
-    request.onupgradeneeded = () => {
-      request.result
-        .createObjectStore(STORE, { keyPath: ['scope', 'id'] })
-        .createIndex('scope', 'scope')
-    }
-    const db = await result(request)
-    db.onversionchange = () => db.close()
+    const db = await openDB<DraftDB>(DB_NAME, 1, {
+      upgrade(database) {
+        database
+          .createObjectStore(STORE, { keyPath: ['scope', 'id'] })
+          .createIndex('scope', 'scope')
+      },
+      blocking() {
+        db.close()
+      },
+    })
     return new LoroDraftStorage(db, scope)
   }
 
+  private async write<T>(operation: (tx: DraftTransaction) => Promise<T>): Promise<T> {
+    const tx = this.db.transaction(STORE, 'readwrite', { durability: 'strict' })
+    const [value] = await Promise.all([operation(tx), tx.done])
+    return value
+  }
+
   async read() {
-    const records: DraftRecord[] = await result(
-      this.db.transaction(STORE).objectStore(STORE).index('scope').getAll(this.scope),
-    )
+    const records = await this.db.getAllFromIndex(STORE, 'scope', this.scope)
     return {
       checkpoint: records.find((record) => record.kind === 'checkpoint'),
       edits: records.filter((record) => record.kind === 'edit'),
@@ -84,113 +90,93 @@ export class LoroDraftStorage {
     }
   }
 
-  async append(edit: LoroDraftEdit) {
-    const tx = this.db.transaction(STORE, 'readwrite', { durability: 'strict' })
-    const done = committed(tx)
-    const store = tx.objectStore(STORE)
-    const retired = await result(store.get([this.scope, 'retired']))
-    if (!retired) store.add({ ...edit, kind: 'edit', scope: this.scope } satisfies DraftRecord)
-    await done
-    return !retired
+  append(edit: LoroDraftEdit) {
+    return this.write(async ({ store }) => {
+      if (await store.get([this.scope, 'retired'])) return false
+      await store.add({ ...edit, kind: 'edit', scope: this.scope })
+      return true
+    })
   }
 
-  async confirm(snapshot: Uint8Array, version: VersionVector, coveredIds: string[]) {
-    const tx = this.db.transaction(STORE, 'readwrite', { durability: 'strict' })
-    const done = committed(tx)
-    const store = tx.objectStore(STORE)
-    const retired = await result(store.get([this.scope, 'retired']))
-    if (retired) {
-      await done
-      return false
-    }
-    const key = [this.scope, 'checkpoint']
-    const request = store.get(key) as IDBRequest<Checkpoint | undefined>
-    request.onsuccess = () => {
-      const previous = request.result
-      const order = previous ? version.compare(VersionVector.decode(previous.version)) : 1
-      // Another tab may have stored a newer committed checkpoint for the same epoch.
+  confirm(snapshot: Uint8Array, version: VersionVector, coveredIds: string[]) {
+    return this.write(async (tx) => {
+      const { store } = tx
+      if (await store.get([this.scope, 'retired'])) return false
+      const previous = await store.get([this.scope, 'checkpoint'])
+      const order =
+        previous?.kind === 'checkpoint'
+          ? version.compare(VersionVector.decode(previous.version))
+          : 1
       if (order === undefined) {
         tx.abort()
-        return
+        return false
       }
       if (order > 0)
-        store.put({
+        await store.put({
           kind: 'checkpoint',
           id: 'checkpoint',
           scope: this.scope,
           snapshot,
           version: version.encode(),
-        } satisfies Checkpoint)
-      coveredIds.forEach((id) => store.delete([this.scope, id]))
-    }
-    await done
-    return true
+        })
+      await Promise.all(coveredIds.map((id) => store.delete([this.scope, id])))
+      return true
+    })
   }
 
-  async queueRetirements(drafts: readonly LoroDraftRetirement[]) {
-    const tx = this.db.transaction(STORE, 'readwrite', { durability: 'strict' })
-    const done = committed(tx)
-    const store = tx.objectStore(STORE)
-    const scopes = [...new Set([this.scope, ...drafts.map((draft) => draft.scope)])]
-    const records = await Promise.all(
-      scopes.map((scope) => result<DraftRecord[]>(store.index('scope').getAll(scope))),
-    )
-    if (records[0]!.some((record) => record.kind === 'retired')) {
-      await done
-      return false
-    }
-    const tasks = new Map<string, LoroDraftRetirement>()
-    const remember = (draft: LoroDraftRetirement) => {
-      const previous = tasks.get(draft.scope)
-      tasks.set(draft.scope, {
-        scope: draft.scope,
-        hadPendingEdits: draft.hadPendingEdits || !!previous?.hadPendingEdits,
-      })
-    }
-    records.forEach((entries, index) => {
-      entries.forEach((record) => {
-        if (record.kind === 'retirement') {
-          remember(record.draft)
-          if (index > 0) store.delete([record.scope, record.id])
-        }
-      })
-    })
-    drafts.forEach((draft) => {
-      const entries = records[scopes.indexOf(draft.scope)]!
-      remember({
-        ...draft,
-        hadPendingEdits: draft.hadPendingEdits || entries.some((record) => record.kind === 'edit'),
-      })
-      store.put({ kind: 'retired', scope: draft.scope, id: 'retired' } satisfies RetiredDraft)
-    })
-    tasks.forEach((draft) => store.put(retirementTask(this.scope, draft)))
-    await done
-    return true
-  }
-
-  async clearRetiredDrafts() {
-    const tx = this.db.transaction(STORE, 'readwrite', { durability: 'strict' })
-    const done = committed(tx)
-    const store = tx.objectStore(STORE)
-    const records = await result<DraftRecord[]>(store.index('scope').getAll(this.scope))
-    if (records.some((record) => record.kind === 'retired')) {
-      await done
-      return { retired: true, hadPendingEdits: false }
-    }
-    const tasks = records.filter((record) => record.kind === 'retirement')
-    tasks.forEach((task) => {
-      const request = store.index('scope').openCursor(task.draft.scope)
-      request.onsuccess = () => {
-        const cursor = request.result
-        if (!cursor) return
-        const record = cursor.value as DraftRecord
-        if (record.kind !== 'retired') cursor.delete()
-        cursor.continue()
+  queueRetirements(drafts: readonly LoroDraftRetirement[]) {
+    return this.write(async ({ store }) => {
+      const scopes = [...new Set([this.scope, ...drafts.map((draft) => draft.scope)])]
+      const records = await Promise.all(scopes.map((scope) => store.index('scope').getAll(scope)))
+      if (records[0]!.some((record) => record.kind === 'retired')) return false
+      const tasks = new Map<string, LoroDraftRetirement>()
+      const remember = (draft: LoroDraftRetirement) => {
+        const previous = tasks.get(draft.scope)
+        tasks.set(draft.scope, {
+          scope: draft.scope,
+          hadPendingEdits: draft.hadPendingEdits || !!previous?.hadPendingEdits,
+        })
       }
-      store.delete([this.scope, task.id])
+      for (const [index, entries] of records.entries()) {
+        for (const record of entries) {
+          if (record.kind === 'retirement') {
+            remember(record.draft)
+            if (index > 0) await store.delete([record.scope, record.id])
+          }
+        }
+      }
+      for (const draft of drafts) {
+        const entries = records[scopes.indexOf(draft.scope)]!
+        remember({
+          ...draft,
+          hadPendingEdits:
+            draft.hadPendingEdits || entries.some((record) => record.kind === 'edit'),
+        })
+        await store.put({ kind: 'retired', scope: draft.scope, id: 'retired' })
+      }
+      await Promise.all(
+        Array.from(tasks.values(), (draft) => store.put(retirementTask(this.scope, draft))),
+      )
+      return true
     })
-    await done
-    return { retired: false, hadPendingEdits: tasks.some((task) => task.draft.hadPendingEdits) }
+  }
+
+  clearRetiredDrafts() {
+    return this.write(async ({ store }) => {
+      const index = store.index('scope')
+      const records = await index.getAll(this.scope)
+      if (records.some((record) => record.kind === 'retired'))
+        return { retired: true, hadPendingEdits: false }
+
+      const tasks = records.filter((record) => record.kind === 'retirement')
+      for (const task of tasks) {
+        for await (const cursor of index.iterate(task.draft.scope)) {
+          if (cursor.value.kind !== 'retired') await cursor.delete()
+        }
+        await store.delete([this.scope, task.id])
+      }
+      return { retired: false, hadPendingEdits: tasks.some((task) => task.draft.hadPendingEdits) }
+    })
   }
 
   close() {

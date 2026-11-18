@@ -1,5 +1,6 @@
 import type { LoroDraftIdentity } from '../loro-draft-provider'
 import type { LoroDraftRetirement } from '../loro-draft-storage'
+import { deleteDB } from 'idb'
 import { LoroDoc, VersionVector } from 'loro-crdt'
 import { LoroDraftProvider } from '../loro-draft-provider'
 import { LoroDraftStorage } from '../loro-draft-storage'
@@ -12,11 +13,7 @@ const providers: LoroDraftProvider[] = []
 afterEach(async () => {
   providers.splice(0).forEach((provider) => provider.destroy())
   vi.restoreAllMocks()
-  await new Promise<void>((resolve, reject) => {
-    const request = indexedDB.deleteDatabase('dify-workflow-loro')
-    request.onsuccess = () => resolve()
-    request.onerror = () => reject(request.error)
-  })
+  await deleteDB('dify-workflow-loro')
 })
 
 function document(title: string) {

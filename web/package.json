@@ -98,6 +98,7 @@
     "html-to-image": "catalog:",
     "i18next": "catalog:",
     "i18next-resources-to-backend": "catalog:",
+    "idb": "catalog:",
     "immer": "catalog:",
     "jotai": "catalog:",
     "jotai-scope": "catalog:",
