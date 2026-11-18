@@ -52,8 +52,9 @@ from services.run_job_service import (
     MessageResult,
     RunJobService,
     RunResult,
+    family_of,
 )
-from services.workflow.graph_check import GRAPH_MODES
+from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 from tests.unit_tests.services.run_job_fakes import (
     RUN_TIME_LIMIT,
@@ -366,12 +367,22 @@ def test_start_payloads_bound_the_start_fields_and_forbid_extras(model: type) ->
     assert {"wait_seconds", "idempotency_key"} <= set(schema)
 
 
-def test_the_start_ops_are_the_catalogs_and_each_graph_mode_has_exactly_one(openapi_app: Flask) -> None:
+def test_the_start_ops_are_the_catalogs_and_each_job_mode_has_exactly_one(openapi_app: Flask) -> None:
     ops = build_catalog(openapi_app)["ops"]
 
     assert {op for op in ops if op.startswith(START_OP_PREFIX)} == set(START_MODES)
-    for mode in GRAPH_MODES:
+    for mode in GRAPH_MODES | MESSAGE_MODES:
         assert len([op for op, modes in START_MODES.items() if mode in modes]) == 1, mode
+
+
+def test_a_job_family_takes_exactly_the_modes_a_start_op_runs() -> None:
+    started = {mode for modes in START_MODES.values() for mode in modes}
+    for mode in AppMode:
+        if mode in started:
+            family_of(mode)
+        else:
+            with pytest.raises(ValueError, match="does not support run jobs"):
+                family_of(mode)
 
 
 def test_start_ops_are_in_the_catalog_with_the_run_guards_and_pat_policy(openapi_app: Flask) -> None:
