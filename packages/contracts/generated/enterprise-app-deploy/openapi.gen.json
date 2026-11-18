@@ -1603,6 +1603,31 @@
             "additionalProperties": {
               "type": "string"
             }
+          },
+          "inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/dify.enterprise.api.appdeploy.v1.EnvironmentMCPServerInput"
+            },
+            "description": "Start variables of the serving revision that the MCP tool exposes; parameters describe them."
+          },
+          "trigger_workflow": {
+            "type": "boolean",
+            "description": "MCP does not serve workflows with trigger nodes, so the server is unreachable while this is true."
+          }
+        }
+      },
+      "dify.enterprise.api.appdeploy.v1.EnvironmentMCPServerInput": {
+        "type": "object",
+        "properties": {
+          "variable": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "required": {
+            "type": "boolean"
           }
         }
       },
@@ -2128,7 +2153,9 @@
       "dify.enterprise.api.appdeploy.v1.EnvironmentAccess": {
         "required": [
           "enable_site",
-          "enable_api"
+          "enable_api",
+          "enable_mcp",
+          "enable_trigger"
         ],
         "type": "object",
         "properties": {
@@ -2136,6 +2163,12 @@
             "type": "boolean"
           },
           "enable_api": {
+            "type": "boolean"
+          },
+          "enable_mcp": {
+            "type": "boolean"
+          },
+          "enable_trigger": {
             "type": "boolean"
           }
         }

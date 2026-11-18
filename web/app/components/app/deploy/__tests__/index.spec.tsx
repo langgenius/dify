@@ -272,7 +272,7 @@ function deploymentOperation({
 }
 
 function environmentDeployment({
-  access = { enable_api: true, enable_site: true },
+  access = { enable_api: true, enable_site: true, enable_mcp: false, enable_trigger: false },
   currentVersion,
   id,
   latestOperation,
@@ -353,7 +353,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
     versionsBehind: 1,
   }),
   environmentDeployment({
-    access: { enable_api: false, enable_site: false },
+    access: { enable_api: false, enable_site: false, enable_mcp: false, enable_trigger: false },
     currentVersion: VERSIONS.beta,
     id: 'eu-prod',
     latestOperation: deploymentOperation({
@@ -366,7 +366,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
     versionsBehind: 2,
   }),
   environmentDeployment({
-    access: { enable_api: false, enable_site: false },
+    access: { enable_api: false, enable_site: false, enable_mcp: false, enable_trigger: false },
     currentVersion: VERSIONS.qa,
     id: 'qa',
     latestOperation: deploymentOperation({
@@ -378,7 +378,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
     versionsBehind: 0,
   }),
   environmentDeployment({
-    access: { enable_api: false, enable_site: false },
+    access: { enable_api: false, enable_site: false, enable_mcp: false, enable_trigger: false },
     currentVersion: VERSIONS.qa,
     id: 'sandbox',
     latestOperation: deploymentOperation({
@@ -390,7 +390,7 @@ const APP_ENVIRONMENT_DEPLOYMENTS: EnvironmentDeployment[] = [
     versionsBehind: 0,
   }),
   environmentDeployment({
-    access: { enable_api: false, enable_site: false },
+    access: { enable_api: false, enable_site: false, enable_mcp: false, enable_trigger: false },
     id: 'preview',
     latestOperation: deploymentOperation({
       id: '15',
@@ -418,7 +418,7 @@ const ACTION_MATRIX_CASES: Array<{
     name: 'undeployed',
     row: {
       deployment_id: 'deployment-undeployed',
-      access: { enable_api: false, enable_site: false },
+      access: { enable_api: false, enable_site: false, enable_mcp: false, enable_trigger: false },
       environment: {
         description: '',
         display_name: 'Undeployed',

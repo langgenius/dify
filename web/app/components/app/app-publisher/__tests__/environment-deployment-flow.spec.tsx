@@ -171,6 +171,8 @@ function createDeployment({
     access: {
       enable_api: true,
       enable_site: true,
+      enable_mcp: false,
+      enable_trigger: false,
     },
     deployment_id: 'deployment-staging',
     deployment: {

@@ -53,7 +53,7 @@ export const environment = {
 export const deployment: EnvironmentDeployment = {
   deployment_id: 'deployment-canary',
   environment,
-  access: { enable_api: true, enable_site: true },
+  access: { enable_api: true, enable_site: true, enable_mcp: false, enable_trigger: false },
   deployment: {
     current_version: { id: 'release-0', marked_name: 'Release 0', version: '1' },
     runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,

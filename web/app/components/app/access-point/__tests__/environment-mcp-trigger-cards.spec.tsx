@@ -1,6 +1,7 @@
 import type {
   EnvironmentMcpServer,
   EnvironmentTrigger,
+  TriggerLogEntry,
 } from '@dify/contracts/enterprise-app-deploy/types.gen'
 import type { ReactElement } from 'react'
 import { screen, waitFor, within } from '@testing-library/react'
@@ -16,10 +17,13 @@ vi.mock('@/app/notifications', () => {
   return { toast: Object.assign(toast, { error: vi.fn(), success: vi.fn() }) }
 })
 
-// An in-memory enterprise: the MCP server exists only after POST, as on the real endpoint.
+// An in-memory enterprise. The MCP server row exists only after POST, as on the real endpoint, and
+// every server answer describes the serving revision.
 let server: EnvironmentMcpServer | null
+let serving: Pick<EnvironmentMcpServer, 'inputs' | 'trigger_workflow'>
 let triggerEnabled: boolean
 let triggers: EnvironmentTrigger[]
+let logs: TriggerLogEntry[]
 let requests: string[]
 
 function renderCard(ui: ReactElement) {
@@ -28,34 +32,40 @@ function renderCard(ui: ReactElement) {
   )
 }
 
+const writes = () => requests.filter((request) => !request.startsWith('GET'))
+
 beforeEach(() => {
   server = null
+  serving = { inputs: [], trigger_workflow: false }
   triggerEnabled = false
   triggers = []
+  logs = []
   requests = []
   vi.stubGlobal('fetch', async (input: RequestInfo | URL, init?: RequestInit) => {
     const request = new Request(input, init)
-    const path = new URL(request.url).pathname
-    const match = /\/enterprise\/app-deploy\/apps\/app-1\/environments\/staging\/(.+)$/.exec(path)
-    const route = match?.[1]
-    if (!route) throw new Error(`Unexpected request: ${request.method} ${path}`)
-    const body =
-      request.method === 'GET' || request.method === 'POST' ? undefined : await request.json()
-    requests.push(`${request.method} ${route}${body ? ` ${JSON.stringify(body)}` : ''}`)
+    const url = new URL(request.url)
+    const route = /\/enterprise\/app-deploy\/apps\/app-1\/environments\/staging\/(.+)$/.exec(
+      url.pathname,
+    )?.[1]
+    if (!route) throw new Error(`Unexpected request: ${request.method} ${url.pathname}`)
+    const text = request.method === 'GET' ? '' : await request.text()
+    const body = text ? JSON.parse(text) : undefined
+    requests.push(`${request.method} ${route}${url.search}${body ? ` ${text}` : ''}`)
     switch (`${request.method} ${route}`) {
       case 'GET server':
-        return Response.json(server ?? {})
+        return Response.json({ ...server, ...serving })
       case 'POST server':
         server = {
           server_code: 'code-1',
           url: 'https://api.test/mcp/environment/code-1/mcp',
-          enabled: false,
+          enabled: true,
+          description: '',
         }
-        return Response.json(server)
+        return Response.json({ ...server, ...serving })
       case 'PUT server':
         if (!server) return Response.json({ code: 404 }, { status: 404 })
         server = { ...server, ...body }
-        return Response.json(server)
+        return Response.json({ ...server, ...serving })
       case 'GET trigger':
         return Response.json({ enabled: triggerEnabled })
       case 'PATCH trigger':
@@ -63,6 +73,16 @@ beforeEach(() => {
         return Response.json({ enabled: triggerEnabled })
       case 'GET triggers':
         return Response.json({ data: triggers })
+      case 'GET trigger-logs': {
+        // Two logs per page: the cursor is the index of the next one.
+        const start = Number(url.searchParams.get('cursor') || 0)
+        const end = start + 2
+        return Response.json({
+          data: logs.slice(start, end),
+          has_more: end < logs.length,
+          next_cursor: String(end),
+        })
+      }
     }
     const nodeId = /^triggers\/(.+)$/.exec(route)?.[1]
     if (nodeId && request.method === 'PATCH') {
@@ -71,45 +91,80 @@ beforeEach(() => {
       )
       return Response.json({})
     }
-    throw new Error(`Unexpected request: ${request.method} ${path}`)
+    const rerun = /^trigger-logs\/(.+)\/rerun$/.exec(route)?.[1]
+    if (rerun && request.method === 'POST') {
+      logs = [{ id: 'rerun', node_id: 'hook', status: 'pending', rerun_of: rerun }, ...logs]
+      return Response.json({})
+    }
+    throw new Error(`Unexpected request: ${request.method} ${url.pathname}`)
   })
 })
 
 afterAll(() => vi.unstubAllGlobals())
 
 describe('EnvironmentMcpCard', () => {
-  it('creates the server before enabling it the first time', async () => {
+  it('asks for a description and parameters before creating the server', async () => {
+    serving.inputs = [{ variable: 'topic', type: 'text-input', required: true }]
     renderCard(<EnvironmentMcpCard appId="app-1" environmentId="staging" canManageAccessPoint />)
     const toggle = await screen.findByRole('switch', { name: 'tools.mcp.server.title' })
-    expect(toggle).not.toBeChecked()
 
     await userEvent.click(toggle)
+    const dialog = await screen.findByRole('dialog')
+    // Nothing is created until the form is saved.
+    expect(writes()).toEqual([])
+    await userEvent.type(
+      within(dialog).getByLabelText('tools.mcp.server.modal.description'),
+      'Searches the docs',
+    )
+    await userEvent.type(within(dialog).getByLabelText('topic'), 'What to search for')
+    await userEvent.click(
+      within(dialog).getByRole('button', { name: 'tools.mcp.server.modal.confirm' }),
+    )
 
     await waitFor(() => expect(toggle).toBeChecked())
-    expect(requests.filter((request) => !request.startsWith('GET'))).toEqual([
+    expect(writes()).toEqual([
       'POST server',
-      'PUT server {"enabled":true,"description":"","parameters":{}}',
+      'PUT server {"enabled":true,"description":"Searches the docs","parameters":{"topic":"What to search for"}}',
     ])
     expect(screen.getByText('https://api.test/mcp/environment/code-1/mcp')).toBeInTheDocument()
   })
 
-  it('keeps an existing description when disabling', async () => {
+  it('edits an existing server without changing whether it serves', async () => {
     server = {
       server_code: 'code-1',
       url: 'https://api.test/mcp/x',
-      enabled: true,
+      enabled: false,
       description: 'kept',
+      parameters: { topic: 'old' },
     }
+    serving.inputs = [{ variable: 'topic', type: 'text-input' }]
     renderCard(<EnvironmentMcpCard appId="app-1" environmentId="staging" canManageAccessPoint />)
-    const toggle = await screen.findByRole('switch', { name: 'tools.mcp.server.title' })
-    await waitFor(() => expect(toggle).toBeChecked())
 
-    await userEvent.click(toggle)
+    await userEvent.click(await screen.findByRole('button', { name: /tools\.mcp\.server\.edit/ }))
+    const dialog = await screen.findByRole('dialog')
+    const topic = within(dialog).getByLabelText('topic')
+    expect(topic).toHaveValue('old')
+    await userEvent.clear(topic)
+    await userEvent.type(topic, 'new')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'tools.mcp.modal.save' }))
 
-    await waitFor(() => expect(toggle).not.toBeChecked())
-    expect(requests.filter((request) => !request.startsWith('GET'))).toEqual([
-      'PUT server {"enabled":false,"description":"kept","parameters":{}}',
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    expect(writes()).toEqual([
+      'PUT server {"enabled":false,"description":"kept","parameters":{"topic":"new"}}',
     ])
+  })
+
+  it('offers no switch for a workflow that starts from triggers', async () => {
+    server = { server_code: 'code-1', url: 'https://api.test/mcp/x', enabled: true }
+    serving.trigger_workflow = true
+    renderCard(<EnvironmentMcpCard appId="app-1" environmentId="staging" canManageAccessPoint />)
+
+    expect(
+      await screen.findByText('deployments.studio.accessPoint.mcpTriggerUnsupported'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('deployments.studio.accessPoint.notSupported')).toBeInTheDocument()
+    expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    expect(screen.queryByText('https://api.test/mcp/x')).not.toBeInTheDocument()
   })
 })
 
@@ -137,7 +192,7 @@ describe('EnvironmentTriggerCard', () => {
     await userEvent.click(screen.getByRole('switch', { name: 'cron' }))
     await waitFor(() => expect(screen.getByRole('switch', { name: 'cron' })).toBeChecked())
 
-    expect(requests.filter((request) => !request.startsWith('GET'))).toEqual([
+    expect(writes()).toEqual([
       'PATCH trigger {"enabled":true}',
       'PATCH triggers/cron {"status":"enabled"}',
     ])
@@ -166,10 +221,40 @@ describe('EnvironmentTriggerCard', () => {
     expect(screen.getAllByText('deployments.studio.accessPoint.triggerNativeEnabled')).toHaveLength(
       1,
     )
+  })
+
+  it('pages through trigger logs and reruns a finished one', async () => {
+    logs = [
+      { id: 'l1', node_id: 'hook', status: 'started', run: { status: 'succeeded', duration: 0.5 } },
+      { id: 'l2', node_id: 'hook', status: 'failed', failure_reason: 'BUSY' },
+      { id: 'l3', node_id: 'hook', status: 'pending' },
+    ]
+    renderCard(
+      <EnvironmentTriggerCard appId="app-1" environmentId="staging" canManageAccessPoint />,
+    )
+
+    await userEvent.click(await screen.findByRole('button', { name: /appLog\.title/ }))
+    const dialog = await screen.findByRole('dialog')
+    expect(await within(dialog).findByText('BUSY')).toBeInTheDocument()
+    expect(within(dialog).getAllByRole('row')).toHaveLength(3)
+
+    await userEvent.click(within(dialog).getByRole('button', { name: 'workflow.common.loadMore' }))
+    await waitFor(() => expect(within(dialog).getAllByRole('row')).toHaveLength(4))
+    // A queued event has not run, so there is nothing to rerun yet.
     expect(
-      within(screen.getByRole('switch', { name: 'hook' }).closest('div')!.parentElement!).getByText(
-        'deployments.studio.accessPoint.triggerNativeEnabled',
-      ),
-    ).toBeInTheDocument()
+      within(dialog).getAllByRole('button', {
+        name: 'deployments.studio.accessPoint.triggerLogRerun',
+      }),
+    ).toHaveLength(2)
+
+    const failed = within(dialog).getByText('BUSY').closest('tr')!
+    await userEvent.click(
+      within(failed).getByRole('button', {
+        name: 'deployments.studio.accessPoint.triggerLogRerun',
+      }),
+    )
+    // The rerun is a new event at the top of the refreshed list.
+    await waitFor(() => expect(within(dialog).getAllByRole('row')).toHaveLength(5))
+    expect(writes()).toContain('POST trigger-logs/l2/rerun {}')
   })
 })

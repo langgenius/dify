@@ -36,7 +36,7 @@ it('shows pause provenance and allows resuming a failed initial deployment', asy
       description: '',
       status: EnvironmentStatus.ENVIRONMENT_STATUS_READY,
     },
-    access: { enable_api: true, enable_site: true },
+    access: { enable_api: true, enable_site: true, enable_mcp: false, enable_trigger: false },
     deployment: {
       runtimeState: RuntimeState.RUNTIME_STATE_RUNNING,
       current_version: { id: 'release', marked_name: 'Release 2', version: '2' },

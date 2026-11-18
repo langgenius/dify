@@ -511,6 +511,8 @@ export type EnvironmentApiUpdate = {
 export type EnvironmentAccess = {
   enable_site: boolean
   enable_api: boolean
+  enable_mcp: boolean
+  enable_trigger: boolean
 }
 
 export type EnvironmentActivity = {
@@ -591,6 +593,14 @@ export type EnvironmentMcpServer = {
   parameters?: {
     [key: string]: string
   }
+  inputs?: Array<EnvironmentMcpServerInput>
+  trigger_workflow?: boolean
+}
+
+export type EnvironmentMcpServerInput = {
+  variable?: string
+  type?: string
+  required?: boolean
 }
 
 export type EnvironmentMcpServerUpdate = {

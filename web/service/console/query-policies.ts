@@ -42,6 +42,24 @@ async function refreshRejectedPersonalToken(
   ])
 }
 
+// The deployments table shows each environment's access points.
+function invalidateEnvironmentDeployments(
+  client: QueryClient,
+  deployments: RouterUtils<ConsoleClient>['enterprise']['appDeploy']['deploymentService'],
+  { app_id, environment_id }: { app_id: string; environment_id: string },
+) {
+  return Promise.all([
+    client.invalidateQueries({
+      queryKey: deployments.listEnvironmentDeployments.queryKey({ input: { params: { app_id } } }),
+    }),
+    client.invalidateQueries({
+      queryKey: deployments.getEnvironmentDeployment.queryKey({
+        input: { params: { app_id, environment_id } },
+      }),
+    }),
+  ])
+}
+
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
     path: ['console'],
@@ -2926,6 +2944,26 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     context.client.invalidateQueries({ queryKey: detail.queryKey }),
                   ])
                 },
+              },
+            },
+            updateEnvironmentMcpServer: {
+              mutationOptions: {
+                onSuccess: (_updated, variables, _result, context) =>
+                  invalidateEnvironmentDeployments(
+                    context.client,
+                    consoleQuery.enterprise.appDeploy.deploymentService,
+                    variables.params,
+                  ),
+              },
+            },
+            updateEnvironmentTrigger: {
+              mutationOptions: {
+                onSuccess: (_updated, variables, _result, context) =>
+                  invalidateEnvironmentDeployments(
+                    context.client,
+                    consoleQuery.enterprise.appDeploy.deploymentService,
+                    variables.params,
+                  ),
               },
             },
             updateEnvironmentSite: {

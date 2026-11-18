@@ -1865,7 +1865,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
           description: '',
           status: 'ENVIRONMENT_STATUS_READY' as const,
         },
-        access: { enable_api: true, enable_site: true },
+        access: { enable_api: true, enable_site: true, enable_mcp: false, enable_trigger: false },
       }
       const production = {
         ...staging,
@@ -1950,7 +1950,12 @@ describe('consoleQuery App Deploy cache behavior', () => {
 
         const savedDeployment = {
           ...staging,
-          access: { enable_api: accessPoint !== 'api', enable_site: accessPoint !== 'site' },
+          access: {
+            enable_api: accessPoint !== 'api',
+            enable_site: accessPoint !== 'site',
+            enable_mcp: false,
+            enable_trigger: false,
+          },
         }
         expect(listObserver.getCurrentResult()).toMatchObject({
           isRefetchError: true,
@@ -2036,7 +2041,10 @@ describe('consoleQuery App Deploy cache behavior', () => {
         description: '',
         status: 'ENVIRONMENT_STATUS_READY' as const,
       }
-      const deployment = { environment, access: { enable_api: true, enable_site: true } }
+      const deployment = {
+        environment,
+        access: { enable_api: true, enable_site: true, enable_mcp: false, enable_trigger: false },
+      }
       const readList = vi.fn(async () => ({ environment_deployments: [deployment] }))
       const readDetail = vi.fn(async () => ({ environment_deployment: deployment }))
       const readEnvironments = vi.fn(async () => ({ data: [environment] }))

@@ -1,9 +1,11 @@
 'use client'
 
 import type { EnvironmentTrigger } from '@dify/contracts/enterprise-app-deploy/types.gen'
+import { Button } from '@langgenius/dify-ui/button'
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { Switch } from '@langgenius/dify-ui/switch'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AccessPointCard, AccessPointEmptyContent } from '@/app/components/base/access-point/card'
 import { CopyFeedback } from '@/app/components/base/copy-feedback'
@@ -13,6 +15,7 @@ import { toast } from '@/app/notifications'
 import { consoleQuery } from '@/service/console'
 import { getErrorMessage } from '@/utils/error-message'
 import { useAccessPointStatusLabel } from '../shared/use-access-point-status-label'
+import { EnvironmentTriggerLogs } from './environment-trigger-logs'
 
 const TRIGGER_BLOCKS = {
   'trigger-plugin': BlockEnum.TriggerPlugin,
@@ -125,8 +128,9 @@ export function EnvironmentTriggerCard({
   canManageAccessPoint,
   highlighted,
 }: EnvironmentProps & { highlighted?: boolean }) {
-  const { t } = useTranslation(['common', 'deployments', 'navigation'])
+  const { t } = useTranslation(['appLog', 'common', 'deployments', 'navigation'])
   const queryClient = useQueryClient()
+  const [showLogs, setShowLogs] = useState(false)
   const access = consoleQuery.enterprise.appDeploy.accessService
   const input = { params: { app_id: appId, environment_id: environmentId } }
   const settingQueryOptions = access.getEnvironmentTrigger.queryOptions({ input })
@@ -164,48 +168,69 @@ export function EnvironmentTriggerCard({
   const enabledCount = triggers.filter((trigger) => trigger.status === 'enabled').length
 
   return (
-    <AccessPointCard
-      title={t(($) => $['settings.trigger'], { ns: 'navigation' })}
-      description={t(($) => $['studio.accessPoint.triggerDescription'], { ns: 'deployments' })}
-      icon="i-custom-vender-integrations-trigger"
-      status={status}
-      statusLabel={statusLabel}
-      highlighted={highlighted}
-      switchDisabled={!canManageAccessPoint}
-      switchLabel={t(($) => $['settings.trigger'], { ns: 'navigation' })}
-      onEnabledChange={
-        loading || unavailable
-          ? undefined
-          : (nextEnabled) => settingMutation.mutate({ ...input, body: { enabled: nextEnabled } })
-      }
-    >
-      {!loading && !unavailable && triggers.length === 0 && (
-        <AccessPointEmptyContent>
-          {t(($) => $['studio.accessPoint.environmentTriggerEmpty'], { ns: 'deployments' })}
-        </AccessPointEmptyContent>
-      )}
-      {!loading && !unavailable && triggers.length > 0 && (
-        <div className="flex flex-col px-4 py-3">
-          <div className="flex h-6 items-center system-xs-medium-uppercase text-text-secondary">
-            {t(($) => $['studio.accessPoint.triggerEnabledCount'], {
-              ns: 'deployments',
-              enabled: enabledCount,
-              total: triggers.length,
-            })}
+    <>
+      <AccessPointCard
+        title={t(($) => $['settings.trigger'], { ns: 'navigation' })}
+        description={t(($) => $['studio.accessPoint.triggerDescription'], { ns: 'deployments' })}
+        icon="i-custom-vender-integrations-trigger"
+        status={status}
+        statusLabel={statusLabel}
+        highlighted={highlighted}
+        switchDisabled={!canManageAccessPoint}
+        switchLabel={t(($) => $['settings.trigger'], { ns: 'navigation' })}
+        onEnabledChange={
+          loading || unavailable
+            ? undefined
+            : (nextEnabled) => settingMutation.mutate({ ...input, body: { enabled: nextEnabled } })
+        }
+        actions={
+          <Button
+            variant="secondary"
+            disabled={loading || unavailable}
+            onClick={() => setShowLogs(true)}
+            className="flex items-center gap-1 px-3"
+          >
+            <span aria-hidden className="i-ri-file-list-3-line size-4" />
+            {t(($) => $.title, { ns: 'appLog' })}
+          </Button>
+        }
+      >
+        {!loading && !unavailable && triggers.length === 0 && (
+          <AccessPointEmptyContent>
+            {t(($) => $['studio.accessPoint.environmentTriggerEmpty'], { ns: 'deployments' })}
+          </AccessPointEmptyContent>
+        )}
+        {!loading && !unavailable && triggers.length > 0 && (
+          <div className="flex flex-col px-4 py-3">
+            <div className="flex h-6 items-center system-xs-medium-uppercase text-text-secondary">
+              {t(($) => $['studio.accessPoint.triggerEnabledCount'], {
+                ns: 'deployments',
+                enabled: enabledCount,
+                total: triggers.length,
+              })}
+            </div>
+            <div className="mt-1 flex flex-col gap-1">
+              {triggers.map((trigger) => (
+                <EnvironmentTriggerItem
+                  key={trigger.node_id}
+                  appId={appId}
+                  environmentId={environmentId}
+                  canManageAccessPoint={canManageAccessPoint}
+                  trigger={trigger}
+                />
+              ))}
+            </div>
           </div>
-          <div className="mt-1 flex flex-col gap-1">
-            {triggers.map((trigger) => (
-              <EnvironmentTriggerItem
-                key={trigger.node_id}
-                appId={appId}
-                environmentId={environmentId}
-                canManageAccessPoint={canManageAccessPoint}
-                trigger={trigger}
-              />
-            ))}
-          </div>
-        </div>
+        )}
+      </AccessPointCard>
+      {showLogs && (
+        <EnvironmentTriggerLogs
+          appId={appId}
+          environmentId={environmentId}
+          canManageAccessPoint={canManageAccessPoint}
+          onHide={() => setShowLogs(false)}
+        />
       )}
-    </AccessPointCard>
+    </>
   )
 }

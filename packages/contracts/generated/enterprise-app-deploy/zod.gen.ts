@@ -344,6 +344,8 @@ export const zEnvironmentApiUpdate = z.object({
 export const zEnvironmentAccess = z.object({
   enable_site: z.boolean(),
   enable_api: z.boolean(),
+  enable_mcp: z.boolean(),
+  enable_trigger: z.boolean(),
 })
 
 /**
@@ -376,12 +378,20 @@ export const zEnvironmentDeployedAppAttempt = z.object({
   finalizedAt: z.iso.datetime().optional(),
 })
 
+export const zEnvironmentMcpServerInput = z.object({
+  variable: z.string().optional(),
+  type: z.string().optional(),
+  required: z.boolean().optional(),
+})
+
 export const zEnvironmentMcpServer = z.object({
   server_code: z.string().optional(),
   url: z.string().optional(),
   enabled: z.boolean().optional(),
   description: z.string().optional(),
   parameters: z.record(z.string(), z.string()).optional(),
+  inputs: z.array(zEnvironmentMcpServerInput).optional(),
+  trigger_workflow: z.boolean().optional(),
 })
 
 export const zEnvironmentMcpServerUpdate = z.object({

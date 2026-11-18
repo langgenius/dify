@@ -62,7 +62,8 @@ export const EnvironmentRow = memo(
     const isAccessPointActive = (accessPoint: AccessPoint) => {
       if (accessPoint === 'webApp') return row.access.enable_site
       if (accessPoint === 'serviceApi') return row.access.enable_api
-      return false
+      if (accessPoint === 'mcp') return row.access.enable_mcp
+      return row.access.enable_trigger
     }
 
     return (

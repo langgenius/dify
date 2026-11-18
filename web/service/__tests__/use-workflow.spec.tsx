@@ -90,6 +90,8 @@ const createEnvironmentDeployment = ({
   access: {
     enable_api: false,
     enable_site: false,
+    enable_mcp: false,
+    enable_trigger: false,
   },
   deployment: {
     current_version: currentVersion,
