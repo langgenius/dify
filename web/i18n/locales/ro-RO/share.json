@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Adresa dvs. IP: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Această aplicație nu există sau nu poate fi accesată din rețeaua dvs.",
   "auth.signIn": "Conectează-te",
+  "auth.unofficialAppWarning": "Această aplicație a fost publicată de un dezvoltator terț. Partajează informații sensibile numai dacă ai încredere în dezvoltator.",
   "chat.chatFormTip": "Setările chat-ului nu pot fi modificate după ce chat-ul a început.",
   "chat.chatSettingsTitle": "Nouă configurare a chatului",
   "chat.collapse": "Restrânge",

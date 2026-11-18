@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "您的 IP 地址： <ip>{{ip}}</ip>",
   "appNotAccessible.title": "此应用不存在，或无法从您的网络访问。",
   "auth.signIn": "登录",
+  "auth.unofficialAppWarning": "此应用由第三方开发者发布。请仅在信任开发者的情况下分享敏感信息。",
   "chat.chatFormTip": "对话开始后，对话设置将无法修改。",
   "chat.chatSettingsTitle": "新对话设置",
   "chat.collapse": "折叠",

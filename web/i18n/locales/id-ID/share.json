@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Alamat IP Anda: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Aplikasi ini tidak ada atau tidak dapat diakses dari jaringan Anda.",
   "auth.signIn": "Masuk",
+  "auth.unofficialAppWarning": "Aplikasi ini diterbitkan oleh pengembang pihak ketiga. Bagikan informasi sensitif hanya jika Anda memercayai pengembangnya.",
   "chat.chatFormTip": "Pengaturan obrolan tidak dapat dimodifikasi setelah obrolan dimulai.",
   "chat.chatSettingsTitle": "Penyiapan obrolan baru",
   "chat.collapse": "Roboh",

@@ -101,6 +101,7 @@ function entry(): ReadyEntry {
     parameters: {
       account_login_enabled: true,
       account_login_url: 'https://account.example/signin',
+      console_web_url: 'https://account.example',
       allow_anonymous_end_user_auth: false,
       connection_revision: connectionRevision,
       requires_end_user_connections: true,

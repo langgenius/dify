@@ -109,9 +109,12 @@ it('shows an immediate task failure and lets the user retry successfully', async
   await upgrade().click()
   await expect.element(page.getByText('Upgrade failed', { exact: true })).toBeVisible()
   await expect.element(page.getByText('Plugin list refreshed')).not.toBeInTheDocument()
+  // The failure toast is also a dialog; name the upgrade dialog so the query does not wait for it to close.
+  const dialog = page.getByRole('dialog', { name: 'plugin.upgrade.title' })
+  await expect.element(dialog).toBeVisible()
   await upgrade().click()
   await expect.element(page.getByText('Plugin list refreshed')).toBeVisible()
-  await expect.element(page.getByRole('dialog')).not.toBeInTheDocument()
+  await expect.element(dialog).not.toBeInTheDocument()
 })
 
 it('waits for exclusion before downgrading and keeps the warning modal locked until completion', async () => {

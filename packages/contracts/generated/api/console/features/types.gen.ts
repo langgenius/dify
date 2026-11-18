@@ -25,6 +25,7 @@ export type ConsoleFeatureResponse = {
   trigger_event: Quota
   webapp_copyright_enabled: boolean
   workflow_collaboration_enabled: boolean
+  workflow_collaboration_upgrade_available: boolean
   workspace_members: LicenseLimitationModel
 }
 

@@ -133,47 +133,39 @@ export const zHumanInputFormSubmitPayload = z.object({
 export const zButtonStyle = z.enum(['accent', 'default', 'ghost', 'primary'])
 
 /**
- * UserAction
- *
- * Resolved action values required for presentation and submission validation.
+ * HumanInputActionResponse
  */
-export const zUserAction = z.object({
+export const zHumanInputActionResponse = z.object({
   button_style: zButtonStyle,
   id: z.string(),
   title: z.string(),
 })
 
 /**
- * MarkdownFragment
- *
- * One source-ordered Markdown fragment in a resolved form.
+ * ResolvedMarkdownResponse
  */
-export const zMarkdownFragment = z.object({
+export const zResolvedMarkdownResponse = z.object({
   text: z.string(),
-  type: z.literal('markdown_fragment').optional().default('markdown_fragment'),
+  type: z.literal('markdown_fragment'),
 })
 
 /**
- * ParagraphInput
- *
- * Resolved multiline text input.
+ * ResolvedParagraphResponse
  */
-export const zParagraphInput = z.object({
+export const zResolvedParagraphResponse = z.object({
   default_value: z.string().nullable(),
   output_variable_name: z.string(),
-  type: z.literal('paragraph_input').optional().default('paragraph_input'),
+  type: z.literal('paragraph_input'),
 })
 
 /**
- * SelectInput
- *
- * Resolved single-choice input with immutable concrete options.
+ * ResolvedSelectResponse
  */
-export const zSelectInput = z.object({
+export const zResolvedSelectResponse = z.object({
   default_value: z.string().nullable(),
   options: z.array(z.string()),
   output_variable_name: z.string(),
-  type: z.literal('select_input').optional().default('select_input'),
+  type: z.literal('select_input'),
 })
 
 /**
@@ -192,49 +184,45 @@ export const zFileTransferMethod = z.enum([
 ])
 
 /**
- * FileInput
- *
- * Resolved single-file input constraints.
+ * ResolvedFileResponse
  */
-export const zFileInput = z.object({
+export const zResolvedFileResponse = z.object({
   allowed_file_extensions: z.array(z.string()),
   allowed_file_types: z.array(zFileType),
   allowed_file_upload_methods: z.array(zFileTransferMethod),
   output_variable_name: z.string(),
-  type: z.literal('file_input').optional().default('file_input'),
+  type: z.literal('file_input'),
 })
 
 /**
- * FileListInput
- *
- * Resolved multi-file input constraints and effective number limit.
+ * ResolvedFileListResponse
  */
-export const zFileListInput = z.object({
+export const zResolvedFileListResponse = z.object({
   allowed_file_extensions: z.array(z.string()),
   allowed_file_types: z.array(zFileType),
   allowed_file_upload_methods: z.array(zFileTransferMethod),
   number_limits: z.int(),
   output_variable_name: z.string(),
-  type: z.literal('file_list_input').optional().default('file_list_input'),
+  type: z.literal('file_list_input'),
 })
 
-export const zFormPart = z.discriminatedUnion('type', [
-  zMarkdownFragment,
-  zParagraphInput,
-  zSelectInput,
-  zFileInput,
-  zFileListInput,
+export const zResolvedPartResponse = z.discriminatedUnion('type', [
+  zResolvedMarkdownResponse,
+  zResolvedParagraphResponse,
+  zResolvedSelectResponse,
+  zResolvedFileResponse,
+  zResolvedFileListResponse,
 ])
 
 /**
  * ResolvedForm
  *
- * Immutable authoritative presentation snapshot for one v2 form.
+ * Keep the existing resolved-form wire shape without exposing storage metadata.
  */
 export const zResolvedForm = z.object({
-  actions: z.array(zUserAction),
+  actions: z.array(zHumanInputActionResponse),
   legacy_form_content: z.string(),
-  parts: z.array(zFormPart),
+  parts: z.array(zResolvedPartResponse),
   title: z.string(),
 })
 

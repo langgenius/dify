@@ -207,9 +207,9 @@ class CeleryWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         }
 
     @override
-    def save_execution_data(self, execution: WorkflowNodeExecution) -> None:
+    def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """`save` already queues the complete inputs, process data, and outputs."""
-        return None
+        self.save(execution)
 
     @override
     def save_synchronously(self, execution: WorkflowNodeExecution) -> None:

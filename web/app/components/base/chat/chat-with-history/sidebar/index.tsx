@@ -21,6 +21,7 @@ import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
 import BuildAppLink from '@/app/components/share/build-app-link'
+import UnofficialAppWarning from '@/app/components/share/connections/unofficial-app-warning'
 import { useOptionalWebAppConnections } from '@/app/components/share/connections/use-connections'
 import MyAppsLink from '@/app/components/share/my-apps-link'
 import SignIn from '@/app/components/share/sign-in'
@@ -180,6 +181,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           <BuildAppLink />
         </div>
       )}
+      {!isInstalledApp && <UnofficialAppWarning />}
       <div className="flex shrink-0 items-center justify-between p-3">
         {!isInstalledApp && entry?.showSignIn ? (
           <SignIn />

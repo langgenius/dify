@@ -10,6 +10,7 @@ type EntryParameters = Pick<
   WebAppParametersResponse,
   | 'account_login_enabled'
   | 'account_login_url'
+  | 'console_web_url'
   | 'allow_anonymous_end_user_auth'
   | 'connection_revision'
   | 'requires_end_user_connections'

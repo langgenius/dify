@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Địa chỉ IP của bạn: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Ứng dụng này không tồn tại hoặc không thể truy cập từ mạng của bạn.",
   "auth.signIn": "Đăng nhập",
+  "auth.unofficialAppWarning": "Ứng dụng này do nhà phát triển bên thứ ba phát hành. Chỉ chia sẻ thông tin nhạy cảm nếu bạn tin tưởng nhà phát triển.",
   "chat.chatFormTip": "Cài đặt trò chuyện không thể được thay đổi sau khi cuộc trò chuyện đã bắt đầu.",
   "chat.chatSettingsTitle": "Cài đặt trò chuyện mới",
   "chat.collapse": "Thu gọn",

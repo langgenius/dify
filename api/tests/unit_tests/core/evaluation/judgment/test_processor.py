@@ -123,4 +123,6 @@ def test_invalid_comparison_becomes_a_condition_error(monkeypatch: pytest.Monkey
     result = JudgmentProcessor.evaluate({("llm-1", "faithfulness"): 0.9}, config)
 
     assert result.passed is False
-    assert result.condition_results[0].error == "invalid numeric comparison"
+    assert result.condition_results[0].error is not None
+    assert result.condition_results[0].error.startswith("EVAL_JUDGMENT_FAILED:")
+    assert "invalid numeric comparison" not in result.condition_results[0].error

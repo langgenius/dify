@@ -18,6 +18,7 @@ vi.mock('@/utils/var', async (importOriginal) => ({
 const parameters = {
   account_login_enabled: true,
   account_login_url: 'https://console.example.com/signin',
+  console_web_url: 'https://console.example.com',
   allow_anonymous_end_user_auth: true,
   requires_end_user_connections: false,
   connection_revision: null,

@@ -5,6 +5,7 @@
   "appNotAccessible.ipAddress": "Uw IP-adres: <ip>{{ip}}</ip>",
   "appNotAccessible.title": "Deze app bestaat niet of is niet toegankelijk vanuit uw netwerk.",
   "auth.signIn": "Inloggen",
+  "auth.unofficialAppWarning": "Deze app is gepubliceerd door een externe ontwikkelaar. Deel gevoelige informatie alleen als je de ontwikkelaar vertrouwt.",
   "chat.chatFormTip": "Chat settings cannot be modified after the chat has started.",
   "chat.chatSettingsTitle": "New chat setup",
   "chat.collapse": "Collapse",

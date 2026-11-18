@@ -10,16 +10,6 @@ import { isUnauthorizedError } from '../http-error'
 import { getWebAppPublicApiPath, getWebAppScopeKey, resolveWebAppAddress } from '../webapp-address'
 import { getWebAppAccessToken, getWebAppAuthSessionSnapshot } from '../webapp-auth'
 
-function parseAccountSignin(raw: string | null) {
-  if (!raw) return null
-  try {
-    const url = new URL(raw, window.location.origin)
-    return ['http:', 'https:'].includes(url.protocol) ? url : null
-  } catch {
-    return null
-  }
-}
-
 export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, {
   url: () => new URL(PUBLIC_API_PREFIX, window.location.origin),
   fetch: async (input, init, options) => {
@@ -75,16 +65,18 @@ export const webAppBrowserLink = new OpenAPILink<WebAppClientContext>(contract, 
           assertCurrentAccount()
           if (window.location.href !== returnLocation)
             throw new DOMException('The personal portal page changed.', 'AbortError')
-          const signin = parseAccountSignin(features.account_login_url)
-          if (signin) {
-            const consolePrefix = signin.pathname.slice(0, -'/signin'.length)
-            signin.searchParams.set('is_end_user', '1')
-            signin.searchParams.set(
-              'redirect_url',
-              `${consolePrefix}/my-apps${window.location.search}${window.location.hash}`,
-            )
-            window.location.replace(signin.href)
-          }
+          const consolePrefix = features.console_web_url
+          const signin = new URL(`${consolePrefix}/signin`, window.location.origin)
+          const returnUrl = new URL(
+            `${consolePrefix}/my-apps${window.location.search}${window.location.hash}`,
+            window.location.origin,
+          )
+          signin.searchParams.set('is_end_user', '1')
+          signin.searchParams.set(
+            'redirect_url',
+            `${returnUrl.pathname}${returnUrl.search}${returnUrl.hash}`,
+          )
+          window.location.replace(signin.href)
         }
         throw error
       })
