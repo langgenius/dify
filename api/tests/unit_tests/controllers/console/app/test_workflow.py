@@ -1421,7 +1421,7 @@ def test_evaluation_workflow_mutations_reject_community(
     monkeypatch: pytest.MonkeyPatch,
     resource_class: type[EvaluationPublishedWorkflowApi] | type[WorkflowKindConvertApi],
 ) -> None:
-    monkeypatch.setattr("controllers.console.wraps.SystemFeatureService.is_evaluation_enabled", lambda: False)
+    monkeypatch.setattr("controllers.console.wraps.FeatureService.is_evaluation_supported", lambda: False)
 
     with app.test_request_context(), pytest.raises(HTTPException) as exc_info:
         resource_class().post()

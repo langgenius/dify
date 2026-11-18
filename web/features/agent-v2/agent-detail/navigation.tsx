@@ -15,18 +15,15 @@ import { Kbd, KbdGroup } from '@langgenius/dify-ui/kbd'
 import { Separator } from '@langgenius/dify-ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { formatForDisplay } from '@tanstack/react-hotkeys'
-import { useSuspenseQuery } from '@tanstack/react-query'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
-import { useEvaluationRequiresUpgrade } from '@/app/components/billing/use-snippets-and-evaluation-access'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
 import { getAgentSectionAccess } from '@/features/agent-v2/acl'
 import { useAgentPermissions } from '@/features/agent-v2/permissions'
-import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import { isEvaluationEdition } from '@/features/system-features/utils'
 import Link from '@/next/link'
 import { usePathname } from '@/next/navigation'
 import { getAgentDetailPath, getAgentIdFromPathname } from './routes'
@@ -181,12 +178,8 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
-  const { data: deploymentEdition } = useSuspenseQuery({
-    ...systemFeaturesQueryOptions(),
-    select: ({ deployment_edition }) => deployment_edition,
-  })
-
-  const evaluationRequiresUpgrade = useEvaluationRequiresUpgrade()
+  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
+    useEvaluationAccess()
 
   if (!agentId) return null
 
@@ -194,8 +187,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const sectionAccess = getAgentSectionAccess(capabilities)
   const navigation = getAgentDetailNavigation(agentId).filter(
     (item) =>
-      (item.labelKey !== 'agentDetail.sections.evaluation' ||
-        isEvaluationEdition(deploymentEdition)) &&
+      (item.labelKey !== 'agentDetail.sections.evaluation' || isEvaluationVisible) &&
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
 

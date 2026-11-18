@@ -1112,7 +1112,8 @@ class WorkflowService:
 
         The caller supplies a valid target kind, app, account and session. Both
         conversion directions require Cloud paid billing; denied requests leave
-        the published workflow unchanged.
+        the published workflow unchanged. Publication receivers receive the same
+        session; receiver failures propagate without committing the conversion.
         """
         if target_kind not in {WorkflowKind.STANDARD, WorkflowKind.EVALUATION}:
             raise ValueError("target_kind must be either 'standard' or 'evaluation'")
@@ -1138,7 +1139,7 @@ class WorkflowService:
         workflow.kind = target_kind
         workflow.updated_by = account.id
         workflow.updated_at = naive_utc_now()
-        app_published_workflow_was_updated.send(app_model, published_workflow=workflow)
+        app_published_workflow_was_updated.send(app_model, published_workflow=workflow, session=session)
         return workflow
 
     def convert_published_workflow_kind_for_app(
