@@ -204,7 +204,6 @@ class RedisInvitationTokenStore(InvitationTokenStore):
             if (
                 invitation is not None
                 and invitation.workspace_id == workspace_id
-                and invitation.requires_setup is False
                 and invitation.role is not None
                 and invitation.role != TenantAccountRole.OWNER
                 and TenantAccountRole.is_valid_role(invitation.role)
@@ -218,6 +217,20 @@ class RedisInvitationTokenStore(InvitationTokenStore):
                     expires_at=datetime.fromtimestamp(expiry, UTC),
                 )
         return tuple(pending.values())
+
+    def revoke_pending(self, workspace_id: str, email: str) -> None:
+        """Invalidate every indexed invitation link for this email in the workspace."""
+        key = self._pending_workspace_key(workspace_id)
+        normalized_email = email.lower()
+        for token_bytes, _ in self._redis.zrangebyscore_withscores(key, "-inf", "+inf"):
+            token = token_bytes.decode()
+            invitation = self.find(InvitationLookup(workspace_id=None, email=None, token=token))
+            if invitation is not None and (
+                invitation.workspace_id != workspace_id or invitation.email.lower() != normalized_email
+            ):
+                continue
+            self._redis.delete(self._invitation_token_key(token))
+            self._redis.zrem(key, token)
 
     @staticmethod
     def _pending_workspace_key(workspace_id: str) -> str:

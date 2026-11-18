@@ -130,6 +130,61 @@ def test_pending_invitations_show_latest_live_unconsumed_link(
     assert commands.call_args_list[0].args == ("ZRANGEBYSCORE", key, "(100.0", "+inf", "WITHSCORES")
 
 
+def test_pending_invitations_include_new_email_invitations(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    redis, commands = redis_transport
+    monkeypatch.setattr("services.account.adapters.time", lambda: 100.0)
+    commands.side_effect = [
+        [(b"new-email", 120.0)],
+        b'{"account_id":"account-1","email":"new@example.com","workspace_id":"workspace-1",'
+        b'"role":"normal","requires_setup":true}',
+        None,
+    ]
+
+    (invitation,) = RedisInvitationTokenStore(redis=redis).list_pending("workspace-1")
+
+    assert invitation.email == "new@example.com"
+    assert invitation.role == TenantAccountRole.NORMAL
+
+
+def test_revoking_pending_invitations_invalidates_every_link_for_the_email(
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+) -> None:
+    redis, commands = redis_transport
+    key = "member_invite:pending:workspace-1"
+
+    def payload(email: str) -> bytes:
+        return (
+            f'{{"account_id":"account-1","email":"{email}","workspace_id":"workspace-1",'
+            '"role":"normal","requires_setup":true}'
+        ).encode()
+
+    tokens = {
+        "member_invite:token:first": payload("Invitee@example.com"),
+        "member_invite:token:second": payload("invitee@example.com"),
+        "member_invite:token:other": payload("other@example.com"),
+    }
+
+    def execute(command: str, *args: object, **_kwargs: object) -> object:
+        if command == "ZRANGEBYSCORE":
+            return [(b"first", 110.0), (b"expired", 115.0), (b"other", 120.0), (b"second", 130.0)]
+        if command == "GET":
+            return tokens.get(str(args[0]))
+        return 1
+
+    commands.side_effect = execute
+
+    RedisInvitationTokenStore(redis=redis).revoke_pending("workspace-1", "INVITEE@example.com")
+
+    deleted = [c.args[1] for c in commands.call_args_list if c.args[0] == "DEL"]
+    removed = [c.args[2] for c in commands.call_args_list if c.args[0] == "ZREM"]
+    assert deleted == ["member_invite:token:first", "member_invite:token:expired", "member_invite:token:second"]
+    assert removed == ["first", "expired", "second"]
+    assert commands.call_args_list[0].args == ("ZRANGEBYSCORE", key, "-inf", "+inf", "WITHSCORES")
+
+
 def test_invitation_token_store_revokes_its_redis_key(redis_transport: tuple[RedisClientWrapper, MagicMock]) -> None:
     redis, commands = redis_transport
     lookup = InvitationLookup(workspace_id="workspace-1", email="invitee@example.com", token="token-1")

@@ -386,6 +386,14 @@ const zAccountNotLinkTenantError = /* @__PURE__ */ (() =>
     }),
   ))()
 
+const zPendingInvitationNotFoundError = /* @__PURE__ */ (() =>
+  zErrorResponse.and(
+    z.object({
+      code: z.literal('pending_invitation_not_found'),
+      status: z.literal(404),
+    }),
+  ))()
+
 export const postErrors = {
   account_not_found: { status: 400, data: zAccountNotFoundError },
   limit_exceeded: { status: 400, data: zLimitExceededError },
@@ -639,6 +647,11 @@ export const post93Errors = {
 
 export const post96Errors = {
   account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError },
+}
+
+export const post97Errors = {
+  forbidden: { status: 403, data: zForbiddenError },
+  pending_invitation_not_found: { status: 404, data: zPendingInvitationNotFoundError },
 }
 
 export const get138Errors = { forbidden: { status: 403, data: zForbiddenError } }

@@ -14,6 +14,7 @@ from controllers.console.auth.error import InvitationAccountMismatchError as Inv
 from controllers.console.error import (
     AccountInFreezeError,
     AlreadyActivateError,
+    InvitationWorkspaceMemberLimitError,
 )
 from controllers.console.error import (
     EmailDomainSuspendedError as EmailDomainSuspendedHTTPError,
@@ -25,7 +26,12 @@ from libs.login import AccountWithTenant
 from models.account import Account
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
-from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
+from services.account_errors import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
+)
 from services.entities.account_activation_entities import (
     ActivationCheckData,
     ActivationCheckResult,
@@ -214,6 +220,7 @@ class TestActivateApi:
             (InvitationAccountMismatchError(), InvitationAccountMismatchHTTPError),
             (FrozenAccountError(), AccountInFreezeError),
             (EmailDomainSuspendedRegistrationError(), EmailDomainSuspendedHTTPError),
+            (InvitationWorkspaceFullError(), InvitationWorkspaceMemberLimitError),
         ],
     )
     def test_translates_application_errors(

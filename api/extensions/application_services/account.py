@@ -98,6 +98,7 @@ from services.account_integration_service import AccountIntegrationService
 from services.account_password_hasher import DefaultAccountPasswordHasher
 from services.account_password_service import AccountPasswordService
 from services.account_profile_service import AccountProfileService
+from services.workspace.gateways import WorkspaceMemberCapacityGateway
 from services.workspace.provisioning_service import WorkspaceProvisioningService
 
 
@@ -212,6 +213,7 @@ def build_account_services(
         member_access_sync=RBACWorkspaceMemberAccessSync(
             enabled=dify_config.RBAC_ENABLED,
         ),
+        capacity=WorkspaceMemberCapacityGateway(workspaces=workspace_repository, redis=redis),
     )
     return AccountServices(
         lifecycle=lifecycle,

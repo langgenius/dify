@@ -1,3 +1,4 @@
+from contextlib import AbstractContextManager, nullcontext
 from unittest.mock import MagicMock, call
 
 import pytest
@@ -17,7 +18,12 @@ from services.account.adapters import (
 )
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedError
-from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
+from services.account_errors import (
+    FrozenAccountError,
+    InvalidInvitationError,
+    InvitationAccountMismatchError,
+    InvitationWorkspaceFullError,
+)
 from services.entities.account_activation_entities import (
     AccountInvitation,
     AccountSetup,
@@ -46,9 +52,31 @@ def _invitation(
     )
 
 
+class _Capacity:
+    def __init__(self) -> None:
+        self.full = False
+        self.checked: list[tuple[str, str]] = []
+        self.locked: list[str] = []
+
+    def acquire(self, workspace_id: str) -> AbstractContextManager[object]:
+        self.locked.append(workspace_id)
+        return nullcontext()
+
+    def can_join(self, workspace_id: str, account_id: str) -> bool:
+        self.checked.append((workspace_id, account_id))
+        return not self.full
+
+
+@pytest.fixture
+def capacity() -> _Capacity:
+    return _Capacity()
+
+
 @pytest.fixture
 def service(
-    sqlite_session_factory: sessionmaker[Session], redis_transport: tuple[RedisClientWrapper, MagicMock]
+    sqlite_session_factory: sessionmaker[Session],
+    redis_transport: tuple[RedisClientWrapper, MagicMock],
+    capacity: _Capacity,
 ) -> AccountActivationService:
     redis, commands = redis_transport
     commands.return_value = b"account-1"
@@ -62,6 +90,7 @@ def service(
         eligibility=BillingAccountActivationEligibility(enabled=True),
         membership_cache=BillingWorkspaceMembershipCache(enabled=True),
         member_access_sync=RBACWorkspaceMemberAccessSync(enabled=True),
+        capacity=capacity,
     )
 
 
@@ -281,8 +310,58 @@ class TestActivateInvitation:
             assert memberships[0].role == TenantAccountRole.EDITOR
             assert memberships[0].current is True
 
+    def test_full_workspace_rejects_acceptance_and_keeps_the_link(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        capacity: _Capacity,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
+        capacity.full = True
+
+        with pytest.raises(InvitationWorkspaceFullError):
+            service.activate(
+                ActivationCommand(invitation=_lookup(), name="John Doe", interface_language="en-US", timezone="UTC"),
+                authenticated_account_id=None,
+            )
+
+        assert capacity.locked == ["workspace-1"]
+        assert capacity.checked == [("workspace-1", "account-1")]
+        boundaries["revoke"].assert_not_called()
+        boundaries["activate"].assert_not_called()
+        boundaries["cache"].assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is None
+            account = session.get(Account, "account-1")
+            assert account is not None
+            assert account.status == AccountStatus.PENDING
+
 
 class TestEnsureMembership:
+    def test_full_workspace_rejects_sign_in_restore_without_consuming_the_link(
+        self,
+        service: AccountActivationService,
+        boundaries: dict[str, MagicMock],
+        capacity: _Capacity,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
+        sqlite_session_factory: sessionmaker[Session],
+        mocker: MockerFixture,
+    ) -> None:
+        redis_transport[1].return_value = (
+            b'{"account_id":"account-1","email":"invitee@example.com","workspace_id":"workspace-1",'
+            b'"role":"editor","requires_setup":false}'
+        )
+        consume = mocker.patch.object(service._tokens, "consume_membership", return_value=True)
+        capacity.full = True
+
+        with pytest.raises(InvitationWorkspaceFullError):
+            service.ensure_membership(account_id="account-1", email="invitee@example.com", token="token-1")
+
+        consume.assert_not_called()
+        boundaries["activate"].assert_not_called()
+        with sqlite_session_factory() as session:
+            assert session.scalar(select(TenantAccountJoin)) is None
+
     def test_missing_token_returns_false_without_revoking(
         self,
         service: AccountActivationService,

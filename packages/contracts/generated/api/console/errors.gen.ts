@@ -571,6 +571,7 @@ export { post91Errors as 'POST /workspaces/current/trigger-provider/{subscriptio
 export { post92Errors as 'POST /workspaces/current/trigger-provider/{subscription_id}/subscriptions/update' } from './workspaces/errors.gen.ts'
 export { post93Errors as 'POST /workspaces/custom-config/webapp-logo/upload' } from './workspaces/errors.gen.ts'
 export { post96Errors as 'POST /workspaces/switch' } from './workspaces/errors.gen.ts'
+export { post97Errors as 'POST /workspaces/{workspace_id}/members/pending-invitations/revoke' } from './workspaces/errors.gen.ts'
 export { post9Errors as 'POST /account/password' } from './account/errors.gen.ts'
 export { post9Errors as 'POST /agent/{agent_id}/config/files/batch' } from './agent/errors.gen.ts'
 export { post9Errors as 'POST /apps/{app_id}/advanced-chat/workflows/draft/loop/nodes/{node_id}/run' } from './apps/errors.gen.ts'

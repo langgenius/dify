@@ -1,8 +1,5 @@
 'use client'
-import type {
-  AccountWithRoleResponse,
-  MemberInviteResponse,
-} from '@dify/contracts/api/console/workspaces/types.gen'
+import type { AccountWithRoleResponse } from '@dify/contracts/api/console/workspaces/types.gen'
 import type { DialogActions } from '@langgenius/dify-ui/dialog'
 import {
   AlertDialog,
@@ -17,12 +14,7 @@ import {
   createAlertDialogHandle,
 } from '@langgenius/dify-ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@langgenius/dify-ui/avatar'
-import {
-  createDialogHandle,
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-} from '@langgenius/dify-ui/dialog'
+import { Dialog, DialogContent, DialogTrigger } from '@langgenius/dify-ui/dialog'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@langgenius/dify-ui/tooltip'
 import { useMutation, useQuery, useSuspenseQuery } from '@tanstack/react-query'
@@ -42,11 +34,12 @@ import { consoleQuery } from '@/service/console'
 import { getAdjacentFocusTargets } from '@/utils/get-adjacent-focus-targets'
 import { hasPermission } from '@/utils/permission'
 import { EditWorkspaceContent } from './edit-workspace-content'
-import { InvitationResultsContent } from './invitation-results-content'
 import { InviteModal } from './invite-modal'
+import { InvitedRow } from './invited-row'
 import { MemberDetailsContent } from './member-details-content'
 import { MemberRow } from './member-row'
-import { PendingInvitations } from './pending-invitations'
+
+const revealRow = (row: HTMLTableRowElement | null) => row?.scrollIntoView({ block: 'nearest' })
 
 const MembersPageContent = () => {
   const { t } = useTranslation([
@@ -72,9 +65,7 @@ const MembersPageContent = () => {
     consoleQuery.workspaces.current.members.get.queryOptions({ input: { query: { language } } }),
   )
   const { data: systemFeatures } = useSuspenseQuery(systemFeaturesQueryOptions())
-  const [invitationDialogHandle] = useState(() =>
-    createDialogHandle<MemberInviteResponse['invitation_results']>(),
-  )
+  const [invitedEmails, setInvitedEmails] = useState<ReadonlySet<string>>(() => new Set())
   const workspaceNameInputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const [removeDialog] = useState(() =>
@@ -111,6 +102,13 @@ const MembersPageContent = () => {
   const detailsActionsRef = useRef<DialogActions>(null)
 
   const canManageMembers = hasPermission(workspacePermissionKeys, 'workspace.member.manage')
+  const { data: invitations } = useQuery({
+    ...consoleQuery.workspaces.byWorkspaceId.members.pendingInvitations.get.queryOptions({
+      input: { params: { workspace_id: currentWorkspace.id } },
+    }),
+    enabled: canManageMembers && Boolean(currentWorkspace.id),
+    select: (data) => data.invitations,
+  })
   const roleColumnLabel = systemFeatures.rbac_enabled
     ? t(($) => $['members.roles'], { ns: 'workspaceMembers' })
     : t(($) => $['members.role'], { ns: 'workspaceMembers' })
@@ -212,7 +210,7 @@ const MembersPageContent = () => {
                   <div className="shrink-0">
                     <InviteModal
                       isEmailSetup={systemFeatures.is_email_setup}
-                      onSend={(results) => invitationDialogHandle.openWithPayload(results)}
+                      onSend={(emails) => setInvitedEmails(new Set(emails))}
                     />
                   </div>
                 )}
@@ -250,6 +248,7 @@ const MembersPageContent = () => {
                   {accounts.map((account) => (
                     <MemberRow
                       key={account.id}
+                      ref={invitedEmails.has(account.email.toLowerCase()) ? revealRow : undefined}
                       member={account}
                       onRemove={(row) => {
                         const adjacentFocusTargets = getAdjacentFocusTargets(row, (sibling) =>
@@ -272,12 +271,19 @@ const MembersPageContent = () => {
                       allowMultipleRoles={systemFeatures.rbac_enabled}
                     />
                   ))}
+                  {invitations?.map((invitation) => (
+                    <InvitedRow
+                      key={invitation.email}
+                      ref={
+                        invitedEmails.has(invitation.email.toLowerCase()) ? revealRow : undefined
+                      }
+                      invitation={invitation}
+                      canManage={canManageMembers}
+                    />
+                  ))}
                 </tbody>
               </table>
             </div>
-            {canManageMembers && currentWorkspace.id && (
-              <PendingInvitations workspaceId={currentWorkspace.id} />
-            )}
           </div>
           <AlertDialog
             handle={removeDialog}
@@ -416,13 +422,6 @@ const MembersPageContent = () => {
               )
             }}
           </AlertDialog>
-          <Dialog handle={invitationDialogHandle}>
-            {({ payload: results }) => (
-              <DialogContent backdropProps={{ forceRender: true }}>
-                {results && <InvitationResultsContent invitationResults={results} />}
-              </DialogContent>
-            )}
-          </Dialog>
           <DialogContent className="w-110" backdropProps={{ forceRender: true }}>
             {member && (
               <form

@@ -96,9 +96,7 @@ export const MemberList: FC<Props> = ({
                     {account.name}
                     {account.status === 'pending' && (
                       <span className="ms-1 system-xs-medium text-text-warning">
-                        {t(($) => $['members.awaitingAccountActivation'], {
-                          ns: 'workspaceMembers',
-                        })}
+                        {t(($) => $['members.invited'], { ns: 'workspaceMembers' })}
                       </span>
                     )}
                     {email === account.email && (

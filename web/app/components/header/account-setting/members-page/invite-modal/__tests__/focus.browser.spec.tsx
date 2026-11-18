@@ -49,7 +49,7 @@ beforeEach(() => {
 
 afterEach(() => vi.unstubAllGlobals())
 
-it('holds focus through Enter submission, hands it to the results dialog and returns it to Invite', async () => {
+it('holds focus through Enter submission and returns it to Invite after a successful invitation', async () => {
   let resolveInvite!: (value: MemberInviteResponse) => void
   inviteMember.mockReturnValue(
     new Promise<MemberInviteResponse>((resolve) => {
@@ -82,15 +82,14 @@ it('holds focus through Enter submission, hands it to the results dialog and ret
   await expect.element(submit).toHaveFocus()
   await expect.element(inviteDialog).toBeVisible()
 
-  resolveInvite({ result: 'success', tenant_id: 'tenant-id', invitation_results: [] })
-  const result = screen.getByRole('dialog', { name: /members\.invitationSent$/ })
-  await expect.element(result).toBeVisible()
-  await expect.element(result.getByRole('button', { name: /operation\.close/ })).toHaveFocus()
-  // The closing invitation dialog must not take focus back while it exits.
+  resolveInvite({
+    result: 'success',
+    tenant_id: 'tenant-id',
+    invitation_results: [
+      { status: 'success', email: 'person@example.com', url: 'https://example.com/invite' },
+    ],
+  })
+  // A fully successful Cloud invitation needs no result step; the new row is the feedback.
   await expect.element(inviteDialog).not.toBeInTheDocument()
-  expect(result.element().contains(document.activeElement)).toBe(true)
-
-  await result.getByRole('button', { name: /members\.ok$/ }).click()
-  await expect.element(result).not.toBeInTheDocument()
   await expect.element(trigger).toHaveFocus()
 })
