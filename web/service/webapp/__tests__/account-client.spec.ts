@@ -94,7 +94,6 @@ const accountProfile: WebAccountProfileResponse = {
 
 const systemFeatures = {
   ...createSystemFeaturesFixture(),
-  account_login_url: 'https://unused.example/legacy/signin?source=portal',
   console_web_url: 'https://accounts.example/console',
 } satisfies WebSystemFeatureResponse
 

@@ -34,6 +34,7 @@ class WebAppConnectionRequirement(ToolConnectionRequirement):
         description="Tool provider display name in the WebApp's configured language, falling back to English."
     )
     plugin_unique_identifier: str = Field(description="Exact plugin artifact recorded in connection_revision.")
+    verified: bool = Field(description="Whether Dify verified this exact plugin artifact.")
     icon: str = Field(description="Plugin icon URL, using the Integrations asset endpoint.")
     icon_dark: str | None = Field(description="Dark plugin icon URL; null when the plugin has no dark icon.")
 
@@ -159,6 +160,7 @@ class AppDefinitionQueryService:
         builtin_icon_url_prefix: str,
         get_connection_requirements: Callable[[Mapping[str, Any]], tuple[ToolConnectionRequirement, ...]],
         connection_revisions: ConnectionRevisions,
+        plugin_verified: Callable[[str, str], bool],
         plugin_readme: Callable[[str, str, str], str],
         plugin_asset: Callable[[str, str, str], bytes],
     ) -> None:
@@ -166,6 +168,7 @@ class AppDefinitionQueryService:
         self._connection_revisions = connection_revisions
         self._builtin_icon_url_prefix = builtin_icon_url_prefix
         self._get_connection_requirements = get_connection_requirements
+        self._plugin_verified = plugin_verified
         self._plugin_readme = plugin_readme
         self._plugin_asset = plugin_asset
 
@@ -248,6 +251,10 @@ class AppDefinitionQueryService:
                 else (None, ())
             )
             providers_by_name = {provider.provider: provider for provider in providers}
+            verified_by_provider = {
+                provider.provider: self._plugin_verified(tenant_id, provider.plugin_unique_identifier)
+                for provider in providers
+            }
             web_requirements = []
             for requirement in requirements:
                 metadata = providers_by_name[requirement.provider]
@@ -262,6 +269,7 @@ class AppDefinitionQueryService:
                         **requirement.model_dump(),
                         provider_label=provider_labels.get(config.default_language) or metadata.provider_label.en_US,
                         plugin_unique_identifier=metadata.plugin_unique_identifier,
+                        verified=verified_by_provider[requirement.provider],
                         icon=metadata.icon,
                         icon_dark=metadata.icon_dark,
                     )

@@ -84,7 +84,7 @@ export default function MigrateConversationsContent() {
       const parameters = await webAppClient.parameters.get(undefined, {
         context: { address, silent: true },
       })
-      if (!parameters.account_login_url)
+      if (!parameters.account_login_enabled)
         throw new Error(t(($) => $['api.actionFailed'], { ns: 'common' }))
       await webAppLogout(address)
       const target = await beginWebAppAccountLogin(

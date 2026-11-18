@@ -10,7 +10,6 @@ import WebAppSignInHandoff from '../webapp-sign-in-handoff'
 const anonymousEntry = getWebAppEntryState({
   parameters: {
     account_login_enabled: true,
-    account_login_url: 'https://accounts.example/account-prefix/signin',
     console_web_url: 'https://accounts.example/account-prefix',
     allow_anonymous_end_user_auth: true,
     connection_revision: null,
@@ -59,7 +58,6 @@ describe('Web app SignIn', () => {
       const entry = getWebAppEntryState({
         parameters: {
           account_login_enabled: true,
-          account_login_url: 'https://unused.example/old-signin?source=webapp',
           console_web_url: consoleWebUrl,
           allow_anonymous_end_user_auth: true,
           connection_revision: null,

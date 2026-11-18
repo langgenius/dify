@@ -29,7 +29,6 @@ type EntryParameters = Pick<
   WebAppParametersResponse,
   | 'user_input_form'
   | 'account_login_enabled'
-  | 'account_login_url'
   | 'console_web_url'
   | 'allow_anonymous_end_user_auth'
   | 'connection_revision'
@@ -40,7 +39,6 @@ type EntryParameters = Pick<
 const makeParameters = (): EntryParameters => ({
   user_input_form: [],
   account_login_enabled: true,
-  account_login_url: '/signin',
   console_web_url: '',
   allow_anonymous_end_user_auth: true,
   connection_revision: 'workflow-id',
@@ -333,6 +331,7 @@ describe('AuthenticatedLayout', () => {
             icon: '/provider-icon.svg',
             icon_dark: null,
             plugin_unique_identifier: 'langgenius/google:1.0.0@digest',
+            verified: false,
             node_ids: ['search-node', 'follow-up-node'],
             allowed_credential_types: ['api-key'],
           },

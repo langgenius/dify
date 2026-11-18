@@ -49,6 +49,7 @@ const requirements: WebAppConnectionRequirement[] = [
     icon: '/provider-icon.svg',
     icon_dark: null,
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+    verified: false,
     node_ids: ['source-a', 'reuse-a'],
     title: 'Find repositories',
     purpose: 'Read repositories for the research brief.',
@@ -61,6 +62,7 @@ const requirements: WebAppConnectionRequirement[] = [
     icon: '/provider-icon.svg',
     icon_dark: null,
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+    verified: false,
     node_ids: ['source-b'],
     title: 'Read README',
     purpose: 'Read documentation for the answer.',
@@ -175,7 +177,6 @@ function entry(overrides: Partial<ReadyEntry> = {}): ReadyEntry {
     account: 'authenticated',
     parameters: {
       account_login_enabled: true,
-      account_login_url: 'https://account.example/signin',
       console_web_url: 'https://account.example',
       allow_anonymous_end_user_auth: false,
       connection_revision: connectionRevision,

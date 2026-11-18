@@ -14,6 +14,7 @@ function requirement(
     icon: '/provider-icon.svg',
     icon_dark: null,
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+    verified: false,
     node_ids: ['source-one'],
     provider: 'langgenius/github/github',
     provider_label: 'GitHub',

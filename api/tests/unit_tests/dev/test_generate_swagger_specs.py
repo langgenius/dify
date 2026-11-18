@@ -513,7 +513,7 @@ def test_system_features_specs_exclude_backend_only_fields(generated_specs: list
         assert "PluginManagerModel" not in schemas
 
 
-def test_account_login_urls_are_web_bootstrap_only(generated_specs: list[Path]):
+def test_console_web_url_is_web_bootstrap_only(generated_specs: list[Path]):
     for spec_name in ("console-openapi.json", "web-openapi.json"):
         spec_path = next(path for path in generated_specs if path.name == spec_name)
         payload = json.loads(spec_path.read_text(encoding="utf-8"))
@@ -522,16 +522,12 @@ def test_account_login_urls_are_web_bootstrap_only(generated_specs: list[Path]):
         system_features_schema = schemas[response_schema["$ref"].rsplit("/", 1)[-1]]
 
         if spec_name == "web-openapi.json":
-            assert "account_login_url" in system_features_schema["required"]
-            assert system_features_schema["properties"]["account_login_url"]["anyOf"] == [
-                {"type": "string"},
-                {"type": "null"},
-            ]
+            assert "account_login_url" not in system_features_schema["properties"]
             assert "console_web_url" in system_features_schema["required"]
             assert system_features_schema["properties"]["console_web_url"]["type"] == "string"
             for field_name in ("account_login_url", "console_web_url"):
-                assert field_name in schemas["WebAppParametersResponse"]["properties"]
                 assert field_name not in schemas["WebAccountProfileResponse"]["properties"]
+            assert "account_login_url" not in schemas["WebAppParametersResponse"]["properties"]
             assert schemas["WebAppParametersResponse"]["properties"]["console_web_url"]["type"] == "string"
         else:
             for field_name in ("account_login_url", "console_web_url"):

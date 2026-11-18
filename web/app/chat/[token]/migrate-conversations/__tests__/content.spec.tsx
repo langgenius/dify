@@ -74,7 +74,6 @@ const appInfo = {
 
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
-  account_login_url: 'https://unused.example/signin',
   console_web_url: 'https://accounts.example',
   allow_anonymous_end_user_auth: true,
   annotation_reply: {},

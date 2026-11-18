@@ -79,6 +79,7 @@ describe('RequiredServices', () => {
       provider: 'langgenius/research/research',
       provider_label: 'Research',
       plugin_unique_identifier: 'langgenius/research:1.0.0@digest',
+      verified: false,
       icon: '/provider-light.svg',
       icon_dark: '/provider-dark.svg',
       allowed_credential_types: ['oauth2' as const],

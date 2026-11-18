@@ -200,6 +200,7 @@ def harness(
         app_definitions=AppDefinitionQueryService(
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
             builtin_icon_url_prefix="",
+            plugin_verified=lambda *_args: False,
             plugin_readme=PluginService.fetch_plugin_readme,
             plugin_asset=PluginService.extract_asset,
             get_connection_requirements=get_tool_connection_requirements,
@@ -578,7 +579,9 @@ def test_default_admission_keeps_legacy_app_attached(harness: _Harness) -> None:
     with harness.app.test_request_context("/legacy?user=alice", headers={"Authorization": "Bearer test-token"}):
         assert harness.app.dispatch_request() == "legacy"
         assert db.session().in_transaction()
-        assert harness.admissions == []
+        assert len(harness.admissions) == 1
+        assert not harness.admissions[0].in_transaction()
+        assert not harness.admissions[0].identity_map
 
 
 def test_request_identity_remains_installed_after_generation(harness: _Harness) -> None:

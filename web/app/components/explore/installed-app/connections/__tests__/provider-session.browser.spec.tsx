@@ -66,6 +66,7 @@ const parameters: InstalledAppParametersResponse = {
       icon: '',
       icon_dark: null,
       plugin_unique_identifier: 'langgenius/github',
+      verified: false,
       allowed_credential_types: ['api-key'],
     },
   ],

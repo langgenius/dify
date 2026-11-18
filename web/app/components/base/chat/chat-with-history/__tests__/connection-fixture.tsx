@@ -14,7 +14,6 @@ export const chatConnectionEntry: WebAppEntryState = {
   account: 'authenticated',
   parameters: {
     account_login_enabled: true,
-    account_login_url: 'https://accounts.example.com/signin',
     console_web_url: 'https://accounts.example.com',
     allow_anonymous_end_user_auth: false,
     requires_end_user_connections: true,
@@ -27,6 +26,7 @@ export const chatConnectionEntry: WebAppEntryState = {
         provider_label: 'GitHub',
         allowed_credential_types: ['oauth2'],
         plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+        verified: false,
         title: 'Find repositories',
         purpose: 'Find sources for research.',
         icon: '/github.svg',

@@ -17,7 +17,6 @@ vi.mock('@/utils/var', async (importOriginal) => ({
 
 const parameters = {
   account_login_enabled: true,
-  account_login_url: 'https://console.example.com/signin',
   console_web_url: 'https://console.example.com',
   allow_anonymous_end_user_auth: true,
   requires_end_user_connections: false,
@@ -25,9 +24,9 @@ const parameters = {
   connection_requirements: [],
 }
 
-function signedInEntry(accountLoginUrl: string | null = parameters.account_login_url) {
+function signedInEntry(consoleWebUrl = parameters.console_web_url) {
   return getWebAppEntryState({
-    parameters: { ...parameters, account_login_url: accountLoginUrl },
+    parameters: { ...parameters, console_web_url: consoleWebUrl },
     loginStatus: { logged_in: true, app_logged_in: true },
     canAccess: true,
     appDataReady: true,
@@ -83,14 +82,8 @@ describe('Webapp My apps navigation', () => {
     },
   )
 
-  it('keeps navigation on the Webapp when sign-in points to a different Console domain', () => {
-    render(
-      navigation(
-        signedInEntry(
-          'https://console.example.com/console/signin?redirect_url=private&is_end_user=1#login',
-        ),
-      ),
-    )
+  it('keeps navigation on the Webapp when the Console has a different domain', () => {
+    render(navigation(signedInEntry('https://console.example.com/console')))
     expect(screen.getByRole('link', { name: 'app.endUser.myApps' })).toHaveAttribute(
       'href',
       '/my-apps',

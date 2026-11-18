@@ -10,7 +10,6 @@ vi.mock('@/app/notifications', () => ({ toast: { error: vi.fn() } }))
 
 const parameters: WebAppParametersResponse = {
   account_login_enabled: true,
-  account_login_url: '/signin',
   console_web_url: '',
   allow_anonymous_end_user_auth: false,
   connection_revision: 'published-workflow',
@@ -21,6 +20,7 @@ const parameters: WebAppParametersResponse = {
       icon: '/provider-icon.svg',
       icon_dark: null,
       plugin_unique_identifier: 'langgenius/gmail:1.0.0@digest',
+      verified: false,
       node_ids: ['gmail-node', 'reuse-node'],
       title: 'Read email',
       purpose: 'Find messages for this conversation',
@@ -95,7 +95,6 @@ describe('Web App entry queries', () => {
     })
     expect(result.current.parameters.data).toMatchObject({
       account_login_enabled: true,
-      account_login_url: '/signin',
       console_web_url: '',
       allow_anonymous_end_user_auth: false,
       connection_revision: 'published-workflow',

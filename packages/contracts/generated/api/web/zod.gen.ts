@@ -2472,6 +2472,7 @@ export const zWebAppConnectionRequirement = z.object({
   provider_label: z.string(),
   purpose: z.string(),
   title: z.string(),
+  verified: z.boolean(),
 })
 
 /**
@@ -2508,7 +2509,6 @@ export const zWebAppHumanInputV2SubmitResponse = z.record(z.string(), z.unknown(
  */
 export const zWebAppParametersResponse = z.object({
   account_login_enabled: z.boolean(),
-  account_login_url: z.string().nullable(),
   allow_anonymous_end_user_auth: z.boolean(),
   annotation_reply: z.object({
     enabled: z.boolean().optional(),
@@ -2967,10 +2967,9 @@ export const zHumanInputFormDefinitionResponse = z.object({
 /**
  * WebSystemFeatureResponse
  *
- * Extend public bootstrap with the Web-only Account login entry points.
+ * Extend public bootstrap with the Web-only Account login entry point.
  */
 export const zWebSystemFeatureResponse = z.object({
-  account_login_url: z.string().nullable(),
   agent_tracing_api_collection_enabled: z.boolean(),
   branding: zBrandingModel.default({
     application_title: '',

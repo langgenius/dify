@@ -818,6 +818,7 @@ export const zWebAppConnectionRequirement = z.object({
   provider_label: z.string(),
   purpose: z.string(),
   title: z.string(),
+  verified: z.boolean(),
 })
 
 /**

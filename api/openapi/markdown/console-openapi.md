@@ -38977,6 +38977,7 @@ The app access service is unavailable. Try again later.
 | provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
 | purpose | string |  | Yes |
 | title | string |  | Yes |
+| verified | boolean | Whether Dify verified this exact plugin artifact. | Yes |
 
 #### WebLoginUnavailableError
 

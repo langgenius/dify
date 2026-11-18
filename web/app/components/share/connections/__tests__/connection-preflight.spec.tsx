@@ -37,6 +37,7 @@ const requirements: WebAppConnectionRequirement[] = [
     allowed_credential_types: ['oauth2', 'api-key'],
     provider_label: 'GitHub',
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+    verified: false,
     title: 'Find repositories',
     purpose: 'Read repositories for a brief.',
     icon: '/github.svg',
@@ -49,6 +50,7 @@ const requirements: WebAppConnectionRequirement[] = [
     allowed_credential_types: ['oauth2'],
     provider_label: 'GitHub',
     plugin_unique_identifier: 'langgenius/github:1.0.0@digest',
+    verified: false,
     title: 'Read README',
     purpose: 'Read the documentation.',
     icon: '/github.svg',
@@ -83,7 +85,6 @@ function entry(parameters: Partial<ReadyEntry['parameters']> = {}): ReadyEntry {
     account: 'authenticated',
     parameters: {
       account_login_enabled: true,
-      account_login_url: 'https://account.example/signin',
       console_web_url: 'https://account.example',
       allow_anonymous_end_user_auth: false,
       connection_revision: parametersRevision,

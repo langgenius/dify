@@ -15,7 +15,7 @@ from tests.helpers.unit.config_override import apply_config_overrides
 
 @pytest.mark.parametrize("login_enabled", [True, False])
 @pytest.mark.parametrize("console_url", ["https://console.example.com", "https://console.example.com/base///", ""])
-def test_public_system_features_exposes_web_account_login_urls(
+def test_public_system_features_exposes_web_console_url(
     monkeypatch: pytest.MonkeyPatch,
     account_application_services: ApplicationServices,
     login_enabled: bool,
@@ -43,9 +43,9 @@ def test_public_system_features_exposes_web_account_login_urls(
     console_payload.pop("webapp_url")
     assert payload == {
         **console_payload,
-        "account_login_url": f"{console_url.rstrip('/')}/signin" if login_enabled else None,
         "console_web_url": console_url.rstrip("/"),
     }
+    assert "account_login_url" not in payload
     assert "account_login_url" not in console_response.get_json()
     assert "console_web_url" not in console_response.get_json()
     assert "webapp_url" not in payload
@@ -59,39 +59,31 @@ def test_web_system_features_preserves_shared_bootstrap(deployment_edition: Depl
 
     response = WebSystemFeatureResponse(
         **features.model_dump(mode="json"),
-        account_login_url=None,
         console_web_url="https://console.example.com",
     )
 
     assert response.model_dump(mode="json") == {
         **features.model_dump(mode="json"),
-        "account_login_url": None,
         "console_web_url": "https://console.example.com",
     }
 
 
-def test_web_system_features_schema_requires_login_urls() -> None:
+def test_web_system_features_schema_requires_console_web_url() -> None:
     schema = WebSystemFeatureResponse.model_json_schema(mode="serialization")
     shared_properties = SystemFeatureModel.model_json_schema(mode="serialization")["properties"]
 
-    assert "account_login_url" in schema["required"]
-    assert schema["properties"]["account_login_url"]["anyOf"] == [{"type": "string"}, {"type": "null"}]
-    assert "default" not in schema["properties"]["account_login_url"]
+    assert "account_login_url" not in schema["properties"]
     assert "console_web_url" in schema["required"]
     assert schema["properties"]["console_web_url"]["type"] == "string"
     assert "anyOf" not in schema["properties"]["console_web_url"]
     assert "default" not in schema["properties"]["console_web_url"]
-    for field_name in ("account_login_url", "console_web_url"):
-        assert field_name not in shared_properties
+    assert "console_web_url" not in shared_properties
 
 
-def test_web_system_features_cannot_default_missing_login_urls_to_disabled() -> None:
+def test_web_system_features_cannot_default_missing_console_web_url() -> None:
     with pytest.raises(ValidationError) as error:
         WebSystemFeatureResponse.model_validate(
             {"deployment_edition": DeploymentEdition.COMMUNITY, "agent_tracing_api_collection_enabled": False}
         )
 
-    assert {item["loc"] for item in error.value.errors(include_input=False)} == {
-        ("account_login_url",),
-        ("console_web_url",),
-    }
+    assert {item["loc"] for item in error.value.errors(include_input=False)} == {("console_web_url",)}

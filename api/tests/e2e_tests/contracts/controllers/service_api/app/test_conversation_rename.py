@@ -177,6 +177,7 @@ def harness(sqlite_engine: Engine, sqlite_session_factory: sessionmaker[Session]
             definitions=AppDefinitionQueryRepository(session_factory=admission_factory),
             builtin_icon_url_prefix="",
             get_connection_requirements=get_tool_connection_requirements,
+            plugin_verified=lambda *_args: False,
             plugin_readme=PluginService.fetch_plugin_readme,
             plugin_asset=PluginService.extract_asset,
             connection_revisions=PluginConnectionRevisions(
