@@ -224,6 +224,7 @@ def init_app(app: DifyApp) -> Celery:
         "tasks.trace_delivery_task",  # trace delivery and provider export retries
         "tasks.ops_trace_task",  # retired endpoint; old workers must drain pre-upgrade tasks
         "tasks.evaluation_task",  # evaluation run execution
+        "tasks.guest_connection_cleanup_task",  # Guest Connection retention and revocation recovery
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
 
@@ -306,6 +307,13 @@ def init_app(app: DifyApp) -> Celery:
         beat_schedule["conversation_cleanup_sweeper"] = {
             "task": "tasks.delete_conversation_task.sweep_deleted_conversations",
             "schedule": timedelta(minutes=dify_config.CONVERSATION_CLEANUP_TASK_INTERVAL),
+        }
+    if dify_config.ENABLE_GUEST_CONNECTION_CLEANUP_TASK is True:
+        interval = dify_config.GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES
+        beat_schedule["guest_connection_cleanup"] = {
+            "task": "tasks.guest_connection_cleanup_task.cleanup_guest_connections",
+            "schedule": timedelta(minutes=interval),
+            "options": {"expires": interval * 60},
         }
     if dify_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK:
         imports.append("schedule.clean_embedding_cache_task")

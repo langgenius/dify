@@ -773,6 +773,7 @@ export type EndUserConnectionResponse = {
   expires_at: number | null
   id: string
   last_active_at: number | null
+  manual_revocation_required_on_expiry?: boolean
   name: string
   provider: string
   updated_at: number

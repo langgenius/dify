@@ -2555,6 +2555,7 @@ This Web App identity is being updated. Please retry.
 | expires_at | integer |  | Yes |
 | id | string |  | Yes |
 | last_active_at | integer |  | Yes |
+| manual_revocation_required_on_expiry | boolean | For Guest API-key Connections: inactivity cleanup only removes the local key. To invalidate it, revoke it directly at the Provider. | No |
 | name | string |  | Yes |
 | provider | string |  | Yes |
 | updated_at | integer |  | Yes |

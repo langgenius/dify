@@ -104,8 +104,9 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
     """An Account owns credentials across Apps within their tenant namespace.
 
     Guest and service identities own credentials through their App-scoped EndUser.
-    Neither queries nor checks automatically extend last_active_at. Credential
-    mutation services must condition writes on owner and revision after external I/O.
+    last_active_at records creation, explicit authorization and edits, and actual
+    Guest tool invocation. Reads, checks, and automatic token refresh do not extend it.
+    Credential mutations must condition writes on owner and revision after external I/O.
     """
 
     __tablename__ = "end_user_connections"
@@ -142,7 +143,7 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
         sa.Index("end_user_connection_account_idx", "tenant_id", "account_id", "id"),
         sa.Index("end_user_connection_consumer_idx", "account_id", "provider", "credential_type", "id"),
         sa.Index("end_user_connection_end_user_idx", "tenant_id", "end_user_id", "id"),
-        sa.Index("end_user_connection_activity_idx", "last_active_at", "id"),
+        sa.Index("end_user_connection_owner_activity_idx", "account_id", "last_active_at", "id"),
     )
 
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -176,6 +177,31 @@ class EndUserConnection(DefaultFieldsDCMixin, TypeBase):
         default_factory=naive_utc_now,
         server_default=sa.func.current_timestamp(),
     )
+
+
+class ExpiredGuestOAuthGrant(TypeBase):
+    """Encrypted, time-leased revocation work for an already deleted Guest Connection.
+
+    The ID is a logical reference, never a foreign key. This work does not grant
+    App, Connection, or Claim access and is deleted after a best-effort attempt.
+    """
+
+    __tablename__ = "expired_guest_oauth_grants"
+    __table_args__ = (sa.Index("expired_guest_oauth_grant_available_idx", "available_at", "connection_id"),)
+
+    connection_id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    provider: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, repr=False)
+    oauth_client_source: Mapped[OAuthClientSource] = mapped_column(EnumText(OAuthClientSource), nullable=False)
+    oauth_client_configuration_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    # None means the original Client had no exposed public ID.
+    oauth_client_id: Mapped[str | None] = mapped_column(LongText, nullable=True, repr=False)
+    oauth_client_fingerprint: Mapped[str] = mapped_column(sa.String(64), nullable=False, repr=False)
+    oauth_plugin_unique_identifier: Mapped[str] = mapped_column(sa.String(512), nullable=False)
+    available_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False)
 
 
 class AppConnection(DefaultFieldsDCMixin, TypeBase):

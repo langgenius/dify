@@ -1574,6 +1574,19 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Maximum soft-deleted conversations dispatched per cleanup sweep",
         default=100,
     )
+    ENABLE_GUEST_CONNECTION_CLEANUP_TASK: bool = Field(
+        default=False,
+        description="Enable periodic expiration of inactive Guest Connections and delivery of their OAuth revocations.",
+    )
+    GUEST_CONNECTION_INACTIVITY_DAYS: PositiveInt = Field(
+        default=30, le=36500, description="Days of inactivity before a Guest Connection is eligible for cleanup."
+    )
+    GUEST_CONNECTION_CLEANUP_INTERVAL_MINUTES: PositiveInt = Field(
+        default=5, le=1440, description="Minutes between Guest Connection cleanup sweeps."
+    )
+    GUEST_CONNECTION_CLEANUP_BATCH_SIZE: PositiveInt = Field(
+        default=100, le=1000, description="Maximum candidates read per page by a Guest Connection cleanup sweep."
+    )
     ENABLE_CLEAN_EMBEDDING_CACHE_TASK: bool = Field(
         description="Enable clean embedding cache task",
         default=False,

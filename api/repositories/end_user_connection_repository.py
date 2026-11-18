@@ -3,6 +3,7 @@
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from hashlib import sha256
+from itertools import starmap
 from typing import Any, cast
 from uuid import UUID
 
@@ -27,6 +28,7 @@ from models.end_user_connection import (
     EndUserConnection,
     EndUserConnectionRevision,
     EndUserConnectionRevisionAcceptance,
+    ExpiredGuestOAuthGrant,
     SessionConnection,
 )
 from models.enums import AppStatus, ConversationFromSource, ConversationStatus, EndUserType, InvokeFrom
@@ -61,6 +63,12 @@ from services.end_user_connections.errors import (
     ConnectionReauthorizationRequiredError,
     ConnectionRevisionChangedError,
 )
+from services.end_user_connections.guest_expiry import (
+    GuestExpiryCandidate,
+    GuestExpiryOutcome,
+    GuestOAuthRevocation,
+    PendingGuestOAuthRevocation,
+)
 from services.end_user_connections.management import ConnectionChanges, StoredConnection
 from services.end_user_connections.oauth import (
     ConnectionOAuthAttempt,
@@ -79,6 +87,22 @@ from services.workflow.tool_credentials import (
     get_tool_connection_requirements,
     requires_end_user_connections,
 )
+
+
+def _after_timestamp_and_id(
+    timestamp_column: sa.SQLColumnExpression[datetime],
+    id_column: sa.SQLColumnExpression[str],
+    timestamp: datetime,
+    row_id: str,
+) -> sa.ColumnElement[bool]:
+    """Seek past an ordered cursor with a sargable timestamp bound on both dialects."""
+    return sa.and_(timestamp_column >= timestamp, sa.or_(timestamp_column > timestamp, id_column > row_id))
+
+
+def _activity_at_least(now: datetime) -> sa.ColumnElement[datetime]:
+    """Preserve monotonic activity even when requests commit out of clock order."""
+    activity = EndUserConnection.last_active_at
+    return sa.case((activity < now, now), else_=activity)
 
 
 class EndUserConnectionRepository:
@@ -113,6 +137,171 @@ class EndUserConnectionRepository:
                     )
                     deleted += result.rowcount
         return deleted
+
+    def inactive_guests(
+        self, *, before: datetime, after: GuestExpiryCandidate | None, limit: int
+    ) -> tuple[GuestExpiryCandidate, ...]:
+        """Scan IDs only; an unlinked browser EndUser, not merely a null Account, identifies a Guest."""
+        conn = EndUserConnection
+        stmt = (
+            sa.select(conn.id, conn.tenant_id, EndUser.app_id, EndUser.id, conn.last_active_at)
+            .join(EndUser, sa.and_(EndUser.id == conn.end_user_id, EndUser.tenant_id == conn.tenant_id))
+            .where(
+                conn.account_id.is_(None),
+                conn.last_active_at < before,
+                EndUser.type == EndUserType.BROWSER,
+                EndUser.account_id.is_(None),
+                EndUser.app_id.is_not(None),
+            )
+        )
+        if after is not None:
+            stmt = stmt.where(
+                _after_timestamp_and_id(conn.last_active_at, conn.id, after.last_active_at, after.connection_id)
+            )
+        with self._sessions() as session:
+            return tuple(
+                GuestExpiryCandidate(
+                    connection_id, WebConnectionContext(tenant_id, app_id, end_user_id, None), activity
+                )
+                for connection_id, tenant_id, app_id, end_user_id, activity in session.execute(
+                    stmt.order_by(conn.last_active_at, conn.id).limit(limit)
+                )
+            )
+
+    def expire_guest(
+        self, candidate: GuestExpiryCandidate, *, before: datetime, now: datetime
+    ) -> GuestExpiryOutcome | None:
+        """Delete under the Guest identity fence and Connection lock, never from scan evidence alone.
+
+        The commit deletes live defaults and Session choices by scoped FK cascade
+        and makes the ID unclaimable. Only a committed OAuth job authorizes a later
+        revocation; no external operations or Run writes occur in this transaction.
+        """
+        context = candidate.context
+        if context.account_id is not None:
+            return None
+        try:
+            with self._sessions.begin() as session:
+                # Claim takes this same identity lock exclusively before transferring Connections.
+                guest = lock_end_user(
+                    session,
+                    tenant_id=context.tenant_id,
+                    app_id=context.app_id,
+                    end_user_id=context.end_user_id,
+                    exclusive=False,
+                )
+                if guest is None or guest.type != EndUserType.BROWSER or guest.account_id is not None:
+                    return None
+                conn = EndUserConnection
+                scope = (
+                    conn.id == candidate.connection_id,
+                    conn.tenant_id == context.tenant_id,
+                    *self._owner(context.owner),
+                    conn.last_active_at < before,
+                )
+                row = session.scalar(sa.select(conn).where(*scope).with_for_update(skip_locked=True))
+                if row is None:
+                    return None
+                result = session.execute(sa.delete(conn).where(*scope).execution_options(synchronize_session=False))
+                if not isinstance(result, CursorResult) or result.rowcount != 1:
+                    return None
+                if row.credential_type == ConnectionCredentialType.API_KEY:
+                    return "manual_revocation_required"
+                return self._stage_expired_oauth_grant(session, row, context, now=now)
+        except EndUserBusyError:
+            # Do not interrupt a Claim or other owner writer. The next sweep rechecks.
+            return None
+
+    @staticmethod
+    def _stage_expired_oauth_grant(
+        session: Session, row: EndUserConnection, context: WebConnectionContext, *, now: datetime
+    ) -> GuestExpiryOutcome:
+        """Keep only the pinned, encrypted OAuth data needed after committed deletion."""
+        if (
+            row.oauth_client_source is None
+            or row.oauth_client_configuration_id is None
+            or row.oauth_client_fingerprint is None
+            or row.oauth_plugin_unique_identifier is None
+            or not row.encrypted_credentials
+        ):
+            return "oauth_unavailable"
+        session.add(
+            ExpiredGuestOAuthGrant(
+                connection_id=row.id,
+                tenant_id=context.tenant_id,
+                app_id=context.app_id,
+                end_user_id=context.end_user_id,
+                provider=row.provider,
+                encrypted_credentials=row.encrypted_credentials,
+                oauth_client_source=row.oauth_client_source,
+                oauth_client_configuration_id=row.oauth_client_configuration_id,
+                oauth_client_id=row.oauth_client_id,
+                oauth_client_fingerprint=row.oauth_client_fingerprint,
+                oauth_plugin_unique_identifier=row.oauth_plugin_unique_identifier,
+                available_at=now.replace(microsecond=0),
+            )
+        )
+        return "oauth_revocation_pending"
+
+    def pending_guest_oauth_revocations(
+        self, *, now: datetime, after: PendingGuestOAuthRevocation | None, limit: int
+    ) -> tuple[PendingGuestOAuthRevocation, ...]:
+        """Read at most one ordered page of due lease versions without loading credentials."""
+        grant = ExpiredGuestOAuthGrant
+        stmt = sa.select(grant.connection_id, grant.tenant_id, grant.available_at).where(grant.available_at <= now)
+        if after is not None:
+            stmt = stmt.where(
+                _after_timestamp_and_id(
+                    grant.available_at, grant.connection_id, after.available_at, after.connection_id
+                )
+            )
+        with self._sessions() as session:
+            return tuple(
+                starmap(
+                    PendingGuestOAuthRevocation,
+                    session.execute(stmt.order_by(grant.available_at, grant.connection_id).limit(limit)),
+                )
+            )
+
+    def lease_guest_oauth_revocation(
+        self, candidate: PendingGuestOAuthRevocation, *, until: datetime
+    ) -> GuestOAuthRevocation | None:
+        """Reserve only the scanned due version; an interrupted worker's lease eventually expires."""
+        if until <= candidate.available_at:
+            raise ValueError("Revocation lease must advance work availability.")
+        grant = ExpiredGuestOAuthGrant
+        scope = (grant.connection_id == candidate.connection_id, grant.tenant_id == candidate.tenant_id)
+        with self._sessions.begin() as session:
+            changed = session.execute(
+                sa.update(grant).where(*scope, grant.available_at == candidate.available_at).values(available_at=until)
+            )
+            if not isinstance(changed, CursorResult) or changed.rowcount != 1:
+                return None
+            row = session.scalars(sa.select(grant).where(*scope)).one()
+            return GuestOAuthRevocation(
+                context=WebConnectionContext(row.tenant_id, row.app_id, row.end_user_id, None),
+                provider=row.provider,
+                client=ConnectionOAuthClient(
+                    source=row.oauth_client_source,
+                    configuration_id=row.oauth_client_configuration_id,
+                    client_id=row.oauth_client_id,
+                    fingerprint=row.oauth_client_fingerprint,
+                    plugin_unique_identifier=row.oauth_plugin_unique_identifier,
+                ),
+                encrypted_credentials=row.encrypted_credentials,
+            )
+
+    def finish_guest_oauth_revocation(self, candidate: PendingGuestOAuthRevocation, *, until: datetime) -> None:
+        """Erase only the held version so a timed-out worker cannot retire a newer lease."""
+        grant = ExpiredGuestOAuthGrant
+        with self._sessions.begin() as session:
+            session.execute(
+                sa.delete(grant).where(
+                    grant.connection_id == candidate.connection_id,
+                    grant.tenant_id == candidate.tenant_id,
+                    grant.available_at == until,
+                )
+            )
 
     def account_connection_context(self, identity: ConsumerIdentity, connection_id: str) -> AccountConnectionContext:
         with self._sessions() as session:
@@ -647,7 +836,11 @@ class EndUserConnectionRepository:
     def transfer_guest_connections(
         cls, session: Session, guest: WebConnectionContext, account: WebConnectionContext
     ) -> int:
-        """Transfer credential owners inside the caller's validated identity transaction."""
+        """Transfer live Guest credentials under the caller's exclusive identity fence.
+
+        Background expiry takes that fence before deleting. Expiry winners are
+        already absent here; pending OAuth revocations never belong to an Account.
+        """
         transferred = cast(
             CursorResult,
             session.execute(
@@ -1040,6 +1233,7 @@ class EndUserConnectionRepository:
                     EndUserConnection.created_at,
                     EndUserConnection.updated_at,
                     EndUserConnection.last_active_at,
+                    EndUserConnection.end_user_id,
                     raiseload=True,
                 )
             )
@@ -1120,6 +1314,7 @@ class EndUserConnectionRepository:
     def update(
         self, context: WebConnectionContext, guard: ConnectionMutationGuard, changes: ConnectionChanges
     ) -> StoredConnection:
+        """Apply changes only to the checked owner/revision; checks may leave activity untouched."""
         with self._sessions.begin() as session:
             self._require_context(session, context, lock=True, shared=True)
             predicates = self._guard(context, guard)
@@ -1131,7 +1326,7 @@ class EndUserConnectionRepository:
             if changes.credential_status is not None:
                 values["status"] = changes.credential_status
             if changes.touch_activity:
-                values["last_active_at"] = naive_utc_now()
+                values["last_active_at"] = _activity_at_least(naive_utc_now())
             if values:
                 values.update(revision=EndUserConnection.revision + 1, updated_at=naive_utc_now())
                 result = cast(
@@ -1153,6 +1348,20 @@ class EndUserConnectionRepository:
             if changes.revision_acceptance is not None:
                 self._record_revision_acceptance(session, context, changes.revision_acceptance)
             return self._stored(row)
+
+    def record_guest_use(self, context: WebConnectionContext, guard: ConnectionMutationGuard) -> None:
+        """Fence imminent invocation against expiry and claim without changing credential revision."""
+        if context.account_id is not None:
+            raise ConnectionIdentityError()
+        with self._sessions.begin() as session:
+            self._require_context(session, context, lock=True, shared=True)
+            response = session.execute(
+                sa.update(EndUserConnection)
+                .where(*self._guard(context, guard))
+                .values(last_active_at=_activity_at_least(naive_utc_now()), updated_at=EndUserConnection.updated_at)
+            )
+            if not isinstance(response, CursorResult) or response.rowcount != 1:
+                raise ConnectionConflictError()
 
     def delete(self, context: ConnectionManagementContext, guard: ConnectionMutationGuard) -> None:
         with self._sessions.begin() as session:
@@ -1371,7 +1580,7 @@ class EndUserConnectionRepository:
                                 "account_label": account_label,
                                 "revision": EndUserConnection.revision + 1,
                                 "updated_at": naive_utc_now(),
-                                "last_active_at": naive_utc_now(),
+                                "last_active_at": _activity_at_least(naive_utc_now()),
                             }
                         )
                     ),
@@ -1428,6 +1637,9 @@ class EndUserConnectionRepository:
             created_at=row.created_at,
             updated_at=row.updated_at,
             last_active_at=row.last_active_at,
+            manual_revocation_required_on_expiry=(
+                row.end_user_id is not None and row.credential_type == ConnectionCredentialType.API_KEY
+            ),
         )
 
     @classmethod

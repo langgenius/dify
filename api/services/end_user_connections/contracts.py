@@ -123,6 +123,13 @@ class ConnectionSummary(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_active_at: datetime | None
+    manual_revocation_required_on_expiry: bool = Field(
+        default=False,
+        description=(
+            "For Guest API-key Connections: inactivity cleanup only removes the local key. "
+            "To invalidate it, revoke it directly at the Provider."
+        ),
+    )
 
 
 class ConnectionPage(BaseModel):

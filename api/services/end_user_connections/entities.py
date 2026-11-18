@@ -6,6 +6,7 @@ their authentication/persistence boundary. No workspace membership is implied.
 """
 
 from dataclasses import dataclass, field
+from typing import Literal
 
 from clients.plugin.auth_entities import CredentialCheckResult
 from constants.end_user_connections import ConnectionCredentialStatus, ConnectionCredentialType, OAuthClientSource
@@ -75,6 +76,7 @@ class AccountConnectionContext:
 
 
 type ConnectionManagementContext = WebConnectionContext | AccountConnectionContext
+type OAuthGrantRevocationStatus = Literal["revoked", "unsupported", "temporarily_unavailable", "failed", "unavailable"]
 
 
 @dataclass(frozen=True, slots=True)

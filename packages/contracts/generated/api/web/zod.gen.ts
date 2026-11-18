@@ -515,6 +515,7 @@ export const zEndUserConnectionResponse = z.object({
   expires_at: z.int().nullable(),
   id: z.string(),
   last_active_at: z.int().nullable(),
+  manual_revocation_required_on_expiry: z.boolean().optional().default(false),
   name: z.string(),
   provider: z.string(),
   updated_at: z.int(),

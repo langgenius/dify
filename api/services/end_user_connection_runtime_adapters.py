@@ -1,6 +1,7 @@
 """Resolve a tool's fixed credential source without falling back to workspace credentials."""
 
 from collections.abc import Mapping
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from clients.plugin.auth import PluginCredentialAuthClient
@@ -48,6 +49,7 @@ def get_tool_runtime(
     execution_driver: "WorkflowRunDriver | None" = None,
     workflow_tool_definition: "WorkflowTool | None" = None,
 ) -> Tool:
+    """Prepare the fixed tool runtime, deferring Guest activity until actual dispatch."""
     try:
         root_id, root = resolve_tool_credential_root(graph, node_id)
         node_data = next(
@@ -191,7 +193,8 @@ def get_tool_runtime(
             )
             from extensions.ext_application_services import application_services
 
-            resolved = application_services().end_user_connection_runtime.resolve(
+            runtime = application_services().end_user_connection_runtime
+            resolved = runtime.resolve(
                 identity, connection=record, target=target, connection_revision=context.connection_revision
             )
             accepted_revision = revisions.require(
@@ -200,7 +203,7 @@ def get_tool_runtime(
             repository.record_revision_acceptance(
                 identity, ConnectionRevisionAcceptance.from_revisions(context.connection_revision, accepted_revision)
             )
-            tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
+            personal_tool = provider.get_tool(spec.tool_name).fork_tool_runtime(
                 runtime=ToolRuntime(
                     tenant_id=identity.tenant_id,
                     user_id=identity.end_user_id,
@@ -211,6 +214,9 @@ def get_tool_runtime(
                     connection_id=resolved.access.id,
                 )
             )
+            if identity.account_id is None:
+                personal_tool.before_connection_invoke = partial(runtime.record_guest_use, identity, resolved.access)
+            tool = personal_tool
         return ToolManager.get_workflow_tool_runtime(
             run_context.tenant_id,
             run_context.app_id,
