@@ -107,8 +107,6 @@ class OutputModeration(BaseModel):
 
     def _keyword_overlap_size(self) -> int:
         """Return the longest configured keyword length minus one for boundary context."""
-        if self.rule.type != "keywords":
-            return 0
         keywords = self.rule.config.get("keywords")
         if not isinstance(keywords, str):
             return 0
