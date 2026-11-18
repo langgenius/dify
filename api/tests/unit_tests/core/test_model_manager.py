@@ -97,6 +97,21 @@ def test_tenant_only_model_does_not_reuse_system_credentials_from_cache() -> Non
     assert provider.bundle.configuration.using_provider_type == ProviderType.SYSTEM
 
 
+def test_tenant_only_model_requires_an_explicit_provider() -> None:
+    provider, _ = make_tenant_moderation_provider()
+    manager = ModelManager(provider)
+
+    with pytest.raises(ValueError, match="explicit provider"):
+        manager.get_model_instance(
+            provider.bundle.configuration.tenant_id,
+            "",
+            ModelType.MODERATION,
+            "omni-moderation-latest",
+            require_custom_credentials=True,
+        )
+    assert provider.lookups == 0
+
+
 def test_missing_tenant_credentials_do_not_fall_back_to_system() -> None:
     provider, client = make_tenant_moderation_provider()
     config = provider.bundle.configuration

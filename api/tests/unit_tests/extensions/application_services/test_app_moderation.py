@@ -48,6 +48,7 @@ from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBa
 from core.entities.provider_entities import ProviderQuotaType, QuotaConfiguration, QuotaUnit
 from core.model_manager import ModelInstance
 from core.moderation.base import ModerationAction, ModerationInputsResult, ModerationOutputsResult
+from core.moderation.factory import get_app_moderation
 from core.moderation.input_moderation import InputModeration
 from core.moderation.output_moderation import ModerationRule as OutputModerationRule
 from core.moderation.output_moderation import OutputModeration
@@ -453,6 +454,7 @@ def test_independent_model_checks_do_not_serialize_or_deduplicate(same_text: boo
         (DeploymentEdition.CLOUD, True, ProviderType.SYSTEM, QuotaUnit.CREDITS, True),
     ],
 )
+@pytest.mark.parametrize("registered", [False, True], ids=["standalone", "registered"])
 def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
     monkeypatch: pytest.MonkeyPatch,
     config_overrides: Callable[..., None],
@@ -462,6 +464,7 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
     provider_type: ProviderType,
     quota_unit: QuotaUnit,
     hosted: bool,
+    registered: bool,
 ) -> None:
     config_overrides(DEPLOYMENT_EDITION=edition, HOSTED_MODERATION_ENABLED=enabled)
     code_based_extension.init()
@@ -479,9 +482,13 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
         "extensions.application_services.moderation.build_platform_moderation_service", lambda: hosted_service
     )
     flask_app = Flask(__name__)
-    flask_app.extensions["application_services"] = ModerationServices(
-        build_moderation_service(database_client=unbound_session_factory)
-    )
+    monkeypatch.setattr("core.moderation.input_moderation.get_app_moderation", get_app_moderation)
+    monkeypatch.setattr("core.app.task_pipeline.based_generate_task_pipeline.get_app_moderation", get_app_moderation)
+    if registered:
+        flask_app.extensions["app_moderation"] = AppModeration()
+        flask_app.extensions["application_services"] = ModerationServices(
+            build_moderation_service(database_client=unbound_session_factory)
+        )
 
     model_conf = make_model_config(provider="test-provider", model="test-model", mode="chat")
     bundle = model_conf.provider_model_bundle
@@ -537,7 +544,8 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
             assert pipeline.output_moderation_handler is None
             with pytest.raises(PlatformModerationRejectedInvocationError) as rejection:
                 model.invoke_llm(prompt, stream=False)
-            assert pipeline.moderation_replacement(rejection.value) == ("App output replacement", "output")
+            replacement = ("App output replacement", "output") if registered else None
+            assert pipeline.moderation_replacement(rejection.value) == replacement
         else:
             result = model.invoke_llm(prompt, stream=False)
             assert isinstance(result, LLMResult)
