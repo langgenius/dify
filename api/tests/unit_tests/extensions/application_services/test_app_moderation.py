@@ -63,7 +63,7 @@ from extensions.application_services.app_moderation import (
 from extensions.application_services.moderation import build_llm_moderation_guard, build_moderation_service
 from extensions.ext_code_based_extension import code_based_extension
 from graphon.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from graphon.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
 from graphon.model_runtime.model_providers.base.large_language_model import LargeLanguageModel
 from graphon.runtime import RuntimeState
 from machinery.context import AppRequestContext
@@ -532,7 +532,7 @@ def test_direct_app_routes_input_and_output_to_exactly_one_openai_backend(
             message_id="message-1",
         ) == (False, {}, "safe input")
         model = ModelInstance(bundle, model_conf.model, credentials={})
-        prompt = [UserPromptMessage(content="safe input")]
+        prompt: list[PromptMessage] = [UserPromptMessage(content="safe input")]
         if hosted:
             assert pipeline.output_moderation_handler is None
             with pytest.raises(PlatformModerationRejectedInvocationError) as rejection:
