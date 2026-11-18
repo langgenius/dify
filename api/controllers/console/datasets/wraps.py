@@ -1,8 +1,9 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import Concatenate
+from typing import Any, Concatenate, Protocol, cast, overload
 
 from flask import current_app
+from flask_restx import Resource
 from sqlalchemy.orm import Session
 
 from controllers.console.datasets.error import PipelineNotFoundError
@@ -80,21 +81,22 @@ def _pipeline_for_call(
     return load_rag_pipeline(session, pipeline_id, tenant_id=resolve_tenant_id())
 
 
-def _accept_pipeline[**P, R](view: Callable[P, R]) -> Callable[Concatenate[Pipeline, P], R]:
-    """Adapt keyword injection to a callable with a leading ``Pipeline`` parameter."""
+class _PipelineDecorator(Protocol):
+    @overload
+    def __call__[**P, R](self, view: Callable[P, R]) -> Callable[P, R]: ...
 
-    def call(pipeline: Pipeline, *args: P.args, **kwargs: P.kwargs) -> R:
-        kwargs["pipeline"] = pipeline
-        return view(*args, **kwargs)
-
-    return call
+    @overload
+    def __call__[T: Resource, **P, R](
+        self,
+        view: Callable[Concatenate[T, P], R],
+    ) -> Callable[Concatenate[T, P], R]: ...
 
 
 def get_rag_pipeline_with(
     *,
     session_factory: Callable[[], Session],
     resolve_tenant_id: Callable[[], str] = _request_tenant_id,
-):
+) -> _PipelineDecorator:
     """Build ``get_rag_pipeline`` with an explicit session factory and tenant resolver.
 
     Callers pass the session factory. Tests pass the factory that owns the fixture
@@ -108,30 +110,40 @@ def get_rag_pipeline_with(
     outside the tenant raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    def decorator[**P, R](view: Callable[P, R]) -> Callable[P, R]:
-        view_with_pipeline = _accept_pipeline(view)
-
+    def decorator[R](view: Callable[..., R]) -> Callable[..., R]:
         @wraps(view)
-        def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+        def decorated_view(*args: Any, **kwargs: Any) -> R:
+            # The overloads keep Resource methods method-aware for pyrefly while
+            # preserving support for plain functions used in tests and utilities.
             if not kwargs.get("pipeline_id"):
                 raise ValueError("missing pipeline_id in path parameters")
 
             pipeline_id = str(kwargs.get("pipeline_id"))
             del kwargs["pipeline_id"]
-            pipeline = _pipeline_for_call(
+            kwargs["pipeline"] = _pipeline_for_call(
                 args,
                 pipeline_id,
                 session_factory=session_factory,
                 resolve_tenant_id=resolve_tenant_id,
             )
-            return view_with_pipeline(pipeline, *args, **kwargs)
+            return view(*args, **kwargs)
 
         return document_errors(decorated_view, PipelineNotFoundError)
 
-    return decorator
+    return cast(_PipelineDecorator, decorator)
 
 
-def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+@overload
+def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]: ...
+
+
+@overload
+def get_rag_pipeline[T: Resource, **P, R](
+    view: Callable[Concatenate[T, P], R],
+) -> Callable[Concatenate[T, P], R]: ...
+
+
+def get_rag_pipeline[R](view: Callable[..., R]) -> Callable[..., R]:
     """Replace the ``pipeline_id`` path parameter with the tenant's ``Pipeline``.
 
     A handler that composes ``@with_session`` directly above this decorator loads
@@ -145,21 +157,21 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     raises ``PipelineNotFoundError``. Nothing is written.
     """
 
-    view_with_pipeline = _accept_pipeline(view)
-
     @wraps(view)
-    def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
+    def decorated_view(*args: Any, **kwargs: Any) -> R:
+        # The overloads keep Resource methods method-aware for pyrefly while
+        # preserving support for plain functions used in tests and utilities.
         if not kwargs.get("pipeline_id"):
             raise ValueError("missing pipeline_id in path parameters")
 
         pipeline_id = str(kwargs.get("pipeline_id"))
         del kwargs["pipeline_id"]
-        pipeline = _pipeline_for_call(
+        kwargs["pipeline"] = _pipeline_for_call(
             args,
             pipeline_id,
             session_factory=_scoped_session,
             resolve_tenant_id=_request_tenant_id,
         )
-        return view_with_pipeline(pipeline, *args, **kwargs)
+        return view(*args, **kwargs)
 
     return document_errors(decorated_view, PipelineNotFoundError)
