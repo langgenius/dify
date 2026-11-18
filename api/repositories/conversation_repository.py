@@ -61,20 +61,56 @@ from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.installed_app_access_service import InstalledAppNotFoundError, InstalledAppRef
+from services.retention.conversation.log_export_service import ConversationLogExportTask
 
 if TYPE_CHECKING:
     from extensions.ext_redis import RedisClientWrapper
-    from services.retention.conversation.log_export_service import ConversationLogExportTask
+    from services.retention.conversation.log_export_service import ConversationLogExportStatus
 
 _LOG_EXPORT_COUNT_TIMEOUT_MS = 1500
 _LOG_EXPORT_BATCH_SIZE = 500
+_TRANSITION_LOG_EXPORT_TASK = """
+local current = redis.call("GET", KEYS[1])
+if not current or cjson.decode(current).status ~= ARGV[1] then
+    return 0
+end
+return redis.call("SET", KEYS[1], ARGV[2], "XX", "KEEPTTL") and 1 or 0
+"""
 
 
-def save_conversation_log_export_task(task: "ConversationLogExportTask", *, redis: "RedisClientWrapper") -> None:
-    """Write an admitted task and its TTL together in Redis, propagating any write failure."""
-    key = f"conversation_log_export:{task.tenant_id}:{task.app_id}:{task.task_id}"
-    ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
-    redis.setex(key, ttl_seconds, task.model_dump_json())
+class RedisConversationLogExportTasks:
+    """Store temporary app exports and claim each task atomically."""
+
+    def __init__(self, *, redis: "RedisClientWrapper") -> None:
+        """Bind the configured Redis client."""
+        self._redis = redis
+
+    @staticmethod
+    def _key(*, tenant_id: str, app_id: str, task_id: str) -> str:
+        """Scope a task key to its owning workspace and app."""
+        return f"conversation_log_export:{tenant_id}:{app_id}:{task_id}"
+
+    def save(self, task: ConversationLogExportTask) -> None:
+        """Persist an admitted task with a single Redis write that sets its TTL."""
+        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        ttl_seconds = max(1, int((task.expires_at - utc_now()).total_seconds()))
+        self._redis.setex(key, ttl_seconds, task.model_dump_json())
+
+    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
+        """Load the matching live task for the workspace and app."""
+        raw = self._redis.get(self._key(tenant_id=tenant_id, app_id=app_id, task_id=task_id))
+        if raw is None:
+            return None
+        task = ConversationLogExportTask.model_validate_json(raw)
+        if (task.tenant_id, task.app_id, task.task_id) != (tenant_id, app_id, task_id) or task.expires_at <= utc_now():
+            return None
+        return task
+
+    def transition(self, task: ConversationLogExportTask, *, from_status: "ConversationLogExportStatus") -> bool:
+        """Update only a task in the expected state, preserving its remaining TTL."""
+        key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        transition = self._redis.register_script(_TRANSITION_LOG_EXPORT_TASK)
+        return bool(transition(keys=[key], args=[from_status, task.model_dump_json()]))
 
 
 class ConversationRepository:

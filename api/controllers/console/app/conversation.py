@@ -389,7 +389,7 @@ class ConversationLogExportApi(Resource):
     )
     @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
     def post(self, request_context: RequestContext, app_id: UUID) -> tuple[dict[str, object], HTTPStatus]:
-        """Validate an admitted app's export filters and return the task after it has been saved."""
+        """Validate an admitted app's export filters and acknowledge the task after publication."""
         scope = _resolve_log_export_scope(request_context, app_id)
         try:
             payload = ConversationLogExportCreatePayload.model_validate(request.get_json(silent=True))

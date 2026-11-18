@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Generator
+from pathlib import Path
 from typing import Literal, overload
 
 from flask import Flask
@@ -87,6 +88,10 @@ class Storage:
 
     def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
+
+    def save_file(self, filename: str, source: Path) -> None:
+        """Upload a completed local file through the configured storage backend."""
+        self.storage_runner.save_file(filename, source)
 
     @overload
     def load(self, filename: str, /, *, stream: Literal[False] = False) -> bytes: ...

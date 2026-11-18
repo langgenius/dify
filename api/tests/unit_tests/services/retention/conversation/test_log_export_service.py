@@ -1,8 +1,9 @@
 """Exercise Console log CSV exports with real conversation queries."""
 
 import csv
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from io import StringIO
+from typing import Literal
 from unittest.mock import Mock
 
 import pytest
@@ -26,8 +27,58 @@ from models.workflow import WorkflowRun, WorkflowType
 from repositories import conversation_repository
 from repositories.conversation_repository import ConversationRepository
 from services.entities.conversation_entities import ConsoleConversationLogFilters
-from services.retention.conversation.log_export_service import ConversationLogExportService
+from services.retention.conversation.log_export_service import (
+    ConversationLogExportService,
+    ConversationLogExportTask,
+    ConversationLogExportTaskStore,
+)
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
+
+
+@pytest.mark.parametrize("outcome", ["claim_lost", "failed", "ready"])
+def test_prepare_export_records_only_claimed_work(outcome: Literal["claim_lost", "failed", "ready"]) -> None:
+    """Store a file only for the winning worker and publish its final state."""
+    created_at = datetime(2026, 1, 15, tzinfo=UTC)
+    task = ConversationLogExportTask(
+        task_id="task-1",
+        tenant_id="tenant-1",
+        app_id="app-1",
+        requested_by="account-1",
+        filters=ConsoleConversationLogFilters(
+            keyword=None, start=None, end=None, annotation_status="all", sort_by="-updated_at"
+        ),
+        created_at=created_at,
+        expires_at=created_at + timedelta(days=1),
+    )
+    tasks = Mock(spec=ConversationLogExportTaskStore)
+    tasks.get.return_value = task
+    tasks.transition.return_value = outcome != "claim_lost"
+    store_csv = Mock(side_effect=OSError("upload failed") if outcome == "failed" else None)
+    service = ConversationLogExportService(conversations=Mock(), tasks=tasks, dispatch=Mock(), store_csv=store_csv)
+
+    if outcome == "failed":
+        with pytest.raises(OSError, match="upload failed"):
+            service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+    else:
+        service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+
+    claim = tasks.transition.call_args_list[0]
+    assert claim.args[0].status == "processing"
+    assert claim.kwargs == {"from_status": "pending"}
+    if outcome == "claim_lost":
+        tasks.transition.assert_called_once()
+        store_csv.assert_not_called()
+    else:
+        store_csv.assert_called_once()
+        storage_key = "conversation-log-exports/tenant-1/app-1/task-1.csv"
+        assert store_csv.call_args.args[0] == storage_key
+        completion = tasks.transition.call_args_list[1]
+        assert completion.args[0].status == outcome
+        assert completion.args[0].storage_key == (storage_key if outcome == "ready" else None)
+        assert completion.kwargs == {"from_status": "processing"}
+        tasks.get.return_value = completion.args[0]
+        service.prepare_task(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
+        store_csv.assert_called_once()
 
 
 def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
@@ -138,7 +189,9 @@ def test_console_log_csv_exports_all_turns_of_matching_conversations_in_batches(
         account_ids=(account.id,),
     )
     repository = ConversationRepository(session_factory=sqlite_session_factory)
-    service = ConversationLogExportService(conversations=repository, save_task=Mock())
+    service = ConversationLogExportService(
+        conversations=repository, tasks=Mock(spec=ConversationLogExportTaskStore), dispatch=Mock(), store_csv=Mock()
+    )
     pool = sqlite_engine.pool
     assert isinstance(pool, QueuePool)
 

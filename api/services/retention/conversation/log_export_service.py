@@ -1,6 +1,7 @@
 """Create export tasks and write CSV for the logs of one Console chat app."""
 
 import csv
+import logging
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
 from typing import Literal, Protocol, TextIO
@@ -17,6 +18,11 @@ from services.entities.conversation_entities import (
     ConsoleConversationScope,
     ConversationLogExportRow,
 )
+
+logger = logging.getLogger(__name__)
+
+type ConversationLogExportStatus = Literal["pending", "processing", "ready", "failed"]
+type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
 _LOG_CSV_APP_TYPES = {"chat": "Chatbot", "advanced-chat": "Chatflow", "agent-chat": "Agent"}
@@ -42,7 +48,7 @@ _LOG_CSV_COLUMNS = (
 
 
 class ConversationLogExportTask(BaseModel):
-    """Persist the admitted owner and normalized filters for a pending export."""
+    """Persist the admitted owner, normalized filters and state of a temporary export."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -53,11 +59,26 @@ class ConversationLogExportTask(BaseModel):
     filters: ConsoleConversationLogFilters
     created_at: datetime
     expires_at: datetime
-    status: Literal["pending"] = "pending"
+    status: ConversationLogExportStatus = "pending"
+    storage_key: str | None = None
 
 
 class UnsupportedConversationLogExportModeError(ValueError):
     """The admitted app has no conversation log CSV export."""
+
+
+class ConversationLogExportTaskStore(Protocol):
+    def save(self, task: ConversationLogExportTask) -> None:
+        """Persist a new task and its expiration before publishing it."""
+        ...
+
+    def get(self, *, tenant_id: str, app_id: str, task_id: str) -> ConversationLogExportTask | None:
+        """Return a live task for the exact workspace and app, or None if absent or expired."""
+        ...
+
+    def transition(self, task: ConversationLogExportTask, *, from_status: ConversationLogExportStatus) -> bool:
+        """Replace a live task only from the expected status, keeping its original expiration."""
+        ...
 
 
 class ConversationLogExportStore(Protocol):
@@ -78,19 +99,26 @@ class ConversationLogExportService:
     """Create temporary export tasks and generate their CSV from detached log records."""
 
     def __init__(
-        self, *, conversations: ConversationLogExportStore, save_task: Callable[[ConversationLogExportTask], None]
+        self,
+        *,
+        conversations: ConversationLogExportStore,
+        tasks: ConversationLogExportTaskStore,
+        dispatch: Callable[[ConversationLogExportTask], None],
+        store_csv: StoreLogExportFile,
     ) -> None:
-        """Bind owned conversation reads and a write that persists a task with its expiration."""
+        """Bind scoped log reads, export task state, delivery and file storage."""
         self._conversations = conversations
-        self._save_task = save_task
+        self._tasks = tasks
+        self._dispatch = dispatch
+        self._store_csv = store_csv
 
     def create_task(
         self, *, scope: ConsoleConversationScope, requested_by: str, filters: ConsoleConversationLogFilters
     ) -> ConversationLogExportTask:
-        """Save a new pending task for an admitted app and caller before returning its ID.
+        """Save and dispatch a pending task for an admitted app and caller before returning its ID.
 
-        Require time filters converted from the caller's timezone to UTC. An unsupported
-        mode or a failed store write raises before a task can be acknowledged.
+        Require time filters converted from the caller's timezone to UTC. Propagate a
+        publication failure and mark the task failed if it is still pending.
         """
         if scope.app_mode not in _LOG_CSV_APP_TYPES:
             raise UnsupportedConversationLogExportModeError("App mode does not support conversation log CSV exports.")
@@ -104,8 +132,53 @@ class ConversationLogExportService:
             created_at=created_at,
             expires_at=created_at + _LOG_EXPORT_TASK_TTL,
         )
-        self._save_task(task)
+        self._tasks.save(task)
+        try:
+            self._dispatch(task)
+        except Exception:
+            self._mark_failed(task)
+            raise
         return task
+
+    def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
+        """Claim a live pending task and store its CSV before setting ready.
+
+        Resolve the app against the saved workspace and account. Only the worker that
+        claims the pending state may write the artifact. Record ordinary failures before
+        propagating them, and leave missing or previously claimed tasks alone.
+        """
+        task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
+        if task is None or task.status != "pending":
+            return
+        processing = task.model_copy(update={"status": "processing"})
+        if not self._tasks.transition(processing, from_status="pending"):
+            return
+
+        context = RequestContext(
+            request_id=task.task_id, trace_id=None, account_id=task.requested_by, active_workspace_id=task.tenant_id
+        )
+        storage_key = f"conversation-log-exports/{task.tenant_id}/{task.app_id}/{task.task_id}.csv"
+        try:
+            self._store_csv(
+                storage_key, lambda output: self.write_csv(context, task.app_id, filters=task.filters, output=output)
+            )
+            ready = processing.model_copy(update={"status": "ready", "storage_key": storage_key})
+            self._tasks.transition(ready, from_status="processing")
+        except Exception:
+            self._mark_failed(processing)
+            raise
+
+    def _mark_failed(self, task: ConversationLogExportTask) -> None:
+        """Record failure from the last owned state while preserving the original exception."""
+        try:
+            self._tasks.transition(task.model_copy(update={"status": "failed"}), from_status=task.status)
+        except Exception:
+            logger.exception(
+                "Failed to record conversation log export failure: tenant=%s app=%s task=%s",
+                task.tenant_id,
+                task.app_id,
+                task.task_id,
+            )
 
     def write_csv(
         self,

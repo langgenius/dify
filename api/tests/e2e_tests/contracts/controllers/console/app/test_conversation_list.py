@@ -44,7 +44,7 @@ from models import Account, Tenant, TenantAccountJoin
 from models.enums import ConversationFromSource, FeedbackFromSource, FeedbackRating
 from models.model import App, AppMode, Conversation, Message, MessageAnnotation, MessageFeedback
 from models.utils.file_input_compat import restore_input_files
-from repositories.conversation_repository import ConversationRepository, save_conversation_log_export_task
+from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
 from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
@@ -68,6 +68,7 @@ class _Harness:
     tenant: Tenant
     target: App
     redis: Mock = field(default_factory=lambda: Mock(spec=RedisClientWrapper))
+    dispatch: Mock = field(default_factory=Mock)
     sessions: list[Session] = field(default_factory=list)
     after_account_load: Callable[[], None] | None = None
 
@@ -179,7 +180,9 @@ def harness(
         ),
         conversation_log_exports=ConversationLogExportService(
             conversations=conversations,
-            save_task=lambda task: save_conversation_log_export_task(task, redis=state.redis),
+            tasks=RedisConversationLogExportTasks(redis=state.redis),
+            dispatch=state.dispatch,
+            store_csv=Mock(),
         ),
     )
     api = ExternalApi(app)
@@ -441,6 +444,12 @@ def test_create_conversation_log_export_persists_normalized_filters(
     """Store the caller, owned app and UTC filter bounds before acknowledging an export."""
     harness.mode(AppMode.ADVANCED_CHAT)
     monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+
+    def assert_saved_before_publish(task: ConversationLogExportTask) -> None:
+        harness.redis.setex.assert_called_once()
+        assert harness.redis.setex.call_args.args[2] == task.model_dump_json()
+
+    harness.dispatch.side_effect = assert_saved_before_publish
     end_user_id = str(uuid4())
     response = harness.post_export(
         {
@@ -458,6 +467,7 @@ def test_create_conversation_log_export_persists_normalized_filters(
     harness.redis.setex.assert_called_once()
     key, ttl, raw = harness.redis.setex.call_args.args
     task = ConversationLogExportTask.model_validate_json(raw)
+    harness.dispatch.assert_called_once_with(task)
     assert response.get_json() == {"task_id": str(UUID(task.task_id)), "status": "pending"}
     assert key == f"conversation_log_export:{harness.tenant.id}:{harness.target.id}:{task.task_id}"
     assert task.requested_by == harness.account.id
@@ -471,6 +481,24 @@ def test_create_conversation_log_export_persists_normalized_filters(
     assert task.filters.sort_by == "-created_at"
     assert task.filters.end_user_ids == (end_user_id,)
     assert task.filters.account_ids == (harness.account.id,)
+
+
+def test_create_conversation_log_export_records_publish_failure(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Keep the failed submission in Redis and return a server error to the caller."""
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    harness.dispatch.side_effect = OSError("broker unavailable")
+
+    response = harness.post_export({})
+    assert response.status_code == 500
+
+    update = harness.redis.register_script.return_value
+    update.assert_called_once()
+    old_status, raw = update.call_args.kwargs["args"]
+    assert update.call_args.kwargs["keys"] == [harness.redis.setex.call_args.args[0]]
+    assert old_status == "pending"
+    assert ConversationLogExportTask.model_validate_json(raw).status == "failed"
 
 
 @pytest.mark.parametrize(

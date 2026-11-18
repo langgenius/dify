@@ -1,8 +1,10 @@
 import logging
 from collections.abc import Generator
+from pathlib import Path
 from typing import override
 
 import boto3
+from boto3.s3.transfer import TransferConfig
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
@@ -58,6 +60,16 @@ class AwsS3Storage(BaseStorage):
     @override
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
+
+    @override
+    def save_file(self, filename: str, source: Path) -> None:
+        """Upload a completed local file with one multipart transfer at a time."""
+        self.client.upload_file(
+            str(source),
+            self.bucket_name,
+            filename,
+            Config=TransferConfig(multipart_chunksize=8 * 1024 * 1024, max_concurrency=1, use_threads=False),
+        )
 
     @override
     def load_once(self, filename: str) -> bytes:
