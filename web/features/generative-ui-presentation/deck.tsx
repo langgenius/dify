@@ -3,16 +3,15 @@
 import type { RevealApi, RevealConfig } from 'reveal.js'
 import { IconButton } from '@langgenius/dify-ui/icon-button'
 import { Deck, Slide } from '@revealjs/react'
-import { useRef, useState } from 'react'
+import { Fragment, useRef, useState } from 'react'
 import RevealNotes from 'reveal.js/plugin/notes'
 import { useTranslation } from '#i18n'
 import { DifyLogo } from '@/app/components/base/logo/dify-logo'
-import { basePath } from '@/utils/var'
 import { Architecture } from './architecture'
+import { createCompositionExample } from './composition-example'
 import { Demo } from './demo'
 import { ExistingCapabilities } from './existing-capabilities'
 import { InterfacePreview } from './interface-preview'
-import { GENERATIVE_UI_PRESENTATION_PATH } from './route'
 import { speakerNotes } from './speaker-notes'
 import 'reveal.js/reveal.css'
 import './presentation.css'
@@ -48,10 +47,16 @@ const config: RevealConfig = {
 export default function PresentationDeck() {
   const { t } = useTranslation(['presentation', 'common'])
   const deckRef = useRef<RevealApi | null>(null)
-  const rootRef = useRef<HTMLDivElement>(null)
   const [notesPlugin] = useState(RevealNotes)
   const [index, setIndex] = useState(0)
   const [ready, setReady] = useState(false)
+  const compositionLines = createCompositionExample({
+    sales: t(($) => $['preview.sales']),
+    trend: t(($) => $['preview.trend']),
+    feedback: t(($) => $['threshold.formField']),
+    submit: t(($) => $['operation.submit'], { ns: 'common' }),
+    confirm: t(($) => $['operation.confirm'], { ns: 'common' }),
+  })
   const titles = [
     'Dify Generative UI',
     t(($) => $['positioning.audience']),
@@ -63,7 +68,7 @@ export default function PresentationDeck() {
   ]
 
   return (
-    <div ref={rootRef} className="generative-ui-presentation">
+    <div className="generative-ui-presentation">
       <header className="presentation-header">
         <DifyLogo alt="Dify" size="large" />
         <span className="presentation-header-title">GENERATIVE UI</span>
@@ -82,20 +87,11 @@ export default function PresentationDeck() {
           >
             <span aria-hidden="true" className="i-ri-slideshow-3-line size-4" />
           </IconButton>
-          <a
-            className="presentation-export"
-            href={`${basePath}${GENERATIVE_UI_PRESENTATION_PATH}?print-pdf`}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <span aria-hidden="true" className="i-ri-file-pdf-2-line size-4" />
-            PDF
-          </a>
           <IconButton
             aria-label={t(($) => $['operation.toggleFullscreen'], { ns: 'common' })}
             onClick={() => {
               if (document.fullscreenElement) void document.exitFullscreen()
-              else void rootRef.current?.requestFullscreen()
+              else void document.documentElement.requestFullscreen()
             }}
           >
             <span aria-hidden="true" className="i-ri-fullscreen-line size-4" />
@@ -157,21 +153,18 @@ export default function PresentationDeck() {
               <div className="component-composition" aria-label="Dify UI">
                 <div className="composition-heading">
                   <span aria-hidden="true" className="i-ri-sparkling-2-line" />
-                  Generative UI
+                  OpenUI Lang
                 </div>
-                <div className="composition-code">
-                  <span>root</span> = Stack([
-                  <br />
-                  &nbsp;&nbsp;MetricCard(...),
-                  <br />
-                  &nbsp;&nbsp;LineChart(...),
-                  <br />
-                  &nbsp;&nbsp;Form(...),
-                  <br />
-                  &nbsp;&nbsp;ActionButton(...)
-                  <br />
-                  ])
-                </div>
+                <pre className="composition-code">
+                  <code>
+                    {compositionLines.map(([name, expression]) => (
+                      <Fragment key={name}>
+                        <span className="composition-variable">{name}</span>
+                        {` = ${expression}\n`}
+                      </Fragment>
+                    ))}
+                  </code>
+                </pre>
                 <div className="composition-foot">Dify UI</div>
               </div>
             </div>

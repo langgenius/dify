@@ -1,5 +1,6 @@
 'use client'
 
+import type { PresentationLocale } from './locales'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import dynamic from 'next/dynamic'
@@ -14,19 +15,19 @@ const PresentationDeck = dynamic(() => import('./deck'), {
   loading: PresentationLoading,
 })
 
-export function GenerativeUIPresentation() {
+export function GenerativeUIPresentation({ locale }: { locale: PresentationLocale }) {
   const [i18n] = useState(() => {
     const instance = createInstance()
     void instance
       .use(initReactI18next)
       .use(resourcesToBackend(loadI18nResource))
-      .init({ ...getInitOptions(['presentation']), lng: 'zh-Hans' })
+      .init({ ...getInitOptions(['presentation', 'common']), lng: locale })
     return instance
   })
 
   return (
     <I18nextProvider i18n={i18n}>
-      <main className="h-dvh bg-background-body" lang="zh-Hans" dir="ltr">
+      <main className="h-dvh bg-background-body" lang={locale} dir="ltr">
         <Suspense fallback={<PresentationLoading />}>
           <PresentationDeck />
         </Suspense>

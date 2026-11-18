@@ -54,22 +54,6 @@ body:has(.generative-ui-presentation) [data-openui-devtools-root] {
   margin-inline-start: auto;
 }
 
-.generative-ui-presentation .presentation-export {
-  display: inline-flex;
-  min-height: 32px;
-  align-items: center;
-  gap: 5px;
-  border-radius: 6px;
-  padding: 4px 8px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-  text-decoration: none;
-}
-
-.generative-ui-presentation .presentation-export:hover {
-  background: var(--color-background-body);
-}
-
 .generative-ui-presentation .presentation-stage {
   min-height: 0;
   flex: 1;
@@ -316,6 +300,7 @@ body:has(.generative-ui-presentation) [data-openui-devtools-root] {
 }
 
 .generative-ui-presentation .component-composition {
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--deck-line);
   border-radius: 16px;
@@ -339,14 +324,26 @@ body:has(.generative-ui-presentation) [data-openui-devtools-root] {
 }
 
 .generative-ui-presentation .composition-code {
-  padding: 28px;
+  margin: 0;
+  padding: 24px;
   color: var(--color-text-secondary);
   font-family: var(--font-mono);
-  font-size: 23px;
+  font-size: 18px;
   line-height: 1.9;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 
-.generative-ui-presentation .composition-code > span {
+.generative-ui-presentation .composition-code code {
+  font: inherit;
+}
+
+.generative-ui-presentation:lang(en) .composition-code {
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+.generative-ui-presentation .composition-variable {
   color: var(--deck-blue);
 }
 

@@ -2,6 +2,7 @@ import type { OpenUiContentBlock } from '@dify/contracts/api/console/agent/types
 import type { ChatItem, WorkflowAgentToolActivity } from '../../../types'
 import type { ChatContextValue } from '../../context'
 import { page } from 'vite-plus/test/browser'
+import { createDeferred } from '@/test/deferred'
 import { guardUnexpectedFetch } from '@/test/unexpected-fetch'
 import { chatItem, renderChatOwner } from '../../__tests__/chat-owner-preset'
 import { ChatContextProvider } from '../../context-provider'
@@ -56,7 +57,7 @@ it.each([
   'keeps tool details and generated UI usable in $name and saves before continuing',
   async ({ humanInputFilledFormDataList }) => {
     const onSend = vi.fn()
-    const saved = Promise.withResolvers<void>()
+    const saved = createDeferred<void>()
     const saveState = vi
       .fn<NonNullable<ChatContextValue['onGenerativeUIStateChange']>>()
       .mockReturnValue(saved.promise)

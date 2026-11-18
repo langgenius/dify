@@ -15,9 +15,12 @@ and Dify design tokens. It does not require a running API.
 - The three scenario scripts appear only in the Live Demo speaker notes.
 - Maintain the Chinese speaker notes for all seven slides in `speaker-notes.ts`.
 
-For a static PDF, use the PDF link, then print to PDF in Chrome or Chromium with
-landscape orientation, no margins, and background graphics enabled. Fragments
-are combined into one final state per slide.
+For a static PDF, open `/presentations/generative-ui?print-pdf`. Append
+`&lang=ja-JP` for Japanese or `&lang=en-US` for English.
+Then print to PDF in Chrome or Chromium with landscape orientation, no margins,
+and background graphics enabled. Fragments are combined into one final state per
+slide. The `lang` query parameter selects the presentation language; without it,
+the presentation uses Chinese.
 
 `deck.tsx` owns slide composition and reveal.js navigation. `architecture.tsx`
 owns the diagram and fragment groups. `demo.tsx` owns live-demo navigation and
