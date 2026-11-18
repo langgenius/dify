@@ -3746,6 +3746,7 @@ Personal settings only; credentials, login IPs and Builder lifecycle stay privat
 | provider_label | string | Tool provider display name in the WebApp's configured language, falling back to English. | Yes |
 | purpose | string |  | Yes |
 | title | string |  | Yes |
+| verified | boolean | Whether Dify verified this exact plugin artifact. | Yes |
 
 #### WebAppCustomConfigResponse
 

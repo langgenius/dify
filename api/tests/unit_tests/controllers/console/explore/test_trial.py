@@ -2405,6 +2405,7 @@ class TestTrialPreviewCases:
             ),
             app_definitions=AppDefinitionQueryService(
                 definitions=AppDefinitionQueryRepository(session_factory=factory),
+                plugin_verified=lambda *_args: False,
                 plugin_readme=lambda *_args: "",
                 plugin_asset=lambda *_args: b"",
                 builtin_icon_url_prefix="/tools/",

@@ -533,6 +533,7 @@ def build_application_services(
     app_definition_repository = AppDefinitionQueryRepository(session_factory=database_client)
     app_definitions = AppDefinitionQueryService(
         definitions=app_definition_repository,
+        plugin_verified=PluginService.is_plugin_verified,
         plugin_readme=PluginService.fetch_plugin_readme,
         plugin_asset=PluginService.extract_asset,
         connection_revisions=PluginConnectionRevisions(
