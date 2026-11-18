@@ -5,8 +5,6 @@ import { chatItem, renderChatOwner } from '../../__tests__/chat-owner-preset'
 import Answer from '../index'
 
 vi.unmock('react-i18next')
-// boundary: real attachment owners read params without a running Next router.
-vi.mock('@/next/navigation', () => ({ useParams: () => ({}), usePathname: () => '/chat' }))
 
 beforeEach(async () => {
   await page.viewport(1000, 800)

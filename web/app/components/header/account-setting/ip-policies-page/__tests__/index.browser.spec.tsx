@@ -26,19 +26,6 @@ vi.mock('@/service/console/browser', () => ({
     call: (path: readonly string[]) => request(path.join('.')),
   },
 }))
-// boundary: analytics must not emit product telemetry from a browser test.
-vi.mock('@/app/components/base/amplitude', () => ({ trackEvent: vi.fn() }))
-// boundary: Next's app router is unavailable in the standalone Vitest browser page.
-vi.mock('@/next/navigation', () => ({
-  useRouter: () => ({ refresh: vi.fn() }),
-  usePathname: () => '/account/settings',
-  useParams: () => ({}),
-  useSearchParams: () => new URLSearchParams(),
-}))
-// boundary: next-themes requires a Next document and persisted browser theme outside this journey.
-vi.mock('next-themes', () => ({
-  useTheme: () => ({ theme: 'light', setTheme: vi.fn() }),
-}))
 
 async function renderPoliciesSettings(width = 320) {
   await page.viewport(width, 800)
