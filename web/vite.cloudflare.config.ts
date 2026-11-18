@@ -4,6 +4,7 @@ import { cloudflare } from '@cloudflare/vite-plugin'
 import { defineConfig, mergeConfig } from 'vite-plus'
 import { createWorker } from './cloudflare.worker.ts'
 import { cloudflareServerStubs } from './plugins/vite/cloudflare-server-stubs.ts'
+import { dedupeNestedSsrOutput } from './plugins/vite/dedupe-nested-ssr-output.ts'
 import baseConfig from './vite.config.ts'
 
 const projectRoot = fileURLToPath(new URL('.', import.meta.url))
@@ -22,6 +23,7 @@ export default defineConfig(async (env: ConfigEnv) => {
     build: { sourcemap: false },
     plugins: [
       cloudflareServerStubs({ projectRoot }),
+      dedupeNestedSsrOutput(),
       cloudflare({
         viteEnvironment: { name: 'rsc', childEnvironments: ['ssr'] },
         config: (loaded) => ({ ...loaded, worker: createWorker() }),
