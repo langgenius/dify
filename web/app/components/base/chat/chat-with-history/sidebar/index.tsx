@@ -181,7 +181,7 @@ const Sidebar = ({ isPanel, toggleButtonRef }: Props) => {
           <BuildAppLink />
         </div>
       )}
-      {!isInstalledApp && <UnofficialAppWarning className="mt-2" />}
+      {!isInstalledApp && <UnofficialAppWarning className="mt-2 px-3" />}
       <div className="flex shrink-0 items-center justify-between p-3">
         {!isInstalledApp && entry?.showSignIn ? (
           <SignIn />
