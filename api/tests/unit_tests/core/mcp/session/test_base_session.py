@@ -21,10 +21,12 @@ from core.mcp.types import (
     JSONRPCError,
     JSONRPCMessage,
     JSONRPCNotification,
+    JSONRPCRequest,
     JSONRPCResponse,
     Notification,
     NotificationParams,
     RequestParams,
+    ServerMessageMetadata,
     SessionMessage,
 )
 from core.mcp.types import (
@@ -155,6 +157,7 @@ def test_base_session_lifecycle(streams: Streams) -> None:
         assert s._executor is not None
         assert s._receiver_future is not None
 
+    assert session._receiver_future is not None
     session._receiver_future.result(timeout=5.0)
     assert session._receiver_future.done()
 
@@ -169,7 +172,9 @@ def test_send_request_success(streams: Streams) -> None:
     def mock_response() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             response = JSONRPCResponse(jsonrpc="2.0", id=req_id, result={"result": "hello world"})
             read_stream.put(SessionMessage(message=JSONRPCMessage(response)))
         except Exception:
@@ -195,7 +200,9 @@ def test_send_request_retry_loop_coverage(streams: Streams) -> None:
     def mock_delayed_response() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             time.sleep(0.2)
             response = JSONRPCResponse(jsonrpc="2.0", id=req_id, result={"result": "slow"})
             read_stream.put(SessionMessage(message=JSONRPCMessage(response)))
@@ -222,7 +229,9 @@ def test_send_request_jsonrpc_error(streams: Streams) -> None:
     def mock_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             error = JSONRPCError(jsonrpc="2.0", id=req_id, error=ErrorData(code=-32000, message="Error"))
             read_stream.put(SessionMessage(message=JSONRPCMessage(error)))
         except BaseException:
@@ -249,7 +258,9 @@ def test_send_request_auth_error(streams: Streams) -> None:
     def mock_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             error = JSONRPCError(jsonrpc="2.0", id=req_id, error=ErrorData(code=401, message="Unauthorized"))
             read_stream.put(SessionMessage(message=JSONRPCMessage(error)))
         except BaseException:
@@ -275,7 +286,9 @@ def test_send_request_http_status_error_coverage(streams: Streams) -> None:
     def mock_direct_http_error() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             # To cover line 263 in base_session.py, we MUST put non-401 HTTPStatusError
             # DIRECTLY into response_streams, as _receive_loop would convert it to JSONRPCError.
             response = Response(status_code=403, request=Request("GET", "http://test"))
@@ -335,6 +348,7 @@ def test_send_notification(streams: Streams) -> None:
     assert isinstance(msg.message.root, JSONRPCNotification)
     assert msg.message.root.method == "notify"
     assert msg.message.root.params == {"message": "hi"}
+    assert isinstance(msg.metadata, ServerMessageMetadata)
     assert msg.metadata.related_request_id == "rel-1"
 
 
@@ -354,6 +368,7 @@ def test_receive_loop_request(streams: Streams) -> None:
 
     assert len(session.received_requests) == 1
     responder = session.received_requests[0]
+    assert isinstance(responder, RequestResponder)
     assert responder.request_id == 1
     assert responder.request.root.method == "test/request"
 
@@ -373,8 +388,10 @@ def test_receive_loop_notification(streams: Streams) -> None:
             time.sleep(0.1)
 
     assert len(session.received_notifications) == 1
-    assert isinstance(session.received_notifications[0].root, MockNotification)
-    assert session.received_notifications[0].root.method == "test/notification"
+    notification = session.received_notifications[0]
+    assert isinstance(notification, ReceiveNotification)
+    assert isinstance(notification.root, MockNotification)
+    assert notification.root.method == "test/notification"
 
 
 @pytest.mark.timeout(15)
@@ -541,7 +558,9 @@ def test_send_request_none_response(streams: Streams) -> None:
     def mock_none() -> None:
         try:
             msg = write_stream.get(timeout=2)
-            req_id = msg.message.root.id
+            root = msg.message.root
+            assert isinstance(root, JSONRPCRequest)
+            req_id = root.id
             session._response_streams[req_id].put(None)
         except BaseException:
             pass
