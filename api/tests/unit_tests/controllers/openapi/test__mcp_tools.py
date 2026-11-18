@@ -266,6 +266,11 @@ def test_the_tool_list_has_four_tools_with_the_right_annotations() -> None:
     assert MCP_INSTRUCTIONS.startswith("This server runs operations of a Dify server.")
 
 
+def test_every_effect_has_exactly_one_call_tool() -> None:
+    for effect in Effect:
+        assert [tool for tool in CallTool if tool.effect is effect] == [CallTool.for_effect(effect)]
+
+
 def test_the_call_tool_enum_carries_its_effect() -> None:
     assert [(tool.value, tool.effect) for tool in CallTool] == [
         ("dify_read", Effect.READ),
