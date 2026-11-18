@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 
 from constants.personal_access_token import PersonalAccessTokenPolicy
 from core.logging.context import get_request_id, get_trace_id
-from machinery.context import RequestContext
+from machinery.context import CallerIdentity, RequestContext
 from machinery.scope import UNRESTRICTED, IdScope
 from models.account import Account, Tenant, TenantAccountRole
 from models.model import App, EndUser
@@ -56,16 +56,20 @@ class Context:
     _caller: Caller | None = field(default=None, init=False)
 
     @property
-    def request_context(self) -> RequestContext:
+    def caller_identity(self) -> CallerIdentity:
         """Pass only stable identity values across the application boundary."""
-        return RequestContext(
+        return CallerIdentity(
             request_id=self.request_id,
             trace_id=self.trace_id,
             account_id=str(self.subject.account_id or self.subject.token_id),
-            active_workspace_id=str(self.workspace.id),
             resource_app_ids=self.resource_app_ids,
             personal_app_ids=self.personal_app_ids,
         )
+
+    @property
+    def request_context(self) -> RequestContext:
+        """The caller identity acting in the loaded workspace."""
+        return self.caller_identity.in_workspace(str(self.workspace.id))
 
     @property
     def app(self) -> App:

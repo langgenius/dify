@@ -7,7 +7,7 @@ from uuid import UUID
 
 from constants.oauth_bearer import SubjectType
 from libs.pagination import PaginatedResult
-from machinery.context import AppRequestContext, RequestContext
+from machinery.context import AppRequestContext, CallerIdentity, RequestContext
 from machinery.scope import UNRESTRICTED, IdScope, scope_admits
 from models.enums import AppStatus
 from services.app.access import AppAccessFilter
@@ -32,22 +32,8 @@ class AppListLogin:
     """
 
     kind: SubjectType
-    request_id: str
-    trace_id: str | None
-    account_id: str
+    caller: CallerIdentity
     workspace_id: str | None
-    resource_app_ids: frozenset[str] | None = None
-    personal_app_ids: IdScope = UNRESTRICTED
-
-    def in_workspace(self, workspace_id: str) -> RequestContext:
-        return RequestContext(
-            request_id=self.request_id,
-            trace_id=self.trace_id,
-            account_id=self.account_id,
-            active_workspace_id=workspace_id,
-            resource_app_ids=self.resource_app_ids,
-            personal_app_ids=self.personal_app_ids,
-        )
 
 
 type _AppListRule = Callable[[AppListLogin, AppDiscoveryQuery], PaginatedResult[AppDiscoveryEntry]]
@@ -126,8 +112,10 @@ class AppDiscoveryService:
     def _account_apps(self, login: AppListLogin, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
         """Without a workspace: each workspace's list, joined in workspace order, then paged."""
         if login.workspace_id is not None:
-            return self.list_apps(login.in_workspace(login.workspace_id), query)
-        contexts = [login.in_workspace(w) for w in self._workspaces.member_workspace_ids(login.account_id)]
+            return self.list_apps(login.caller.in_workspace(login.workspace_id), query)
+        contexts = [
+            login.caller.in_workspace(w) for w in self._workspaces.member_workspace_ids(login.caller.account_id)
+        ]
         start = (query.page - 1) * query.limit
         stop = start + query.limit
         app_id = _app_id_in(query.name)
@@ -155,7 +143,7 @@ class AppDiscoveryService:
     ) -> PaginatedResult[AppDiscoveryEntry]:
         if login.workspace_id is None:
             raise ValueError("a workspace token always has its workspace")
-        return self.list_apps(login.in_workspace(login.workspace_id), query)
+        return self.list_apps(login.caller.in_workspace(login.workspace_id), query)
 
     def _external_apps(self, login: AppListLogin, query: AppDiscoveryQuery) -> PaginatedResult[AppDiscoveryEntry]:
         """An external SSO login belongs to no workspace: admission refuses one that names a workspace."""
