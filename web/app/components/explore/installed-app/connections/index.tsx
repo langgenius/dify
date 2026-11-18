@@ -65,6 +65,7 @@ function InstalledConnectionRow({
   return (
     <WorkspaceConnectionItem
       name={requirement.provider_label}
+      verified={requirement.verified}
       description={requirement.purpose}
       icon={{ icon_type: 'link', icon: requirement.icon }}
       iconDark={

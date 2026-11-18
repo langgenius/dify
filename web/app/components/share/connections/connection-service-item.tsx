@@ -4,7 +4,9 @@ import type { ReactNode, Ref } from 'react'
 import type { AppIconProps } from '@/app/components/base/app-icon'
 import { cn } from '@langgenius/dify-ui/cn'
 import { useId } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Verified from '@/app/components/plugins/base/badges/verified'
 import { useResolvedTheme } from '@/features/theme/hooks'
 
 type Props = Pick<AppIconProps, 'icon'> & {
@@ -12,6 +14,7 @@ type Props = Pick<AppIconProps, 'icon'> & {
   iconDark?: AppIconProps['icon']
   iconClassName?: string
   name: string
+  verified?: boolean
   description: string
   warning?: ReactNode
   renderControls: (labels: { labelledBy: string; describedBy: string }) => ReactNode
@@ -23,10 +26,12 @@ export default function ConnectionServiceItem({
   iconDark,
   iconClassName,
   name,
+  verified,
   description,
   warning,
   renderControls,
 }: Props) {
+  const { t } = useTranslation(['plugin'])
   const theme = useResolvedTheme()
   const nameId = useId()
   const descriptionId = useId()
@@ -51,9 +56,17 @@ export default function ConnectionServiceItem({
         decorative
       />
       <div className="flex min-w-0 flex-1 flex-col gap-px">
-        <span id={nameId} className="system-md-semibold wrap-anywhere text-text-primary">
-          {name}
-        </span>
+        <div className="flex min-w-0 items-center gap-0.5">
+          <span id={nameId} className="min-w-0 system-md-semibold wrap-anywhere text-text-primary">
+            {name}
+          </span>
+          {verified && (
+            <Verified
+              className="size-4"
+              text={t(($) => $['marketplace.verifiedTip'], { ns: 'plugin' })}
+            />
+          )}
+        </div>
         <span id={descriptionId} className="system-xs-regular wrap-anywhere text-text-tertiary">
           {description}
         </span>

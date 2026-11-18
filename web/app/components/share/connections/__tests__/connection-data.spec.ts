@@ -42,6 +42,16 @@ function connection(overrides: Partial<EndUserConnectionResponse> = {}): EndUser
 }
 
 describe('Webapp connection data', () => {
+  it.each([true, false])('preserves the backend plugin verification value: %s', (verified) => {
+    const data = getConnectionData({
+      requirements: [requirement({ verified })],
+      connections: [],
+      allConnectionsLoaded: true,
+    })
+
+    expect(data.services[0]?.verified).toBe(verified)
+  })
+
   it('adapts provider light and dark asset URLs for the existing AppIcon presentation', () => {
     const data = getConnectionData({
       requirements: [requirement({ icon: '/provider-light.svg', icon_dark: '/provider-dark.svg' })],
