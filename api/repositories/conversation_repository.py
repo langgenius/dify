@@ -7,7 +7,7 @@ from typing import cast
 
 from psycopg2.errors import QueryCanceled
 from pydantic import JsonValue
-from sqlalchemy import Select, exists, func, or_, select, text, update
+from sqlalchemy import Select, and_, exists, func, or_, select, text, update
 from sqlalchemy.exc import DBAPIError
 from sqlalchemy.orm import InstrumentedAttribute, Session, sessionmaker
 
@@ -218,6 +218,23 @@ class ConversationRepository:
         statement = statement.where(Conversation.app_id == app_id, Conversation.is_deleted.is_(False))
         if completion:
             statement = statement.where(Conversation.mode == AppMode.COMPLETION)
+        identities = []
+        if filters.end_user_ids:
+            identities.append(
+                and_(
+                    Conversation.from_source == ConversationFromSource.API,
+                    Conversation.from_end_user_id.in_(filters.end_user_ids),
+                )
+            )
+        if filters.account_ids:
+            identities.append(
+                and_(
+                    Conversation.from_source == ConversationFromSource.CONSOLE,
+                    Conversation.from_account_id.in_(filters.account_ids),
+                )
+            )
+        if identities:
+            statement = statement.where(or_(*identities))
         if filters.keyword:
             pattern = f"%{escape_like_pattern(filters.keyword)}%"
             statement = statement.join(Message, Message.conversation_id == Conversation.id)

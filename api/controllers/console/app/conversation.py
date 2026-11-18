@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from flask_restx import Resource
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from configs import dify_config
 from controllers.common.errors import (
@@ -15,7 +15,12 @@ from controllers.common.errors import (
     UnauthorizedError,
 )
 from controllers.common.rbac import PlainApp, RBACCheck
-from controllers.common.schema import query_params_from_model, register_response_schema_models, register_schema_models
+from controllers.common.schema import (
+    query_params_from_model,
+    query_params_from_request,
+    register_response_schema_models,
+    register_schema_models,
+)
 from controllers.console import console_ns
 from controllers.console.app.error import AppNotFoundError
 from controllers.console.flask_admission import console_account_admission
@@ -40,6 +45,7 @@ from fields.conversation_fields import (
     ConversationWithSummaryPagination as ConversationWithSummaryPaginationResponse,
 )
 from libs.datetime_utils import parse_time_range
+from libs.exception import BaseHTTPException
 from libs.external_api import error_responses
 from libs.helper import dump_response
 from libs.login import current_account_with_tenant
@@ -48,7 +54,6 @@ from services.app.console_service import ConsoleAppNotFoundError
 from services.entities.conversation_entities import (
     ConsoleConversationFilters,
     ConsoleConversationLogFilters,
-    ConversationSort,
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
@@ -79,16 +84,35 @@ class CompletionConversationQuery(BaseConversationQuery):
     pass
 
 
-class ChatConversationQuery(BaseConversationQuery):
+class ChatConversationFilterQuery(ConversationLogFilterQuery):
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort field and direction"
     )
+    end_user_ids: list[UUID] = Field(default_factory=list, description="End user IDs to include")
+    account_ids: list[UUID] = Field(default_factory=list, description="Account IDs to include")
 
 
-class ConversationLogExportPreviewQuery(ConversationLogFilterQuery):
+class ChatConversationQuery(BaseConversationQuery, ChatConversationFilterQuery):
+    pass
+
+
+class ConversationLogExportPreviewQuery(ChatConversationFilterQuery):
     model_config = ConfigDict(extra="forbid")
 
-    sort_by: ConversationSort = Field(default="-updated_at", description="Which Logs timestamp to filter by")
+
+class _ConversationLogQueryValidationError(BaseHTTPException):
+    error_code = "unprocessable_entity"
+    code = HTTPStatus.UNPROCESSABLE_ENTITY
+
+
+def _validate_log_query[QueryT: ChatConversationFilterQuery](model: type[QueryT]) -> QueryT:
+    """Read repeated identity IDs and preserve the Console list's sanitized 422 response."""
+    try:
+        return query_params_from_request(model, list_fields=("end_user_ids", "account_ids"))
+    except ValidationError as exc:
+        raise _ConversationLogQueryValidationError(
+            exc.json(include_url=False, include_input=False, include_context=False)
+        ) from None
 
 
 class ConversationLogExportCountsResponse(ResponseModel):
@@ -253,7 +277,7 @@ class ChatConversationApi(Resource):
             raise AppNotFoundError(str(exc)) from exc
         except NoPermissionError as exc:
             raise UnauthorizedError(str(exc)) from exc
-        req_data = validate_request(ChatConversationQuery)
+        req_data = _validate_log_query(ChatConversationQuery)
         start, end = _parse_log_time_range(req_data, scope.timezone)
         try:
             page = queries.get_console_page(
@@ -264,6 +288,8 @@ class ChatConversationApi(Resource):
                     end=end,
                     annotation_status=req_data.annotation_status,
                     sort_by=req_data.sort_by,
+                    end_user_ids=tuple(str(user_id) for user_id in req_data.end_user_ids),
+                    account_ids=tuple(str(account_id) for account_id in req_data.account_ids),
                     page=req_data.page,
                     limit=req_data.limit,
                 ),
@@ -301,7 +327,7 @@ class ConversationLogExportPreviewApi(Resource):
             scope.tenant_id
         ):
             raise PaidPlanRequiredError()
-        query = validate_request(ConversationLogExportPreviewQuery)
+        query = _validate_log_query(ConversationLogExportPreviewQuery)
         start, end = _parse_log_time_range(query, scope.timezone)
         try:
             counts = queries.get_console_log_export_counts(
@@ -312,6 +338,8 @@ class ConversationLogExportPreviewApi(Resource):
                     end=end,
                     annotation_status=query.annotation_status,
                     sort_by=query.sort_by,
+                    end_user_ids=tuple(str(user_id) for user_id in query.end_user_ids),
+                    account_ids=tuple(str(account_id) for account_id in query.account_ids),
                 ),
             )
         except ConsoleAppNotFoundError as exc:

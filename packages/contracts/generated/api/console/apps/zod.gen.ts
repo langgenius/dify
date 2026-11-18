@@ -7378,8 +7378,10 @@ export const zGetAppsByAppIdChatConversationsPath = z.object({
 })
 
 export const zGetAppsByAppIdChatConversationsQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   limit: z.int().gte(1).lte(100).optional().default(20),
   page: z.int().gte(1).lte(99999).optional().default(1),
@@ -7516,8 +7518,10 @@ export const zGetAppsByAppIdConversationLogExportsPreviewPath = z.object({
 })
 
 export const zGetAppsByAppIdConversationLogExportsPreviewQuery = z.object({
+  account_ids: z.array(z.uuid()).optional(),
   annotation_status: z.enum(['all', 'annotated', 'not_annotated']).optional().default('all'),
   end: z.string().optional(),
+  end_user_ids: z.array(z.uuid()).optional(),
   keyword: z.string().optional(),
   sort_by: z
     .enum(['-created_at', '-updated_at', 'created_at', 'updated_at'])

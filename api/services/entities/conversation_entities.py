@@ -1,6 +1,6 @@
 """Detached conversation records and explicit ownership references."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
 
@@ -101,13 +101,18 @@ class ConsoleConversationScope:
 
 @dataclass(frozen=True, slots=True)
 class ConsoleConversationLogFilters:
-    """Console log selection before pagination, with optional keyword and time bounds."""
+    """Select Console logs before pagination.
+
+    A conversation matches either identity list. Two empty lists select all identities.
+    """
 
     keyword: str | None
     start: datetime | None
     end: datetime | None
     annotation_status: ConversationAnnotationStatus
     sort_by: ConversationSort
+    end_user_ids: tuple[str, ...] = field(default=(), kw_only=True)
+    account_ids: tuple[str, ...] = field(default=(), kw_only=True)
 
 
 @dataclass(frozen=True, slots=True)

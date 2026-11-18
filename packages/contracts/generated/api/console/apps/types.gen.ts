@@ -6286,8 +6286,10 @@ export type GetAppsByAppIdChatConversationsData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     limit?: number
     page?: number
@@ -6612,8 +6614,10 @@ export type GetAppsByAppIdConversationLogExportsPreviewData = {
     app_id: string
   }
   query?: {
+    account_ids?: Array<string>
     annotation_status?: 'all' | 'annotated' | 'not_annotated'
     end?: string
+    end_user_ids?: Array<string>
     keyword?: string
     sort_by?: '-created_at' | '-updated_at' | 'created_at' | 'updated_at'
     start?: string

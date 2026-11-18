@@ -3035,8 +3035,10 @@ Get chat conversations with pagination and filtering
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword | No | string |
 | limit | query | Page size (1-100) | No | integer, <br>**Default:** 20 |
 | page | query | Page number | No | integer, <br>**Default:** 1 |
@@ -3275,10 +3277,12 @@ Count the conversations and rows that match the application's chat Logs filters
 | Name | Located in | Description | Required | Schema |
 | ---- | ---------- | ----------- | -------- | ------ |
 | app_id | path | Application ID | Yes | string (uuid) |
+| account_ids | query | Account IDs to include | No | [ string (uuid) ] |
 | annotation_status | query | Annotation status filter | No | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all |
 | end | query | End date (YYYY-MM-DD HH:MM) | No | string |
+| end_user_ids | query | End user IDs to include | No | [ string (uuid) ] |
 | keyword | query | Search keyword | No | string |
-| sort_by | query | Which Logs timestamp to filter by | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
+| sort_by | query | Sort field and direction | No | string, <br>**Available values:** "-created_at", "-updated_at", "created_at", "updated_at", <br>**Default:** -updated_at |
 | start | query | Start date (YYYY-MM-DD HH:MM) | No | string |
 
 #### Responses
@@ -24222,8 +24226,10 @@ HTTP failure with only provider-supplied diagnostic identifiers.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| account_ids | [ string (uuid) ] | Account IDs to include | No |
 | annotation_status | string, <br>**Available values:** "all", "annotated", "not_annotated", <br>**Default:** all | Annotation status filter<br>*Enum:* `"all"`, `"annotated"`, `"not_annotated"` | No |
 | end | string | End date (YYYY-MM-DD HH:MM) | No |
+| end_user_ids | [ string (uuid) ] | End user IDs to include | No |
 | keyword | string | Search keyword | No |
 | limit | integer, <br>**Default:** 20 | Page size (1-100) | No |
 | page | integer, <br>**Default:** 1 | Page number | No |

@@ -1,6 +1,6 @@
 """Console conversation lists through real account admission, services and SQLite."""
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -68,7 +68,7 @@ class _Harness:
         self,
         kind: _Kind,
         *,
-        query: dict[str, str | int] | None = None,
+        query: Mapping[str, str | int | list[str]] | None = None,
         app_id: str | None = None,
         authenticated: bool = True,
         csrf: bool = True,
@@ -289,6 +289,51 @@ def test_conversation_export_preview_counts_all_messages_in_matched_conversation
     assert harness.get("export-preview", query={"keyword": "unmatched"}).get_json() == {
         "counts": {"conversation_count": 0, "message_count": 0}
     }
+
+
+def test_list_and_export_preview_filter_by_selected_identities(
+    harness: _Harness, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    harness.mode(AppMode.ADVANCED_CHAT)
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    selected_user_ids = [str(uuid4()), str(uuid4())]
+    first, second = _conversation(harness), _conversation(harness)
+    account = _conversation(harness, invoke_from="explore")
+    other_user = _conversation(harness)
+    other_app = _conversation(harness, app_id=str(uuid4()))
+    with harness.factory.begin() as session:
+        for conversation, user_id in (
+            (first, selected_user_ids[0]),
+            (second, selected_user_ids[1]),
+            (other_user, str(uuid4())),
+            (other_app, selected_user_ids[0]),
+        ):
+            stored = session.get_one(Conversation, conversation.id)
+            stored.from_end_user_id = user_id
+            stored.from_account_id = None
+        session.get_one(Conversation, account.id).from_source = ConversationFromSource.CONSOLE
+
+    for query, expected in (
+        ({"end_user_ids": selected_user_ids}, {first.id, second.id}),
+        ({"account_ids": [harness.account.id]}, {account.id}),
+        ({"end_user_ids": selected_user_ids, "account_ids": [harness.account.id]}, {first.id, second.id, account.id}),
+    ):
+        page = harness.get("chat", query=query)
+        preview = harness.get("export-preview", query=query)
+
+        assert set(_ids(page)) == expected
+        assert page.get_json()["total"] == len(expected)
+        assert preview.status_code == 200
+        assert preview.get_json() == {"counts": {"conversation_count": len(expected), "message_count": len(expected)}}
+
+
+@pytest.mark.parametrize("kind", ["chat", "export-preview"])
+def test_log_identity_filters_require_uuids(harness: _Harness, monkeypatch: pytest.MonkeyPatch, kind: _Kind) -> None:
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    response = harness.get(kind, query={"end_user_ids": ["invalid-user-id"]})
+    assert response.status_code == 422
+    assert response.get_json()["code"] == "unprocessable_entity"
+    assert "invalid-user-id" not in response.get_json()["message"]
 
 
 @pytest.mark.parametrize(
