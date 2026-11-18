@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import abc
 import threading
 import time
@@ -17,7 +19,7 @@ from libs.broadcast_channel.redis.streams_channel import (
 from libs.broadcast_channel.signals import SIG_CLOSE
 
 
-def _channel(redis_client: object, retention_seconds: int = 600) -> StreamsBroadcastChannel:
+def _channel(redis_client: FakeStreamsRedis, retention_seconds: int = 600) -> StreamsBroadcastChannel:
     # The in-memory doubles implement only the Redis commands the channel uses.
     return StreamsBroadcastChannel(redis_client, retention_seconds=retention_seconds)  # pyrefly: ignore[bad-argument-type]
 
@@ -67,7 +69,7 @@ class FakeStreamsRedis:
 
     # Consumer API
     def xread(
-        self, streams: dict[str, object], block: int | None = None, count: int | None = None
+        self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
     ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
         self._xread_calls += 1
         # Expect a single key
@@ -124,7 +126,7 @@ class BlockingRedis:
         return entry_id
 
     def xread(
-        self, streams: dict[str, object], block: int | None = None, count: int | None = None
+        self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
     ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
         self._release.wait(timeout=block / 1000.0 if block else None)
         key = next(iter(streams))
@@ -287,7 +289,7 @@ class TestStreamsSubscription:
 
         class OneReadRedis:
             def xread(
-                self, streams: dict[str, object], block: int | None = None, count: int | None = None
+                self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
             ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
                 start_ids.extend(streams.values())
                 subscription._closed = True
@@ -452,7 +454,7 @@ class TestStreamsSubscription:
                 self._calls = 0
 
             def xread(
-                self, streams: dict[str, object], block: int | None = None, count: int | None = None
+                self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
             ) -> list[tuple[str, list[tuple[str, object]]]]:
                 self._calls += 1
                 if self._calls == 1:
@@ -481,7 +483,7 @@ class TestStreamsSubscription:
                 self._calls = 0
 
             def xread(
-                self, streams: dict[str, object], block: int | None = None, count: int | None = None
+                self, streams: dict[str, bytes | str], block: int | None = None, count: int | None = None
             ) -> list[tuple[str, list[tuple[str, dict[object, object]]]]]:
                 self._calls += 1
                 if self._calls == 1:
