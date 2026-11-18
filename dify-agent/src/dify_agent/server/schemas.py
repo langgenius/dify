@@ -13,6 +13,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from dify_agent.protocol import schemas as _protocol_schemas
+from dify_agent.runtime.tool_call_limits import ToolCallLimitState
 
 
 def new_run_id() -> str:
@@ -27,7 +28,9 @@ class RunRecord(BaseModel):
     without digests remain valid. The digests let active writes refresh only
     their own idempotency claim and are excluded from public status responses.
     Raw keys and create-run requests can contain sensitive data and remain in
-    scheduler memory rather than Redis.
+    scheduler memory rather than Redis. Tool quota state stores stable operation
+    identities, hashed call identities and reservation ordinals, never arguments
+    or credentials; retention is exactly the owning run record's lifetime.
     """
 
     run_id: str
@@ -38,6 +41,8 @@ class RunRecord(BaseModel):
     error_type: _protocol_schemas.RunFailureType | None = None
     idempotency_key_digest: str | None = None
     idempotency_fingerprint: str | None = None
+    # Omit empty state: Lua cjson cannot preserve an empty object/array distinction.
+    tool_call_limits: dict[str, ToolCallLimitState] = Field(default_factory=dict, exclude_if=lambda value: not value)
 
     model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
 
