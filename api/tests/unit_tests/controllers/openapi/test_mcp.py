@@ -1,9 +1,10 @@
-"""POST /openapi/v1/mcp: the JSON-RPC envelope, the login check and one authentication per request."""
+"""POST /openapi/v1/mcp: the JSON-RPC envelope, the bearer check and one authentication per request."""
 
 from __future__ import annotations
 
 import io
 import json
+from collections.abc import Callable
 from typing import Protocol
 
 import pytest
@@ -20,12 +21,14 @@ from controllers.openapi.auth import router as router_module
 from controllers.openapi.mcp import MCP_MAX_BODY_BYTES
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
-from libs.oauth_bearer import AuthContext
+from libs.oauth_bearer import AuthContext, InvalidBearerError
+from libs.rate_limit import _BearerRateLimited
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 MCP_PATH = "/openapi/v1/mcp"
 PROTOCOL_HEADER = "MCP-Protocol-Version"
 UNAUTHORIZED_BODY = {"code": "unauthorized", "message": "invalid bearer", "status": 401}
+BEARER_REQUIRED_BODY = {"code": "unauthorized", "message": "bearer required", "status": 401}
 
 JSON_RPC_ERROR_BODY = pytest.mark.allow_error_contract_violations
 
@@ -75,6 +78,27 @@ def test_initialize_without_a_token_is_http_401_with_www_authenticate(openapi_ap
     response = _post(openapi_app.test_client(), _initialize())
 
     assert response.status_code == 401
+    assert response.get_json() == BEARER_REQUIRED_BODY
+    assert response.headers["WWW-Authenticate"]
+
+
+class _RefusingAuthenticator:
+    def __init__(self, error: Exception) -> None:
+        self.error = error
+
+    def authenticate(self, _token: str) -> AuthContext:
+        raise self.error
+
+
+def test_initialize_with_a_token_that_is_not_real_is_http_401(
+    admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    refusing = _RefusingAuthenticator(InvalidBearerError("no such token"))
+    monkeypatch.setattr("controllers.openapi.auth.router.get_authenticator", lambda: refusing)
+
+    response = _post(admitted_bearer.client, _initialize(), admitted_bearer.headers)
+
+    assert response.status_code == 401
     assert response.get_json() == UNAUTHORIZED_BODY
     assert response.headers["WWW-Authenticate"]
 
@@ -91,7 +115,41 @@ def test_tools_list_without_a_token_is_http_401(openapi_app: Flask) -> None:
     response = _post(openapi_app.test_client(), _rpc("tools/list"))
 
     assert response.status_code == 401
-    assert response.get_json() == UNAUTHORIZED_BODY
+    assert response.get_json() == BEARER_REQUIRED_BODY
+
+
+def test_initialize_runs_no_operation(admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch) -> None:
+    def describe_account_must_not_run(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("initialize and tools/list must not run describe.account")
+
+    monkeypatch.setattr(account_module, "enforce", describe_account_must_not_run)
+
+    for message in (_initialize(), _rpc("tools/list")):
+        assert _post(admitted_bearer.client, message, admitted_bearer.headers).status_code == 200
+
+
+@JSON_RPC_ERROR_BODY
+def test_a_rate_limited_token_answers_429_with_retry_after(
+    admitted_bearer: AdmittedWorld, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    limited = _RefusingAuthenticator(_BearerRateLimited(5))
+    monkeypatch.setattr("controllers.openapi.auth.router.get_authenticator", lambda: limited)
+
+    response = _post(admitted_bearer.client, _initialize(), admitted_bearer.headers)
+
+    assert response.status_code == 429
+    assert response.headers["Retry-After"] == "5"
+
+
+@JSON_RPC_ERROR_BODY
+def test_tools_list_answers_503_when_bearer_auth_is_off(
+    admitted_bearer: AdmittedWorld, config_overrides: Callable[..., None]
+) -> None:
+    config_overrides(ENABLE_OAUTH_BEARER=False)
+
+    response = _post(admitted_bearer.client, _rpc("tools/list"), admitted_bearer.headers)
+
+    assert response.status_code == 503
 
 
 def test_tools_call_runs_an_operation(admitted_bearer: AdmittedWorld) -> None:
@@ -201,58 +259,6 @@ def test_get_is_405(openapi_app: Flask) -> None:
     assert openapi_app.test_client().get(MCP_PATH).status_code == 405
 
 
-def test_a_token_that_describe_account_refuses_with_403_still_connects(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def refuse(_call: OpCall) -> OpResult:
-        return OpResult(status=403, body={"code": "forbidden"}, headers={}, is_json=True)
-
-    monkeypatch.setattr(mcp_module, "call_op", refuse)
-    response = _post(openapi_app.test_client(), _rpc("tools/list"), {"Authorization": "Bearer dfoa_workspace"})
-
-    assert response.status_code == 200
-    assert len(response.get_json()["result"]["tools"]) == 4
-
-
-@JSON_RPC_ERROR_BODY
-def test_a_server_error_from_the_login_check_keeps_its_status_and_body(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def broken(_call: OpCall) -> OpResult:
-        return OpResult(status=503, body={"code": "unavailable"}, headers={}, is_json=True)
-
-    monkeypatch.setattr(mcp_module, "call_op", broken)
-    response = _post(openapi_app.test_client(), _rpc("tools/list"), {"Authorization": "Bearer dfoa_x"})
-
-    assert response.status_code == 503
-    assert response.get_json() == {"code": "unavailable"}
-
-
-def test_a_rate_limited_login_check_still_connects(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
-    def limited(_call: OpCall) -> OpResult:
-        return OpResult(status=429, body={"code": "rate_limited"}, headers={"Retry-After": "5"}, is_json=True)
-
-    monkeypatch.setattr(mcp_module, "call_op", limited)
-    response = _post(openapi_app.test_client(), _initialize(), {"Authorization": "Bearer dfoa_x"})
-
-    assert response.status_code == 200
-    assert response.get_json()["result"]["instructions"] == MCP_INSTRUCTIONS
-
-
-@JSON_RPC_ERROR_BODY
-def test_a_server_error_from_the_login_check_carries_retry_after(
-    openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    def broken(_call: OpCall) -> OpResult:
-        return OpResult(status=503, body={"code": "unavailable"}, headers={"Retry-After": "7"}, is_json=True)
-
-    monkeypatch.setattr(mcp_module, "call_op", broken)
-    response = _post(openapi_app.test_client(), _rpc("tools/list"), {"Authorization": "Bearer dfoa_x"})
-
-    assert response.status_code == 503
-    assert response.headers["Retry-After"] == "7"
-
-
 def test_tools_call_without_a_token_is_http_401_with_www_authenticate(openapi_app: Flask) -> None:
     body = _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {}}})
     response = _post(openapi_app.test_client(), body)
@@ -326,7 +332,7 @@ class _OpRecorder:
 @JSON_RPC_ERROR_BODY
 def test_a_body_over_the_cap_is_413_and_runs_no_op(openapi_app: Flask, monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = _OpRecorder()
-    monkeypatch.setattr(mcp_module, "call_op", recorder)
+    monkeypatch.setattr("controllers.openapi._mcp_tools.call_op", recorder)
     padding = "x" * MCP_MAX_BODY_BYTES
     body = _rpc("tools/call", {"name": "dify_read", "arguments": {"op": "get.workspace", "input": {"p": padding}}})
     response = _post(openapi_app.test_client(), body, {"Authorization": "Bearer dfoa_x"})
@@ -364,7 +370,7 @@ def test_a_chunked_body_over_the_cap_is_cut_at_the_cap_and_is_a_parse_error(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     recorder = _OpRecorder()
-    monkeypatch.setattr(mcp_module, "call_op", recorder)
+    monkeypatch.setattr("controllers.openapi._mcp_tools.call_op", recorder)
     status, payload = _post_without_content_length(openapi_app, _oversize_call())
 
     assert status == 400
