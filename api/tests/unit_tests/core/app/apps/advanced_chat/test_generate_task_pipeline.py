@@ -286,6 +286,24 @@ def test_resume_appends_chunks_to_paused_answer(unbound_session: Session) -> Non
     assert stored_message.status == MessageStatus.NORMAL
 
 
+def test_resume_preserves_saved_reasoning(unbound_session: Session) -> None:
+    message = _message(status=MessageStatus.PAUSED, answer="")
+    message.created_at = naive_utc_now()
+    message.query = "hello"
+    message.message_metadata = '{"reasoning":{"llm-before":"first pass"}}'
+    pipeline = _make_pipeline(message=MessageSnapshot.from_message(message))
+    pipeline._get_message = lambda **kwargs: message
+    assert pipeline._task_state.metadata.reasoning == {"llm-before": "first pass"}
+    pipeline._task_state.metadata.reasoning["llm-after"] = "second pass"
+
+    pipeline._save_message(session=unbound_session)
+
+    assert message.message_metadata_dict["reasoning"] == {
+        "llm-before": "first pass",
+        "llm-after": "second pass",
+    }
+
+
 def test_emit_message_trace_reports_the_completed_message() -> None:
     recorder = _TraceRecorder()
     pipeline = _build_message_pipeline(

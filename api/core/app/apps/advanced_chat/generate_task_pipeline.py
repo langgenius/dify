@@ -3,7 +3,7 @@ import logging
 import time
 from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from threading import Thread
 from typing import Any
@@ -127,15 +127,20 @@ class MessageSnapshot:
     created_at: datetime
     status: MessageStatus
     answer: str
+    reasoning: Mapping[str, str] = field(default_factory=dict)
 
     @classmethod
     def from_message(cls, message: Message) -> "MessageSnapshot":
+        reasoning = message.message_metadata_dict.get("reasoning") if message.status == MessageStatus.PAUSED else None
         return cls(
             id=message.id,
             query=message.query,
             created_at=message.created_at,
             status=message.status,
             answer=message.answer,
+            reasoning={key: text for key, text in reasoning.items() if isinstance(text, str)}
+            if isinstance(reasoning, dict)
+            else {},
         )
 
 
@@ -213,8 +218,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         self._seed_graph_runtime_state_from_queue_manager()
 
     def _seed_task_state_from_message(self, message: MessageSnapshot) -> None:
-        if message.status == MessageStatus.PAUSED and message.answer:
+        """Restore a paused message’s accumulated answer and reasoning for the next segment."""
+        if message.status == MessageStatus.PAUSED:
             self._task_state.answer = message.answer
+            self._task_state.metadata.reasoning.update(message.reasoning)
 
     def process(
         self,
