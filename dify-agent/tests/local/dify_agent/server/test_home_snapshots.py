@@ -104,3 +104,80 @@ async def test_snapshot_checkpoint_releases_binding_when_create_fails() -> None:
         )
 
     assert bindings.released == [lease]
+
+
+@pytest.mark.anyio
+async def test_home_snapshot_service_reports_unsupported_as_null() -> None:
+    """A noop backend returns the explicit null; the source lease is still
+    acquired/released so exact-binding validation stays enforced."""
+    from dify_agent.runtime_backend.noop import NoopHomeSnapshotBackend
+
+    lease = cast(RuntimeLease, object())
+    bindings = _BindingBackend(lease=lease)
+    service = HomeSnapshotService(
+        home_snapshots=NoopHomeSnapshotBackend(),  # pyright: ignore[reportArgumentType]
+        execution_bindings=bindings,  # pyright: ignore[reportArgumentType]
+    )
+
+    checkpoint = await service.create_from_binding(
+        CreateHomeSnapshotFromBindingRequest(
+            tenant_id="tenant-1",
+            agent_id="agent-1",
+            home_snapshot_id="home-2",
+            backend_binding_ref="binding-ref",
+        )
+    )
+
+    assert checkpoint.snapshot_ref is None
+    assert checkpoint.model_dump() == {"snapshot_ref": None}
+    assert bindings.acquired == ["binding-ref"]
+    assert bindings.released == [lease]
+    # No I/O against the lease: delete accepts any ref without error.
+    await service.delete(DeleteHomeSnapshotRequest(snapshot_ref="stale-ref"))
+
+
+def test_home_snapshot_response_requires_explicit_nullable_ref() -> None:
+    from pydantic import ValidationError
+
+    from dify_agent.protocol import HomeSnapshotResponse
+
+    assert HomeSnapshotResponse(snapshot_ref=None).model_dump() == {"snapshot_ref": None}
+    assert HomeSnapshotResponse(snapshot_ref="ref-1").snapshot_ref == "ref-1"
+    with pytest.raises(ValidationError):
+        HomeSnapshotResponse(snapshot_ref="")
+    with pytest.raises(ValidationError):
+        HomeSnapshotResponse()  # type: ignore[call-arg]
+
+
+@pytest.mark.parametrize("snapshot_ref", [None, "snapshot-build"])
+def test_home_snapshots_route_serializes_nullable_ref(snapshot_ref: str | None) -> None:
+    """ASGI boundary: FastAPI must emit explicit null, not drop the field, and
+    keep the nonnull string path unchanged."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from dify_agent.runtime_backend.noop import NoopHomeSnapshotBackend
+    from dify_agent.server.routes.home_snapshots import create_home_snapshots_router
+
+    lease = cast(RuntimeLease, object())
+    bindings = _BindingBackend(lease=lease)
+    service = HomeSnapshotService(
+        home_snapshots=NoopHomeSnapshotBackend() if snapshot_ref is None else _HomeBackend(),
+        execution_bindings=bindings,  # pyright: ignore[reportArgumentType]
+    )
+    app = FastAPI()
+    app.include_router(create_home_snapshots_router(lambda: service))
+    client = TestClient(app)
+
+    response = client.post(
+        "/home-snapshots/from-binding",
+        json={
+            "tenant_id": "tenant-1",
+            "agent_id": "agent-1",
+            "home_snapshot_id": "home-2",
+            "backend_binding_ref": "binding-ref",
+        },
+    )
+
+    assert response.status_code == 201
+    assert response.json() == {"snapshot_ref": snapshot_ref}

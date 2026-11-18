@@ -242,6 +242,9 @@ class EducationStatusResponse(ResponseModel):
     is_student: bool
     expire_at: int | None
     allow_refresh: bool
+    can_redeem_discount: bool = Field(
+        description="Whether the account can redeem its education discount in the current verification period."
+    )
 
     @field_validator("expire_at", mode="before")
     @classmethod

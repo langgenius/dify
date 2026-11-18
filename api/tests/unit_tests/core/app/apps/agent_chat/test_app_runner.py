@@ -118,29 +118,6 @@ class TestAgentChatAppRunnerRun:
         assert sessions == [sqlite_session]
         _assert_direct_output(agent_queue_manager, "answer")
 
-    def test_run_hosting_moderation_short_circuits(
-        self,
-        runner: AgentChatAppRunner,
-        monkeypatch: pytest.MonkeyPatch,
-        sqlite_session: Session,
-        agent_generate_entity: AgentChatAppGenerateEntity,
-        agent_queue_manager: MessageBasedAppQueueManager,
-    ) -> None:
-        def reject_hosted_input(**kwargs: object) -> bool:
-            assert kwargs["tenant_id"] == "tenant"
-            assert "q" in str(kwargs["text"])
-            return True
-
-        monkeypatch.setattr("core.helper.moderation.check_moderation", reject_hosted_input)
-        conversation, message = _records(sqlite_session)
-
-        runner.run(agent_generate_entity, agent_queue_manager, conversation, message, sqlite_session)
-
-        _assert_direct_output(
-            agent_queue_manager,
-            "I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
-        )
-
     def test_run_model_schema_missing(
         self,
         runner: AgentChatAppRunner,

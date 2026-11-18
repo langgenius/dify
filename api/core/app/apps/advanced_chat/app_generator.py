@@ -4,7 +4,7 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from typing import TYPE_CHECKING, Any, Literal, overload
 
 from flask import Flask, current_app
@@ -29,6 +29,7 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_generator import noop_restore_file_access
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.draft_variable_saver import DraftVariableSaverFactory
 from core.app.apps.exc import GenerateTaskStoppedError
@@ -291,9 +292,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         graph_runtime_state: RuntimeState,
         pause_state_config: PauseStateLayerConfig | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ):
         """
         Resume a paused advanced chat execution.
+
+        ``restore_file_access`` restores host-owned grants inside the new
+        execution scope before worker contexts are copied. The default callback
+        leaves existing access rules unchanged.
 
         ``trace_scope`` is transient and excluded from generate-entity serialization,
         so resumed executions create it again before persistence layers receive the entity.
@@ -324,6 +330,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             pause_state_config=pause_state_config,
             graph_runtime_state=graph_runtime_state,
             response_stream_filter=response_stream_filter,
+            restore_file_access=restore_file_access,
             session=session,
         )
 
@@ -532,9 +539,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         pause_state_config: PauseStateLayerConfig | None = None,
         graph_runtime_state: RuntimeState | None = None,
         response_stream_filter: ResponseStreamFilter | None = None,
+        restore_file_access: Callable[[], None] = noop_restore_file_access,
     ) -> Mapping[str, Any] | Generator[str | Mapping[str, Any]]:
         """
         Generate App response.
+
+        On resume, HITL submissions must already be committed. Restore their
+        EndUser file grants before capturing worker and response contexts.
 
         :param workflow: Workflow
         :param user: account or end user
@@ -552,6 +563,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
         ):
             grant_file_default_access(application_generate_entity.app_config.variables)
+            # Restore grants before copying contexts for both workers and responses.
+            restore_file_access()
             is_first_conversation = conversation is None
 
             if conversation is not None and message is not None:
@@ -568,6 +581,24 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 conversation.override_model_configs = workflow.features
                 session.commit()
                 session.refresh(conversation)
+
+            # Single-node debug runs also create throwaway Conversations; only a
+            # Chatflow debug chat supersedes the editor's previous participant.
+            is_debug_chat_run = (
+                invoke_from == InvokeFrom.DEBUGGER
+                and application_generate_entity.single_iteration_run is None
+                and application_generate_entity.single_loop_run is None
+            )
+            if is_first_conversation and is_debug_chat_run:
+                # Debug Conversations are hidden from the Console list and have no
+                # delete affordance, so a new one abandons the previous participant.
+                ConversationService.retire_superseded_debug_conversations(
+                    session=session,
+                    tenant_id=application_generate_entity.app_config.tenant_id,
+                    app_id=application_generate_entity.app_config.app_id,
+                    account_id=application_generate_entity.user_id,
+                    current_conversation_id=conversation.id,
+                )
 
             # get conversation dialogue count
             # NOTE: dialogue_count should not start from 0,
@@ -669,59 +700,69 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
 
         with preserve_flask_contexts(flask_app, context_vars=context):
-            # get conversation and message
-            conversation = self._get_conversation(conversation_id)
-            message = self._get_message(message_id)
+            # The caller blocks on the queue until this worker publishes an event, so a
+            # failure while preparing the run must be published like a failure during it.
+            try:
+                # get conversation and message
+                conversation = self._get_conversation(conversation_id)
+                message = self._get_message(message_id)
 
-            with Session(db.engine, expire_on_commit=False) as session:
-                workflow = session.scalar(
-                    select(Workflow).where(
-                        Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
-                        Workflow.app_id == application_generate_entity.app_config.app_id,
-                        Workflow.id == application_generate_entity.app_config.workflow_id,
+                with Session(db.engine, expire_on_commit=False) as session:
+                    workflow = session.scalar(
+                        select(Workflow).where(
+                            Workflow.tenant_id == application_generate_entity.app_config.tenant_id,
+                            Workflow.app_id == application_generate_entity.app_config.app_id,
+                            Workflow.id == application_generate_entity.app_config.workflow_id,
+                        )
                     )
+                    if workflow is None:
+                        raise ValueError("Workflow not found")
+                    if graph_runtime_state is not None:
+                        self._restore_workflow_run_graph(
+                            session=session,
+                            workflow=workflow,
+                            workflow_run_id=application_generate_entity.workflow_run_id,
+                        )
+
+                    # Determine system_user_id based on invocation source
+                    is_external_api_call = application_generate_entity.invoke_from in {
+                        InvokeFrom.WEB_APP,
+                        InvokeFrom.SERVICE_API,
+                    }
+
+                    if is_external_api_call:
+                        # For external API calls, use end user's session ID
+                        end_user = session.scalar(
+                            select(EndUser).where(EndUser.id == application_generate_entity.user_id)
+                        )
+                        system_user_id = end_user.session_id if end_user else ""
+                    else:
+                        # For internal calls, use the original user ID
+                        system_user_id = application_generate_entity.user_id
+
+                    app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
+                    if app is None:
+                        raise ValueError("App not found")
+
+                runner = AdvancedChatAppRunner(
+                    application_generate_entity=application_generate_entity,
+                    execution_driver=self._execution_driver,
+                    queue_manager=queue_manager,
+                    conversation=conversation,
+                    message=message,
+                    dialogue_count=self._dialogue_count,
+                    variable_loader=variable_loader,
+                    workflow=workflow,
+                    system_user_id=system_user_id,
+                    app=app,
+                    graph_runtime_state=graph_runtime_state,
+                    response_stream_filter=response_stream_filter,
                 )
-                if workflow is None:
-                    raise ValueError("Workflow not found")
-                if graph_runtime_state is not None:
-                    self._restore_workflow_run_graph(
-                        session=session,
-                        workflow=workflow,
-                        workflow_run_id=application_generate_entity.workflow_run_id,
-                    )
-
-                # Determine system_user_id based on invocation source
-                is_external_api_call = application_generate_entity.invoke_from in {
-                    InvokeFrom.WEB_APP,
-                    InvokeFrom.SERVICE_API,
-                }
-
-                if is_external_api_call:
-                    # For external API calls, use end user's session ID
-                    end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
-                    system_user_id = end_user.session_id if end_user else ""
-                else:
-                    # For internal calls, use the original user ID
-                    system_user_id = application_generate_entity.user_id
-
-                app = session.scalar(select(App).where(App.id == application_generate_entity.app_config.app_id))
-                if app is None:
-                    raise ValueError("App not found")
-
-            runner = AdvancedChatAppRunner(
-                application_generate_entity=application_generate_entity,
-                execution_driver=self._execution_driver,
-                queue_manager=queue_manager,
-                conversation=conversation,
-                message=message,
-                dialogue_count=self._dialogue_count,
-                variable_loader=variable_loader,
-                workflow=workflow,
-                system_user_id=system_user_id,
-                app=app,
-                graph_runtime_state=graph_runtime_state,
-                response_stream_filter=response_stream_filter,
-            )
+            except Exception as e:
+                logger.exception("Failed to prepare the chatflow run")
+                queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
+                db.session.close()
+                return
 
             try:
                 with active_workflow_task(application_generate_entity.task_id):

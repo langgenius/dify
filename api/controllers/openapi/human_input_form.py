@@ -5,14 +5,21 @@ import logging
 from collections.abc import Generator, Iterable, Mapping
 from typing import Any, override
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from constants.oauth_bearer import Scope
+from constants.personal_access_token import PersonalAccessTokenPolicy
 from controllers.common.human_input import stringify_form_default_values
-from controllers.common.rbac import PlainApp, RBACCheck, RBACPermission
+from controllers.common.human_input_v2_errors import (
+    HumanInputV2AlreadySubmittedError,
+    HumanInputV2ExpiredError,
+    HumanInputV2InvalidInputError,
+    HumanInputV2WorkflowNotActiveError,
+    form_http_error,
+)
 from controllers.openapi import openapi_ns
 from controllers.openapi._contract import Example, Kind, endpoint, op_of
 from controllers.openapi._errors import HumanInputFormNotFound, RecipientSurfaceMismatch
@@ -29,7 +36,6 @@ from controllers.openapi.auth.loaders import PathParam, load_app
 from controllers.openapi.auth.requirements import (
     CheckAppAccess,
     CheckAppApiEnabled,
-    CheckRBACPermission,
     CheckScope,
     CheckSubject,
     CheckWorkspaceMember,
@@ -38,21 +44,31 @@ from controllers.openapi.auth.requirements import (
 from controllers.openapi.auth.subjects import AccountSubject, ExternalSsoSubject, Subject
 from core.app.entities.task_entities import HumanInputRequiredResponse, StreamEvent
 from core.db.session_factory import session_factory
+from core.human_input_v2.shared.values import AccountId, TenantId
 from core.workflow.human_input_policy import HumanInputSurface, is_recipient_type_allowed_for_surface
-from extensions.ext_database import db
-from libs.helper import to_timestamp
+from factories.human_input_v2_form_presentation import build_form_presentation
+from libs.exception import BaseHTTPException
+from libs.external_api import error_responses
+from libs.helper import extract_remote_ip, to_timestamp
 from models.enums import CreatorUserRole
 from models.model import App
 from services.human_input_service import FormNotFoundError, HumanInputService
+from services.human_input_v2.submission_service import (
+    HumanInputFormError,
+    HumanInputFormErrorCode,
+    HumanInputSubmissionService,
+    WebAppFormActor,
+)
 
 logger = logging.getLogger(__name__)
 
 
 class CheckFormSurface(Requirement):
-    """`/openapi/v1` is allowed only the recipient types `human_input_policy` lists
-    for it, so a console-bound form is refused before any handler body runs. It
-    lives here rather than in `auth/requirements.py` so the auth layer never has
-    to import this feature's domain.
+    """Keep the legacy recipient-surface policy before a v1 handler runs.
+
+    V2 tokens are absent from the legacy store; their app and exact actor are
+    authorized by the v2 submission service. This feature-owned requirement
+    keeps the auth layer independent of Human Input storage and semantics.
 
     A form the caller could not have found anyway — missing, or belonging to
     another app — is left to the handler's own 404: answering 403 here would tell
@@ -89,10 +105,48 @@ def _ensure_form_belongs_to_app(form, app_model: App) -> None:
         raise HumanInputFormNotFound()
 
 
+def _v2_actor(ctx: Context) -> AccountId | WebAppFormActor:
+    """Project the admitted caller and app into an exact v2 approval identity."""
+    if ctx.subject.caller_role is CreatorUserRole.ACCOUNT:
+        return AccountId(ctx.account.id)
+    return WebAppFormActor(tenant_id=TenantId(ctx.app.tenant_id), app_id=ctx.app.id, end_user_id=ctx.end_user.id)
+
+
+def _v2_form_error(error: HumanInputFormError) -> BaseHTTPException | HumanInputFormNotFound:
+    """Keep OpenAPI's opaque token error while exposing actionable v2 state errors."""
+    if error.code is HumanInputFormErrorCode.NOT_FOUND:
+        return HumanInputFormNotFound()
+    return form_http_error(error, message="The approval could not be accepted.")
+
+
+def _form_submit_response(*, app_id: str, workflow_run_id: str | None) -> FormSubmitResponse:
+    """Return the existing follow-run hint for a committed runtime submission."""
+    if workflow_run_id is None:
+        return FormSubmitResponse()
+    # `workflow_events` imports this module for `with_form_hints`.
+    from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
+
+    return FormSubmitResponse(
+        hints=[
+            Hint(
+                summary="Follow the resumed run",
+                op=op_of(OpenApiWorkflowEventsApi.get),
+                input={
+                    "app_id": app_id,
+                    "run_id": workflow_run_id,
+                    "include_state_snapshot": True,
+                    "continue_on_pause": False,
+                },
+            )
+        ]
+    )
+
+
 @openapi_ns.route("/apps/<string:app_id>/human-input-forms/<string:form_token>")
 class OpenApiWorkflowHumanInputFormApi(Resource):
     @endpoint(
         op="describe.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Read a human-input form",
         examples=(
@@ -106,17 +160,32 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),
         returns=(200, HumanInputFormDefinitionResponse, "Form definition"),
     )
+    @error_responses(HumanInputV2AlreadySubmittedError, HumanInputV2ExpiredError)
     def get(self, ctx: Context, app_id: str, form_token: str):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise HumanInputFormNotFound()
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+            try:
+                v2_form = v2_service.get_openapi_form(
+                    actor=_v2_actor(ctx), form_token=form_token, ip_address=extract_remote_ip(request) or None
+                )
+            except HumanInputFormError as error:
+                raise _v2_form_error(error) from error
+            _ensure_form_belongs_to_app(v2_form, ctx.app)
+            presentation = build_form_presentation(v2_form.resolved_form)
+            return HumanInputFormDefinitionResponse(
+                form_content=presentation.form_content,
+                inputs=presentation.inputs,
+                resolved_default_values=presentation.resolved_default_values,
+                user_actions=presentation.user_actions,
+                expiration_time=to_timestamp(min(v2_form.expiration_time, v2_form.global_timeout_deadline)),
+            )
 
         _ensure_form_belongs_to_app(form, ctx.app)
         service.ensure_form_active(form)
@@ -127,6 +196,7 @@ class OpenApiWorkflowHumanInputFormApi(Resource):
 class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
     @endpoint(
         op="submit.run.form",
+        pat_policy=PersonalAccessTokenPolicy.RESOURCE_CALLS,
         kind=Kind.OBJECT,
         summary="Submit a human-input form",
         examples=(
@@ -155,18 +225,36 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
             CheckAppApiEnabled(),
             CheckWorkspaceMember(),
             CheckScope(Scope.APPS_RUN),
-            CheckRBACPermission(RBACCheck(RBACPermission.APP_TEST_AND_RUN, PlainApp())),
             CheckAppAccess(),
             CheckFormSurface(),
         ),
         body=OpenApiFormSubmitPayload,
         returns=(200, FormSubmitResponse, "Form submitted"),
     )
+    @error_responses(
+        HumanInputV2AlreadySubmittedError,
+        HumanInputV2ExpiredError,
+        HumanInputV2InvalidInputError,
+        HumanInputV2WorkflowNotActiveError,
+    )
     def post(self, ctx: Context, app_id: str, form_token: str, *, body: OpenApiFormSubmitPayload):
-        service = HumanInputService(db.engine)
+        service = HumanInputService(session_factory.get_session_maker())
         form = service.get_form_by_token(form_token)
         if form is None:
-            raise HumanInputFormNotFound()
+            v2_service = HumanInputSubmissionService(session_factory=session_factory.get_session_maker())
+            actor = _v2_actor(ctx)
+            try:
+                v2_form = v2_service.authorize_openapi_form(actor=actor, form_token=form_token)
+                _ensure_form_belongs_to_app(v2_form, ctx.app)
+                if body.files:
+                    end_read_transaction(ctx.session)
+                inputs = merge_files(body.inputs, body.files, ctx.caller)
+                submitted_form = v2_service.submit_openapi_form(
+                    actor=actor, form_token=form_token, action=body.action, inputs=inputs
+                )
+            except HumanInputFormError as error:
+                raise _v2_form_error(error) from error
+            return _form_submit_response(app_id=ctx.app.id, workflow_run_id=submitted_form.workflow_run_id)
 
         _ensure_form_belongs_to_app(form, ctx.app)
 
@@ -197,22 +285,7 @@ class OpenApiWorkflowHumanInputFormSubmitApi(Resource):
         except FormNotFoundError as caught_error:
             raise HumanInputFormNotFound() from caught_error
 
-        if form.workflow_run_id is None:
-            return FormSubmitResponse()
-        # `workflow_events` imports this module for `with_form_hints`.
-        from controllers.openapi.workflow_events import OpenApiWorkflowEventsApi
-
-        follow = Hint(
-            summary="Follow the resumed run",
-            op=op_of(OpenApiWorkflowEventsApi.get),
-            input={
-                "app_id": ctx.app.id,
-                "run_id": form.workflow_run_id,
-                "include_state_snapshot": True,
-                "continue_on_pause": False,
-            },
-        )
-        return FormSubmitResponse(hints=[follow])
+        return _form_submit_response(app_id=ctx.app.id, workflow_run_id=form.workflow_run_id)
 
 
 def form_hints(*, op: str, app_id: str, response: HumanInputRequiredResponse) -> list[Hint]:

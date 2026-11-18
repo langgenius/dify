@@ -41,8 +41,8 @@ export class LastRunBlockNode extends DecoratorNode<React.JSX.Element> {
 
   override exportJSON(): SerializedLexicalNode {
     return {
+      ...super.exportJSON(),
       type: 'last-run-block',
-      version: 1,
     }
   }
 

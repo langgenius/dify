@@ -5,7 +5,10 @@ import logging
 import time
 from collections.abc import Mapping
 from contextlib import contextmanager
+from dataclasses import dataclass, field
+from datetime import timedelta
 from decimal import Decimal
+from functools import partial
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import MagicMock
@@ -18,7 +21,7 @@ from pytest_mock import MockerFixture
 from sqlalchemy import Engine as _app_generator_Engine
 from sqlalchemy import event as sqlalchemy_event
 from sqlalchemy.engine import Engine as _advanced_chat_app_generator_Engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 import core.app.apps.advanced_chat.app_generator as app_generator_module
 import core.workflow.nodes.human_input.entities  # noqa: F401
@@ -31,7 +34,9 @@ from core.app.apps.advanced_chat.generate_task_pipeline import (
     MessageSnapshot,
     WorkflowSnapshot,
 )
+from core.app.apps.base_app_generator import noop_restore_file_access
 from core.app.apps.exc import GenerateTaskStoppedError
+from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.apps.workflow import app_generator as wf_app_gen_module
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -39,11 +44,15 @@ from core.app.entities.app_invoke_entities import (
     UserFrom,
     WorkflowAppGenerateEntity,
 )
+from core.app.entities.queue_entities import QueueErrorEvent
 from core.app.file_access import DatabaseFileAccessController
 from core.app.task_pipeline import message_cycle_manager
 from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.app.workflow.file_runtime import DifyWorkflowFileRuntime
+from core.human_input_v2.resolved_form import ResolvedForm
+from core.human_input_v2.shared.values import RecipientId, TenantId
 from core.workflow import node_factory as node_factory_module
+from core.workflow.file_reference import build_file_reference
 from core.workflow.node_factory import DifyNodeFactory
 from core.workflow.system_variables import build_system_variables
 from graphon.engine import Engine as _pause_resume_Engine
@@ -59,6 +68,7 @@ from graphon.entities import WorkflowStartReason
 from graphon.entities.base_node_data import BaseNodeData, RetryConfig
 from graphon.entities.pause_reason import SchedulingPause
 from graphon.enums import BuiltinNodeTypes, NodeType, WorkflowNodeExecutionStatus
+from graphon.file import File, FileTransferMethod, FileType
 from graphon.graph import Graph
 from graphon.node_events import NodeRunResult, PauseRequestedEvent
 from graphon.nodes.base.entities import OutputVariableEntity
@@ -67,6 +77,7 @@ from graphon.nodes.end.entities import EndNodeData
 from graphon.nodes.start.entities import StartNodeData
 from graphon.runtime import RuntimeState, VariablePool
 from graphon.variables.input_entities import VariableEntity
+from graphon.variables.segments import FileSegment
 from libs.datetime_utils import naive_utc_now
 from models import Account as _advanced_chat_app_generator_Account
 from models import Workflow as _advanced_chat_app_generator_Workflow
@@ -77,7 +88,10 @@ from models.model import App, AppMode, Conversation, EndUser, Message
 from models.workflow import Workflow as _app_generator_Workflow
 from models.workflow import Workflow as _pause_resume_Workflow
 from models.workflow import WorkflowType
+from repositories.human_input_v2.form_repository import Form, FormCreateParams
+from repositories.human_input_v2.sqlalchemy_form_repository import SQLAlchemyFormRepository
 from services.errors.conversation import ConversationNotExistsError
+from services.human_input_v2.submission_service import HumanInputSubmissionService
 from services.workflow_run_agg import WorkflowRunAgg
 from tests.helpers.unit.config_override import apply_config_overrides
 from tests.helpers.unit.model_factories import make_upload_file
@@ -191,6 +205,79 @@ def _make_message(
     )
     message.created_at = naive_utc_now()
     return message
+
+
+@dataclass(frozen=True)
+class _StubFlaskApp:
+    name: str = "flask"
+
+
+class _StubCurrentApp:
+    def _get_current_object(self) -> _StubFlaskApp:
+        return _StubFlaskApp()
+
+
+@dataclass(frozen=True)
+class _StubDb:
+    engine: _app_generator_Engine
+    session: Session
+
+
+class _StubQueueManager:
+    def __init__(self, **kwargs: object) -> None:
+        self.kwargs = kwargs
+
+
+class _StubWorkerThread:
+    def __init__(self, *, target: object, kwargs: dict[str, object]) -> None:
+        self.kwargs = kwargs
+
+    def start(self) -> None:
+        pass
+
+    def join(self, timeout: float | None) -> None:
+        pass
+
+    def is_alive(self) -> bool:
+        return False
+
+
+class _UnusedRepository:
+    """Execution repository the stubbed worker thread never reaches."""
+
+
+@dataclass
+class _RetireRecorder:
+    calls: list[dict[str, object]] = field(default_factory=list)
+
+    def __call__(self, **kwargs: object) -> None:
+        self.calls.append(kwargs)
+
+
+def _stub_advanced_chat_generate_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+    generator: AdvancedChatAppGenerator,
+    *,
+    sqlite_session: Session,
+    sqlite_engine: _app_generator_Engine,
+) -> None:
+    """Stub everything in ``_generate`` past conversation initialization."""
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.get_thread_messages_length", lambda *args, **kwargs: 0
+    )
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.MessageBasedAppQueueManager", _StubQueueManager)
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.current_app", _StubCurrentApp())
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.contextvars.copy_context", lambda: "ctx")
+    monkeypatch.setattr("core.app.apps.advanced_chat.app_generator.threading.Thread", _StubWorkerThread)
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.db", _StubDb(engine=sqlite_engine, session=sqlite_session)
+    )
+    monkeypatch.setattr(generator, "_get_draft_var_saver_factory", lambda *args, **kwargs: "draft-factory")
+    monkeypatch.setattr(generator, "_handle_advanced_chat_response", lambda **kwargs: {"raw": True})
+    monkeypatch.setattr(
+        "core.app.apps.advanced_chat.app_generator.AdvancedChatAppGenerateResponseConverter.convert",
+        lambda response, invoke_from: response,
+    )
 
 
 class TestAdvancedChatAppGeneratorValidation:
@@ -671,9 +758,164 @@ class TestAdvancedChatAppGeneratorInternals:
         assert isinstance(captured["conversation"], ConversationSnapshot)
         assert isinstance(captured["message"], MessageSnapshot)
 
+    @pytest.mark.parametrize(
+        ("invoke_from", "single_run", "expect_retire"),
+        [
+            (InvokeFrom.DEBUGGER, None, True),
+            (InvokeFrom.WEB_APP, None, False),
+            (InvokeFrom.DEBUGGER, "single_iteration_run", False),
+            (InvokeFrom.DEBUGGER, "single_loop_run", False),
+        ],
+        ids=["debugger-chatflow", "web-app", "debugger-single-iteration", "debugger-single-loop"],
+    )
+    def test_generate_retires_superseded_debug_workspaces_only_for_chatflow_debug_runs(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: _app_generator_Engine,
+        invoke_from: InvokeFrom,
+        single_run: str | None,
+        expect_retire: bool,
+    ) -> None:
+        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        app_config = self._build_app_config()
+        entity_fields: dict[str, Any] = {
+            "task_id": "task",
+            "app_config": app_config,
+            "inputs": {},
+            "query": "hello",
+            "files": [],
+            "user_id": "user",
+            "stream": False,
+            "invoke_from": invoke_from,
+            "extras": {},
+            "trace_scope": None,
+            "workflow_run_id": "run-id",
+            "single_iteration_run": None,
+            "single_loop_run": None,
+        }
+        if single_run == "single_iteration_run":
+            entity_fields["single_iteration_run"] = AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
+                node_id="node-1", inputs={}
+            )
+        elif single_run == "single_loop_run":
+            entity_fields["single_loop_run"] = AdvancedChatAppGenerateEntity.SingleLoopRunEntity(
+                node_id="node-1", inputs={}
+            )
+        application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(**entity_fields)
+
+        app = _app_generator_make_app()
+        workflow = _app_generator_make_workflow(workflow_id="wf-debug")
+        conversation = _make_conversation(conversation_id="conv-debug")
+        message = _make_message(message_id="msg-debug", conversation_id=conversation.id)
+        sqlite_session.add_all([app, workflow, conversation, message])
+        sqlite_session.commit()
+
+        retire_recorder = _RetireRecorder()
+        monkeypatch.setattr(generator, "_init_generate_records", lambda *args, **kwargs: (conversation, message))
+        _stub_advanced_chat_generate_pipeline(
+            monkeypatch, generator, sqlite_session=sqlite_session, sqlite_engine=sqlite_engine
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.ConversationService.retire_superseded_debug_conversations",
+            retire_recorder,
+        )
+
+        response = generator._generate(
+            workflow=workflow,
+            user=_app_generator_make_account(account_id="user"),
+            invoke_from=invoke_from,
+            application_generate_entity=application_generate_entity,
+            session=sqlite_session,
+            workflow_execution_repository=_UnusedRepository(),
+            workflow_node_execution_repository=_UnusedRepository(),
+            conversation=None,
+            message=None,
+            stream=False,
+        )
+
+        assert response == {"raw": True}
+        if expect_retire:
+            assert retire_recorder.calls == [
+                {
+                    "session": sqlite_session,
+                    "tenant_id": "tenant",
+                    "app_id": "app",
+                    "account_id": "user",
+                    "current_conversation_id": conversation.id,
+                }
+            ]
+        else:
+            assert retire_recorder.calls == []
+
+    def test_generate_with_existing_records_never_retires_debug_workspaces(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: _app_generator_Engine,
+    ) -> None:
+        generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
+        app_config = self._build_app_config()
+        application_generate_entity = AdvancedChatAppGenerateEntity.model_construct(
+            task_id="task",
+            app_config=app_config,
+            inputs={},
+            query="hello",
+            files=[],
+            user_id="user",
+            stream=False,
+            invoke_from=InvokeFrom.DEBUGGER,
+            extras={},
+            trace_scope=None,
+            workflow_run_id="run-id",
+        )
+
+        app = _app_generator_make_app()
+        workflow = _app_generator_make_workflow(workflow_id="wf-existing")
+        conversation = _make_conversation(conversation_id="conv-existing")
+        message = _make_message(message_id="msg-existing", conversation_id=conversation.id)
+        sqlite_session.add_all([app, workflow, conversation, message])
+        sqlite_session.commit()
+
+        retire_recorder = _RetireRecorder()
+
+        def init_records(*args: object, **kwargs: object) -> None:
+            raise AssertionError("Existing records must not be re-initialized")
+
+        monkeypatch.setattr(generator, "_init_generate_records", init_records)
+        _stub_advanced_chat_generate_pipeline(
+            monkeypatch, generator, sqlite_session=sqlite_session, sqlite_engine=sqlite_engine
+        )
+        monkeypatch.setattr(
+            "core.app.apps.advanced_chat.app_generator.ConversationService.retire_superseded_debug_conversations",
+            retire_recorder,
+        )
+
+        response = generator._generate(
+            workflow=workflow,
+            user=_app_generator_make_account(account_id="user"),
+            invoke_from=InvokeFrom.DEBUGGER,
+            application_generate_entity=application_generate_entity,
+            session=sqlite_session,
+            workflow_execution_repository=_UnusedRepository(),
+            workflow_node_execution_repository=_UnusedRepository(),
+            conversation=conversation,
+            message=message,
+            stream=False,
+        )
+
+        assert response == {"raw": True}
+        assert retire_recorder.calls == []
+
+    @pytest.mark.parametrize("resuming", [False, True], ids=["file-default", "submitted-hitl-file"])
     def test_generate_internal_flow_with_existing_records_skips_init(
-        self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        sqlite_session: Session,
+        sqlite_engine: _app_generator_Engine,
+        resuming: bool,
+        sqlite_session_factory: sessionmaker[Session],
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 0
         app_config = self._build_app_config()
@@ -688,6 +930,40 @@ class TestAdvancedChatAppGeneratorInternals:
                 }
             )
         ]
+        if resuming:
+            app_config.variables = []
+            now = naive_utc_now()
+            repository = SQLAlchemyFormRepository(sqlite_session, TenantId(app_config.tenant_id), app_config.app_id)
+            form = repository.create_form(
+                FormCreateParams(
+                    workflow_run_id="run-id",
+                    node_execution_id="approval-execution",
+                    resolved_form=ResolvedForm(title="Approval", parts=(), actions=(), legacy_form_content=""),
+                    expiration_time=now + timedelta(hours=1),
+                    global_timeout_deadline=now + timedelta(days=1),
+                )
+            )
+            accepted = repository.submit_form(
+                form.id,
+                submitted_by_recipient_id=RecipientId("recipient"),
+                submitted_by_delivery_id="delivery",
+                selected_action_id="approve",
+                raw_submission_inputs={},
+                normalized_submission_data={
+                    "file": FileSegment(
+                        value=File(
+                            file_type=FileType.DOCUMENT,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            reference=build_file_reference(record_id=default_file.id),
+                            filename=default_file.name,
+                            extension=".txt",
+                            mime_type=default_file.mime_type,
+                            size=default_file.size,
+                        )
+                    )
+                },
+            )
+            assert isinstance(accepted, Form)
         file_runtime = DifyWorkflowFileRuntime(file_access_controller=DatabaseFileAccessController())
         monkeypatch.setattr(file_runtime, "_secret_key", lambda: b"test-key")
 
@@ -780,6 +1056,16 @@ class TestAdvancedChatAppGeneratorInternals:
             conversation=conversation,
             message=message,
             stream=False,
+            graph_runtime_state=_build_runtime_state("run-id") if resuming else None,
+            restore_file_access=(
+                partial(
+                    HumanInputSubmissionService(session_factory=sqlite_session_factory).grant_submitted_file_access,
+                    app_id=app_config.app_id,
+                    workflow_run_id="run-id",
+                )
+                if resuming
+                else noop_restore_file_access
+            ),
         )
 
         assert response == {"raw": True}
@@ -795,9 +1081,9 @@ class TestAdvancedChatAppGeneratorInternals:
             .startswith(f"/files/{default_file.id}/file-preview?")
         )
 
-    def test_generate_worker_raises_when_workflow_not_found(
+    def test_generate_worker_publishes_error_when_workflow_not_found(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -830,23 +1116,37 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
         )
 
-        with pytest.raises(ValueError, match="Workflow not found"):
-            generator._generate_worker(
-                flask_app=SimpleNamespace(),
-                application_generate_entity=application_generate_entity,
-                queue_manager=MagicMock(),
-                conversation_id="conv",
-                message_id="msg",
-                context=SimpleNamespace(),
-                variable_loader=SimpleNamespace(),
-                workflow_execution_repository=SimpleNamespace(),
-                workflow_node_execution_repository=SimpleNamespace(),
-                graph_runtime_state=None,
-            )
+        queue_manager = MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="user",
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id="conv",
+            app_mode=AppMode.ADVANCED_CHAT,
+            message_id="msg",
+        )
 
-    def test_generate_worker_raises_when_app_not_found_for_internal_call(
+        # The caller blocks on the queue, so the failure must arrive there instead of killing the worker.
+        generator._generate_worker(
+            flask_app=SimpleNamespace(),
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation_id="conv",
+            message_id="msg",
+            context=SimpleNamespace(),
+            variable_loader=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=None,
+        )
+
+        events = [message.event for message in queue_manager.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "Workflow not found"
+
+    def test_generate_worker_publishes_error_when_app_not_found_for_internal_call(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine
-    ):
+    ) -> None:
         generator = AdvancedChatAppGenerator(execution_driver=WorkflowRunAgg.run)
         generator._dialogue_count = 1
         app_config = self._build_app_config()
@@ -881,19 +1181,33 @@ class TestAdvancedChatAppGeneratorInternals:
             SimpleNamespace(engine=sqlite_engine, session=sqlite_session),
         )
 
-        with pytest.raises(ValueError, match="App not found"):
-            generator._generate_worker(
-                flask_app=SimpleNamespace(),
-                application_generate_entity=application_generate_entity,
-                queue_manager=MagicMock(),
-                conversation_id="conv",
-                message_id="msg",
-                context=SimpleNamespace(),
-                variable_loader=SimpleNamespace(),
-                workflow_execution_repository=SimpleNamespace(),
-                workflow_node_execution_repository=SimpleNamespace(),
-                graph_runtime_state=None,
-            )
+        queue_manager = MessageBasedAppQueueManager(
+            task_id="task",
+            user_id="internal-user",
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id="conv",
+            app_mode=AppMode.ADVANCED_CHAT,
+            message_id="msg",
+        )
+
+        # The caller blocks on the queue, so the failure must arrive there instead of killing the worker.
+        generator._generate_worker(
+            flask_app=SimpleNamespace(),
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation_id="conv",
+            message_id="msg",
+            context=SimpleNamespace(),
+            variable_loader=SimpleNamespace(),
+            workflow_execution_repository=SimpleNamespace(),
+            workflow_node_execution_repository=SimpleNamespace(),
+            graph_runtime_state=None,
+        )
+
+        events = [message.event for message in queue_manager.listen()]
+        assert isinstance(events[-1], QueueErrorEvent), events
+        assert isinstance(events[-1].error, ValueError)
+        assert str(events[-1].error) == "App not found"
 
     def test_generate_worker_handles_stopped_error(
         self, monkeypatch: pytest.MonkeyPatch, sqlite_session: Session, sqlite_engine: _app_generator_Engine

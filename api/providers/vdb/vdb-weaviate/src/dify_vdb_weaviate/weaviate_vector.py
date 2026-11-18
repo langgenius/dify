@@ -6,6 +6,7 @@ document embeddings used in retrieval-augmented generation workflows.
 """
 
 import atexit
+import contextlib
 import datetime
 import importlib.metadata
 import json
@@ -546,7 +547,8 @@ class WeaviateVector(BaseVector):
         """
         Performs BM25 full-text search on document content.
 
-        Filters by document IDs if provided and returns matching documents with vectors.
+        Filters by document IDs if provided and returns matching documents with vectors
+        and BM25 scores.
         """
         if not self._client.collections.exists(self._collection_name):
             return []
@@ -567,6 +569,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -577,6 +580,7 @@ class WeaviateVector(BaseVector):
                 query_properties=[Field.TEXT_KEY.value],
                 limit=top_k,
                 return_properties=props,
+                return_metadata=MetadataQuery(score=True),
                 include_vector=True,
                 filters=where,
             )
@@ -585,6 +589,19 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
+
+            # BM25 relevance is returned as query metadata, not as an object property.
+            # Without it Document.metadata has no "score" and the retrieval pipeline
+            # treats the hit as 0.0, dropping every full-text match.
+            # Weaviate's Object.metadata is an optional MetadataReturn whose
+            # ``score`` field is always present (float | None), so a direct
+            # attribute read is enough and keeps the repo's attribute-access
+            # guard happy.
+            metadata = obj.metadata
+            score = metadata.score if metadata is not None else None
+            if isinstance(score, (int, float, str)):
+                with contextlib.suppress(ValueError):
+                    properties["score"] = float(score)
 
             vec = obj.vector
             if isinstance(vec, dict):

@@ -75,12 +75,3 @@ export const verifyWebAppResetPasswordCode = (body: {
     { body },
     { isPublicAPI: true },
   )
-
-export const getAvatar = async ({
-  avatar,
-}: {
-  avatar: string
-}): Promise<{ avatar_url: string }> => {
-  const { consoleClient } = await import('@/service/console')
-  return consoleClient.account.avatar.get({ query: { avatar } })
-}

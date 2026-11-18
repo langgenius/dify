@@ -6,6 +6,7 @@ import type { MutationFunctionContext, QueryFunctionContext } from '@tanstack/re
 import type { consoleQuery as ConsoleQuery } from '@/service/console'
 import { MutationObserver, QueryClient, QueryObserver } from '@tanstack/react-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { createDeferred } from '@/test/deferred'
 import { createAgentFixture } from '@/test/fixtures/agent'
 import { createAppDetailFixture, createAppSiteFixture } from '@/test/fixtures/app'
 import { normalizeConsoleOpenAPIURL } from './openapi-url'
@@ -689,7 +690,13 @@ describe('consoleQuery education defaults', () => {
       const consoleQuery = await loadConsoleQuery()
       const queryClient = createQueryClient()
       const key = consoleQuery.account.education.get.queryKey()
-      const cached = { is_student: false, allow_refresh: false, expire_at: null, result: false }
+      const cached = {
+        is_student: false,
+        allow_refresh: false,
+        can_redeem_discount: false,
+        expire_at: null,
+        result: false,
+      }
       queryClient.setQueryData(key, cached)
       const unrelatedKey = ['unrelated-account-data']
       queryClient.setQueryData(unrelatedKey, { name: 'User' })
@@ -991,6 +998,34 @@ describe('consoleQuery app mutation defaults', () => {
 
     expect(synchronized).toBe(true)
   })
+
+  it.each(['success', 'failure'] as const)(
+    'settles the workflow deletion guard after the initiating observer leaves on %s',
+    async (outcome) => {
+      const query = await loadConsoleQuery()
+      const { isAppDeletingOrDeleted } = await import('@/service/app-deletion')
+      const client = createQueryClient()
+      const result = createDeferred<void>()
+      const mutation = new MutationObserver(client, {
+        ...query.apps.byAppId.delete.mutationOptions(),
+        mutationFn: () => result.promise,
+      })
+      const unsubscribe = mutation.subscribe(() => {})
+      const appId = 'deleted-from-another-surface'
+      const completion = mutation.mutate({ params: { app_id: appId } })
+      await vi.waitFor(() => expect(isAppDeletingOrDeleted(appId)).toBe(true))
+      unsubscribe()
+      if (outcome === 'success') {
+        result.resolve()
+        await completion
+        expect(isAppDeletingOrDeleted(appId)).toBe(true)
+      } else {
+        result.reject(new Error('Delete failed'))
+        await expect(completion).rejects.toThrow('Delete failed')
+        expect(isAppDeletingOrDeleted(appId)).toBe(false)
+      }
+    },
+  )
 
   it('should wait for deleted app lists to synchronize without waiting for quota', async () => {
     const consoleQuery = await loadConsoleQuery()
@@ -1852,6 +1887,7 @@ describe('consoleQuery App Deploy cache behavior', () => {
       })
       const params = { app_id: 'app-1', environment_id: 'staging' }
       const staging = {
+        deployment_id: 'deployment-staging',
         environment: {
           id: 'staging',
           display_name: 'Staging',
@@ -1860,7 +1896,11 @@ describe('consoleQuery App Deploy cache behavior', () => {
         },
         access: { enable_api: true, enable_site: true },
       }
-      const production = { ...staging, environment: { ...staging.environment, id: 'production' } }
+      const production = {
+        ...staging,
+        deployment_id: 'deployment-production',
+        environment: { ...staging.environment, id: 'production' },
+      }
       const deployments = consoleQuery.enterprise.appDeploy.deploymentService
       const list = deployments.listEnvironmentDeployments.queryOptions({
         input: { params: { app_id: params.app_id } },

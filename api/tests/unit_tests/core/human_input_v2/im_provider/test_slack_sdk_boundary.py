@@ -4,13 +4,10 @@ from __future__ import annotations
 
 import json
 import threading
-from collections import defaultdict, deque
-from collections.abc import Callable, Generator, Mapping
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from typing import override
-from urllib.parse import parse_qs, urlencode
+from typing import ClassVar
+from urllib.parse import urlencode
 
 import pytest
 from slack_sdk.errors import SlackClientError
@@ -38,138 +35,33 @@ from core.human_input_v2.im_integration.adapters import (
     ProviderUserId,
     ReplacementError,
     ReplacementErrorKind,
-    SlackCredentials,
     StaticCardIntent,
     WebhookRequest,
 )
 from core.human_input_v2.im_integration.adapters import slack as slack_adapter_module
 from core.human_input_v2.im_integration.adapters.entities import IMProviderError
-from core.human_input_v2.im_integration.adapters.slack import SlackIMProviderAdapter
 from core.human_input_v2.resolved_form import (
     FileInput,
-    FormPart,
     MarkdownFragment,
     ParagraphInput,
     ResolvedForm,
     SelectInput,
     UserAction,
 )
+from tests.helpers.unit.core.human_input_v2.slack import (
+    SIGNING_SECRET as _SIGNING_SECRET,
+)
+from tests.helpers.unit.core.human_input_v2.slack import (
+    SlackApiServer as _SlackApiServer,
+)
+from tests.helpers.unit.core.human_input_v2.slack import (
+    make_slack_adapter as _adapter,
+)
+from tests.helpers.unit.core.human_input_v2.slack import (
+    make_slack_form as _custom_intent,
+)
 
-_SIGNING_SECRET = "sanitized-signing-material"
 _RECEIVED_AT = datetime(2026, 8, 6, 8)
-
-
-@dataclass(frozen=True, slots=True)
-class _QueuedResponse:
-    body: Mapping[str, object]
-    status: int = 200
-    headers: tuple[tuple[str, str], ...] = ()
-
-
-@dataclass(frozen=True, slots=True)
-class _RecordedRequest:
-    api_method: str
-    headers: Mapping[str, str]
-    body: bytes
-
-    def parameters(self) -> dict[str, object]:
-        content_type = self.headers.get("Content-Type", "")
-        if content_type.startswith("application/json"):
-            decoded = json.loads(self.body)
-            assert isinstance(decoded, dict)
-            return decoded
-        return {
-            name: values[0] if len(values) == 1 else values
-            for name, values in parse_qs(self.body.decode(), keep_blank_values=True).items()
-        }
-
-
-class _SlackApiState:
-    def __init__(self) -> None:
-        self._lock = threading.Lock()
-        self._responses: defaultdict[str, deque[_QueuedResponse]] = defaultdict(deque)
-        self.requests: list[_RecordedRequest] = []
-
-    def enqueue(
-        self,
-        api_method: str,
-        body: Mapping[str, object],
-        *,
-        status: int = 200,
-        headers: tuple[tuple[str, str], ...] = (),
-    ) -> None:
-        with self._lock:
-            self._responses[api_method].append(_QueuedResponse(body, status, headers))
-
-    def respond(self, request: _RecordedRequest) -> _QueuedResponse:
-        with self._lock:
-            self.requests.append(request)
-            responses = self._responses[request.api_method]
-            if not responses:
-                return _QueuedResponse({"ok": False, "error": "unconfigured_test_response"}, status=500)
-            return responses.popleft()
-
-    def requests_for(self, api_method: str) -> list[_RecordedRequest]:
-        with self._lock:
-            return [request for request in self.requests if request.api_method == api_method]
-
-
-class _SlackApiHTTPServer(ThreadingHTTPServer):
-    state: _SlackApiState
-
-
-class _SlackApiHandler(BaseHTTPRequestHandler):
-    protocol_version = "HTTP/1.1"
-
-    def do_POST(self) -> None:
-        assert isinstance(self.server, _SlackApiHTTPServer)
-        content_length = int(self.headers.get("Content-Length", "0"))
-        request_body = self.rfile.read(content_length)
-        api_method = self.path.removeprefix("/api/")
-        recorded = _RecordedRequest(api_method, dict(self.headers.items()), request_body)
-        response = self.server.state.respond(recorded)
-        response_body = json.dumps(response.body, separators=(",", ":")).encode()
-        self.send_response(response.status)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(response_body)))
-        self.send_header("Connection", "close")
-        for name, value in response.headers:
-            self.send_header(name, value)
-        self.end_headers()
-        self.wfile.write(response_body)
-
-    @override
-    def log_message(self, format: str, *args: object) -> None:
-        del format, args
-
-
-@dataclass(frozen=True, slots=True)
-class _SlackApiServer:
-    server: _SlackApiHTTPServer
-    state: _SlackApiState
-
-    @property
-    def base_url(self) -> str:
-        address = self.server.server_address
-        host = str(address[0])
-        port = address[1]
-        return f"http://{host}:{port}/api/"
-
-
-@pytest.fixture
-def slack_api_server() -> Generator[_SlackApiServer]:
-    state = _SlackApiState()
-    server = _SlackApiHTTPServer(("127.0.0.1", 0), _SlackApiHandler)
-    server.state = state
-    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01})
-    thread.start()
-    try:
-        yield _SlackApiServer(server, state)
-    finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(2)
-        assert not thread.is_alive()
 
 
 class _RecordingConsumer:
@@ -183,24 +75,13 @@ class _RecordingConsumer:
         return self.acceptance
 
 
-def _credentials() -> SlackCredentials:
-    return SlackCredentials(
-        provider=IMProvider.SLACK,
-        client_id="sanitized-client-id",
-        client_secret="sanitized-client-secret",
-        signing_secret=_SIGNING_SECRET,
-        bot_token="xoxb-sanitized-placeholder",
-        app_token="xapp-sanitized-placeholder",
-    )
-
-
 def _intent(*, input_type: str = "select") -> ResolvedForm:
     if input_type == "select":
         input_block = SelectInput(
-            output_variable_name="decision", options=("Approve", "Reject"), default_value="Approve"
+            output_variable_name="decision", options=("Approve", "Reject"), resolved_default_value="Approve"
         )
     else:
-        input_block = ParagraphInput(output_variable_name="decision", default_value="Sanitized initial value")
+        input_block = ParagraphInput(output_variable_name="decision", resolved_default_value="Sanitized initial value")
     return ResolvedForm(
         title="Sanitized title",
         parts=(
@@ -214,38 +95,6 @@ def _intent(*, input_type: str = "select") -> ResolvedForm:
         ),
         legacy_form_content="This value must not be rendered",
     )
-
-
-def _custom_intent(
-    *,
-    blocks: tuple[FormPart, ...] = (MarkdownFragment(text="Sanitized rendered content"),),
-    actions: tuple[UserAction, ...] | None = None,
-    title: str = "Sanitized title",
-) -> ResolvedForm:
-    if actions is None:
-        actions = (UserAction(id="approve", title="Approve", button_style=ButtonStyle.PRIMARY),)
-    return ResolvedForm(
-        title=title,
-        parts=blocks,
-        actions=actions,
-        legacy_form_content="This value must not be rendered",
-    )
-
-
-def _adapter(monkeypatch: pytest.MonkeyPatch, server: _SlackApiServer) -> tuple[SlackIMProviderAdapter, WebClient]:
-    client = WebClient(
-        token="xoxb-sanitized-placeholder",
-        base_url=server.base_url,
-        timeout=2,
-        retry_handlers=[],
-    )
-
-    def _client_factory(**kwargs: object) -> WebClient:
-        del kwargs
-        return client
-
-    monkeypatch.setattr(slack_adapter_module, "WebClient", _client_factory)
-    return SlackIMProviderAdapter(_credentials()), client
 
 
 def _signed_request(
@@ -743,7 +592,8 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
         _custom_intent(title="x" * 151),
         _custom_intent(
             blocks=tuple(
-                ParagraphInput(output_variable_name=f"input_{index}", default_value=None) for index in range(49)
+                ParagraphInput(output_variable_name=f"input_{index}", resolved_default_value=None)
+                for index in range(49)
             )
         ),
         _custom_intent(
@@ -754,8 +604,8 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
         ),
         _custom_intent(
             blocks=(
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
-                ParagraphInput(output_variable_name="duplicate", default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
+                ParagraphInput(output_variable_name="duplicate", resolved_default_value=None),
             )
         ),
         _custom_intent(actions=(UserAction(id="x" * 256, title="Action", button_style=ButtonStyle.DEFAULT),)),
@@ -770,10 +620,10 @@ def test_real_web_client_later_pagination_failure_discards_accumulated_entries(
                 ),
             )
         ),
-        _custom_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, default_value=None),)),
-        _custom_intent(blocks=(ParagraphInput(output_variable_name="input", default_value="x" * 3_001),)),
-        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=(), default_value=None),)),
-        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=("",), default_value=None),)),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="x" * 256, resolved_default_value=None),)),
+        _custom_intent(blocks=(ParagraphInput(output_variable_name="input", resolved_default_value="x" * 3_001),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=(), resolved_default_value=None),)),
+        _custom_intent(blocks=(SelectInput(output_variable_name="input", options=("",), resolved_default_value=None),)),
     ],
     ids=(
         "empty-card",
@@ -823,7 +673,7 @@ def test_real_paragraph_resolved_default_survives_sdk_serialization(
     )
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000001"})
     intent = _custom_intent(
-        blocks=(ParagraphInput(output_variable_name="comment", default_value="Sanitized preserved default"),),
+        blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value="Sanitized preserved default"),),
         actions=(),
         title="",
     )
@@ -860,7 +710,7 @@ def test_real_web_client_renders_optional_card_sections(
     state.enqueue("chat.postMessage", {"ok": True, "channel": "sanitized-channel", "ts": "1000.000002"})
     adapter, _ = _adapter(monkeypatch, slack_api_server)
     paragraph_intent = _custom_intent(
-        blocks=(ParagraphInput(output_variable_name="comment", default_value=None),),
+        blocks=(ParagraphInput(output_variable_name="comment", resolved_default_value=None),),
         actions=(),
         title="",
     )
@@ -1078,6 +928,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given an SDK socket request, acknowledge it only after the consumer accepts the event."""
     control_request = SocketModeRequest(type="hello", envelope_id="sanitized-control", payload={})
     invalid_request = SocketModeRequest(type="events_api", envelope_id="sanitized-invalid", payload={})
     accepted_request = SocketModeRequest(
@@ -1092,7 +943,7 @@ def test_real_socket_request_serialization_is_acked_only_after_acceptance(
     )
 
     class _SocketTransport:
-        instance: _SocketTransport | None = None
+        instance: ClassVar[_SocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             self.kwargs = kwargs
@@ -1175,6 +1026,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     disconnect_kind: str,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
+    """Given an SDK disconnect notification, expose it safely to registered listeners."""
     sensitive_marker = f"sanitized-sensitive-remote-{disconnect_kind}"
     request = SocketModeRequest(
         type="events_api",
@@ -1184,7 +1036,7 @@ def test_socket_sdk_disconnect_listeners_are_observable_and_safe(
     consumer = _RecordingConsumer()
 
     class _ListenerSocketTransport:
-        instance: _ListenerSocketTransport | None = None
+        instance: ClassVar[_ListenerSocketTransport | None] = None
 
         def __init__(
             self,
@@ -1238,6 +1090,7 @@ def test_socket_start_waits_for_transport_construction(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given transport construction in progress, keep start pending until construction completes."""
     construction_started = threading.Event()
     release_construction = threading.Event()
     start_returned = threading.Event()
@@ -1245,7 +1098,7 @@ def test_socket_start_waits_for_transport_construction(
     lifecycle_errors: list[BaseException] = []
 
     class _ConstructionBlockedSocketTransport:
-        instance: _ConstructionBlockedSocketTransport | None = None
+        instance: ClassVar[_ConstructionBlockedSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
@@ -1300,6 +1153,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     monkeypatch: pytest.MonkeyPatch,
     slack_api_server: _SlackApiServer,
 ) -> None:
+    """Given a pending connection, wait for readiness and then accept the SDK callback."""
     connect_started = threading.Event()
     release_connect = threading.Event()
     start_returned = threading.Event()
@@ -1313,7 +1167,7 @@ def test_socket_start_waits_for_connection_readiness_and_accepts_sdk_callback(
     )
 
     class _SuccessfulSocketTransport:
-        instance: _SuccessfulSocketTransport | None = None
+        instance: ClassVar[_SuccessfulSocketTransport | None] = None
 
         def __init__(self, **kwargs: object) -> None:
             del kwargs
