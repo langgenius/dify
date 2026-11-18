@@ -1,6 +1,5 @@
 import type { OperationName } from '../types'
 import { cn } from '@langgenius/dify-ui/cn'
-import { Dialog, DialogContent } from '@langgenius/dify-ui/dialog'
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@langgenius/dify-ui/menu'
 import { Popover, PopoverContent, PopoverTrigger } from '@langgenius/dify-ui/popover'
 import { Separator } from '@langgenius/dify-ui/separator'
@@ -9,8 +8,9 @@ import { useMutation, useSuspenseQuery } from '@tanstack/react-query'
 import { useDebounceFn } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import * as React from 'react'
-import { useCallback, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isDownloadableFileDocument } from '@/app/components/datasets/documents/document-source'
 import { toast } from '@/app/notifications'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
 import { DataSourceType, DocumentActionType } from '@/models/datasets'
@@ -19,9 +19,9 @@ import { consoleQuery } from '@/service/console'
 import { asyncRunSafe } from '@/utils'
 import { downloadUrl } from '@/utils/download'
 import { getErrorMessage } from '@/utils/error-message'
-import { RenameDocumentForm } from './rename-document-form'
 
 type OperationsProps = {
+  onRename: () => void
   embeddingAvailable: boolean
   detail: {
     id: string
@@ -29,6 +29,7 @@ type OperationsProps = {
     enabled?: boolean | null
     archived?: boolean | null
     data_source_type?: string | null
+    data_source_info?: Record<string, unknown> | null
     doc_form?: string | null
     display_status?: string | null
   }
@@ -43,6 +44,7 @@ type OperationsProps = {
   canViewSettings: boolean
 }
 const Operations = ({
+  onRename,
   embeddingAvailable,
   datasetId,
   detail,
@@ -60,7 +62,7 @@ const Operations = ({
     select: ({ deployment_edition }) => deployment_edition,
   })
   const isNonCloudEdition = deploymentEdition === 'COMMUNITY' || deploymentEdition === 'ENTERPRISE'
-  const { id, name, data_source_type, display_status } = detail
+  const { id, name, data_source_type, data_source_info, display_status } = detail
   const enabled = detail.enabled ?? false
   const archived = detail.archived ?? false
   const { t } = useTranslation(['common', 'datasetDocuments'])
@@ -91,7 +93,8 @@ const Operations = ({
   const canShowRenameAction = canEdit && !archived
   const canShowSummaryAction = canEdit && !archived && isNonCloudEdition
   const canShowSettingsAction = canViewSettings
-  const canShowDownloadAction = canDownload && data_source_type === DataSourceType.FILE
+  const canShowDownloadAction =
+    canDownload && isDownloadableFileDocument(data_source_type, data_source_info)
   const canShowSyncAction =
     canEdit &&
     !archived &&
@@ -177,10 +180,6 @@ const Operations = ({
     },
     { wait: 500 },
   )
-  const [renameOpen, setRenameOpen] = useState(false)
-  const handleRenamed = useCallback(() => {
-    onUpdate()
-  }, [onUpdate])
   const stopPropagation = useCallback((e: React.SyntheticEvent) => {
     e.stopPropagation()
   }, [])
@@ -201,9 +200,6 @@ const Operations = ({
     // Trigger download without navigating away (helps avoid duplicate downloads in some browsers).
     downloadUrl({ url: res.url, fileName: name ?? undefined })
   }, [canDownload, datasetId, downloadDocument, id, isDownloading, name, t])
-  const handleShowRename = () => {
-    if (canEdit) setRenameOpen(true)
-  }
   const handleMenuOperation = useCallback(
     (operationName: Exclude<OperationName, 'delete'>) => {
       void onOperate(operationName)
@@ -345,7 +341,7 @@ const Operations = ({
               {canShowPrimarySection && (
                 <>
                   {canShowRenameAction && (
-                    <MenuItem className={menuActionClassName} onClick={handleShowRename}>
+                    <MenuItem className={menuActionClassName} onClick={onRename}>
                       <span aria-hidden className="i-ri-edit-line size-4 text-text-tertiary" />
                       <span className="text-sm text-text-secondary">
                         {t(($) => $['list.table.rename'], { ns: 'datasetDocuments' })}
@@ -457,18 +453,6 @@ const Operations = ({
           </Menu>
         </>
       )}
-
-      <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
-        <DialogContent>
-          <RenameDocumentForm
-            datasetId={datasetId}
-            documentId={id}
-            name={name ?? ''}
-            onSaved={handleRenamed}
-            onClose={() => setRenameOpen(false)}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import logging
 from contextlib import closing
 from io import BytesIO
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, override
 from unittest.mock import Mock, patch
 
 import pytest
@@ -11,26 +11,21 @@ from sqlalchemy import event
 from sqlalchemy.orm import Session
 from werkzeug.datastructures import FileStorage
 
+from core.app.apps.exc import ModerationInvocationError
 from core.entities.knowledge_entities import PreviewDetail
+from core.model_manager import ModelInstance, ModelManager
 from core.rag.index_processor.constant.index_type import IndexTechniqueType
 from core.rag.index_processor.processor.qa_index_processor import QAIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document
+from graphon.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.enums import DataSourceType, DocumentCreatedFrom
-
-
-class _ImmediateThread:
-    def __init__(self, target, args=(), kwargs=None):
-        self._target = target
-        self._args = args
-        self._kwargs = kwargs or {}
-
-    def start(self) -> None:
-        self._target(*self._args, **self._kwargs)
-
-    def join(self) -> None:
-        return None
+from services.moderation_service import ModerationPhase
+from tests.helpers.unit.core.model_moderation_fixtures import (
+    RecordingProviderManager,
+    make_failing_moderated_model,
+)
 
 
 class TestQAIndexProcessor:
@@ -64,7 +59,7 @@ class TestQAIndexProcessor:
         )
 
     @pytest.fixture
-    def process_rule(self) -> dict:
+    def process_rule(self) -> dict[str, object]:
         return {
             "mode": "custom",
             "rules": {"segmentation": {"max_tokens": 256, "chunk_overlap": 10, "separator": "\n"}},
@@ -100,7 +95,7 @@ class TestQAIndexProcessor:
             )
 
     def test_transform_preview_calls_formatter_once(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
         document = Document(page_content="raw text", metadata={"dataset_id": "dataset-1", "document_id": "doc-1"})
@@ -109,8 +104,12 @@ class TestQAIndexProcessor:
         splitter.split_documents.return_value = [split_node]
 
         def _append_document(
-            flask_app: Flask, tenant_id, document_node, all_qa_documents: list[Document], document_language
-        ):
+            flask_app: Flask,
+            tenant_id: str,
+            document_node: Document,
+            all_qa_documents: list[Document],
+            document_language: str,
+        ) -> None:
             all_qa_documents.append(Document(page_content="Q1", metadata={"answer": "A1"}))
 
         with (
@@ -129,9 +128,8 @@ class TestQAIndexProcessor:
                 side_effect=lambda text: text.lstrip("."),
             ),
             patch.object(processor, "_format_qa_document", side_effect=_append_document) as mock_format,
-            patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
+            fake_flask_app.app_context(),
         ):
-            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
             result = processor.transform(
                 [document],
                 process_rule=process_rule,
@@ -146,7 +144,7 @@ class TestQAIndexProcessor:
         mock_format.assert_called_once()
 
     def test_transform_non_preview_uses_thread_batches(
-        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app, sqlite_session: Session
+        self, processor: QAIndexProcessor, process_rule: dict[str, Any], fake_flask_app: Flask, sqlite_session: Session
     ) -> None:
         session = sqlite_session
         documents = [
@@ -157,7 +155,13 @@ class TestQAIndexProcessor:
         splitter = Mock()
         splitter.split_documents.return_value = [split_node]
 
-        def _append_document(flask_app: Flask, tenant_id, document_node, all_qa_documents, document_language):
+        def _append_document(
+            flask_app: Flask,
+            tenant_id: str,
+            document_node: Document,
+            all_qa_documents: list[Document],
+            document_language: str,
+        ) -> None:
             all_qa_documents.append(Document(page_content=f"Q-{document_node.page_content}", metadata={"answer": "A"}))
 
         with (
@@ -177,12 +181,8 @@ class TestQAIndexProcessor:
                 side_effect=lambda text: text,
             ),
             patch.object(processor, "_format_qa_document", side_effect=_append_document) as mock_format,
-            patch("core.rag.index_processor.processor.qa_index_processor.current_app") as mock_current_app,
-            patch(
-                "core.rag.index_processor.processor.qa_index_processor.threading.Thread", side_effect=_ImmediateThread
-            ),
+            fake_flask_app.app_context(),
         ):
-            mock_current_app._get_current_object = Mock(return_value=fake_flask_app)
             result = processor.transform(
                 documents,
                 process_rule=process_rule,
@@ -409,7 +409,7 @@ class TestQAIndexProcessor:
             is preview_items
         )
 
-    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app) -> None:
+    def test_format_qa_document_ignores_blank_text(self, processor: QAIndexProcessor, fake_flask_app: Flask) -> None:
         all_qa_documents: list[Document] = []
         blank_document = Document(page_content="   ", metadata={})
 
@@ -418,7 +418,7 @@ class TestQAIndexProcessor:
         assert all_qa_documents == []
 
     def test_format_qa_document_builds_question_answer_documents(
-        self, processor: QAIndexProcessor, fake_flask_app
+        self, processor: QAIndexProcessor, fake_flask_app: Flask
     ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
@@ -440,7 +440,7 @@ class TestQAIndexProcessor:
         assert all_qa_documents[1].metadata["answer"] == "Coverage."
 
     def test_format_qa_document_logs_errors(
-        self, processor: QAIndexProcessor, fake_flask_app, caplog: pytest.LogCaptureFixture
+        self, processor: QAIndexProcessor, fake_flask_app: Flask, caplog: pytest.LogCaptureFixture
     ) -> None:
         all_qa_documents: list[Document] = []
         source_document = Document(page_content="source text", metadata={"origin": "doc-1"})
@@ -463,3 +463,46 @@ class TestQAIndexProcessor:
         parsed = processor._format_split_text("Q1: First?\nA1: One.\nQ2: Second?\nA2: Two.\n")
 
         assert parsed == [{"question": "First?", "answer": "One."}, {"question": "Second?", "answer": "Two."}]
+
+
+@pytest.mark.parametrize("preview", [False, True])
+@pytest.mark.parametrize("phase", ["input", "output"])
+@pytest.mark.parametrize("unavailable", [False, True])
+@pytest.mark.parametrize("document_count", [1, 25])
+def test_qa_transform_propagates_model_moderation_failures(
+    sqlite_session: Session,
+    monkeypatch: pytest.MonkeyPatch,
+    preview: bool,
+    phase: ModerationPhase,
+    unavailable: bool,
+    document_count: int,
+) -> None:
+    model, provider = make_failing_moderated_model(phase=phase, unavailable=unavailable)
+
+    class BoundManager(ModelManager):
+        @override
+        def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> ModelInstance:
+            assert tenant_id == model.provider_model_bundle.configuration.tenant_id
+            assert model_type == ModelType.LLM
+            return model
+
+    manager = BoundManager(RecordingProviderManager(model.provider_model_bundle))
+    monkeypatch.setattr(ModelManager, "for_tenant", lambda **_kwargs: manager)
+    process_rule = {
+        "mode": "custom",
+        "rules": {"segmentation": {"max_tokens": 256, "chunk_overlap": 0, "separator": "\n"}},
+    }
+    with Flask(__name__).app_context(), pytest.raises(ModerationInvocationError) as rejected:
+        QAIndexProcessor().transform(
+            [Document(page_content="content", metadata={}) for _index in range(document_count)],
+            session=sqlite_session,
+            tenant_id="test-tenant-id",
+            process_rule=process_rule,
+            preview=preview,
+        )
+    assert rejected.value.error_code == ("moderation_unavailable" if unavailable else "moderation_rejected")
+    expected_invocations = 0 if phase == "input" else 1 if preview else min(document_count, 10)
+    assert provider.invocations == expected_invocations
+    assert len(model.reservations) == expected_invocations
+    if model.reservations:
+        assert model.reservations[0].commits

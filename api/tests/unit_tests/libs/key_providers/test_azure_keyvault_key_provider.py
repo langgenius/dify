@@ -10,6 +10,7 @@ import datetime
 import json
 from collections.abc import Callable
 from types import SimpleNamespace
+from typing import ClassVar
 from unittest.mock import MagicMock
 
 import pytest
@@ -33,7 +34,7 @@ class FakeCryptographyClient:
 
     # Class-level so a test can mark a version "disabled" (mirroring Key Vault's real behavior
     # for a disabled/deleted key version) without threading state through every fixture.
-    disabled_versions: set[str] = set()
+    disabled_versions: ClassVar[set[str]] = set()
 
     def __init__(self, key: str, credential: object = None) -> None:
         self.version = key.rsplit("/", 1)[-1]

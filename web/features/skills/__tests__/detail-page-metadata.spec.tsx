@@ -668,7 +668,7 @@ describe('SkillDetailPage metadata', () => {
     expect(publishButton).toHaveAccessibleName('skill.skillManagement.detail.published')
 
     await user.click(
-      screen.getByRole('button', {
+      screen.getByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
@@ -989,14 +989,14 @@ describe('SkillDetailPage metadata', () => {
     renderSkillDetailPage()
 
     await user.click(
-      await screen.findByRole('button', {
+      await screen.findByRole('radio', {
         name: 'skill.skillManagement.detail.markdownSourceMode',
       }),
     )
     await user.click(await screen.findByText('references'))
     await user.click(getFileTreeButton('references/refund-policy.md'))
     await user.click(
-      screen.getByRole('button', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
+      screen.getByRole('radio', { name: 'skill.skillManagement.detail.markdownSourceMode' }),
     )
 
     await waitFor(() => expect(getSourceEditor().value).toContain('# 退款政策'))

@@ -63,6 +63,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
+from core.moderation.output_moderation import ModerationRule, OutputModeration
 from extensions.ext_redis import RedisClientWrapper
 from extensions.storage.storage_type import StorageType
 from graphon.file import FileTransferMethod, FileType
@@ -246,10 +247,8 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             pipeline._task_state = task_state
             return pipeline
 
-        def test_get_message_event_type_called_once_when_first_llm_chunk_arrives(
-            self, pipeline, mock_message_cycle_manager
-        ):
-            """Expect get_message_event_type to be called when processing the first LLM chunk event."""
+        def test_get_message_event_type_not_called_for_llm_text_chunks(self, pipeline, mock_message_cycle_manager):
+            """Expect LLM text chunks to always use MESSAGE event type."""
             # Setup a minimal LLM chunk event
             chunk = llm_chunk("hi")
             llm_chunk_event = QueueLLMChunkEvent(chunk=chunk)
@@ -260,7 +259,10 @@ class TestEasyUiBasedGenerateTaskPipelineCases:
             list(pipeline._process_stream_response(publisher=None))
 
             # Assert
-            mock_message_cycle_manager.get_message_event_type.assert_called_once_with(message_id="test-message-id")
+            mock_message_cycle_manager.get_message_event_type.assert_not_called()
+            mock_message_cycle_manager.message_to_stream_response.assert_called_once_with(
+                answer="hi", message_id="test-message-id", event_type=StreamEvent.MESSAGE
+            )
 
         def test_llm_chunk_event_with_text_content(self, pipeline, mock_message_cycle_manager, task_state):
             """Test handling of LLM chunk events with text content."""
@@ -935,21 +937,16 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 stream=True,
             )
 
-            class _Moderation:
-                def should_direct_output(self):
-                    return True
-
-                def get_final_output(self):
-                    return "final"
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("token")
-
-            assert result is True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
+            result = list(pipeline._handle_output_moderation_chunk("token"))
+            assert result == []
             events = cast(_FakeQueueManager, pipeline.queue_manager).published_events
-            assert any(isinstance(event, QueueLLMChunkEvent) for event in events)
-            assert any(isinstance(event, QueueStopEvent) for event in events)
+            assert events == []
 
         def test_handle_stop_updates_usage(self, monkeypatch: pytest.MonkeyPatch):
             conversation = _make_conversation(AppMode.CHAT)
@@ -1727,7 +1724,12 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 prompt_messages=[],
                 delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content="x")),
             )
-            pipeline._handle_output_moderation_chunk = lambda text: True
+            pipeline.output_moderation_handler = OutputModeration(
+                tenant_id="tenant-1",
+                app_id="app-1",
+                rule=ModerationRule(type="keywords", config={}),
+                final_output="final",
+            )
             _set_queue_events(pipeline, [_queue_message(QueueLLMChunkEvent(chunk=chunk))])
 
             responses = list(pipeline._process_stream_response(publisher=None))
@@ -2223,7 +2225,7 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
 
             assert response is None
 
-        def test_handle_output_moderation_chunk_appends_token_when_not_directing(self):
+        def test_handle_output_moderation_chunk_buffers_unchecked_token(self):
             conversation = _make_conversation(AppMode.CHAT)
             message = _make_message()
             pipeline = EasyUIBasedGenerateTaskPipeline(
@@ -2233,21 +2235,13 @@ class TestEasyUiBasedGenerateTaskPipelineCoreCases:
                 message=message,
                 stream=True,
             )
-            appended_tokens: list[str] = []
-
-            class _Moderation:
-                def should_direct_output(self):
-                    return False
-
-                def append_new_token(self, text):
-                    appended_tokens.append(text)
-
-            _set_method(pipeline, "output_moderation_handler", _Moderation())
-
-            result = pipeline._handle_output_moderation_chunk("next-token")
-
-            assert result is False
-            assert appended_tokens == ["next-token"]
+            handler = OutputModeration(
+                tenant_id="tenant-1", app_id="app-1", rule=ModerationRule(type="keywords", config={})
+            )
+            pipeline.output_moderation_handler = handler
+            result = list(pipeline._handle_output_moderation_chunk("next-token"))
+            assert result == []
+            assert handler.buffer == "next-token"
 
 
 """Exercise message-end file serialization against persisted SQLite rows.

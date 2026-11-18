@@ -20,7 +20,6 @@
   "selectedFiles": "ไฟล์ที่เลือก (ใช้ได้ {{valid}} จาก {{total}} ไฟล์)",
   "startWith": "เริ่มต้นด้วย",
   "startWithHelp": "คุณสามารถเพิ่มแหล่งที่มาหรือเอกสารเพิ่มเติมได้ตลอดเวลา",
-  "uploadCharactersUnavailable": "อักขระ: —",
   "uploadCompleted": "เพิ่มแล้ว",
   "uploadDocuments": "อัพโหลดเอกสาร",
   "uploadDropZoneTitle": "ลากและวางไฟล์ หรือเรียกดู",

@@ -25,6 +25,7 @@
   "enterYourName": "ユーザー名を入力してください",
   "error.emailEmpty": "メールアドレスは必須です",
   "error.emailInValid": "有効なメールアドレスを入力してください",
+  "error.initPasswordIncorrect": "初期化パスワードが正しくありません。",
   "error.invalidEmailOrPassword": "無効なメールアドレスまたはパスワードです。",
   "error.invalidSSOProtocol": "無効なSSOプロトコル",
   "error.nameEmpty": "名前は必須です",

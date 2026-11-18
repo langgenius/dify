@@ -273,16 +273,20 @@ class HumanInputFormApi(Resource):
 
 
 def _get_public_form_by_token(service: HumanInputService, form_token: str) -> Form:
-    """Reject internal Console/Backstage tokens before public form operations.
+    """Reject Console tokens before public form operations.
 
     Email delivery links also use this Web API, so email recipients remain
     allowed alongside standalone Web App recipients.
+
+    TODO(QuantumGhost): Remove temporary Backstage access once its authenticated
+    v1 form entry is available (#46236). Pause-details links currently use this page.
     """
     form = service.get_form_by_token(form_token)
     if form is None or form.recipient_type not in {
         RecipientType.STANDALONE_WEB_APP,
         RecipientType.EMAIL_MEMBER,
         RecipientType.EMAIL_EXTERNAL,
+        RecipientType.BACKSTAGE,
     }:
         raise NotFoundError("Form not found")
     return form

@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from urllib.parse import parse_qs, urlparse
 
 import httpx
 import pytest
@@ -19,16 +20,19 @@ def _response(payload: dict[str, object]) -> httpx.Response:
     return httpx.Response(200, json=payload, request=httpx.Request("POST", "https://marketplace.test"))
 
 
-def test_get_plugin_pkg_url_contains_unique_identifier() -> None:
+def test_get_plugin_pkg_url_uses_download_url_endpoint() -> None:
+    """Given a checksum-bearing identifier, require the exact endpoint and lossless query encoding."""
     url = get_plugin_pkg_url("langgenius/openai:0.4.2@checksum")
 
-    assert "api/v1/plugins/download" in url
-    assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in url
+    parsed = urlparse(url)
+    assert parsed.path == "/api/v1/plugins/download-url"
+    assert parse_qs(parsed.query) == {"unique_identifier": ["langgenius/openai:0.4.2@checksum"]}
 
 
 def test_download_plugin_pkg_delegates_with_configured_size(
     mocker: MockerFixture, config_overrides: Callable[..., None]
 ) -> None:
+    """Given a package size limit, pass the exact endpoint and identifier to the downloader."""
     mocked_download = mocker.patch("core.helper.marketplace.download_with_size_limit", return_value=b"pkg")
     config_overrides(PLUGIN_MAX_PACKAGE_SIZE=1234)
 
@@ -37,7 +41,9 @@ def test_download_plugin_pkg_delegates_with_configured_size(
     assert result == b"pkg"
     mocked_download.assert_called_once()
     called_url, called_limit = mocked_download.call_args.args
-    assert "unique_identifier=langgenius%2Fopenai%3A0.4.2%40checksum" in called_url
+    parsed = urlparse(called_url)
+    assert parsed.path == "/api/v1/plugins/download-url"
+    assert parse_qs(parsed.query) == {"unique_identifier": ["langgenius/openai:0.4.2@checksum"]}
     assert called_limit == 1234
 
 

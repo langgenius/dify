@@ -125,7 +125,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
             }
           }}
         >
-          <DialogContent className="w-120 p-6 sm:min-w-132">
+          <DialogContent className="w-120 p-6 sm:w-132">
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
               onChange={handleSetTempDataSetConfigs}
@@ -134,7 +134,7 @@ const ParamsConfig = ({ disabled, selectedDatasets }: ParamsConfigProps) => {
 
             <div className="mt-6 flex justify-end">
               <Button
-                className="mr-2 shrink-0"
+                className="me-2 shrink-0"
                 onClick={() => {
                   setTempDataSetConfigs(datasetConfigs)
                   setRerankSettingModalOpen(false)

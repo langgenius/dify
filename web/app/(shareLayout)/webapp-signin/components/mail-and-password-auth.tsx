@@ -136,14 +136,18 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
           <FieldLabel className="py-0 text-sm leading-5 font-semibold text-text-secondary">
             {t(($) => $.password, { ns: 'login' })}
           </FieldLabel>
-          <Link
-            href={`/webapp-reset-password?${searchParams.toString()}`}
-            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-            tabIndex={isEmailSetup ? 0 : -1}
-            aria-disabled={!isEmailSetup}
-          >
-            {t(($) => $.forget, { ns: 'login' })}
-          </Link>
+          {isEmailSetup ? (
+            <Link
+              href={`/webapp-reset-password?${searchParams.toString()}`}
+              className="system-xs-regular text-text-accent hover:underline"
+            >
+              {t(($) => $.forget, { ns: 'login' })}
+            </Link>
+          ) : (
+            <span className="system-xs-regular text-components-button-secondary-accent-text-disabled">
+              {t(($) => $.forget, { ns: 'login' })}
+            </span>
+          )}
         </div>
         <PasswordField className="mt-1">
           <PasswordFieldInput

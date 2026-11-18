@@ -25,6 +25,7 @@
   "enterYourName": "Silakan masukkan nama pengguna Anda",
   "error.emailEmpty": "Alamat email diperlukan",
   "error.emailInValid": "Silakan masukkan alamat email yang valid",
+  "error.initPasswordIncorrect": "Kata sandi inisialisasi salah.",
   "error.invalidEmailOrPassword": "Email atau kata sandi tidak valid.",
   "error.invalidSSOProtocol": "Protokol SSO tidak valid",
   "error.nameEmpty": "Nama diperlukan",

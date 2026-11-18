@@ -17,17 +17,25 @@ from copy import deepcopy
 import json
 import mimetypes
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
-from typing import ClassVar, override
+from dataclasses import dataclass, replace
+from typing import override
 from urllib.parse import urlparse
 
 import httpx
-from pydantic import BaseModel, ConfigDict, JsonValue, ValidationError
+from pydantic import BaseModel, ConfigDict
 from pydantic_ai import RunContext, Tool
 from pydantic_ai.tools import ToolDefinition
 
 from pydantic_ai.toolsets import FunctionToolset
 from dify_agent.runtime.context import Deps
+from dify_agent.agent_stub.protocol import AgentStubFileMapping, format_media_observation
+from dify_agent.layers.agent_files import (
+    AgentFileDownload,
+    file_mapping_from_link,
+    request_agent_file_download,
+    upload_agent_tool_file,
+    upload_sandbox_path,
+)
 from dify_agent.layers.dify_plugin.configs import (
     DifyPluginToolConfig,
     DifyPluginToolParameter,
@@ -50,99 +58,7 @@ from dify_agent.layers.execution_context.layer import Capability as ExecutionCon
 # plugin schema differences and older API-prepared payloads.
 PLUGIN_TOOL_STRICT = False
 PLUGIN_FILE_DEFAULT_TYPE = "custom"
-_FILE_UPLOAD_BEGIN = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_BEGIN>>>"
-_FILE_UPLOAD_END = "<<<DIFY_PLUGIN_TOOL_FILE_UPLOAD_END>>>"
-_FILE_UPLOAD_TIMEOUT_SECONDS = 60.0
 _SUPPORTED_REMOTE_URL_PREFIXES = ("http://", "https://")
-
-
-class DifyPluginToolsClientConfigurationError(ValueError):
-    """Raised when local plugin-tool file conversion preconditions are missing."""
-
-
-class _BackwardsInvocationEnvelope(BaseModel):
-    data: JsonValue = None
-    error: str | None = None
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="ignore")
-
-
-class _DownloadFileResponse(BaseModel):
-    filename: str
-    mime_type: str | None = None
-    size: int
-    download_url: str
-
-    model_config: ClassVar[ConfigDict] = ConfigDict(extra="forbid")
-
-
-@dataclass(slots=True)
-class _DifyPluginToolFileClient:
-    """Resolve Dify file mappings into signed URLs for plugin file parameters."""
-
-    base_url: str
-    api_key: str = field(repr=False)
-    http_client: httpx.AsyncClient = field(repr=False)
-
-    def __post_init__(self) -> None:
-        self.base_url = self.base_url.rstrip("/")
-
-    async def request_download(
-        self,
-        *,
-        execution_context: DifyExecutionContextLayerConfig,
-        file_mapping: Mapping[str, object],
-    ) -> _DownloadFileResponse:
-        missing_fields = []
-        if execution_context.user_id is None:
-            missing_fields.append("user_id")
-        if execution_context.user_from is None:
-            missing_fields.append("user_from")
-        if missing_fields:
-            missing = ", ".join(missing_fields)
-            raise DifyPluginToolsClientConfigurationError(
-                f"Missing required execution context fields for file parameters: {missing}."
-            )
-
-        payload = {
-            "tenant_id": execution_context.tenant_id,
-            "user_id": execution_context.user_id,
-            "user_from": execution_context.user_from,
-            "invoke_from": execution_context.invoke_from,
-            "file": dict(file_mapping),
-        }
-        try:
-            response = await self.http_client.post(
-                f"{self.base_url}/inner/api/download/file/request",
-                headers={
-                    "X-Inner-Api-Key": self.api_key,
-                    "Content-Type": "application/json",
-                },
-                json=payload,
-            )
-        except (httpx.InvalidURL, httpx.UnsupportedProtocol) as exc:
-            raise DifyPluginToolClientError(f"Dify API file download is misconfigured: {exc}") from exc
-        except httpx.TimeoutException as exc:
-            raise DifyPluginToolClientError("Dify API file download request timed out.") from exc
-        except httpx.RequestError as exc:
-            raise DifyPluginToolClientError(f"Dify API file download request failed: {exc}") from exc
-
-        if response.status_code >= 400:
-            raise DifyPluginToolClientError(
-                response.text or f"HTTP {response.status_code}", status_code=response.status_code
-            )
-        try:
-            envelope = _BackwardsInvocationEnvelope.model_validate_json(response.text)
-        except ValidationError as exc:
-            raise DifyPluginToolClientError("Invalid Dify API file download response.") from exc
-        if envelope.error:
-            raise DifyPluginToolClientError(envelope.error, status_code=response.status_code)
-        if not isinstance(envelope.data, dict):
-            raise DifyPluginToolClientError("Dify API file download response is missing data.")
-        try:
-            return _DownloadFileResponse.model_validate(envelope.data)
-        except ValidationError as exc:
-            raise DifyPluginToolClientError("Invalid Dify API file download data.") from exc
 
 
 class Config(DifyPluginToolsLayerConfig):
@@ -170,11 +86,6 @@ class Toolset(FunctionToolset[Deps]):
                 raise RuntimeError("Plugin tools require an open shared Dify API HTTP client.")
             tool_clients: dict[tuple[str, str | None], DifyPluginDaemonToolClient] = {}
             file_context = _PluginToolFileContext(
-                file_client=_DifyPluginToolFileClient(
-                    base_url=services.inner_api_url,
-                    api_key=services.inner_api_key,
-                    http_client=services.dify_api_http_client,
-                ),
                 execution_context=DifyExecutionContextLayerConfig.model_validate(
                     ctx.deps.layers[config.execution_context]["config"]
                 ),
@@ -250,11 +161,13 @@ def _build_pydantic_ai_tool(
                 credentials=dict(tool_config.credentials),
                 tool_parameters=merged_arguments,
             )
-            return _convert_tool_response_to_text(messages)
+            return await _convert_tool_response_to_text(messages, file_context=file_context)
         except DifyPluginToolClientError as exc:
             return _tool_error_text(tool_name=tool_name, error=exc)
         except ValueError as exc:
             return f"tool parameters validation error: {exc}, please check your tool parameters"
+        except httpx.HTTPError as exc:
+            return f"tool file request failed: {exc}"
 
     async def prepare_tool_definition(_ctx: RunContext[Deps], tool_def: ToolDefinition) -> ToolDefinition:
         return replace(tool_def, parameters_json_schema=tool_schema, strict=PLUGIN_TOOL_STRICT)
@@ -314,12 +227,17 @@ async def _prepare_tool_arguments(
 
 @dataclass(slots=True)
 class _PluginToolFileContext:
-    file_client: _DifyPluginToolFileClient
     execution_context: DifyExecutionContextLayerConfig
     deps: Deps
     shell: str | None
 
     async def to_plugin_file_parameter(self, value: object) -> dict[str, object]:
+        """Convert a URL, workspace path or copied handle into a daemon file parameter.
+
+        Display metadata on a handle is untrusted and ignored; managed files
+        obtain authoritative metadata through the control plane. Invalid
+        locators raise ValueError before daemon invocation.
+        """
         if isinstance(value, str):
             if _is_remote_url(value):
                 return _plugin_file_parameter_from_url(value)
@@ -329,68 +247,28 @@ class _PluginToolFileContext:
         if isinstance(value, Mapping):
             if _is_plugin_file_parameter(value):
                 return _normalize_plugin_file_parameter(value)
-            return await self._plugin_file_parameter_from_mapping(value)
+            locator = {key: value[key] for key in ("transfer_method", "reference", "url") if key in value}
+            return await self._plugin_file_parameter_from_mapping(AgentStubFileMapping.model_validate(locator))
 
         raise ValueError("file parameter must be an HTTP(S) URL, sandbox path, or file mapping.")
 
-    async def _upload_sandbox_path(self, path: str) -> dict[str, object]:
+    async def _upload_sandbox_path(self, path: str) -> AgentStubFileMapping:
         if self.shell is None:
             raise ValueError("sandbox file path parameters require an active shell layer.")
-        script = (
-            "python - <<'PY'\n"
-            "import json\n"
-            "import subprocess\n"
-            "import sys\n\n"
-            f"command = ['dify-agent', 'file', 'upload', {json.dumps(path)}]\n"
-            "completed = subprocess.run(command, capture_output=True, text=True, check=False)\n"
-            "if completed.returncode != 0:\n"
-            "    print(completed.stderr or completed.stdout or f'upload exited with code {completed.returncode}', file=sys.stderr)\n"
-            "    sys.exit(completed.returncode or 1)\n"
-            "try:\n"
-            "    payload = json.loads(completed.stdout)\n"
-            "except ValueError as exc:\n"
-            "    print(f'upload returned invalid JSON: {exc}', file=sys.stderr)\n"
-            "    sys.exit(1)\n"
-            f"print('{_FILE_UPLOAD_BEGIN}' + json.dumps(payload, separators=(',', ':')) + '{_FILE_UPLOAD_END}')\n"
-            "PY"
-        )
-        result = await self.deps.resources.shells[self.shell].run_remote_script_complete(
-            script,
-            timeout=_FILE_UPLOAD_TIMEOUT_SECONDS,
-            inject_agent_stub_env=True,
-        )
-        if result.exit_code != 0:
-            raise ValueError(
-                "sandbox file upload failed: "
-                + f"{result.status} exit_code={result.exit_code} output_complete={result.output_complete} "
-                + result.output.strip()
-            )
-        return _parse_uploaded_file_mapping(result.output)
+        return await upload_sandbox_path(self.deps.resources.shells[self.shell], path)
 
-    async def _plugin_file_parameter_from_mapping(self, mapping: Mapping[str, object]) -> dict[str, object]:
-        transfer_method = mapping.get("transfer_method")
-        if transfer_method == "remote_url":
-            url = mapping.get("url")
-            if not isinstance(url, str) or not url:
-                raise ValueError("remote_url file mapping requires url.")
-            return _plugin_file_parameter_from_url(url)
+    async def _plugin_file_parameter_from_mapping(self, mapping: AgentStubFileMapping) -> dict[str, object]:
+        """Dispatch a validated locator without revalidating sandbox upload results."""
+        if mapping.transfer_method == "remote_url":
+            assert mapping.url is not None
+            return _plugin_file_parameter_from_url(mapping.url)
 
-        if transfer_method not in {"local_file", "tool_file", "datasource_file"}:
-            raise ValueError(
-                "file mapping transfer_method must be local_file, tool_file, datasource_file, or remote_url."
-            )
-        reference = mapping.get("reference")
-        if not isinstance(reference, str) or not reference:
-            raise ValueError(f"{transfer_method} file mapping requires reference.")
-
-        download = await self.file_client.request_download(
-            execution_context=self.execution_context,
-            file_mapping={
-                "transfer_method": transfer_method,
-                "reference": reference,
-            },
+        download = await request_agent_file_download(
+            self.deps.services,
+            self.execution_context,
+            mapping,
         )
-        return _plugin_file_parameter_from_download(download)
+        return _plugin_file_parameter_from_download(download, base_url=self.deps.services.inner_api_url)
 
 
 async def _cast_tool_parameter_value(
@@ -513,9 +391,11 @@ def _plugin_file_parameter_from_url(url: str) -> dict[str, object]:
     )
 
 
-def _plugin_file_parameter_from_download(download: _DownloadFileResponse) -> dict[str, object]:
+def _plugin_file_parameter_from_download(download: AgentFileDownload, *, base_url: str) -> dict[str, object]:
     return _plugin_file_parameter(
-        url=download.download_url,
+        url=base_url.rstrip("/") + download.download_uri
+        if download.download_uri.startswith("/")
+        else download.download_uri,
         filename=download.filename,
         mime_type=download.mime_type,
         extension=_extension_from_filename(download.filename),
@@ -562,25 +442,6 @@ def _extension_from_filename(filename: str | None) -> str | None:
     return suffix if len(suffix) > 1 else None
 
 
-def _parse_uploaded_file_mapping(output: str) -> dict[str, object]:
-    begin_index = output.find(_FILE_UPLOAD_BEGIN)
-    end_index = output.find(_FILE_UPLOAD_END, begin_index + len(_FILE_UPLOAD_BEGIN))
-    if begin_index < 0 or end_index < 0:
-        raise ValueError("sandbox file upload did not return a framed file mapping.")
-    raw_payload = output[begin_index + len(_FILE_UPLOAD_BEGIN) : end_index]
-    try:
-        payload = json.loads(raw_payload)
-    except json.JSONDecodeError as exc:
-        raise ValueError("sandbox file upload returned invalid file mapping JSON.") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("sandbox file upload returned a non-object file mapping.")
-    transfer_method = payload.get("transfer_method")
-    reference = payload.get("reference")
-    if transfer_method != "tool_file" or not isinstance(reference, str) or not reference:
-        raise ValueError("sandbox file upload returned an invalid tool_file mapping.")
-    return {"transfer_method": "tool_file", "reference": reference}
-
-
 def _tool_error_text(*, tool_name: str, error: DifyPluginToolClientError) -> str:
     """Map expected daemon/tool failures into agent-visible observation text.
 
@@ -606,15 +467,15 @@ def _normalized_json_part(text: str) -> str:
         return text
 
 
-def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeMessage]) -> str:
+async def _convert_tool_response_to_text(
+    tool_response: Sequence[DifyPluginToolInvokeMessage], *, file_context: _PluginToolFileContext
+) -> str:
     """Convert daemon stream messages into the plain-text tool observation.
 
     This preserves the user-facing semantics Dify's agent tool runtime relies on:
-    text is appended directly, links/images become user-check instructions, JSON
-    output is included unless explicitly suppressed, variable messages stay
-    internal, and everything else falls back to ``str(message)``. JSON fragments
-    are deduplicated against existing text so mixed text/JSON streams do not
-    repeat the same content unnecessarily.
+    Text/JSON semantics are preserved. Media returns copyable locators only;
+    plugin blobs are persisted first, and upload failures remain text without
+    exposing the blob. Only an explicit read_media call attaches media later.
     """
     parts: list[str] = []
     json_parts: list[str] = []
@@ -631,11 +492,12 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
         elif response.type in {
             DifyPluginToolInvokeMessage.MessageType.IMAGE_LINK,
             DifyPluginToolInvokeMessage.MessageType.IMAGE,
+            DifyPluginToolInvokeMessage.MessageType.BINARY_LINK,
+            DifyPluginToolInvokeMessage.MessageType.FILE,
+            DifyPluginToolInvokeMessage.MessageType.BLOB,
+            DifyPluginToolInvokeMessage.MessageType.BLOB_CHUNK,
         }:
-            parts.append(
-                "image has been created and sent to user already, "
-                "you do not need to create it, just tell the user to check it now."
-            )
+            parts.append(await _media_response_to_text(response, file_context))
         elif response.type is DifyPluginToolInvokeMessage.MessageType.JSON:
             json_message = response.message
             if isinstance(json_message, DifyPluginToolInvokeMessage.JsonMessage) and not json_message.suppress_output:
@@ -649,6 +511,64 @@ def _convert_tool_response_to_text(tool_response: Sequence[DifyPluginToolInvokeM
         existing_parts = {_normalized_json_part(part) for part in parts}
         parts.extend(part for part in json_parts if _normalized_json_part(part) not in existing_parts)
     return "".join(parts)
+
+
+async def _media_response_to_text(response: DifyPluginToolInvokeMessage, context: _PluginToolFileContext) -> str:
+    """Persist blob outputs and soften file conversion errors into text observations.
+
+    No media response, including a failed or incomplete blob, is stringified.
+    The control plane rechecks authorization when the locator is consumed.
+    """
+    meta = response.meta or {}
+    filename = meta.get("filename")
+    filename = filename if isinstance(filename, str) and filename else None
+    mime_type = meta.get("mime_type")
+    mime_type = mime_type if isinstance(mime_type, str) and mime_type else None
+    size = meta.get("size")
+    size = size if isinstance(size, int) and not isinstance(size, bool) else None
+    try:
+        if response.type is DifyPluginToolInvokeMessage.MessageType.BLOB and isinstance(
+            response.message, DifyPluginToolInvokeMessage.BlobMessage
+        ):
+            size = len(response.message.blob)
+            mime_type = mime_type or "application/octet-stream"
+            filename = filename or "tool-output" + (mimetypes.guess_extension(mime_type) or ".bin")
+            mapping = await upload_agent_tool_file(
+                context.deps.services,
+                context.execution_context,
+                content=response.message.blob,
+                filename=filename,
+                mime_type=mime_type,
+                max_size=context.deps.services.agent_file_upload_max_bytes,
+            )
+        elif response.type is DifyPluginToolInvokeMessage.MessageType.FILE:
+            file = meta.get("file")
+            if not isinstance(file, dict):
+                raise ValueError("file metadata is missing")
+            mapping = AgentStubFileMapping.model_validate(
+                {"transfer_method": "remote_url", "url": file.get("url") or file.get("remote_url")}
+                if file.get("transfer_method") == "remote_url"
+                else {"transfer_method": file.get("transfer_method"), "reference": file.get("reference")}
+            )
+            file_name = file.get("filename")
+            file_mime_type = file.get("mime_type")
+            file_size = file.get("size")
+            filename = filename or (file_name if isinstance(file_name, str) else None)
+            mime_type = mime_type or (file_mime_type if isinstance(file_mime_type, str) else None)
+            size = (
+                size
+                if size is not None
+                else (file_size if isinstance(file_size, int) and not isinstance(file_size, bool) else None)
+            )
+        elif isinstance(response.message, DifyPluginToolInvokeMessage.TextMessage):
+            mapping = file_mapping_from_link(response.message.text)
+            filename = filename or _filename_from_url(response.message.text)
+            mime_type = mime_type or mimetypes.guess_type(filename or "")[0]
+        else:
+            raise ValueError("media output is incomplete or has no usable locator")
+        return format_media_observation(mapping, filename=filename, mime_type=mime_type, size=size)
+    except Exception as exc:
+        return f"\nTool media unavailable ({filename}, {mime_type}, {size} bytes): {exc}.\n"
 
 
 __all__ = ["Config", "State", "Toolset"]

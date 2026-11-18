@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from '@langgenius/dify-ui/select'
 import { Textarea } from '@langgenius/dify-ui/textarea'
+import { useQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { Trans } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
@@ -32,6 +33,7 @@ import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import { consoleQuery } from '@/service/console'
 import { TransferMethod } from '@/types/app'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -92,6 +94,9 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
       ? Number(tempPayload.default)
       : Number.NaN
   const isFileInput = fileInputTypes.includes(type)
+  const { data: fileUploadConfig } = useQuery(
+    consoleQuery.files.upload.get.queryOptions({ enabled: isFileInput }),
+  )
   const docLink = useDocLink()
   const fieldId = React.useId()
   const errorId = `${fieldId}-error`
@@ -351,6 +356,7 @@ const ConfigModalFormFields: FC<ConfigModalFormFieldsProps> = ({
                 allowed_file_upload_methods: tempPayload.allowed_file_upload_methods || [
                   TransferMethod.remote_url,
                 ],
+                fileUploadConfig,
                 number_limits: type === InputVarType.singleFile ? 1 : tempPayload.max_length || 5,
               }}
             />

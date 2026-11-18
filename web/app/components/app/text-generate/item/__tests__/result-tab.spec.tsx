@@ -5,12 +5,6 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
 import ResultTab from '../result-tab'
 
-vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  default: ({ value, readOnly }: { value: string; readOnly: boolean }) => (
-    <textarea aria-label="Raw output" value={value} readOnly={readOnly} />
-  ),
-}))
-
 it('switches between readable workflow output with attachments and read-only raw output', async () => {
   const file: FileEntity = {
     id: 'file-1',
@@ -36,7 +30,9 @@ it('switches between readable workflow output with attachments and read-only raw
   expect(screen.getByText('report.txt')).toBeInTheDocument()
   expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
   rerender(<ResultTab currentTab="DETAIL" content={content} data={data} />)
-  expect(screen.getByRole('textbox', { name: 'Raw output' })).toHaveValue(content)
-  expect(screen.getByRole('textbox', { name: 'Raw output' })).toHaveAttribute('readonly')
+  expect(screen.getByRole('textbox')).toHaveAttribute('readonly')
   expect(screen.queryByText('attachments')).not.toBeInTheDocument()
+  expect(JSON.parse((screen.getByRole('textbox') as HTMLTextAreaElement).value)).toEqual({
+    answer: 'ok',
+  })
 })

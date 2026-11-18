@@ -1,5 +1,5 @@
 import type { CommonNodeType, Node } from '@/app/components/workflow/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it } from 'vite-plus/test'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { createDefaultFormInputByType } from '../../../human-input/types'
 import {

@@ -3,13 +3,13 @@
 Supports local file paths and remote URLs downloaded through the unified remote-file fetcher.
 """
 
-import inspect
 import logging
 import mimetypes
 import os
 import re
 import tempfile
 import uuid
+from contextlib import closing
 from typing import override
 from urllib.parse import urlparse
 
@@ -29,6 +29,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from extensions.storage.storage_type import StorageType
 from libs.datetime_utils import naive_utc_now
+from libs.http_headers import content_type_media_type
 from models.enums import CreatorUserRole
 from models.model import UploadFile
 
@@ -47,7 +48,12 @@ class WordExtractor(BaseExtractor):
     _session: Session | None
 
     def __init__(self, file_path: str, tenant_id: str, user_id: str, *, session: Session | None = None):
-        """Initialize with file path."""
+        """Initialize from a local file or a downloadable URL.
+
+        Downloaded files are closed before extraction can reopen them. If setup
+        fails, close the response and remove any owned temporary file before
+        propagating the error.
+        """
         self._closed = False
         self.file_path = file_path
         self.tenant_id = tenant_id
@@ -66,33 +72,35 @@ class WordExtractor(BaseExtractor):
                 raise ValueError(f"Check the url of your file; returned status code {response.status_code}")
 
             self.web_path = self.file_path
-            # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()  # noqa SIM115
             try:
-                self.temp_file.write(response.content)
-                self.temp_file.flush()
-            finally:
-                response.close()
-            self.file_path = self.temp_file.name
+                with closing(response), tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                    self.temp_file_path = temp_file.name
+                    temp_file.write(response.content)
+            except Exception:
+                self.close()
+                raise
+            self.file_path = self.temp_file_path
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
     def close(self) -> None:
-        """Best-effort cleanup for downloaded temporary files."""
+        """Remove an owned temporary path once, tolerating missing files.
+
+        Local input files are never removed. Other cleanup errors are logged
+        and suppressed so cleanup preserves any original extraction failure.
+        """
         if getattr(self, "_closed", False):
             return
 
         self._closed = True
-        temp_file = getattr(self, "temp_file", None)
-        if temp_file is None:
+        temp_file_path = getattr(self, "temp_file_path", None)
+        if temp_file_path is None:
             return
 
         try:
-            close_result = temp_file.close()
-            if inspect.isawaitable(close_result):
-                close_awaitable = getattr(close_result, "close", None)
-                if callable(close_awaitable):
-                    close_awaitable()
+            os.unlink(temp_file_path)
+        except FileNotFoundError:
+            pass
         except Exception:
             logger.debug("Failed to cleanup downloaded word temp file", exc_info=True)
 
@@ -136,7 +144,9 @@ class WordExtractor(BaseExtractor):
                         logger.warning("Failed to download image from URL: %s", url, exc_info=True)
                         continue
                     if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
+                        image_ext = mimetypes.guess_extension(
+                            content_type_media_type(response.headers.get("Content-Type", ""))
+                        )
                         if image_ext is None:
                             continue
                         file_uuid = str(uuid.uuid4())

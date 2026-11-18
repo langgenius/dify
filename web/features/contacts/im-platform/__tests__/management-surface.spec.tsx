@@ -1,8 +1,10 @@
+import type { DeploymentEdition } from '@dify/contracts/api/console/system-features/types.gen'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
+import { seedSystemFeatures } from '@/test/console/query-data'
 import { ContactsImPlatformRuntimeProvider } from '../composition'
 import { ContactsImPlatformManagementSurface } from '../management-surface'
 import { channelSummary, emailDetail } from './fixtures/channel-client'
@@ -22,15 +24,16 @@ vi.mock('@/service/base', async () => {
   }
 })
 vi.mock('@/utils/client', () => ({ isClient: true, isServer: false }))
-vi.mock('@/context/i18n', async (original) => ({
-  ...(await original<typeof import('@/context/i18n')>()),
-  useDocLink: () => (path: string) => `https://docs.dify.ai${path}`,
+// boundary: documentation routing is covered separately from channel management requests.
+vi.mock('../use-channel-doc-link', () => ({
+  useChannelDocLink: () => () => 'https://docs.dify.ai',
 }))
 const clients: QueryClient[] = []
-function renderSurface(canManage = true) {
+function renderSurface(canManage = true, deploymentEdition: DeploymentEdition = 'CLOUD') {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   })
+  seedSystemFeatures(client, { deployment_edition: deploymentEdition })
   clients.push(client)
   render(
     <QueryClientProvider client={client}>
@@ -69,6 +72,25 @@ it('does not fetch or expose channels to a non-manager', () => {
   expect(screen.queryByRole('group', { name: 'Feishu' })).not.toBeInTheDocument()
   expect(network.handle).not.toHaveBeenCalled()
 })
+
+it.each(['available', 'configured'] as const)(
+  'hides %s workspace Email configuration in Community Edition',
+  async (emailState) => {
+    const channels = [channel]
+    if (emailState === 'configured')
+      channels.push(channelSummary({ id: 'channel-email', kind: 'email', provider: 'resend' }))
+    network.handle.mockImplementation((request) =>
+      new URL(request.url).pathname.endsWith('/channels')
+        ? json({ channels })
+        : defaultResponse(request),
+    )
+
+    renderSurface(true, 'COMMUNITY')
+
+    expect(await screen.findByRole('group', { name: 'Feishu' })).toHaveTextContent('saved-tenant')
+    expect(screen.queryByRole('group', { name: 'Email' })).not.toBeInTheDocument()
+  },
+)
 
 it('uses saved redacted metadata for an update and keeps generated cache invalidation', async () => {
   const user = userEvent.setup()

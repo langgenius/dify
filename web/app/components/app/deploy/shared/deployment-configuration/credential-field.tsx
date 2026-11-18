@@ -15,8 +15,7 @@ import {
 import { StatusDot } from '@langgenius/dify-ui/status-dot'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { useResolvedTheme } from '@/features/theme/hooks'
 import { credentialFieldId } from './utils/field-id'
 import { credentialProviderName } from './utils/workflow-deployment-input'
 import { WorkflowDependencyPreview } from './workflow-source-popover'
@@ -35,11 +34,10 @@ export function CredentialField({
   const { t } = useTranslation(['deployments'])
   const { t: tPlugin } = useTranslation(['plugin'])
   const { getIconUrl } = useGetIcon()
-  const { theme } = useTheme()
+  const theme = useResolvedTheme()
   const inputId = credentialFieldId(slot)
   const name = credentialProviderName(slot.provider_id)
-  const iconFileName =
-    theme === Theme.dark ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
+  const iconFileName = theme === 'dark' ? slot.icon_dark || slot.icon : slot.icon || slot.icon_dark
   const iconSrc = iconFileName ? getIconUrl(iconFileName) : undefined
   const category =
     slot.category === PluginCategory.PLUGIN_CATEGORY_MODEL
@@ -113,7 +111,7 @@ export function CredentialField({
                 <SelectItem
                   key={candidate.credential_id}
                   value={candidate.credential_id}
-                  className="h-8 gap-1.5 py-1 pr-1 pl-3 system-md-regular data-selected:bg-state-base-hover"
+                  className="h-8 gap-1.5 py-1 ps-3 pe-1 system-md-regular data-selected:bg-state-base-hover"
                 >
                   <span className="flex size-2 shrink-0 items-center justify-center">
                     <StatusDot size="small" />

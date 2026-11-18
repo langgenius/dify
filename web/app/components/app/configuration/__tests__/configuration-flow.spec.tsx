@@ -35,6 +35,7 @@ import { createAppDetailFixture, createAppModelConfigFixture } from '@/test/fixt
 import { createFileUploadConfigFixture } from '@/test/fixtures/file-upload-config'
 import { createMarketplacePluginFixture } from '@/test/fixtures/plugin'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
+import { resetViewportWidth, setViewportWidth } from '@/test/viewport'
 import { AppACLPermission } from '@/utils/permission'
 import Configuration from '../index'
 import { toast as configurationToast } from '../toast'
@@ -257,7 +258,7 @@ afterEach(() =>
   act(() => {
     toast.dismiss()
     configurationToast.dismiss()
-    vi.unstubAllGlobals()
+    resetViewportWidth()
   }),
 )
 
@@ -362,6 +363,32 @@ it('selects another model and publishes only parameters supported by that model'
     body: { model: { name: 'gpt-4.1' } },
   })
   expect(api.publish.mock.lastCall![0].body.model.completion_params).toEqual({})
+})
+
+it('opens an agent with an unset model and lets the user select and publish a model', async () => {
+  const app = createApp({
+    mode: 'agent-chat',
+    model_config: createAppModelConfigFixture({
+      ...createApp().model_config,
+      agent_mode: { enabled: true, strategy: 'react', tools: [] },
+      model: { provider: null, name: null, mode: 'chat', completion_params: {} },
+    }),
+  })
+  api.app.mockResolvedValue(app)
+  const { user } = setup({ app })
+  await waitForPage()
+  expect(prompt()).toHaveTextContent('Explain concepts clearly.')
+  await user.click(screen.getByRole('button', { name: 'plugin.detailPanel.configureModel' }))
+  const chooser = await screen.findByRole('dialog', { name: 'plugin.detailPanel.configureModel' })
+  await user.click(within(chooser).getByRole('button', { name: /^GPT-4.1/ }))
+  await publish(user)
+  expect(api.publish.mock.lastCall![0]).toMatchObject({
+    params: { app_id: 'app-1' },
+    body: {
+      pre_prompt: 'Explain concepts clearly.',
+      model: { provider: 'langgenius/openai/openai', name: 'gpt-4.1' },
+    },
+  })
 })
 
 it('keeps comparison mode when restoring the published prompt', async () => {
@@ -558,7 +585,7 @@ it('preserves feature drafts across reopening and restores the last published fe
 })
 
 it('opens and closes the mobile debug drawer while preserving the configuration draft', async () => {
-  vi.stubGlobal('innerWidth', 390)
+  setViewportWidth(390)
   const { user } = setup()
   await waitForPage()
   await user.type(prompt(), ' Mobile draft.')

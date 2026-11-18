@@ -1,16 +1,19 @@
 import ssl
+import threading
 from collections.abc import Iterator
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from importlib import import_module
 from queue import Empty
 from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from celery import Celery
 from celery.contrib.testing.app import TestApp, setup_default_app
 from celery.exceptions import Retry
 
+from configs.feature import LoggingConfig
 from dify_app import DifyApp
 from enums import DeploymentEdition
 from extensions.ext_celery import (
@@ -26,6 +29,77 @@ from tasks.trace_delivery_task import deliver_trace_event, retry_trace_export
 from tests.helpers.unit.config_override import apply_config_overrides, config_overrides_context
 
 """Tests for Celery SSL configuration."""
+
+
+@pytest.mark.parametrize(
+    ("backend", "shared"),
+    [
+        pytest.param("redis", True, id="redis-backend-is-shared"),
+        pytest.param("disabled", False, id="other-backends-stay-per-thread"),
+    ],
+)
+def test_result_backend_is_built_once_per_process_only_for_redis(backend: str, shared: bool) -> None:
+    """The gevent pool runs each task in a new greenlet; a per-thread backend is rebuilt for every task."""
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="redis://localhost:6379/1" if backend == "redis" else "memory://",
+            CELERY_BACKEND=backend,
+            DISABLE_TELEMETRY=True,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        # A worker builds its backend once while it starts, before any task runs.
+        backend_at_startup = celery_app.backend
+        backends_seen_in_other_threads: list[object] = []
+
+        def read_backend() -> None:
+            backends_seen_in_other_threads.append(celery_app.backend)
+
+        threads = [threading.Thread(target=read_backend) for _ in range(3)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        assert len(backends_seen_in_other_threads) == 3
+        reused = [seen is backend_at_startup for seen in backends_seen_in_other_threads]
+        assert reused == [shared, shared, shared]
+
+
+@pytest.mark.parametrize(
+    ("configured", "iana_name"),
+    [
+        ("utc", "UTC"),
+        ("asia/shanghai", "Asia/Shanghai"),
+    ],
+)
+def test_init_app_uses_validated_logging_timezone(configured: str, iana_name: str) -> None:
+    logging_config = LoggingConfig(LOG_TZ=configured)
+    assert logging_config.LOG_TZ is not None
+
+    with (
+        setup_default_app(TestApp()),
+        config_overrides_context(
+            CELERY_BROKER_URL="memory://",
+            CELERY_BACKEND="disabled",
+            DISABLE_TELEMETRY=True,
+            LOG_TZ=logging_config.LOG_TZ,
+        ),
+    ):
+        celery_app = init_app(DifyApp(__name__))
+        try:
+            expected_timezone = ZoneInfo(iana_name)
+            for instant in (
+                datetime(2026, 1, 15, 12, tzinfo=UTC),
+                datetime(2026, 7, 15, 12, tzinfo=UTC),
+            ):
+                assert (
+                    instant.astimezone(celery_app.conf.timezone).utcoffset()
+                    == instant.astimezone(expected_timezone).utcoffset()
+                )
+        finally:
+            celery_app.close()
 
 
 @pytest.fixture
@@ -330,6 +404,7 @@ class TestCelerySslCases:
 
             mock_config.CELERY_BEAT_SCHEDULER_TIME = 1
             mock_config.AGENT_SANDBOX_METERING_ENABLED = False
+            mock_config.ENABLE_EVALUATION_RUN_RECONCILER = True
             mock_config.ENABLE_CONVERSATION_CLEANUP_TASK = True
             mock_config.CONVERSATION_CLEANUP_TASK_INTERVAL = 5
             mock_config.ENABLE_CLEAN_EMBEDDING_CACHE_TASK = False
@@ -381,6 +456,9 @@ class TestCelerySslCases:
             assert archive_deletion.retry_kwargs["max_retries"] == 5
             assert celery_app.conf["beat_schedule"]["conversation_cleanup_sweeper"]["task"] == (
                 "tasks.delete_conversation_task.sweep_deleted_conversations"
+            )
+            assert celery_app.conf["beat_schedule"]["evaluation-run-reconciler"]["task"] == (
+                "tasks.evaluation_task.reconcile_stale_evaluation_runs"
             )
 
 

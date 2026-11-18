@@ -16,12 +16,36 @@ import type { RouterUtils } from '@orpc/tanstack-query'
 import type { InfiniteData, QueryClient, QueryKey } from '@tanstack/react-query'
 import type { ConsoleClient } from './index'
 import { createTanstackQueryUtils } from '@orpc/tanstack-query'
+import { noop } from 'es-toolkit/function'
+import {
+  markAppDeletionFailed,
+  markAppDeletionStarted,
+  markAppDeletionSucceeded,
+} from '@/service/app-deletion'
 import { getHttpErrorStatus, isNotFoundError } from '@/service/http-error'
 import {
   legacyWorkflowVersionHistoryKey,
   syncAppWorkflowVersionCaches,
   syncWorkflowDeploymentCaches,
 } from './workflow-version-cache'
+
+async function refreshRejectedPersonalToken(
+  error: unknown,
+  client: QueryClient,
+  tokenId: string,
+  query: RouterUtils<ConsoleClient>,
+) {
+  const status = getHttpErrorStatus(error)
+  if (status !== 403 && status !== 404 && status !== 409) return
+  await Promise.all([
+    client.invalidateQueries({ queryKey: query.account.personalAccessTokens.get.key() }),
+    client.invalidateQueries({
+      queryKey: query.account.personalAccessTokens.byTokenId.get.queryKey({
+        input: { params: { token_id: tokenId } },
+      }),
+    }),
+  ])
+}
 
 export function createConsoleQuery(consoleClient: ConsoleClient) {
   const consoleQuery: RouterUtils<ConsoleClient> = createTanstackQueryUtils(consoleClient, {
@@ -816,6 +840,19 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
               versions: {
                 byVersionId: {
+                  patch: {
+                    mutationOptions: {
+                      onSuccess: (_data, { params }, _result, { client }) => {
+                        void invalidateSkillVersionQueries(consoleQuery, client, params.skill_id)
+                        void client.invalidateQueries({
+                          queryKey:
+                            consoleQuery.workspaces.current.skills.bySkillId.versions.byVersionId.get.key(
+                              { input: { params } },
+                            ),
+                        })
+                      },
+                    },
+                  },
                   delete: {
                     mutationOptions: {
                       onSettled: (_data, error, variables, _result, context) => {
@@ -1021,6 +1058,58 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         },
       },
       account: {
+        personalAccessTokens: {
+          byTokenId: {
+            delete: {
+              mutationOptions: {
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  context.client.removeQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                  })
+                  await context.client.invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                },
+              },
+            },
+            patch: {
+              mutationOptions: {
+                onError: (error, variables, _onMutateResult, context) =>
+                  refreshRejectedPersonalToken(
+                    error,
+                    context.client,
+                    variables.params.token_id,
+                    consoleQuery,
+                  ),
+                onSuccess: async (_data, variables, _onMutateResult, context) => {
+                  await Promise.all([
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                    }),
+                    context.client.invalidateQueries({
+                      queryKey: consoleQuery.account.personalAccessTokens.byTokenId.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                    }),
+                  ])
+                },
+              },
+            },
+          },
+          post: {
+            mutationOptions: {
+              onSuccess: (_data, _variables, _onMutateResult, context) => {
+                void context.client
+                  .invalidateQueries({
+                    queryKey: consoleQuery.account.personalAccessTokens.get.key(),
+                  })
+                  .catch(noop)
+              },
+            },
+          },
+        },
         education: {
           get: {
             queryOptions: {
@@ -1359,7 +1448,10 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
           delete: {
             mutationOptions: {
-              onSuccess: (_data, _variables, _onMutateResult, context) => {
+              onMutate: ({ params }) => markAppDeletionStarted(params.app_id),
+              onError: (_error, { params }) => markAppDeletionFailed(params.app_id),
+              onSuccess: (_data, { params }, _onMutateResult, context) => {
+                markAppDeletionSucceeded(params.app_id)
                 void context.client.invalidateQueries({ queryKey: consoleQuery.features.get.key() })
                 return Promise.all([
                   context.client.invalidateQueries({ queryKey: consoleQuery.apps.get.key() }),
@@ -1713,9 +1805,165 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      byEvaluateTargetType: {
+        byEvaluateTargetId: {
+          evaluation: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  return context.client.invalidateQueries({
+                    queryKey:
+                      consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.get.key({
+                        type: 'query',
+                        input: { params: variables.params },
+                      }),
+                  })
+                },
+              },
+            },
+            run: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    return context.client.invalidateQueries({
+                      queryKey:
+                        consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                          {
+                            type: 'query',
+                            input: { params: variables.params },
+                          },
+                        ),
+                    })
+                  },
+                },
+              },
+            },
+            runs: {
+              byRunId: {
+                cancel: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = {
+                          evaluate_target_id: params.evaluate_target_id,
+                          evaluate_target_type: params.evaluate_target_type,
+                        }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params: targetParams },
+                                },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params },
+                                },
+                              ),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+                retry: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = {
+                          evaluate_target_id: params.evaluate_target_id,
+                          evaluate_target_type: params.evaluate_target_type,
+                        }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.logs.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params: targetParams },
+                                },
+                              ),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.byEvaluateTargetType.byEvaluateTargetId.evaluation.runs.byRunId.get.key(
+                                {
+                                  type: 'query',
+                                  input: { params },
+                                },
+                              ),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       knowledgeFs: {
         spaces: {
           byControlSpaceId: {
+            documents: {
+              byDocumentId: {
+                patch: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params, body }, _result, { client }) => {
+                      const space = consoleQuery.knowledgeFs.spaces.byControlSpaceId
+                      const input = { params: { control_space_id: params.control_space_id } }
+                      void client.invalidateQueries({
+                        queryKey: space.logicalDocuments.byDocumentId.get.key({
+                          input: { params },
+                        }),
+                      })
+                      void client.invalidateQueries({
+                        queryKey: space.logicalDocuments.get.key({ input }),
+                      })
+                      if ('displayName' in body.patch)
+                        void client.invalidateQueries({
+                          queryKey: space.goldenQuestions.get.key({ input }),
+                        })
+                    },
+                  },
+                },
+              },
+            },
+            fileScanPolicy: {
+              put: {
+                mutationOptions: {
+                  onSuccess: (policy, variables, _result, context) => {
+                    context.client.setQueryData(
+                      consoleQuery.knowledgeFs.spaces.byControlSpaceId.fileScanPolicy.get.queryKey({
+                        input: { params: variables.params },
+                      }),
+                      policy,
+                    )
+                    // Each scanner reports how many knowledge bases select it.
+                    void context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
+              },
+            },
             delete: {
               mutationOptions: {
                 onSuccess: (_data, variables, _result, context) => {
@@ -1771,6 +2019,24 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
         // Process rules are read once to describe a running import.
         processRule: { get: { queryOptions: { refetchOnWindowFocus: false } } },
         byDatasetId: {
+          fileScanPolicy: {
+            put: {
+              mutationOptions: {
+                onSuccess: (policy, variables, _result, context) => {
+                  context.client.setQueryData(
+                    consoleQuery.datasets.byDatasetId.fileScanPolicy.get.queryKey({
+                      input: { params: variables.params },
+                    }),
+                    policy,
+                  )
+                  // Each scanner reports how many knowledge bases select it.
+                  void context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+          },
           delete: {
             mutationOptions: {
               onSuccess: (_data, variables, _result, context) => {
@@ -1819,6 +2085,96 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           knowledgeFsUpgrades: {
             post: { mutationOptions: { context: { silent: true } } },
           },
+          evaluation: {
+            put: {
+              mutationOptions: {
+                onSettled: (_data, error, variables, _onMutateResult, context) => {
+                  if (error) return
+
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.datasets.byDatasetId.evaluation.get.key({
+                      type: 'query',
+                      input: { params: variables.params },
+                    }),
+                  })
+                },
+              },
+            },
+            run: {
+              post: {
+                mutationOptions: {
+                  onSettled: (_data, error, variables, _onMutateResult, context) => {
+                    if (error) return
+
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                        type: 'query',
+                        input: { params: variables.params },
+                      }),
+                    })
+                  },
+                },
+              },
+            },
+            runs: {
+              byRunId: {
+                cancel: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = { dataset_id: params.dataset_id }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                              type: 'query',
+                              input: { params: targetParams },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                                type: 'query',
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+                retry: {
+                  post: {
+                    mutationOptions: {
+                      onSettled: (_data, error, variables, _onMutateResult, context) => {
+                        if (error) return
+
+                        const params = variables.params
+                        const targetParams = { dataset_id: params.dataset_id }
+                        return Promise.all([
+                          context.client.invalidateQueries({
+                            queryKey: consoleQuery.datasets.byDatasetId.evaluation.logs.get.key({
+                              type: 'query',
+                              input: { params: targetParams },
+                            }),
+                          }),
+                          context.client.invalidateQueries({
+                            queryKey:
+                              consoleQuery.datasets.byDatasetId.evaluation.runs.byRunId.get.key({
+                                type: 'query',
+                                input: { params },
+                              }),
+                          }),
+                        ])
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
           get: {
             queryOptions: {
               // A missing or inaccessible dataset sends the detail page back to the list.
@@ -1858,6 +2214,23 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
               },
             },
             byDocumentId: {
+              rename: {
+                post: {
+                  mutationOptions: {
+                    onSuccess: (_data, { params }, _result, { client }) => {
+                      const documents = consoleQuery.datasets.byDatasetId.documents
+                      void client.invalidateQueries({
+                        queryKey: documents.get.key({
+                          input: { params: { dataset_id: params.dataset_id } },
+                        }),
+                      })
+                      void client.invalidateQueries({
+                        queryKey: documents.byDocumentId.get.key({ input: { params } }),
+                      })
+                    },
+                  },
+                },
+              },
               pipelineExecutionLog: { get: { queryOptions: { staleTime: 0 } } },
             },
             // Document metadata shows in the dataset fields, the document list and each
@@ -2380,7 +2753,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     return {
                       ...oldList,
                       data: oldList.data.map((item) =>
-                        item.id === updatedAgent.id ? updatedAgent : item,
+                        item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                       ),
                     }
                   },
@@ -2402,7 +2775,7 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                       pages: oldList.pages.map((page) => ({
                         ...page,
                         data: page.data.map((item) =>
-                          item.id === updatedAgent.id ? updatedAgent : item,
+                          item.id === updatedAgent.id ? { ...item, ...updatedAgent } : item,
                         ),
                       })),
                     }
@@ -2600,6 +2973,55 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
           },
         },
       },
+      fileScan: {
+        providers: {
+          post: {
+            mutationOptions: {
+              onSettled: (_data, error, _variables, _result, context) => {
+                if (error) return
+                return context.client.invalidateQueries({
+                  queryKey: consoleQuery.fileScan.providers.get.key(),
+                })
+              },
+            },
+          },
+          byProviderId: {
+            patch: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            delete: {
+              mutationOptions: {
+                onSettled: (_data, error, _variables, _result, context) => {
+                  if (error) return
+                  return context.client.invalidateQueries({
+                    queryKey: consoleQuery.fileScan.providers.get.key(),
+                  })
+                },
+              },
+            },
+            test: {
+              post: {
+                // A finished check always stores a new status, including a failing one.
+                mutationOptions: {
+                  onSettled: (_data, error, _variables, _result, context) => {
+                    if (error) return
+                    return context.client.invalidateQueries({
+                      queryKey: consoleQuery.fileScan.providers.get.key(),
+                    })
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
       resourceAccessTokens: {
         post: {
           mutationOptions: {
@@ -2741,14 +3163,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_api: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_api: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
@@ -2802,14 +3223,13 @@ export function createConsoleQuery(consoleClient: ConsoleClient) {
                     (current) =>
                       current && {
                         ...current,
-                        environment_deployments: current.environment_deployments.map(
-                          (deployment) =>
-                            deployment.environment.id === environment_id
-                              ? {
-                                  ...deployment,
-                                  access: { ...deployment.access, enable_site: updated.enabled },
-                                }
-                              : deployment,
+                        environment_deployments: current.environment_deployments.map((deployment) =>
+                          deployment.environment.id === environment_id
+                            ? {
+                                ...deployment,
+                                access: { ...deployment.access, enable_site: updated.enabled },
+                              }
+                            : deployment,
                         ),
                       },
                   )
@@ -3037,6 +3457,7 @@ function invalidateHumanInputChannelQueries(
     invalidateHumanInputContactQueries(query, client),
     invalidateQueryKeys(client, [
       query.workspaces.current.humanInput.v2.channels.key(),
+      query.workspaces.current.humanInput.v2.testChannels.key(),
       query.workspaces.current.humanInput.v2.imIdentities.key(),
       query.workspaces.current.humanInput.v2.imSyncRuns.key(),
     ]),

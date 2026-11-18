@@ -4,10 +4,10 @@ import type { Shape as HooksStoreShape } from '@/app/components/workflow/hooks-s
 import type { InputVar } from '@/app/components/workflow/types'
 import type { HumanInputFormData } from '@/types/workflow'
 import { act, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { createElement, StrictMode, useEffect, useRef, useState } from 'react'
 import { useNodes } from 'reactflow'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { withSelectorKey } from '@/test/i18n-mock'
 import { createNode } from '../../../../__tests__/fixtures'
 import {
   renderWorkflowCanvasHook,
@@ -15,12 +15,10 @@ import {
 } from '../../../../__tests__/workflow-test-env'
 import useSingleRunFormParams from '../use-single-run-form-params'
 
-const mockUseTranslation = vi.hoisted(() => vi.fn())
 const mockFetchHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockSubmitHumanInputNodeStepRunForm = vi.hoisted(() => vi.fn())
 const mockToastError = vi.hoisted(() => vi.fn())
 vi.mock('@/app/notifications', () => ({ toast: { error: mockToastError } }))
-vi.mock('react-i18next', () => ({ useTranslation: () => mockUseTranslation() }))
 
 type NodeData = HumanInputNodeType & Partial<Pick<HumanInputV2NodeType, 'version'>>
 
@@ -74,7 +72,10 @@ const getInputVars = vi.fn(() => [
   }),
 ])
 
-type SubjectProps = { initialRunInputData?: Record<string, string> }
+type SubjectProps = {
+  initialRunInputData?: Record<string, string>
+  singleRunOpen?: boolean
+}
 
 const renderSubject = (
   payload: NodeData,
@@ -85,12 +86,15 @@ const renderSubject = (
   props: SubjectProps = {},
 ) =>
   renderWorkflowCanvasHook(
-    ({ initialRunInputData }: SubjectProps) => {
+    ({ initialRunInputData, singleRunOpen }: SubjectProps) => {
       const node = useNodes<NodeData>().find(({ id }) => id === 'node-1')!
       const [runInputData, setRunInputData] = useState(initialRunInputData ?? {})
       const form = useSingleRunFormParams({
         id: node.id,
-        payload: node.data,
+        payload: {
+          ...node.data,
+          _isSingleRun: singleRunOpen ?? node.data._isSingleRun,
+        },
         runInputData,
         getInputVars,
         setRunInputData,
@@ -105,21 +109,8 @@ const renderSubject = (
     },
   )
 
-const setSingleRunOpen = (
-  subject: Pick<ReturnType<typeof renderSubject>, 'setCanvas'>,
-  payload: NodeData,
-  open: boolean,
-) => {
-  act(() =>
-    subject.setCanvas({
-      nodes: [createNode({ id: 'node-1', data: { ...payload, _isSingleRun: open } })],
-    }),
-  )
-}
-
 describe('human-input/hooks/use-single-run-form-params', () => {
   beforeEach(() => {
-    mockUseTranslation.mockReturnValue({ t: withSelectorKey((key: string) => key) })
     mockFetchHumanInputNodeStepRunForm.mockResolvedValue(mockFormData)
     mockSubmitHumanInputNodeStepRunForm.mockResolvedValue({})
   })
@@ -169,7 +160,9 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     expect(mockFetchHumanInputNodeStepRunForm).not.toHaveBeenCalled()
     await waitFor(() => expect(subject.result.current.form.showGeneratedForm).toBe(false))
     await waitFor(() => expect(subject.result.current.form.isGeneratingForm).toBe(false))
-    expect(mockToastError).toHaveBeenCalledWith('nodes.humanInputV2.template.testSaveFailed')
+    expect(mockToastError).toHaveBeenCalledWith(
+      'workflow.nodes.humanInputV2.template.testSaveFailed',
+    )
   })
 
   it('keeps the input screen available after a failed preview and allows retry', async () => {
@@ -192,13 +185,15 @@ describe('human-input/hooks/use-single-run-form-params', () => {
     })
     const subject = renderSubject(createPayload())
     await act(async () => subject.result.current.form.handleShowGeneratedForm({}))
-    expect(subject.result.current.form.formData?.inputs).toEqual([
-      {
-        type: InputVarType.paragraph,
-        output_variable_name: 'answer',
-        default: { type: 'constant', value: '', selector: [] },
-      },
-    ])
+    await waitFor(() =>
+      expect(subject.result.current.form.formData?.inputs).toEqual([
+        {
+          type: InputVarType.paragraph,
+          output_variable_name: 'answer',
+          default: { type: 'constant', value: '', selector: [] },
+        },
+      ]),
+    )
     act(() => subject.result.current.form.handleHideGeneratedForm())
     mockFetchHumanInputNodeStepRunForm.mockResolvedValueOnce({
       ...mockFormData,
@@ -260,6 +255,7 @@ describe('human-input/hooks/use-single-run-form-params', () => {
   )
 
   it('ignores an old form response after the single-run session closes and reopens', async () => {
+    const user = userEvent.setup()
     const payload = createPayload({ _isSingleRun: true })
     let resolveOld!: (value: HumanInputFormData) => void
     mockFetchHumanInputNodeStepRunForm.mockImplementationOnce(
@@ -268,26 +264,75 @@ describe('human-input/hooks/use-single-run-form-params', () => {
           resolveOld = resolve
         }),
     )
-    const subject = renderSubject(payload)
-    act(() => {
-      subject.result.current.form.handleShowGeneratedForm({ topic: 'old' })
+    const ControlledCaller = () => {
+      const [isSingleRun, setIsSingleRun] = useState(true)
+      const [runInputData, setRunInputData] = useState<Record<string, string>>({})
+      const form = useSingleRunFormParams({
+        id: 'node-1',
+        payload: { ...payload, _isSingleRun: isSingleRun },
+        runInputData,
+        getInputVars,
+        setRunInputData,
+      })
+      return createElement(
+        'div',
+        null,
+        createElement('button', { onClick: () => setIsSingleRun(false) }, 'Close'),
+        createElement('button', { onClick: () => setIsSingleRun(true) }, 'Open'),
+        createElement(
+          'button',
+          { onClick: () => void form.handleShowGeneratedForm({ topic: 'old' }) },
+          'Preview old',
+        ),
+        createElement(
+          'button',
+          { onClick: () => void form.handleShowGeneratedForm({ topic: 'new' }) },
+          'Preview new',
+        ),
+        createElement(
+          'button',
+          {
+            onClick: () =>
+              void form.handleSubmitHumanInputForm({
+                action: 'approve',
+                inputs: {},
+                form_inputs: {},
+              }),
+          },
+          'Submit',
+        ),
+        createElement(
+          'output',
+          { 'aria-label': 'Form content' },
+          form.formData?.form_content ?? '',
+        ),
+      )
+    }
+    renderWorkflowFlowComponent(createElement(ControlledCaller), {
+      nodes: [createNode({ id: 'node-1', data: payload })],
+      hooksStoreProps: {
+        doSyncWorkflowDraft: vi.fn(async () => ({ hash: 'saved', updatedAt: 1 })),
+      },
+      resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
     })
-    setSingleRunOpen(subject, payload, false)
-    setSingleRunOpen(subject, payload, true)
-    await act(async () => subject.result.current.form.handleShowGeneratedForm({ topic: 'new' }))
+
+    await user.click(screen.getByRole('button', { name: 'Preview old' }))
+    await waitFor(() => expect(mockFetchHumanInputNodeStepRunForm).toHaveBeenCalledTimes(1))
+    await user.click(screen.getByRole('button', { name: 'Close' }))
+    await user.click(screen.getByRole('button', { name: 'Open' }))
+    await user.click(screen.getByRole('button', { name: 'Preview new' }))
+    await waitFor(() =>
+      expect(screen.getByRole('status', { name: 'Form content' })).toHaveTextContent(
+        'Rendered content',
+      ),
+    )
     await act(async () => {
       resolveOld({ ...mockFormData, form_content: 'Old response' })
     })
-    await waitFor(() =>
-      expect(subject.result.current.form.formData?.form_content).toBe('Rendered content'),
+    expect(screen.getByRole('status', { name: 'Form content' })).toHaveTextContent(
+      'Rendered content',
     )
-    await act(async () =>
-      subject.result.current.form.handleSubmitHumanInputForm({
-        action: 'approve',
-        inputs: {},
-        form_inputs: {},
-      }),
-    )
+    await user.click(screen.getByRole('button', { name: 'Submit' }))
     expect(mockSubmitHumanInputNodeStepRunForm).toHaveBeenLastCalledWith(
       '/apps/app-1/workflows/draft/human-input/nodes/node-1/form',
       { inputs: { topic: 'new' }, form_inputs: {}, action: 'approve' },

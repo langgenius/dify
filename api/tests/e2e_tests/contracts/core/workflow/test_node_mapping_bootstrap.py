@@ -5,7 +5,7 @@ import textwrap
 from pathlib import Path
 
 
-def test_moved_core_nodes_resolve_after_importing_production_entrypoints():
+def test_moved_core_nodes_resolve_after_importing_production_entrypoints() -> None:
     api_root = Path(__file__).resolve().parents[5]
 
     # `PYTHONSAFEPATH=1` enables Python's safe-path mode, which suppresses the

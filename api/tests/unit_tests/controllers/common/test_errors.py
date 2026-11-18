@@ -22,11 +22,41 @@ from controllers.common.errors import (
 from controllers.console import api as console_api
 from controllers.inner_api import api as inner_api
 from controllers.service_api import api as service_api
+from controllers.web import api as web_api
+from core.app.apps.base_app_generate_response_converter import (
+    AppGenerateResponseConverter,
+    ModerationRejectedHTTPError,
+    ModerationUnavailableHTTPError,
+    moderation_http_exception,
+)
 from libs.exception import BaseHTTPException
 from libs.external_api import ExternalApi
 from services.credentials.refresh import CredentialRefreshUnavailableError
 from services.errors.base import NoPermissionError
 from services.errors.workspace import WorkspaceApplicationError
+from services.moderation_invocation_errors import (
+    ModerationRejectedInvocationError,
+    ModerationUnavailableInvocationError,
+    PlatformModerationRejectedInvocationError,
+)
+
+
+@pytest.mark.parametrize(
+    ("error", "http_error_type"),
+    [
+        (ModerationRejectedInvocationError("output", "Rejected"), ModerationRejectedHTTPError),
+        (ModerationUnavailableInvocationError(), ModerationUnavailableHTTPError),
+    ],
+)
+def test_moderation_status_belongs_to_the_transport_exception(
+    error: ModerationRejectedInvocationError | ModerationUnavailableInvocationError,
+    http_error_type: type[ModerationRejectedHTTPError | ModerationUnavailableHTTPError],
+) -> None:
+    http_error = moderation_http_exception(error)
+    assert isinstance(http_error, http_error_type)
+    assert http_error.data == {"code": error.error_code, "message": str(error), "status": http_error_type.code}
+    assert not isinstance(error, BaseHTTPException)
+    assert not hasattr(error, "code")
 
 
 @pytest.mark.parametrize("source_api", [console_api, service_api], ids=["console", "service_api"])
@@ -91,8 +121,65 @@ def test_refresh_unavailability_has_one_documented_response(source_api: External
     assert source_api.resolve_error(CredentialRefreshUnavailableError) == (503, "service_unavailable")
 
 
+@pytest.mark.parametrize("source_api", [console_api, service_api, web_api], ids=["console", "service_api", "web"])
+@pytest.mark.parametrize(
+    ("error", "status", "code", "message"),
+    [
+        (
+            ModerationRejectedInvocationError("input", "Model input was rejected by moderation."),
+            400,
+            "moderation_rejected",
+            "Model input was rejected by moderation.",
+        ),
+        (
+            ModerationRejectedInvocationError("output", "Model output was rejected by moderation."),
+            400,
+            "moderation_rejected",
+            "Model output was rejected by moderation.",
+        ),
+        (
+            ModerationUnavailableInvocationError(),
+            503,
+            "moderation_unavailable",
+            "This message can’t be processed right now. Please try again later.",
+        ),
+        (
+            PlatformModerationRejectedInvocationError("input", "Input rejected"),
+            400,
+            "moderation_rejected",
+            "Input rejected",
+        ),
+        (
+            PlatformModerationRejectedInvocationError("output", "Output rejected"),
+            400,
+            "moderation_rejected",
+            "Output rejected",
+        ),
+    ],
+)
+def test_moderation_errors_have_matching_http_and_stream_contracts(
+    source_api: ExternalApi, error: Exception, status: int, code: str, message: str
+) -> None:
+    app = Flask(__name__)
+    api = Api(app, doc=False)
+    api.error_handlers = source_api.error_handlers.copy()
+
+    class Endpoint(Resource):
+        def get(self) -> ResponseReturnValue:
+            raise error
+
+    api.add_resource(Endpoint, "/error")
+    response = app.test_client().get("/error")
+
+    assert response.status_code == status
+    assert response.json == {"code": code, "message": message, "status": status}
+    assert AppGenerateResponseConverter._error_to_stream_response(error) == response.json
+    assert source_api.resolve_error(type(error)) == (status, code)
+    assert code in source_api.implicit_error_codes(status)
+
+
 class TestFilenameNotExistsError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FilenameNotExistsError()
 
         assert error.code == 400
@@ -106,7 +193,7 @@ class TestFilenameNotExistsError:
 
 
 class TestRemoteFileUploadError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = RemoteFileUploadError()
 
         assert error.code == 400
@@ -160,7 +247,7 @@ def test_remote_file_errors(
 
 
 class TestFileTooLargeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = FileTooLargeError()
 
         assert error.code == 413
@@ -169,7 +256,7 @@ class TestFileTooLargeError:
 
 
 class TestUnsupportedFileTypeError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = UnsupportedFileTypeError()
 
         assert error.code == 415
@@ -178,7 +265,7 @@ class TestUnsupportedFileTypeError:
 
 
 class TestBlockedFileExtensionError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = BlockedFileExtensionError()
 
         assert error.code == 400
@@ -187,7 +274,7 @@ class TestBlockedFileExtensionError:
 
 
 class TestTooManyFilesError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = TooManyFilesError()
 
         assert error.code == 400
@@ -196,7 +283,7 @@ class TestTooManyFilesError:
 
 
 class TestNoFileUploadedError:
-    def test_defaults(self):
+    def test_defaults(self) -> None:
         error = NoFileUploadedError()
 
         assert error.code == 400

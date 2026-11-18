@@ -34,6 +34,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, load_only, selectinload, sessionmaker
 
 from core.workflow.human_input_forms import load_form_tokens_by_form_id
+from core.workflow.human_input_policy import HumanInputSurface
 from core.workflow.nodes.human_input.entities import FormDefinition
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.pause_reason import (
@@ -59,6 +60,7 @@ from libs.time_parser import get_time_threshold
 from models import Message
 from models.enums import CreatorUserRole, MessageStatus, WorkflowRunTriggeredFrom
 from models.human_input import HumanInputForm, HumanInputFormRecipient
+from models.human_input_v2 import HumanInputForm as HumanInputV2Form
 from models.workflow import (
     WorkflowAppLog,
     WorkflowArchiveLog,
@@ -347,7 +349,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         error: str,
         finished_at: datetime,
     ) -> None:
+        """Stop a locked, owner-scoped run within the caller's transaction.
+
+        Persist the stop marker, reason and finish time together so delayed
+        history cannot overwrite the terminal state. Invalidate any active
+        pause in the same transaction; database failures propagate to the caller.
+        """
         run.status = WorkflowExecutionStatus.STOPPED
+        run.stop_requested_at = finished_at
         run.error = error
         run.finished_at = finished_at
         pause = session.scalar(select(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id).with_for_update())
@@ -1246,8 +1255,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 update(WorkflowRun)
                 .where(
                     WorkflowRun.id == workflow_run_id,
-                    WorkflowRun.tenant_id == tenant_id,
-                    WorkflowRun.app_id == app_id,
+                    # Keep owner checks together so PostgreSQL can use the run's primary key instead of
+                    # underestimating the tenant/app composite index when their values are correlated.
+                    and_(WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id).is_(True),
                     WorkflowRun.task_id.is_(None),
                 )
                 .values(task_id=task_id)
@@ -1403,7 +1413,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         )
 
     def get_legacy_form_tokens(self, session: Session, *, form_ids: Sequence[str]) -> dict[str, str]:
-        return load_form_tokens_by_form_id(form_ids, session=session)
+        """Read Console tokens for an admitted run's form IDs without changing recipients."""
+        return load_form_tokens_by_form_id(form_ids, session=session, surface=HumanInputSurface.CONSOLE)
 
     def stop_paused_workflow_task(
         self,
@@ -1413,7 +1424,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         task_id: str,
         owner: tuple[CreatorUserRole, str] | None,
     ) -> WorkflowRun | None:
-        """Terminate an admitted app's paused task and invalidate its pending forms.
+        """Terminate an admitted app's paused task and invalidate pending v1/v2 forms.
 
         ``owner=None`` preserves app-scoped Workflow API cancellation. Chat
         callers supply the initiating account or end user. The run lock is also
@@ -1470,6 +1481,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     HumanInputForm.status == HumanInputFormStatus.WAITING,
                 )
                 .values(status=HumanInputFormStatus.EXPIRED)
+            )
+            session.execute(
+                update(HumanInputV2Form)
+                .where(
+                    HumanInputV2Form.tenant_id == tenant_id,
+                    HumanInputV2Form.app_id == app_id,
+                    HumanInputV2Form.workflow_run_id == workflow_run.id,
+                    HumanInputV2Form.status == HumanInputFormStatus.WAITING,
+                )
+                .values(status=HumanInputFormStatus.EXPIRED, updated_at=finished_at)
             )
             unfinished_nodes = session.scalars(
                 select(WorkflowNodeExecutionModel).where(

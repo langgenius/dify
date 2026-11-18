@@ -1,6 +1,5 @@
 'use client'
 import type { Dependency, PluginCategoryEnum, PluginDeclaration } from '../../types'
-import { cn } from '@langgenius/dify-ui/cn'
 import {
   Dialog,
   DialogContent,
@@ -41,8 +40,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const isBundle = file.name.endsWith('.difybndl')
   const [dependencies, setDependencies] = useState<Dependency[]>([])
 
-  const { modalClassName, foldAnimInto, setIsInstalling, handleStartToInstall } =
-    useHideLogic(onClose)
+  const { popupRef, foldAnimInto, setIsInstalling, handleStartToInstall } = useHideLogic(onClose)
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -94,7 +92,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     >
       <DialogContent
         backdropProps={{ forceRender: true }}
-        className={cn('w-140', modalClassName, 'max-h-[calc(100dvh-48px)]')}
+        ref={popupRef}
+        className="max-h-[calc(100dvh-3rem)] w-140"
       >
         <DialogHeader>
           <DialogTitle>{getTitle()}</DialogTitle>

@@ -50,6 +50,10 @@ export type WorkflowPreviewFixture = {
 }
 
 export const createAgentBuilderWorldState = () => ({
+  lifecycle: {
+    sourceAgent: undefined as { id: string; name: string } | undefined,
+    deletedAgent: undefined as { id: string; name: string } | undefined,
+  },
   fixtures: {
     agentDecisionModel: undefined as AgentBuilderChatModel | undefined,
     defaultChatModel: undefined as DefaultModelResponse | undefined,
@@ -108,6 +112,7 @@ export class DifyWorld extends World {
   shareURL: string | undefined
   sharedAppPage: Page | undefined
   workflowPreview: WorkflowPreviewFixture | undefined
+  appPackage: { sourceAppId: string; importedAppId?: string } | undefined
 
   constructor(options: IWorldOptions) {
     super(options)
@@ -115,6 +120,7 @@ export class DifyWorld extends World {
   }
 
   resetScenarioState() {
+    this.appPackage = undefined
     this.workflowPreview = undefined
     this.consoleErrors = []
     this.pageErrors = []

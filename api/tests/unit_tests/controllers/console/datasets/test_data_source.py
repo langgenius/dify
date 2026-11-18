@@ -705,7 +705,7 @@ class TestDataSourceCases:
         "resource",
         [data_source_controller.DataSourceNotionDatasetSyncApi, data_source_controller.DataSourceNotionDocumentSyncApi],
     )
-    def test_notion_sync_requires_dataset_edit_permission(resource):
+    def test_notion_sync_requires_dataset_edit_permission(resource: type) -> None:
         [check] = rbac_checks(resource.get)
         assert check.scene is RBACPermission.DATASET_EDIT
         assert isinstance(check.locator, DatasetId)
