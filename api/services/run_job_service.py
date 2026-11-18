@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Final, Protocol
 
 from flask import copy_current_request_context
 
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from models.enums import CreatorUserRole
 from models.model import AppMode
 from services.run_job_contracts import (
@@ -58,14 +59,16 @@ class JobView:
     answer: str | None = None
     outputs: Mapping[str, Any] | None = None
     error: str | None = None
-    form: Mapping[str, Any] | None = None
+    form: HumanInputRequiredResponse | None = None
 
 
 class RunResultReader(Protocol):
     def run(self, *, tenant_id: str, run_id: str) -> RunResult | None:
         """Precondition: none. Postcondition: the stored result of the run, or None when it is not stored."""
 
-    def pending_form(self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode) -> Mapping[str, Any] | None:
+    def pending_form(
+        self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
+    ) -> HumanInputRequiredResponse | None:
         """Precondition: the run is paused. Postcondition: its pending human input form, or None."""
 
 

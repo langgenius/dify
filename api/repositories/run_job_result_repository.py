@@ -2,24 +2,22 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Mapping
 from types import MappingProxyType
-from typing import Any, Final
+from typing import Final
 
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
-from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-from core.app.entities.task_entities import StreamEvent
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.workflow.human_input_policy import HumanInputSurface
 from graphon.enums import WorkflowExecutionStatus
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
 from services.run_job_contracts import JobStatus
-from services.run_job_frames import decode_data_frame
+from services.run_job_frames import pending_form
 from services.run_job_reader import RUN_STATUS_TO_JOB_STATUS, close_frames
 from services.run_job_service import RunResult
+from services.workflow.graph_check import GRAPH_MODES
 from services.workflow_event_snapshot_service import build_workflow_event_stream
 
 PENDING_FORM_IDLE_TIMEOUT_SECONDS: Final = 2
@@ -31,48 +29,6 @@ STORED_STATUS_TO_JOB_STATUS: Final[Mapping[WorkflowExecutionStatus, JobStatus]] 
         WorkflowExecutionStatus.PAUSED: JobStatus.PAUSED,
     }
 )
-
-SNAPSHOT_GENERATORS: Final[Mapping[AppMode, type[BaseAppGenerator]]] = MappingProxyType(
-    {
-        AppMode.ADVANCED_CHAT: AdvancedChatAppGenerator,
-        AppMode.WORKFLOW: WorkflowAppGenerator,
-    }
-)
-
-_FORM_EVENT: Final = StreamEvent.HUMAN_INPUT_REQUIRED.value
-_STOP_EVENTS: Final = frozenset({StreamEvent.WORKFLOW_PAUSED.value, StreamEvent.WORKFLOW_FINISHED.value})
-
-
-def _form_data(payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
-    """Pick the form out of a decoded frame.
-
-    Precondition: payload is a decoded frame.
-    Postcondition: the data object of a human_input_required frame, else None.
-    """
-    if payload.get("event") != _FORM_EVENT:
-        return None
-    data = payload.get("data")
-    if not isinstance(data, Mapping):
-        return None
-    return data
-
-
-def _last_form(frames: Iterable[str]) -> Mapping[str, Any] | None:
-    """Read frames up to the first pause or finish and keep the last human input form.
-
-    Precondition: none.
-    Postcondition: the data of the last human_input_required frame read, or None; frames after the first
-    workflow_paused or workflow_finished frame are not read.
-    """
-    form: Mapping[str, Any] | None = None
-    for frame in frames:
-        payload = decode_data_frame(frame) or {}
-        if payload.get("event") in _STOP_EVENTS:
-            return form
-        found = _form_data(payload)
-        if found is not None:
-            form = found
-    return form
 
 
 class SQLAlchemyRunResultReader:
@@ -100,15 +56,16 @@ class SQLAlchemyRunResultReader:
             return None
         return RunResult(status=status, outputs=row.outputs_dict, error=row.error)
 
-    def pending_form(self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode) -> Mapping[str, Any] | None:
+    def pending_form(
+        self, *, tenant_id: str, app_id: str, run_id: str, mode: AppMode
+    ) -> HumanInputRequiredResponse | None:
         """Read the human input form a paused run waits on.
 
         Precondition: the run is paused.
-        Postcondition: the data of the last human_input_required event of the run's snapshot, or None when the run
-        is absent or no longer paused, the mode has no snapshot, or no form is pending. The snapshot stream is closed.
+        Postcondition: the last human_input_required event of the run's snapshot, or None when the run is absent or
+        no longer paused, the mode has no snapshot, or no form is pending. The snapshot stream is closed.
         """
-        generator = SNAPSHOT_GENERATORS.get(mode)
-        if generator is None:
+        if mode not in GRAPH_MODES:
             return None
         row = self._runs.get_workflow_run_by_id_and_tenant_id(tenant_id=tenant_id, run_id=run_id)
         if row is None:
@@ -125,9 +82,7 @@ class SQLAlchemyRunResultReader:
             close_on_pause=True,
             idle_timeout=PENDING_FORM_IDLE_TIMEOUT_SECONDS,
         )
-        frames = generator.convert_to_event_stream(source)
         try:
-            return _last_form(frames)
+            return pending_form(source)
         finally:
-            close_frames(frames)
             close_frames(source)

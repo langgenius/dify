@@ -25,7 +25,12 @@ from services.run_job_service import (
     RunResult,
     TaskControlStopper,
 )
-from tests.unit_tests.services.run_job_fakes import InMemoryRedis, InMemoryRunResults, RecordingTaskControl
+from tests.unit_tests.services.run_job_fakes import (
+    InMemoryRedis,
+    InMemoryRunResults,
+    RecordingTaskControl,
+    human_input_form,
+)
 
 OWNER = JobOwner(tenant_id="t1", app_id="a1", caller_role=CreatorUserRole.ACCOUNT, caller_id="u1")
 OTHER = JobOwner(tenant_id="t1", app_id="a1", caller_role=CreatorUserRole.ACCOUNT, caller_id="u2")
@@ -334,12 +339,12 @@ def test_view_of_a_paused_graph_job_carries_the_pending_form() -> None:
     job = _job(harness)
     harness.store.record_ids(job.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
-    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f1"}
+    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = human_input_form("f1")
 
     view = harness.service.view(OWNER, job.id)
 
     assert view.status is JobStatus.PAUSED
-    assert view.form == {"form_id": "f1"}
+    assert view.form == human_input_form("f1")
 
 
 def test_view_of_a_graph_job_without_a_run_id_uses_the_record() -> None:
@@ -522,12 +527,12 @@ def test_wait_returns_when_the_job_pauses() -> None:
     job = _job(harness)
     harness.store.record_ids(job.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
-    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
+    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = human_input_form("f")
 
     view = harness.service.wait(OWNER, job.id, wait_seconds=10)
 
     assert view.status is JobStatus.PAUSED
-    assert view.form == {"form_id": "f"}
+    assert view.form == human_input_form("f")
     assert harness.clock.slept == []
 
 
@@ -655,7 +660,7 @@ def test_stop_returns_the_view_after_the_stop() -> None:
     job = _job(harness)
     harness.store.record_ids(job.id, JobIds(run_id="run-1"))
     harness.results.runs[("t1", "run-1")] = RunResult(status=JobStatus.PAUSED)
-    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = {"form_id": "f"}
+    harness.results.forms[("t1", "a1", "run-1", AppMode.WORKFLOW)] = human_input_form("f")
 
     view = harness.service.stop(OWNER, job.id)
 
