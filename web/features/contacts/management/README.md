@@ -12,7 +12,7 @@ the generated API shape, including nullable or omitted email and avatar fields.
 Tests stub the generated transport responses while preserving query keys,
 mutation policies, and production pagination behavior.
 
-`NEXT_PUBLIC_ENABLE_HITL_IM` is the independent, default-off release gate. The
+`NEXT_PUBLIC_ENABLE_HITL_IM` is the independent, default-on release gate. The
 `im_centrally_managed` capability determines whether platform imports and
 organization-managed bindings are available. In centrally managed mode contact
 details do not request workspace channel-management endpoints.

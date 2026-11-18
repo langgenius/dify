@@ -18,6 +18,49 @@
       }
     },
     "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "failure": {
+            "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
+          },
+          "violations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^[a-z_]{1,64}$"
+                },
+                "path": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "maxLength": 128
+                  },
+                  "maxItems": 8
+                }
+              },
+              "required": [
+                "code",
+                "path"
+              ],
+              "additionalProperties": false
+            },
+            "maxItems": 20
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
       "KnowledgeFsPublicFailure": {
         "type": "object",
         "properties": {
@@ -72,6 +115,8 @@
               "DOCUMENT_PARSER_TIMEOUT",
               "DOCUMENT_PARSER_UNAVAILABLE",
               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
               "DOCUMENT_PDF_RENDER_FAILED",
               "EMBEDDING_DIMENSION_INVALID",
               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -80,10 +125,12 @@
               "KNOWLEDGE_FS_CONFLICT",
               "KNOWLEDGE_FS_INTERNAL_ERROR",
               "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
               "KNOWLEDGE_FS_NOT_FOUND",
               "KNOWLEDGE_FS_RATE_LIMITED",
               "KNOWLEDGE_FS_TIMEOUT",
               "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
               "MODEL_CAPABILITY_MISMATCH",
@@ -361,49 +408,6 @@
         ],
         "additionalProperties": false
       },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "code": {
-            "type": "string"
-          },
-          "error": {
-            "type": "string"
-          },
-          "failure": {
-            "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
-          },
-          "violations": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "code": {
-                  "type": "string",
-                  "pattern": "^[a-z_]{1,64}$"
-                },
-                "path": {
-                  "type": "array",
-                  "items": {
-                    "type": "string",
-                    "maxLength": 128
-                  },
-                  "maxItems": 8
-                }
-              },
-              "required": [
-                "code",
-                "path"
-              ],
-              "additionalProperties": false
-            },
-            "maxItems": 20
-          }
-        },
-        "required": [
-          "error"
-        ]
-      },
       "KnowledgeSpaceCreationResponse": {
         "type": "object",
         "properties": {
@@ -422,7 +426,7 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "name": {
             "type": "string",
@@ -468,6 +472,23 @@
           "configurationStatus"
         ]
       },
+      "KnowledgeSpaceList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSpace"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "KnowledgeSpace": {
         "type": "object",
         "properties": {
@@ -486,7 +507,7 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "name": {
             "type": "string",
@@ -520,23 +541,6 @@
           "slug",
           "tenantId",
           "updatedAt"
-        ]
-      },
-      "KnowledgeSpaceList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KnowledgeSpace"
-            }
-          },
-          "nextCursor": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "items"
         ]
       },
       "KnowledgeSpaceManifest": {
@@ -639,11 +643,11 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "manifestVersion": {
             "type": "integer",
@@ -2351,6 +2355,8 @@
                         "DOCUMENT_PARSER_TIMEOUT",
                         "DOCUMENT_PARSER_UNAVAILABLE",
                         "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                        "DOCUMENT_SOURCE_NOT_FOUND",
+                        "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                         "DOCUMENT_PDF_RENDER_FAILED",
                         "EMBEDDING_DIMENSION_INVALID",
                         "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -2359,10 +2365,12 @@
                         "KNOWLEDGE_FS_CONFLICT",
                         "KNOWLEDGE_FS_INTERNAL_ERROR",
                         "KNOWLEDGE_FS_INVALID_REQUEST",
+                        "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                         "KNOWLEDGE_FS_NOT_FOUND",
                         "KNOWLEDGE_FS_RATE_LIMITED",
                         "KNOWLEDGE_FS_TIMEOUT",
                         "KNOWLEDGE_FS_UNAVAILABLE",
+                        "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                         "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                         "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                         "MODEL_CAPABILITY_MISMATCH",
@@ -3094,7 +3102,7 @@
                   "properties": {
                     "documentAssetId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "id": {
                       "type": "string",
@@ -3108,7 +3116,7 @@
                     },
                     "parseArtifactId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "type": {
                       "type": "string",
@@ -3161,7 +3169,7 @@
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "scannedAt": {
             "type": "string",
@@ -3260,7 +3268,7 @@
                   "properties": {
                     "documentAssetId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "id": {
                       "type": "string",
@@ -3274,7 +3282,7 @@
                     },
                     "parseArtifactId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "type": {
                       "type": "string",
@@ -3326,7 +3334,7 @@
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "summary": {
             "type": "object",
@@ -3435,11 +3443,11 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "leaseType": {
             "type": "string",
@@ -3457,7 +3465,7 @@
           },
           "sessionId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "status": {
             "type": "string",
@@ -3524,7 +3532,7 @@
         "properties": {
           "checksum": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-fA-F]{64}$"
           },
           "createdAt": {
             "type": "string",
@@ -3532,7 +3540,7 @@
           },
           "documentAssetId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "expiresAt": {
             "type": "string",
@@ -3540,7 +3548,7 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "idempotencyKey": {
             "type": "string",
@@ -3549,7 +3557,7 @@
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "operationType": {
             "type": "string",
@@ -3562,7 +3570,7 @@
           },
           "parseArtifactId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "projectionFingerprint": {
             "type": "string",
@@ -3637,6 +3645,8 @@
               "DOCUMENT_PARSER_TIMEOUT",
               "DOCUMENT_PARSER_UNAVAILABLE",
               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
               "DOCUMENT_PDF_RENDER_FAILED",
               "EMBEDDING_DIMENSION_INVALID",
               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -3645,10 +3655,12 @@
               "KNOWLEDGE_FS_CONFLICT",
               "KNOWLEDGE_FS_INTERNAL_ERROR",
               "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
               "KNOWLEDGE_FS_NOT_FOUND",
               "KNOWLEDGE_FS_RATE_LIMITED",
               "KNOWLEDGE_FS_TIMEOUT",
               "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
               "MODEL_CAPABILITY_MISMATCH",
@@ -3737,6 +3749,93 @@
           "tenantId",
           "updatedAt"
         ]
+      },
+      "BatchKnowledgeSpaceProductSummariesResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSpaceProductSummary"
+            },
+            "maxItems": 100
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
+      "KnowledgeSpaceProductSummary": {
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 2000
+          },
+          "documentCount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "icon": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 72
+          },
+          "indexState": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "knowledgeSpaceId": {
+            "type": "string",
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+          },
+          "lastJobState": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 64
+          },
+          "modelProfile": {
+            "$ref": "#/components/schemas/KnowledgeSpaceProductModelProfile"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "slug": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 160
+          }
+        },
+        "required": [
+          "description",
+          "documentCount",
+          "icon",
+          "indexState",
+          "knowledgeSpaceId",
+          "lastJobState",
+          "modelProfile",
+          "name",
+          "revision",
+          "slug"
+        ],
+        "additionalProperties": false
       },
       "KnowledgeSpaceProductModelProfile": {
         "type": [
@@ -4118,93 +4217,6 @@
         ],
         "additionalProperties": false
       },
-      "KnowledgeSpaceProductSummary": {
-        "type": "object",
-        "properties": {
-          "description": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 2000
-          },
-          "documentCount": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "icon": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 72
-          },
-          "indexState": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 64
-          },
-          "knowledgeSpaceId": {
-            "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-          },
-          "lastJobState": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "maxLength": 64
-          },
-          "modelProfile": {
-            "$ref": "#/components/schemas/KnowledgeSpaceProductModelProfile"
-          },
-          "name": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          },
-          "revision": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          },
-          "slug": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 160
-          }
-        },
-        "required": [
-          "description",
-          "documentCount",
-          "icon",
-          "indexState",
-          "knowledgeSpaceId",
-          "lastJobState",
-          "modelProfile",
-          "name",
-          "revision",
-          "slug"
-        ],
-        "additionalProperties": false
-      },
-      "BatchKnowledgeSpaceProductSummariesResponse": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KnowledgeSpaceProductSummary"
-            },
-            "maxItems": 100
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "additionalProperties": false
-      },
       "BatchKnowledgeSpaceProductSummariesRequest": {
         "type": "object",
         "properties": {
@@ -4212,7 +4224,7 @@
             "type": "array",
             "items": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "minItems": 1,
             "maxItems": 100
@@ -4220,6 +4232,27 @@
         },
         "required": [
           "knowledgeSpaceIds"
+        ],
+        "additionalProperties": false
+      },
+      "DurableDeletionAccepted": {
+        "type": "object",
+        "properties": {
+          "documentTitle": {
+            "type": "string",
+            "minLength": 1
+          },
+          "job": {
+            "$ref": "#/components/schemas/DurableDeletionJob"
+          },
+          "statusUrl": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "job",
+          "statusUrl"
         ],
         "additionalProperties": false
       },
@@ -4350,27 +4383,6 @@
         ],
         "additionalProperties": false
       },
-      "DurableDeletionAccepted": {
-        "type": "object",
-        "properties": {
-          "documentTitle": {
-            "type": "string",
-            "minLength": 1
-          },
-          "job": {
-            "$ref": "#/components/schemas/DurableDeletionJob"
-          },
-          "statusUrl": {
-            "type": "string",
-            "minLength": 1
-          }
-        },
-        "required": [
-          "job",
-          "statusUrl"
-        ],
-        "additionalProperties": false
-      },
       "DurableBulkDeletionAccepted": {
         "type": "object",
         "properties": {
@@ -4477,6 +4489,34 @@
         ],
         "additionalProperties": false
       },
+      "KnowledgeSpaceProfileAuditRevisionList": {
+        "type": "object",
+        "properties": {
+          "activeRevision": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "exclusiveMinimum": 0
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSpaceProfileAuditRevision"
+            },
+            "maxItems": 100
+          },
+          "nextRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "activeRevision",
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "KnowledgeSpaceProfileAuditRevision": {
         "type": "object",
         "properties": {
@@ -4577,34 +4617,6 @@
         ],
         "additionalProperties": false
       },
-      "KnowledgeSpaceProfileAuditRevisionList": {
-        "type": "object",
-        "properties": {
-          "activeRevision": {
-            "type": [
-              "integer",
-              "null"
-            ],
-            "exclusiveMinimum": 0
-          },
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/KnowledgeSpaceProfileAuditRevision"
-            },
-            "maxItems": 100
-          },
-          "nextRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          }
-        },
-        "required": [
-          "activeRevision",
-          "items"
-        ],
-        "additionalProperties": false
-      },
       "GoldenQuestion": {
         "type": "object",
         "properties": {
@@ -4616,17 +4628,17 @@
             "type": "array",
             "items": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "default": []
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "metadata": {
             "type": "object",
@@ -4756,11 +4768,11 @@
                 },
                 "sha256": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
+                  "pattern": "^[0-9a-fA-F]{64}$"
                 },
                 "uploadFileId": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 }
               },
               "required": [
@@ -5426,6 +5438,24 @@
           "topUnanswered"
         ]
       },
+      "DocumentAssetList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentAsset"
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "DocumentAsset": {
         "type": "object",
         "properties": {
@@ -5440,11 +5470,11 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "metadata": {
             "type": "object",
@@ -5469,7 +5499,7 @@
           },
           "sha256": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-fA-F]{64}$"
           },
           "sizeBytes": {
             "type": "integer",
@@ -5477,7 +5507,7 @@
           },
           "sourceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "updatedAt": {
             "type": "string",
@@ -5501,30 +5531,12 @@
           "version"
         ]
       },
-      "DocumentAssetList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DocumentAsset"
-            }
-          },
-          "nextCursor": {
-            "type": "string",
-            "format": "uuid"
-          }
-        },
-        "required": [
-          "items"
-        ]
-      },
       "ParseArtifact": {
         "type": "object",
         "properties": {
           "artifactHash": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-fA-F]{64}$"
           },
           "contentType": {
             "type": "string",
@@ -5540,7 +5552,7 @@
           },
           "documentAssetId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "elements": {
             "type": "array",
@@ -5593,7 +5605,7 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "metadata": {
             "type": "object",
@@ -5626,6 +5638,65 @@
           "elements",
           "id",
           "parser",
+          "version"
+        ]
+      },
+      "DocumentOutline": {
+        "type": "object",
+        "properties": {
+          "artifactHash": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "documentAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "knowledgeSpaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {}
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentOutlineNode"
+            }
+          },
+          "outlineVersion": {
+            "type": "string"
+          },
+          "parseArtifactId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "artifactHash",
+          "createdAt",
+          "documentAssetId",
+          "id",
+          "knowledgeSpaceId",
+          "metadata",
+          "nodes",
+          "outlineVersion",
+          "parseArtifactId",
           "version"
         ]
       },
@@ -5717,71 +5788,12 @@
           "tocSource"
         ]
       },
-      "DocumentOutline": {
-        "type": "object",
-        "properties": {
-          "artifactHash": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "documentAssetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "id": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "knowledgeSpaceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "metadata": {
-            "type": "object",
-            "additionalProperties": {}
-          },
-          "nodes": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DocumentOutlineNode"
-            }
-          },
-          "outlineVersion": {
-            "type": "string"
-          },
-          "parseArtifactId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "updatedAt": {
-            "type": "string"
-          },
-          "version": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          }
-        },
-        "required": [
-          "artifactHash",
-          "createdAt",
-          "documentAssetId",
-          "id",
-          "knowledgeSpaceId",
-          "metadata",
-          "nodes",
-          "outlineVersion",
-          "parseArtifactId",
-          "version"
-        ]
-      },
       "DocumentMultimodalManifest": {
         "type": "object",
         "properties": {
           "artifactHash": {
             "type": "string",
-            "pattern": "^[0-9a-f]{64}$"
+            "pattern": "^[0-9a-fA-F]{64}$"
           },
           "createdAt": {
             "type": "string",
@@ -5789,11 +5801,11 @@
           },
           "documentAssetId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "items": {
             "type": "array",
@@ -5835,7 +5847,7 @@
                     },
                     "sha256": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{64}$"
+                      "pattern": "^[0-9a-fA-F]{64}$"
                     },
                     "uri": {
                       "type": "string",
@@ -5863,7 +5875,7 @@
                           },
                           "sha256": {
                             "type": "string",
-                            "pattern": "^[0-9a-f]{64}$"
+                            "pattern": "^[0-9a-fA-F]{64}$"
                           },
                           "uri": {
                             "type": "string",
@@ -6038,7 +6050,7 @@
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "manifestVersion": {
             "type": "string",
@@ -6052,11 +6064,11 @@
           },
           "parseArtifactId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "publicationGenerationId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "updatedAt": {
             "type": "string",
@@ -6078,6 +6090,24 @@
           "parseArtifactId",
           "version"
         ]
+      },
+      "KnowledgeSpaceMetadataFieldList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeSpaceMetadataField"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
       },
       "KnowledgeSpaceMetadataField": {
         "type": "object",
@@ -6125,13 +6155,13 @@
         ],
         "additionalProperties": false
       },
-      "KnowledgeSpaceMetadataFieldList": {
+      "LogicalDocumentList": {
         "type": "object",
         "properties": {
           "items": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/KnowledgeSpaceMetadataField"
+              "$ref": "#/components/schemas/LogicalDocument"
             }
           },
           "nextCursor": {
@@ -6140,74 +6170,6 @@
         },
         "required": [
           "items"
-        ],
-        "additionalProperties": false
-      },
-      "LogicalDocumentRevision": {
-        "type": [
-          "object",
-          "null"
-        ],
-        "properties": {
-          "activatedAt": {
-            "type": "string"
-          },
-          "contentHash": {
-            "type": "string",
-            "minLength": 64,
-            "maxLength": 64
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "documentAssetId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "documentAssetVersion": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          },
-          "documentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "knowledgeSpaceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mimeType": {
-            "type": "string"
-          },
-          "revision": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          },
-          "sizeBytes": {
-            "type": "integer",
-            "minimum": 0
-          },
-          "state": {
-            "type": "string",
-            "enum": [
-              "candidate",
-              "active",
-              "superseded",
-              "failed"
-            ]
-          }
-        },
-        "required": [
-          "contentHash",
-          "createdAt",
-          "documentAssetId",
-          "documentAssetVersion",
-          "documentId",
-          "knowledgeSpaceId",
-          "mimeType",
-          "revision",
-          "sizeBytes",
-          "state"
         ],
         "additionalProperties": false
       },
@@ -6284,6 +6246,8 @@
                   "DOCUMENT_PARSER_TIMEOUT",
                   "DOCUMENT_PARSER_UNAVAILABLE",
                   "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                  "DOCUMENT_SOURCE_NOT_FOUND",
+                  "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                   "DOCUMENT_PDF_RENDER_FAILED",
                   "EMBEDDING_DIMENSION_INVALID",
                   "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -6292,10 +6256,12 @@
                   "KNOWLEDGE_FS_CONFLICT",
                   "KNOWLEDGE_FS_INTERNAL_ERROR",
                   "KNOWLEDGE_FS_INVALID_REQUEST",
+                  "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                   "KNOWLEDGE_FS_NOT_FOUND",
                   "KNOWLEDGE_FS_RATE_LIMITED",
                   "KNOWLEDGE_FS_TIMEOUT",
                   "KNOWLEDGE_FS_UNAVAILABLE",
+                  "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                   "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                   "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                   "MODEL_CAPABILITY_MISMATCH",
@@ -6410,6 +6376,8 @@
                         "DOCUMENT_PARSER_TIMEOUT",
                         "DOCUMENT_PARSER_UNAVAILABLE",
                         "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                        "DOCUMENT_SOURCE_NOT_FOUND",
+                        "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                         "DOCUMENT_PDF_RENDER_FAILED",
                         "EMBEDDING_DIMENSION_INVALID",
                         "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -6418,10 +6386,12 @@
                         "KNOWLEDGE_FS_CONFLICT",
                         "KNOWLEDGE_FS_INTERNAL_ERROR",
                         "KNOWLEDGE_FS_INVALID_REQUEST",
+                        "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                         "KNOWLEDGE_FS_NOT_FOUND",
                         "KNOWLEDGE_FS_RATE_LIMITED",
                         "KNOWLEDGE_FS_TIMEOUT",
                         "KNOWLEDGE_FS_UNAVAILABLE",
+                        "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                         "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                         "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                         "MODEL_CAPABILITY_MISMATCH",
@@ -6611,6 +6581,8 @@
                       "DOCUMENT_PARSER_TIMEOUT",
                       "DOCUMENT_PARSER_UNAVAILABLE",
                       "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                      "DOCUMENT_SOURCE_NOT_FOUND",
+                      "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                       "DOCUMENT_PDF_RENDER_FAILED",
                       "EMBEDDING_DIMENSION_INVALID",
                       "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -6619,10 +6591,12 @@
                       "KNOWLEDGE_FS_CONFLICT",
                       "KNOWLEDGE_FS_INTERNAL_ERROR",
                       "KNOWLEDGE_FS_INVALID_REQUEST",
+                      "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                       "KNOWLEDGE_FS_NOT_FOUND",
                       "KNOWLEDGE_FS_RATE_LIMITED",
                       "KNOWLEDGE_FS_TIMEOUT",
                       "KNOWLEDGE_FS_UNAVAILABLE",
+                      "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                       "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                       "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                       "MODEL_CAPABILITY_MISMATCH",
@@ -6837,21 +6811,71 @@
         ],
         "additionalProperties": false
       },
-      "LogicalDocumentList": {
-        "type": "object",
+      "LogicalDocumentRevision": {
+        "type": [
+          "object",
+          "null"
+        ],
         "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/LogicalDocument"
-            }
-          },
-          "nextCursor": {
+          "activatedAt": {
             "type": "string"
+          },
+          "contentHash": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "documentAssetId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "documentAssetVersion": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "documentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "knowledgeSpaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mimeType": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "sizeBytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "candidate",
+              "active",
+              "superseded",
+              "failed"
+            ]
           }
         },
         "required": [
-          "items"
+          "contentHash",
+          "createdAt",
+          "documentAssetId",
+          "documentAssetVersion",
+          "documentId",
+          "knowledgeSpaceId",
+          "mimeType",
+          "revision",
+          "sizeBytes",
+          "state"
         ],
         "additionalProperties": false
       },
@@ -6879,14 +6903,7 @@
           "items": {
             "type": "array",
             "items": {
-              "allOf": [
-                {
-                  "$ref": "#/components/schemas/LogicalDocumentRevision"
-                },
-                {
-                  "type": "object"
-                }
-              ]
+              "$ref": "#/components/schemas/LogicalDocumentRevision"
             }
           },
           "nextCursor": {
@@ -6955,6 +6972,8 @@
               "DOCUMENT_PARSER_TIMEOUT",
               "DOCUMENT_PARSER_UNAVAILABLE",
               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
               "DOCUMENT_PDF_RENDER_FAILED",
               "EMBEDDING_DIMENSION_INVALID",
               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -6963,10 +6982,12 @@
               "KNOWLEDGE_FS_CONFLICT",
               "KNOWLEDGE_FS_INTERNAL_ERROR",
               "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
               "KNOWLEDGE_FS_NOT_FOUND",
               "KNOWLEDGE_FS_RATE_LIMITED",
               "KNOWLEDGE_FS_TIMEOUT",
               "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
               "MODEL_CAPABILITY_MISMATCH",
@@ -7125,6 +7146,8 @@
                   "DOCUMENT_PARSER_TIMEOUT",
                   "DOCUMENT_PARSER_UNAVAILABLE",
                   "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                  "DOCUMENT_SOURCE_NOT_FOUND",
+                  "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                   "DOCUMENT_PDF_RENDER_FAILED",
                   "EMBEDDING_DIMENSION_INVALID",
                   "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -7133,10 +7156,12 @@
                   "KNOWLEDGE_FS_CONFLICT",
                   "KNOWLEDGE_FS_INTERNAL_ERROR",
                   "KNOWLEDGE_FS_INVALID_REQUEST",
+                  "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                   "KNOWLEDGE_FS_NOT_FOUND",
                   "KNOWLEDGE_FS_RATE_LIMITED",
                   "KNOWLEDGE_FS_TIMEOUT",
                   "KNOWLEDGE_FS_UNAVAILABLE",
+                  "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                   "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                   "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                   "MODEL_CAPABILITY_MISMATCH",
@@ -7268,6 +7293,24 @@
         ],
         "additionalProperties": false
       },
+      "DocumentChunkList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DocumentRevisionChunk"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "DocumentRevisionChunk": {
         "type": "object",
         "properties": {
@@ -7360,24 +7403,6 @@
           "text",
           "tokenCount",
           "userMetadata"
-        ],
-        "additionalProperties": false
-      },
-      "DocumentChunkList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/DocumentRevisionChunk"
-            }
-          },
-          "nextCursor": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "items"
         ],
         "additionalProperties": false
       },
@@ -7609,6 +7634,116 @@
           "error": {
             "type": "string"
           },
+          "errorCode": {
+            "type": "string",
+            "enum": [
+              "VECTOR_SPACE_QUOTA_EXCEEDED",
+              "VECTOR_SPACE_QUOTA_UNAVAILABLE",
+              "DOCUMENT_COUNT_QUOTA_EXCEEDED",
+              "DOCUMENT_COUNT_QUOTA_UNAVAILABLE",
+              "LOGICAL_DOCUMENT_CAS_CONFLICT",
+              "DURABLE_DELETION_IDEMPOTENCY_CONFLICT",
+              "SOURCE_VERSION_CONFLICT",
+              "KNOWLEDGE_SPACE_SETTINGS_COMPILATION_IN_PROGRESS",
+              "KNOWLEDGE_SPACE_SETTINGS_REVISION_CONFLICT",
+              "KNOWLEDGE_SPACE_SETTINGS_MIGRATION_REQUIRED",
+              "DOCUMENT_COMPILATION_PROFILE_CHANGED",
+              "DOCUMENT_COMPILATION_FAILED",
+              "DOCUMENT_COMPILATION_RETRYABLE",
+              "DOCUMENT_COMPILATION_LEASE_LOST",
+              "DOCUMENT_DISABLED",
+              "DOCUMENT_PARSER_INPUT_INVALID",
+              "DOCUMENT_PARSER_NOT_CONFIGURED",
+              "DOCUMENT_PARSER_RATE_LIMITED",
+              "DOCUMENT_PARSER_RESPONSE_INVALID",
+              "DOCUMENT_PARSER_TIMEOUT",
+              "DOCUMENT_PARSER_UNAVAILABLE",
+              "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
+              "DOCUMENT_PDF_RENDER_FAILED",
+              "EMBEDDING_DIMENSION_INVALID",
+              "EMBEDDING_DIMENSION_UNSUPPORTED",
+              "EXECUTION_ATTEMPTS_EXHAUSTED",
+              "KNOWLEDGE_FS_ACCESS_DENIED",
+              "KNOWLEDGE_FS_CONFLICT",
+              "KNOWLEDGE_FS_INTERNAL_ERROR",
+              "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
+              "KNOWLEDGE_FS_NOT_FOUND",
+              "KNOWLEDGE_FS_RATE_LIMITED",
+              "KNOWLEDGE_FS_TIMEOUT",
+              "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
+              "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
+              "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
+              "MODEL_CAPABILITY_MISMATCH",
+              "MODEL_CONFIGURATION_STALE",
+              "MODEL_CREDENTIAL_INVALID",
+              "MODEL_CREDENTIAL_VALIDATION_UNAVAILABLE",
+              "MODEL_IDENTITY_MISMATCH",
+              "MODEL_PREFLIGHT_CANCELED",
+              "MODEL_PREFLIGHT_FAILED",
+              "MODEL_PREFLIGHT_TIMEOUT",
+              "MODEL_PREFLIGHT_UNAVAILABLE",
+              "MODEL_PROFILE_ACTIVATION_INCOMPLETE",
+              "MODEL_PROFILE_ACTIVATION_PERMISSION_REQUIRED",
+              "MODEL_RUNTIME_FAILED",
+              "MODEL_RUNTIME_RESPONSE_INVALID",
+              "MODEL_RUNTIME_OUTPUT_LIMIT",
+              "MODEL_RUNTIME_CONTEXT_LIMIT",
+              "MODEL_RUNTIME_TIMEOUT",
+              "MODEL_RUNTIME_UNAVAILABLE",
+              "MODEL_SELECTION_NOT_FOUND",
+              "RESEARCH_TASK_CAPABILITY_REVOKED",
+              "RESEARCH_TASK_DISPATCH_DEAD",
+              "RESEARCH_TASK_EXECUTION_ATTEMPTS_EXHAUSTED",
+              "RESEARCH_TASK_FAILED",
+              "RESEARCH_TASK_PERMISSION_SNAPSHOT_INVALID",
+              "RESEARCH_TASK_RUNTIME_SNAPSHOT_INVALID",
+              "RETRIEVAL_DELETION_IN_PROGRESS",
+              "RETRIEVAL_EXECUTION_LEASE_LOST",
+              "SOURCE_BULK_ACTION_FAILED",
+              "SOURCE_CONNECTION_UNAVAILABLE",
+              "SOURCE_CRAWL_PAGE_NOT_FOUND",
+              "SOURCE_CRAWL_PROVIDER_UNAVAILABLE",
+              "SOURCE_CRAWL_RESULT_LIMIT_EXCEEDED",
+              "SOURCE_CREDENTIAL_CONFIG_INVALID",
+              "SOURCE_CREDENTIAL_MUTATION_FAILED",
+              "SOURCE_CREDENTIAL_TEST_FAILED",
+              "SOURCE_CREDENTIAL_UNAVAILABLE",
+              "SOURCE_DOCUMENT_COMPILATION_FAILED",
+              "SOURCE_DOCUMENT_MATERIALIZATION_FAILED",
+              "SOURCE_DOCUMENT_REPLACEMENT_SAGA_REQUIRED",
+              "SOURCE_IMPORT_PARTIAL_FAILURE",
+              "SOURCE_ONLINE_DOCUMENT_CONFIG_INVALID",
+              "SOURCE_ONLINE_DOCUMENT_IMPORT_FAILED",
+              "SOURCE_ONLINE_DOCUMENT_PAGE_FETCH_FAILED",
+              "SOURCE_ONLINE_DOCUMENT_REQUEST_FAILED",
+              "SOURCE_ONLINE_DOCUMENT_UNAVAILABLE",
+              "SOURCE_ONLINE_DRIVE_CONFIG_INVALID",
+              "SOURCE_ONLINE_DRIVE_FILE_DOWNLOAD_FAILED",
+              "SOURCE_ONLINE_DRIVE_IMPORT_FAILED",
+              "SOURCE_ONLINE_DRIVE_REQUEST_FAILED",
+              "SOURCE_ONLINE_DRIVE_UNAVAILABLE",
+              "SOURCE_OPERATION_FAILED",
+              "SOURCE_PROVIDER_REJECTED",
+              "SOURCE_PROVIDER_TIMEOUT",
+              "SOURCE_PROVIDER_UNAVAILABLE",
+              "SOURCE_SYNC_SELECTION_MISMATCH",
+              "SOURCE_SECRET_INTEGRITY_FAILED",
+              "SOURCE_SECRET_REF_CONFLICT",
+              "SOURCE_SYNC_FAILED",
+              "SOURCE_WEBSITE_CRAWL_CONFIG_INVALID",
+              "SOURCE_WEBSITE_CRAWL_FAILED",
+              "SOURCE_WORKFLOW_FAILED",
+              "SOURCE_WORKFLOW_CONTENT_MISSING",
+              "SOURCE_WORKFLOW_CONTENT_TOO_LARGE",
+              "SOURCE_WORKFLOW_EXTERNAL_TIMEOUT",
+              "UPLOAD_INITIALIZATION_FAILED",
+              "UPLOAD_INTEGRITY_MISMATCH"
+            ]
+          },
           "failure": {
             "$ref": "#/components/schemas/KnowledgeFsPublicFailure"
           },
@@ -7633,7 +7768,7 @@
           },
           "publicationGenerationId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "queueJobId": {
             "type": "string",
@@ -7702,15 +7837,15 @@
           },
           "evidenceBundleId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "mode": {
             "type": "string",
@@ -7745,11 +7880,11 @@
                 },
                 "sha256": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{64}$"
+                  "pattern": "^[0-9a-fA-F]{64}$"
                 },
                 "uploadFileId": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 }
               },
               "required": [
@@ -7974,11 +8109,11 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "metadata": {
             "type": "object",
@@ -8209,7 +8344,7 @@
                 },
                 "id": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 },
                 "items": {
                   "type": "array",
@@ -8223,11 +8358,11 @@
                           "properties": {
                             "artifactHash": {
                               "type": "string",
-                              "pattern": "^[0-9a-f]{64}$"
+                              "pattern": "^[0-9a-fA-F]{64}$"
                             },
                             "documentAssetId": {
                               "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                             },
                             "documentVersion": {
                               "type": "integer",
@@ -8281,7 +8416,7 @@
                             },
                             "withNodeId": {
                               "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                             }
                           },
                           "required": [
@@ -8322,7 +8457,7 @@
                       },
                       "nodeId": {
                         "type": "string",
-                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                       },
                       "score": {
                         "type": "number",
@@ -8380,7 +8515,7 @@
                     "properties": {
                       "expectedEvidenceId": {
                         "type": "string",
-                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                       },
                       "metadata": {
                         "type": "object",
@@ -8434,11 +8569,11 @@
                       },
                       "sha256": {
                         "type": "string",
-                        "pattern": "^[0-9a-f]{64}$"
+                        "pattern": "^[0-9a-fA-F]{64}$"
                       },
                       "uploadFileId": {
                         "type": "string",
-                        "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                        "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                       }
                     },
                     "required": [
@@ -8466,7 +8601,7 @@
                 },
                 "traceId": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 }
               },
               "required": [
@@ -8600,11 +8735,11 @@
                 },
                 "id": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 },
                 "knowledgeSpaceId": {
                   "type": "string",
-                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                  "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                 },
                 "lastSyncedAt": {
                   "type": "string",
@@ -8886,6 +9021,24 @@
           "summary"
         ]
       },
+      "ResearchTaskJobList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResearchTaskJob"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "additionalProperties": false
+      },
       "ResearchTaskJob": {
         "type": "object",
         "properties": {
@@ -9037,24 +9190,6 @@
           "stage",
           "updatedAt"
         ]
-      },
-      "ResearchTaskJobList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ResearchTaskJob"
-            }
-          },
-          "nextCursor": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "items"
-        ],
-        "additionalProperties": false
       },
       "ResearchTaskDryRunPlan": {
         "type": "object",
@@ -9381,6 +9516,23 @@
           "strategyVersion"
         ]
       },
+      "ResearchTaskPartialResultList": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResearchTaskPartialResult"
+            }
+          },
+          "nextCursor": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
       "ResearchTaskPartialResult": {
         "type": "object",
         "properties": {
@@ -9398,7 +9550,7 @@
               },
               "id": {
                 "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
               },
               "items": {
                 "type": "array",
@@ -9412,11 +9564,11 @@
                         "properties": {
                           "artifactHash": {
                             "type": "string",
-                            "pattern": "^[0-9a-f]{64}$"
+                            "pattern": "^[0-9a-fA-F]{64}$"
                           },
                           "documentAssetId": {
                             "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                           },
                           "documentVersion": {
                             "type": "integer",
@@ -9470,7 +9622,7 @@
                           },
                           "withNodeId": {
                             "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                           }
                         },
                         "required": [
@@ -9511,7 +9663,7 @@
                     },
                     "nodeId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "score": {
                       "type": "number",
@@ -9569,7 +9721,7 @@
                   "properties": {
                     "expectedEvidenceId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     },
                     "metadata": {
                       "type": "object",
@@ -9623,11 +9775,11 @@
                     },
                     "sha256": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{64}$"
+                      "pattern": "^[0-9a-fA-F]{64}$"
                     },
                     "uploadFileId": {
                       "type": "string",
-                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                     }
                   },
                   "required": [
@@ -9655,7 +9807,7 @@
               },
               "traceId": {
                 "type": "string",
-                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
               }
             },
             "required": [
@@ -9689,23 +9841,6 @@
           "researchTaskJobId",
           "sequence",
           "tenantId"
-        ]
-      },
-      "ResearchTaskPartialResultList": {
-        "type": "object",
-        "properties": {
-          "items": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ResearchTaskPartialResult"
-            }
-          },
-          "nextCursor": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "items"
         ]
       },
       "TopicViewMaterializationResult": {
@@ -9962,80 +10097,6 @@
           "total"
         ]
       },
-      "DocumentUploadAccepted": {
-        "type": "object",
-        "properties": {
-          "asset": {
-            "$ref": "#/components/schemas/DocumentAsset"
-          },
-          "assetStatusUrl": {
-            "type": "string",
-            "minLength": 1
-          },
-          "compilationJob": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "minLength": 1
-              },
-              "stage": {
-                "type": "string",
-                "enum": [
-                  "queued"
-                ]
-              }
-            },
-            "required": [
-              "id",
-              "stage"
-            ]
-          },
-          "logicalDocument": {
-            "type": "object",
-            "properties": {
-              "id": {
-                "type": "string",
-                "format": "uuid"
-              },
-              "revision": {
-                "type": "integer",
-                "exclusiveMinimum": 0
-              }
-            },
-            "required": [
-              "id",
-              "revision"
-            ]
-          },
-          "logicalDocumentId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "documentRevision": {
-            "type": "integer",
-            "exclusiveMinimum": 0
-          },
-          "statusUrl": {
-            "type": "string",
-            "minLength": 1
-          },
-          "status": {
-            "type": "string",
-            "enum": [
-              "accepted"
-            ]
-          }
-        },
-        "required": [
-          "asset",
-          "compilationJob",
-          "logicalDocument",
-          "logicalDocumentId",
-          "documentRevision",
-          "statusUrl"
-        ]
-      },
       "BulkDocumentUploadAccepted": {
         "type": "object",
         "properties": {
@@ -10122,63 +10183,78 @@
           "total"
         ]
       },
-      "SourceSyncPolicy": {
+      "DocumentUploadAccepted": {
         "type": "object",
         "properties": {
-          "createdAt": {
-            "type": "string"
+          "asset": {
+            "$ref": "#/components/schemas/DocumentAsset"
           },
-          "customIntervalSeconds": {
-            "type": "integer"
-          },
-          "enabled": {
-            "type": "boolean"
-          },
-          "expectedSourceVersion": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "id": {
+          "assetStatusUrl": {
             "type": "string",
-            "format": "uuid"
+            "minLength": 1
           },
-          "knowledgeSpaceId": {
-            "type": "string",
-            "format": "uuid"
-          },
-          "mode": {
-            "type": "string",
-            "enum": [
-              "manual",
-              "interval",
-              "custom"
+          "compilationJob": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "stage": {
+                "type": "string",
+                "enum": [
+                  "queued"
+                ]
+              }
+            },
+            "required": [
+              "id",
+              "stage"
             ]
           },
-          "nextRunAt": {
-            "type": "string"
+          "logicalDocument": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "revision": {
+                "type": "integer",
+                "exclusiveMinimum": 0
+              }
+            },
+            "required": [
+              "id",
+              "revision"
+            ]
           },
-          "revision": {
-            "type": "integer",
-            "minimum": 1
-          },
-          "sourceId": {
+          "logicalDocumentId": {
             "type": "string",
             "format": "uuid"
           },
-          "updatedAt": {
-            "type": "string"
+          "documentRevision": {
+            "type": "integer",
+            "exclusiveMinimum": 0
+          },
+          "statusUrl": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "accepted"
+            ]
           }
         },
         "required": [
-          "createdAt",
-          "enabled",
-          "expectedSourceVersion",
-          "id",
-          "knowledgeSpaceId",
-          "mode",
-          "revision",
-          "sourceId",
-          "updatedAt"
+          "asset",
+          "compilationJob",
+          "logicalDocument",
+          "logicalDocumentId",
+          "documentRevision",
+          "statusUrl"
         ]
       },
       "Source": {
@@ -10186,7 +10262,7 @@
         "properties": {
           "connectionId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "createdAt": {
             "type": "string",
@@ -10194,11 +10270,11 @@
           },
           "id": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "knowledgeSpaceId": {
             "type": "string",
-            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
           },
           "metadata": {
             "type": "object",
@@ -10272,6 +10348,65 @@
           "uri"
         ]
       },
+      "SourceSyncPolicy": {
+        "type": "object",
+        "properties": {
+          "createdAt": {
+            "type": "string"
+          },
+          "customIntervalSeconds": {
+            "type": "integer"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "expectedSourceVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "knowledgeSpaceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "interval",
+              "custom"
+            ]
+          },
+          "nextRunAt": {
+            "type": "string"
+          },
+          "revision": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "sourceId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "createdAt",
+          "enabled",
+          "expectedSourceVersion",
+          "id",
+          "knowledgeSpaceId",
+          "mode",
+          "revision",
+          "sourceId",
+          "updatedAt"
+        ]
+      },
       "SourceWorkflowRun": {
         "type": "object",
         "properties": {
@@ -10332,6 +10467,8 @@
               "DOCUMENT_PARSER_TIMEOUT",
               "DOCUMENT_PARSER_UNAVAILABLE",
               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
               "DOCUMENT_PDF_RENDER_FAILED",
               "EMBEDDING_DIMENSION_INVALID",
               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -10340,10 +10477,12 @@
               "KNOWLEDGE_FS_CONFLICT",
               "KNOWLEDGE_FS_INTERNAL_ERROR",
               "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
               "KNOWLEDGE_FS_NOT_FOUND",
               "KNOWLEDGE_FS_RATE_LIMITED",
               "KNOWLEDGE_FS_TIMEOUT",
               "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
               "MODEL_CAPABILITY_MISMATCH",
@@ -10617,6 +10756,8 @@
                     "DOCUMENT_PARSER_TIMEOUT",
                     "DOCUMENT_PARSER_UNAVAILABLE",
                     "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                    "DOCUMENT_SOURCE_NOT_FOUND",
+                    "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                     "DOCUMENT_PDF_RENDER_FAILED",
                     "EMBEDDING_DIMENSION_INVALID",
                     "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -10625,10 +10766,12 @@
                     "KNOWLEDGE_FS_CONFLICT",
                     "KNOWLEDGE_FS_INTERNAL_ERROR",
                     "KNOWLEDGE_FS_INVALID_REQUEST",
+                    "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                     "KNOWLEDGE_FS_NOT_FOUND",
                     "KNOWLEDGE_FS_RATE_LIMITED",
                     "KNOWLEDGE_FS_TIMEOUT",
                     "KNOWLEDGE_FS_UNAVAILABLE",
+                    "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                     "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                     "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                     "MODEL_CAPABILITY_MISMATCH",
@@ -10759,6 +10902,8 @@
               "DOCUMENT_PARSER_TIMEOUT",
               "DOCUMENT_PARSER_UNAVAILABLE",
               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+              "DOCUMENT_SOURCE_NOT_FOUND",
+              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
               "DOCUMENT_PDF_RENDER_FAILED",
               "EMBEDDING_DIMENSION_INVALID",
               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -10767,10 +10912,12 @@
               "KNOWLEDGE_FS_CONFLICT",
               "KNOWLEDGE_FS_INTERNAL_ERROR",
               "KNOWLEDGE_FS_INVALID_REQUEST",
+              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
               "KNOWLEDGE_FS_NOT_FOUND",
               "KNOWLEDGE_FS_RATE_LIMITED",
               "KNOWLEDGE_FS_TIMEOUT",
               "KNOWLEDGE_FS_UNAVAILABLE",
+              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
               "MODEL_CAPABILITY_MISMATCH",
@@ -11094,7 +11241,6 @@
                   "freezeRevision": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
-                    "minimum": -9007199254740991,
                     "maximum": 9007199254740991
                   },
                   "sourceRevisionDigest": {
@@ -11103,7 +11249,7 @@
                   },
                   "sourceTaskWatermark": {
                     "type": "integer",
-                    "minimum": -9007199254740991,
+                    "minimum": 0,
                     "maximum": 9007199254740991
                   }
                 },
@@ -11133,7 +11279,6 @@
                     "freezeRevision": {
                       "type": "integer",
                       "exclusiveMinimum": 0,
-                      "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "sourceRevisionDigest": {
@@ -11142,7 +11287,7 @@
                     },
                     "sourceTaskWatermark": {
                       "type": "integer",
-                      "minimum": -9007199254740991,
+                      "minimum": 0,
                       "maximum": 9007199254740991
                     },
                     "applied": {
@@ -11286,7 +11431,6 @@
                   "activationRevision": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
-                    "minimum": -9007199254740991,
                     "maximum": 9007199254740991
                   },
                   "sourceRevisionDigest": {
@@ -11319,7 +11463,6 @@
                     "activationRevision": {
                       "type": "integer",
                       "exclusiveMinimum": 0,
-                      "minimum": -9007199254740991,
                       "maximum": 9007199254740991
                     },
                     "sourceRevisionDigest": {
@@ -11741,7 +11884,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "id",
@@ -11832,7 +11975,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "mode": {
                           "type": "string",
@@ -12064,7 +12207,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "id",
@@ -12099,7 +12242,7 @@
                 "properties": {
                   "knowledgeSpaceId": {
                     "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                   },
                   "checksumSha256Base64": {
                     "type": "string",
@@ -12310,7 +12453,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "id",
@@ -12319,7 +12462,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "knowledgeSpaceId",
@@ -12377,7 +12520,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "mode": {
                           "type": "string",
@@ -12595,7 +12738,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "id",
@@ -12620,7 +12763,7 @@
                 "properties": {
                   "knowledgeSpaceId": {
                     "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                   },
                   "parts": {
                     "type": "array",
@@ -12691,7 +12834,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "mode": {
                           "type": "string",
@@ -12891,7 +13034,7 @@
           {
             "schema": {
               "type": "string",
-              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
             },
             "required": true,
             "name": "id",
@@ -12916,7 +13059,7 @@
                 "properties": {
                   "knowledgeSpaceId": {
                     "type": "string",
-                    "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                    "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                   }
                 },
                 "required": [
@@ -12958,7 +13101,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "mode": {
                           "type": "string",
@@ -15620,7 +15763,7 @@
                           "properties": {
                             "documentAssetId": {
                               "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                             },
                             "id": {
                               "type": "string",
@@ -15634,7 +15777,7 @@
                             },
                             "parseArtifactId": {
                               "type": "string",
-                              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                             },
                             "type": {
                               "type": "string",
@@ -22562,7 +22705,7 @@
                           },
                           "questionId": {
                             "type": "string",
-                            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                            "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                           },
                           "rowIndex": {
                             "type": "integer",
@@ -28135,6 +28278,30 @@
             "in": "query"
           },
           {
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "required": false,
+            "name": "query",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "ready",
+                "queued",
+                "processing",
+                "failed",
+                "disabled"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
             "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
             "in": "header",
             "name": "x-trace-id",
@@ -28858,158 +29025,6 @@
         "x-knowledge-fs-required-scope": "knowledge-spaces:write"
       }
     },
-    "/knowledge-spaces/{id}/logical-documents/{documentId}/availability": {
-      "patch": {
-        "operationId": "patchLogicalDocumentAvailability",
-        "parameters": [
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "documentId",
-            "in": "path"
-          },
-          {
-            "schema": {
-              "type": "string",
-              "format": "uuid"
-            },
-            "required": true,
-            "name": "id",
-            "in": "path"
-          },
-          {
-            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
-            "in": "header",
-            "name": "x-trace-id",
-            "required": false,
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "enabled": {
-                    "type": "boolean"
-                  },
-                  "expectedRowVersion": {
-                    "type": "integer",
-                    "minimum": 0
-                  }
-                },
-                "required": [
-                  "enabled",
-                  "expectedRowVersion"
-                ],
-                "additionalProperties": false
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Updated logical document availability",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/LogicalDocument"
-                }
-              }
-            },
-            "headers": {
-              "x-trace-id": {
-                "description": "Trace identifier assigned to the request",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "headers": {
-              "x-trace-id": {
-                "description": "Trace identifier assigned to the request",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "headers": {
-              "x-trace-id": {
-                "description": "Trace identifier assigned to the request",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Document resource not found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "headers": {
-              "x-trace-id": {
-                "description": "Trace identifier assigned to the request",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Document availability CAS conflict",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "headers": {
-              "x-trace-id": {
-                "description": "Trace identifier assigned to the request",
-                "schema": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        },
-        "x-knowledge-fs-max-response-bytes": 1048576,
-        "x-knowledge-fs-required-scope": "knowledge-spaces:write"
-      }
-    },
     "/knowledge-spaces/{id}/logical-documents/bulk/availability": {
       "patch": {
         "operationId": "bulkPatchLogicalDocumentAvailability",
@@ -29174,6 +29189,158 @@
           },
           "404": {
             "description": "Document resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "x-knowledge-fs-max-response-bytes": 1048576,
+        "x-knowledge-fs-required-scope": "knowledge-spaces:write"
+      }
+    },
+    "/knowledge-spaces/{id}/logical-documents/{documentId}/availability": {
+      "patch": {
+        "operationId": "patchLogicalDocumentAvailability",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "documentId",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "description": "Optional caller trace identifier; invalid values are replaced by the gateway",
+            "in": "header",
+            "name": "x-trace-id",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "expectedRowVersion": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "expectedRowVersion"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated logical document availability",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LogicalDocument"
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Document resource not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "headers": {
+              "x-trace-id": {
+                "description": "Trace identifier assigned to the request",
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Document availability CAS conflict",
             "content": {
               "application/json": {
                 "schema": {
@@ -30252,10 +30419,6 @@
             "description": "Processing task SSE stream; reconnect with Last-Event-ID or poll the task",
             "content": {
               "text/event-stream": {
-                "schema": {
-                  "type": "string",
-                  "description": "SSE frames contain id, event and data fields. progress data contains activeOperations, phase, progressPercent, semanticEnrichment, stage, state and updatedAt. terminal data contains state (succeeded, failed, canceled or superseded), and optional errorCode and failure. These are raw data objects, without an event/data wrapper."
-                },
                 "examples": {
                   "progress": {
                     "value": "id: task-id:2026-07-14T12:00:00.000Z\nevent: progress\ndata: {\"activeOperations\":[],\"phase\":\"queued\",\"progressPercent\":0,\"semanticEnrichment\":{\"nodesCompleted\":0,\"state\":\"not_scheduled\"},\"stage\":\"queued\",\"state\":\"queued\",\"updatedAt\":\"2026-07-14T12:00:00.000Z\"}\n\n"
@@ -30263,6 +30426,10 @@
                   "terminal": {
                     "value": "id: task-id:terminal\nevent: terminal\ndata: {\"state\":\"succeeded\"}\n\n"
                   }
+                },
+                "schema": {
+                  "type": "string",
+                  "description": "SSE frames contain id, event and data fields. progress data contains activeOperations, phase, progressPercent, semanticEnrichment, stage, state and updatedAt. terminal data contains state (succeeded, failed, canceled or superseded), and optional errorCode and failure. These are raw data objects, without an event/data wrapper."
                 }
               }
             },
@@ -38005,7 +38172,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "items": {
                           "type": "array",
@@ -38019,11 +38186,11 @@
                                   "properties": {
                                     "artifactHash": {
                                       "type": "string",
-                                      "pattern": "^[0-9a-f]{64}$"
+                                      "pattern": "^[0-9a-fA-F]{64}$"
                                     },
                                     "documentAssetId": {
                                       "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                                     },
                                     "documentVersion": {
                                       "type": "integer",
@@ -38077,7 +38244,7 @@
                                     },
                                     "withNodeId": {
                                       "type": "string",
-                                      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                                     }
                                   },
                                   "required": [
@@ -38118,7 +38285,7 @@
                               },
                               "nodeId": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                               },
                               "score": {
                                 "type": "number",
@@ -38176,7 +38343,7 @@
                             "properties": {
                               "expectedEvidenceId": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                               },
                               "metadata": {
                                 "type": "object",
@@ -38230,11 +38397,11 @@
                               },
                               "sha256": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{64}$"
+                                "pattern": "^[0-9a-fA-F]{64}$"
                               },
                               "uploadFileId": {
                                 "type": "string",
-                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                                "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                               }
                             },
                             "required": [
@@ -38262,7 +38429,7 @@
                         },
                         "traceId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         }
                       },
                       "required": [
@@ -38391,11 +38558,11 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "knowledgeSpaceId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "lastSyncedAt": {
                           "type": "string",
@@ -39102,7 +39269,7 @@
                   "topK": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
-                    "maximum": 50
+                    "maximum": 100
                   }
                 },
                 "required": [
@@ -39373,7 +39540,7 @@
                   "topK": {
                     "type": "integer",
                     "exclusiveMinimum": 0,
-                    "maximum": 50
+                    "maximum": 100
                   }
                 },
                 "required": [
@@ -41803,11 +41970,11 @@
                       "properties": {
                         "artifactHash": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{64}$"
+                          "pattern": "^[0-9a-fA-F]{64}$"
                         },
                         "documentAssetId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "endOffset": {
                           "type": "integer",
@@ -41815,7 +41982,7 @@
                         },
                         "id": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "kind": {
                           "type": "string",
@@ -41829,7 +41996,7 @@
                         },
                         "knowledgeSpaceId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "metadata": {
                           "type": "object",
@@ -41838,7 +42005,7 @@
                         },
                         "parseArtifactId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "permissionScope": {
                           "type": "array",
@@ -41850,7 +42017,7 @@
                         },
                         "publicationGenerationId": {
                           "type": "string",
-                          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+                          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
                         },
                         "sourceLocation": {
                           "type": "object",
@@ -43540,6 +43707,8 @@
                               "DOCUMENT_PARSER_TIMEOUT",
                               "DOCUMENT_PARSER_UNAVAILABLE",
                               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                              "DOCUMENT_SOURCE_NOT_FOUND",
+                              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                               "DOCUMENT_PDF_RENDER_FAILED",
                               "EMBEDDING_DIMENSION_INVALID",
                               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -43548,10 +43717,12 @@
                               "KNOWLEDGE_FS_CONFLICT",
                               "KNOWLEDGE_FS_INTERNAL_ERROR",
                               "KNOWLEDGE_FS_INVALID_REQUEST",
+                              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                               "KNOWLEDGE_FS_NOT_FOUND",
                               "KNOWLEDGE_FS_RATE_LIMITED",
                               "KNOWLEDGE_FS_TIMEOUT",
                               "KNOWLEDGE_FS_UNAVAILABLE",
+                              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                               "MODEL_CAPABILITY_MISMATCH",
@@ -43666,6 +43837,8 @@
                                     "DOCUMENT_PARSER_TIMEOUT",
                                     "DOCUMENT_PARSER_UNAVAILABLE",
                                     "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                                    "DOCUMENT_SOURCE_NOT_FOUND",
+                                    "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                                     "DOCUMENT_PDF_RENDER_FAILED",
                                     "EMBEDDING_DIMENSION_INVALID",
                                     "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -43674,10 +43847,12 @@
                                     "KNOWLEDGE_FS_CONFLICT",
                                     "KNOWLEDGE_FS_INTERNAL_ERROR",
                                     "KNOWLEDGE_FS_INVALID_REQUEST",
+                                    "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                                     "KNOWLEDGE_FS_NOT_FOUND",
                                     "KNOWLEDGE_FS_RATE_LIMITED",
                                     "KNOWLEDGE_FS_TIMEOUT",
                                     "KNOWLEDGE_FS_UNAVAILABLE",
+                                    "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                                     "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                                     "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                                     "MODEL_CAPABILITY_MISMATCH",
@@ -43867,6 +44042,8 @@
                                   "DOCUMENT_PARSER_TIMEOUT",
                                   "DOCUMENT_PARSER_UNAVAILABLE",
                                   "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                                  "DOCUMENT_SOURCE_NOT_FOUND",
+                                  "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                                   "DOCUMENT_PDF_RENDER_FAILED",
                                   "EMBEDDING_DIMENSION_INVALID",
                                   "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -43875,10 +44052,12 @@
                                   "KNOWLEDGE_FS_CONFLICT",
                                   "KNOWLEDGE_FS_INTERNAL_ERROR",
                                   "KNOWLEDGE_FS_INVALID_REQUEST",
+                                  "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                                   "KNOWLEDGE_FS_NOT_FOUND",
                                   "KNOWLEDGE_FS_RATE_LIMITED",
                                   "KNOWLEDGE_FS_TIMEOUT",
                                   "KNOWLEDGE_FS_UNAVAILABLE",
+                                  "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                                   "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                                   "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                                   "MODEL_CAPABILITY_MISMATCH",
@@ -44253,6 +44432,8 @@
                         "DOCUMENT_PARSER_TIMEOUT",
                         "DOCUMENT_PARSER_UNAVAILABLE",
                         "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                        "DOCUMENT_SOURCE_NOT_FOUND",
+                        "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                         "DOCUMENT_PDF_RENDER_FAILED",
                         "EMBEDDING_DIMENSION_INVALID",
                         "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -44261,10 +44442,12 @@
                         "KNOWLEDGE_FS_CONFLICT",
                         "KNOWLEDGE_FS_INTERNAL_ERROR",
                         "KNOWLEDGE_FS_INVALID_REQUEST",
+                        "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                         "KNOWLEDGE_FS_NOT_FOUND",
                         "KNOWLEDGE_FS_RATE_LIMITED",
                         "KNOWLEDGE_FS_TIMEOUT",
                         "KNOWLEDGE_FS_UNAVAILABLE",
+                        "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                         "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                         "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                         "MODEL_CAPABILITY_MISMATCH",
@@ -44379,6 +44562,8 @@
                               "DOCUMENT_PARSER_TIMEOUT",
                               "DOCUMENT_PARSER_UNAVAILABLE",
                               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                              "DOCUMENT_SOURCE_NOT_FOUND",
+                              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                               "DOCUMENT_PDF_RENDER_FAILED",
                               "EMBEDDING_DIMENSION_INVALID",
                               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -44387,10 +44572,12 @@
                               "KNOWLEDGE_FS_CONFLICT",
                               "KNOWLEDGE_FS_INTERNAL_ERROR",
                               "KNOWLEDGE_FS_INVALID_REQUEST",
+                              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                               "KNOWLEDGE_FS_NOT_FOUND",
                               "KNOWLEDGE_FS_RATE_LIMITED",
                               "KNOWLEDGE_FS_TIMEOUT",
                               "KNOWLEDGE_FS_UNAVAILABLE",
+                              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                               "MODEL_CAPABILITY_MISMATCH",
@@ -44580,6 +44767,8 @@
                             "DOCUMENT_PARSER_TIMEOUT",
                             "DOCUMENT_PARSER_UNAVAILABLE",
                             "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                            "DOCUMENT_SOURCE_NOT_FOUND",
+                            "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                             "DOCUMENT_PDF_RENDER_FAILED",
                             "EMBEDDING_DIMENSION_INVALID",
                             "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -44588,10 +44777,12 @@
                             "KNOWLEDGE_FS_CONFLICT",
                             "KNOWLEDGE_FS_INTERNAL_ERROR",
                             "KNOWLEDGE_FS_INVALID_REQUEST",
+                            "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                             "KNOWLEDGE_FS_NOT_FOUND",
                             "KNOWLEDGE_FS_RATE_LIMITED",
                             "KNOWLEDGE_FS_TIMEOUT",
                             "KNOWLEDGE_FS_UNAVAILABLE",
+                            "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                             "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                             "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                             "MODEL_CAPABILITY_MISMATCH",
@@ -44957,6 +45148,8 @@
                         "DOCUMENT_PARSER_TIMEOUT",
                         "DOCUMENT_PARSER_UNAVAILABLE",
                         "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                        "DOCUMENT_SOURCE_NOT_FOUND",
+                        "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                         "DOCUMENT_PDF_RENDER_FAILED",
                         "EMBEDDING_DIMENSION_INVALID",
                         "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -44965,10 +45158,12 @@
                         "KNOWLEDGE_FS_CONFLICT",
                         "KNOWLEDGE_FS_INTERNAL_ERROR",
                         "KNOWLEDGE_FS_INVALID_REQUEST",
+                        "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                         "KNOWLEDGE_FS_NOT_FOUND",
                         "KNOWLEDGE_FS_RATE_LIMITED",
                         "KNOWLEDGE_FS_TIMEOUT",
                         "KNOWLEDGE_FS_UNAVAILABLE",
+                        "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                         "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                         "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                         "MODEL_CAPABILITY_MISMATCH",
@@ -45083,6 +45278,8 @@
                               "DOCUMENT_PARSER_TIMEOUT",
                               "DOCUMENT_PARSER_UNAVAILABLE",
                               "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                              "DOCUMENT_SOURCE_NOT_FOUND",
+                              "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                               "DOCUMENT_PDF_RENDER_FAILED",
                               "EMBEDDING_DIMENSION_INVALID",
                               "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -45091,10 +45288,12 @@
                               "KNOWLEDGE_FS_CONFLICT",
                               "KNOWLEDGE_FS_INTERNAL_ERROR",
                               "KNOWLEDGE_FS_INVALID_REQUEST",
+                              "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                               "KNOWLEDGE_FS_NOT_FOUND",
                               "KNOWLEDGE_FS_RATE_LIMITED",
                               "KNOWLEDGE_FS_TIMEOUT",
                               "KNOWLEDGE_FS_UNAVAILABLE",
+                              "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                               "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                               "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                               "MODEL_CAPABILITY_MISMATCH",
@@ -45284,6 +45483,8 @@
                             "DOCUMENT_PARSER_TIMEOUT",
                             "DOCUMENT_PARSER_UNAVAILABLE",
                             "DOCUMENT_PARSER_UNSUPPORTED_TYPE",
+                            "DOCUMENT_SOURCE_NOT_FOUND",
+                            "DOCUMENT_SEMANTIC_GROUNDING_FAILED",
                             "DOCUMENT_PDF_RENDER_FAILED",
                             "EMBEDDING_DIMENSION_INVALID",
                             "EMBEDDING_DIMENSION_UNSUPPORTED",
@@ -45292,10 +45493,12 @@
                             "KNOWLEDGE_FS_CONFLICT",
                             "KNOWLEDGE_FS_INTERNAL_ERROR",
                             "KNOWLEDGE_FS_INVALID_REQUEST",
+                            "RETRIEVAL_TOP_K_LIMIT_EXCEEDED",
                             "KNOWLEDGE_FS_NOT_FOUND",
                             "KNOWLEDGE_FS_RATE_LIMITED",
                             "KNOWLEDGE_FS_TIMEOUT",
                             "KNOWLEDGE_FS_UNAVAILABLE",
+                            "EVIDENCE_BUNDLE_LIMIT_EXCEEDED",
                             "KNOWLEDGE_SPACE_MANIFEST_NOT_FOUND",
                             "KNOWLEDGE_SPACE_MODEL_CONFIGURATION_REQUIRED",
                             "MODEL_CAPABILITY_MISMATCH",

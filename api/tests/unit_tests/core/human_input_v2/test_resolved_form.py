@@ -24,8 +24,8 @@ def form() -> ResolvedForm:
         title="Review",
         parts=(
             MarkdownFragment(text="Please review\n"),
-            ParagraphInput(output_variable_name="reason", default_value="Ship it"),
-            SelectInput(output_variable_name="decision", options=("approve", "reject"), default_value=None),
+            ParagraphInput(output_variable_name="reason", resolved_default_value="Ship it"),
+            SelectInput(output_variable_name="decision", options=("approve", "reject"), resolved_default_value=None),
             FileInput(
                 output_variable_name="attachment",
                 allowed_file_types=(FileType.DOCUMENT, FileType.CUSTOM),
@@ -52,12 +52,17 @@ def test_resolved_form_json_round_trip_preserves_all_parts_and_enums(form: Resol
         "title": "Review",
         "parts": [
             {"type": "markdown_fragment", "text": "Please review\n"},
-            {"type": "paragraph_input", "output_variable_name": "reason", "default_value": "Ship it"},
+            {
+                "type": "paragraph_input",
+                "output_variable_name": "reason",
+                "resolved_default_value": "Ship it",
+                "default_config": None,
+            },
             {
                 "type": "select_input",
                 "output_variable_name": "decision",
                 "options": ["approve", "reject"],
-                "default_value": None,
+                "resolved_default_value": None,
             },
             {
                 "type": "file_input",
@@ -94,7 +99,7 @@ def test_resolved_form_and_nested_values_are_frozen(form: ResolvedForm) -> None:
     paragraph = form.parts[1]
     assert isinstance(paragraph, ParagraphInput)
     with pytest.raises(ValidationError, match="frozen_instance"):
-        paragraph.default_value = "Changed"  # pyrefly: ignore[read-only]
+        paragraph.resolved_default_value = "Changed"  # pyrefly: ignore[read-only]
     with pytest.raises(ValidationError, match="frozen_instance"):
         form.actions[0].title = "Changed"  # pyrefly: ignore[read-only]
 
@@ -103,9 +108,17 @@ def test_resolved_form_and_nested_values_are_frozen(form: ResolvedForm) -> None:
     ("model", "values", "error_type"),
     [
         (MarkdownFragment, {"text": 1}, "string_type"),
-        (ParagraphInput, {"output_variable_name": "reason", "default_value": 1}, "string_type"),
-        (SelectInput, {"output_variable_name": "choice", "options": ["yes"], "default_value": None}, "tuple_type"),
-        (SelectInput, {"output_variable_name": "choice", "options": (1,), "default_value": None}, "string_type"),
+        (ParagraphInput, {"output_variable_name": "reason", "resolved_default_value": 1}, "string_type"),
+        (
+            SelectInput,
+            {"output_variable_name": "choice", "options": ["yes"], "resolved_default_value": None},
+            "tuple_type",
+        ),
+        (
+            SelectInput,
+            {"output_variable_name": "choice", "options": (1,), "resolved_default_value": None},
+            "string_type",
+        ),
         (UserAction, {"id": "approve", "title": "Approve", "button_style": "primary"}, "is_instance_of"),
         (ResolvedForm, {"title": None, "parts": (), "actions": (), "legacy_form_content": ""}, "string_type"),
         (ResolvedForm, {"title": "", "parts": [], "actions": (), "legacy_form_content": ""}, "tuple_type"),
@@ -137,12 +150,12 @@ def test_file_list_number_limit_requires_an_integer(number_limits: object, form:
         FileListInput.model_validate(values)
 
 
-def test_all_models_reject_extra_fields(form: ResolvedForm) -> None:
+def test_all_models_read_additive_fields(form: ResolvedForm) -> None:
     for model in (form, *form.parts, *form.actions):
         values = model.model_dump()
-        values["unexpected"] = True
-        with pytest.raises(ValidationError, match="extra_forbidden"):
-            type(model).model_validate(values)
+        values["future_optional"] = None
+        values["future_extension"] = {"nested": {"enabled": True, "optional": None}}
+        assert type(model).model_validate(values) == model
 
 
 @pytest.mark.parametrize(
@@ -165,8 +178,8 @@ def test_type_correct_values_are_preserved_without_business_validation() -> None
     form = ResolvedForm(
         title="",
         parts=(
-            ParagraphInput(output_variable_name="", default_value="  Untrimmed  "),
-            SelectInput(output_variable_name=" Choice ", options=("", "", " Yes "), default_value="unlisted"),
+            ParagraphInput(output_variable_name="", resolved_default_value="  Untrimmed  "),
+            SelectInput(output_variable_name=" Choice ", options=("", "", " Yes "), resolved_default_value="unlisted"),
             FileListInput(
                 output_variable_name="",
                 allowed_file_types=(),
@@ -182,7 +195,7 @@ def test_type_correct_values_are_preserved_without_business_validation() -> None
     assert ResolvedForm.model_validate_json(form.model_dump_json()) == form
     paragraph = form.parts[0]
     assert isinstance(paragraph, ParagraphInput)
-    assert paragraph.default_value == "  Untrimmed  "
+    assert paragraph.resolved_default_value == "  Untrimmed  "
     select = form.parts[1]
     assert isinstance(select, SelectInput)
     assert select.output_variable_name == " Choice "

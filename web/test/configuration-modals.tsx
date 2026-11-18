@@ -3,8 +3,8 @@ import type { Features } from '@/app/components/base/features/types'
 import type { ConsoleQueryTestOptions } from '@/test/console/query-data'
 import { FeaturesContext } from '@/app/components/base/features/context'
 import { createFeaturesStore } from '@/app/components/base/features/store'
+import { ModelCredentialDialog } from '@/app/components/header/account-setting/model-provider-page/model-modal/dialog'
 import { EventEmitterContextProvider } from '@/context/event-emitter-provider'
-import { ModalContextProvider } from '@/context/modal-context-provider'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
 import { createNuqsTestWrapper } from '@/test/nuqs-testing'
 
@@ -20,7 +20,10 @@ export function renderWithConfigurationModals(
     <UrlState>
       <EventEmitterContextProvider>
         <FeaturesContext value={featuresStore}>
-          <ModalContextProvider>{ui}</ModalContextProvider>
+          <>
+            {ui}
+            <ModelCredentialDialog />
+          </>
         </FeaturesContext>
       </EventEmitterContextProvider>
     </UrlState>,

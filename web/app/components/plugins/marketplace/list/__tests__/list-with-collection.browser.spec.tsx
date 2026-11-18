@@ -179,6 +179,12 @@ it('loads distant collections through native scrolling and keeps them available 
   await expect
     .element(screen.getByRole('button', { name: 'Collection 0 Plugin 0', exact: true }))
     .toBeVisible()
+  // The next collection sits inside the preload margin. Its mount proves the deferred
+  // sections' observers have taken their first measurement; scrolling earlier can land
+  // before that measurement, which then uses the unscrolled geometry and never repeats.
+  await expect
+    .element(screen.getByRole('button', { name: 'Collection 1 Plugin 0', exact: true }))
+    .toBeVisible()
   const distant = screen.getByRole('button', { name: 'Collection 6 Plugin 0', exact: true })
   await expect.element(distant).not.toBeInTheDocument()
   const scroll = screen.getByRole('region', { name: 'Marketplace collections' }).element()

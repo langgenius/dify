@@ -16,6 +16,7 @@ import { BaseField } from '.'
 export type BaseFormProps = {
   formSchemas?: FormSchema[]
   defaultValues?: Record<string, any>
+  id?: string
   formClassName?: string
   ref?: FormRef
   disabled?: boolean
@@ -29,6 +30,7 @@ export type BaseFormProps = {
 >
 
 const BaseForm = ({
+  id,
   formSchemas = [],
   defaultValues,
   formClassName,
@@ -201,7 +203,7 @@ const BaseForm = ({
   }
 
   return (
-    <form ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
+    <form id={id} ref={formElementRef} className={cn(formClassName)} onSubmit={handleSubmit}>
       {formSchemas.map(renderFieldWrapper)}
     </form>
   )

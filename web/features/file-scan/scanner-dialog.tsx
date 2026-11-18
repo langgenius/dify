@@ -39,7 +39,6 @@ import { ProviderTypeIcon } from './provider-type-icon'
 import {
   FILE_SCAN_PROVIDER_TYPES,
   fileScanProviderApiKeyUrl,
-  fileScanProviderSendsFileContents,
   isFileScanProviderType,
   isScaniiRegion,
   SCANII_REGIONS,
@@ -213,18 +212,13 @@ export function FileScanProviderDialog({
                   ))}
                 </div>
               )}
-              {type && fileScanProviderSendsFileContents(type) && (
+              {type && (
                 <p className="mt-1 flex items-start gap-1.5 rounded-lg bg-state-warning-hover px-3 py-2 system-xs-regular text-text-secondary">
                   <span
                     aria-hidden
                     className="mt-px i-ri-information-2-line size-3.5 shrink-0 text-text-warning"
                   />
                   {t(($) => $['dialog.dataNotice'])}
-                </p>
-              )}
-              {type === 'clamav' && (
-                <p className="mt-1 system-xs-regular text-text-tertiary">
-                  {t(($) => $['dialog.clamavHint'])}
                 </p>
               )}
             </div>

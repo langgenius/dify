@@ -182,7 +182,7 @@ def test_quota_managed_non_streaming_invocation_finalizes_reservation() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=result) as invoke,
+        patch.object(ModelInstance, "_invoke_llm", return_value=result) as invoke,
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -218,7 +218,7 @@ def test_quota_managed_stream_commits_before_first_chunk() -> None:
     invocation_id = str(uuid4())
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation) as reserve_quota,
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
     ):
         response = model_instance.invoke_llm(
             prompt_messages=[],
@@ -249,7 +249,7 @@ def test_quota_managed_stream_releases_when_provider_fails_before_first_chunk() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=failing_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=failing_stream()),
         pytest.raises(RuntimeError, match="provider failed"),
     ):
         list(model_instance.invoke_llm(prompt_messages=[], stream=True))
@@ -288,7 +288,7 @@ def test_quota_managed_usage_stream_commits_before_delivering_buffered_chunks() 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=provider_stream()),
+        patch.object(ModelInstance, "_invoke_llm", return_value=provider_stream()),
     ):
         response = model_instance.invoke_llm(prompt_messages=[], stream=True)
         assert next(response) is chunks[0]
@@ -316,7 +316,7 @@ def test_quota_managed_usage_stream_does_not_deliver_when_settlement_fails() -> 
 
     with (
         patch.object(model_instance, "reserve_quota", return_value=reservation),
-        patch.object(ModelInstance, "invoke_llm", return_value=(item for item in [chunk])),
+        patch.object(ModelInstance, "_invoke_llm", return_value=(item for item in [chunk])),
         pytest.raises(ValueError, match="terminal usage is required"),
     ):
         next(model_instance.invoke_llm(prompt_messages=[], stream=True))
