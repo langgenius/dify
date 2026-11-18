@@ -7,13 +7,14 @@ from http import HTTPStatus
 from unittest.mock import MagicMock
 
 import pytest
-from flask import Blueprint, Flask
+from flask import Flask
 from flask.testing import FlaskClient
 from pytest_mock import MockerFixture
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import UnprocessableEntity
 
+from controllers.console import bp as console_blueprint
 from controllers.console.auth.activate import ActivateApi, ActivateCheckApi
 from controllers.console.auth.error import InvitationAccountMismatchError as InvitationAccountMismatchHTTPError
 from controllers.console.error import (
@@ -27,13 +28,12 @@ from enums import DeploymentEdition
 from extensions.ext_application_services import build_application_services
 from extensions.ext_login import DifyLoginManager, bind_account_loader, load_user_from_request, unauthorized_handler
 from extensions.ext_redis import RedisClientWrapper
-from libs.external_api import ExternalApi
 from libs.passport import PassportService
 from models.account import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole
 from services.account_activation_service import AccountActivationService
 from services.account_errors import AccountEmailDomainSuspendedError as EmailDomainSuspendedRegistrationError
 from services.account_errors import FrozenAccountError, InvalidInvitationError, InvitationAccountMismatchError
-from services.entities.account_activation_entities import ActivationCheckResult
+from services.entities.account_activation_entities import ActivationCheckResult, InvitationLookup
 from tests.helpers.unit.config_override import config_overrides_context
 
 
@@ -154,9 +154,7 @@ def console_client(app: Flask) -> Iterator[FlaskClient]:
         login_manager.request_loader(load_user_from_request)
         login_manager.unauthorized_handler(unauthorized_handler)
         login_manager.init_app(app)
-        blueprint = Blueprint("console", __name__, url_prefix="/console/api")
-        ExternalApi(blueprint).add_resource(ActivateApi, "/activate")
-        app.register_blueprint(blueprint)
+        app.register_blueprint(console_blueprint)
         yield app.test_client()
 
 
@@ -317,9 +315,10 @@ class TestActivateApi:
         console_client: FlaskClient,
         bind_application_services: Callable[[AccountActivationService], None],
         resolvable_activation_service: AccountActivationService,
+        redis_transport: tuple[RedisClientWrapper, MagicMock],
         sqlite_session_factory: sessionmaker[Session],
     ) -> None:
-        """A real console session for another account cannot consume the invitation."""
+        """A mismatched console session cannot activate the account or revoke its invitation."""
         bind_application_services(resolvable_activation_service)
         with sqlite_session_factory.begin() as session:
             other_account = Account(
@@ -358,6 +357,17 @@ class TestActivateApi:
         body = response.get_json()
         assert isinstance(body, dict)
         assert body["code"] == "invitation_account_mismatch"
+
+        invitation = InvitationLookup(workspace_id="workspace-123", email="invitee@example.com", token="valid-token")
+        assert resolvable_activation_service.check(invitation).is_valid
+        _, commands = redis_transport
+        invitation_lookup_key = next(
+            command.args[1]
+            for command in commands.call_args_list
+            if command.args[0] == "GET" and command.args[1].startswith("member_invite_token:workspace-123, ")
+        )
+        assert not any(command.args[:2] == ("DEL", invitation_lookup_key) for command in commands.call_args_list)
+
         with sqlite_session_factory() as session:
             invitee = session.get(Account, "account-123")
             assert invitee is not None
