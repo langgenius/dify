@@ -3,6 +3,7 @@
 from copy import deepcopy
 from typing import cast
 
+from dify_agent.protocol.tool_call_limits import agent_tool_activity_from_metadata
 from pydantic import JsonValue
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -58,7 +59,7 @@ def _message_record(*, message: Message, session: Session) -> MessageRecord:
     # service's file adapter after this database session has closed.
     inputs = deepcopy(cast(dict[str, MessageInputValue], message._inputs))
     feedback = message.user_feedback_with_session(session=session)
-    thoughts = [_thought_record(thought) for thought in message.agent_thoughts_with_session(session=session)]
+    thoughts = [snapshot_agent_thought(thought) for thought in message.agent_thoughts_with_session(session=session)]
     return MessageRecord(
         id=message.id,
         conversation_id=message.conversation_id,
@@ -82,7 +83,13 @@ def _message_record(*, message: Message, session: Session) -> MessageRecord:
     )
 
 
-def _thought_record(thought: MessageAgentThought) -> MessageAgentThoughtRecord:
+def snapshot_agent_thought(thought: MessageAgentThought) -> MessageAgentThoughtRecord:
+    """Detach one loaded thought without I/O or interpretation of observation text.
+
+    Only the recorder-owned ``agent_v2_tool_activity`` metadata key can supply
+    typed native activity. Missing, legacy or invalid metadata is omitted;
+    unrelated metadata, including tool configuration, never crosses this read.
+    """
     return MessageAgentThoughtRecord(
         id=thought.id,
         message_id=thought.message_id,
@@ -96,6 +103,7 @@ def _thought_record(thought: MessageAgentThought) -> MessageAgentThoughtRecord:
         created_at=thought.created_at,
         observation=thought.observation,
         files=cast(list[str], thought.files),
+        tool_activity=agent_tool_activity_from_metadata(thought.tool_meta),
     )
 
 
