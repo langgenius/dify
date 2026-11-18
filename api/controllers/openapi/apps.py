@@ -7,7 +7,7 @@ from http import HTTPStatus
 from typing import Any, Final
 
 from flask_restx import Resource
-from werkzeug.exceptions import NotFound
+from werkzeug.exceptions import NotFound, ServiceUnavailable, UnprocessableEntity
 
 from constants.oauth_bearer import Scope
 from constants.personal_access_token import PersonalAccessTokenPolicy
@@ -51,7 +51,7 @@ from extensions.ext_application_services import application_services
 from machinery.context import AppRequestContext
 from models.model import AppMode
 from services.app.query_service import AppDiscoveryQuery, AppListLogin
-from services.errors.app import AppDiscoveryNotFoundError
+from services.errors.app import AppDiscoveryNotFoundError, PermittedAppsTooManyError, PermittedAppsUnavailableError
 
 _SETTINGS_VIEWS: Final[dict[AppMode, tuple[Callable[..., object], ...]]] = {
     AppMode.WORKFLOW: (WorkflowAppInfoApi.get, WorkflowWebAppApi.get, ServiceApiApi.get, WebAppAccessApi.get),
@@ -151,10 +151,15 @@ class AppListApi(Resource):
         returns=(HTTPStatus.OK, AppListResponse, "App list"),
     )
     def get(self, ctx: Context, *, query: AppListQuery):
-        result = application_services().apps.discovery.list_apps_for(
-            _app_list_login(ctx),
-            AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name),
-        )
+        try:
+            result = application_services().apps.discovery.list_apps_for(
+                _app_list_login(ctx),
+                AppDiscoveryQuery(query.page, query.limit, query.mode.value if query.mode else None, query.name),
+            )
+        except PermittedAppsUnavailableError as exc:
+            raise ServiceUnavailable(str(exc)) from exc
+        except PermittedAppsTooManyError as exc:
+            raise UnprocessableEntity(str(exc)) from exc
         return AppListResponse.build(
             page=result.page,
             limit=result.per_page,
