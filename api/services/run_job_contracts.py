@@ -8,7 +8,6 @@ from typing import Final, Protocol
 
 from models.enums import CreatorUserRole
 from models.model import AppMode
-from services.workflow.graph_check import GRAPH_MODES, MESSAGE_MODES
 
 JOB_TTL_SECONDS: Final = 24 * 60 * 60
 ALIVE_TTL_SECONDS: Final = 45
@@ -45,25 +44,6 @@ class JobFailure(StrEnum):
         member._value_ = value
         member.message = message
         return member
-
-
-class JobFamily(StrEnum):
-    GRAPH = "graph"
-    MESSAGE = "message"
-
-    @classmethod
-    def for_mode(cls, mode: AppMode) -> JobFamily:
-        """Map an app mode to the family that stores its result.
-
-        Precondition: mode is a member of GRAPH_MODES or MESSAGE_MODES.
-        Postcondition: returns GRAPH for graph modes and MESSAGE for message modes;
-        raises ValueError for any other mode.
-        """
-        if mode in GRAPH_MODES:
-            return cls.GRAPH
-        if mode in MESSAGE_MODES:
-            return cls.MESSAGE
-        raise ValueError(f"App mode {mode!r} does not support run jobs")
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -123,15 +103,6 @@ class JobRecord:
         if self.ending is None:
             return None
         return self.ending.error
-
-    @property
-    def family(self) -> JobFamily:
-        """Return the result family of this job's app mode.
-
-        Precondition: self.mode supports run jobs.
-        Postcondition: equals JobFamily.for_mode(self.mode).
-        """
-        return JobFamily.for_mode(self.mode)
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)

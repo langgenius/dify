@@ -10,7 +10,6 @@ from services.run_job_contracts import (
     JOB_TTL_SECONDS,
     JobEnding,
     JobFailure,
-    JobFamily,
     JobIds,
     JobOwner,
     JobRecord,
@@ -160,22 +159,6 @@ def test_drop_alive_removes_only_the_alive_key(store: RedisRunJobStore) -> None:
 
     assert not store.is_alive(job.id)
     assert store.get(job.id) == job
-
-
-def test_family_follows_the_app_mode() -> None:
-    for mode in (AppMode.WORKFLOW, AppMode.ADVANCED_CHAT):
-        assert JobFamily.for_mode(mode) is JobFamily.GRAPH
-    for mode in (AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION):
-        assert JobFamily.for_mode(mode) is JobFamily.MESSAGE
-
-
-def test_family_of_an_unsupported_mode_is_rejected() -> None:
-    with pytest.raises(ValueError, match="does not support run jobs"):
-        JobFamily.for_mode(AppMode.RAG_PIPELINE)
-
-
-def test_record_family_uses_its_mode() -> None:
-    assert _record().family is JobFamily.GRAPH
 
 
 def test_partial_hash_reads_as_missing(store: RedisRunJobStore, redis: InMemoryRedis) -> None:
