@@ -41,97 +41,92 @@ def _persisted_message(
     return message
 
 
-class MockMessage:
-    def __init__(self, id, parent_message_id, answer="answer"):
-        self.id = id
-        self.parent_message_id = parent_message_id
-        self.answer = answer
-
-    def __getitem__(self, item):
-        return getattr(self, item)
+def _unsaved_message(message_id: str, parent_message_id: str | None, answer: str = "answer") -> Message:
+    """A Message that is never flushed, so only the thread fields need to be meaningful."""
+    return Message(id=message_id, parent_message_id=parent_message_id, answer=answer)
 
 
-def test_extract_thread_messages_single_message():
-    messages = [MockMessage(str(uuid4()), UUID_NIL)]
+def test_extract_thread_messages_single_message() -> None:
+    messages = [_unsaved_message(str(uuid4()), UUID_NIL)]
     result = extract_thread_messages(messages)
     assert len(result) == 1
     assert result[0] == messages[0]
 
 
-def test_extract_thread_messages_linear_thread():
+def test_extract_thread_messages_linear_thread() -> None:
     id1, id2, id3, id4, id5 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
     messages = [
-        MockMessage(id5, id4),
-        MockMessage(id4, id3),
-        MockMessage(id3, id2),
-        MockMessage(id2, id1),
-        MockMessage(id1, UUID_NIL),
+        _unsaved_message(id5, id4),
+        _unsaved_message(id4, id3),
+        _unsaved_message(id3, id2),
+        _unsaved_message(id2, id1),
+        _unsaved_message(id1, UUID_NIL),
     ]
     result = extract_thread_messages(messages)
     assert len(result) == 5
-    assert [msg["id"] for msg in result] == [id5, id4, id3, id2, id1]
+    assert [msg.id for msg in result] == [id5, id4, id3, id2, id1]
 
 
-def test_extract_thread_messages_branched_thread():
+def test_extract_thread_messages_branched_thread() -> None:
     id1, id2, id3, id4 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
     messages = [
-        MockMessage(id4, id2),
-        MockMessage(id3, id2),
-        MockMessage(id2, id1),
-        MockMessage(id1, UUID_NIL),
+        _unsaved_message(id4, id2),
+        _unsaved_message(id3, id2),
+        _unsaved_message(id2, id1),
+        _unsaved_message(id1, UUID_NIL),
     ]
     result = extract_thread_messages(messages)
     assert len(result) == 3
-    assert [msg["id"] for msg in result] == [id4, id2, id1]
+    assert [msg.id for msg in result] == [id4, id2, id1]
 
 
-def test_extract_thread_messages_empty_list():
+def test_extract_thread_messages_empty_list() -> None:
     messages = []
     result = extract_thread_messages(messages)
     assert len(result) == 0
 
 
-def test_extract_thread_messages_partially_loaded():
+def test_extract_thread_messages_partially_loaded() -> None:
     id0, id1, id2, id3 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
     messages = [
-        MockMessage(id3, id2),
-        MockMessage(id2, id1),
-        MockMessage(id1, id0),
+        _unsaved_message(id3, id2),
+        _unsaved_message(id2, id1),
+        _unsaved_message(id1, id0),
     ]
     result = extract_thread_messages(messages)
     assert len(result) == 3
-    assert [msg["id"] for msg in result] == [id3, id2, id1]
+    assert [msg.id for msg in result] == [id3, id2, id1]
 
 
-def test_extract_thread_messages_legacy_messages():
+def test_extract_thread_messages_legacy_messages() -> None:
     id1, id2, id3 = str(uuid4()), str(uuid4()), str(uuid4())
     messages = [
-        MockMessage(id3, UUID_NIL),
-        MockMessage(id2, UUID_NIL),
-        MockMessage(id1, UUID_NIL),
+        _unsaved_message(id3, UUID_NIL),
+        _unsaved_message(id2, UUID_NIL),
+        _unsaved_message(id1, UUID_NIL),
     ]
     result = extract_thread_messages(messages)
     assert len(result) == 3
-    assert [msg["id"] for msg in result] == [id3, id2, id1]
+    assert [msg.id for msg in result] == [id3, id2, id1]
 
 
-def test_extract_thread_messages_mixed_with_legacy_messages():
+def test_extract_thread_messages_mixed_with_legacy_messages() -> None:
     id1, id2, id3, id4, id5 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
     messages = [
-        MockMessage(id5, id4),
-        MockMessage(id4, id2),
-        MockMessage(id3, id2),
-        MockMessage(id2, UUID_NIL),
-        MockMessage(id1, UUID_NIL),
+        _unsaved_message(id5, id4),
+        _unsaved_message(id4, id2),
+        _unsaved_message(id3, id2),
+        _unsaved_message(id2, UUID_NIL),
+        _unsaved_message(id1, UUID_NIL),
     ]
     result = extract_thread_messages(messages)
     assert len(result) == 4
-    assert [msg["id"] for msg in result] == [id5, id4, id2, id1]
+    assert [msg.id for msg in result] == [id5, id4, id2, id1]
 
 
-def test_extract_thread_messages_breaks_when_parent_is_none():
+def test_extract_thread_messages_breaks_when_parent_is_none() -> None:
     id1, id2 = str(uuid4()), str(uuid4())
-    messages = [MockMessage(id2, None), MockMessage(id1, UUID_NIL)]
+    messages = [_unsaved_message(id2, None), _unsaved_message(id1, UUID_NIL)]
 
     result = extract_thread_messages(messages)
 
@@ -140,7 +135,7 @@ def test_extract_thread_messages_breaks_when_parent_is_none():
 
 
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-def test_get_thread_messages_length_excludes_newly_created_empty_answer(sqlite_session: Session):
+def test_get_thread_messages_length_excludes_newly_created_empty_answer(sqlite_session: Session) -> None:
     id1, id2 = str(uuid4()), str(uuid4())
     now = datetime.now()
     messages = [
@@ -175,7 +170,7 @@ def test_get_thread_messages_length_excludes_newly_created_empty_answer(sqlite_s
 
 
 @pytest.mark.parametrize("sqlite_session", [(Message,)], indirect=True)
-def test_get_thread_messages_length_keeps_non_empty_latest_answer(sqlite_session: Session):
+def test_get_thread_messages_length_keeps_non_empty_latest_answer(sqlite_session: Session) -> None:
     id1, id2 = str(uuid4()), str(uuid4())
     now = datetime.now()
     messages = [
@@ -202,7 +197,7 @@ def test_get_thread_messages_length_keeps_non_empty_latest_answer(sqlite_session
     assert length == 2
 
 
-def test_get_thread_messages_length_skips_saved_prompt_column(sqlite_engine: Engine, sqlite_session: Session):
+def test_get_thread_messages_length_skips_saved_prompt_column(sqlite_engine: Engine, sqlite_session: Session) -> None:
     """Message.message stores each turn's full prompt, so counting the thread must neither select nor lazy-load it."""
     id1, id2 = str(uuid4()), str(uuid4())
     now = datetime.now()
@@ -229,7 +224,14 @@ def test_get_thread_messages_length_skips_saved_prompt_column(sqlite_engine: Eng
     sqlite_session.expunge_all()
     statements: list[str] = []
 
-    def record_statement(_connection, _cursor, statement, _parameters, _context, _executemany) -> None:
+    def record_statement(
+        _connection: object,
+        _cursor: object,
+        statement: str,
+        _parameters: object,
+        _context: object,
+        _executemany: bool,
+    ) -> None:
         statements.append(statement)
 
     event.listen(sqlite_engine, "before_cursor_execute", record_statement)

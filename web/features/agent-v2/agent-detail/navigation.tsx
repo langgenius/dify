@@ -18,6 +18,7 @@ import { formatForDisplay } from '@tanstack/react-hotkeys'
 import { useTranslation } from 'react-i18next'
 import NavLink from '@/app/components/app-sidebar/nav-link'
 import AppIcon from '@/app/components/base/app-icon'
+import { useEvaluationAccess } from '@/app/components/billing/use-evaluation-access'
 import { DetailSidebarToggleButton } from '@/app/components/detail-sidebar/toggle-button'
 import { gotoAnythingDialogHandle } from '@/app/components/goto-anything/handles'
 import { GOTO_ANYTHING_HOTKEY } from '@/app/components/goto-anything/hotkeys'
@@ -42,14 +43,21 @@ type AgentDetailNavItem = {
   href: string
   icon: string
   activeIcon: string
+  requiresPublishedAgent?: boolean
 }
-
 const getAgentDetailNavigation = (agentId: string): AgentDetailNavItem[] => [
   {
     labelKey: 'agentDetail.sections.configure',
     href: getAgentDetailPath(agentId, 'configure'),
     icon: 'i-custom-vender-agent-v2-configure',
     activeIcon: 'i-custom-vender-agent-v2-configure-active',
+  },
+  {
+    labelKey: 'agentDetail.sections.evaluation',
+    href: getAgentDetailPath(agentId, 'evaluation'),
+    icon: 'i-ri-flask-line',
+    activeIcon: 'i-ri-flask-fill',
+    requiresPublishedAgent: true,
   },
   {
     labelKey: 'agentDetail.sections.access',
@@ -166,9 +174,12 @@ export function AgentDetailTop({ expand = true, onToggle }: AgentDetailTopProps)
 
 export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const { t } = useTranslation(['agentV2'])
+  const { t: tCommon } = useTranslation(['common'])
   const pathname = usePathname()
   const agentId = getAgentIdFromPathname(pathname)
   const { agentQuery, ...capabilities } = useAgentPermissions(agentId)
+  const { isVisible: isEvaluationVisible, requiresUpgrade: evaluationRequiresUpgrade } =
+    useEvaluationAccess()
 
   if (!agentId) return null
 
@@ -176,6 +187,7 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
   const sectionAccess = getAgentSectionAccess(capabilities)
   const navigation = getAgentDetailNavigation(agentId).filter(
     (item) =>
+      (item.labelKey !== 'agentDetail.sections.evaluation' || isEvaluationVisible) &&
       sectionAccess[item.labelKey.slice('agentDetail.sections.'.length) as AgentDetailSectionKey],
   )
 
@@ -246,6 +258,15 @@ export function AgentDetailSection({ expand = true }: AgentDetailSectionProps) {
             name={t(($) => $[item.labelKey])}
             href={item.href}
             pathname={pathname}
+            disabled={
+              (item.requiresPublishedAgent && agent?.access_ready !== true) ||
+              (item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade)
+            }
+            disabledReason={
+              item.labelKey === 'agentDetail.sections.evaluation' && evaluationRequiresUpgrade
+                ? tCommon(($) => $['compliance.sandboxUpgradeTooltip'])
+                : undefined
+            }
           />
         ))}
       </nav>

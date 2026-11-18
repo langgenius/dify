@@ -825,21 +825,23 @@ export const useInstallPackageFromMarketPlace = (
   })
 }
 
+export async function startMarketplacePluginUpgrade(
+  queryClient: QueryClient,
+  body: ParserMarketplaceUpgrade,
+) {
+  const response = await consoleClient.workspaces.current.plugin.upgrade.marketplace.post({ body })
+  upsertStartedPluginTask(queryClient, response)
+  return response
+}
+
 export const useUpdatePackageFromMarketPlace = (
   options?: MutateOptions<PluginInstallTaskStartResponse, Error, ParserMarketplaceUpgrade>,
 ) => {
   const queryClient = useQueryClient()
   return useMutation({
     ...options,
-    mutationFn: (body: ParserMarketplaceUpgrade) => {
-      return consoleClient.workspaces.current.plugin.upgrade.marketplace.post({
-        body,
-      })
-    },
-    onSuccess: (data, variables, context, mutation) => {
-      upsertStartedPluginTask(queryClient, data)
-      options?.onSuccess?.(data, variables, context, mutation)
-    },
+    mutationFn: (body: ParserMarketplaceUpgrade) =>
+      startMarketplacePluginUpgrade(queryClient, body),
   })
 }
 
