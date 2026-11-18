@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from contextvars import ContextVar
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 from flask import Flask, g, request
@@ -23,7 +23,7 @@ from controllers.openapi._mcp_call import (
     UnknownOp,
     UnsafePathValue,
     call_op,
-    op_entry,
+    registered_op,
 )
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
@@ -147,7 +147,7 @@ def test_without_authorization_the_op_answers_401(openapi_app: Flask, inner_requ
 def test_an_unknown_op_raises(openapi_app: Flask, inner_requests: list[_SeenRequest]) -> None:
     with openapi_app.test_request_context():
         with pytest.raises(UnknownOp):
-            op_entry("no.such.op")
+            registered_op("no.such.op")
         with pytest.raises(UnknownOp):
             _call("no.such.op", {})
 
@@ -212,9 +212,10 @@ def test_a_built_path_that_matches_another_rule_is_refused(
     openapi_app: Flask, monkeypatch: pytest.MonkeyPatch, inner_requests: list[_SeenRequest]
 ) -> None:
     with openapi_app.test_request_context():
-        members = op_entry("get.workspace.member")
+        own = registered_op("describe.workspace")
+        moved = replace(own, entry=registered_op("get.workspace.member").entry)
         # describe.workspace now carries the members path: the built path resolves to another rule
-        monkeypatch.setattr(_mcp_call, "op_entry", lambda _op: members)
+        monkeypatch.setattr(_mcp_call, "registered_op", lambda _op: moved)
         with pytest.raises(RouteMismatch):
             _call("describe.workspace", {"workspace_id": str(uuid.uuid4())})
 

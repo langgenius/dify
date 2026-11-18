@@ -16,22 +16,9 @@ from enum import StrEnum
 from http import HTTPStatus
 from typing import Any, Final
 
-from flask import Flask, current_app
-
 from constants.oauth_bearer import Scope, TokenType
-from controllers.openapi._catalog import Bind, current_catalog, iter_handlers
+from controllers.openapi._catalog import Bind, CatalogOp, op_registry
 from controllers.openapi._mcp_call import (
-    BIND_KEY,
-    DEPRECATED_KEY,
-    EFFECT_KEY,
-    EXAMPLES_KEY,
-    INPUT_KEY,
-    INTERNAL_KEY,
-    KIND_KEY,
-    OPS_KEY,
-    PROPERTIES_KEY,
-    REQUIRED_KEY,
-    SUMMARY_KEY,
     FileInputUnsupported,
     OpCall,
     OpResult,
@@ -41,7 +28,7 @@ from controllers.openapi._mcp_call import (
     call_op,
 )
 from controllers.openapi.auth.requirements import CheckScope, CheckSubject
-from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind, spec_of
+from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import STRUCTURED_OUTPUT_MIN_VERSION
 
@@ -57,7 +44,8 @@ _OP_KEY: Final = "op"
 _TOOL_KEY: Final = "tool"
 _TOTAL_KEY: Final = "total"
 _QUERY_KEY: Final = "query"
-_SPECS_EXT_KEY: Final = "openapi_mcp_op_specs"
+_OPS_KEY: Final = "ops"
+_INPUT_KEY: Final = "input"
 _HIDDEN_KINDS: Final = frozenset({Kind.SSE.value, Kind.FILE.value})
 _ID_SEPARATOR: Final = "."
 _ABSENT_OP_VALUES: Final = (None, "")
@@ -111,7 +99,7 @@ class FoundOps:
 class _Candidate:
     """One catalog entry, its handler spec and the caller's token kind (None if unknown)."""
 
-    entry: Mapping[str, Any]
+    entry: CatalogOp
     spec: EndpointSpec
     token_type: TokenType | None
 
@@ -121,19 +109,19 @@ type _HiddenWhen = Callable[[_Candidate], bool]
 
 def _hides_streams_and_files(candidate: _Candidate) -> bool:
     """Hides ops whose response is a stream or a file: a tool call returns one JSON-text result."""
-    return candidate.entry[KIND_KEY] in _HIDDEN_KINDS
+    return candidate.entry["kind"] in _HIDDEN_KINDS
 
 
 def _hides_flagged_ops(candidate: _Candidate) -> bool:
     """Hides internal and deprecated ops: they are not part of the surface agents should use."""
-    if candidate.entry[INTERNAL_KEY]:
+    if candidate.entry["internal"]:
         return True
-    return bool(candidate.entry[DEPRECATED_KEY])
+    return candidate.entry["deprecated"]
 
 
 def _hides_required_file_input(candidate: _Candidate) -> bool:
     """Hides ops that cannot run without a file upload: a tool call carries JSON only."""
-    required = set(candidate.entry[INPUT_KEY][REQUIRED_KEY])
+    required = set(candidate.entry["input"]["required"])
     return bool(required & _file_names(candidate.entry))
 
 
@@ -183,23 +171,9 @@ def _admits(requirement: CheckSubject, token_type: TokenType) -> bool:
     return any(subject.subject_type == token_type.subject for subject in requirement.allowed)
 
 
-def _file_names(entry: Mapping[str, Any]) -> set[str]:
+def _file_names(entry: CatalogOp) -> set[str]:
     """Postcondition: the input names the entry binds as file uploads."""
-    return {name for name, bind in entry[BIND_KEY].items() if bind == Bind.FILE}
-
-
-def _op_specs(app: Flask) -> Mapping[str, EndpointSpec]:
-    """Each op id mapped to its endpoint spec.
-
-    Postcondition: built once per app from ``iter_handlers`` and kept in
-    ``app.extensions`` (the handler walk touches every url rule), like the catalog it mirrors.
-    """
-    specs = app.extensions.get(_SPECS_EXT_KEY)
-    if specs is None:
-        specs = app.extensions[_SPECS_EXT_KEY] = {
-            spec.catalog.op: spec for _, _, handler in iter_handlers(app) if (spec := spec_of(handler)) is not None
-        }
-    return specs
+    return {name for name, bind in entry["bind"].items() if bind == Bind.FILE}
 
 
 def _token_type(token: str | None) -> TokenType | None:
@@ -209,32 +183,28 @@ def _token_type(token: str | None) -> TokenType | None:
     return TokenType.for_token(token)
 
 
-def callable_ops(token: str | None) -> dict[str, Mapping[str, Any]]:
+def callable_ops(token: str | None) -> dict[str, CatalogOp]:
     """The catalog entries the bearer's token kind can call.
 
-    Precondition: inside a Flask request. Postcondition: the catalog is parsed once;
-    the entries are fresh dicts the caller may keep. A token with an unknown prefix,
-    or no token, gets every entry that passes the entry rules.
+    Precondition: inside a Flask request. Postcondition: the shared entries of the op registry, which the caller
+    must not change. A token with an unknown prefix, or no token, gets every entry that passes the entry rules.
     """
-    raw, _ = current_catalog()
-    specs = _op_specs(current_app._get_current_object())  # type: ignore[attr-defined]
     token_type = _token_type(token)
-    entries: dict[str, Mapping[str, Any]] = json.loads(raw)[OPS_KEY]
     return {
-        op: entry
-        for op, entry in entries.items()
-        if not any(rule(_Candidate(entry, specs[op], token_type)) for rule in _RULES)
+        op: registered.entry
+        for op, registered in op_registry().items()
+        if not any(rule(_Candidate(registered.entry, registered.spec, token_type)) for rule in _RULES)
     }
 
 
-def _tool_for(entry: Mapping[str, Any]) -> str:
+def _tool_for(entry: CatalogOp) -> str:
     """Postcondition: the name of the call tool for the entry's effect."""
-    return CallTool.for_effect(Effect(entry[EFFECT_KEY])).value
+    return CallTool.for_effect(Effect(entry["effect"])).value
 
 
-def _matches(words: list[str], op: str, entry: Mapping[str, Any]) -> bool:
+def _matches(words: list[str], op: str, entry: CatalogOp) -> bool:
     """Postcondition: True when every lowercase word is in the op id (dots as spaces) or the summary."""
-    haystack = f"{op.replace(_ID_SEPARATOR, ' ')} {entry[SUMMARY_KEY]}".lower()
+    haystack = f"{op.replace(_ID_SEPARATOR, ' ')} {entry['summary']}".lower()
     return all(word in haystack for word in words)
 
 
@@ -251,8 +221,8 @@ def find_ops(query: str, *, token: str | None) -> FoundOps:
     ops = [
         {
             _OP_KEY: op,
-            SUMMARY_KEY: entries[op][SUMMARY_KEY],
-            EFFECT_KEY: entries[op][EFFECT_KEY],
+            "summary": entries[op]["summary"],
+            "effect": entries[op]["effect"],
             _TOOL_KEY: _tool_for(entries[op]),
         }
         for op in matched[:FIND_LIMIT]
@@ -265,22 +235,22 @@ def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
 
     Precondition: inside a Flask request. Postcondition: returns
     ``{"op", "summary", "effect", "tool", "input", "examples"}``; raises ``UnknownOp``
-    when the op is missing or hidden from this token. The parsed catalog is not shared.
+    when the op is missing or hidden from this token. The shared registry entry is not changed.
     """
     entry = callable_ops(token).get(op)
     if entry is None:
         raise UnknownOp(op)
-    schema = copy.deepcopy(entry[INPUT_KEY])
+    schema = copy.deepcopy(entry["input"])
     for name in _file_names(entry):
-        schema[PROPERTIES_KEY].pop(name, None)
-    schema[REQUIRED_KEY] = [name for name in schema[REQUIRED_KEY] if name in schema[PROPERTIES_KEY]]
+        schema["properties"].pop(name, None)
+    schema["required"] = [name for name in schema["required"] if name in schema["properties"]]
     return {
         _OP_KEY: op,
-        SUMMARY_KEY: entry[SUMMARY_KEY],
-        EFFECT_KEY: entry[EFFECT_KEY],
+        "summary": entry["summary"],
+        "effect": entry["effect"],
         _TOOL_KEY: _tool_for(entry),
-        INPUT_KEY: schema,
-        EXAMPLES_KEY: entry[EXAMPLES_KEY],
+        _INPUT_KEY: schema,
+        "examples": entry["examples"],
     }
 
 
@@ -306,13 +276,13 @@ _CALL_DESCRIPTION: Final = (
 _STRING: Final = {"type": "string"}
 _CALL_SCHEMA: Final = {
     "type": "object",
-    PROPERTIES_KEY: {_OP_KEY: _STRING, INPUT_KEY: {"type": "object"}},
-    REQUIRED_KEY: [_OP_KEY, INPUT_KEY],
+    "properties": {_OP_KEY: _STRING, _INPUT_KEY: {"type": "object"}},
+    "required": [_OP_KEY, _INPUT_KEY],
     "additionalProperties": False,
 }
 _FIND_SCHEMA: Final = {
     "type": "object",
-    PROPERTIES_KEY: {_QUERY_KEY: _STRING, _OP_KEY: _STRING},
+    "properties": {_QUERY_KEY: _STRING, _OP_KEY: _STRING},
     "additionalProperties": False,
 }
 
@@ -422,7 +392,7 @@ def _run_find(arguments: Mapping[str, Any], *, token: str | None, protocol_versi
     if not isinstance(query, str):
         return _error("`query` must be a string.")
     found = find_ops(query, token=token)
-    return _json_result({_TOTAL_KEY: found.total, OPS_KEY: found.ops}, protocol_version=protocol_version)
+    return _json_result({_TOTAL_KEY: found.total, _OPS_KEY: found.ops}, protocol_version=protocol_version)
 
 
 _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] = {
@@ -434,14 +404,14 @@ _REFUSAL_MESSAGES: Final[Mapping[type[Exception], Callable[[Exception], str]]] =
 }
 
 
-def _is_callable_hint(hint: Any, allowed: Mapping[str, Any]) -> bool:
+def _is_callable_hint(hint: Any, allowed: Mapping[str, CatalogOp]) -> bool:
     """Postcondition: True when ``hint`` is an object whose ``op`` is one of the ``allowed`` ops."""
     if not isinstance(hint, dict):
         return False
     return hint.get(_OP_KEY) in allowed
 
 
-def _without_uncallable_hints(body: Any, allowed: Mapping[str, Any]) -> Any:
+def _without_uncallable_hints(body: Any, allowed: Mapping[str, CatalogOp]) -> Any:
     """Postcondition: for an object body with a ``hints`` list, the same body with only the hints whose op is
     in ``allowed``, in order; any other body is returned as it is."""
     if not isinstance(body, dict):
@@ -467,7 +437,9 @@ def _retry_after_note(result: OpResult) -> mcp_types.TextContent | None:
     return mcp_types.TextContent(type=_TEXT_TYPE, text=_RETRY_AFTER_MESSAGE.format(seconds=int(value)))
 
 
-def _map_result(result: OpResult, *, allowed: Mapping[str, Any], protocol_version: str) -> mcp_types.CallToolResult:
+def _map_result(
+    result: OpResult, *, allowed: Mapping[str, CatalogOp], protocol_version: str
+) -> mcp_types.CallToolResult:
     """Postcondition: the op's response as a tool result; raises ``Unauthenticated`` on 401."""
     if result.status == HTTPStatus.UNAUTHORIZED:
         raise Unauthenticated.from_result(result)
@@ -502,14 +474,14 @@ def _run_call(
     op = _string_argument(arguments, _OP_KEY)
     if op is None:
         return _error("`op` must be a non-empty string.")
-    op_input = arguments.get(INPUT_KEY)
+    op_input = arguments.get(_INPUT_KEY)
     if not isinstance(op_input, dict):
         return _error("`input` must be a JSON object.")
     allowed = callable_ops(token)
     entry = allowed.get(op)
     if entry is None:
         return _unknown_op(op)
-    effect = Effect(entry[EFFECT_KEY])
+    effect = Effect(entry["effect"])
     if effect != tool.effect:
         return _error(f"`{op}` is a {effect.value} operation. Call it with {CallTool.for_effect(effect).value}.")
     try:
