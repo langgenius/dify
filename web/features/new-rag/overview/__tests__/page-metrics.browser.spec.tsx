@@ -65,7 +65,11 @@ function installOverviewApi() {
       server.calls[resource](input)
       await server.held.get(resource)
       if (server.failing.has(resource))
-        throw apiError('SERVICE_UNAVAILABLE', 503, `${resource} unavailable`)
+        throw apiError({
+          status: 503,
+          code: 'SERVICE_UNAVAILABLE',
+          message: `${resource} unavailable`,
+        })
       return structuredClone(data())
     }
   onTestFinished(

@@ -176,7 +176,7 @@ describe('Sources: sync-lifecycle', () => {
       }),
     )
     sourceResponses.refresh.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Source refresh failed'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
     )
 
     const { queryClient } = await render(<SourcesPage knowledgeSpaceId="space-1" />)
@@ -237,7 +237,11 @@ describe('Sources: sync-lifecycle', () => {
   it('reconciles the source list after a sync finishes', async () => {
     sourceResponses.data = { pages: [{ items: [source({})] }] }
     sourceResponses.refresh.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Initial source refresh failed'),
+      apiError({
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Initial source refresh failed',
+      }),
     )
 
     const rendered = await render(<SourcesPage knowledgeSpaceId="space-1" />)

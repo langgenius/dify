@@ -180,7 +180,9 @@ it('waits for analytics completion before navigating without submitting twice', 
 })
 
 it('shows the creation error while keeping the dialog available for correction', async () => {
-  mocks.create.mockRejectedValueOnce(apiError('CREATE_FAILED', 503, 'Creation failed'))
+  mocks.create.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'CREATE_FAILED', message: 'Creation failed' }),
+  )
   await renderModal()
   await nameInput().fill('My App')
   await createButton().click()

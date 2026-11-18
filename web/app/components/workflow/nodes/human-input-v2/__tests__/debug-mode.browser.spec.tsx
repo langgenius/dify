@@ -173,7 +173,9 @@ it('keeps empty workspace configuration unavailable without changing the node', 
 
 it('does not fall back to all channels after a load failure and can retry', async () => {
   api.channels
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Service unavailable'))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Service unavailable' }),
+    )
     .mockResolvedValue({ channels: ['email', 'slack'] })
   await renderOwner(
     {},

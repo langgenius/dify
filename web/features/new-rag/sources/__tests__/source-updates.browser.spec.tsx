@@ -88,7 +88,7 @@ describe('Sources: source-updates', () => {
       pages: [{ items: [source({ syncPolicy, syncWorkflow: sourceWorkflow('failed') })] }],
     }
     sourceResponses.refresh.mockRejectedValue(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Source refresh failed'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
     )
     clientMock.patchSource
       .mockResolvedValueOnce(

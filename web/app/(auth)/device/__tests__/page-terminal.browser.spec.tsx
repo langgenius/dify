@@ -27,7 +27,7 @@ beforeEach(() => {
             // The signed-out state is a failed profile probe; a 401 would start the app's
             // token refresh and sign-in redirect, which belong to the running application.
             get: () => {
-              throw apiError('forbidden', 403, 'No console session')
+              throw apiError({ status: 403, code: 'forbidden', message: 'No console session' })
             },
           },
         },
@@ -50,17 +50,32 @@ afterEach(() => setPostLoginRedirect(null))
 
 it.each([
   {
-    error: apiError('expired_token', 400, 'Expired', { error: 'expired_token' }),
+    error: apiError({
+      status: 400,
+      code: 'expired_token',
+      message: 'Expired',
+      details: { error: 'expired_token' },
+    }),
     title: 'deviceFlow.errorExpired.title',
     retry: 'deviceFlow.errorExpired.tryDifferentCode',
   },
   {
-    error: apiError('rate_limited', 429, 'Rate limited', { error: 'rate_limited' }),
+    error: apiError({
+      status: 429,
+      code: 'rate_limited',
+      message: 'Rate limited',
+      details: { error: 'rate_limited' },
+    }),
     title: 'deviceFlow.errorRateLimited.title',
     retry: 'deviceFlow.tryAgain',
   },
   {
-    error: apiError('server_error', 500, 'Server error', { error: 'server_error' }),
+    error: apiError({
+      status: 500,
+      code: 'server_error',
+      message: 'Server error',
+      details: { error: 'server_error' },
+    }),
     title: 'deviceFlow.errorLookupFailed.title',
     retry: 'deviceFlow.tryAgain',
   },

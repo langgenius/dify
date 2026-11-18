@@ -141,7 +141,9 @@ describe('NewKnowledgeList upgrade recovery', () => {
       const running = job()
       api.upgradeJobs.mockResolvedValue({ data: [running] })
       api.datasets
-        .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'request failed'))
+        .mockRejectedValueOnce(
+          apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'request failed' }),
+        )
         .mockResolvedValue(datasetsPage([legacyDataset(running)]))
       await setup()
 

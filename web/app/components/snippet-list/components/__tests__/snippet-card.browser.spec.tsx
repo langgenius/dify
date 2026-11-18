@@ -240,7 +240,9 @@ it('exports the YAML content and filename through the real download owner', asyn
 
 it('shows an export failure without starting a download', async () => {
   const downloads = captureDownloads()
-  api.export.mockRejectedValueOnce(apiError('EXPORT_FAILED', 503, 'export failed'))
+  api.export.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'EXPORT_FAILED', message: 'export failed' }),
+  )
   await setup({ permissions: ['snippets.create_and_modify'] })
   await openMenu()
   await page.getByRole('menuitem', { name: 'snippet.menu.exportSnippet' }).click()
@@ -259,7 +261,9 @@ it('refreshes the real list with edited info after saving', async () => {
 })
 
 it('keeps an edit failure visible with the entered values and the unchanged list', async () => {
-  api.update.mockRejectedValueOnce(apiError('UPDATE_FAILED', 503, 'Update failed'))
+  api.update.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'UPDATE_FAILED', message: 'Update failed' }),
+  )
   await setup({ list: true })
   const dialog = await edit()
   const name = dialog.getByRole('textbox', { name: 'workflow.snippet.nameLabel' })
@@ -283,7 +287,9 @@ it('removes a confirmed snippet from the real list', async () => {
 })
 
 it('keeps a failed deletion open and the snippet in the list', async () => {
-  api.remove.mockRejectedValueOnce(apiError('DELETE_FAILED', 503, 'Delete failed'))
+  api.remove.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'DELETE_FAILED', message: 'Delete failed' }),
+  )
   await setup({ list: true })
   const dialog = await remove()
   await dialog.getByRole('button', { name: 'snippet.menu.deleteSnippet' }).click()

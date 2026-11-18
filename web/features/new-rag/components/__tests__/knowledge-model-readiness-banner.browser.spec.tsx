@@ -127,7 +127,9 @@ describe('KnowledgeModelReadinessBanner', () => {
 
   it('removes a transient error after the user retries successfully', async () => {
     getSettings
-      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'unavailable'))
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'unavailable' }),
+      )
       .mockResolvedValue(readiness())
     const screen = await renderBanner()
 

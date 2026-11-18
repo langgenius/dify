@@ -132,7 +132,7 @@ it('is read-only for members who cannot manage the workspace', async () => {
 
 it('offers a retry when the list cannot be loaded', async () => {
   api.listProviders.mockRejectedValue(
-    apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'),
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
   )
   api.listProviderTypes.mockResolvedValue({ data: providerTypes })
   const { wrapper: ConsoleProvider } = createConsoleQueryWrapper({
@@ -151,7 +151,9 @@ it('offers a retry when the list cannot be loaded', async () => {
 })
 
 it('tests a scanner and reports a failed check next to it', async () => {
-  api.testProvider.mockRejectedValue(apiError('BAD_REQUEST', 400, 'Quota exhausted.'))
+  api.testProvider.mockRejectedValue(
+    apiError({ status: 400, code: 'BAD_REQUEST', message: 'Quota exhausted.' }),
+  )
   await renderPage()
 
   await page.getByRole('button', { name: /fileScan\.scanner\.test/ }).click()

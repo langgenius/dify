@@ -70,7 +70,7 @@ describe('Sources: preview-lifecycle', () => {
       .mockResolvedValueOnce({ job_id: 'orphaned-job' })
       .mockResolvedValueOnce({ job_id: 'preview-job-2' })
     clientMock.getPreviewJob.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Failed to fetch'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed to fetch' }),
     )
     sourceResponses.data = {
       pages: [

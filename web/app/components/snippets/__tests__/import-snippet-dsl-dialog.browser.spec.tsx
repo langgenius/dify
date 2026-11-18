@@ -115,7 +115,7 @@ it('reads the uploaded YAML and waits for version confirmation before navigating
 it.each(['import', 'confirm'])(
   'shows the HTTP %s error while preserving the import for retry',
   async (step) => {
-    const error = apiError('INVALID_DSL', 400, 'Invalid DSL')
+    const error = apiError({ status: 400, code: 'INVALID_DSL', message: 'Invalid DSL' })
     api.import.mockResolvedValue(response({ status: 'pending', snippet_id: null }))
     if (step === 'import') api.import.mockRejectedValueOnce(error)
     else api.confirm.mockRejectedValueOnce(error)

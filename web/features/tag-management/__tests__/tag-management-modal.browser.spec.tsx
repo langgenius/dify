@@ -70,7 +70,9 @@ it('submits on blur and locks the pending draft against edits and duplicate subm
 })
 
 it('keeps a failed draft available for correction and retry', async () => {
-  createTag.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Creation failed'))
+  createTag.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Creation failed' }),
+  )
   await renderModal()
   await input().fill('FailTag')
   await userEvent.keyboard('{Enter}')

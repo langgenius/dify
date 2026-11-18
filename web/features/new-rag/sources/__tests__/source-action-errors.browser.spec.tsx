@@ -43,13 +43,18 @@ describe('Source sync quota failures', () => {
       }
       const mutation = action === 'retry' ? clientMock.retrySourceWorkflow : clientMock.syncSource
       mutation.mockRejectedValueOnce(
-        apiError(code, status, 'Upstream quota details', {
-          failure: {
-            action: 'retry',
-            category,
-            code,
-            message: 'Upstream quota details',
-            retryPolicy: 'manual',
+        apiError({
+          status,
+          code,
+          message: 'Upstream quota details',
+          details: {
+            failure: {
+              action: 'retry',
+              category,
+              code,
+              message: 'Upstream quota details',
+              retryPolicy: 'manual',
+            },
           },
         }),
       )

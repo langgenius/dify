@@ -145,7 +145,9 @@ it('opens built-in Agent rules read-only through their real row action', async (
 
 it('preserves a failed Agent permission-set draft for retry through the real mutation', async () => {
   rules = [ruleFor('agent')]
-  api.create.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unavailable'))
+  api.create.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
+  )
   const { screen } = await setup()
   await screen.getByRole('button', { name: 'permission.accessRule.newPermissionSet' }).click()
   const dialog = screen.getByRole('dialog')

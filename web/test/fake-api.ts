@@ -1,5 +1,6 @@
 import type { consoleRouterContract } from '@dify/contracts/console'
 import type { AnyContractProcedure, InferSchemaInput, InferSchemaOutput } from '@orpc/contract'
+import type { Mock } from 'vite-plus/test'
 import { marketplaceRouterContract } from '@dify/contracts/marketplace'
 import { ValidationError } from '@orpc/contract'
 import { SmartCoercionPlugin } from '@orpc/json-schema'
@@ -51,6 +52,27 @@ export type FakeApi = {
   routes?: FakeRoute[]
 }
 
+type AnyFunction = (...args: never[]) => unknown
+
+/** The handlers a test passed, each wrapped in a `vi.fn` spy at the same path. */
+type Spies<T> = T extends AnyFunction
+  ? Mock<T>
+  : T extends object
+    ? { [K in keyof T]-?: Spies<NonNullable<T[K]>> }
+    : never
+
+/**
+ * Teardown to register with `onTestFinished`, which also exposes the handlers as spies:
+ * `fake.console.<contract path>` and `fake.route(method, base, path)` record every request input,
+ * and `fake.use(...)` overrides or adds handlers mid-test.
+ */
+export type FakeApiHandle<T extends FakeApi> = (() => void) & {
+  console: Spies<NonNullable<T['console']>>
+  marketplace: Spies<NonNullable<T['marketplace']>>
+  route: (method: RouteMethod, base: ApiBase, path: string) => Mock<FakeRoute['handler']>
+  use: (overrides: FakeApi) => void
+}
+
 /**
  * Declare a REST endpoint relative to an API prefix. `:name` segments become `params`. Return a
  * `Response` (for example from `sseResponse`) or any JSON value, which is sent with status 200.
@@ -64,16 +86,20 @@ export function route(
   return { method, base, path, handler }
 }
 
+type ApiErrorInit = {
+  status: number
+  message: string
+  /** The backend error code; tests rarely depend on it. */
+  code?: string
+  /** Extra fields of the backend error body, such as `details` or `error`. */
+  details?: Record<string, unknown>
+}
+
 /**
  * Build an error for a handler to throw, or for a deferred response to reject with. It is sent in
  * the Python API's shape, `{ code, message, status, ...details }`, which the Web transport parses.
  */
-export function apiError(
-  code: string,
-  status: number,
-  message: string,
-  details?: Record<string, unknown>,
-) {
+export function apiError({ status, message, code = 'api_error', details }: ApiErrorInit) {
   return new ORPCError(code, { status, message, data: details })
 }
 
@@ -201,6 +227,7 @@ function implementLeaves(
 ) {
   const router: Record<string, unknown> = {}
   for (const [path, handler] of leaves) {
+    // `handler` resolves the current spy at request time, so `use()` overrides take effect.
     const procedure = path.reduce<unknown>(
       (node, key) => (node as Record<string, unknown> | undefined)?.[key],
       contracts,
@@ -216,8 +243,7 @@ function implementLeaves(
   return router
 }
 
-async function buildConsoleRouter(tree: HandlerTree) {
-  const leaves = collectLeaves(tree)
+async function buildConsoleRouter(leaves: Array<[string[], AnyHandler]>) {
   const segments = [...new Set(leaves.map(([path]) => path[0]!))]
   // Load segments exactly as the app's client does, including the merged enterprise contract.
   const contracts = Object.assign(
@@ -227,7 +253,7 @@ async function buildConsoleRouter(tree: HandlerTree) {
   return implementLeaves(contracts, leaves)
 }
 
-function createContractHandler(router: Record<string, unknown>, problems: string[]) {
+function createContractHandler(router: Record<string, unknown>, report: (problem: string) => void) {
   return new OpenAPIHandler(router as never, {
     // Query strings and path params arrive as text; the Python API coerces them by schema.
     plugins: [new SmartCoercionPlugin({ schemaConverters: [new ZodToJsonSchemaConverter()] })],
@@ -254,7 +280,7 @@ function createContractHandler(router: Record<string, unknown>, problems: string
         } catch (error) {
           if (!(error instanceof ORPCError)) throw error
           if (error.cause instanceof ValidationError) {
-            problems.push(
+            report(
               `${request.method} ${request.url.pathname}: ${error.message} ${JSON.stringify(error.cause.issues)}`,
             )
             throw error
@@ -380,28 +406,79 @@ function createFakeXMLHttpRequest(dispatch: Dispatch) {
   }
 }
 
+function setAt(tree: Record<string, unknown>, path: string[], value: unknown) {
+  let node = tree
+  for (const key of path.slice(0, -1)) node = (node[key] ??= {}) as Record<string, unknown>
+  node[path.at(-1)!] = value
+}
+
 /**
  * Serve API requests from contract-validated handlers and REST routes through the real clients,
  * transports and TanStack Query, for both `fetch` and `XMLHttpRequest`. Call during test setup
- * and register the returned teardown with `onTestFinished`; it fails the test on contract
- * violations, requests no handler answers, and requests outside the known API prefixes.
+ * and register the returned handle with `onTestFinished`; it fails the test on contract
+ * violations, requests no handler answers, and requests outside the known API prefixes, and logs
+ * each problem when it happens.
  */
-export function installFakeApi(api: FakeApi) {
+export function installFakeApi<const T extends FakeApi>(api: T): FakeApiHandle<T> {
   const problems: string[] = []
+  const report = (problem: string) => {
+    problems.push(problem)
+    console.error(`[fake-api] ${problem}`)
+  }
+
+  // Every handler becomes a spy, looked up by path at request time.
+  const spies = new Map<string, Mock<AnyHandler>>()
+  const spyTrees: Record<'console' | 'marketplace', Record<string, unknown>> = {
+    console: {},
+    marketplace: {},
+  }
+  const leavesOf = (contract: 'console' | 'marketplace') =>
+    [...spies.keys()]
+      .filter((key) => key.startsWith(`${contract}:`))
+      .map((key): [string[], AnyHandler] => {
+        const path = key.slice(contract.length + 1).split('.')
+        return [path, (input) => spies.get(key)!(input as never)]
+      })
   let consoleHandler: Promise<OpenAPIHandler<Record<never, never>>> | undefined
   let marketplaceHandler: OpenAPIHandler<Record<never, never>> | undefined
+  const addHandlers = (contract: 'console' | 'marketplace', tree: unknown) => {
+    for (const [path, handler] of collectLeaves((tree ?? {}) as HandlerTree)) {
+      const key = `${contract}:${path.join('.')}`
+      const existing = spies.get(key)
+      if (existing) {
+        existing.mockImplementation(handler as never)
+        continue
+      }
+      const spy = vi.fn(handler)
+      spies.set(key, spy)
+      setAt(spyTrees[contract], path, spy)
+      // A new procedure needs a new router; existing ones keep resolving their spy.
+      if (contract === 'console') consoleHandler = undefined
+      else marketplaceHandler = undefined
+    }
+  }
+  addHandlers('console', api.console)
+  addHandlers('marketplace', api.marketplace)
   const getConsoleHandler = () =>
-    (consoleHandler ??= buildConsoleRouter((api.console ?? {}) as HandlerTree).then((router) =>
-      createContractHandler(router, problems),
+    (consoleHandler ??= buildConsoleRouter(leavesOf('console')).then((router) =>
+      createContractHandler(router, report),
     ))
   const getMarketplaceHandler = () =>
     (marketplaceHandler ??= createContractHandler(
       implementLeaves(
         marketplaceRouterContract as unknown as Record<string, unknown>,
-        collectLeaves((api.marketplace ?? {}) as HandlerTree),
+        leavesOf('marketplace'),
       ),
-      problems,
+      report,
     ))
+
+  type SpiedRoute = FakeRoute & { spy: Mock<FakeRoute['handler']> }
+  let routes: SpiedRoute[] = []
+  const addRoutes = (added: FakeRoute[] = []) => {
+    // Later routes take precedence, so `use()` can override an endpoint.
+    routes = [...added.map((entry) => ({ ...entry, spy: vi.fn(entry.handler) })), ...routes]
+  }
+  addRoutes(api.routes)
 
   const nativeFetch = globalThis.fetch
   const dispatch: Dispatch = async (request) => {
@@ -410,10 +487,10 @@ export function installFakeApi(api: FakeApi) {
     if (url.protocol === 'data:' || url.protocol === 'blob:') return nativeFetch(request)
     const base = baseOf(url)
     if (!base) {
-      problems.push(`unexpected network request: ${request.method} ${url.href}`)
+      report(`unexpected network request: ${request.method} ${url.href}`)
       throw new TypeError('Failed to fetch')
     }
-    if (base === 'console' && api.console) {
+    if (base === 'console' && leavesOf('console').length) {
       const context: RequestContext = {}
       const { matched, response } = await (
         await getConsoleHandler()
@@ -421,7 +498,7 @@ export function installFakeApi(api: FakeApi) {
       if (context.networkFailed) throw networkError()
       if (matched) return response!
     }
-    if (base === 'marketplace' && api.marketplace) {
+    if (base === 'marketplace' && leavesOf('marketplace').length) {
       const context: RequestContext = {}
       const { matched, response } = await getMarketplaceHandler().handle(request.clone(), {
         prefix: prefixPath('marketplace'),
@@ -431,18 +508,18 @@ export function installFakeApi(api: FakeApi) {
       if (matched) return response!
     }
     const path = url.pathname.slice(prefixPath(base).length) || '/'
-    for (const candidate of api.routes ?? []) {
+    for (const candidate of routes) {
       if (candidate.base !== base || candidate.method !== request.method) continue
       const params = matchRoute(candidate.path, path)
       if (!params) continue
       try {
-        const result = await candidate.handler({ request, url, params })
+        const result = await candidate.spy({ request, url, params })
         return result instanceof Response ? result : Response.json(result ?? null)
       } catch (error) {
         return errorResponse(error)
       }
     }
-    problems.push(`unhandled ${base} request: ${request.method} ${path}${url.search}`)
+    report(`unhandled ${base} request: ${request.method} ${path}${url.search}`)
     return Response.json({ code: 'not_implemented', message: 'Not implemented' }, { status: 501 })
   }
 
@@ -452,8 +529,24 @@ export function installFakeApi(api: FakeApi) {
   )
   vi.stubGlobal('XMLHttpRequest', createFakeXMLHttpRequest(dispatch))
 
-  return () => {
+  const teardown = () => {
     vi.unstubAllGlobals()
     if (problems.length) throw new Error(`Fake API problems:\n${problems.join('\n')}`)
   }
+  return Object.assign(teardown, {
+    console: spyTrees.console,
+    marketplace: spyTrees.marketplace,
+    route: (method: RouteMethod, base: ApiBase, path: string) => {
+      const found = routes.find(
+        (entry) => entry.method === method && entry.base === base && entry.path === path,
+      )
+      if (!found) throw new Error(`Fake API: no route ${method} ${base} ${path}`)
+      return found.spy
+    },
+    use: (overrides: FakeApi) => {
+      addHandlers('console', overrides.console)
+      addHandlers('marketplace', overrides.marketplace)
+      addRoutes(overrides.routes)
+    },
+  }) as FakeApiHandle<T>
 }

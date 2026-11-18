@@ -221,8 +221,12 @@ it.each(['failed task', 'missing task ID'] as const)(
 it('retries the status of the accepted upgrade inside the same dialog', async () => {
   api.upgrade.mockResolvedValueOnce({ all_installed: false, task_id: 'accepted' })
   api.task
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Connection lost'))
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Still offline'))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Connection lost' }),
+    )
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Still offline' }),
+    )
   const { trigger } = await setup()
   await trigger.click()
   await page.getByRole('menuitem', { name: /^2\.0\.0/ }).click()

@@ -70,7 +70,9 @@ it('clears the one-time secret and name after closing and reopening creation', a
 it('retains the draft after a service message and completes a retry', async () => {
   const feedback = 'Deployment catalog is unavailable.'
   api.create
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, feedback))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: feedback }),
+    )
     .mockResolvedValue({ ...token, secret: 'dpat_retry' })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Create token' }).click()

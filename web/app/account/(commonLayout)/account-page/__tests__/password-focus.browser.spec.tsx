@@ -43,7 +43,9 @@ it('keeps native submit focus during password saving and supports retry without 
   await expect.element(confirmPassword).toHaveFocus()
   await vi.waitFor(() => expect(changePassword).toHaveBeenCalledOnce())
 
-  firstSave.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Password update failed'))
+  firstSave.reject(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Password update failed' }),
+  )
   await expect.element(save).not.toHaveAttribute('aria-disabled', 'true')
   await expect.element(confirmPassword).not.toHaveAttribute('readonly')
   await expect.element(confirmPassword).toHaveFocus()

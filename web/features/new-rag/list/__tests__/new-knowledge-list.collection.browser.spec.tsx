@@ -156,7 +156,9 @@ describe('NewKnowledgeList collection', () => {
         .mockResolvedValueOnce(
           spacesPage([space('space-1', 'Support knowledge')], { hasMore: true }),
         )
-        .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'request failed'))
+        .mockRejectedValueOnce(
+          apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'request failed' }),
+        )
         .mockResolvedValueOnce(spacesPage([space('space-2', 'Engineering handbook')], { page: 2 }))
       await setup()
 
@@ -172,7 +174,9 @@ describe('NewKnowledgeList collection', () => {
     it.each([404, 503])(
       'shows an unavailable state without retry for a %s response',
       async (status) => {
-        api.spaces.mockRejectedValue(apiError('UNAVAILABLE', status, 'Unavailable'))
+        api.spaces.mockRejectedValue(
+          apiError({ status, code: 'UNAVAILABLE', message: 'Unavailable' }),
+        )
         await setup()
 
         await expect.element(page.getByText('knowledgeSpace.unavailableTitle')).toBeInTheDocument()
@@ -185,7 +189,9 @@ describe('NewKnowledgeList collection', () => {
     it('retries other collection failures', async () => {
       const user = userEvent
       api.spaces
-        .mockRejectedValueOnce(apiError('INTERNAL_SERVER_ERROR', 500, 'request failed'))
+        .mockRejectedValueOnce(
+          apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'request failed' }),
+        )
         .mockResolvedValueOnce(spacesPage([space('space-1', 'Support knowledge')]))
       await setup()
 

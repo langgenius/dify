@@ -146,7 +146,7 @@ it('keeps focus and blocks Escape/cancel during removal, then reports a retryabl
   await expect.element(screen.getByRole('button', { name: /operation\.cancel$/ })).toBeDisabled()
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
   await expect.poll(() => api.remove).toHaveBeenCalledTimes(1)
-  request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
+  request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
   await expect.element(screen.getByRole('alert')).toHaveTextContent('common.api.actionFailed')
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

@@ -126,7 +126,9 @@ describe('NewKnowledgeList card actions', () => {
           }),
         ]),
       )
-      api.deleteSpace.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'network down'))
+      api.deleteSpace.mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network down' }),
+      )
       await setup()
 
       await user.click(page.getByRole('button', { name: 'common.operation.more' }))

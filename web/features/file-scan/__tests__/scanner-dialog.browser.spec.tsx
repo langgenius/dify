@@ -182,7 +182,11 @@ it.each([
   ['cloudmersive', 'fileScan.dialog.endpoint'],
 ])('asks for the API key again when the address of a %s scanner changes', async (type, label) => {
   api.updateProvider.mockRejectedValue(
-    apiError('bad_request', 400, 'The scanner at the new address rejected the API key.'),
+    apiError({
+      status: 400,
+      code: 'bad_request',
+      message: 'The scanner at the new address rejected the API key.',
+    }),
   )
   await renderDialog(
     scanner({
@@ -270,7 +274,13 @@ it('keeps save busy during the live check and shows the backend reason when it f
       },
     })
 
-  check.reject(apiError('bad_request', 400, 'Scanii rejected the API key (HTTP 401).'))
+  check.reject(
+    apiError({
+      status: 400,
+      code: 'bad_request',
+      message: 'Scanii rejected the API key (HTTP 401).',
+    }),
+  )
 
   await expect
     .element(page.getByRole('alert'))

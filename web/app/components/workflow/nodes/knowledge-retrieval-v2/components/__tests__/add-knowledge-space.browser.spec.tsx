@@ -158,7 +158,9 @@ it.each([
 )
 
 it('recovers the initial catalog through its retry action', async () => {
-  api.list.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'spaces unavailable'))
+  api.list.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'spaces unavailable' }),
+  )
   const { dialog } = await setup()
   const alert = dialog.getByRole('alert')
   await expect
@@ -178,7 +180,7 @@ it.skip('retains the loaded page and its selection while retrying the failed nex
   api.list.mockImplementation(
     async (input: Parameters<typeof consoleClient.knowledgeFs.spaces.get>[0]) => {
       if (input?.query?.page === 1) return response([space('product', 'Product docs')], 1, true)
-      throw apiError('SERVICE_UNAVAILABLE', 503, 'next page unavailable')
+      throw apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'next page unavailable' })
     },
   )
   const { dialog, saved } = await setup()

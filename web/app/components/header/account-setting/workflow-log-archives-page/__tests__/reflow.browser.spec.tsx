@@ -111,7 +111,7 @@ it('keeps a refresh error above retained rows and readable while scrolling a nar
   try {
     await expect.element(dialog.getByRole('row', { name: /2025-03/ })).toBeVisible()
     archiveListRequest.mockRejectedValue(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Archives unavailable'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Archives unavailable' }),
     )
     await queryClient.refetchQueries({ queryKey: consoleQuery.workflowRunArchives.get.queryKey() })
     const title = dialog.getByText('Could not load archived logs')

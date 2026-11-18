@@ -35,7 +35,11 @@ describe('Source list pagination and recovery', () => {
   })
 
   it('recovers the source list through its retry action', async () => {
-    sourceResponses.error = apiError('SERVICE_UNAVAILABLE', 503, 'temporary failure')
+    sourceResponses.error = apiError({
+      status: 503,
+      code: 'SERVICE_UNAVAILABLE',
+      message: 'temporary failure',
+    })
     await render(<SourcesPage knowledgeSpaceId="space-1" />)
     await expect
       .element(page.getByRole('heading', { name: 'knowledgeSources.sourcesErrorTitle' }))

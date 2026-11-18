@@ -187,7 +187,9 @@ it('rejects a blank name without submitting', async () => {
 
 it('keeps edits after a failed save and allows retrying', async () => {
   const screen = await setup()
-  api.save.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'offline'))
+  api.save.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'offline' }),
+  )
   const name = screen.getByRole('textbox', { name: 'Knowledge Name', exact: true })
   await name.fill('Test Dataset updated')
   const save = screen.getByRole('button', { name: 'Save', exact: true })
@@ -286,7 +288,9 @@ it('saves the file scan policy with the page Save button', async () => {
 
 it('does not save the other settings when the file scan policy is rejected', async () => {
   const screen = await setup({}, { fileScanEnabled: true })
-  api.saveScanPolicy.mockRejectedValue(apiError('SERVICE_UNAVAILABLE', 503, 'offline'))
+  api.saveScanPolicy.mockRejectedValue(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'offline' }),
+  )
 
   await screen.getByRole('switch', { name: fileScan['policy.enable'] }).click()
   await screen.getByRole('combobox', { name: fileScan['policy.scanner'] }).click()

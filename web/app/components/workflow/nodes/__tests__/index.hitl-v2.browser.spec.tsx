@@ -81,7 +81,11 @@ it('replaces the visible panel configuration on migration and undo without closi
                   byNodeId: {
                     lastRun: {
                       get: () => {
-                        throw apiError('NOT_FOUND', 404, 'Node has not run yet')
+                        throw apiError({
+                          status: 404,
+                          code: 'NOT_FOUND',
+                          message: 'Node has not run yet',
+                        })
                       },
                     },
                   },

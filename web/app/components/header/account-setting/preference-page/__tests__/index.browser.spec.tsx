@@ -180,7 +180,13 @@ it.each(['Time Zone', 'Display Language'])(
           .element(timezone)
           .toHaveTextContent(timezones.find((item) => item.value === 'Pacific/Niue')!.name)
       } else {
-        save.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Unable to save language'))
+        save.reject(
+          apiError({
+            status: 503,
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'Unable to save language',
+          }),
+        )
       }
       await expect.element(language).not.toHaveAttribute('aria-readonly')
       await expect.element(timezone).not.toHaveAttribute('aria-readonly')

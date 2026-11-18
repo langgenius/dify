@@ -207,7 +207,9 @@ describe('NewKnowledgeList filters', () => {
       await user.click(page.getByRole('combobox', { name: 'dataset.creatorFilter.creators' }))
       await expect.element(page.getByRole('option', { name: /Alice/ })).toBeVisible()
 
-      api.members.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'request failed'))
+      api.members.mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'request failed' }),
+      )
       await refresh(consoleQuery.workspaces.current.members.get.key())
 
       await expect.element(page.getByRole('alert')).toMatchTextContent(/common\.error/)

@@ -103,7 +103,9 @@ it('submits the entered settings and returns the saved API before closing', asyn
 it('preserves entered settings after a failed creation and lets the user retry', async () => {
   const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
   onTestFinished(() => errors.mockRestore())
-  api.create.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Offline'))
+  api.create.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Offline' }),
+  )
   const screen = await setup()
   await fill(screen)
   await save(screen).click()

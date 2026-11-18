@@ -281,7 +281,9 @@ it('shows a microphone setup failure without replacing the draft', async () => {
 })
 
 it('reports a transcription transport failure without replacing the draft', async () => {
-  api.transcribe.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'API failed'))
+  api.transcribe.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'API failed' }),
+  )
   const screen = await renderCaller()
   await waitForRecording(screen)
   await screen.getByRole('button', { name: 'common.voiceInput.stop' }).click()

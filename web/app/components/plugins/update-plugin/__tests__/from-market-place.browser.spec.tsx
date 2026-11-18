@@ -217,7 +217,9 @@ it('hands an accepted installation to the real background task list without clai
 })
 
 it('keeps a rejected upgrade available for retry and closes only after success', async () => {
-  mocks.upgrade.mockRejectedValueOnce(apiError('UPGRADE_FAILED', 503, 'Upgrade request failed'))
+  mocks.upgrade.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'UPGRADE_FAILED', message: 'Upgrade request failed' }),
+  )
   await renderUpdate()
   await upgrade().click()
   await expect.element(upgrade()).toBeEnabled()

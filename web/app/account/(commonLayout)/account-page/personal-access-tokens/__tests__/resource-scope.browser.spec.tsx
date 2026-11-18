@@ -175,7 +175,9 @@ it('keeps a selected resource through loading, failure, and retry with no remain
   const selected = dialog.getByRole('checkbox', { name: 'Built-in' })
   await expect.element(selected).toBeChecked()
   await expect.element(dialog.getByText('Your existing selection is preserved.')).toBeVisible()
-  request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Resource catalog unavailable'))
+  request.reject(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Resource catalog unavailable' }),
+  )
   await expect.element(dialog.getByRole('alert')).toMatchTextContent(/Couldn.t load resources/)
   await expect.element(selected).toBeChecked()
   await dialog.getByRole('button', { name: 'Retry', exact: true }).click()

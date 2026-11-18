@@ -91,7 +91,11 @@ function paged<Item, Output>(
       if (cursor) {
         await responses.next()
         if (responses.nextPageError)
-          throw apiError('SERVICE_UNAVAILABLE', 503, `${resource} next page unavailable`)
+          throw apiError({
+            status: 503,
+            code: 'SERVICE_UNAVAILABLE',
+            message: `${resource} next page unavailable`,
+          })
       } else {
         if (reads) await responses.refresh()
         if (responses.error) throw responses.error
@@ -170,7 +174,11 @@ function installSourceApi() {
                   ? forever()
                   : track(async () => {
                       if (pluginResponses.failed)
-                        throw apiError('SERVICE_UNAVAILABLE', 503, 'plugins unavailable')
+                        throw apiError({
+                          status: 503,
+                          code: 'SERVICE_UNAVAILABLE',
+                          message: 'plugins unavailable',
+                        })
                       return pluginResponses.data ?? []
                     }),
             },

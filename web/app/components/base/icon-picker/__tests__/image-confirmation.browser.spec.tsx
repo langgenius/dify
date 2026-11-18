@@ -81,7 +81,9 @@ async function expectSavedImage(id: string, file: File) {
 
 it('keeps the image draft after an upload failure and saves the retried bytes', async () => {
   await page.viewport(640, 600)
-  uploadImage.mockRejectedValueOnce(apiError('UPLOAD_FAILED', 503, 'Upload failed'))
+  uploadImage.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }),
+  )
   uploadImage.mockResolvedValueOnce({
     id: fileId('retried-image'),
     name: 'icon.gif',
@@ -232,7 +234,9 @@ it.each(['upload', 'preview'] as const)(
     await selectImage()
     let restoreRead: (() => void) | undefined
     if (failure === 'upload')
-      uploadImage.mockRejectedValueOnce(apiError('UPLOAD_FAILED', 503, 'Upload failed'))
+      uploadImage.mockRejectedValueOnce(
+        apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }),
+      )
     else {
       // boundary: force the browser FileReader failure cleared by choosing a replacement.
       const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementationOnce(function (
@@ -280,7 +284,7 @@ it('blocks replacement during upload and restores the original draft after failu
     dialog().getByRole('img', { name: 'app.iconPicker.image' }),
     'test/fixtures/media/preview.gif',
   )
-  request.reject(apiError('UPLOAD_FAILED', 503, 'Upload failed'))
+  request.reject(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(change).toBeEnabled()
   uploadImage.mockResolvedValueOnce({ id: fileId('original'), name: file.name, size: file.size })

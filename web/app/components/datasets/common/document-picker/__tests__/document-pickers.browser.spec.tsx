@@ -164,7 +164,9 @@ it('shows only settled search results while keeping native keyboard focus in the
 })
 
 it('announces a failed search and retries without closing the menu', async () => {
-  getDocuments.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Search unavailable'))
+  getDocuments.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Search unavailable' }),
+  )
   const screen = await renderDocumentPicker()
 
   const trigger = screen.getByRole('button', { name: 'Document 1' })

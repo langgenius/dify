@@ -135,7 +135,9 @@ it('shows a failed execution consistently in its summary and metadata', async ()
 })
 
 it('removes loading and reports the service error', async () => {
-  fetchAgentLogDetail.mockRejectedValue(apiError('INTERNAL_SERVER_ERROR', 500, 'API Error'))
+  fetchAgentLogDetail.mockRejectedValue(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'API Error' }),
+  )
   const { screen } = await renderDetail()
   await expect.element(screen.getByRole('dialog', { name: 'API Error' })).toBeVisible()
   await expect.element(screen.getByRole('progressbar')).not.toBeInTheDocument()

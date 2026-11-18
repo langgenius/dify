@@ -174,7 +174,9 @@ it('ignores a failed request after its record has been replaced', async () => {
     <AgentLogModal appId={newAppId} currentLogItem={log} onCancel={() => {}} width={1000} />,
   )
   await expect.element(screen.getByText('User')).toBeVisible()
-  oldResponse.reject(apiError('INTERNAL_SERVER_ERROR', 500, 'Old request failed'))
+  oldResponse.reject(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Old request failed' }),
+  )
   await expect.element(screen.getByText('User')).toBeVisible()
   await expect
     .element(screen.getByRole('dialog', { name: 'Old request failed' }))

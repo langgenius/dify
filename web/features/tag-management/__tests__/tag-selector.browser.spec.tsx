@@ -115,7 +115,9 @@ it('applies removal on close and leaves unchanged selections alone', async () =>
 })
 
 it('shows the binding failure after closing the popup', async () => {
-  mocks.unbind.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unbind failed'))
+  mocks.unbind.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unbind failed' }),
+  )
   await renderSelector()
   await trigger().click()
   await page.getByRole('option', { name: 'Frontend' }).click()

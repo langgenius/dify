@@ -384,7 +384,9 @@ describe('CrawlSelectionForm', () => {
 
   it('reuses the idempotency key when an async import response is lost', async () => {
     clientMock.asyncImport
-      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
       .mockResolvedValueOnce({ ...run, checkpoint: 'import', state: 'queued' })
     const user = userEvent
     await renderSelectionForm()

@@ -144,7 +144,7 @@ it('preserves trimmed role fields and permission selection across a pending fail
       },
     }),
   )
-  pending.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Save failed'))
+  pending.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Save failed' }))
   await expect.element(confirm).toBeEnabled()
   await expect
     .element(dialog.getByRole('textbox', { name: 'permission.role.modal.nameLabel' }))

@@ -11,25 +11,58 @@ const groupList = {
 }
 
 describe('installFakeApi', () => {
-  it('answers console contract calls through the real client with validated data', async () => {
-    const list = vi.fn(() => groupList)
-    const teardown = installFakeApi({
-      console: { workspaces: { current: { networkAccessGroups: { get: list } } } },
+  it('answers console contract calls and records them on the handler spy', async () => {
+    const fake = installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
     })
 
     const result = await consoleClient.workspaces.current.networkAccessGroups.get({})
 
     expect(result.groups.map((group) => group.name)).toEqual(['Internal Network'])
-    expect(list).toHaveBeenCalledOnce()
-    teardown()
+    expect(fake.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledOnce()
+    fake()
+  })
+
+  it('overrides and adds handlers mid-test with use()', async () => {
+    const fake = installFakeApi({
+      console: { workspaces: { current: { networkAccessGroups: { get: () => groupList } } } },
+    })
+    await consoleClient.workspaces.current.networkAccessGroups.get({})
+
+    fake.use({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              get: () => ({ ...groupList, groups: [] }),
+              currentIp: { get: () => ({ client_ip: '203.0.113.42' }) },
+            },
+          },
+        },
+      },
+    })
+
+    expect((await consoleClient.workspaces.current.networkAccessGroups.get({})).groups).toEqual([])
+    expect(await consoleClient.workspaces.current.networkAccessGroups.currentIp.get({})).toEqual({
+      client_ip: '203.0.113.42',
+    })
+    expect(fake.console.workspaces.current.networkAccessGroups.get).toHaveBeenCalledTimes(2)
+    fake()
   })
 
   it('decodes request bodies and returns thrown errors with their status', async () => {
-    const create = vi.fn(() => {
-      throw apiError('CONFLICT', 409, 'Name already exists')
-    })
-    const teardown = installFakeApi({
-      console: { workspaces: { current: { networkAccessGroups: { post: create } } } },
+    const fake = installFakeApi({
+      console: {
+        workspaces: {
+          current: {
+            networkAccessGroups: {
+              post: () => {
+                throw apiError({ status: 409, code: 'CONFLICT', message: 'Name already exists' })
+              },
+            },
+          },
+        },
+      },
     })
 
     await expect(
@@ -37,39 +70,43 @@ describe('installFakeApi', () => {
         body: { name: 'Office', allowed_cidrs: ['192.0.2.0/24'] },
       }),
     ).rejects.toMatchObject({ status: 409, message: 'Name already exists' })
-    expect(create).toHaveBeenCalledWith(
+    expect(fake.console.workspaces.current.networkAccessGroups.post).toHaveBeenCalledWith(
       expect.objectContaining({
         body: expect.objectContaining({ name: 'Office', allowed_cidrs: ['192.0.2.0/24'] }),
       }),
     )
-    teardown()
+    fake()
   })
 
   it('accepts the repeated-key arrays the browser client sends to the Python API', async () => {
-    const list = vi.fn(() => ({ data: [], has_more: false, limit: 20, page: 1, total: 0 }))
-    const teardown = installFakeApi({ console: { apps: { get: list } } })
+    const fake = installFakeApi({
+      console: {
+        apps: { get: () => ({ data: [], has_more: false, limit: 20, page: 1, total: 0 }) },
+      },
+    })
 
     await consoleClient.apps.get({ query: { page: 1, limit: 20, tag_ids: ['t1', 't2'] } })
 
-    expect(list).toHaveBeenCalledWith(
+    expect(fake.console.apps.get).toHaveBeenCalledWith(
       expect.objectContaining({ query: expect.objectContaining({ tag_ids: ['t1', 't2'] }) }),
     )
-    teardown()
+    fake()
   })
 
   it('serves marketplace contract calls (typed only: that contract has no runtime schemas)', async () => {
-    const versions = vi.fn(() => ({ data: { versions: [] } }))
-    const teardown = installFakeApi({ marketplace: { pluginVersions: versions } })
+    const fake = installFakeApi({
+      marketplace: { pluginVersions: () => ({ data: { versions: [] } }) },
+    })
 
     await marketplaceClient.pluginVersions({
       params: { organization: 'langgenius', pluginName: 'plugin' },
       query: { page: 1, page_size: 20 },
     })
 
-    expect(versions).toHaveBeenCalledWith(
+    expect(fake.marketplace.pluginVersions).toHaveBeenCalledWith(
       expect.objectContaining({ params: { organization: 'langgenius', pluginName: 'plugin' } }),
     )
-    teardown()
+    fake()
   })
 
   it('serves REST routes and streams server-sent events', async () => {
@@ -94,14 +131,9 @@ describe('installFakeApi', () => {
   })
 
   it('answers XMLHttpRequest uploads with the uploaded form data', async () => {
-    const received = vi.fn()
-    const teardown = installFakeApi({
+    const fake = installFakeApi({
       routes: [
-        route('POST', 'console', '/files/upload', async ({ request }) => {
-          const form = await request.formData()
-          received((form.get('file') as File).name)
-          return { id: 'file-1', name: 'report.pdf' }
-        }),
+        route('POST', 'console', '/files/upload', () => ({ id: 'file-1', name: 'report.pdf' })),
       ],
     })
     const data = new FormData()
@@ -121,9 +153,10 @@ describe('installFakeApi', () => {
     })
 
     expect(result).toEqual({ id: 'file-1', name: 'report.pdf' })
-    expect(received).toHaveBeenCalledWith('report.pdf')
+    const [{ request }] = fake.route('POST', 'console', '/files/upload').mock.calls[0]!
+    expect(((await request.formData()).get('file') as File).name).toBe('report.pdf')
     expect(onprogress).toHaveBeenCalled()
-    teardown()
+    fake()
   })
 
   it('sends handler errors in the backend shape, including their details', async () => {
@@ -133,8 +166,11 @@ describe('installFakeApi', () => {
           current: {
             networkAccessGroups: {
               post: () => {
-                throw apiError('invalid_param', 422, 'Invalid CIDR', {
-                  details: { issues: ['allowed_cidrs'] },
+                throw apiError({
+                  status: 422,
+                  code: 'invalid_param',
+                  message: 'Invalid CIDR',
+                  details: { details: { issues: ['allowed_cidrs'] } },
                 })
               },
             },
@@ -156,9 +192,19 @@ describe('installFakeApi', () => {
   })
 
   it('serves contracts from the enterprise segment', async () => {
-    const search = vi.fn(() => ({ subjects: [], currPage: 1, totalPages: 1, hasMore: false }))
-    const teardown = installFakeApi({
-      console: { enterprise: { webAppAuth: { searchForWhilteListCandidates: search } } },
+    const fake = installFakeApi({
+      console: {
+        enterprise: {
+          webAppAuth: {
+            searchForWhilteListCandidates: () => ({
+              subjects: [],
+              currPage: 1,
+              totalPages: 1,
+              hasMore: false,
+            }),
+          },
+        },
+      },
     })
 
     await consoleClient.enterprise.webAppAuth
@@ -167,8 +213,8 @@ describe('installFakeApi', () => {
       })
       .catch(() => undefined)
 
-    expect(search).toHaveBeenCalledOnce()
-    teardown()
+    expect(fake.console.enterprise.webAppAuth.searchForWhilteListCandidates).toHaveBeenCalledOnce()
+    fake()
   })
 
   it('routes relative requests on the page origin', async () => {

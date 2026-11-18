@@ -56,7 +56,9 @@ it('asks for the password before submitting', async () => {
 })
 
 it('reports an incorrect password on the field until it is edited', async () => {
-  validatePassword.mockRejectedValue(apiError('init_validate_failed', 401, 'Invalid password'))
+  validatePassword.mockRejectedValue(
+    apiError({ status: 401, code: 'init_validate_failed', message: 'Invalid password' }),
+  )
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 
@@ -73,7 +75,9 @@ it('reports an incorrect password on the field until it is edited', async () => 
 })
 
 it('reports other failures inside the form until the password is edited', async () => {
-  validatePassword.mockRejectedValue(apiError('internal_error', 500, 'Internal error'))
+  validatePassword.mockRejectedValue(
+    apiError({ status: 500, code: 'internal_error', message: 'Internal error' }),
+  )
   const screen = await renderPopup()
   const password = screen.getByLabelText('login.adminInitPassword')
 

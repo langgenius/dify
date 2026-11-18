@@ -196,7 +196,13 @@ describe('ListWrapper', () => {
 
   it('offers a retry and renders the recovered result after a failed search', async () => {
     transport.searchAdvanced
-      .mockRejectedValueOnce(apiError('MARKETPLACE_UNAVAILABLE', 503, 'Marketplace unavailable'))
+      .mockRejectedValueOnce(
+        apiError({
+          status: 503,
+          code: 'MARKETPLACE_UNAVAILABLE',
+          message: 'Marketplace unavailable',
+        }),
+      )
       .mockResolvedValueOnce(searchResponse([plugin('recovered-plugin', 'Recovered Plugin')]))
     const screen = await renderListWrapper()
     await expect

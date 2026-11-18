@@ -157,7 +157,7 @@ describe('Sources: workflow-reconciliation', () => {
       updated_at: '2026-07-20T11:00:00Z',
     })
     sourceResponses.refresh.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'Source refresh failed'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Source refresh failed' }),
     )
 
     const { queryClient } = await render(<SourcesPage knowledgeSpaceId="space-1" />)

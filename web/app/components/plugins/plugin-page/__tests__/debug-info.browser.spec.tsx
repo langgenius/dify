@@ -37,7 +37,13 @@ it('disables debugging when credentials cannot be loaded', async () => {
   await expect.element(screen.getByRole('button', { name: 'After debug info' })).toBeVisible()
   await expect.element(trigger).not.toBeInTheDocument()
   await expect.poll(() => debugKey).toHaveBeenCalledOnce()
-  pending.reject(apiError('DEBUG_KEY_UNAVAILABLE', 503, 'Debug credentials unavailable'))
+  pending.reject(
+    apiError({
+      status: 503,
+      code: 'DEBUG_KEY_UNAVAILABLE',
+      message: 'Debug credentials unavailable',
+    }),
+  )
   await expect.element(trigger).toBeDisabled()
 })
 

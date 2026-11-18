@@ -67,7 +67,9 @@ it('leaves unchanged names alone and rejects an empty rename without losing the 
 })
 
 it('shows a rename failure and restores the original name for editing again', async () => {
-  mocks.update.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Update failed'))
+  mocks.update.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Update failed' }),
+  )
   await renderEditor()
   await edit().click()
   await input().fill('Broken Name')
@@ -126,7 +128,9 @@ it('cancels a bound-tag deletion without changing the list and deletes after con
 })
 
 it('shows a deletion error and keeps both tags available', async () => {
-  mocks.remove.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Delete failed'))
+  mocks.remove.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Delete failed' }),
+  )
   await renderEditor('0')
   await remove().click()
   await expect.element(page.getByText('Delete failed', { exact: true })).toBeVisible()

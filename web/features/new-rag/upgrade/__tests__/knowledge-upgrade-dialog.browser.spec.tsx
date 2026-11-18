@@ -236,8 +236,12 @@ describe('KnowledgeUpgradeDialog', () => {
 
   it('reuses the idempotency key for retries and rotates it when the model choice changes', async () => {
     startUpgradeMock
-      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
-      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'response lost'))
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'response lost' }),
+      )
       .mockResolvedValueOnce(job)
     await renderDialog()
 
@@ -262,16 +266,21 @@ describe('KnowledgeUpgradeDialog', () => {
 
   it('keeps the dialog open and marks rejected models when the backend reports them unavailable', async () => {
     startUpgradeMock.mockRejectedValueOnce(
-      apiError('knowledge_fs_upgrade_models_unavailable', 422, 'Models unavailable', {
+      apiError({
+        status: 422,
+        code: 'knowledge_fs_upgrade_models_unavailable',
+        message: 'Models unavailable',
         details: {
-          issues: [
-            {
-              field: 'reasoning',
-              model: 'gpt-4o',
-              provider: 'langgenius/openai/openai',
-              reason: 'quota-exceeded',
-            },
-          ],
+          details: {
+            issues: [
+              {
+                field: 'reasoning',
+                model: 'gpt-4o',
+                provider: 'langgenius/openai/openai',
+                reason: 'quota-exceeded',
+              },
+            ],
+          },
         },
       }),
     )

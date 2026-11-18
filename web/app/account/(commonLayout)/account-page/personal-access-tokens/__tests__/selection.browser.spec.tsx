@@ -58,7 +58,11 @@ it('lets users submit a long selected scope on a short narrow viewport', async (
         has_more: false,
       }
     if (operation.endsWith('.post'))
-      throw apiError('SERVICE_UNAVAILABLE', 503, 'Service temporarily unavailable')
+      throw apiError({
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Service temporarily unavailable',
+      })
     return { data: [], page: 1, limit: 20, total: 0, has_more: false }
   })
   const queryClient = createTestQueryClient()

@@ -182,7 +182,13 @@ describe('Knowledge document deletion', () => {
     await expect.element(confirm).toHaveFocus()
     await userEvent.keyboard('{Escape}')
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Deletion service unavailable'))
+    request.reject(
+      apiError({
+        status: 503,
+        code: 'SERVICE_UNAVAILABLE',
+        message: 'Deletion service unavailable',
+      }),
+    )
     await expect
       .element(screen.getByText('Deletion service unavailable', { exact: true }))
       .toBeVisible()

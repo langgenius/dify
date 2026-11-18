@@ -87,7 +87,9 @@ it.each([false, true])(
   async (alreadyAllowed) => {
     const response = createDeferred<{ client_ip: string }>()
     requests.currentIp
-      .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'IP unavailable'))
+      .mockRejectedValueOnce(
+        apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'IP unavailable' }),
+      )
       .mockReturnValueOnce(response.promise)
     const { screen, queryClient } = await renderEditor()
 

@@ -136,7 +136,9 @@ it('starts cached eligible education accounts on annual pricing with the discoun
 it('keeps prices readable after features fail and restores purchases through Retry', async () => {
   const { zGetFeaturesResponse } = await import('@dify/contracts/api/console/features/zod.gen')
   api.features
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Unavailable'))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
+    )
     .mockResolvedValue(zGetFeaturesResponse.parse({}))
   const screen = await setup()
   await expect.element(screen.getByRole('alert')).toMatchTextContent('common.error')

@@ -44,16 +44,20 @@ describe('Source removal confirmation', () => {
   it.each([
     [
       'access denied without structured details',
-      apiError('knowledge_fs_access_denied', 403, 'Agent Knowledge Base operation is not allowed.'),
+      apiError({
+        status: 403,
+        code: 'knowledge_fs_access_denied',
+        message: 'Agent Knowledge Base operation is not allowed.',
+      }),
       'Agent Knowledge Base operation is not allowed.',
     ],
     [
       'conflict without structured details',
-      apiError(
-        'knowledge_fs_conflict',
-        409,
-        'Agent Knowledge Base operation conflicts with the current resource state.',
-      ),
+      apiError({
+        status: 409,
+        code: 'knowledge_fs_conflict',
+        message: 'Agent Knowledge Base operation conflicts with the current resource state.',
+      }),
       'Agent Knowledge Base operation conflicts with the current resource state.',
     ],
   ])('keeps the removal confirmation open and reports %s', async (_scenario, error, message) => {

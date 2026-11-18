@@ -44,7 +44,9 @@ beforeEach(async () => {
 
 it('retains the edited name after validation failure and saves the loaded version without expiry', async () => {
   api.update
-    .mockRejectedValueOnce(apiError('BAD_REQUEST', 400, 'Select at least one resource.'))
+    .mockRejectedValueOnce(
+      apiError({ status: 400, code: 'BAD_REQUEST', message: 'Select at least one resource.' }),
+    )
     .mockResolvedValue(saved)
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -92,7 +94,8 @@ it('returns to the edit trigger when cancelling during a background list refresh
 it('preserves a draft through a background refresh and reloads the new version only after a conflict', async () => {
   const latest = { ...saved, token: { ...saved.token, name: 'changed elsewhere', version: 2 } }
   api.update.mockImplementation(async ({ body }) => {
-    if (body.version === 1) throw apiError('CONFLICT', 409, 'Token changed')
+    if (body.version === 1)
+      throw apiError({ status: 409, code: 'CONFLICT', message: 'Token changed' })
     return latest
   })
   const { screen, queryClient } = await renderTokenPage()
@@ -121,7 +124,7 @@ it('preserves a draft through a background refresh and reloads the new version o
 it('keeps an expired editing draft readable and blocks further saving after the server confirms expiry', async () => {
   api.update.mockImplementation(async () => {
     api.detail.mockResolvedValue({ ...saved, token: { ...saved.token, status: 'expired' } })
-    throw apiError('FORBIDDEN', 403, 'Token expired')
+    throw apiError({ status: 403, code: 'FORBIDDEN', message: 'Token expired' })
   })
   const { screen } = await renderTokenPage()
   await screen.getByRole('button', { name: 'Edit', exact: true }).click()
@@ -149,7 +152,9 @@ it('keeps deletion open after failure and removes the row after retry', async ()
   await expect.element(dialog.getByRole('button', { name: 'Cancel' })).toBeDisabled()
   await userEvent.keyboard('{Escape}')
   await expect.element(dialog).toBeVisible()
-  pending.reject(apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'))
+  pending.reject(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
+  )
   await expect.element(dialog.getByRole('alert')).toHaveTextContent('Action failed')
   await expect.element(dialog.getByRole('button', { name: 'Delete', exact: true })).toBeEnabled()
   await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
@@ -163,7 +168,9 @@ it('keeps deletion open after failure and removes the row after retry', async ()
 it('clears the previous deletion error and returns focus to the current row on cancel', async () => {
   const other = { ...token, id: '019a0000-0000-7000-8000-000000000002', name: 'other-token' }
   api.list.mockResolvedValue(tokenList([token, other]))
-  api.remove.mockRejectedValueOnce(apiError('INTERNAL_SERVER_ERROR', 500, 'Internal server error'))
+  api.remove.mockRejectedValueOnce(
+    apiError({ status: 500, code: 'INTERNAL_SERVER_ERROR', message: 'Internal server error' }),
+  )
   const { screen } = await renderTokenPage()
   const first = screen
     .getByRole('row', { name: /release-pipeline/ })

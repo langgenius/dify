@@ -103,7 +103,9 @@ it('also warns for duplicate metric-capable snippet nodes without blocking evalu
 
 it('keeps evaluation available and lets users retry a failed node-name check', async () => {
   api.nodeInfo
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Network unavailable'))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Network unavailable' }),
+    )
     .mockResolvedValue(distinctNodes)
   const screen = await renderNotice('apps')
 

@@ -203,7 +203,7 @@ it('locks image editing during submission and restores it after failure', async 
   await expect.element(zoom).toBeDisabled()
   cropElement.focus()
   expect(document.activeElement).not.toBe(cropElement)
-  rejectUpload(apiError('UPLOAD_FAILED', 503, 'Upload failed'))
+  rejectUpload(apiError({ status: 503, code: 'UPLOAD_FAILED', message: 'Upload failed' }))
   await expect.element(page.getByRole('alert')).toBeVisible()
   await expect.element(zoom).toBeEnabled()
   cropElement.focus()

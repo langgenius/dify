@@ -98,7 +98,7 @@ describe('overview activity drawer', () => {
 
   it('retries a failed first request with a real control at a narrow viewport', async () => {
     service.drawerActivity.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'network error'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network error' }),
     )
     const drawer = await openDrawer()
     const alert = drawer.getByRole('alert')
@@ -121,7 +121,7 @@ describe('overview activity drawer', () => {
     const drawer = await openDrawer()
     await expect.element(drawer.getByText(/Synced 1 documents/)).toBeVisible()
     service.drawerActivity.mockRejectedValueOnce(
-      apiError('SERVICE_UNAVAILABLE', 503, 'network error'),
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'network error' }),
     )
     service.tasks.mockResolvedValue({ data: [task('completed')], next_cursor: null })
     await vi.advanceTimersByTimeAsync(2000)

@@ -74,7 +74,12 @@ it.each(['approve', 'deny'] as const)(
 // TODO(https://github.com/langgenius/dify/issues/46700): pending Approve drops keyboard focus to <body>.
 it.fails('keeps the account and code available after failure and completes a native keyboard retry', async () => {
   approveAccount.mockRejectedValueOnce(
-    apiError('unexpected', 400, 'Unexpected', { error: 'unexpected' }),
+    apiError({
+      status: 400,
+      code: 'unexpected',
+      message: 'Unexpected',
+      details: { error: 'unexpected' },
+    }),
   )
   const { screen } = await renderDevicePage({ signedIn: true })
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })

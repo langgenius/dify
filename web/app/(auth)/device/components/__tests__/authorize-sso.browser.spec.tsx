@@ -31,7 +31,7 @@ beforeEach(() => {
             // The signed-out state is a failed profile probe; a 401 would start the app's
             // token refresh and sign-in redirect, which belong to the running application.
             get: () => {
-              throw apiError('forbidden', 403, 'No console session')
+              throw apiError({ status: 403, code: 'forbidden', message: 'No console session' })
             },
           },
         },
@@ -68,7 +68,12 @@ it('authorizes the displayed SSO identity with its server context and reaches su
 
 it('shows an invalid session when the server cannot supply an approval identity', async () => {
   fetchContext.mockRejectedValueOnce(
-    apiError('server_error', 500, 'Server error', { error: 'server_error' }),
+    apiError({
+      status: 500,
+      code: 'server_error',
+      message: 'Server error',
+      details: { error: 'server_error' },
+    }),
   )
   const { screen } = await renderDevicePage()
   await expect
@@ -81,7 +86,12 @@ it('shows an invalid session when the server cannot supply an approval identity'
 
 it('retains the SSO identity on approval failure and succeeds after retry', async () => {
   approveExternal.mockRejectedValueOnce(
-    apiError('unexpected', 400, 'Unexpected', { error: 'unexpected' }),
+    apiError({
+      status: 400,
+      code: 'unexpected',
+      message: 'Unexpected',
+      details: { error: 'unexpected' },
+    }),
   )
   const { screen } = await renderDevicePage()
   const approve = screen.getByRole('button', { name: 'deviceFlow.authorize.approve' })

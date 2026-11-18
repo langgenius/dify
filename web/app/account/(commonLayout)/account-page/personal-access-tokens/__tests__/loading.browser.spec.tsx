@@ -221,7 +221,11 @@ it('keeps a checked workspace through search loading, retry, and an empty result
       searchCursors.push(cursor)
       if (searchCursors.length === 1) {
         await firstSearch.promise
-        throw apiError('SERVICE_UNAVAILABLE', 503, 'Workspace search unavailable')
+        throw apiError({
+          status: 503,
+          code: 'SERVICE_UNAVAILABLE',
+          message: 'Workspace search unavailable',
+        })
       }
       return { ...lastPage, data: [workspace, sandbox] }
     },
@@ -308,7 +312,11 @@ it.each(['Resources', 'Workspaces'] as const)(
           return { data: [], next_cursor: null, has_more: false }
         cursors.push(input.query.cursor ?? 0)
         if (cursors.length === 2)
-          throw apiError('SERVICE_UNAVAILABLE', 503, 'Later page unavailable')
+          throw apiError({
+            status: 503,
+            code: 'SERVICE_UNAVAILABLE',
+            message: 'Later page unavailable',
+          })
         if (input.query.cursor === 20) return next.promise
         return candidates
       },

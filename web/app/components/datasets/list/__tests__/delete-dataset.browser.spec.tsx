@@ -115,7 +115,9 @@ describe('Classic dataset deletion', () => {
 
   it('reports a failed usage check without changing the confirmation action', async () => {
     const { screen, open } = await setup(['Alpha'])
-    api.usage.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Usage check failed'))
+    api.usage.mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Usage check failed' }),
+    )
     await open('Alpha')
     await expect.element(screen.getByRole('alert')).toBeVisible()
     expect(api.remove).not.toHaveBeenCalled()
@@ -177,7 +179,7 @@ describe('Classic dataset deletion', () => {
       .element(screen.getByRole('button', { name: 'common.operation.cancel' }))
       .toBeDisabled()
     await expect.element(screen.getByRole('alertdialog')).toBeVisible()
-    request.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
+    request.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }))
     await expect.element(screen.getByRole('alert')).toBeVisible()
     await confirm.click()
     await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

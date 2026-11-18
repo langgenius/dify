@@ -133,7 +133,9 @@ describe('BaseField dynamic options', () => {
   })
 
   it('shows a service error without presenting options', async () => {
-    dynamicOptions.mockRejectedValue(apiError('SERVICE_UNAVAILABLE', 503, 'Failed'))
+    dynamicOptions.mockRejectedValue(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Failed' }),
+    )
     await renderBaseField({
       formSchema: {
         type: FormTypeEnum.dynamicSelect,

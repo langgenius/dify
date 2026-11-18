@@ -91,7 +91,9 @@ it('reveals settled failures, blocks repeated native activation and disappears a
 })
 
 it('keeps retry available after a failed request and recovers on the next attempt', async () => {
-  retryErrorDocs.mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Retry failed'))
+  retryErrorDocs.mockRejectedValueOnce(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Retry failed' }),
+  )
   getErrorDocs.mockResolvedValueOnce(errors).mockResolvedValue(noErrors)
   const screen = await renderRetryButton()
   const retry = screen.getByRole('button', { name: 'dataset.retry' })
@@ -104,7 +106,9 @@ it('keeps retry available after a failed request and recovers on the next attemp
 })
 
 it('offers recovery when loading the failed-document status itself fails', async () => {
-  getErrorDocs.mockRejectedValue(apiError('SERVICE_UNAVAILABLE', 503, 'Unavailable'))
+  getErrorDocs.mockRejectedValue(
+    apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Unavailable' }),
+  )
   const screen = await renderRetryButton()
 
   await expect.element(screen.getByRole('button', { name: 'dataset.retry' })).toBeVisible()

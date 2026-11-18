@@ -83,7 +83,7 @@ it.each([
   // An HTTP error with a backend message is reported by the shared error toast instead.
   {
     failure: 'a 502 response',
-    error: () => apiError('BAD_GATEWAY', 502, 'Bad gateway'),
+    error: () => apiError({ status: 502, code: 'BAD_GATEWAY', message: 'Bad gateway' }),
     toast: 'Bad gateway',
   },
 ])('retains the draft and allows retry after $failure', async ({ error, toast }) => {
@@ -193,7 +193,9 @@ it('leaves the new dialog host open when a save from the previous host completes
 
 it('keeps an existing credential selected when activation fails and closes after a successful retry', async () => {
   api.activate
-    .mockRejectedValueOnce(apiError('SERVICE_UNAVAILABLE', 503, 'Activation failed'))
+    .mockRejectedValueOnce(
+      apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Activation failed' }),
+    )
     .mockResolvedValueOnce({ result: 'success' })
   const screen = await setup({
     isModelCredential: true,
@@ -224,7 +226,7 @@ it('keeps deletion confirmation pending, then allows retry after a failure', asy
   await userEvent.keyboard('{Escape}')
   await expect.element(screen.getByRole('alertdialog')).toBeVisible()
   await expect.poll(() => api.remove).toHaveBeenCalledOnce()
-  failed.reject(apiError('SERVICE_UNAVAILABLE', 503, 'Delete failed'))
+  failed.reject(apiError({ status: 503, code: 'SERVICE_UNAVAILABLE', message: 'Delete failed' }))
   await expect.element(confirm).toBeEnabled()
   await confirm.click()
   await expect.element(screen.getByRole('alertdialog')).not.toBeInTheDocument()

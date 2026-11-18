@@ -202,7 +202,9 @@ it('drops the unsaved changes when the page cancels', async () => {
 
 it('shows the reason the backend gives when the policy is rejected', async () => {
   await renderSetting()
-  api.putPolicy.mockRejectedValue(apiError('bad_request', 400, 'Scanner "Office scanner" is gone.'))
+  api.putPolicy.mockRejectedValue(
+    apiError({ status: 400, code: 'bad_request', message: 'Scanner "Office scanner" is gone.' }),
+  )
 
   await enableSwitch().click()
   await page.getByRole('combobox', { name: 'fileScan.policy.scanner' }).click()
