@@ -38,6 +38,32 @@ unchanged legacy state, upgrade normally, then review and re-admit it. Never
 bypass admission inside a process, rewrite a prepared snapshot, silently change
 an App/provider/model, or count a native Tokener request as a forwarded regression.
 
+## Legacy SYSTEM alias metadata before migration
+
+The hosted model-list owner can resolve only the reviewed bare Anthropic alias
+`claude-opus-4-5` when its installed static catalog omits that exact LLM identity.
+An existing static exact schema always wins. The current selected, valid, finite
+PAID/TRIAL **CREDITS** pool must explicitly whitelist the bare ID: an empty list,
+a dated-only entitlement, FREE, unlimited, exhausted and non-credit pools do not
+authorize this metadata addition. A different `base_model_name` override is not
+the reviewed bare binding. Normal verified Marketplace SYSTEM admission and
+official/default hosted endpoint ownership remain prerequisites.
+
+The normal tenant/request-bound Source schema RPC must return the exact reviewed
+full schema (including its six original parameters and `pricing=None`). This is
+not a latest-version UID gate and does not query Tokener, a mapping registry or
+the vendor Models endpoint. The reviewed Source artifact `6ace153b…` and official
+vendor alias identity artifact `9ea9080b…` establish the closed alias; neither
+alone authorizes an arbitrary dynamic model. Missing/mismatched metadata is
+distinct from denied credits eligibility and never falls back to a dated model.
+
+The addition is request-local listing metadata, not an invocation, credential,
+App/default rewrite, grant or migration. BYOK is unchanged. Once a tenant has a
+managed compatibility route, existing migration schema/routing owners take over;
+this legacy metadata reader never reopens the original hosted path. An unknown
+migration state fails closed. This behavior requires its own dev regression and
+does not establish production readiness.
+
 ## Versioned saved-model access policy
 
 A new reviewed mapping revision may declare `inventory_policy:

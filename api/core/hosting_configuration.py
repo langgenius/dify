@@ -1,13 +1,20 @@
-from typing import Any
+import hashlib
+import json
+from collections.abc import Callable, Sequence
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from flask import Flask
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from configs import dify_config
 from core.entities import DEFAULT_PLUGIN_ID
-from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel, SystemConfiguration
+from core.plugin.entities.plugin import PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginModelProviderDeclaration
 from enums import DeploymentEdition
-from graphon.model_runtime.entities.model_entities import ModelType
+from graphon.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from graphon.model_runtime.entities.provider_entities import ProviderEntity
 
 
 class HostingQuota(BaseModel):
@@ -389,3 +396,106 @@ class HostingConfiguration:
             for model_name in models_list
             if model_name.strip()
         ]
+
+
+_PROVIDER = "langgenius/anthropic/anthropic"
+_ALIAS = "claude-opus-4-5"
+_SCHEMA_DIGEST = "8e176a84ae186de102bd68deded4d8fde09cce35d67ae1469b5cbd8ae5490e09"
+# Source RMC artifact 6ace153b389becc0b381e290322f417ffa1c5872383a8bd183544c8e9d3cfc64
+# and official Models GET artifact 9ea9080b6f2cffb64e89fbf16397d9398aa002be49ad2d742c9359e362fcefae
+# independently prove the bare alias/schema and its canonical 20251101 model.
+# That equivalence does NOT confer a canonical-only whitelist's entitlement.
+
+
+@dataclass(frozen=True)
+class VerifiedHostedAlias:
+    schema: AIModelEntity
+
+
+@dataclass(frozen=True)
+class IneligibleHostedAlias:
+    reason: Literal["not_requested", "static_present", "not_authorized", "managed_phase"]
+
+
+@dataclass(frozen=True)
+class UnavailableHostedAlias:
+    reason: Literal["schema_rpc_failed", "schema_missing", "schema_unreviewed"]
+
+
+type HostedAliasResolution = VerifiedHostedAlias | IneligibleHostedAlias | UnavailableHostedAlias
+
+
+def resolve_legacy_hosted_alias(
+    *,
+    provider: ProviderEntity,
+    system: SystemConfiguration,
+    model_types: Sequence[ModelType],
+    model: str | None,
+    has_managed_route: Callable[[], bool],
+    read_schema: Callable[[ModelType, str, dict[str, object] | None], AIModelEntity | None],
+) -> HostedAliasResolution:
+    """Read exact alias metadata only after existing SYSTEM rights are established.
+
+    Preconditions: ``system`` was built by normal verified-hosting admission;
+    ``read_schema`` belongs to that same tenant/provider's bound runtime. The
+    selected pool must explicitly whitelist the bare LLM, have finite remaining
+    credits, and retain original hosted credentials. Static schemas and managed
+    migration phases remain owned by their existing paths. A failed metadata
+    read is not an authorization denial and never falls back to a dated model.
+    """
+    if provider.provider != _PROVIDER or ModelType.LLM not in model_types or model not in (None, _ALIAS):
+        return IneligibleHostedAlias("not_requested")
+    if any(item.model == _ALIAS and item.model_type == ModelType.LLM for item in provider.models):
+        return IneligibleHostedAlias("static_present")
+    try:
+        declaration = PluginModelProviderDeclaration.model_validate(provider)
+    except ValidationError:
+        return IneligibleHostedAlias("not_authorized")
+    if (
+        declaration.installation_source != PluginInstallationSource.Marketplace
+        or declaration.plugin_unique_identifier.split("@", 1)[0].rsplit(":", 1)[0] != "langgenius/anthropic"
+        or not system.enabled
+    ):
+        return IneligibleHostedAlias("not_authorized")
+    selected = [item for item in system.quota_configurations if item.quota_type == system.current_quota_type]
+    if len(selected) != 1:
+        return IneligibleHostedAlias("not_authorized")
+    quota = selected[0]
+    restrictions = [item for item in quota.restrict_models if item.model == _ALIAS and item.model_type == ModelType.LLM]
+    if (
+        quota.quota_type not in {ProviderQuotaType.PAID, ProviderQuotaType.TRIAL}
+        or quota.quota_unit != QuotaUnit.CREDITS
+        or quota.quota_limit <= quota.quota_used
+        or quota.quota_used < 0
+        or not quota.is_valid
+        or len(restrictions) != 1
+        or restrictions[0].base_model_name not in (None, _ALIAS)
+        or not system.credentials
+        or not isinstance(system.credentials.get("anthropic_api_key"), str)
+        or not system.credentials["anthropic_api_key"]
+        or system.credentials.get("anthropic_api_url") not in (None, "", "https://api.anthropic.com")
+    ):
+        return IneligibleHostedAlias("not_authorized")
+    if has_managed_route():
+        return IneligibleHostedAlias("managed_phase")
+    credentials: dict[str, object] = dict(system.credentials)
+    if restrictions[0].base_model_name is not None:
+        credentials["base_model_name"] = restrictions[0].base_model_name
+    try:
+        schema = read_schema(ModelType.LLM, _ALIAS, credentials)
+    except Exception:
+        # Neither exception text nor the original credential dictionary is a
+        # safe public diagnostic. The caller can log this finite reason only.
+        return UnavailableHostedAlias("schema_rpc_failed")
+    finally:
+        credentials.clear()
+    if schema is None:
+        return UnavailableHostedAlias("schema_missing")
+    if not isinstance(schema, AIModelEntity):
+        return UnavailableHostedAlias("schema_unreviewed")
+    digest = hashlib.sha256(
+        json.dumps(schema.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
+    if digest != _SCHEMA_DIGEST:
+        return UnavailableHostedAlias("schema_unreviewed")
+    return VerifiedHostedAlias(schema.model_copy(deep=True))

@@ -1798,11 +1798,34 @@ class ProviderConfiguration(BaseModel):
         :param model_setting_map: model setting map
         :return:
         """
-        from core.model_invocation_routing import managed_source_schemas
+        from core.hosting_configuration import (
+            UnavailableHostedAlias,
+            VerifiedHostedAlias,
+            resolve_legacy_hosted_alias,
+        )
+        from core.model_invocation_routing import (
+            has_compatibility_route,
+            managed_source_schemas,
+            migration_routing_state,
+        )
+
+        source_schemas = managed_source_schemas(self.system_configuration, provider_schema)
+        alias = resolve_legacy_hosted_alias(
+            provider=provider_schema,
+            system=self.system_configuration,
+            model_types=model_types,
+            model=model,
+            has_managed_route=lambda: has_compatibility_route(migration_routing_state(self.tenant_id)),
+            read_schema=self.get_model_schema,
+        )
+        if isinstance(alias, VerifiedHostedAlias):
+            source_schemas = (*source_schemas, alias.schema)
+        elif isinstance(alias, UnavailableHostedAlias):
+            logger.warning("Hosted source alias metadata unavailable: %s", alias.reason)
 
         provider_models = []
         for model_type in model_types:
-            for m in managed_source_schemas(self.system_configuration, provider_schema):
+            for m in source_schemas:
                 if m.model_type != model_type:
                     continue
                 if model and m.model != model:
