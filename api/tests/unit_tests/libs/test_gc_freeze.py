@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from configs import dify_config
+from configs.deploy import DeploymentConfig
 from libs import gc_freeze
 
 
@@ -62,3 +63,8 @@ def test_freeze_startup_objects_can_be_turned_off(monkeypatch: pytest.MonkeyPatc
     gc_freeze.freeze_startup_objects()
 
     assert calls == []
+
+
+def test_freeze_startup_objects_is_off_unless_configured() -> None:
+    # Shorter full collections come with more of them; deployments opt in for the shorter pauses.
+    assert DeploymentConfig.model_fields["GC_FREEZE_AFTER_STARTUP"].default is False

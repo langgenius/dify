@@ -27,6 +27,13 @@ def freeze_startup_objects() -> None:
     collection of reference cycles among them, which for objects that live as long as the process
     never comes.
 
+    It does not lower total collector time. CPython starts a full collection only once the objects
+    promoted since the last one reach a quarter of the long-lived objects it tracks, and frozen
+    objects no longer count, so full collections become more frequent as they become shorter. A
+    production canary saw each one take 63% less time and three times as many of them. That is why
+    it is off unless GC_FREEZE_AFTER_STARTUP is set: it is for deployments where the longest pause
+    matters more than total collector time.
+
     Call it once, when the process has loaded everything it will serve with and before it serves.
     """
     startup_gc.send(None, phase="start", frozen_objects=0)
