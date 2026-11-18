@@ -20,9 +20,12 @@ from controllers.openapi._mcp_tools import MCP_INSTRUCTIONS
 from controllers.openapi.auth import router as router_module
 from controllers.openapi.mcp import MCP_MAX_BODY_BYTES
 from core.mcp import types as mcp_types
+from enums import DeploymentEdition
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import AuthContext, InvalidBearerError
 from libs.rate_limit import _BearerRateLimited
+from services.entities.feature_entities import LicenseStatus
+from tests.helpers.unit.controllers.openapi.auth._world import system_features
 from tests.unit_tests.controllers.openapi.conftest import AdmittedWorld
 
 MCP_PATH = "/openapi/v1/mcp"
@@ -53,6 +56,11 @@ def _initialize(version: str = "2025-11-25") -> dict[str, object]:
         "initialize",
         {"protocolVersion": version, "capabilities": {}, "clientInfo": {"name": "test", "version": "1"}},
     )
+
+
+def _operation_answer(world: AdmittedWorld) -> TestResponse:
+    """What an operation on the surface answers the same caller in the same state."""
+    return world.client.get("/openapi/v1/account", headers=world.headers)
 
 
 def _post(client: FlaskClient, body: object, headers: dict[str, str] | None = None) -> TestResponse:
@@ -138,6 +146,7 @@ def test_a_rate_limited_token_answers_429_with_retry_after(
 
     assert response.status_code == 429
     assert response.headers["Retry-After"] == "5"
+    assert response.get_json() == _operation_answer(admitted_bearer).get_json()
 
 
 @JSON_RPC_ERROR_BODY
@@ -149,6 +158,23 @@ def test_tools_list_answers_503_when_bearer_auth_is_off(
     response = _post(admitted_bearer.client, _rpc("tools/list"), admitted_bearer.headers)
 
     assert response.status_code == 503
+    assert response.get_json() == _operation_answer(admitted_bearer).get_json()
+
+
+@JSON_RPC_ERROR_BODY
+def test_initialize_answers_403_for_a_broken_licence(
+    admitted_bearer: AdmittedWorld, config_overrides: Callable[..., None], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.ENTERPRISE)
+    monkeypatch.setattr(
+        "controllers.openapi.auth.requirements.SystemFeatureService.get_public_system_features",
+        lambda: system_features(license_status=LicenseStatus.EXPIRED),
+    )
+
+    response = _post(admitted_bearer.client, _initialize(), admitted_bearer.headers)
+
+    assert response.status_code == 403
+    assert response.get_json() == _operation_answer(admitted_bearer).get_json()
 
 
 def test_tools_call_runs_an_operation(admitted_bearer: AdmittedWorld) -> None:

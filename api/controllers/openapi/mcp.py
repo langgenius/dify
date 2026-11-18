@@ -158,8 +158,10 @@ class OpenApiMcpApi(Resource):
         before any login check); a body above the cap sent without a ``Content-Length`` (chunked) is
         cut at the cap and answers 400 with a JSON-RPC parse error; 403 with a JSON-RPC error, before the body is
         read, when an ``Origin`` header is present and is neither this server's own nor in
-        ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged); for ``initialize`` and
-        ``tools/list``, the status of ``admit_bearer``'s error (401, 403, 429 or 503) as any operation answers it.
+        ``OPENAPI_CORS_ALLOW_ORIGINS`` (no ``Origin``: unchanged). ``initialize`` and ``tools/list``
+        answer as any request on this surface does, with its error body and headers: 401 for a missing
+        or invalid bearer, 429 with Retry-After above the per-token limit, 403 for a broken licence, 503
+        when bearer login is off. ``ping``, notifications and ``dify_find`` have no login check.
         """
         # response-contract:ignore MCP route returns a Flask Response built from a JSON-RPC message
         origin = request.headers.get(ORIGIN_HEADER)
