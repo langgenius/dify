@@ -147,7 +147,6 @@ def test_input_domain_serialization_preserves_files_and_json() -> None:
     assert isinstance(files, list)
     assert len(files) == 1
     assert files[0] is attachment
-    assert isinstance(params.inputs["file_json"], dict)
     assert params.inputs["file_json"] == file_shaped_json
     expected = {
         "app_id": "",

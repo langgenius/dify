@@ -14,7 +14,6 @@ from core.moderation.factory import API_MODERATION_EXTENSION_KEY, APIModerationC
 from domain.moderation.api_config import APIModerationConfig, DisabledDirection, EnabledDirection, parse_direction
 from graphon.file import File, FileTransferMethod, FileType
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
-from models.base import TypeBase
 from repositories.api_based_extension_repository import APIBasedExtensionRepository
 from services.api_based_extension_adapters import APIModerationGateway
 from services.api_moderation_service import (
@@ -663,7 +662,7 @@ def test_service_uses_explicit_database_instead_of_global(
     )
     engine = create_engine("sqlite://")
     try:
-        TypeBase.metadata.create_all(engine)
+        APIBasedExtension.metadata.tables[APIBasedExtension.__tablename__].create(engine)
         explicit_factory = sessionmaker(bind=engine)
         repository = APIBasedExtensionRepository(session_factory=explicit_factory)
         target = APIBasedExtension(
