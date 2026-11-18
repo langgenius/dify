@@ -22,7 +22,7 @@ export const zErrorResponse = z.object({
  * VectorSpaceLimitationModel
  */
 export const zVectorSpaceLimitationModel = z.object({
-  limit: z.int(),
+  limit: z.int().nullable(),
   size: z.int(),
   usage_unknown: z.boolean().optional().default(false),
 })
@@ -31,7 +31,7 @@ export const zVectorSpaceLimitationModel = z.object({
  * LimitationModel
  */
 export const zLimitationModel = z.object({
-  limit: z.int().default(0),
+  limit: z.int().nullable().default(0),
   size: z.int().default(0),
 })
 
@@ -39,7 +39,7 @@ export const zLimitationModel = z.object({
  * Quota
  */
 export const zQuota = z.object({
-  limit: z.int().default(0),
+  limit: z.int().nullable().default(0),
   reset_date: z.int().default(-1),
   usage: z.int().default(0),
 })

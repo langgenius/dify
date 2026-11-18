@@ -361,11 +361,11 @@ def test_get_features_reports_plan_quotas_as_unlimited_outside_cloud(
     features = FeatureService.get_features("tenant-1")
 
     for quota in (features.members, features.apps, features.annotation_quota_limit, features.documents_upload_quota):
-        assert (quota.size, quota.limit) == (0, 0)
+        assert (quota.size, quota.limit) == (0, None)
     assert features.vector_space is not None
-    assert features.vector_space.limit == -1
-    assert (features.trigger_event.limit, features.trigger_event.reset_date) == (-1, -1)
-    assert (features.api_rate_limit.limit, features.api_rate_limit.reset_date) == (-1, -1)
+    assert features.vector_space.limit is None
+    assert (features.trigger_event.limit, features.trigger_event.reset_date) == (None, -1)
+    assert (features.api_rate_limit.limit, features.api_rate_limit.reset_date) == (None, -1)
 
 
 @pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
@@ -376,7 +376,7 @@ def test_get_vector_space_is_unlimited_outside_cloud(
 
     result = FeatureService.get_vector_space("tenant-1")
 
-    assert (result.size, result.limit, result.usage_unknown) == (0, -1, False)
+    assert (result.size, result.limit, result.usage_unknown) == (0, None, False)
 
 
 def test_skill_feature_is_disabled_by_default() -> None:
@@ -525,3 +525,45 @@ def test_full_features_keep_treating_unknown_vector_usage_as_zero() -> None:
 
     assert vector_space.size == 0
     assert vector_space.limit == 50
+
+
+@pytest.mark.parametrize(("billing_limit", "expected"), [(-1, None), (0, 0), (10, 10)])
+def test_billing_limits_translate_only_minus_one_to_unlimited(
+    monkeypatch: pytest.MonkeyPatch, config_overrides: Callable[..., None], billing_limit: int, expected: int | None
+) -> None:
+    config_overrides(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    quota = billing.SubscriptionQuota(size=1, limit=billing_limit)
+    billing_info = builders.subscription_info(
+        members=quota,
+        apps=quota,
+        documents_upload_quota=quota,
+        annotation_quota_limit=quota,
+        vector_space=builders.vector_space(size=1.0, limit=billing_limit),
+    )
+    periodic = billing.QuotaFeatureInfo(usage=1, limit=billing_limit, reset_date=0)
+    monkeypatch.setattr(feature_service_module.BillingService, "get_info", lambda *_args, **_kwargs: billing_info)
+    monkeypatch.setattr(
+        feature_service_module.BillingService,
+        "get_quota_info",
+        lambda _tenant_id: billing.QuotaGetInfoReply(trigger_event=periodic, api_rate_limit=periodic),
+    )
+    monkeypatch.setattr(
+        feature_service_module.BillingService,
+        "get_vector_space",
+        lambda _tenant_id: builders.vector_space(size=1.0, limit=billing_limit),
+    )
+
+    features = FeatureService.get_features("tenant-1")
+
+    assert features.vector_space is not None
+    limits = [
+        features.members.limit,
+        features.apps.limit,
+        features.documents_upload_quota.limit,
+        features.annotation_quota_limit.limit,
+        features.vector_space.limit,
+        features.trigger_event.limit,
+        features.api_rate_limit.limit,
+        FeatureService.get_vector_space("tenant-1").limit,
+    ]
+    assert limits == [expected] * len(limits)

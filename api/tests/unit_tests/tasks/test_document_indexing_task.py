@@ -7,7 +7,6 @@ ORM rows so each phase observes only committed database state.
 
 import uuid
 from contextlib import nullcontext
-from types import SimpleNamespace
 from unittest.mock import ANY, MagicMock, Mock, patch
 
 import pytest
@@ -19,6 +18,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
 from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.entities.feature_entities import BillingModel, FeatureModel, LimitationModel, SubscriptionModel
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
@@ -120,14 +120,14 @@ def _features(
     plan: CloudPlan = CloudPlan.PROFESSIONAL,
     vector_limit: int = 1000,
     vector_size: int = 0,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        billing=SimpleNamespace(subscription=SimpleNamespace(plan=plan)),
-        vector_space=SimpleNamespace(limit=vector_limit, size=vector_size),
+) -> FeatureModel:
+    return FeatureModel(
+        billing=BillingModel(subscription=SubscriptionModel(plan=plan)),
+        vector_space=LimitationModel(size=vector_size, limit=vector_limit),
     )
 
 
-def _patch_features(monkeypatch: pytest.MonkeyPatch, features: SimpleNamespace) -> MagicMock:
+def _patch_features(monkeypatch: pytest.MonkeyPatch, features: FeatureModel) -> MagicMock:
     get_features = MagicMock(return_value=features)
     monkeypatch.setattr("tasks.document_indexing_task.FeatureService.get_features", get_features)
     return get_features
@@ -353,7 +353,7 @@ class TestDocumentIndexing:
         dataset_id: str,
         document_ids: list[str],
         monkeypatch: pytest.MonkeyPatch,
-        features: SimpleNamespace,
+        features: FeatureModel,
         batch_limit: int,
         message: str,
     ) -> None:

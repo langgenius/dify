@@ -2871,10 +2871,11 @@ class DocumentService:
 
     @staticmethod
     def check_documents_upload_quota(count: int, features: FeatureModel):
-        can_upload_size = features.documents_upload_quota.limit - features.documents_upload_quota.size
-        if count > can_upload_size:
+        quota = features.documents_upload_quota
+        if not quota.is_available(count):
+            remaining = max((quota.limit or 0) - quota.size, 0)
             raise ValueError(
-                f"You have reached the limit of your subscription. Only {can_upload_size} documents can be uploaded."
+                f"You have reached the limit of your subscription. Only {remaining} documents can be uploaded."
             )
 
     @staticmethod

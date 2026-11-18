@@ -75,7 +75,7 @@ def _document_indexing(dataset_id: str, document_ids: Sequence[str]):
                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
-                if 0 < vector_space.limit <= vector_space.size:
+                if not vector_space.is_available():
                     raise ValueError(
                         "Your total number of documents plus the number of uploads have over the limit of "
                         "your subscription."

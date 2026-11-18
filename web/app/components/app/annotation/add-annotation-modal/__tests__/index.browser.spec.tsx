@@ -33,7 +33,7 @@ it('resets a continuous-entry form without losing its preference or skipping nat
   const client = new QueryClient({
     defaultOptions: { queries: { staleTime: Infinity, retry: false } },
   })
-  seedFeatures(client, { annotation_quota_limit: { size: 0, limit: 0 } })
+  seedFeatures(client, { annotation_quota_limit: { size: 0, limit: null } })
   const i18n = createInstance()
   await i18n.init({
     lng: 'en-US',

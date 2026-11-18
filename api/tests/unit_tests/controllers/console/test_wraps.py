@@ -55,7 +55,7 @@ from machinery.errors import ActiveWorkspaceRequiredError
 from models import Account, DifySetup
 from models.account import AccountStatus, TenantAccountRole
 from models.dataset import RateLimitLog
-from services.entities.feature_entities import LicenseStatus
+from services.entities.feature_entities import FeatureModel, LicenseStatus, LimitationModel
 from services.errors.billing import BillingUpstreamUnavailableError
 from tests.helpers import billing_builders as builders
 from tests.helpers.unit.config_override import config_overrides_context
@@ -1093,8 +1093,7 @@ class TestBillingResourceLimits:
         # Arrange
         app = create_app_with_login()
         mock_features = MagicMock()
-        mock_features.members.limit = 10
-        mock_features.members.size = 10
+        mock_features.members = LimitationModel(size=10, limit=10)
 
         @cloud_edition_billing_resource_check("members")
         def add_member():
@@ -1112,14 +1111,36 @@ class TestBillingResourceLimits:
                     assert exc_info.value.code == 403
                     assert "members has reached the limit" in str(exc_info.value.description)
 
+    @pytest.mark.parametrize(("size", "limit", "allowed"), [(10, 10, True), (0, 0, True), (11, 10, False)])
+    @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
+    def test_annotation_check_rejects_only_usage_over_the_limit(self, size: int, limit: int, allowed: bool):
+        app = create_app_with_login()
+        features = FeatureModel(annotation_quota_limit=LimitationModel(size=size, limit=limit))
+
+        @cloud_edition_billing_resource_check("annotation")
+        def edit_annotation():
+            return "edited"
+
+        with app.test_request_context():
+            with patch(
+                "controllers.console.wraps.current_account_with_tenant",
+                return_value=(MockUser("test_user"), "tenant123"),
+            ):
+                with patch("controllers.console.wraps.FeatureService.get_features", return_value=features):
+                    if allowed:
+                        assert edit_annotation() == "edited"
+                    else:
+                        with pytest.raises(HTTPException) as exc_info:
+                            edit_annotation()
+                        assert exc_info.value.code == 403
+
     @config_overrides_context(DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     def test_should_check_source_for_documents_limit(self):
         """Test document limit checks request source"""
         # Arrange
         app = create_app_with_login()
         mock_features = MagicMock()
-        mock_features.documents_upload_quota.limit = 100
-        mock_features.documents_upload_quota.size = 100
+        mock_features.documents_upload_quota = LimitationModel(size=100, limit=100)
 
         @cloud_edition_billing_resource_check("documents")
         def upload_document():

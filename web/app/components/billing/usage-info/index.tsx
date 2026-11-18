@@ -53,12 +53,12 @@ const UsageInfo: FC<Props> = ({
 
   // Zero count quotas have no remaining capacity; storage keeps its separate limit convention.
   const isZeroQuota = !storageMode && limit === 0
-  const rawPercent = limit !== 'unlimited' && limit > 0 ? (usage / limit) * 100 : 0
+  const rawPercent = limit !== null && limit > 0 ? (usage / limit) * 100 : 0
   const effectivePercent = isSandboxFull || isZeroQuota ? 100 : Math.min(rawPercent, 100)
   const tone: MeterTone =
     effectivePercent >= 100 ? 'error' : effectivePercent >= 80 ? 'warning' : 'neutral'
 
-  const isUnlimited = limit === 'unlimited'
+  const isUnlimited = limit === null
   let totalDisplay: string | number = isUnlimited
     ? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })
     : limit
@@ -71,11 +71,9 @@ const UsageInfo: FC<Props> = ({
       : undefined)
 
   const rightInfo: ReactNode = resetText ? (
-    <div className="ml-auto flex-1 text-right system-xs-regular text-text-tertiary">
-      {resetText}
-    </div>
+    <div className="ms-auto flex-1 text-end system-xs-regular text-text-tertiary">{resetText}</div>
   ) : showUnit ? (
-    <div className="ml-auto system-xs-medium text-text-tertiary">{unit}</div>
+    <div className="ms-auto system-xs-medium text-text-tertiary">{unit}</div>
   ) : null
 
   const usageDisplay: ReactNode = (() => {

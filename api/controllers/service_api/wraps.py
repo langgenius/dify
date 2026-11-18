@@ -265,7 +265,7 @@ def cloud_edition_billing_resource_check[**P, R](
                         raise ServiceUnavailable(
                             "Unable to verify vector space usage right now. Please try again later."
                         )
-                if 0 < vector_space.limit <= vector_space.size:
+                if not vector_space.is_available():
                     raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 return view(*args, **kwargs)
 
@@ -275,11 +275,11 @@ def cloud_edition_billing_resource_check[**P, R](
             apps = features.apps
             documents_upload_quota = features.documents_upload_quota
 
-            if resource == "members" and 0 < members.limit <= members.size:
+            if resource == "members" and not members.is_available():
                 raise Forbidden("The number of members has reached the limit of your subscription.")
-            elif resource == "apps" and 0 < apps.limit <= apps.size:
+            elif resource == "apps" and not apps.is_available():
                 raise Forbidden("The number of apps has reached the limit of your subscription.")
-            elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+            elif resource == "documents" and not documents_upload_quota.is_available():
                 raise Forbidden("The number of documents has reached the limit of your subscription.")
             return view(*args, **kwargs)
 

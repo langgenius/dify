@@ -158,7 +158,7 @@ describe('Billing Page + Plan Integration', () => {
     it('should show "unlimited" for infinite quotas (professional API rate limit)', () => {
       setupBilling({
         billing: { subscription: { plan: 'professional' } },
-        api_rate_limit: { limit: -1 },
+        api_rate_limit: { limit: null },
       })
 
       render(<PlanComp loc="test" />)

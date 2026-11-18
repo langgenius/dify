@@ -61,7 +61,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str], user_
                     try:
                         vector_space = features.vector_space
                         assert vector_space is not None
-                        if 0 < vector_space.limit <= vector_space.size:
+                        if not vector_space.is_available():
                             raise ValueError(
                                 "Your total number of documents plus the number of uploads have over the limit of "
                                 "your subscription."

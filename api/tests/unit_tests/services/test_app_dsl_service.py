@@ -104,16 +104,16 @@ def _workflow(
 
 
 @pytest.mark.parametrize("version", [CURRENT_APP_DSL_VERSION, "99.0.0"])
-@pytest.mark.parametrize("size", [5, 6])
+@pytest.mark.parametrize(("size", "limit"), [(5, 5), (6, 5), (0, 0)])
 def test_import_rejects_cloud_app_quota_before_side_effects(
-    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, version: str, size: int
+    monkeypatch: pytest.MonkeyPatch, unbound_session: Session, version: str, size: int, limit: int
 ) -> None:
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)
     feature_calls: list[tuple[str, bool]] = []
 
     def features(tenant_id: str, *, exclude_vector_space: bool) -> FeatureModel:
         feature_calls.append((tenant_id, exclude_vector_space))
-        return FeatureModel(apps=LimitationModel(size=size, limit=5))
+        return FeatureModel(apps=LimitationModel(size=size, limit=limit))
 
     def unexpected_side_effect(*_args: object, **_kwargs: object) -> None:
         pytest.fail("Quota rejection must precede import side effects")
@@ -155,7 +155,7 @@ def test_import_rejects_cloud_app_quota_before_side_effects(
         (DeploymentEdition.COMMUNITY, 5, 5, False),
         (DeploymentEdition.ENTERPRISE, 5, 5, False),
         (DeploymentEdition.CLOUD, 4, 5, False),
-        (DeploymentEdition.CLOUD, 5, 0, False),
+        (DeploymentEdition.CLOUD, 5, None, False),
         (DeploymentEdition.CLOUD, 5, 5, True),
     ],
 )
@@ -165,7 +165,7 @@ def test_import_app_quota_allows_other_editions_available_capacity_and_overwrite
     confirmed: bool,
     edition: DeploymentEdition,
     size: int,
-    limit: int,
+    limit: int | None,
     overwrite: bool,
 ) -> None:
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=edition)

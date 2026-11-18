@@ -34,7 +34,7 @@ export function TriggerEventsLimitPrompt() {
     currentWorkspaceId &&
     triggerEvents &&
     triggerEvents.plan !== 'team' &&
-    triggerEvents.quota.limit !== 'unlimited' &&
+    triggerEvents.quota.limit !== null &&
     triggerEvents.quota.usage >= triggerEvents.quota.limit
       ? `${TRIGGER_EVENTS_LOCALSTORAGE_PREFIX}-${currentWorkspaceId}-${triggerEvents.plan}-${triggerEvents.quota.limit}-${cycleTag}`
       : null

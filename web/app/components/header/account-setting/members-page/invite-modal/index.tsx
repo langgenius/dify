@@ -22,7 +22,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLocale } from '#i18n'
-import { getCountQuota } from '@/app/components/billing/quota'
+import { getCountQuota, getLicenseQuota } from '@/app/components/billing/quota'
 import { consoleQuery } from '@/service/console'
 import { InviteButton } from '../invite-button'
 import { mergeEmailRecipients } from './email-recipients'
@@ -76,12 +76,12 @@ function InviteForm({
       ? t(($) => $['members.inviteFailed'], { ns: 'workspaceMembers' })
       : null
   const memberLimit = features
-    ? getCountQuota(
-        features.workspace_members.enabled ? features.workspace_members : features.members,
-      )
+    ? features.workspace_members.enabled
+      ? getLicenseQuota(features.workspace_members)
+      : getCountQuota(features.members)
     : undefined
   const remainingSeats =
-    memberLimit && memberLimit.limit !== 'unlimited'
+    memberLimit && memberLimit.limit !== null
       ? Math.max(memberLimit.limit - memberLimit.usage, 0)
       : null
   const effectiveRecipients = mergeEmailRecipients(recipients, draft)

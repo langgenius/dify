@@ -31921,7 +31921,7 @@ Unable to create account because the licensed seats limit was exceeded
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer | Maximum number of resources allowed; 0 means unlimited | Yes |
+| limit | integer | Maximum number of resources allowed; null means unlimited and 0 means none | Yes |
 | size | integer | Number of resources already consumed | Yes |
 
 #### ListChannelProvidersResponse
@@ -34980,7 +34980,7 @@ Model class for provider with models response.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer | Quota limit; -1 means unlimited and 0 means no quota | Yes |
+| limit | integer | Quota limit; null means unlimited and 0 means no quota | Yes |
 | reset_date | integer, <br>**Default:** -1 | Next quota reset as a Unix timestamp in seconds; -1 means no reset | Yes |
 | usage | integer |  | Yes |
 
@@ -38380,7 +38380,7 @@ in form definition, or a variable while the workflow is running.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
-| limit | integer | Vector storage allowed, in MB; -1 means unlimited | Yes |
+| limit | integer | Vector storage allowed, in MB; null means unlimited | Yes |
 | size | integer | Vector storage already consumed, in MB | Yes |
 | usage_unknown | boolean |  | No |
 

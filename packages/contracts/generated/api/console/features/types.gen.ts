@@ -42,18 +42,18 @@ export type ErrorResponse = {
 }
 
 export type VectorSpaceLimitationModel = {
-  limit: number
+  limit: number | null
   size: number
   usage_unknown?: boolean
 }
 
 export type LimitationModel = {
-  limit: number
+  limit: number | null
   size: number
 }
 
 export type Quota = {
-  limit: number
+  limit: number | null
   reset_date: number
   usage: number
 }

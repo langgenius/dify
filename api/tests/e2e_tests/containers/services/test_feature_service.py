@@ -501,15 +501,15 @@ class TestFeatureService:
 
             # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 0
+            assert result.members.limit is None
             assert result.apps.size == 0
-            assert result.apps.limit == 0
+            assert result.apps.limit is None
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == -1
+            assert result.vector_space.limit is None
             assert result.documents_upload_quota.size == 0
-            assert result.documents_upload_quota.limit == 0
+            assert result.documents_upload_quota.limit is None
             assert result.annotation_quota_limit.size == 0
-            assert result.annotation_quota_limit.limit == 0
+            assert result.annotation_quota_limit.limit is None
 
             # Verify no enterprise features
             assert result.workspace_members.enabled is False
@@ -590,11 +590,11 @@ class TestFeatureService:
 
             # Plan quotas are unlimited outside Cloud
             assert result.members.size == 0
-            assert result.members.limit == 0
+            assert result.members.limit is None
             assert result.apps.size == 0
-            assert result.apps.limit == 0
+            assert result.apps.limit is None
             assert result.vector_space.size == 0
-            assert result.vector_space.limit == -1
+            assert result.vector_space.limit is None
 
             # Verify mock interactions
             mock_external_service_dependencies["enterprise_service"].get_workspace_info.assert_called_once_with(
@@ -1168,7 +1168,7 @@ class TestFeatureService:
         assert result.members.size == 0
         assert result.members.limit == 0
         assert result.apps.size == 0
-        assert result.apps.limit == -1
+        assert result.apps.limit is None
         assert result.vector_space.size == 0
         assert result.vector_space.limit == 999999
         assert result.documents_upload_quota.size == 0

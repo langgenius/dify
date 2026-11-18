@@ -8,6 +8,11 @@ from services.entities import feature_entities
 from services.knowledge_fs.feature_service import get_knowledge_fs_features
 
 
+def _limit_from_billing(limit: int) -> int | None:
+    """Billing reports -1 for unlimited; 0 and positive limits keep their meaning."""
+    return None if limit == -1 else limit
+
+
 class FeatureService:
     @staticmethod
     def is_im_centrally_managed() -> bool:
@@ -114,7 +119,7 @@ class FeatureService:
     @classmethod
     def get_vector_space(cls, tenant_id: str) -> feature_entities.VectorSpaceLimitationModel:
         if dify_config.DEPLOYMENT_EDITION != DeploymentEdition.CLOUD:
-            return feature_entities.VectorSpaceLimitationModel(size=0, limit=-1)
+            return feature_entities.VectorSpaceLimitationModel(size=0, limit=None)
 
         vector_space = feature_entities.VectorSpaceLimitationModel(size=0, limit=5)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD and tenant_id:
@@ -122,7 +127,7 @@ class FeatureService:
             # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
             # but feature API keeps LimitationModel.size as int for compatibility.
             vector_space.size = int(billing_vector_space.size)
-            vector_space.limit = billing_vector_space.limit
+            vector_space.limit = _limit_from_billing(billing_vector_space.limit)
             vector_space.usage_unknown = billing_vector_space.usage_unknown or False
 
         return vector_space
@@ -195,14 +200,14 @@ class FeatureService:
     @classmethod
     def _lift_plan_quotas(cls, features: feature_entities.FeatureModel):
         """Subscription quotas only exist on Cloud; other editions report them as unlimited."""
-        features.members = feature_entities.LimitationModel(size=0, limit=0)
-        features.apps = feature_entities.LimitationModel(size=0, limit=0)
-        features.annotation_quota_limit = feature_entities.LimitationModel(size=0, limit=0)
-        features.documents_upload_quota = feature_entities.LimitationModel(size=0, limit=0)
+        features.members = feature_entities.LimitationModel(size=0, limit=None)
+        features.apps = feature_entities.LimitationModel(size=0, limit=None)
+        features.annotation_quota_limit = feature_entities.LimitationModel(size=0, limit=None)
+        features.documents_upload_quota = feature_entities.LimitationModel(size=0, limit=None)
         if features.vector_space is not None:
-            features.vector_space = feature_entities.LimitationModel(size=0, limit=-1)
-        features.trigger_event = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
-        features.api_rate_limit = feature_entities.Quota(usage=0, limit=-1, reset_date=-1)
+            features.vector_space = feature_entities.LimitationModel(size=0, limit=None)
+        features.trigger_event = feature_entities.Quota(usage=0, limit=None, reset_date=-1)
+        features.api_rate_limit = feature_entities.Quota(usage=0, limit=None, reset_date=-1)
 
     @classmethod
     def _fulfill_params_from_workspace_info(cls, features: feature_entities.FeatureModel, tenant_id: str):
@@ -235,28 +240,28 @@ class FeatureService:
             features.is_allow_transfer_workspace = False
 
         features.trigger_event.usage = features_usage_info.trigger_event.usage
-        features.trigger_event.limit = features_usage_info.trigger_event.limit
+        features.trigger_event.limit = _limit_from_billing(features_usage_info.trigger_event.limit)
         features.trigger_event.reset_date = features_usage_info.trigger_event.reset_date
 
         features.api_rate_limit.usage = features_usage_info.api_rate_limit.usage
-        features.api_rate_limit.limit = features_usage_info.api_rate_limit.limit
+        features.api_rate_limit.limit = _limit_from_billing(features_usage_info.api_rate_limit.limit)
         features.api_rate_limit.reset_date = features_usage_info.api_rate_limit.reset_date
 
         features.members.size = billing_info.members.size
-        features.members.limit = billing_info.members.limit
+        features.members.limit = _limit_from_billing(billing_info.members.limit)
 
         features.apps.size = billing_info.apps.size
-        features.apps.limit = billing_info.apps.limit
+        features.apps.limit = _limit_from_billing(billing_info.apps.limit)
 
         if not exclude_vector_space:
             assert features.vector_space is not None
             cls._fulfill_vector_space_from_billing_info(features.vector_space, billing_info)
 
         features.documents_upload_quota.size = billing_info.documents_upload_quota.size
-        features.documents_upload_quota.limit = billing_info.documents_upload_quota.limit
+        features.documents_upload_quota.limit = _limit_from_billing(billing_info.documents_upload_quota.limit)
 
         features.annotation_quota_limit.size = billing_info.annotation_quota_limit.size
-        features.annotation_quota_limit.limit = billing_info.annotation_quota_limit.limit
+        features.annotation_quota_limit.limit = _limit_from_billing(billing_info.annotation_quota_limit.limit)
 
         features.can_replace_logo = billing_info.can_replace_logo
         features.model_load_balancing_enabled = billing_info.model_load_balancing_enabled
@@ -273,4 +278,4 @@ class FeatureService:
         # NOTE: billing API returns vector_space.size as float (e.g. 0.0),
         # but feature API keeps LimitationModel.size as int for compatibility.
         vector_space.size = int(billing_info.vector_space.size)
-        vector_space.limit = billing_info.vector_space.limit
+        vector_space.limit = _limit_from_billing(billing_info.vector_space.limit)

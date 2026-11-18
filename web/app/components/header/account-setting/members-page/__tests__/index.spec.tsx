@@ -433,7 +433,7 @@ describe('MembersPage', () => {
 
   it.each([
     ['sandbox', 5, 'plansCommon.member'],
-    ['sandbox', 0, 'plansCommon.unlimited'],
+    ['sandbox', null, 'plansCommon.unlimited'],
     ['team', 50, 'plansCommon.memberAfter'],
   ] as const)('shows the %s member allowance with limit %s', async (plan, limit, label) => {
     await renderMembersPage({

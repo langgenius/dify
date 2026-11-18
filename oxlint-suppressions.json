@@ -1666,11 +1666,6 @@
       "count": 1
     }
   },
-  "web/app/components/billing/usage-info/index.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/custom/custom-page/index.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 1

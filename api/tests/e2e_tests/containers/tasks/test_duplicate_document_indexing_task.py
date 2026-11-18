@@ -10,6 +10,7 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus, SegmentStatus
+from services.entities.feature_entities import LimitationModel
 from services.knowledge.indexing.errors import DocumentIsPausedError
 from services.knowledge.resource_scope import DocumentRef
 from tasks.duplicate_document_indexing_task import (
@@ -296,8 +297,7 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Configure billing features
         mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
-        mock_external_service_dependencies["features"].vector_space.limit = 100
-        mock_external_service_dependencies["features"].vector_space.size = 50
+        mock_external_service_dependencies["features"].vector_space = LimitationModel(size=50, limit=100)
 
         # Refresh dataset to ensure it's properly loaded
         db_session_with_containers.refresh(dataset)
@@ -588,8 +588,9 @@ class TestDuplicateDocumentIndexingTasks:
 
         # Configure TEAM plan with vector space limit exceeded
         mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.TEAM
-        mock_external_service_dependencies["features"].vector_space.limit = 100
-        mock_external_service_dependencies["features"].vector_space.size = 98  # Almost at limit
+        mock_external_service_dependencies["features"].vector_space = LimitationModel(
+            size=98, limit=100
+        )  # Almost at limit
 
         document_ids = [doc.id for doc in documents]  # 3 documents will exceed limit
 

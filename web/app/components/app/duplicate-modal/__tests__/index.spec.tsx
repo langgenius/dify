@@ -266,7 +266,7 @@ it('waits for the real Cloud quota and allows an unlimited quota without an upgr
   expect(button).toBeDisabled()
   expect(screen.queryByText('apps-full')).not.toBeInTheDocument()
   await act(async () => {
-    seedFeatures(queryClient, { apps: { size: 100, limit: 0 } })
+    seedFeatures(queryClient, { apps: { size: 100, limit: null } })
   })
   await waitFor(() => expect(button).toBeEnabled())
   await user.click(button)

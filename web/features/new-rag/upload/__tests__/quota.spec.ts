@@ -53,6 +53,7 @@ describe('KnowledgeFS upload quota preflight', () => {
   it.each([
     { size: 5, limit: 5 },
     { size: 6, limit: 5 },
+    { size: 0, limit: 0 },
   ])('rejects exhausted document quota %j before querying vector usage', async (quota) => {
     documents = quota
 
@@ -74,14 +75,27 @@ describe('KnowledgeFS upload quota preflight', () => {
     )
   })
 
-  it.each([
-    { documents: { size: 100, limit: -1 }, vectorSpace: { size: 100, limit: -1 } },
-    { documents: { size: 100, limit: 0 }, vectorSpace: { size: 100, limit: -1 } },
-  ])('allows unlimited document and vector quotas %j', async (quotas) => {
-    documents = quotas.documents
-    vectorSpace = quotas.vectorSpace
+  it('allows unlimited document and vector quotas', async () => {
+    documents = { size: 100, limit: null }
+    vectorSpace = { size: 100, limit: null }
 
     await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBeUndefined()
+  })
+
+  it.each([-1, 1.5])('treats an invalid limit %s as unavailable', async (limit) => {
+    documents = { size: 0, limit }
+
+    await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBe(
+      'taskFailure.documentCountQuotaUnavailable',
+    )
+
+    documents = { size: 0, limit: 5 }
+    vectorSpace = { size: 0, limit }
+    queryClient.clear()
+
+    await expect(getKnowledgeFsUploadQuotaFailure(queryClient)).resolves.toBe(
+      'taskFailure.vectorSpaceQuotaUnavailable',
+    )
   })
 
   it('does not interpret unknown vector usage as available capacity', async () => {

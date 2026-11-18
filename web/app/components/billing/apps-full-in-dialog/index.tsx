@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next'
 import { mailToSupport } from '@/app/components/header/utils/util'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { consoleQuery } from '@/service/console'
+import { getCountQuota } from '../quota'
 import UpgradeBtn from '../upgrade-btn'
 import s from './style.module.css'
 
@@ -17,7 +18,7 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
   const { t } = useTranslation(['billing'])
   const { data: billing } = useQuery(
     consoleQuery.features.get.queryOptions({
-      select: (data) => ({ plan: data.billing.subscription.plan, apps: data.apps }),
+      select: (data) => ({ plan: data.billing.subscription.plan, apps: getCountQuota(data.apps) }),
     }),
   )
   const { data: accountProfile } = useSuspenseQuery({
@@ -29,9 +30,8 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
   })
   if (!billing) return null
   const isTeam = billing.plan === 'team'
-  const usage = billing.apps.size
-  const total = billing.apps.limit
-  const percent = total > 0 ? (usage / total) * 100 : 0
+  const { usage, limit } = billing.apps
+  const percent = limit !== null && limit > 0 ? (usage / limit) * 100 : 0
   const tone: MeterTone = percent >= 80 ? 'error' : percent >= 50 ? 'warning' : 'neutral'
   const buildAppsLabel = t(($) => $['usagePage.buildApps'], { ns: 'billing' })
   return (
@@ -84,7 +84,7 @@ const AppsFull: FC<{ loc: string; className?: string }> = ({ loc, className }) =
         <div className="flex items-center justify-between system-xs-medium text-text-secondary">
           <div>{buildAppsLabel}</div>
           <div>
-            {usage}/{total}
+            {usage}/{limit ?? t(($) => $['plansCommon.unlimited'], { ns: 'billing' })}
           </div>
         </div>
         <Meter value={Math.min(percent, 100)} max={100} aria-label={buildAppsLabel}>

@@ -11,6 +11,7 @@ from enums import CloudPlan, DeploymentEdition
 from models import Account, AccountStatus, Tenant, TenantAccountJoin, TenantAccountRole, TenantStatus
 from models.dataset import Dataset, Document
 from models.enums import DataSourceType, DocumentCreatedFrom, IndexingStatus
+from services.entities.feature_entities import LimitationModel
 from services.knowledge.resource_scope import DocumentRef
 from tasks.document_indexing_task import (
     _document_indexing,  # Core function
@@ -229,8 +230,7 @@ class TestDocumentIndexingTasks:
 
         # Configure billing features
         mock_external_service_dependencies["features"].billing.subscription.plan = CloudPlan.SANDBOX
-        mock_external_service_dependencies["features"].vector_space.limit = 100
-        mock_external_service_dependencies["features"].vector_space.size = 50
+        mock_external_service_dependencies["features"].vector_space = LimitationModel(size=50, limit=100)
 
         # Refresh dataset to ensure it's properly loaded
         db_session_with_containers.refresh(dataset)

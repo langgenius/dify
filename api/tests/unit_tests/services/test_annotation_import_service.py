@@ -1,14 +1,19 @@
 """Exercise annotation CSV validation with real streams and the production parser."""
 
 from io import BytesIO
+from typing import Literal
 
 import pytest
 
 from services.annotation_import_service import (
-    AnnotationImportQuota,
+    AnnotationImportJob,
+    AnnotationImportLimits,
+    AnnotationImportRecord,
+    AnnotationImportService,
     AnnotationImportValidationError,
     parse_annotation_csv,
 )
+from services.entities.feature_entities import LimitationModel
 
 
 def test_preserves_literal_na_and_other_non_nan_text() -> None:
@@ -122,14 +127,63 @@ def test_parser_and_encoding_errors_are_validation_errors(content: bytes) -> Non
         parse_annotation_csv(BytesIO(content), min_records=1, max_records=5)
 
 
-@pytest.mark.parametrize(("limit", "size", "record_count"), [(5, 2, 2), (5, 2, 3), (0, 10, 20), (-1, 10, 20)])
-def test_quota_accepts_available_capacity_and_nonpositive_unlimited_limits(
-    limit: int, size: int, record_count: int
-) -> None:
-    AnnotationImportQuota(limit=limit, size=size).validate(record_count=record_count)
+class _Apps:
+    def __init__(self) -> None:
+        self.required: list[tuple[str, str]] = []
+
+    def require_app(self, *, tenant_id: str, app_id: str) -> None:
+        self.required.append((tenant_id, app_id))
 
 
-@pytest.mark.parametrize(("size", "record_count"), [(0, 6), (4, 2), (5, 1)])
-def test_quota_rejects_positive_limit_overflow(size: int, record_count: int) -> None:
+class _Jobs:
+    def __init__(self) -> None:
+        self.requests: list[tuple[str, int, int]] = []
+        self.created: list[tuple[str, str, str, int]] = []
+        self.released: list[tuple[str, str, str]] = []
+
+    def record_request(self, *, tenant_id: str, window_seconds: Literal[60, 3600], now_ms: int) -> int:
+        self.requests.append((tenant_id, window_seconds, now_ms))
+        return 1
+
+    def count_active(self, *, tenant_id: str, now_ms: int) -> int:
+        return sum(1 for job in self.created if job[0] == tenant_id and job[3] <= now_ms)
+
+    def create(self, *, tenant_id: str, app_id: str, job_id: str, now_ms: int) -> None:
+        self.created.append((tenant_id, app_id, job_id, now_ms))
+
+    def release(self, *, tenant_id: str, app_id: str, job_id: str) -> None:
+        self.released.append((tenant_id, app_id, job_id))
+
+    def get(self, *, tenant_id: str, app_id: str, job_id: str) -> AnnotationImportJob | None:
+        owned = any(job[:3] == (tenant_id, app_id, job_id) for job in self.created)
+        return AnnotationImportJob(job_id=job_id, job_status="waiting") if owned else None
+
+
+def _import_two_records(quota: LimitationModel | None) -> list[list[AnnotationImportRecord]]:
+    published: list[list[AnnotationImportRecord]] = []
+
+    def publish(*, content_list: list[AnnotationImportRecord], **_kwargs: str) -> None:
+        published.append(content_list)
+
+    service = AnnotationImportService(
+        apps=_Apps(),
+        jobs=_Jobs(),
+        publish=publish,
+        quota=lambda **_kwargs: quota,
+        limits=AnnotationImportLimits(
+            min_records=1, max_records=5, requests_per_minute=10, requests_per_hour=10, max_concurrent=1
+        ),
+    )
+    service.import_csv(tenant_id="tenant", app_id="app", account_id="account", stream=BytesIO(b"q,a\nq1,a1\nq2,a2\n"))
+    return published
+
+
+@pytest.mark.parametrize("quota", [None, LimitationModel(size=10, limit=None), LimitationModel(size=3, limit=5)])
+def test_import_accepts_unlimited_and_available_quota(quota: LimitationModel | None) -> None:
+    assert len(_import_two_records(quota)) == 1
+
+
+@pytest.mark.parametrize(("size", "limit"), [(4, 5), (5, 5), (0, 0)])
+def test_import_rejects_quota_overflow(size: int, limit: int) -> None:
     with pytest.raises(AnnotationImportValidationError, match="exceeds the limit of your subscription"):
-        AnnotationImportQuota(limit=5, size=size).validate(record_count=record_count)
+        _import_two_records(LimitationModel(size=size, limit=limit))

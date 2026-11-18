@@ -162,7 +162,7 @@ class WorkspaceInvitationGateway:
         """
         features = FeatureService.get_features(tenant_id=workspace_id, exclude_vector_space=True)
         if dify_config.DEPLOYMENT_EDITION == DeploymentEdition.CLOUD:
-            if 0 < features.members.limit <= features.members.size:
+            if not features.members.is_available():
                 raise WorkspaceInvitationQuotaError()
         if features.workspace_members.enabled and not features.workspace_members.is_available(1):
             raise WorkspaceMemberLicenseQuotaError()
@@ -177,7 +177,7 @@ class WorkspaceInvitationGateway:
                 raise WorkspaceMemberLicenseQuotaError()
             if new_accounts and not SystemFeatureService.get_license().seats.is_available(new_accounts):
                 raise WorkspaceInvitationQuotaError(seats=True)
-        elif 0 < features.members.limit < current_members + new_members:
+        elif not features.members.model_copy(update={"size": current_members}).is_available(new_members):
             raise WorkspaceInvitationQuotaError()
 
     def ensure_allowed(self, workspace_id: str) -> None:

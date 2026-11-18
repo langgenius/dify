@@ -10,6 +10,7 @@ from uuid import uuid4
 import pandas as pd
 
 from services.annotation_query import AnnotationAppQuery
+from services.entities.feature_entities import LimitationModel
 
 logger = logging.getLogger(__name__)
 
@@ -54,20 +55,8 @@ class AnnotationImportLimits:
     max_concurrent: int
 
 
-@dataclass(frozen=True, slots=True)
-class AnnotationImportQuota:
-    """A positive limit caps total records; nonpositive limits retain unlimited semantics."""
-
-    limit: int
-    size: int
-
-    def validate(self, *, record_count: int) -> None:
-        if 0 < self.limit < self.size + record_count:
-            raise AnnotationImportValidationError("The number of annotations exceeds the limit of your subscription.")
-
-
 class AnnotationImportQuotaQuery(Protocol):
-    def __call__(self, *, tenant_id: str) -> AnnotationImportQuota | None:
+    def __call__(self, *, tenant_id: str) -> LimitationModel | None:
         """Return workspace quota, or None when subscription limits do not apply."""
         ...
 
@@ -173,8 +162,8 @@ class AnnotationImportService:
             stream, min_records=self._limits.min_records, max_records=self._limits.max_records
         )
         quota = self._quota(tenant_id=tenant_id)
-        if quota is not None:
-            quota.validate(record_count=len(records))
+        if quota is not None and not quota.is_available(len(records)):
+            raise AnnotationImportValidationError("The number of annotations exceeds the limit of your subscription.")
         job_id = str(uuid4())
         try:
             self._jobs.create(tenant_id=tenant_id, app_id=app_id, job_id=job_id, now_ms=int(time.time() * 1000))
