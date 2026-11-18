@@ -32,6 +32,7 @@ def _service() -> tuple[AppDefinitionQueryService, MagicMock]:
     return (
         AppDefinitionQueryService(
             definitions=definitions,
+            plugin_verified=lambda *_args: False,
             plugin_readme=lambda *_args: "# Plugin documentation",
             plugin_asset=lambda *_args: b"",
             connection_revisions=revisions,
@@ -55,6 +56,7 @@ def persisted_app_service(sqlite_session_factory: sessionmaker[Session]) -> AppD
     return AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=sqlite_session_factory),
         connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
+        plugin_verified=lambda *_args: False,
         plugin_readme=lambda *_args: "",
         plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
@@ -85,6 +87,7 @@ def test_service_api_orphaned_key_does_not_require_database(
     service = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=unbound_session_factory),
         connection_revisions=create_autospec(module.ConnectionRevisions, instance=True, spec_set=True),
+        plugin_verified=lambda *_args: False,
         plugin_readme=lambda *_args: "",
         plugin_asset=lambda *_args: b"",
         builtin_icon_url_prefix=_BUILTIN_ICON_URL_PREFIX,
@@ -308,6 +311,7 @@ def test_web_parameters_include_version_and_requirements_without_changing_public
     assert requirement.provider == "vendor/calendar/calendar"
     assert requirement.provider_label == expected_label
     assert requirement.plugin_unique_identifier == providers[0].plugin_unique_identifier
+    assert requirement.verified is False
     assert requirement.icon == providers[0].icon
     assert requirement.icon_dark == providers[0].icon_dark
     assert requirement.title == "tool-1"

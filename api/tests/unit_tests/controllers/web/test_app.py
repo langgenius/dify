@@ -641,6 +641,7 @@ def asset_client(
 
     definitions = AppDefinitionQueryService(
         definitions=AppDefinitionQueryRepository(session_factory=asset_harness.base.sessions),
+        plugin_verified=lambda *_args: False,
         plugin_readme=lambda *_args: "",
         plugin_asset=asset_reader,
         builtin_icon_url_prefix="",

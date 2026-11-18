@@ -824,6 +824,7 @@ export type WebAppConnectionRequirement = {
   provider_label: string
   purpose: string
   title: string
+  verified: boolean
 }
 
 export type SystemParameters = {
