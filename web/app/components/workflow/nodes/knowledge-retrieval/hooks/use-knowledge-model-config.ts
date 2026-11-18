@@ -5,6 +5,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
 import { useCallback, useEffect } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { getMultipleRetrievalConfig } from '../utils'
@@ -139,7 +140,7 @@ const useKnowledgeModelConfig = ({
             : Boolean(fallbackRerankModel.model && hasRerankDefaultModel),
       }
     })
-    setInputs(nextInputs)
+    runDraftInitialization(() => setInputs(nextInputs))
   }, [
     currentModel,
     currentProvider?.provider,

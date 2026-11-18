@@ -392,6 +392,7 @@ export function diffDraftValue(
   before: unknown,
   after: unknown,
   current?: unknown,
+  initializing = false,
 ): DraftPatch[] {
   const patches: DraftPatch[] = []
   function diff(path: Path, old: unknown, next: unknown, projected: unknown) {
@@ -430,9 +431,10 @@ export function diffDraftValue(
         arrayIds.get(prior) ??
         prior.map((_, i) => (mapped[i] === undefined ? `i:${i}` : liveIds[mapped[i]!]!))
       const matches = matchRows(prior, next)
-      const nextIds = matches.map((j) =>
-        j === undefined ? `n:${crypto.randomUUID()}` : oldIds[j]!,
-      )
+      const nextIds = matches.map((j, index) => {
+        if (j !== undefined) return oldIds[j]!
+        return initializing ? `default:${index}` : `n:${crypto.randomUUID()}`
+      })
       arrayIds.set(next, nextIds)
       const remaining = new Set(nextIds)
       const stationary = stationaryRows(matches)
@@ -481,8 +483,40 @@ export function diffDraftEntities(
   return patches
 }
 
+function nextEditId(doc: LoroDoc) {
+  return `${String(doc.opCount()).padStart(16, '0')}:${doc.peerIdStr}`
+}
+
+/** Defaults follow the node's creation, so every user edit retains its original priority.
+ * A newly created node and its initialization share visibility when the creator undoes the insertion.
+ */
+export function initializeDraftFields(doc: LoroDoc, nodeId: string, patches: DraftPatch[]) {
+  if (!patches.length) return false
+  const log = doc.getMap('editLog')
+  const records = log.toJSON() as Record<string, Edit>
+  const keys = Object.keys(records).sort().reverse()
+  const creation = keys.find((key) =>
+    records[key]!.patches.some(
+      (patch) =>
+        patch.kind === 'nodes' &&
+        patch.id === nodeId &&
+        patch.path.length === 0 &&
+        patch.op === 'set',
+    ),
+  )
+  const prefix = `${creation ?? ''}!`
+  if (keys.some((key) => key.startsWith(prefix) && isEqual(records[key]!.patches, patches)))
+    return false
+  const id = `${prefix}${nextEditId(doc)}`
+  const step = creation === undefined ? id : records[creation]!.step
+  log.set(id, { step, patches })
+  if (step === id) doc.getMap('editState').set(step, true)
+  doc.commit({ origin: 'draft-system:initialize' })
+  return true
+}
+
 export function appendDraftEdit(doc: LoroDoc, patches: DraftPatch[], step?: string): string {
-  const id = `${String(doc.opCount()).padStart(16, '0')}:${doc.peerIdStr}`
+  const id = nextEditId(doc)
   doc.getMap('editLog').set(id, { step: step ?? id, patches })
   doc.commit({ origin: 'draft-system:edit-log' })
   if (!step) {

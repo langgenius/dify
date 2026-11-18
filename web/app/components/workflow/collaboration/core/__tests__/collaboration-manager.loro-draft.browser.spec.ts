@@ -2,7 +2,7 @@ import type { Edge, Node, PromptItem } from '@/app/components/workflow/types'
 import { deleteDB } from 'idb'
 import { LoroDoc, LoroMap } from 'loro-crdt'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { CollaborationManager } from '../collaboration-manager'
+import { CollaborationManager, collaborationManager } from '../collaboration-manager'
 import { appendDraftEdit, projectDraftGraph } from '../loro-draft-edits'
 import { webSocketClient } from '../websocket-manager'
 import { createLLMNode } from './test-graph-fixtures'
@@ -40,6 +40,7 @@ function connectManager(
   server: ReturnType<typeof createDraftServer>,
   nodes: Node[] = [],
   format?: 2,
+  manager = new CollaborationManager(),
 ) {
   const transport = server.transport()
   vi.spyOn(webSocketClient, 'connect').mockReturnValue(transport.socket)
@@ -60,7 +61,6 @@ function connectManager(
       edges = next
     },
   }
-  const manager = new CollaborationManager()
   managers.push(manager)
   const connected = manager.connect(
     'app-1',
@@ -374,4 +374,72 @@ it('preserves local selection, panel state and temporary canvas items while edit
     nodes: [{ id: node.id }],
     edges: [],
   })
+})
+
+it('opens a legacy template with saved defaults and leaves undo available only for the editor’s input', async () => {
+  const { renderNodeConfig } = await import('../../../nodes/__tests__/render-node-config')
+  const { default: useConfig } = await import('../../../nodes/template-transform/use-config')
+  const data = {
+    type: BlockEnum.TemplateTransform,
+    title: 'Template',
+    desc: '',
+    template: '',
+    variables: [],
+  }
+  const node = { id: 'node', data, position: { x: 0, y: 0 } }
+  const server = createDraftServer(() => {
+    const doc = new LoroDoc()
+    doc.getMap('nodes').set(node.id, node)
+    doc.commit()
+    return doc
+  })
+  const editor = connectManager(server, [node], 2, collaborationManager)
+  await editor.join()
+  const identity = { ...server.identity, format: 2 as const }
+  const openPanel = (template: string) =>
+    renderNodeConfig(
+      useConfig,
+      { ...data, template },
+      {
+        resource: { kind: 'app', appId: 'app-1', mode: 'workflow' },
+        initialStoreState: {
+          loroDraft: identity,
+          nodesDefaultConfigs: {
+            [BlockEnum.TemplateTransform]: { ...data, template: '{{ input }}' },
+          },
+        },
+      },
+    )
+  let panel = openPanel('')
+  try {
+    await vi.waitFor(() =>
+      expect(editor.manager.getNodes()[0]?.data).toHaveProperty('template', '{{ input }}'),
+    )
+    expect(editor.manager.getDraftHistory().undo).toEqual([])
+    panel.result.current.config.handleCodeChange('my input')
+    expect(editor.manager.undo()).toBe(true)
+    await editor.manager.syncLoroDraft('app-1')
+    expect(projectDraftGraph(server.document()).nodes[0]?.data).toHaveProperty(
+      'template',
+      '{{ input }}',
+    )
+    panel.unmount()
+    panel = openPanel('{{ input }}')
+    panel.result.current.config.handleCodeChange('')
+    expect(editor.manager.getNodes()[0]?.data).toHaveProperty('template', '')
+    panel.unmount()
+    const imported = vi.fn()
+    const off = editor.manager.onGraphImport(imported)
+    panel = openPanel('')
+    expect(imported).not.toHaveBeenCalled()
+    off()
+    panel.result.current.config.handleCodeChange('continue editing')
+    await editor.manager.syncLoroDraft('app-1')
+    expect(projectDraftGraph(server.document()).nodes[0]?.data).toHaveProperty(
+      'template',
+      'continue editing',
+    )
+  } finally {
+    panel.unmount()
+  }
 })

@@ -9,6 +9,7 @@ import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { useAllTriggerPlugins, useTriggerSubscriptions } from '@/service/use-triggers'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -143,7 +144,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
       draft.event_parameters = triggerParameterValue
       draft.config = triggerParameterValue
     })
-    doSetInputs(newInputs)
+    runDraftInitialization(() => doSetInputs(newInputs))
   }, [doSetInputs, event_parameters, inputs, triggerParameterSchema, triggerParameterValue])
 
   const setTriggerParameterValue = useCallback(

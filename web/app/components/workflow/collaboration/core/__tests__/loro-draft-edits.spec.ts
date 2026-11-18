@@ -5,6 +5,7 @@ import {
   diffDraftValue,
   getDraftRowId,
   inheritDraftRowIds,
+  initializeDraftFields,
   projectDraftGraph,
 } from '../loro-draft-edits'
 
@@ -280,3 +281,53 @@ it.each([undefined, null])(
     )
   },
 )
+
+it('keeps a later user value ahead of defaults even if the other panel initializes from a stale render', () => {
+  const { a, b, ua, ub } = replicas({ template: '' })
+  set(a, 'template', '', 'Alice')
+  copy(a, b)
+  set(b, 'template', 'Alice', 'Bob')
+  copy(b, a)
+  initializeDraftFields(
+    a,
+    'node',
+    diffDraftValue('nodes', 'node', ['data', 'template'], '', 'Default'),
+  )
+  expect(ua.undo()).toBe(true)
+  expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('template', 'Bob')
+  expect(ua.redo()).toBe(true)
+  expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('template', 'Bob')
+  expect(ub.undo()).toBe(true)
+  copy(b, a)
+  expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('template', 'Alice')
+  expect(ua.undo()).toBe(true)
+  expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('template', 'Default')
+  expect(ua.canUndo()).toBe(false)
+})
+
+it('undoes a new node even after both panels have populated its same default list', () => {
+  const { a, b, ua, ub } = replicas({})
+  appendDraftEdit(a, [
+    {
+      kind: 'nodes',
+      id: 'code',
+      path: [],
+      op: 'set',
+      value: { id: 'code', data: { variables: [] } },
+    },
+  ])
+  copy(a, b)
+  for (const doc of [a, b])
+    initializeDraftFields(
+      doc,
+      'code',
+      diffDraftValue('nodes', 'code', ['data', 'variables'], [], [{ name: 'input' }], [], true),
+    )
+  copy(b, a)
+  expect(projectDraftGraph(a).nodes[1]?.data).toHaveProperty('variables', [{ name: 'input' }])
+  expect(ub.canUndo()).toBe(false)
+  expect(ua.undo()).toBe(true)
+  expect(projectDraftGraph(a).nodes.map((node) => node.id)).toEqual(['node'])
+  expect(ua.redo()).toBe(true)
+  expect(projectDraftGraph(a).nodes[1]?.data).toHaveProperty('variables', [{ name: 'input' }])
+})

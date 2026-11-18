@@ -38,6 +38,7 @@ import {
   diffDraftEntities,
   diffDraftValue,
   inheritDraftRowIds,
+  initializeDraftFields,
   projectDraftGraph,
 } from './loro-draft-edits'
 import {
@@ -208,6 +209,7 @@ export class CollaborationManager {
   private targetLoroDraft?: LoroDraftIdentity
   private initialLlmPrompts?: Map<string, { before?: Prompt; prompt: Prompt }>
   private draftHistory: DraftHistory = { undo: [], redo: [] }
+  private draftInitialization?: { before?: Record<string, unknown> }
   private draftAction?: DraftAction
   private canvasStep?: string
   private lastDraftInput?: { key: string; time: number; step: string }
@@ -1570,7 +1572,7 @@ export class CollaborationManager {
   }
 
   private recordDraftEdits(patches: DraftPatch[], canvas = false) {
-    if (!this.doc || !patches.length) return
+    if (!this.doc || !patches.length) return false
     if (!canvas) this.canvasStep = undefined
     const first = patches[0]!
     const label = this.draftAction?.label ?? draftEditLabel(first)
@@ -1602,6 +1604,17 @@ export class CollaborationManager {
       this.draftHistory = { redo: [], undo: [...this.draftHistory.undo.slice(-99), label] }
       this.publishDraftHistory()
     }
+    return true
+  }
+
+  runDraftInitialization(apply: () => void, before?: Record<string, unknown>): void {
+    const previous = this.draftInitialization
+    this.draftInitialization = { before }
+    try {
+      apply()
+    } finally {
+      this.draftInitialization = previous
+    }
   }
 
   updateDraftNodeData(
@@ -1620,8 +1633,20 @@ export class CollaborationManager {
     )
       return false
     const current = this.getNodes().find((node) => node.id === id)
-    const edits = diffDraftValue('nodes', id, ['data'], before, after, current?.data)
-    this.recordDraftEdits(edits)
+    const initial = this.draftInitialization
+    const edits = diffDraftValue(
+      'nodes',
+      id,
+      ['data'],
+      initial?.before ?? before,
+      after,
+      current?.data,
+      !!initial,
+    )
+    const changed =
+      initial && this.doc
+        ? initializeDraftFields(this.doc, id, edits)
+        : this.recordDraftEdits(edits)
     const viewChanges = Object.fromEntries(
       [...new Set([...Object.keys(before), ...Object.keys(after)])]
         .filter(
@@ -1629,7 +1654,7 @@ export class CollaborationManager {
         )
         .map((key) => [key, after[key]]),
     )
-    if (edits.length || Object.keys(viewChanges).length)
+    if (changed || Object.keys(viewChanges).length)
       this.refreshGraphSynchronously({ id, fields: viewChanges })
     return true
   }
@@ -2621,3 +2646,6 @@ export class CollaborationManager {
 }
 
 export const collaborationManager = new CollaborationManager()
+
+export const runDraftInitialization = (apply: () => void, before?: Record<string, unknown>) =>
+  collaborationManager.runDraftInitialization(apply, before)

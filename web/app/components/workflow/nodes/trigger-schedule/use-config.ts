@@ -1,6 +1,7 @@
 import type { ScheduleFrequency, ScheduleMode, ScheduleTriggerNodeType } from './types'
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo } from 'react'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { userProfileQueryOptions } from '@/features/account-profile/client'
 import { useNodesReadOnly } from '../../hooks/use-workflow'
@@ -33,8 +34,8 @@ const useConfig = (id: string, payload: ScheduleTriggerNodeType) => {
   // Save the shown timezone so the schedule runs at the time the user sees.
   useEffect(() => {
     if (readOnly || payload.timezone || !timezone) return
-    setInputs({ ...inputs, timezone })
-  }, [readOnly, payload.timezone, timezone, inputs, setInputs])
+    runDraftInitialization(() => setInputs({ ...inputs, timezone }), payload)
+  }, [readOnly, payload, timezone, inputs, setInputs])
 
   const handleModeChange = useCallback(
     (mode: ScheduleMode) => {

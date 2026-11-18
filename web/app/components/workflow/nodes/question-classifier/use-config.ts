@@ -8,6 +8,7 @@ import { useUpdateNodeInternals } from 'reactflow'
 import { checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { runDraftInitialization } from '@/app/components/workflow/collaboration/core/collaboration-manager'
 import {
   editorResourceKindAtom,
   isChatflowAtom,
@@ -165,7 +166,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     if (!shouldUpdate) return
 
     startTransition(() => {
-      setInputs(nextInputs)
+      runDraftInitialization(() => setInputs(nextInputs))
     })
   }, [defaultConfig, isChatflow, isSnippetFlow, setInputs, startNodeId])
 

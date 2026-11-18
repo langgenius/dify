@@ -7,6 +7,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
+import { collaborationManager } from '../../../collaboration/core/collaboration-manager'
 import { BlockEnum, EditionType, PromptRole } from '../../../types'
 import { renderNodeConfig } from '../../__tests__/render-node-config'
 import useConfig from '../use-config'
@@ -130,4 +131,19 @@ it('resolves updated shared metadata and preserves its latest identity when retu
   expect(result.current.flow.getNode('node')?.data).toEqual(
     expect.objectContaining({ model: latest, model_selector: undefined }),
   )
+})
+
+it('keeps typing visible during the initial sync and stops accepting edits when the canvas becomes read only', () => {
+  const { store, result } = setup()
+  const identity = { accountId: 'editor', epoch: 'initial', format: 2 as const }
+  const queue = vi.spyOn(collaborationManager, 'queueInitialLlmPrompt').mockReturnValue(true)
+  act(() => store.setState({ loroDraft: identity }))
+  const changed = [{ ...prompt, text: 'Keep typing before the handshake' }]
+  act(() => result.current.config.handlePromptChange(changed))
+  expect(queue).toHaveBeenCalledWith('app-1', identity, 'node', changed, [prompt])
+  expect(result.current.config.inputs.prompt_template).toEqual(changed)
+  act(() => store.setState({ canvasReadOnly: true }))
+  act(() => result.current.config.handlePromptChange([{ ...prompt, text: 'Discard this edit' }]))
+  expect(queue).toHaveBeenCalledOnce()
+  expect(result.current.config.inputs.prompt_template).toEqual(changed)
 })
