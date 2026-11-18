@@ -53,10 +53,15 @@ def _status(error: str | None, status: object) -> SpanStatus:
 
 
 def _cost(amount: Decimal | float | None, currency: str | None) -> Cost | None:
+    """Return a cost only when a finite, positive amount and currency are available.
+
+    Provider SDKs use zero as the default when model pricing is unavailable, so
+    omitting zero lets trace destinations apply their own model-price inference.
+    """
     if amount is None or not currency:
         return None
     value = float(amount)
-    if not math.isfinite(value) or value < 0:
+    if not math.isfinite(value) or value <= 0:
         return None
     return Cost(amount=value, currency=currency)
 
