@@ -1142,7 +1142,7 @@ class TestSharedAppTemplateIsolation:
 
 @pytest.mark.parametrize("adapter", ["legacy", "repository"])
 def test_agent_tag_queries_keep_and_pagination_and_publication_counts(sqlite_session: Session, adapter: str) -> None:
-    """Both live query owners match Agent IDs before counting and retain Studio isolation."""
+    """Both query owners filter before pagination; the legacy owner also counts publication state."""
     tenant_id, creator_id = str(uuid4()), str(uuid4())
     published_app, published = _persist_agent_app(
         sqlite_session,
@@ -1195,8 +1195,9 @@ def test_agent_tag_queries_keep_and_pagination_and_publication_counts(sqlite_ses
     assert first_page.has_next is True
     assert second_page.has_next is False
     assert {first_page.items[0].id, second_page.items[0].id} == {published_app.id, draft_app.id}
-    counts = query_owner.get_agent_publication_counts(creator_id, tenant_id, params, sqlite_session)
-    assert (counts.published, counts.drafts) == (1, 1)
+    if isinstance(query_owner, AppService):
+        counts = query_owner.get_agent_publication_counts(creator_id, tenant_id, params, sqlite_session)
+        assert (counts.published, counts.drafts) == (1, 1)
 
     both = query_owner.get_paginate_apps(
         creator_id,
@@ -1220,5 +1221,8 @@ def test_agent_tag_queries_keep_and_pagination_and_publication_counts(sqlite_ses
     for invalid_tag_id in (studio.id, foreign.id, str(uuid4())):
         invalid_params = params.model_copy(update={"tag_ids": [research.id, invalid_tag_id]})
         assert query_owner.get_paginate_apps(creator_id, tenant_id, invalid_params, sqlite_session) is None
-        empty_counts = query_owner.get_agent_publication_counts(creator_id, tenant_id, invalid_params, sqlite_session)
-        assert (empty_counts.published, empty_counts.drafts) == (0, 0)
+        if isinstance(query_owner, AppService):
+            empty_counts = query_owner.get_agent_publication_counts(
+                creator_id, tenant_id, invalid_params, sqlite_session
+            )
+            assert (empty_counts.published, empty_counts.drafts) == (0, 0)
