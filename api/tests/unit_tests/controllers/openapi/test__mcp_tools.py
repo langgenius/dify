@@ -19,8 +19,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.openapi import _mcp_tools, jobs
-from controllers.openapi._catalog import Bind
-from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, op_entry
+from controllers.openapi._catalog import Bind, CatalogOp
+from controllers.openapi._mcp_call import OpCall, OpResult, UnknownOp, registered_op
 from controllers.openapi._mcp_tools import (
     FIND_LIMIT,
     FIND_TOOL,
@@ -149,7 +149,7 @@ def test_find_returns_at_most_twenty() -> None:
 
 @pytest.mark.usefixtures("in_request")
 def test_describe_returns_schema_and_examples_without_file_fields() -> None:
-    before = op_entry(_START_WORKFLOW)
+    before = registered_op(_START_WORKFLOW).entry
     file_names = {name for name, bind in before["bind"].items() if bind == Bind.FILE}
     assert file_names
 
@@ -161,7 +161,7 @@ def test_describe_returns_schema_and_examples_without_file_fields() -> None:
     assert not file_names & set(described["input"]["required"])
     assert described["input"]["properties"]
     assert described["examples"] == before["examples"]
-    assert op_entry(_START_WORKFLOW)["input"] == before["input"]
+    assert registered_op(_START_WORKFLOW).entry["input"] == before["input"]
 
 
 @pytest.mark.usefixtures("in_request")
@@ -463,9 +463,9 @@ def test_hints_the_token_cannot_call_are_dropped_from_a_result(
     # A workspace token cannot be admitted by the fixture, so the op set it would see
     # is stood in for: the real set without the form op.
     asked: list[str | None] = []
-    real: Callable[[str | None], dict[str, Mapping[str, object]]] = callable_ops
+    real: Callable[[str | None], dict[str, CatalogOp]] = callable_ops
 
-    def without_form_op(token: str | None) -> dict[str, Mapping[str, object]]:
+    def without_form_op(token: str | None) -> dict[str, CatalogOp]:
         asked.append(token)
         return {op: entry for op, entry in real(token).items() if op != _SUBMIT_FORM_OP}
 

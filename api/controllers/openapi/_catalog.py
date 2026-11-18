@@ -17,17 +17,19 @@ import hashlib
 import json
 import re
 from collections.abc import Iterator, Mapping, Sequence
+from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Final
+from typing import Any, Final, TypedDict
 
 from flask import Blueprint, Flask, Response, current_app, request
+from flask.globals import app_ctx
 from pydantic import BaseModel
 from werkzeug.routing import Rule
 
 from configs import dify_config
 from constants import HEADER_NAME_CATALOG
 from controllers.openapi._upload import has_binary_leaf
-from controllers.openapi.auth.spec import Effect, spec_of
+from controllers.openapi.auth.spec import Effect, EndpointSpec, spec_of
 
 CATALOG_HEADER: Final = HEADER_NAME_CATALOG
 _SURFACE: Final = "/openapi/v1"
@@ -43,14 +45,47 @@ _REF: Final = "$ref"
 _REF_PREFIX: Final = "#/$defs/"
 _QUERY_METHODS: Final = frozenset({"GET", "DELETE"})
 
-CatalogOp = dict[str, Any]
-
 
 class Bind(StrEnum):
     PATH = "path"
     QUERY = "query"
     BODY = "body"
     FILE = "file"
+
+
+class InputSchema(TypedDict):
+    type: str
+    properties: dict[str, Any]
+    required: list[str]
+
+
+class CatalogOp(TypedDict):
+    summary: str
+    method: str
+    path: str
+    kind: str
+    effect: str
+    input: InputSchema
+    bind: dict[str, Bind]
+    internal: bool
+    deprecated: bool
+    examples: list[dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class RegisteredOp:
+    """One op as built for the catalog: its entry (shared, do not change), its handler spec and its url rule."""
+
+    entry: CatalogOp
+    spec: EndpointSpec
+    rule: Rule
+
+
+@dataclass(frozen=True, slots=True)
+class _Catalog:
+    raw: bytes
+    fingerprint: str
+    ops: Mapping[str, RegisteredOp]
 
 
 def inline_refs(schema: Mapping[str, Any]) -> dict[str, Any]:
@@ -80,7 +115,7 @@ def _model_properties(model: type[BaseModel] | None) -> tuple[dict[str, Any], li
 
 def op_input_schema(
     *, path_params: Sequence[str], query: type[BaseModel] | None, body: type[BaseModel] | None
-) -> dict[str, Any]:
+) -> InputSchema:
     properties: dict[str, Any] = {name: {"type": "string"} for name in path_params}
     required: list[str] = list(path_params)
     for model in (query, body):
@@ -123,8 +158,8 @@ def iter_handlers(app: Flask) -> Iterator[tuple[Rule, str, Any]]:
             yield rule, verb, handler
 
 
-def build_catalog(app: Flask) -> dict[str, Any]:
-    ops: dict[str, CatalogOp] = {}
+def _register(app: Flask) -> dict[str, RegisteredOp]:
+    ops: dict[str, RegisteredOp] = {}
     for rule, verb, handler in iter_handlers(app):
         spec = spec_of(handler)
         if spec is None or not spec.allows(dify_config.DEPLOYMENT_EDITION):
@@ -132,7 +167,7 @@ def build_catalog(app: Flask) -> dict[str, Any]:
         meta = spec.catalog
         path_params = sorted(rule.arguments)
         schema = op_input_schema(path_params=path_params, query=meta.query, body=meta.body)
-        ops[meta.op] = {
+        entry: CatalogOp = {
             "summary": meta.summary,
             "method": verb,
             "path": _catalog_path(rule.rule),
@@ -144,15 +179,33 @@ def build_catalog(app: Flask) -> dict[str, Any]:
             "deprecated": meta.deprecated,
             "examples": [{"title": example.title, "input": dict(example.input)} for example in meta.examples],
         }
-    return {"ops": ops}
+        ops[meta.op] = RegisteredOp(entry=entry, spec=spec, rule=rule)
+    return ops
+
+
+def build_catalog(app: Flask) -> dict[str, Any]:
+    return {"ops": {op: registered.entry for op, registered in _register(app).items()}}
+
+
+def _catalog(app: Flask) -> _Catalog:
+    """The catalog of ``app``: built once, then kept in ``app.extensions`` with its bytes and fingerprint."""
+    cached = app.extensions.get(_EXT_KEY)
+    if cached is None:
+        ops = _register(app)
+        document = {"ops": {op: registered.entry for op, registered in ops.items()}}
+        raw = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+        cached = app.extensions[_EXT_KEY] = _Catalog(raw=raw, fingerprint=hashlib.sha256(raw).hexdigest(), ops=ops)
+    return cached
 
 
 def catalog_for(app: Flask) -> tuple[bytes, str]:
-    cached = app.extensions.get(_EXT_KEY)
-    if cached is None:
-        raw = json.dumps(build_catalog(app), sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-        cached = app.extensions[_EXT_KEY] = (raw, hashlib.sha256(raw).hexdigest())
-    return cached
+    catalog = _catalog(app)
+    return catalog.raw, catalog.fingerprint
+
+
+def op_registry() -> Mapping[str, RegisteredOp]:
+    """Each op of the app handling this request, by op id; built with the catalog it is part of."""
+    return _catalog(app_ctx.app).ops
 
 
 def current_catalog() -> tuple[bytes, str]:
