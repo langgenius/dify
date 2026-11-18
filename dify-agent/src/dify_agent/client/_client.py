@@ -428,16 +428,20 @@ class Client:
         *,
         after: str | None = None,
     ) -> RunCancelledEvent:
-        """Request cancellation and wait for its public terminal event."""
+        """Request cancellation and wait for its public terminal event.
+
+        Close the event iterator on return, errors, and task cancellation.
+        """
         _ = await self.cancel_run(run_id, request)
         resume_after = after
         if after is not None and (await self.get_run(run_id)).status == "cancelled":
             resume_after = None
-        async for event in self.stream_events(run_id, after=resume_after):
-            if isinstance(event, RunCancelledEvent):
-                return event
-            if event.type in _TERMINAL_EVENT_TYPES:
-                raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
+        async with aclosing(self.stream_events(run_id, after=resume_after)) as events:
+            async for event in events:
+                if isinstance(event, RunCancelledEvent):
+                    return event
+                if event.type in _TERMINAL_EVENT_TYPES:
+                    raise DifyAgentClientError(f"run {run_id!r} finished with {event.type!r} before cancellation")
         raise DifyAgentStreamError(f"run {run_id!r} stream ended before run_cancelled")
 
     def cancel_run_and_wait_sync(
@@ -657,10 +661,16 @@ class Client:
         count resets whenever an event arrives, so a run that keeps progressing is
         not failed by periodic disconnects (for example proxy connection limits). By
         default, ``until_terminal=True`` closes the response before yielding a
-        succeeded, failed, or cancelled terminal event. With
+        succeeded, failed, or cancelled terminal event and ends iteration immediately
+        after that event. With
         ``until_terminal=False``, iteration may consume the remainder of the current
         response, but after observing a terminal event it will not reconnect when that
         response ends normally or raises a reconnectable transport error.
+
+        If you stop consuming early, close the returned async generator with
+        ``await events.aclose()`` or ``contextlib.aclosing`` to release the active
+        response promptly without reconnecting. HTTPX errors during caller-driven
+        cleanup raise ``DifyAgentTimeoutError`` or ``DifyAgentStreamError``.
         """
         _validate_stream_options(max_reconnects, reconnect_delay_seconds, timeout_seconds)
         cursor = after or "0-0"
@@ -677,11 +687,13 @@ class Client:
                     async for event in connection:
                         if event.id is not None:
                             cursor = event.id
-                        # A delivered event proves that the reconnect made progress.
+                        # The budget bounds consecutive failed connections; a delivered event proves the
+                        # stream is resuming from its cursor, so a long run may outlive many disconnects.
                         reconnect_attempts = 0
                         if event.type in _TERMINAL_EVENT_TYPES:
                             terminal_event_seen = True
                             if until_terminal:
+                                # Leave aclosing(connection) before yielding so the HTTPX response is already closed.
                                 terminal_event = event
                                 break
                         yield event
@@ -697,6 +709,10 @@ class Client:
                     _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
                     await _sleep_async(_bounded_sleep_seconds(reconnect_delay_seconds, deadline))
                     continue
+            except (DifyAgentTimeoutError, DifyAgentStreamError):
+                # A captured terminal event takes precedence over response cleanup errors.
+                if terminal_event is None:
+                    raise
             if terminal_event is not None:
                 yield terminal_event
             if terminal_event_seen:
@@ -825,7 +841,11 @@ class Client:
         deadline: float | None,
         should_stop: Callable[[], bool] | None,
     ) -> AsyncGenerator[RunEvent]:
-        """Open one SSE connection and yield events until it ends or fails."""
+        """Open one SSE connection and yield events until it ends or fails.
+
+        Caller interruption must not make response cleanup failures reconnectable.
+        """
+        caller_interrupted = False
         try:
             async with self._get_async_http_client().stream(
                 "GET",
@@ -834,31 +854,39 @@ class Client:
                 headers=self._merged_headers(),
                 timeout=self._stream_timeout,
             ) as response:
-                if response.status_code >= 400:
-                    _ = await response.aread()
-                _raise_for_stream_status(response)
-                decoder = _SSEDecoder()
-                line_decoder = _SSELineDecoder()
-                async for text in response.aiter_text():
-                    _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
-                    for line in line_decoder.decode(text):
+                try:
+                    if response.status_code >= 400:
+                        _ = await response.aread()
+                    _raise_for_stream_status(response)
+                    decoder = _SSEDecoder()
+                    line_decoder = _SSELineDecoder()
+                    async for text in response.aiter_text():
+                        _raise_if_stream_stopped(run_id, deadline=deadline, should_stop=should_stop)
+                        for line in line_decoder.decode(text):
+                            event = decoder.feed_line(line)
+                            if event is not None:
+                                yield event
+                    for line in line_decoder.flush():
                         event = decoder.feed_line(line)
                         if event is not None:
                             yield event
-                for line in line_decoder.flush():
-                    event = decoder.feed_line(line)
-                    if event is not None:
-                        yield event
+                except (GeneratorExit, asyncio.CancelledError):
+                    caller_interrupted = True
+                    raise
         except DifyAgentHTTPError:
             raise
         except DifyAgentStreamError:
             raise
         except httpx.TimeoutException as exc:
-            raise _ReconnectableStreamError(DifyAgentTimeoutError("SSE stream timed out")) from exc
-        except httpx.TransportError as exc:
-            raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
-        except httpx.StreamError as exc:
-            raise _ReconnectableStreamError(DifyAgentStreamError(f"SSE stream failed: {exc}")) from exc
+            timeout_error = DifyAgentTimeoutError("SSE stream timed out")
+            if caller_interrupted:
+                raise timeout_error from exc
+            raise _ReconnectableStreamError(timeout_error) from exc
+        except (httpx.TransportError, httpx.StreamError) as exc:
+            stream_error = DifyAgentStreamError(f"SSE stream failed: {exc}")
+            if caller_interrupted:
+                raise stream_error from exc
+            raise _ReconnectableStreamError(stream_error) from exc
 
     def _stream_events_once_sync(
         self,
