@@ -481,17 +481,18 @@ def test_a_graph_job_running_past_the_time_limit_and_margin_fails_once_and_stays
 
 def test_a_message_job_reported_interrupted_never_changes_when_its_message_appears_later() -> None:
     harness = _harness()
-    opened = harness.service.open(_opening(AppMode.CHAT))
-    _lapse_alive_key(harness, opened.record.id)
-    reported = harness.service.view(OWNER, opened.record.id)
-    harness.store.patch(opened.record.id, JobPatch(message_id="msg-1"))
-    harness.store.touch(opened.record.id)
+    job = _job(harness, AppMode.CHAT)
+    _lapse_alive_key(harness, job.id)
+    reported = harness.service.view(OWNER, job.id)
+    harness.store.record_ids(job.id, JobIds(message_id="msg-1"))
+    harness.store.touch(job.id)
     harness.results.messages[("a1", "msg-1")] = MessageResult(answer="late", error=None)
 
-    later = harness.service.view(OWNER, opened.record.id)
+    later = harness.service.view(OWNER, job.id)
 
-    assert (reported.status, reported.error) == (JobStatus.FAILED, RUN_INTERRUPTED)
-    assert (later.status, later.error, later.answer) == (JobStatus.FAILED, RUN_INTERRUPTED, None)
+    interrupted = JobFailure.RUN_INTERRUPTED.message
+    assert (reported.status, reported.error) == (JobStatus.FAILED, interrupted)
+    assert (later.status, later.error, later.answer) == (JobStatus.FAILED, interrupted, None)
 
 
 def test_view_of_a_message_job_uses_the_record() -> None:
@@ -709,7 +710,7 @@ def _finish_message_job(harness: Harness, job_id: str, *, status: JobStatus, mes
     harness.store.settle(job_id, JobEnding(status=status))
 
 
-def test_a_finished_message_job_returns_the_saved_answer():
+def test_a_finished_message_job_returns_the_saved_answer() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     _finish_message_job(harness, job.id, status=JobStatus.SUCCEEDED)
@@ -720,7 +721,7 @@ def test_a_finished_message_job_returns_the_saved_answer():
     assert (view.status, view.answer, view.error) == (JobStatus.SUCCEEDED, "hello", None)
 
 
-def test_a_failed_message_job_returns_the_message_error():
+def test_a_failed_message_job_returns_the_message_error() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     _finish_message_job(harness, job.id, status=JobStatus.FAILED)
@@ -731,7 +732,7 @@ def test_a_failed_message_job_returns_the_message_error():
     assert (view.status, view.answer, view.error) == (JobStatus.FAILED, "partial", "model failed")
 
 
-def test_a_failed_message_job_falls_back_to_the_record_error():
+def test_a_failed_message_job_falls_back_to_the_record_error() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     harness.store.record_ids(job.id, JobIds(message_id="m1"))
@@ -743,7 +744,7 @@ def test_a_failed_message_job_falls_back_to_the_record_error():
     assert view.error == "from record"
 
 
-def test_a_final_message_job_with_an_invisible_message_has_no_answer():
+def test_a_final_message_job_with_an_invisible_message_has_no_answer() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     _finish_message_job(harness, job.id, status=JobStatus.SUCCEEDED)
@@ -753,7 +754,7 @@ def test_a_final_message_job_with_an_invisible_message_has_no_answer():
     assert (view.status, view.answer) == (JobStatus.SUCCEEDED, None)
 
 
-def test_a_final_message_job_without_a_message_id_has_no_answer():
+def test_a_final_message_job_without_a_message_id_has_no_answer() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     _finish_message_job(harness, job.id, status=JobStatus.STOPPED, message_id=None)
@@ -763,7 +764,7 @@ def test_a_final_message_job_without_a_message_id_has_no_answer():
     assert (view.status, view.answer) == (JobStatus.STOPPED, None)
 
 
-def test_a_message_job_whose_reader_died_is_reported_as_interrupted():
+def test_a_message_job_whose_reader_died_is_reported_as_interrupted() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     _lapse_alive_key(harness, job.id)
@@ -776,7 +777,7 @@ def test_a_message_job_whose_reader_died_is_reported_as_interrupted():
     assert (stored.status, stored.failure) == (JobStatus.FAILED, JobFailure.RUN_INTERRUPTED)
 
 
-def test_a_message_job_with_a_live_reader_keeps_running():
+def test_a_message_job_with_a_live_reader_keeps_running() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
 
@@ -785,7 +786,7 @@ def test_a_message_job_with_a_live_reader_keeps_running():
     assert (view.status, view.error) == (JobStatus.RUNNING, None)
 
 
-def test_a_graph_job_whose_reader_died_still_reads_the_run():
+def test_a_graph_job_whose_reader_died_still_reads_the_run() -> None:
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1"))
@@ -797,7 +798,7 @@ def test_a_graph_job_whose_reader_died_still_reads_the_run():
     assert (view.status, view.error) == (JobStatus.RUNNING, None)
 
 
-def test_a_finished_chatflow_job_returns_the_saved_answer_and_the_run_outputs():
+def test_a_finished_chatflow_job_returns_the_saved_answer_and_the_run_outputs() -> None:
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
@@ -812,7 +813,7 @@ def test_a_finished_chatflow_job_returns_the_saved_answer_and_the_run_outputs():
     assert (view.status, view.error) == (JobStatus.SUCCEEDED, None)
 
 
-def test_a_running_chatflow_job_has_no_answer_yet():
+def test_a_running_chatflow_job_has_no_answer_yet() -> None:
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
@@ -824,7 +825,7 @@ def test_a_running_chatflow_job_has_no_answer_yet():
     assert view.answer is None
 
 
-def test_a_chatflow_whose_run_finished_but_whose_reader_is_still_saving_the_answer_keeps_running():
+def test_a_chatflow_whose_run_finished_but_whose_reader_is_still_saving_the_answer_keeps_running() -> None:
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
@@ -836,7 +837,7 @@ def test_a_chatflow_whose_run_finished_but_whose_reader_is_still_saving_the_answ
     assert (view.status, view.answer, view.outputs) == (JobStatus.RUNNING, None, None)
 
 
-def test_a_chatflow_that_resumed_after_a_pause_reads_the_answer_as_soon_as_its_reader_ended():
+def test_a_chatflow_that_resumed_after_a_pause_reads_the_answer_as_soon_as_its_reader_ended() -> None:
     harness = _harness()
     job = _job(harness, AppMode.ADVANCED_CHAT)
     harness.store.record_ids(job.id, JobIds(run_id="run-1", message_id="m1"))
@@ -849,7 +850,7 @@ def test_a_chatflow_that_resumed_after_a_pause_reads_the_answer_as_soon_as_its_r
     assert (view.status, view.answer, view.outputs) == (JobStatus.SUCCEEDED, "saved", {"answer": "x"})
 
 
-def test_a_message_job_failed_as_interrupted_has_no_answer_even_when_a_message_row_exists():
+def test_a_message_job_failed_as_interrupted_has_no_answer_even_when_a_message_row_exists() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     harness.store.record_ids(job.id, JobIds(message_id="m1"))
@@ -876,7 +877,7 @@ def test_a_message_job_failed_by_the_service_has_no_answer_even_when_a_message_r
     assert (view.status, view.error, view.answer) == (JobStatus.FAILED, failure.message, None)
 
 
-def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_nothing():
+def test_stop_of_a_message_job_whose_reader_died_reports_interrupted_and_sends_nothing() -> None:
     harness = _harness()
     job = _job(harness, AppMode.CHAT)
     harness.store.record_ids(job.id, JobIds(task_id="task-1"))

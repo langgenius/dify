@@ -440,18 +440,22 @@ class CountingStore(RedisRunJobStore):
         self.gets = 0
         self.writes = 0
 
+    @override
     def touch(self, job_id: str) -> None:
         self.touches += 1
         super().touch(job_id)
 
+    @override
     def get(self, job_id: str) -> JobRecord | None:
         self.gets += 1
         return super().get(job_id)
 
+    @override
     def record_ids(self, job_id: str, ids: JobIds) -> None:
         self.writes += 1
         super().record_ids(job_id, ids)
 
+    @override
     def settle(self, job_id: str, ending: JobEnding) -> bool:
         self.writes += 1
         return super().settle(job_id, ending)
