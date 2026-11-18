@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
+from typing import Concatenate
 
 from flask import current_app
 from sqlalchemy.orm import Session
@@ -79,6 +80,16 @@ def _pipeline_for_call(
     return load_rag_pipeline(session, pipeline_id, tenant_id=resolve_tenant_id())
 
 
+def _accept_pipeline[**P, R](view: Callable[P, R]) -> Callable[Concatenate[Pipeline, P], R]:
+    """Adapt keyword injection to a callable with a leading ``Pipeline`` parameter."""
+
+    def call(pipeline: Pipeline, *args: P.args, **kwargs: P.kwargs) -> R:
+        kwargs["pipeline"] = pipeline
+        return view(*args, **kwargs)
+
+    return call
+
+
 def get_rag_pipeline_with(
     *,
     session_factory: Callable[[], Session],
@@ -98,6 +109,8 @@ def get_rag_pipeline_with(
     """
 
     def decorator[**P, R](view: Callable[P, R]) -> Callable[P, R]:
+        view_with_pipeline = _accept_pipeline(view)
+
         @wraps(view)
         def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
             if not kwargs.get("pipeline_id"):
@@ -105,13 +118,13 @@ def get_rag_pipeline_with(
 
             pipeline_id = str(kwargs.get("pipeline_id"))
             del kwargs["pipeline_id"]
-            kwargs["pipeline"] = _pipeline_for_call(
+            pipeline = _pipeline_for_call(
                 args,
                 pipeline_id,
                 session_factory=session_factory,
                 resolve_tenant_id=resolve_tenant_id,
             )
-            return view(*args, **kwargs)
+            return view_with_pipeline(pipeline, *args, **kwargs)
 
         return document_errors(decorated_view, PipelineNotFoundError)
 
@@ -132,6 +145,8 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
     raises ``PipelineNotFoundError``. Nothing is written.
     """
 
+    view_with_pipeline = _accept_pipeline(view)
+
     @wraps(view)
     def decorated_view(*args: P.args, **kwargs: P.kwargs) -> R:
         if not kwargs.get("pipeline_id"):
@@ -139,12 +154,12 @@ def get_rag_pipeline[**P, R](view: Callable[P, R]) -> Callable[P, R]:
 
         pipeline_id = str(kwargs.get("pipeline_id"))
         del kwargs["pipeline_id"]
-        kwargs["pipeline"] = _pipeline_for_call(
+        pipeline = _pipeline_for_call(
             args,
             pipeline_id,
             session_factory=_scoped_session,
             resolve_tenant_id=_request_tenant_id,
         )
-        return view(*args, **kwargs)
+        return view_with_pipeline(pipeline, *args, **kwargs)
 
     return document_errors(decorated_view, PipelineNotFoundError)
