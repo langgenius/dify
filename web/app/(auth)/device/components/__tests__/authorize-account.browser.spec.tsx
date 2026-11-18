@@ -98,6 +98,8 @@ it('keeps focus on a pending action so a keyboard retry works after failure', as
   await expect.element(approve).toHaveAttribute('aria-disabled', 'true')
   const button = await approve.element()
   expect(document.activeElement).toBe(button)
+  // Reject only once the request reached the server, so the rejection always has a listener.
+  await expect.poll(() => deviceAction('approve').mock.calls.length).toBe(1)
   pending.reject(
     apiError({
       status: 400,
