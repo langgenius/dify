@@ -48,9 +48,10 @@ class CallUsageProofPort(Protocol):
     def prove(self, receipt: GatewayReceipt) -> tuple[ReportedCallUsage, int] | None:
         """Return an explicitly supported call-scoped proof and monotonic revision.
 
-        A2A 1.0 has no standard call-total field. The default adapter therefore
-        supplies no proof; step totals, arbitrary metadata and client inputs are
-        never promoted to Invocation usage. The port is internal composition.
+        A2A 1.0 has no standard call-total field. Only an explicitly composed
+        supported profile can supply proof; step totals, arbitrary metadata and
+        client inputs are never promoted to Invocation usage. The normalizer's
+        unconfigured default supplies none. The port is internal composition.
         """
         ...
 
