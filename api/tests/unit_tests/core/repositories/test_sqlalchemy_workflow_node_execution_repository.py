@@ -629,11 +629,7 @@ class TestSqlalchemyWorkflowNodeExecutionRepositoryCases:
         sqlite_session_factory: sessionmaker[Session],
         offload_type: ExecutionOffLoadType,
     ) -> None:
-        """A value over the truncation limit still goes through save_execution_data and is offloaded.
-
-        Outputs are checked before anything is written. Process data is only known to be too
-        large once it is merged with the stored row, inside the single-write attempt.
-        """
+        """A value over the truncation limit still goes through save_execution_data and is offloaded."""
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE", 200)
         monkeypatch.setattr(dify_config, "WORKFLOW_VARIABLE_TRUNCATION_STRING_LENGTH", 100)
         repo = _repository(monkeypatch, sqlite_session_factory)

@@ -357,17 +357,8 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
     def save_with_execution_data(self, execution: WorkflowNodeExecution) -> None:
         """Persist a node execution together with its execution data.
 
-        The workflow engine saves a node when it starts and again when it finishes. The
-        finishing save used to be ``save`` followed by ``save_execution_data``: one
-        transaction that wrote the row with its complete payload, then a second one that read
-        the row back, applied truncation and offloading, and merged it again.
-
-        Postcondition: the stored row and its offload rows are exactly what that two-step
-        sequence produces. When the execution is finished and none of its values needs
-        truncation, the row is written once, in one transaction, with the payload encoding
-        ``save_execution_data`` uses. Every other case (a live status, which needs the stop
-        check on both writes, or a value large enough to be offloaded) runs the two steps
-        unchanged.
+        Postcondition: the stored row and its offload rows match ``save`` followed by
+        ``save_execution_data``.
         """
         writes_once = (
             execution.status not in _LIVE_STATUSES
@@ -380,14 +371,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             self.save_execution_data(execution)
 
     def _save(self, execution: WorkflowNodeExecution, *, with_execution_data: bool) -> bool:
-        """Insert or update the row for ``execution``; return whether its execution data was stored too.
-
-        With ``with_execution_data`` the payload columns receive the values
-        ``save_execution_data`` would store, provided the process data needs no truncation.
-        If it does, nothing is written and ``False`` is returned so the caller can fall back to
-        the two-step path. Without ``with_execution_data`` the row is always written and the
-        result is ``False``.
-        """
+        """Insert or update the row for ``execution``; return whether execution data was stored too."""
         # NOTE: The workflow engine triggers `save` multiple times for a single node execution:
         # when the node starts, any time it retries, and once more when it reaches a terminal state.
         # Only the final call contains the complete inputs and outputs payloads, so earlier invocations
@@ -406,10 +390,7 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         )
         def _save_with_retry():
             try:
-                if execution_data is None:
-                    self._persist_to_database(db_model)
-                else:
-                    self._persist_to_database(db_model, execution_data=execution_data)
+                self._persist_to_database(db_model, execution_data=execution_data)
             except IntegrityError as e:
                 if self._is_duplicate_key_error(e):
                     # Generate new UUID and retry
