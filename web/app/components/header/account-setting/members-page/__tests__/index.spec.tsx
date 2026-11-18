@@ -6,7 +6,7 @@ import userEvent from '@testing-library/user-event'
 import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { consoleQuery } from '@/service/console'
 import { renderWithConsoleQuery } from '@/test/console/query-data'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const {
   membersRequest,
@@ -39,6 +39,7 @@ vi.mock('@/service/console', async (importOriginal) => {
           end_user_auth_enabled: false,
           is_allow_transfer_workspace: true,
         }),
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': membersRequest,
       'workspaces.current.rbac.roles.get': rolesRequest,
       'workspaces.current.rbac.members.byMemberId.rbacRoles.get': memberRolesRequest,

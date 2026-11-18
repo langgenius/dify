@@ -4320,11 +4320,6 @@
       "count": 4
     }
   },
-  "web/app/components/workflow/nodes/human-input/components/delivery-method/recipient/member-list.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 3
-    }
-  },
   "web/app/components/workflow/nodes/human-input/components/delivery-method/test-email-sender.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 3
@@ -5692,11 +5687,6 @@
   "web/features/agent-v2/agent-detail/configure/components/preview/build-background.tsx": {
     "better-tailwindcss/enforce-logical-properties": {
       "count": 2
-    }
-  },
-  "web/features/agent-v2/agent-detail/configure/components/preview/chat-session.tsx": {
-    "better-tailwindcss/enforce-logical-properties": {
-      "count": 1
     }
   },
   "web/features/agent-v2/agent-detail/configure/components/preview/versions-panel/current-draft-item.tsx": {

@@ -11,7 +11,7 @@ import * as React from 'react'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmailItem from './email-item'
-import MemberList from './member-list'
+import { MemberList } from './member-list'
 
 const i18nPrefix = 'nodes.humanInput'
 

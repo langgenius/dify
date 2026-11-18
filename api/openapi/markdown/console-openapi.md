@@ -19638,6 +19638,23 @@ Invalid path arguments fail before provider discovery or asset access.
 | 200 | Model provider icon |  |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
+### [GET] /workspaces/{workspace_id}/members/pending-invitations
+**List pending invitations for the active workspace**
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| workspace_id | path |  | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Success | **application/json**: [PendingWorkspaceInvitationListResponse](#pendingworkspaceinvitationlistresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
 ### [POST] /{evaluate_target_type}/{evaluate_target_id}/dataset-template/download
 #### Parameters
 
@@ -24957,6 +24974,7 @@ Expose Console feature entry points only after account admission.
 
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
+| agent_preview_enabled | boolean |  | Yes |
 | annotation_quota_limit | [LimitationModel](#limitationmodel) |  | Yes |
 | api_rate_limit | [Quota](#quota) |  | Yes |
 | apps | [LimitationModel](#limitationmodel) |  | Yes |
@@ -24968,6 +24986,8 @@ Expose Console feature entry points only after account admission.
 | enable_knowledge_fs | boolean |  | Yes |
 | enable_skill | boolean, <br>**Default:** true |  | Yes |
 | end_user_auth_enabled | boolean | Whether Console exposes EndUser authentication configuration for workflow tool nodes. Does not control WebApp login, Guest personal Connections, or runtime authorization. | Yes |
+| evaluation_enabled | boolean |  | Yes |
+| evaluation_upgrade_available | boolean |  | Yes |
 | human_input_email_delivery_enabled | boolean |  | Yes |
 | im_centrally_managed | boolean |  | Yes |
 | is_allow_transfer_workspace | boolean, <br>**Default:** true |  | Yes |
@@ -34318,6 +34338,20 @@ Too many password reset emails have been sent. Please try again in {minutes} min
 | node_id | string |  | Yes |
 | node_title | string |  | Yes |
 | pause_type | [HumanInputPauseTypeResponse](#humaninputpausetyperesponse) |  | Yes |
+
+#### PendingWorkspaceInvitationListResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| invitations | [ [PendingWorkspaceInvitationResponse](#pendingworkspaceinvitationresponse) ] |  | Yes |
+
+#### PendingWorkspaceInvitationResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| email | string |  | Yes |
+| expires_at | dateTime |  | Yes |
+| role | [TenantAccountRole](#tenantaccountrole) |  | Yes |
 
 #### Permission
 

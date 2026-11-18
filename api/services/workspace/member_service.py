@@ -8,7 +8,7 @@ from enums.account import TenantAccountRole
 from machinery.context import RequestContext
 from services.account_errors import AccountNotFoundError
 from services.account_ports import AccountSnapshotQuery
-from services.entities.account_activation_entities import InvitationToken
+from services.entities.account_activation_entities import InvitationToken, PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
 from services.errors.base import NoPermissionError
 from services.errors.workspace import (
@@ -333,6 +333,8 @@ class InvitationWorkspaceStore(Protocol):
 
     def count_members(self, workspace_id: str) -> int: ...
 
+    def nonmember_emails(self, workspace_id: str, account_ids: Sequence[str]) -> Mapping[str, str]: ...
+
 
 class WorkspaceInvitationDelivery(Protocol):
     @property
@@ -351,6 +353,10 @@ class WorkspaceInvitationDelivery(Protocol):
     def check_invitation_quota(self, workspace_id: str) -> None: ...
 
     def create(self, invitation: InvitationToken) -> str: ...
+
+    def track_pending(self, workspace_id: str, token: str) -> None: ...
+
+    def list_pending(self, workspace_id: str) -> tuple[PendingWorkspaceInvitation, ...]: ...
 
     def send(self, *, language: str, email: str, token: str, inviter_name: str, workspace_name: str) -> None: ...
 
@@ -371,6 +377,16 @@ class WorkspaceInvitationService:
 
     def check_invitation_quota(self, context: RequestContext) -> None:
         self._invitations.check_invitation_quota(context.active_workspace_id)
+
+    def list_pending(self, context: RequestContext) -> tuple[PendingWorkspaceInvitation, ...]:
+        """Return live invitations to non-members of the caller's workspace, subject to member management permission."""
+        workspace_id = context.active_workspace_id
+        self._members.check_permission(workspace_id, context.account_id, None, "add")
+        pending = self._invitations.list_pending(workspace_id)
+        if not pending:
+            return ()
+        current_emails = self._workspaces.nonmember_emails(workspace_id, [item.account_id for item in pending])
+        return tuple(item for item in pending if current_emails.get(item.account_id) == item.email)
 
     def invite_many(
         self, context: RequestContext, *, emails: Sequence[str], language: str | None, role: str
@@ -476,6 +492,8 @@ class WorkspaceInvitationService:
             inviter_name=inviter.name,
             workspace_name=workspace.name,
         )
+        if account.status == "active":
+            self._invitations.track_pending(workspace_id, token)
         return WorkspaceInvitation(workspace_id, account.id, normalized_email, role, token)
 
 

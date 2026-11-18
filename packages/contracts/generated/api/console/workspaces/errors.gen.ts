@@ -640,3 +640,5 @@ export const post93Errors = {
 export const post96Errors = {
   account_not_link_tenant: { status: 403, data: zAccountNotLinkTenantError },
 }
+
+export const get138Errors = { forbidden: { status: 403, data: zForbiddenError } }

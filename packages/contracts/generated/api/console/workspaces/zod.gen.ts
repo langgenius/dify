@@ -2929,6 +2929,22 @@ export const zSwitchWorkspaceResponse = z.object({
 })
 
 /**
+ * PendingWorkspaceInvitationResponse
+ */
+export const zPendingWorkspaceInvitationResponse = z.object({
+  email: z.string(),
+  expires_at: z.iso.datetime(),
+  role: zTenantAccountRole,
+})
+
+/**
+ * PendingWorkspaceInvitationListResponse
+ */
+export const zPendingWorkspaceInvitationListResponse = z.object({
+  invitations: z.array(zPendingWorkspaceInvitationResponse),
+})
+
+/**
  * PluginDependencyType
  */
 export const zPluginDependencyType = z.enum(['github', 'marketplace', 'package'])
@@ -5137,12 +5153,10 @@ export const zEndpointListResponse = z.object({
  * DefaultValueType
  */
 export const zDefaultValueType = z.enum([
-  'array[boolean]',
   'array[file]',
   'array[number]',
   'array[object]',
   'array[string]',
-  'boolean',
   'number',
   'object',
   'string',
@@ -9403,3 +9417,13 @@ export const zGetWorkspacesByTenantIdModelProvidersByProviderByIconTypeByLangRes
   z.string(),
   z.unknown(),
 )
+
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsPath = z.object({
+  workspace_id: z.uuid(),
+})
+
+/**
+ * Success
+ */
+export const zGetWorkspacesByWorkspaceIdMembersPendingInvitationsResponse =
+  zPendingWorkspaceInvitationListResponse

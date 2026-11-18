@@ -5,6 +5,7 @@ export type ClientOptions = {
 }
 
 export type ConsoleFeatureResponse = {
+  agent_preview_enabled: boolean
   annotation_quota_limit: LimitationModel
   api_rate_limit: Quota
   apps: LimitationModel
@@ -16,6 +17,8 @@ export type ConsoleFeatureResponse = {
   enable_knowledge_fs: boolean
   enable_skill: boolean
   end_user_auth_enabled: boolean
+  evaluation_enabled: boolean
+  evaluation_upgrade_available: boolean
   human_input_email_delivery_enabled: boolean
   im_centrally_managed: boolean
   is_allow_transfer_workspace: boolean

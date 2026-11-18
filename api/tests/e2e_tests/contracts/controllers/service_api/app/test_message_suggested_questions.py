@@ -578,7 +578,7 @@ def test_default_admission_keeps_legacy_app_attached(harness: _Harness) -> None:
     harness.app.add_url_rule("/legacy", view_func=view)
     with harness.app.test_request_context("/legacy?user=alice", headers={"Authorization": "Bearer test-token"}):
         assert harness.app.dispatch_request() == "legacy"
-        assert db.session().in_transaction()
+        assert not db.session().in_transaction()
         assert len(harness.admissions) == 1
         assert not harness.admissions[0].in_transaction()
         assert not harness.admissions[0].identity_map

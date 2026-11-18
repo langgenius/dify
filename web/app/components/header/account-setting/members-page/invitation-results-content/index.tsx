@@ -18,12 +18,12 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { useId } from 'react'
 import { useTranslation } from 'react-i18next'
 import { systemFeaturesQueryOptions } from '@/features/system-features/client'
-import InvitationLink from './invitation-link'
+import { InvitationLink } from './invitation-link'
 
 type IInvitationResultsContentProps = {
   invitationResults: MemberInviteResponse['invitation_results']
 }
-const InvitationResultsContent = ({ invitationResults }: IInvitationResultsContentProps) => {
+export const InvitationResultsContent = ({ invitationResults }: IInvitationResultsContentProps) => {
   const { t } = useTranslation(['common', 'workspaceMembers'])
   const failedEmailId = useId()
   const { data: deploymentEdition } = useSuspenseQuery({
@@ -159,5 +159,3 @@ const InvitationResultsContent = ({ invitationResults }: IInvitationResultsConte
     </>
   )
 }
-
-export default InvitationResultsContent

@@ -1,3 +1,4 @@
+from datetime import datetime
 from http import HTTPStatus
 from typing import Annotated, Literal, NoReturn
 from urllib import parse
@@ -83,6 +84,16 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
+class PendingWorkspaceInvitationResponse(ResponseModel):
+    email: str
+    role: TenantAccountRole
+    expires_at: datetime
+
+
+class PendingWorkspaceInvitationListResponse(ResponseModel):
+    invitations: list[PendingWorkspaceInvitationResponse]
+
+
 class MemberInviteSuccessResponse(ResponseModel):
     status: Literal["success"]
     email: str
@@ -138,6 +149,8 @@ register_response_schema_models(
     AccountWithRoleResponse,
     AccountWithRoleListResponse,
     MemberActionResponse,
+    PendingWorkspaceInvitationListResponse,
+    PendingWorkspaceInvitationResponse,
     MemberInviteErrorResponse,
     MemberInviteResponse,
     MemberInviteSuccessResponse,
@@ -176,6 +189,30 @@ class MemberListApi(Resource):
             for member in members
         ]
         return dump_response(AccountWithRoleListResponse, {"accounts": serialized_members}), HTTPStatus.OK
+
+
+@console_ns.route("/workspaces/<uuid:workspace_id>/members/pending-invitations")
+class PendingWorkspaceInvitationListApi(Resource):
+    @console_ns.response(HTTPStatus.OK, "Success", console_ns.models[PendingWorkspaceInvitationListResponse.__name__])
+    @error_responses(ForbiddenError)
+    @console_account_admission()
+    def get(self, request_context: RequestContext, workspace_id: UUID):
+        """List pending invitations for the active workspace."""
+        if str(workspace_id) != request_context.active_workspace_id:
+            raise ForbiddenError()
+        try:
+            invitations = application_services().workspaces.invitations.list_pending(request_context)
+        except NoPermissionError as error:
+            raise ForbiddenError() from error
+        return dump_response(
+            PendingWorkspaceInvitationListResponse,
+            {
+                "invitations": [
+                    {"email": invitation.email, "role": invitation.role, "expires_at": invitation.expires_at}
+                    for invitation in invitations
+                ]
+            },
+        ), HTTPStatus.OK
 
 
 @console_ns.route("/workspaces/current/members/invite-email")

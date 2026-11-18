@@ -1,7 +1,7 @@
 from collections.abc import Callable, Mapping, Sequence
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from unittest.mock import Mock, create_autospec
 
 import pytest
@@ -20,6 +20,7 @@ from models.model import App, AppMode
 from services.account.adapters import RedisInvitationTokenStore
 from services.account_errors import AccountNotFoundError
 from services.enterprise.rbac_service import RBACService
+from services.entities.account_activation_entities import PendingWorkspaceInvitation
 from services.entities.account_entities import AccountSnapshot
 from services.entities.feature_entities import FeatureModel, LicenseLimitationModel, LicenseModel
 from services.errors.base import NoPermissionError
@@ -276,16 +277,57 @@ class TestMemberServiceCases:
         invitation = account_domain.delivery.create.call_args.args[0]
         assert invitation.requires_setup is True
         assert invitation.email == "new@example.com"
+        account_domain.delivery.track_pending.assert_not_called()
 
     @staticmethod
     def test_active_invitee_must_accept_before_joining(
         account_domain: AccountDomain, members: tuple[str, str, str]
     ) -> None:
-        workspace_id, owner_id, _ = members
+        workspace_id, owner_id, regular_member_id = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
         account = account_domain.accounts.create_account("new@example.com", "New", "en-US")
-        account_domain.invitations.invite(RequestContext("request", None, owner_id, workspace_id), account.email, None)
+        result = account_domain.invitations.invite(owner, account.email, None, "editor")
+        account_domain.delivery.track_pending.assert_called_once_with(workspace_id, result.token)
         assert account_domain.members.get_role(workspace_id, account.id) is None
         assert account_domain.delivery.create.call_args.args[0].requires_setup is False
+
+        invitation = PendingWorkspaceInvitation(
+            account.id, account.email, TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+        with pytest.raises(NoPermissionError):
+            account_domain.invitations.list_pending(RequestContext("request", None, regular_member_id, workspace_id))
+        account_domain.delivery.list_pending.assert_not_called()
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+        account_domain.delivery.list_pending.assert_called_once_with(workspace_id)
+
+        account_domain.members.join_member(
+            workspace_id=workspace_id,
+            account_id=account.id,
+            email=account.email,
+            role=TenantAccountRole.EDITOR,
+            operator_account_id=None,
+        )
+        assert account_domain.invitations.list_pending(owner) == ()
+        account_domain.delivery.list_pending.return_value = ()
+        assert account_domain.invitations.list_pending(owner) == ()
+
+    @staticmethod
+    def test_pending_invitation_disappears_when_recipient_email_changes(
+        account_domain: AccountDomain, members: tuple[str, str, str]
+    ) -> None:
+        workspace_id, owner_id, _ = members
+        owner = RequestContext("request", None, owner_id, workspace_id)
+        account = account_domain.accounts.create_account("previous@example.com", "Invitee", "en-US")
+        invitation = PendingWorkspaceInvitation(
+            account.id, account.email, TenantAccountRole.EDITOR, datetime(2026, 12, 1, tzinfo=UTC)
+        )
+        account_domain.delivery.list_pending.return_value = (invitation,)
+        assert account_domain.invitations.list_pending(owner) == (invitation,)
+
+        account_domain.accounts.set_email(account.id, "updated@example.com")
+
+        assert account_domain.invitations.list_pending(owner) == ()
 
     @staticmethod
     def test_pending_member_can_be_reinvited(
@@ -669,6 +711,7 @@ class TestMemberServiceCases:
                 assert len(replace.calls) == 1
         if status == AccountStatus.ACTIVE:
             assert results[0].status == "already_member"
+            account_domain.delivery.track_pending.assert_not_called()
             account_domain.delivery.create.assert_not_called()
             account_domain.delivery.send.assert_not_called()
         else:

@@ -869,7 +869,7 @@ class ModelManager:
     """Resolves :class:`ModelInstance` objects for a tenant and provider.
 
     When ``enable_credentials_cache`` is ``True``, resolved credentials for each
-    ``(tenant_id, provider, model_type, model)`` are stored in
+    ``(tenant_id, provider, model_type, model, provider_type)`` are stored in
     ``_credentials_cache`` and reused. That can return **stale** credentials after
     API keys or provider settings change, so a manager constructed with
     ``enable_credentials_cache=True`` should not be kept for the lifetime of a
@@ -897,7 +897,7 @@ class ModelManager:
         """
         self._provider_manager = provider_manager
         self._moderation = moderation
-        self._credentials_cache: dict[tuple[str, str, str, str], Any] = {}
+        self._credentials_cache: dict[tuple[str, str, str, str, ProviderType], Any] = {}
         self._enable_credentials_cache = enable_credentials_cache
         self._request_metadata = dict(request_metadata) if request_metadata else None
 
@@ -975,33 +975,38 @@ class ModelManager:
         model: str,
         *,
         request_metadata: Mapping[str, object] | None = None,
+        require_custom_credentials: bool = False,
     ) -> ModelInstance:
-        """
-        Get model instance
-        :param tenant_id: tenant id
-        :param provider: provider name
-        :param model_type: model type
-        :param model: model name
-        :return: a model carrying the manager policy for LLM capabilities only
+        """Resolve a model with its normal provider selection and the admitted LLM policy.
 
-        A bound LLM policy must match tenant_id before provider lookup. The same
-        policy is applied with or without credential caching; callers cannot
-        replace it via request metadata or model invocation arguments.
+        Tenant-only callers must name a provider and set ``require_custom_credentials``.
+        They resolve only workspace-owned credentials even if the provider prefers
+        system hosting, without mutating the provider or consulting its hosted
+        credential cache. Missing custom credentials do not fall back to hosting.
+        A bound LLM policy must match tenant_id before provider lookup.
         """
         if model_type == ModelType.LLM and self._moderation is not None and self._moderation.tenant_id != tenant_id:
             raise ValueError("Moderation policy tenant does not match the model tenant.")
         if not provider:
+            if require_custom_credentials:
+                raise ValueError("An explicit provider is required for custom model credentials.")
             return self.get_default_model_instance(tenant_id, model_type)
 
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
             tenant_id=tenant_id, provider=provider, model_type=model_type
         )
+        configuration = provider_model_bundle.configuration
+        if require_custom_credentials and configuration.using_provider_type != ProviderType.CUSTOM:
+            configuration = configuration.model_copy(update={"using_provider_type": ProviderType.CUSTOM})
+            provider_model_bundle = ProviderModelBundle(
+                configuration=configuration, model_type_instance=provider_model_bundle.model_type_instance
+            )
         self._validate_system_model_access(provider_model_bundle, model_type=model_type, model=model)
         model_instance_class = self._model_instance_class(provider_model_bundle, model_type)
         effective_request_metadata = self._resolve_request_metadata(request_metadata)
         moderation = self._moderation if model_type == ModelType.LLM else None
 
-        cred_cache_key = (tenant_id, provider, model_type.value, model)
+        cred_cache_key = (tenant_id, provider, model_type.value, model, configuration.using_provider_type)
 
         if cred_cache_key in self._credentials_cache:
             return model_instance_class(

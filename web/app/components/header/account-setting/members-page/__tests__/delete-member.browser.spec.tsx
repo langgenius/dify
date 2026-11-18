@@ -6,7 +6,7 @@ import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
 import { createDeferred } from '@/test/deferred'
-import MembersPage from '../index'
+import { MembersPage } from '../index'
 
 const api = vi.hoisted(() => ({
   features: vi.fn<typeof consoleClient.features.get>(),
@@ -23,6 +23,7 @@ vi.mock('@/service/console', async (importOriginal) => {
   return {
     ...actual,
     consoleQuery: withConsoleResponses(actual.consoleQuery, {
+      'workspaces.byWorkspaceId.members.pendingInvitations.get': async () => ({ invitations: [] }),
       'workspaces.current.members.get': api.members,
       'features.get': api.features,
       'workspaces.current.members.byMemberId.delete': api.remove,

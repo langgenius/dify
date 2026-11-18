@@ -5,7 +5,7 @@ import { render } from 'vitest-browser-react'
 import { consoleQuery } from '@/service/console'
 import { createConsoleQueryWrapper } from '@/test/console/query-data'
 import { QueryClientTestProvider } from '@/test/console/query-provider'
-import MembersPage from '../../index'
+import { MembersPage } from '../../index'
 
 const { inviteMember } = vi.hoisted(() => ({ inviteMember: vi.fn() }))
 
@@ -40,6 +40,8 @@ beforeEach(() => {
       if (pathname.endsWith('/features'))
         return Response.json(queryClient.getQueryData(consoleQuery.features.get.queryKey()))
       if (pathname.endsWith('/workspaces/current/members')) return Response.json({ accounts: [] })
+      if (pathname.endsWith('/members/pending-invitations'))
+        return Response.json({ invitations: [] })
       throw new Error(`Unexpected request: ${pathname}`)
     }),
   )
