@@ -20,8 +20,10 @@ class OutputModeration(BaseModel):
     """Own sequential app output checks on the response consumer, without a worker or locks.
 
     The buffer holds raw text, while the answer contains only checked text or
-    replacement output. Stream checks inspect only new segments; completion checks
-    only an unchecked tail. Keyword/API replacement behavior remains independent of platform model
+    replacement output. Stream checks advance over new segments; keyword checks
+    retain enough preceding text to catch matches crossing a segment boundary.
+    Completion checks only unchecked text plus the required keyword context.
+    Keyword/API replacement behavior remains independent of platform model
     moderation. Evaluation failures are terminal and never retried by completion.
     """
 
@@ -39,6 +41,7 @@ class OutputModeration(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
     _answer: str = PrivateAttr(default="")
     _checked_length: int = PrivateAttr(default=0)
+    _keyword_check_end: int = PrivateAttr(default=0)
     _streamed: bool = PrivateAttr(default=False)
     _finished: bool = PrivateAttr(default=False)
     _error: Exception | None = PrivateAttr(default=None)
@@ -63,12 +66,68 @@ class OutputModeration(BaseModel):
             self.buffer = prefix
             self._answer = prefix
             self._checked_length = len(prefix)
+            self._keyword_check_end = len(prefix)
         self.buffer += token
+        if self.rule.type == "keywords":
+            return self._append_keyword_delta()
         pending = self.buffer[self._checked_length :]
         if len(pending) >= dify_config.MODERATION_BUFFER_SIZE:
             replacement = self._check_pending(pending)
             return (pending, None) if replacement is None else ("", replacement)
         return "", None
+
+    def _append_keyword_delta(self) -> tuple[str, str | None]:
+        """Check overlapping keyword windows and release only text with enough right context.
+
+        The accepted prefix advances by one configured buffer per check. A suffix
+        as long as the longest configured keyword remains withheld and is included
+        in the next check, so a keyword crossing a buffer boundary is detected
+        before its remaining characters are sent to the caller.
+        """
+        overlap = self._keyword_overlap_size()
+        stride = dify_config.MODERATION_BUFFER_SIZE
+        released: list[str] = []
+        while len(self.buffer) - self._keyword_check_end >= stride:
+            window_end = self._keyword_check_end + stride
+            window_start = max(0, self._keyword_check_end - overlap)
+            text = self.buffer[window_start:window_end]
+            release_end = max(self._checked_length, window_end - overlap)
+            accepted_text = self.buffer[self._checked_length : release_end]
+            context_length = max(0, self._checked_length - window_start)
+            replacement = self._check_keyword_segment(text, accepted_text, context_length=context_length)
+            if replacement is not None:
+                if not self.should_direct_output():
+                    self._checked_length = window_end
+                    self._keyword_check_end = window_end
+                return "", replacement
+            self._checked_length = release_end
+            self._keyword_check_end = window_end
+            released.append(accepted_text)
+        return "".join(released), None
+
+    def _keyword_overlap_size(self) -> int:
+        """Return the longest configured keyword length minus one for boundary context."""
+        if self.rule.type != "keywords":
+            return 0
+        keywords = self.rule.config.get("keywords")
+        if not isinstance(keywords, str):
+            return 0
+        longest = max((len(row.strip()) for row in keywords.split("\n") if row.strip()), default=0)
+        return max(0, longest - 1)
+
+    def _check_keyword_segment(self, text: str, accepted_text: str, *, context_length: int) -> str | None:
+        """Check one overlapping window, adding only its not-yet-emitted source text on approval."""
+        result = self.moderation(self.tenant_id, self.app_id, text)
+        if result is None or not result.flagged:
+            self._answer += accepted_text
+            return None
+        if result.action == ModerationAction.DIRECT_OUTPUT:
+            self.final_output = result.preset_response
+            self._answer = result.preset_response
+        else:
+            prefix = self._answer[:-context_length] if context_length else self._answer
+            self._answer = prefix + result.text
+        return self._answer
 
     def _check_pending(self, text: str) -> str | None:
         """Check one nonempty new segment, retaining its replacement and advancing only after success."""
@@ -87,9 +146,11 @@ class OutputModeration(BaseModel):
     def moderation_completion(self, completion: str) -> tuple[str, bool]:
         """Finish on the response consumer without rechecking already processed stream content.
 
-        Blocking results use independent non-stream segments. A changed final
-        result is new content and must be checked; unchanged streams check only
-        their remaining tail. Repeated completion never performs moderation I/O.
+        Blocking external checks use independent non-stream segments; the local
+        keyword backend checks the complete result so terms cannot be split at a
+        boundary. A changed final result is new content and must be checked;
+        keyword streams include boundary context for their remaining tail.
+        Repeated completion never performs moderation I/O.
         """
         if self._error is not None:
             raise self._error
@@ -105,18 +166,32 @@ class OutputModeration(BaseModel):
                 self._streamed = False
         if self._streamed:
             pending = self.buffer[self._checked_length :]
-            replacement = self._check_pending(pending) if pending else None
+            if pending and self.rule.type == "keywords":
+                overlap = self._keyword_overlap_size()
+                window_start = max(0, self._keyword_check_end - overlap)
+                context_length = max(0, self._checked_length - window_start)
+                replacement = self._check_keyword_segment(
+                    self.buffer[window_start:], pending, context_length=context_length
+                )
+                if replacement is None:
+                    self._checked_length = len(self.buffer)
+                    self._keyword_check_end = len(self.buffer)
+            else:
+                replacement = self._check_pending(pending) if pending else None
             flagged = replacement is not None
         else:
             self.buffer = completion
             self._answer = ""
             self._checked_length = 0
-            size = dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE
-            flagged = False
-            while self._checked_length < len(completion) and not self.should_direct_output():
-                segment = completion[self._checked_length : self._checked_length + size]
-                replacement = self._check_pending(segment)
-                flagged = flagged or replacement is not None
+            if completion and self.rule.type == "keywords":
+                flagged = self._check_pending(completion) is not None
+            else:
+                size = dify_config.MODERATION_NON_STREAM_SEGMENT_SIZE
+                flagged = False
+                while self._checked_length < len(completion) and not self.should_direct_output():
+                    segment = completion[self._checked_length : self._checked_length + size]
+                    replacement = self._check_pending(segment)
+                    flagged = flagged or replacement is not None
         self._finished = True
         return self._answer, flagged or self._answer != completion
 
