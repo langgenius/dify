@@ -17,8 +17,8 @@ minimumReleaseAgeExclude:
   - '@voidzero-dev/*'
   - oxlint
   - '@oxlint/*'
-  - oxlint-tsgolint
-  - '@oxlint-tsgolint/*'
+  - tsrs
+  - '@tsrs/*'
   - oxfmt
   - '@oxfmt/*'
   - vitest
@@ -35,7 +35,7 @@ trustPolicyExclude:
   - semver@6.3.1
   # tsrs is published by oxc-project GitHub Actions with npm provenance; pnpm
   # reports a downgrade against the historical publisher of this package name.
-  - tsrs@0.24.0-ts7.1.0-beta
+  - tsrs@7.1.0-beta.tsrs2
 verifyDepsBeforeRun: install
 packages:
   - web
@@ -44,7 +44,6 @@ packages:
   - packages/*
   - cli
 overrides:
-  '@babel/core@<=7.29.0': ^7.29.1
   # Inspector terminals are unused; click-to-source does not need a native PTY.
   '@code-inspector/core@2.0.9>node-pty:optional': '-'
   # Upgrade public matcher APIs; glob 13 still needs RegExp internals until its v14 upgrade.
@@ -57,7 +56,6 @@ overrides:
   '@tsslint/config>minimatch': 11.0.7
   '@tsslint/core>minimatch': 11.0.7
   '@typescript-eslint/typescript-estree>minimatch': 11.0.7
-  esbuild@<0.28.1: ^0.28.2
   eslint-plugin-no-barrel-files>minimatch: 11.0.7
   eslint>minimatch: 11.0.7
   fflate@>=0.7.0 <0.7.5: 0.7.5
@@ -71,18 +69,12 @@ overrides:
   micromark-extension-math>katex: 0.18.10
   # PDF previews render in the browser and do not need PDF.js's native Node canvas.
   'pdfjs-dist@4.4.168>canvas:optional': '-'
-  picomatch@>=4.0.0 <4.0.4: 4.0.7
-  postcss@<8.5.10: ^8.5.10
   'rehype-katex@7.0.1>katex': 0.19.1
   safer-buffer: npm:@nolyfill/safer-buffer@^1.0.44
-  # Older CLI consumers require CommonJS v4 or ESM v7; do not force them onto v8.
-  string-width@>=8.0.0 <8.3.0: ~8.3.0
   # The matching patch uses Vite 8's native TS path resolver exclusively.
   'vite-plugin-storybook-nextjs@10.6.7>vite-tsconfig-paths': '-'
   vite@*: 'catalog:'
   vitest@*: 'catalog:'
-  ws@>=8.0.0 <8.20.1: ^8.22.0
-  yaml@>=2.0.0 <2.8.3: 2.9.1
 patchedDependencies:
   # Vite 8 replaces the legacy path resolver. Reassess this patch and its paired
   # dependency-removal override together when upgrading Storybook.
@@ -169,7 +161,6 @@ catalog:
   '@types/sortablejs': 1.15.9
   '@typescript-eslint/parser': 8.72.2
   '@typescript-eslint/utils': 8.72.2
-  '@typescript/native': npm:typescript@7.1.0-beta
   '@vitejs/plugin-react': 6.3.0
   '@vitejs/plugin-rsc': 0.5.39
   '@vitest/browser-playwright': 5.1.0
@@ -282,7 +273,7 @@ catalog:
   svgo: 4.1.0
   tailwindcss: 4.3.5
   tldts: 7.4.21
-  tsrs: 0.24.0-ts7.1.0-beta
+  tsrs: 7.1.0-beta.tsrs2
   # JavaScript Compiler API for codegen/lint/i18n tools; type checks still use tsrs.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item -- Compiler API tools require TS 6; the mapper uses TS 7.1.
   typescript: npm:@typescript/typescript6@6.0.2
@@ -295,9 +286,9 @@ catalog:
   vinext: 1.4.5
   # The workspace uses Vite Plus; the SDK's public peer targets official Vite.
   # eslint-disable-next-line pnpm/yaml-no-duplicate-catalog-item
-  vite: npm:@voidzero-dev/vite-plus-core@1.6.0
+  vite: npm:@voidzero-dev/vite-plus-core@8.3.8000
   vite-plugin-inspect: 12.1.0
-  vite-plus: 1.6.0
+  vite-plus: 1.7.0
   vitest: 5.1.0
   vitest-browser-react: 2.3.0
   vitest-canvas-mock: 1.2.0
@@ -307,13 +298,11 @@ catalog:
   zustand: 5.1.0
 catalogs:
   public-vite:
-    vite: ^8.3.5
+    vite: ^8.3.6
   ts71:
     typescript: 7.1.0-beta
 peerDependencyRules:
   allowAny:
-    - vite
     - vitest
   allowedVersions:
-    vite: '*'
     vitest: '*'

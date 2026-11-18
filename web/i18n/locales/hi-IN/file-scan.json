@@ -2,7 +2,6 @@
   "dialog.addTitle": "स्कैनर जोड़ें",
   "dialog.apiKey": "API कुंजी",
   "dialog.apiSecret": "API सीक्रेट",
-  "dialog.clamavHint": "ClamAV इसी डिप्लॉयमेंट के भीतर चलता है। इसका पता डिप्लॉयमेंट व्यवस्थापक द्वारा निर्धारित किया जाता है।",
   "dialog.dataNotice": "फ़ाइल की सामग्री इस सेवा को भेजी जाती है।",
   "dialog.editTitle": "स्कैनर संपादित करें",
   "dialog.endpoint": "एंडपॉइंट (वैकल्पिक)",

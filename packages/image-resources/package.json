@@ -18,7 +18,6 @@
     "@dify/tsconfig": "workspace:*",
     "@types/node": "catalog:",
     "@types/picomatch": "catalog:",
-    "@typescript/native": "catalog:",
     "tsrs": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

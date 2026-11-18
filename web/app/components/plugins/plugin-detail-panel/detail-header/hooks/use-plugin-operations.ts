@@ -1,16 +1,21 @@
 'use client'
 
+import type { DialogHandle } from '@langgenius/dify-ui/dialog'
 import type { PluginDetail } from '../../../types'
 import type { ModalStates } from './use-detail-header-state'
-import { useMutation } from '@tanstack/react-query'
-import { useCallback } from 'react'
+import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import { createDialogHandle } from '@langgenius/dify-ui/dialog'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useCallback, useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { useModalContext } from '@/context/modal-context'
 import { consoleQuery } from '@/service/console'
 import { useInvalidateCheckInstalled } from '@/service/use-plugins'
 import { PluginSource } from '../../../types'
-import { checkGitHubPluginUpdate } from '../../../update-plugin/check-github-update'
+import {
+  beginGitHubPluginIntent,
+  checkGitHubPluginUpdate,
+} from '../../../update-plugin/check-github-update'
 
 type UsePluginOperationsParams = {
   canDeletePlugin?: boolean
@@ -24,6 +29,7 @@ type UsePluginOperationsReturn = {
   handleUpdate: () => Promise<void>
   handleUpdatedFromMarketplace: () => Promise<void>
   handleDelete: () => void
+  githubDialog: DialogHandle<UpdatePluginPayload>
   deleting: boolean
 }
 
@@ -34,7 +40,8 @@ export const usePluginOperations = ({
   modalStates,
   onUpdate,
 }: UsePluginOperationsParams): UsePluginOperationsReturn => {
-  const { setShowUpdatePluginModal } = useModalContext()
+  const queryClient = useQueryClient()
+  const [githubDialog] = useState(() => createDialogHandle<UpdatePluginPayload>())
   const { refreshPluginList } = useRefreshPluginList()
   const invalidateCheckInstalled = useInvalidateCheckInstalled()
 
@@ -52,20 +59,15 @@ export const usePluginOperations = ({
   const handleUpdate = useCallback(async () => {
     if (!canUpdatePlugin) return
 
+    const isCurrent = beginGitHubPluginIntent(queryClient)
     if (isFromMarketplace) {
       modalStates.showUpdateModal()
       return
     }
 
-    await checkGitHubPluginUpdate(detail, setShowUpdatePluginModal, handlePluginUpdated)
-  }, [
-    canUpdatePlugin,
-    isFromMarketplace,
-    setShowUpdatePluginModal,
-    detail,
-    handlePluginUpdated,
-    modalStates,
-  ])
+    const update = await checkGitHubPluginUpdate(detail, isCurrent)
+    if (update) githubDialog.openWithPayload(update)
+  }, [canUpdatePlugin, isFromMarketplace, detail, modalStates, githubDialog, queryClient])
 
   const remove = useMutation(
     consoleQuery.workspaces.current.plugin.uninstall.post.mutationOptions({
@@ -87,6 +89,7 @@ export const usePluginOperations = ({
     handleUpdate,
     handleUpdatedFromMarketplace: handlePluginUpdated,
     handleDelete,
+    githubDialog,
     deleting: remove.isPending,
   }
 }
