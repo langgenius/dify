@@ -1,10 +1,21 @@
 import type { CommonNodeType } from '@/app/components/workflow/types'
-import { useCallback } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useNodeDataUpdate } from '../../../hooks/use-node-data-update'
+import { useStore } from '../../../store'
 
 const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const setInputs = useCallback(
+  const selectiveHistory = useStore((s) => s.loroDraft?.format === 2)
+  const updateRef = useRef(handleNodeDataUpdateWithSyncDraft)
+  useEffect(() => {
+    updateRef.current = handleNodeDataUpdateWithSyncDraft
+  }, [handleNodeDataUpdateWithSyncDraft])
+
+  const setLocalInputs = useCallback(
+    (newInputs: CommonNodeType<T>) => updateRef.current({ id, data: newInputs }),
+    [id],
+  )
+  const setDraftInputs = useCallback(
     (newInputs: CommonNodeType<T>) => {
       handleNodeDataUpdateWithSyncDraft({
         id,
@@ -17,7 +28,7 @@ const useNodeCrud = <T>(id: string, data: CommonNodeType<T>) => {
 
   return {
     inputs: data,
-    setInputs,
+    setInputs: selectiveHistory ? setDraftInputs : setLocalInputs,
   }
 }
 
