@@ -1,6 +1,12 @@
 @workflows @authenticated
 Feature: Persist LLM node prompts in workflow drafts
   @workflow-collaboration
+  Scenario: Keep typing in an LLM prompt during initial collaboration sync
+    Given a Chatflow with a saved LLM prompt and collaboration enabled
+    When I continue typing in the LLM node before collaboration finishes connecting
+    Then the complete prompt should be saved and survive reloading the editor
+
+  @workflow-collaboration
   Scenario: Recover a prompt edit made before the connection was interrupted
     Given a Chatflow with a saved LLM prompt and collaboration enabled
     When I open the app from the app list

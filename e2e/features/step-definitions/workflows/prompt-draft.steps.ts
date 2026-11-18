@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test'
+import type { Locator, Page } from '@playwright/test'
 import type { DifyWorld } from '../../support/world.ts'
 import { Buffer } from 'node:buffer'
 import { randomUUID } from 'node:crypto'
@@ -14,6 +14,7 @@ import { baseURL, defaultLocale } from '../../../test-env.ts'
 
 const originalPrompt = 'Original prompt for the workflow. '.repeat(24).trim()
 const editedPrompt = 'Keep this edited instruction after reconnect. '.repeat(54).trim()
+const promptSuffix = ' Keep every word typed during sync.'
 const nodeId = 'e2e-llm'
 const answerNodeId = 'e2e-answer'
 const answerTitle = 'Draft answer'
@@ -74,6 +75,14 @@ async function openPromptEditor(page: Page) {
 
 function canvasNodeByTitle(page: Page, title: string) {
   return page.getByRole('button').filter({ has: page.getByText(title, { exact: true }) })
+}
+
+async function tabTo(page: Page, target: Locator) {
+  for (let tabs = 0; tabs < 100; tabs++) {
+    if (await target.evaluate((element) => element === document.activeElement)) break
+    await page.keyboard.press('Tab')
+  }
+  await expect(target).toBeFocused()
 }
 
 async function openFixtureApp(page: Page, appName: string | undefined) {
@@ -184,6 +193,51 @@ When('I open the LLM prompt editor', async function (this: DifyWorld) {
 When('I edit the LLM prompt', async function (this: DifyWorld) {
   await editPrompt(this)
 })
+
+When(
+  'I continue typing in the LLM node before collaboration finishes connecting',
+  async function (this: DifyWorld) {
+    const page = this.getPage()
+    const { appId, network } = state(this)
+    const heldJoin = network.holdNextJoin()
+    await page.goto(`/app/${appId}/workflow`, { waitUntil: 'domcontentloaded' })
+    const releaseJoin = await heldJoin
+    const syncing = page.getByRole('status', { name: '', exact: true }).filter({
+      hasText: 'Syncing data, just a few seconds.',
+    })
+    try {
+      await expect(syncing).toBeVisible()
+      await tabTo(page, canvasNodeByTitle(page, 'Draft prompt'))
+      await page.keyboard.press('Enter')
+      const panel = page.getByRole('region', { name: 'Draft prompt Node configuration panel' })
+      const editor = panel.getByRole('textbox').filter({ hasText: originalPrompt })
+      await expect(editor).toHaveText(originalPrompt)
+      await tabTo(page, editor)
+      await page.keyboard.press('ControlOrMeta+a')
+      await page.keyboard.press('ArrowRight')
+      await page.keyboard.type(promptSuffix)
+      await expect(editor).toHaveText(originalPrompt + promptSuffix)
+      await expect(syncing).toBeVisible()
+    } finally {
+      releaseJoin()
+    }
+    await expect.poll(network.confirmedSyncs, { timeout: 40_000 }).toBeGreaterThan(0)
+    await expect(syncing).toBeHidden()
+  },
+)
+
+Then(
+  'the complete prompt should be saved and survive reloading the editor',
+  async function (this: DifyWorld) {
+    const expected = originalPrompt + promptSuffix
+    await expect
+      .poll(async () => (await getSavedPrompt(this)).prompt, { timeout: 20_000 })
+      .toBe(expected)
+    const page = this.getPage()
+    await page.reload()
+    await expect(await openPromptEditor(page)).toHaveText(expected)
+  },
+)
 
 When(
   /^I edit the prompt and (interrupt its upload|lose its successful save confirmation)$/,

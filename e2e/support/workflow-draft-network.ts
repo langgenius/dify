@@ -19,6 +19,7 @@ export async function observeWorkflowDraftNetwork(page: Page) {
   let confirmedUploads = 0
   let confirmedSyncs = 0
   let rejectedStaleUploads = 0
+  let holdNextJoin: ((release: () => void) => void) | undefined
   const httpSaves: number[] = []
 
   page.on('response', (response) => {
@@ -50,6 +51,11 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     client.onMessage((message) => {
       if (interrupted) return
       const packet = socketPacket(message)
+      if (holdNextJoin && packet?.payload[0] === 'user_connect') {
+        holdNextJoin(() => server.send(message))
+        holdNextJoin = undefined
+        return
+      }
       if (packet?.payload[0] === 'loro_draft_sync') {
         syncs.add(packet.id)
         const body: unknown = packet.payload[1]
@@ -94,6 +100,10 @@ export async function observeWorkflowDraftNetwork(page: Page) {
   })
 
   return {
+    holdNextJoin: () =>
+      new Promise<() => void>((resolve) => {
+        holdNextJoin = resolve
+      }),
     interruptNext: (next: Fault) => {
       fault = next
     },
