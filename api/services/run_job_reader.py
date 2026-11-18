@@ -5,14 +5,14 @@ from __future__ import annotations
 import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass, fields, replace
+from dataclasses import dataclass, field, fields, replace
 from types import MappingProxyType
 from typing import Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
 from services.run_job_contracts import JobEnding, JobFailure, JobFamily, JobIds, JobRecord, JobStatus, RunJobStore
-from services.run_job_frames import RunFrame, read_frame
+from services.run_job_frames import Misfit, RunFrame, read_frame
 
 logger = logging.getLogger(__name__)
 
@@ -100,55 +100,72 @@ def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
     Postcondition: the JobIds fields to store, by name; neither argument is changed.
     """
     return {
-        field.name: value
-        for field in fields(JobIds)
-        if getattr(stored, field.name) is None and (value := getattr(ids, field.name)) is not None
+        id_field.name: value
+        for id_field in fields(JobIds)
+        if getattr(stored, id_field.name) is None and (value := getattr(ids, id_field.name)) is not None
     }
 
 
-def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored: JobIds) -> JobIds:
+@dataclass(slots=True)
+class _Reading:
+    """What one reader has stored so far, and the misfit events it has reported."""
+
+    stored: JobIds = field(default_factory=JobIds)
+    reported: set[str | None] = field(default_factory=set)
+
+
+def _report(job_id: str, misfit: Misfit, reading: _Reading) -> None:
+    """Postcondition: the first misfit of each event name is logged as an error, without any frame value."""
+    if misfit.event in reading.reported:
+        return
+    reading.reported.add(misfit.event)
+    logger.error("Run job %s: a %s frame does not fit core's model at %s", job_id, misfit.event, misfit.fields)
+
+
+def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
     """Apply one frame to the job.
 
-    Precondition: the job exists; stored holds the ids already written.
-    Postcondition: ids and status from the frame are stored, and the ids now stored are returned;
-    ids count as stored only after the store accepted them, so a failed save is retried by the next frame that
-    carries them; a pending stop is sent once when the task id is first stored.
+    Precondition: the job exists; reading.stored holds the ids already written.
+    Postcondition: ids and status from the frame are stored and reading.stored names them; ids count as stored only
+    after the store accepted them, so a failed save is retried by the next frame that carries them; a pending stop
+    is sent once when the task id is first stored. A frame that does not fit core's model changes nothing and is
+    reported.
     """
     read = read_frame(frame)
-    if not isinstance(read, RunFrame):
-        return stored
-    found = _unstored_ids(read.ids, stored)
+    if isinstance(read, Misfit):
+        _report(job_id, read, reading)
+        return
+    if read is None:
+        return
+    found = _unstored_ids(read.ids, reading.stored)
     if found:
         store.record_ids(job_id, JobIds(**found))
-    task_id_known = stored.task_id is not None
-    stored = replace(stored, **found)
+    task_id_known = reading.stored.task_id is not None
+    reading.stored = replace(reading.stored, **found)
     record = store.get(job_id)
     if record is None:
-        return stored
+        return
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
             stopper.stop(record)
     handler = ENDINGS_BY_FAMILY[record.family].get(read.event)
     if handler is None:
-        return stored
+        return
     ending = handler(_FrameContext(record=record, frame=read))
     if ending is not None:
         store.settle(job_id, ending)
-    return stored
 
 
-def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored: JobIds) -> JobIds:
+def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, reading: _Reading) -> None:
     """Apply one frame, keeping a store or stopper failure from ending the read.
 
     Precondition: the job exists.
-    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed, and the ids
-    stored before the frame are returned.
+    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed.
     """
     try:
-        return _consume(frame, job_id=job_id, store=store, stopper=stopper, stored=stored)
+        _consume(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
     except Exception:
         logger.exception("Run job %s frame handling failed", job_id)
-        return stored
 
 
 def _end_of_stream(job_id: str, store: RunJobStore) -> None:
@@ -206,7 +223,8 @@ def read_to_end(
 
     Precondition: the job exists.
     Postcondition: every frame was consumed, ids are stored, the ending rule of _end_of_stream was applied, and
-    frames is closed when it has a close method. While frames are read, whether or not they arrive, the alive key
+    frames is closed when it has a close method. The first frame of each event name that does not fit core's model
+    is logged as an error. While frames are read, whether or not they arrive, the alive key
     is refreshed every alive_refresh_seconds; the refresh stops and the key is deleted before it returns. A frame
     whose handling raises is logged and skipped; a stream that raises is logged and treated as ended.
     """
@@ -218,10 +236,10 @@ def read_to_end(
         daemon=True,
     )
     alive.start()
-    stored = JobIds()
+    reading = _Reading()
     try:
         for frame in frames:
-            stored = _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, stored=stored)
+            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, reading=reading)
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:

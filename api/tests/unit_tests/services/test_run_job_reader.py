@@ -1,4 +1,5 @@
 import json
+import logging
 import time
 from collections.abc import Iterable, Iterator, Mapping
 from typing import override
@@ -497,3 +498,22 @@ def test_a_pending_stop_is_sent_once_after_a_failed_id_save(redis: InMemoryRedis
     _read(store, stopper, frames)
 
     assert [(record.task_id, record.run_id) for record in stopper.stopped] == [("task-1", "run-1")]
+
+
+def test_a_frame_that_does_not_fit_cores_model_is_logged_once_per_event(
+    store: RedisRunJobStore, stopper: RecordingJobStopper, caplog: pytest.LogCaptureFixture
+) -> None:
+    _open(store, AppMode.CHAT)
+    broken_end = _frame(StreamEvent.MESSAGE_END, id="msg-1", answer="secret answer")
+    frames = [broken_end, broken_end, "data: not json\n\n", PING]
+
+    with caplog.at_level(logging.ERROR, logger="services.run_job_reader"):
+        record = _read(store, stopper, frames)
+
+    misfits = [entry for entry in caplog.records if "does not fit" in entry.getMessage()]
+    assert [entry.levelno for entry in misfits] == [logging.ERROR, logging.ERROR]
+    assert JOB_ID in misfits[0].getMessage()
+    assert "message_end" in misfits[0].getMessage()
+    assert "task_id" in misfits[0].getMessage()
+    assert "secret answer" not in caplog.text
+    assert record.failure is JobFailure.NO_RESULT
