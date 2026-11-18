@@ -36,6 +36,7 @@ from controllers.openapi._mcp_tools import (
     tool_list,
 )
 from controllers.openapi.auth.spec import Effect
+from core.app.entities.task_entities import HumanInputRequiredResponse
 from core.mcp import types as mcp_types
 from extensions.ext_application_services import ApplicationServices
 from libs.oauth_bearer import extract_bearer
@@ -197,16 +198,22 @@ _LATEST = "2025-06-18"
 _OLDER = "2025-03-26"
 _SUBMIT_FORM_OP = "submit.run.form"
 _WAIT_JOB_OP = "wait.job"
-_PAUSED_FORM = {
-    "form_id": "f1",
-    "node_id": "n1",
-    "node_title": "Review",
-    "form_content": "",
-    "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
-    "actions": [{"id": "approve", "title": "Approve"}],
-    "form_token": "ft-1",
-    "expiration_time": 4102444800,
-}
+_PAUSED_FORM = HumanInputRequiredResponse.model_validate(
+    {
+        "task_id": "t1",
+        "workflow_run_id": "r1",
+        "data": {
+            "form_id": "f1",
+            "node_id": "n1",
+            "node_title": "Review",
+            "form_content": "",
+            "inputs": [{"type": "paragraph", "output_variable_name": "comment"}],
+            "actions": [{"id": "approve", "title": "Approve"}],
+            "form_token": "ft-1",
+            "expiration_time": 4102444800,
+        },
+    }
+)
 
 
 @dataclasses.dataclass(frozen=True)
