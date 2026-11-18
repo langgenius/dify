@@ -27,6 +27,7 @@ from controllers.openapi._mcp_call import (
     UnsafePathValue,
     call_op,
 )
+from controllers.openapi.app_start import START_MODES
 from controllers.openapi.auth.spec import Effect, EndpointSpec, Kind
 from core.mcp import types as mcp_types
 from core.mcp.server.streamable_http import STRUCTURED_OUTPUT_MIN_VERSION
@@ -232,15 +233,19 @@ def describe_op(op: str, *, token: str | None) -> dict[str, Any]:
     }
 
 
-MCP_INSTRUCTIONS: Final = """This server runs operations of a Dify server. Four tools: dify_find, dify_read, dify_write, dify_destructive.
+# The start op an app's mode takes, as dify_find lists them: "workflow app: start.console_app.workflow; ...".
+_START_OPS: Final = "; ".join(
+    f"{' or '.join(mode.value for mode in modes)} app: {op}" for op, modes in START_MODES.items()
+)
+MCP_INSTRUCTIONS: Final = f"""This server runs operations of a Dify server. Four tools: dify_find, dify_read, dify_write, dify_destructive.
 
-1. First call dify_read with op "get.workspace" and input {}. It confirms the login and lists workspaces with their ids. If the list is empty, this token has no workspace access: ask the human to give the token access to the workspace, or to tell you the workspace id. Do not guess an id.
+1. First call dify_read with op "get.workspace" and input {{}}. It confirms the login and lists workspaces with their ids. If the list is empty, this token has no workspace access: ask the human to give the token access to the workspace, or to tell you the workspace id. Do not guess an id.
 2. Many operations take workspace_id. Nothing fills it in for you: pass the id from step 1.
 3. Before calling an operation, look it up: dify_find with a few words lists operations; dify_find with op "<id>" returns its input schema and examples. Operation ids can change between server versions, so do not guess them.
 4. Call an operation with the tool that dify_find names for it. dify_destructive operations cannot be undone: confirm with the human first.
-5. To run an app, call its start operation (start.console_app.<mode>), then wait.job with the returned job id until the status is final. A status of "paused" means the run needs human input: follow the hints.
+5. To run an app, call the start operation for its mode ({_START_OPS}), then wait.job with the returned job id until the status is final. A status of "paused" means the run needs human input: follow the hints.
 6. Every result may carry "hints": ready-made next calls. Prefer them over building a call yourself.
-7. A file variable of an app takes a file mapping with a URL in "inputs": {"transfer_method": "remote_url", "url": "https://...", "type": "document"}.
+7. A file variable of an app takes a file mapping with a URL in "inputs": {{"transfer_method": "remote_url", "url": "https://...", "type": "document"}}.
 8. An operation that dify_find does not list is not available to this login."""  # noqa: E501
 
 FIND_DESCRIPTION: Final = (
