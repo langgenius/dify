@@ -61,7 +61,12 @@ def parse_file_reference(reference: str | None) -> FileReference | None:
 
     encoded_payload = reference.removeprefix(_FILE_REFERENCE_PREFIX)
     try:
-        payload = json.loads(base64.urlsafe_b64decode(encoded_payload.encode()))
+        # RFC 4648 allows base64url encoders to omit the trailing padding, and
+        # several do by default. Restore it before decoding so a canonical
+        # reference is not mistaken for a raw record id when its padding is
+        # absent (e.g. JWT-style helpers or values carried through URLs).
+        padded_payload = encoded_payload + "=" * (-len(encoded_payload) % 4)
+        payload = json.loads(base64.urlsafe_b64decode(padded_payload.encode()))
     except ValueError:
         return FileReference(record_id=reference)
 
