@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-import json
 import logging
 import threading
 from collections.abc import Callable, Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, fields, replace
 from types import MappingProxyType
-from typing import Any, Final, Protocol, runtime_checkable
+from typing import Final, Protocol, runtime_checkable
 
 from core.app.entities.task_entities import StreamEvent
 from graphon.enums import WorkflowExecutionStatus
 from services.run_job_contracts import JobEnding, JobFailure, JobFamily, JobIds, JobRecord, JobStatus, RunJobStore
+from services.run_job_frames import RunFrame, read_frame
 
 logger = logging.getLogger(__name__)
 
-DATA_PREFIX: Final = "data:"
-ID_FIELDS: Final = ("task_id", "workflow_run_id", "message_id", "conversation_id")
 # The alive key means "the reader thread is running". It is refreshed on a timer, not per frame: a graph run that
 # waits in the worker queue sends no frame until it starts (only one ping when the stream opens).
 ALIVE_REFRESH_SECONDS: Final = 10
@@ -46,7 +44,7 @@ class _Closable(Protocol):
 @dataclass(frozen=True, slots=True, kw_only=True)
 class _FrameContext:
     record: JobRecord
-    payload: Mapping[str, Any]
+    frame: RunFrame
 
 
 _Handler = Callable[[_FrameContext], JobEnding | None]
@@ -55,24 +53,19 @@ _Handler = Callable[[_FrameContext], JobEnding | None]
 def _run_finished(context: _FrameContext) -> JobEnding | None:
     """Map a workflow_finished frame to a final job status.
 
-    Precondition: context.payload is a decoded workflow_finished frame.
+    Precondition: context.frame is a workflow_finished frame.
     Postcondition: an ending for succeeded, partial-succeeded, failed or stopped runs; None for any other status.
+    The error is kept only for a failed run.
     """
-    data = context.payload.get("data")
-    if not isinstance(data, Mapping):
+    run_status = context.frame.run_status
+    if run_status is None:
         return None
-    try:
-        status = RUN_STATUS_TO_JOB_STATUS.get(WorkflowExecutionStatus(data.get("status")))
-    except ValueError:
-        return None
+    status = RUN_STATUS_TO_JOB_STATUS.get(run_status)
     if status is None:
         return None
-    error = data.get("error")
     if status is not JobStatus.FAILED:
         return JobEnding(status=status)
-    if not isinstance(error, str):
-        return JobEnding(status=status)
-    return JobEnding(status=status, error=error)
+    return JobEnding(status=status, error=context.frame.error)
 
 
 def _message_ended(context: _FrameContext) -> JobEnding | None:
@@ -89,105 +82,73 @@ def _message_ended(context: _FrameContext) -> JobEnding | None:
 
 
 def _run_errored(context: _FrameContext) -> JobEnding | None:
-    """Fail the job with the error frame's message.
-
-    Precondition: none.
-    Postcondition: an ending of FAILED with the frame's message; the error stays unset when the frame has none.
-    """
-    message = context.payload.get("message")
-    if not isinstance(message, str):
-        return JobEnding(status=JobStatus.FAILED)
-    return JobEnding(status=JobStatus.FAILED, error=message)
+    """Precondition: context.frame is an error frame. Postcondition: an ending of FAILED with the frame's message."""
+    return JobEnding(status=JobStatus.FAILED, error=context.frame.error)
 
 
-EVENT_HANDLERS: Final[Mapping[str, _Handler]] = {
-    StreamEvent.WORKFLOW_FINISHED.value: _run_finished,
-    StreamEvent.MESSAGE_END.value: _message_ended,
-    StreamEvent.ERROR.value: _run_errored,
+EVENT_HANDLERS: Final[Mapping[StreamEvent, _Handler]] = {
+    StreamEvent.WORKFLOW_FINISHED: _run_finished,
+    StreamEvent.MESSAGE_END: _message_ended,
+    StreamEvent.ERROR: _run_errored,
 }
 
 
-def decode_frame(frame: str) -> Mapping[str, Any] | None:
-    """Decode the JSON object of an SSE data frame.
+def _unstored_ids(ids: JobIds, stored: JobIds) -> dict[str, str]:
+    """Pick the ids that this frame carries and that were not stored yet.
 
     Precondition: none.
-    Postcondition: the decoded object, or None for pings, non-data frames and anything that is not a JSON object.
+    Postcondition: the JobIds fields to store, by name; neither argument is changed.
     """
-    text = frame.strip()
-    if not text.startswith(DATA_PREFIX):
-        return None
-    try:
-        payload = json.loads(text.removeprefix(DATA_PREFIX))
-    except ValueError:
-        return None
-    if not isinstance(payload, dict):
-        return None
-    return payload
+    return {
+        field.name: value
+        for field in fields(JobIds)
+        if getattr(stored, field.name) is None and (value := getattr(ids, field.name)) is not None
+    }
 
 
-def _unstored_ids(payload: Mapping[str, Any], stored: set[str]) -> Mapping[str, str]:
-    """Pick the run ids that this frame carries and that were not stored yet.
-
-    Precondition: stored holds the id fields already written.
-    Postcondition: the id fields and values to store; stored is not changed.
-    """
-    return {name: payload[name] for name in ID_FIELDS if name not in stored and isinstance(payload.get(name), str)}
-
-
-def _ids_of(found: Mapping[str, str]) -> JobIds:
-    """Name the given id fields as job ids.
-
-    Precondition: found is not empty and its keys are in ID_FIELDS.
-    Postcondition: exactly those ids are set.
-    """
-    return JobIds(
-        task_id=found.get("task_id"),
-        run_id=found.get("workflow_run_id"),
-        message_id=found.get("message_id"),
-        conversation_id=found.get("conversation_id"),
-    )
-
-
-def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored_ids: set[str]) -> None:
+def _consume(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored: JobIds) -> JobIds:
     """Apply one frame to the job.
 
-    Precondition: the job exists.
-    Postcondition: ids and status from the frame are stored;
+    Precondition: the job exists; stored holds the ids already written.
+    Postcondition: ids and status from the frame are stored, and the ids now stored are returned;
     ids count as stored only after the store accepted them, so a failed save is retried by the next frame that
     carries them; a pending stop is sent once when the task id is first stored.
     """
-    payload = decode_frame(frame)
-    if payload is None:
-        return
-    task_id_known = "task_id" in stored_ids
-    found = _unstored_ids(payload, stored_ids)
+    read = read_frame(frame)
+    if not isinstance(read, RunFrame):
+        return stored
+    found = _unstored_ids(read.ids, stored)
     if found:
-        store.record_ids(job_id, _ids_of(found))
-        stored_ids.update(found)
+        store.record_ids(job_id, JobIds(**found))
+    task_id_known = stored.task_id is not None
+    stored = replace(stored, **found)
     record = store.get(job_id)
     if record is None:
-        return
+        return stored
     if not task_id_known and record.task_id is not None:
         if record.stop_requested:
             stopper.stop(record)
-    handler = EVENT_HANDLERS.get(str(payload.get("event")))
+    handler = EVENT_HANDLERS.get(read.event)
     if handler is None:
-        return
-    ending = handler(_FrameContext(record=record, payload=payload))
+        return stored
+    ending = handler(_FrameContext(record=record, frame=read))
     if ending is not None:
         store.settle(job_id, ending)
+    return stored
 
 
-def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored_ids: set[str]) -> None:
+def _consume_safely(frame: str, *, job_id: str, store: RunJobStore, stopper: JobStopper, stored: JobIds) -> JobIds:
     """Apply one frame, keeping a store or stopper failure from ending the read.
 
     Precondition: the job exists.
-    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed.
+    Postcondition: see _consume; an error raised while applying the frame is logged and swallowed, and the ids
+    stored before the frame are returned.
     """
     try:
-        _consume(frame, job_id=job_id, store=store, stopper=stopper, stored_ids=stored_ids)
+        return _consume(frame, job_id=job_id, store=store, stopper=stopper, stored=stored)
     except Exception:
         logger.exception("Run job %s frame handling failed", job_id)
+        return stored
 
 
 def _end_of_stream(job_id: str, store: RunJobStore) -> None:
@@ -257,10 +218,10 @@ def read_to_end(
         daemon=True,
     )
     alive.start()
-    stored_ids: set[str] = set()
+    stored = JobIds()
     try:
         for frame in frames:
-            _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, stored_ids=stored_ids)
+            stored = _consume_safely(frame, job_id=job_id, store=store, stopper=stopper, stored=stored)
     except Exception:
         logger.exception("Run job %s stream failed", job_id)
     finally:
