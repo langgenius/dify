@@ -15,13 +15,19 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class AppModeration(Protocol):
-    """Stateless app checks and response replacement, independent of workflow node error strategies."""
+    """Stateless app checks and replacement, independent of workflow node error strategies.
+
+    Only a trusted runtime ownership decision can defer an app OpenAI rule.
+    Keywords and API rules are independent of that decision.
+    """
 
     def evaluate_input(
-        self, app_config: AppConfig, inputs: Mapping[str, object], query: str
+        self, app_config: AppConfig, inputs: Mapping[str, object], query: str, *, platform_owned: bool
     ) -> ModerationInputsResult | None: ...
 
-    def output_evaluator(self, app_config: AppConfig) -> Callable[[str], ModerationOutputsResult | None] | None: ...
+    def output_evaluator(
+        self, app_config: AppConfig, *, platform_owned: bool
+    ) -> Callable[[str], ModerationOutputsResult | None] | None: ...
 
     def replacement(self, app_config: AppConfig, error: Exception) -> tuple[str, str] | None: ...
 
