@@ -498,6 +498,16 @@ def test_dataset_detail_signs_valid_icons_and_preserves_legacy_fallbacks(sqlite_
             icon_info={"icon_type": "image", "icon": foreign_upload.id, "icon_url": foreign_preview},
         ),
         _dataset(4, account.id, icon_info=emoji),
+        _dataset(
+            5,
+            account.id,
+            icon_info={"icon_type": "image", "icon": "", "icon_url": missing_preview},
+        ),
+        _dataset(
+            6,
+            account.id,
+            icon_info={"icon_type": "image", "icon": None, "icon_url": missing_preview},
+        ),
     ]
     sqlite_session.add_all([account, upload, foreign_upload, *datasets])
     sqlite_session.flush()
@@ -527,4 +537,6 @@ def test_dataset_detail_signs_valid_icons_and_preserves_legacy_fallbacks(sqlite_
     assert missing_icon["icon_url"] == missing_preview
     assert foreign_icon["icon_url"] == foreign_preview
     assert full_page[3]["icon_info"] == emoji
+    assert full_page[4]["icon_info"] == {"icon_type": "image", "icon": "", "icon_url": missing_preview}
+    assert full_page[5]["icon_info"] == {"icon_type": "image", "icon": None, "icon_url": missing_preview}
     assert small_icon["icon"] == upload.id

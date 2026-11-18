@@ -1224,6 +1224,26 @@ class TestDatasetServiceDatasetCases:
 
             assert updated.icon_info["icon_url"] == legacy_url
 
+        @pytest.mark.parametrize(
+            "icon_info",
+            [
+                None,
+                {"icon_type": "emoji", "icon": "📙", "icon_url": None},
+                {"icon_type": "image", "icon": "", "icon_url": "data:image/png;base64,legacy-only-copy"},
+                {"icon_type": "image", "icon": None, "icon_url": "data:image/png;base64,legacy-only-copy"},
+            ],
+        )
+        def test_durable_icon_info_preserves_non_file_payloads(
+            self, icon_info: object, sqlite_session: Session
+        ) -> None:
+            dataset = _dataset_service_dataset_dataset()
+
+            result = _dataset_service_dataset_DatasetService._durable_icon_info_for_update(
+                dataset, icon_info, session=sqlite_session
+            )
+
+            assert result == icon_info
+
         def test_update_pipeline_node_data_returns_for_non_pipeline_or_missing_pipeline(
             self, sqlite_session: Session
         ) -> None:
