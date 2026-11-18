@@ -23,7 +23,7 @@ from controllers.common.schema import (
     register_schema_models,
 )
 from controllers.console import console_ns
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError
 from controllers.console.flask_admission import console_account_admission
 from controllers.console.wraps import RBACPermission, is_cloud_edition_billing_paid_plan, validate_request
 from enums import DeploymentEdition
@@ -59,7 +59,11 @@ from services.entities.conversation_entities import (
 )
 from services.errors.base import NoPermissionError
 from services.errors.conversation import ConversationNotExistsError
-from services.retention.conversation.log_export_service import UnsupportedConversationLogExportModeError
+from services.retention.conversation.log_export_service import (
+    ConversationLogExportStatus,
+    ConversationLogExportTaskNotFoundError,
+    UnsupportedConversationLogExportModeError,
+)
 
 
 class ConversationLogFilterQuery(BaseModel):
@@ -136,6 +140,11 @@ class ConversationLogExportTaskResponse(ResponseModel):
     status: Literal["pending"]
 
 
+class ConversationLogExportStatusResponse(ResponseModel):
+    task_id: str
+    status: ConversationLogExportStatus
+
+
 def _parse_log_time_range(query: ConversationLogFilterQuery, timezone: str) -> tuple[datetime | None, datetime | None]:
     """Normalize account-local Logs bounds, including the last second of the end minute."""
     try:
@@ -194,6 +203,7 @@ register_response_schema_models(
     ConversationDetailResponse,
     ConversationLogExportPreviewResponse,
     ConversationLogExportTaskResponse,
+    ConversationLogExportStatusResponse,
 )
 
 
@@ -405,6 +415,28 @@ class ConversationLogExportApi(Resource):
         except UnsupportedConversationLogExportModeError as exc:
             raise AppNotFoundError(str(exc)) from exc
         return dump_response(ConversationLogExportTaskResponse, task), HTTPStatus.ACCEPTED
+
+
+@console_ns.route("/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
+class ConversationLogExportTaskApi(Resource):
+    @error_responses(
+        AppNotFoundError, ConversationLogExportTaskNotFoundHTTPError, ForbiddenError, PaidPlanRequiredError
+    )
+    @console_ns.doc("get_conversation_log_export_status")
+    @console_ns.doc(description="Get the current status of a chat app's CSV export task")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Export task ID"})
+    @console_ns.response(
+        HTTPStatus.OK, "Export task status", console_ns.models[ConversationLogExportStatusResponse.__name__]
+    )
+    @console_account_admission(rbac_checks=(RBACCheck(RBACPermission.APP_LOG_AND_ANNOTATION, PlainApp()),))
+    def get(self, request_context: RequestContext, app_id: UUID, task_id: UUID) -> dict[str, object]:
+        """Return the state of a live export task for an admitted app."""
+        scope = _resolve_log_export_scope(request_context, app_id)
+        try:
+            task = application_services().conversation_log_exports.get_task(scope=scope, task_id=str(task_id))
+        except ConversationLogExportTaskNotFoundError as exc:
+            raise ConversationLogExportTaskNotFoundHTTPError() from exc
+        return dump_response(ConversationLogExportStatusResponse, task)
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

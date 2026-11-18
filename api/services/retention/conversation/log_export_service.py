@@ -4,7 +4,8 @@ import csv
 import logging
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, timedelta
-from typing import Literal, Protocol, TextIO
+from enum import StrEnum
+from typing import Protocol, TextIO
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
@@ -21,7 +22,6 @@ from services.entities.conversation_entities import (
 
 logger = logging.getLogger(__name__)
 
-type ConversationLogExportStatus = Literal["pending", "processing", "ready", "failed"]
 type StoreLogExportFile = Callable[[str, Callable[[TextIO], int]], None]
 
 _LOG_EXPORT_TASK_TTL = timedelta(days=1)
@@ -47,6 +47,13 @@ _LOG_CSV_COLUMNS = (
 )
 
 
+class ConversationLogExportStatus(StrEnum):
+    PENDING = "pending"
+    PROCESSING = "processing"
+    READY = "ready"
+    FAILED = "failed"
+
+
 class ConversationLogExportTask(BaseModel):
     """Persist the admitted owner, normalized filters and state of a temporary export."""
 
@@ -59,12 +66,16 @@ class ConversationLogExportTask(BaseModel):
     filters: ConsoleConversationLogFilters
     created_at: datetime
     expires_at: datetime
-    status: ConversationLogExportStatus = "pending"
+    status: ConversationLogExportStatus = ConversationLogExportStatus.PENDING
     storage_key: str | None = None
 
 
 class UnsupportedConversationLogExportModeError(ValueError):
     """The admitted app has no conversation log CSV export."""
+
+
+class ConversationLogExportTaskNotFoundError(Exception):
+    """The task is unavailable for the admitted app."""
 
 
 class ConversationLogExportTaskStore(Protocol):
@@ -140,6 +151,13 @@ class ConversationLogExportService:
             raise
         return task
 
+    def get_task(self, *, scope: ConsoleConversationScope, task_id: str) -> ConversationLogExportTask:
+        """Return the live task for the admitted workspace and app, or raise if it is unavailable."""
+        task = self._tasks.get(tenant_id=scope.tenant_id, app_id=scope.app_id, task_id=task_id)
+        if task is None:
+            raise ConversationLogExportTaskNotFoundError()
+        return task
+
     def prepare_task(self, *, tenant_id: str, app_id: str, task_id: str) -> None:
         """Claim a live pending task and store its CSV before setting ready.
 
@@ -148,10 +166,10 @@ class ConversationLogExportService:
         propagating them, and leave missing or previously claimed tasks alone.
         """
         task = self._tasks.get(tenant_id=tenant_id, app_id=app_id, task_id=task_id)
-        if task is None or task.status != "pending":
+        if task is None or task.status is not ConversationLogExportStatus.PENDING:
             return
-        processing = task.model_copy(update={"status": "processing"})
-        if not self._tasks.transition(processing, from_status="pending"):
+        processing = task.model_copy(update={"status": ConversationLogExportStatus.PROCESSING})
+        if not self._tasks.transition(processing, from_status=ConversationLogExportStatus.PENDING):
             return
 
         context = RequestContext(
@@ -162,8 +180,10 @@ class ConversationLogExportService:
             self._store_csv(
                 storage_key, lambda output: self.write_csv(context, task.app_id, filters=task.filters, output=output)
             )
-            ready = processing.model_copy(update={"status": "ready", "storage_key": storage_key})
-            self._tasks.transition(ready, from_status="processing")
+            ready = processing.model_copy(
+                update={"status": ConversationLogExportStatus.READY, "storage_key": storage_key}
+            )
+            self._tasks.transition(ready, from_status=ConversationLogExportStatus.PROCESSING)
         except Exception:
             self._mark_failed(processing)
             raise
@@ -171,7 +191,10 @@ class ConversationLogExportService:
     def _mark_failed(self, task: ConversationLogExportTask) -> None:
         """Record failure from the last owned state while preserving the original exception."""
         try:
-            self._tasks.transition(task.model_copy(update={"status": "failed"}), from_status=task.status)
+            self._tasks.transition(
+                task.model_copy(update={"status": ConversationLogExportStatus.FAILED}),
+                from_status=task.status,
+            )
         except Exception:
             logger.exception(
                 "Failed to record conversation log export failure: tenant=%s app=%s task=%s",

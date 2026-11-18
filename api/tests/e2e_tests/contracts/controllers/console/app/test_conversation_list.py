@@ -26,6 +26,7 @@ from controllers.console.app.conversation import (
     CompletionConversationApi,
     ConversationLogExportApi,
     ConversationLogExportPreviewApi,
+    ConversationLogExportTaskApi,
 )
 from enums import DeploymentEdition
 from enums.account import TenantAccountRole
@@ -47,7 +48,11 @@ from models.utils.file_input_compat import restore_input_files
 from repositories.conversation_repository import ConversationRepository, RedisConversationLogExportTasks
 from services.conversation_query_service import ConversationQueryService
 from services.message_query_adapters import MessageFileResolver
-from services.retention.conversation.log_export_service import ConversationLogExportService, ConversationLogExportTask
+from services.retention.conversation.log_export_service import (
+    ConversationLogExportService,
+    ConversationLogExportStatus,
+    ConversationLogExportTask,
+)
 from tests.helpers.unit.model_factories import make_account, make_app, make_conversation, make_message
 
 type _Kind = Literal["chat", "completion", "export-preview"]
@@ -93,6 +98,11 @@ class _Harness:
         """Create an export through the authenticated Console route."""
         client, headers = self._client(authenticated=True, csrf=True)
         return client.post(f"/apps/{self.target.id}/conversation-log-exports", json=payload, headers=headers)
+
+    def get_export_status(self, task_id: str) -> TestResponse:
+        """Poll a task through the authenticated Console route."""
+        client, headers = self._client(authenticated=True, csrf=True)
+        return client.get(f"/apps/{self.target.id}/conversation-log-exports/{task_id}", headers=headers)
 
     def _client(self, *, authenticated: bool, csrf: bool) -> tuple[FlaskClient, dict[str, str]]:
         """Return a test client and any headers for the requested admission state."""
@@ -190,10 +200,20 @@ def harness(
     api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
     api.add_resource(ConversationLogExportPreviewApi, "/apps/<uuid:app_id>/conversation-log-exports/preview")
     api.add_resource(ConversationLogExportApi, "/apps/<uuid:app_id>/conversation-log-exports")
+    api.add_resource(ConversationLogExportTaskApi, "/apps/<uuid:app_id>/conversation-log-exports/<uuid:task_id>")
     yield state
     with app.app_context():
         db.session.remove()
         db.engine.dispose()
+
+
+@pytest.fixture
+def created_export(harness: _Harness, monkeypatch: pytest.MonkeyPatch) -> tuple[str, ConversationLogExportTask]:
+    """Create an admitted export and expose its persisted Redis key and task."""
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: True)
+    assert harness.post_export({"keyword": "internal filter"}).status_code == 202
+    key, _, raw = harness.redis.setex.call_args.args
+    return key, ConversationLogExportTask.model_validate_json(raw)
 
 
 def _conversation(
@@ -499,6 +519,83 @@ def test_create_conversation_log_export_records_publish_failure(
     assert update.call_args.kwargs["keys"] == [harness.redis.setex.call_args.args[0]]
     assert old_status == "pending"
     assert ConversationLogExportTask.model_validate_json(raw).status == "failed"
+
+
+@pytest.mark.parametrize("status", list(ConversationLogExportStatus))
+def test_get_conversation_log_export_status(
+    harness: _Harness, created_export: tuple[str, ConversationLogExportTask], status: ConversationLogExportStatus
+) -> None:
+    """Return the stored phase and task ID without exposing filters or the storage key."""
+    key, task = created_export
+    stored = task.model_copy(
+        update={
+            "status": status,
+            "storage_key": "private/export.csv" if status is ConversationLogExportStatus.READY else None,
+        }
+    )
+    harness.redis.get.return_value = stored.model_dump_json()
+
+    response = harness.get_export_status(task.task_id)
+
+    assert response.status_code == 200
+    assert response.get_json() == {"task_id": task.task_id, "status": status.value}
+    harness.redis.get.assert_called_once_with(key)
+    harness.redis.setex.assert_called_once()
+    harness.dispatch.assert_called_once()
+
+
+@pytest.mark.parametrize(
+    "changes",
+    [
+        pytest.param(None, id="missing"),
+        pytest.param({"app_id": str(uuid4())}, id="other-app"),
+        pytest.param({"tenant_id": str(uuid4())}, id="other-workspace"),
+        pytest.param({"expires_at": datetime(2000, 1, 1, tzinfo=UTC)}, id="expired"),
+    ],
+)
+def test_get_conversation_log_export_status_requires_a_live_scoped_task(
+    harness: _Harness, created_export: tuple[str, ConversationLogExportTask], changes: dict[str, object] | None
+) -> None:
+    """Use the same 404 for absent, expired and out-of-scope tasks."""
+    key, task = created_export
+    harness.redis.get.return_value = None if changes is None else task.model_copy(update=changes).model_dump_json()
+
+    response = harness.get_export_status(task.task_id)
+
+    assert response.status_code == 404
+    assert response.get_json()["code"] == "conversation_log_export_task_not_found"
+    harness.redis.get.assert_called_once_with(key)
+
+
+@pytest.mark.parametrize(
+    ("role", "paid", "error_code"),
+    [
+        (TenantAccountRole.EDITOR, True, "forbidden"),
+        (TenantAccountRole.OWNER, False, "paid_plan_required"),
+    ],
+)
+def test_get_conversation_log_export_status_checks_access_before_redis(
+    harness: _Harness,
+    created_export: tuple[str, ConversationLogExportTask],
+    role: TenantAccountRole,
+    paid: bool,
+    error_code: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Deny polling after a role or entitlement change without reading the task."""
+    _, task = created_export
+    with harness.factory.begin() as session:
+        membership = session.scalars(
+            select(TenantAccountJoin).where(TenantAccountJoin.tenant_id == harness.tenant.id)
+        ).one()
+        membership.role = role
+    monkeypatch.setattr(conversation_module, "is_cloud_edition_billing_paid_plan", lambda _: paid)
+
+    response = harness.get_export_status(task.task_id)
+
+    assert response.status_code == 403
+    assert response.get_json()["code"] == error_code
+    harness.redis.get.assert_not_called()
 
 
 @pytest.mark.parametrize(

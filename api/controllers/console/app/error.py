@@ -20,6 +20,12 @@ class AppNotFoundError(BaseHTTPException):
     code = 404
 
 
+class ConversationLogExportTaskNotFoundHTTPError(BaseHTTPException):
+    error_code = "conversation_log_export_task_not_found"
+    description = "Conversation log export task not found."
+    code = HTTPStatus.NOT_FOUND
+
+
 class AppTriggerNotFoundError(BaseHTTPException):
     error_code = "app_trigger_not_found"
     description = "Trigger not found."

@@ -670,6 +670,18 @@ export const zUnprocessableEntityError = zErrorResponse.and(
 )
 
 /**
+ * ConversationLogExportTaskNotFoundError
+ *
+ * Conversation log export task not found.
+ */
+export const zConversationLogExportTaskNotFoundError = zErrorResponse.and(
+  z.object({
+    code: z.literal('conversation_log_export_task_not_found'),
+    status: z.literal(404),
+  }),
+)
+
+/**
  * ConvertToWorkflowPayload
  */
 export const zConvertToWorkflowPayload = z.object({
@@ -2129,6 +2141,19 @@ export const zConversationLogExportCountsResponse = z.object({
  */
 export const zConversationLogExportPreviewResponse = z.object({
   counts: zConversationLogExportCountsResponse.nullable(),
+})
+
+/**
+ * ConversationLogExportStatus
+ */
+export const zConversationLogExportStatus = z.enum(['failed', 'pending', 'processing', 'ready'])
+
+/**
+ * ConversationLogExportStatusResponse
+ */
+export const zConversationLogExportStatusResponse = z.object({
+  status: zConversationLogExportStatus,
+  task_id: z.string(),
 })
 
 /**
@@ -7580,6 +7605,17 @@ export const zGetAppsByAppIdConversationLogExportsPreviewQuery = z.object({
  */
 export const zGetAppsByAppIdConversationLogExportsPreviewResponse =
   zConversationLogExportPreviewResponse
+
+export const zGetAppsByAppIdConversationLogExportsByTaskIdPath = z.object({
+  app_id: z.uuid(),
+  task_id: z.uuid(),
+})
+
+/**
+ * Export task status
+ */
+export const zGetAppsByAppIdConversationLogExportsByTaskIdResponse =
+  zConversationLogExportStatusResponse
 
 export const zGetAppsByAppIdConversationVariablesPath = z.object({
   app_id: z.uuid(),

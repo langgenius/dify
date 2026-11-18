@@ -110,7 +110,7 @@ class RedisConversationLogExportTasks:
         """Update only a task in the expected state, preserving its remaining TTL."""
         key = self._key(tenant_id=task.tenant_id, app_id=task.app_id, task_id=task.task_id)
         transition = self._redis.register_script(_TRANSITION_LOG_EXPORT_TASK)
-        return bool(transition(keys=[key], args=[from_status, task.model_dump_json()]))
+        return bool(transition(keys=[key], args=[from_status.value, task.model_dump_json()]))
 
 
 class ConversationRepository:

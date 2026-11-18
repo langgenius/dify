@@ -3268,7 +3268,7 @@ Stop a running completion message generation
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [POST] /apps/{app_id}/conversation-log-exports
-**Validate an admitted app's export filters and return the task after it has been saved**
+**Validate an admitted app's export filters and acknowledge the task after publication**
 
 Create a pending CSV export task for one chat app
 
@@ -3319,6 +3319,27 @@ Count the conversations and rows that match the application's chat Logs filters
 | 200 | Export preview | **application/json**: [ConversationLogExportPreviewResponse](#conversationlogexportpreviewresponse)<br> |
 | 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
 | 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
+| default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
+
+### [GET] /apps/{app_id}/conversation-log-exports/{task_id}
+**Return the state of a live export task for an admitted app**
+
+Get the current status of a chat app's CSV export task
+
+#### Parameters
+
+| Name | Located in | Description | Required | Schema |
+| ---- | ---------- | ----------- | -------- | ------ |
+| app_id | path | Application ID | Yes | string (uuid) |
+| task_id | path | Export task ID | Yes | string (uuid) |
+
+#### Responses
+
+| Code | Description | Schema |
+| ---- | ----------- | ------ |
+| 200 | Export task status | **application/json**: [ConversationLogExportStatusResponse](#conversationlogexportstatusresponse)<br> |
+| 403 | Forbidden | **application/json**: [ForbiddenError](#forbiddenerror)<br>[PaidPlanRequiredError](#paidplanrequirederror)<br>[ErrorResponse](#errorresponse)<br> |
+| 404 | Not Found | **application/json**: [AppNotFoundError](#appnotfounderror)<br>[ConversationLogExportTaskNotFoundError](#conversationlogexporttasknotfounderror)<br>[ErrorResponse](#errorresponse)<br> |
 | default | Error | **application/json**: [ErrorResponse](#errorresponse)<br> |
 
 ### [GET] /apps/{app_id}/conversation-variables
@@ -24894,6 +24915,27 @@ The conversation has no message from which to generate a name.
 | Name | Type | Description | Required |
 | ---- | ---- | ----------- | -------- |
 | counts | [ConversationLogExportCountsResponse](#conversationlogexportcountsresponse) | Null if the count query timed out | Yes |
+
+#### ConversationLogExportStatus
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportStatus | string |  |  |
+
+#### ConversationLogExportStatusResponse
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| status | [ConversationLogExportStatus](#conversationlogexportstatus) |  | Yes |
+| task_id | string |  | Yes |
+
+#### ConversationLogExportTaskNotFoundError
+
+Conversation log export task not found.
+
+| Name | Type | Description | Required |
+| ---- | ---- | ----------- | -------- |
+| ConversationLogExportTaskNotFoundError |  | Conversation log export task not found. |  |
 
 #### ConversationLogExportTaskResponse
 

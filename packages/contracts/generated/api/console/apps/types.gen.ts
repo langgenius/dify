@@ -648,6 +648,16 @@ export type ConversationLogExportPreviewResponse = {
   counts: ConversationLogExportCountsResponse | null
 }
 
+export type ConversationLogExportStatusResponse = {
+  status: ConversationLogExportStatus
+  task_id: string
+}
+
+export type ConversationLogExportTaskNotFoundError = ErrorResponse & {
+  code: 'conversation_log_export_task_not_found'
+  status: 404
+}
+
 export type PaginatedConversationVariableResponse = {
   data: Array<ConversationVariableResponse>
   has_more: boolean
@@ -2104,6 +2114,8 @@ export type ConversationLogExportCountsResponse = {
   conversation_count: number
   message_count: number
 }
+
+export type ConversationLogExportStatus = 'failed' | 'pending' | 'processing' | 'ready'
 
 export type ConversationVariableResponse = {
   created_at?: number | null
@@ -6686,6 +6698,32 @@ export type GetAppsByAppIdConversationLogExportsPreviewResponses = {
 
 export type GetAppsByAppIdConversationLogExportsPreviewResponse =
   GetAppsByAppIdConversationLogExportsPreviewResponses[keyof GetAppsByAppIdConversationLogExportsPreviewResponses]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdData = {
+  body?: never
+  path: {
+    app_id: string
+    task_id: string
+  }
+  query?: never
+  url: '/apps/{app_id}/conversation-log-exports/{task_id}'
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdErrors = {
+  403: ForbiddenError | PaidPlanRequiredError | ErrorResponse
+  404: AppNotFoundError | ConversationLogExportTaskNotFoundError | ErrorResponse
+  default: ErrorResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdError =
+  GetAppsByAppIdConversationLogExportsByTaskIdErrors[keyof GetAppsByAppIdConversationLogExportsByTaskIdErrors]
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponses = {
+  200: ConversationLogExportStatusResponse
+}
+
+export type GetAppsByAppIdConversationLogExportsByTaskIdResponse =
+  GetAppsByAppIdConversationLogExportsByTaskIdResponses[keyof GetAppsByAppIdConversationLogExportsByTaskIdResponses]
 
 export type GetAppsByAppIdConversationVariablesData = {
   body?: never
