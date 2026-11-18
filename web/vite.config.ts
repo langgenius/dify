@@ -11,6 +11,15 @@ const projectRoot = fileURLToPath(new URL('.', import.meta.url))
 const isCI = !!process.env.CI
 const rootClientInjectTarget = getRootClientInjectTarget(projectRoot)
 const browserTestPattern = '{app,features}/**/*.browser.spec.{ts,tsx}'
+// `--changed` follows source imports, so inputs outside the module graph rerun every test.
+const forceRerunTriggers = [
+  ...configDefaults.forceRerunTriggers,
+  '**/pnpm-lock.yaml',
+  '**/pnpm-workspace.yaml',
+  '**/patches/**',
+  // Tests and the Vite plugin load this workspace package from its built `dist`.
+  '**/packages/openapi-content-mapper/src/**',
+]
 
 export default defineConfig(({ command, mode, isPreview }) => {
   const isTest = mode === 'test'
@@ -99,6 +108,7 @@ export default defineConfig(({ command, mode, isPreview }) => {
     test: {
       // Vitest 5 stores Browser Mode failure screenshots as attachments; CI uploads this directory on failure.
       attachmentsDir: './.vitest-browser/attachments',
+      forceRerunTriggers,
       coverage: {
         provider: 'v8',
         // Unit uploads establish the full source denominator; browser uploads add executed code.

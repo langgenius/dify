@@ -1,6 +1,6 @@
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { defineConfig, lazyPlugins } from 'vite-plus'
+import { configDefaults, defineConfig, lazyPlugins } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -16,6 +16,13 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    // `--changed` follows source imports, so dependency inputs rerun every test.
+    forceRerunTriggers: [
+      ...configDefaults.forceRerunTriggers,
+      '**/pnpm-lock.yaml',
+      '**/pnpm-workspace.yaml',
+      '**/patches/**',
+    ],
     browser: {
       enabled: true,
       provider: playwright(),
