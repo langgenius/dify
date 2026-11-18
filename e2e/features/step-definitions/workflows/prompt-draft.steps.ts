@@ -158,7 +158,18 @@ Then('the server should still have the original prompt', async function (this: D
 Then('the server should already have the edited prompt', async function (this: DifyWorld) {
   const saved = await getSavedPrompt(this)
   expect(saved.prompt).toBe(editedPrompt)
-  state(this).savedRevision = { hash: saved.hash, updatedAt: saved.updatedAt }
+  const { appId, network } = state(this)
+  const profile = await this.getConsoleClient().account.profile.get()
+  const scope = JSON.stringify([profile.id, appId, saved.epoch])
+  await expect
+    .poll(async () => (await readLocalDraft(this.getPage(), scope)).edits)
+    .toBeGreaterThan(0)
+  state(this).savedRevision = {
+    hash: saved.hash,
+    updatedAt: saved.updatedAt,
+    confirmedSyncs: network.confirmedSyncs(),
+    scope,
+  }
 })
 
 When(
@@ -209,8 +220,16 @@ Then(
     const { network, savedRevision } = state(this)
     if (!savedRevision)
       throw new Error('Read the revision that committed before losing the acknowledgement.')
-    await expect.poll(network.confirmedUploads, { timeout: 20_000 }).toBeGreaterThan(0)
-    expect(await getSavedPrompt(this)).toMatchObject({ ...savedRevision, prompt: editedPrompt })
+    const { hash, updatedAt, confirmedSyncs, scope } = savedRevision
+    await expect.poll(network.confirmedSyncs, { timeout: 20_000 }).toBeGreaterThan(confirmedSyncs)
+    await expect
+      .poll(() => readLocalDraft(this.getPage(), scope))
+      .toEqual({
+        edits: 0,
+        checkpoint: true,
+        retired: false,
+      })
+    expect(await getSavedPrompt(this)).toMatchObject({ hash, updatedAt, prompt: editedPrompt })
     await expect(saveStatus(this)).not.toContainText('Syncing data')
     expect(network.httpSaves).toHaveLength(0)
   },
@@ -325,7 +344,9 @@ Then(
   'both editors see the replacement instead of the queued changes',
   async function (this: DifyWorld) {
     const { page, network } = workflowCollaborator(this)
-    await expect.poll(network.rejectedStaleUploads, { timeout: 25_000 }).toBeGreaterThan(0)
+    await expect
+      .poll(() => network.rejectedEpochs.has(replacement(this).oldEpoch), { timeout: 25_000 })
+      .toBe(true)
     await expect(
       page.getByText(/unconfirmed local edits from the old draft have been cleared/),
     ).toBeVisible()
@@ -345,7 +366,11 @@ async function readOldLocalDraft(world: DifyWorld) {
   const { oldEpoch } = replacement(world)
   const collaborator = workflowCollaborator(world)
   const scope = JSON.stringify([collaborator.accountId, state(world).appId, oldEpoch])
-  return collaborator.page.evaluate(async (scope) => {
+  return readLocalDraft(collaborator.page, scope)
+}
+
+async function readLocalDraft(page: Page, scope: string) {
+  return page.evaluate(async (scope) => {
     const request = indexedDB.open('dify-workflow-loro', 1)
     const db = await new Promise<IDBDatabase>((resolve, reject) => {
       request.onsuccess = () => resolve(request.result)

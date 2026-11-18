@@ -214,3 +214,47 @@ it('preserves the editable configuration exposed by the canvas for legacy condit
   expect(ub.undo()).toBe(true)
   expect(projectDraftGraph(b).nodes[0]?.data).toHaveProperty('tool_configurations.temperature', 1)
 })
+
+it.each([undefined, null])(
+  'retains the complete enabled configuration when a later user edits one field (baseline %s)',
+  (empty) => {
+    const { a, b, ua, ub } = replicas(empty === undefined ? {} : { memory: empty })
+    const memory = { window: { enabled: true, size: 10 }, query_prompt_template: 'Query' }
+    set(a, 'memory', empty, memory)
+    copy(a, b)
+    set(b, 'memory', memory, { ...memory, window: { ...memory.window, size: 20 } })
+    expect(ua.undo()).toBe(true)
+    copy(b, a)
+    expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('memory', {
+      ...memory,
+      window: { enabled: true, size: 20 },
+    })
+    expect(ub.undo()).toBe(true)
+    copy(b, a)
+    expect(projectDraftGraph(a).nodes[0]?.data).toEqual(
+      empty === undefined ? {} : { memory: empty },
+    )
+    expect(ua.redo()).toBe(true)
+    expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('memory', memory)
+  },
+)
+
+it('retains a route handle when another user connects a newly enabled agent route', () => {
+  const { a, b, ua } = replicas({ type: 'agent' })
+  const routes = { enabled: true, routes: [{ id: 'handle', name: 'Branch' }] }
+  set(a, 'agent_output_routes', undefined, routes)
+  copy(a, b)
+  appendDraftEdit(b, [
+    { kind: 'nodes', id: 'target', path: [], op: 'set', value: { id: 'target', data: {} } },
+    {
+      kind: 'edges',
+      id: 'e',
+      path: [],
+      op: 'set',
+      value: { id: 'e', source: 'node', sourceHandle: 'handle', target: 'target' },
+    },
+  ])
+  expect(ua.undo()).toBe(true)
+  copy(b, a)
+  expect(projectDraftGraph(a).nodes[0]?.data).toHaveProperty('agent_output_routes', routes)
+})

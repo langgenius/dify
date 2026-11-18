@@ -53,7 +53,7 @@ export type WorkflowDraftFixture = {
   appId: string
   collaboration: boolean
   network: WorkflowDraftNetwork
-  savedRevision?: { hash: string; updatedAt: number }
+  savedRevision?: { hash: string; updatedAt: number; scope: string; confirmedSyncs: number }
   collaborator?: { page: Page; network: WorkflowDraftNetwork; accountId: string }
   replacement?: {
     oldEpoch: string

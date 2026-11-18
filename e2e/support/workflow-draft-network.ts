@@ -18,7 +18,7 @@ export async function observeWorkflowDraftNetwork(page: Page) {
   let socketCount = 0
   let confirmedUploads = 0
   let confirmedSyncs = 0
-  let rejectedStaleUploads = 0
+  const rejectedEpochs = new Set<string>()
   let holdNextJoin: ((release: () => void) => void) | undefined
   const httpSaves: number[] = []
 
@@ -37,7 +37,7 @@ export async function observeWorkflowDraftNetwork(page: Page) {
 
     const server = client.connectToServer()
     const uploads = new Set<string>()
-    const syncs = new Set<string>()
+    const syncEpochs = new Map<string, string>()
     let interrupted = false
     const interrupt = () => {
       offline = true
@@ -57,8 +57,9 @@ export async function observeWorkflowDraftNetwork(page: Page) {
         return
       }
       if (packet?.payload[0] === 'loro_draft_sync') {
-        syncs.add(packet.id)
         const body: unknown = packet.payload[1]
+        if (body && typeof body === 'object' && 'epoch' in body && typeof body.epoch === 'string')
+          syncEpochs.set(packet.id, body.epoch)
         if (body && typeof body === 'object' && 'update' in body) {
           if (fault === 'upload') {
             interrupt()
@@ -73,7 +74,9 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     server.onMessage((message) => {
       if (interrupted) return
       const packet = socketPacket(message)
-      if (packet && syncs.delete(packet.id)) {
+      const epoch = packet && syncEpochs.get(packet.id)
+      if (packet && epoch) {
+        syncEpochs.delete(packet.id)
         const upload = uploads.delete(packet.id)
         const [body, status]: unknown[] = packet.payload
         if (status === 200) {
@@ -85,14 +88,13 @@ export async function observeWorkflowDraftNetwork(page: Page) {
           if (upload) confirmedUploads += 1
         }
         if (
-          upload &&
           status === 409 &&
           body &&
           typeof body === 'object' &&
           'msg' in body &&
           body.msg === 'epoch_changed'
         ) {
-          rejectedStaleUploads += 1
+          rejectedEpochs.add(epoch)
         }
       }
       client.send(message)
@@ -114,7 +116,7 @@ export async function observeWorkflowDraftNetwork(page: Page) {
     socketCount: () => socketCount,
     confirmedUploads: () => confirmedUploads,
     confirmedSyncs: () => confirmedSyncs,
-    rejectedStaleUploads: () => rejectedStaleUploads,
+    rejectedEpochs,
     httpSaves,
   }
 }

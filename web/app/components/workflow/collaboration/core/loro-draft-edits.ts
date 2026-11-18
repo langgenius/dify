@@ -19,6 +19,11 @@ type Slot = { id: string; value: Tree; state: 'active' | 'undone' | 'deleted' }
 type Rows = Slot[]
 type Graph = { nodes: Node[]; edges: Edge[] }
 const arrayIds = new WeakMap<unknown[], string[]>()
+const hiddenFields = new WeakMap<Map<string, Tree>, Map<string, Tree>>()
+
+function containerMatches(value: Tree | undefined, token: Path[number]) {
+  return typeof token === 'string' ? value instanceof Map : Array.isArray(value)
+}
 
 export function getDraftRowId(items: unknown[], index: number) {
   return arrayIds.get(items)?.[index]
@@ -101,26 +106,46 @@ function replay(entities: Map<string, Slot>, patch: DraftPatch, active: boolean)
     }
     return
   }
-  if (!entity || entity.state === 'deleted' || (!active && patch.op !== 'insert')) return
+  const containerSeed =
+    patch.op === 'set' && patch.value !== null && typeof patch.value === 'object'
+  if (!entity || entity.state === 'deleted' || (!active && patch.op !== 'insert' && !containerSeed))
+    return
   const touched = [entity]
   let current = entity.value
   for (const [i, token] of patch.path.entries()) {
     const last = i === patch.path.length - 1
     if (typeof token === 'string') {
       if (!(current instanceof Map)) return
+      let hidden = hiddenFields.get(current)
       if (last) {
-        if (patch.op === 'set' && patch.value !== undefined) current.set(token, tree(patch.value))
-        else if (patch.op === 'remove') current.delete(token)
+        if (!active && containerSeed) {
+          if (!hidden) hiddenFields.set(current, (hidden = new Map()))
+          hidden.set(token, tree(patch.value!))
+        } else {
+          hidden?.delete(token)
+          if (patch.op === 'set' && patch.value !== undefined) current.set(token, tree(patch.value))
+          else if (patch.op === 'remove') current.delete(token)
+        }
       } else {
-        const child = hydratedChild(entity, current, patch.path, i)
-        const container =
-          child === undefined
-            ? typeof patch.path[i + 1] === 'string'
-              ? new Map<string, Tree>()
-              : []
-            : child
-        current.set(token, container)
-        current = container
+        const nextToken = patch.path[i + 1]!
+        let child = hydratedChild(entity, current, patch.path, i)
+        const seed = hidden?.get(token)
+        if (
+          !containerMatches(child, nextToken) &&
+          seed !== undefined &&
+          containerMatches(seed, nextToken)
+        ) {
+          child = seed
+          if (active) {
+            current.set(token, child)
+            hidden?.delete(token)
+          }
+        } else {
+          if (child === undefined)
+            child = typeof nextToken === 'string' ? new Map<string, Tree>() : []
+          current.set(token, child)
+        }
+        current = child
       }
     } else {
       if (!Array.isArray(current)) return
@@ -155,26 +180,27 @@ function field(slot: Slot, key: string) {
 function revealHandle(source: Slot, handle: string) {
   const data = field(source, 'data')
   if (!(data instanceof Map)) return
-  const agentRoutes = data.get('agent_output_routes')
-  const routes = agentRoutes instanceof Map ? agentRoutes.get('routes') : undefined
-  const lists = [
-    data.get('cases'),
-    data.get('candidate'),
-    data.get('classes'),
-    data.get('user_actions'),
-    routes,
-  ]
-  for (const rows of lists) {
-    if (!Array.isArray(rows)) continue
-    for (const row of rows) {
-      if (
-        row.state === 'deleted' ||
-        (field(row, 'id') !== handle && field(row, 'case_id') !== handle)
-      )
-        continue
-      row.state = 'active'
-      if (rows === routes && agentRoutes instanceof Map) agentRoutes.set('enabled', true)
-    }
+  const revealList = (parent: Map<string, Tree>, key: string) => {
+    const value = parent.get(key)
+    const rows = Array.isArray(value) ? value : hiddenFields.get(parent)?.get(key)
+    if (!Array.isArray(rows)) return false
+    const row = rows.find(
+      (row) =>
+        row.state !== 'deleted' &&
+        (field(row, 'id') === handle || field(row, 'case_id') === handle),
+    )
+    if (!row) return false
+    parent.set(key, rows)
+    row.state = 'active'
+    return true
+  }
+  for (const key of ['cases', 'candidate', 'classes', 'user_actions']) revealList(data, key)
+  const value = data.get('agent_output_routes')
+  const agentRoutes =
+    value instanceof Map ? value : hiddenFields.get(data)?.get('agent_output_routes')
+  if (agentRoutes instanceof Map && revealList(agentRoutes, 'routes')) {
+    data.set('agent_output_routes', agentRoutes)
+    agentRoutes.set('enabled', true)
   }
 }
 
@@ -375,10 +401,7 @@ export function diffDraftValue(
       emit('remove')
       return
     }
-    if (
-      record(next) &&
-      (record(old) || (old === undefined && path.length > 0 && Object.keys(next).length > 0))
-    ) {
+    if (record(next) && record(old)) {
       const prior = record(old) ? old : {}
       const live = record(projected) ? projected : {}
       for (const key of new Set([...Object.keys(prior), ...Object.keys(next)])) {
@@ -388,7 +411,7 @@ export function diffDraftValue(
     }
     if (
       Array.isArray(next) &&
-      (Array.isArray(old) || old === undefined) &&
+      Array.isArray(old) &&
       [...(old ?? []), ...next].length &&
       [...(old ?? []), ...next].every(record)
     ) {

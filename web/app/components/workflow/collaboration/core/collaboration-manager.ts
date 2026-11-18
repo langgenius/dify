@@ -1598,10 +1598,27 @@ export class CollaborationManager {
     after: Record<string, unknown>,
   ): boolean {
     if (this.loroDraft?.format !== 2 || !this.canPersistLocalGraph()) return false
+    const local = this.reactFlowStore
+      ?.getState()
+      .getNodes()
+      .find((node) => node.id === id)
+    if (
+      local &&
+      (!isDraftNode(local) || !isDraftNode({ ...local, data: { ...local.data, ...after } }))
+    )
+      return false
     const current = this.getNodes().find((node) => node.id === id)
     const edits = diffDraftValue('nodes', id, ['data'], before, after, current?.data)
     this.recordDraftEdits(edits)
-    if (edits.length) this.refreshGraphSynchronously()
+    const viewChanges = Object.fromEntries(
+      [...new Set([...Object.keys(before), ...Object.keys(after)])]
+        .filter(
+          (key) => (key === 'selected' || key.startsWith('_')) && !isEqual(before[key], after[key]),
+        )
+        .map((key) => [key, after[key]]),
+    )
+    if (edits.length || Object.keys(viewChanges).length)
+      this.refreshGraphSynchronously({ id, fields: viewChanges })
     return true
   }
 
@@ -1943,8 +1960,12 @@ export class CollaborationManager {
     })
   }
 
-  refreshGraphSynchronously(): void {
-    const mergedNodes = this.mergeLocalNodeState(this.getNodes())
+  refreshGraphSynchronously(localUpdate?: { id: string; fields: Record<string, unknown> }): void {
+    const mergedNodes = this.mergeLocalNodeState(this.getNodes()).map((node) =>
+      node.id === localUpdate?.id
+        ? { ...node, data: { ...node.data, ...localUpdate.fields } }
+        : node,
+    )
     this.emitImportedGraph({
       nodes: mergedNodes,
       edges: this.getEdges(),
@@ -1952,10 +1973,48 @@ export class CollaborationManager {
   }
 
   private emitImportedGraph(graph: { nodes: Node[]; edges: Edge[] }): void {
+    const local = this.reactFlowStore?.getState()
+    if (this.loroDraft?.format === 2 && local) {
+      const transient = local
+        .getNodes()
+        .filter((node) => !isDraftNode(node) && node.data.type !== BlockEnum.StartPlaceholder)
+      const transientIds = new Set(transient.map((node) => node.id))
+      const localEdges = new Map(local.getEdges().map((edge) => [edge.id, edge]))
+      const edges = graph.edges.map((edge) => {
+        const previous = localEdges.get(edge.id)
+        if (!previous) return edge
+        localEdges.delete(edge.id)
+        const view = Object.fromEntries(
+          Object.entries(previous.data ?? {}).filter(([key]) => key.startsWith('_')),
+        )
+        return {
+          ...edge,
+          ...(previous.selected !== undefined ? { selected: previous.selected } : {}),
+          ...(edge.data ? { data: { ...edge.data, ...view } } : {}),
+        }
+      })
+      for (const edge of localEdges.values()) {
+        if (edge.data?._isTemp || transientIds.has(edge.source) || transientIds.has(edge.target))
+          edges.push(edge)
+      }
+      graph = {
+        nodes: [
+          ...graph.nodes,
+          ...transient.filter((node) => !graph.nodes.some((item) => item.id === node.id)),
+        ],
+        edges,
+      }
+    }
     const hydrated = (this.loroDraft && this.reactFlowStore?.hydrateGraph?.(graph)) || graph
     if (this.loroDraft?.format === 2) {
       const source = new Map(this.getNodes().map((node) => [node.id, node.data]))
-      for (const node of hydrated.nodes) inheritDraftRowIds(source.get(node.id), node.data)
+      const localData = new Map(local?.getNodes().map((node) => [node.id, node.data]))
+      for (const node of hydrated.nodes) {
+        const original = source.get(node.id)
+        inheritDraftRowIds(original, node.data)
+        const displayed = localData.get(node.id)
+        if (isEqual(displayed, node.data)) inheritDraftRowIds(original, displayed)
+      }
     }
     this.eventEmitter.emit('graphImport', hydrated)
   }
@@ -1989,6 +2048,8 @@ export class CollaborationManager {
       )
         nextDataRecord.selected = localNode.selected
 
+      if (this.loroDraft?.format === 2 && localNode.selected !== undefined)
+        nextNode.selected = localNode.selected
       nextNode.data = nextData
       return nextNode
     })

@@ -248,3 +248,47 @@ def test_row_move_remove_and_undo_preserve_other_users_structural_changes() -> N
     assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"vars": [{"k": "c"}, {"k": "b"}]}}]
     doc.get_map("editState").delete("01:a")
     assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"vars": [{"k": "b"}, {"k": "c"}]}}]
+
+
+@pytest.mark.parametrize("as_list", [False, True])
+def test_undone_nullable_configuration_survives_a_dependent_edit(as_list: bool) -> None:
+    """Editing an option enabled by a peer keeps its required structure if that peer undoes enabling it."""
+    graph: dict[str, LoroValue] = {"nodes": [{"id": "a", "data": {"config": None}}], "edges": []}
+    doc = load_loro_draft(None, graph)
+    doc.get_map("draftFormat").insert("version", 2)
+    item: dict[str, LoroValue] = {"type": "window", "size": 5}
+    config: LoroValue = [item] if as_list else item
+    target: dict[str, LoroValue] = {"kind": "nodes", "id": "a", "op": "set"}
+    _record(doc, "01:a", [{**target, "path": ["data", "config"], "value": config}])
+    path: list[LoroValue] = ["data", "config", {"row": "i:0"}, "size"] if as_list else ["data", "config", "size"]
+    _record(doc, "02:b", [{**target, "path": path, "value": 20}])
+    expected_item: dict[str, LoroValue] = {**item, "size": 20}
+    expected: LoroValue = [expected_item] if as_list else expected_item
+    doc.get_map("editState").delete("01:a")
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"config": expected}}]
+    doc.get_map("editState").delete("02:b")
+    assert project_loro_graph(doc) == graph
+    doc.get_map("editState").insert("02:b", True)
+    assert project_loro_graph(doc)["nodes"] == [{"id": "a", "data": {"config": expected}}]
+
+
+def test_undo_retains_new_route_configuration_while_a_peer_uses_its_handle() -> None:
+    """A route added by one editor stays operational while another editor's edge references it."""
+    nodes: list[LoroValue] = [{"id": "agent", "data": {"type": "agent"}}, {"id": "end"}]
+    doc = load_loro_draft(None, {"nodes": nodes, "edges": []})
+    doc.get_map("draftFormat").insert("version", 2)
+    routes: dict[str, LoroValue] = {"enabled": True, "routes": [{"id": "approved", "label": "Approved"}]}
+    _record(
+        doc,
+        "01:a",
+        [{"kind": "nodes", "id": "agent", "op": "set", "path": ["data", "agent_output_routes"], "value": routes}],
+    )
+    edge: dict[str, LoroValue] = {"id": "yes", "source": "agent", "sourceHandle": "approved", "target": "end"}
+    _record(doc, "02:b", [{"kind": "edges", "id": "yes", "op": "set", "path": [], "value": edge}])
+    doc.get_map("editState").delete("01:a")
+    assert project_loro_graph(doc) == {
+        "nodes": [{"id": "agent", "data": {"type": "agent", "agent_output_routes": routes}}, {"id": "end"}],
+        "edges": [edge],
+    }
+    doc.get_map("editState").delete("02:b")
+    assert project_loro_graph(doc) == {"nodes": nodes, "edges": []}

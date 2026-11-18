@@ -317,3 +317,61 @@ it('keeps only local actions in draft history, including input before the first 
   })
   expect(server.document().getMap('graph').get('viewport')).toEqual({ x: 10, y: 20, zoom: 2 })
 })
+
+it('preserves local selection, panel state and temporary canvas items while editing a draft node', async () => {
+  const server = createDraftServer(graphDocument)
+  const editor = connectManager(server, [], 2)
+  await editor.join()
+  const node = editor.manager.getNodes()[0]!
+  const candidate = { ...node, id: 'candidate', data: { ...node.data, _isTempNode: true } }
+  editor.state.setNodes([
+    { ...node, selected: true, data: { ...node.data, selected: true } },
+    candidate,
+  ])
+  editor.state.setEdges([{ id: 'candidate-edge', source: 'node-1', target: 'candidate' }])
+  editor.manager.onGraphImport(({ nodes, edges }) => {
+    editor.state.setNodes(nodes)
+    editor.state.setEdges(edges)
+  })
+  expect(
+    editor.manager.updateDraftNodeData(
+      node.id,
+      { title: 'Before' },
+      { title: 'After', _openInlineAgentPanel: true },
+    ),
+  ).toBe(true)
+  expect(editor.state.getNodes()).toMatchObject([
+    {
+      id: node.id,
+      selected: true,
+      data: { selected: true, title: 'After', _openInlineAgentPanel: true },
+    },
+    { id: 'candidate' },
+  ])
+  expect(editor.state.getEdges()).toMatchObject([{ id: 'candidate-edge' }])
+  expect(
+    editor.manager.updateDraftNodeData(
+      'candidate',
+      { title: 'Before' },
+      { title: 'Draft preview' },
+    ),
+  ).toBe(false)
+  expect(
+    editor.manager.updateDraftNodeData(
+      node.id,
+      { _openInlineAgentPanel: true },
+      { _openInlineAgentPanel: false },
+    ),
+  ).toBe(true)
+  expect(editor.state.getNodes()[0]?.data._openInlineAgentPanel).toBe(false)
+  expect(editor.manager.getDraftHistory().undo).toEqual(['NodeTitleChange'])
+  expect(editor.manager.undo()).toBe(true)
+  expect(editor.state.getNodes()[0]).toMatchObject({
+    selected: true,
+    data: { selected: true, title: 'Before', _openInlineAgentPanel: false },
+  })
+  expect(projectDraftGraph(server.document())).toMatchObject({
+    nodes: [{ id: node.id }],
+    edges: [],
+  })
+})
