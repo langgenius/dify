@@ -100,6 +100,8 @@ export const zBillingModel = z.object({
 
 /**
  * FeatureModel
+ *
+ * Effective feature availability and limits for the current workspace.
  */
 export const zFeatureModel = z.object({
   annotation_quota_limit: zLimitationModel.default({ limit: 10, size: 0 }),

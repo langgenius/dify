@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus
 from enums import DeploymentEdition
+from enums.model_billing import ModelBillingSource, TenantTokenerIntegrationStatus
 from services.entities.model_billing import StoredModelBillingProfile
 from services.model_billing_profile_service import (
     InvalidModelBillingProfileError,
@@ -55,7 +55,8 @@ def test_unavailable_or_unknown_profile_fails_closed_without_private_details() -
 
 @pytest.mark.parametrize("edition", [DeploymentEdition.COMMUNITY, DeploymentEdition.ENTERPRISE])
 def test_non_cloud_features_keep_legacy_without_a_profile_database_dependency(
-    monkeypatch: pytest.MonkeyPatch, edition: DeploymentEdition,
+    monkeypatch: pytest.MonkeyPatch,
+    edition: DeploymentEdition,
 ) -> None:
     from extensions.application_services import model_billing
     from services.feature_service import FeatureService

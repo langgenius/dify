@@ -152,7 +152,9 @@ def _send(
         "Content-Type": "application/json",
         "Billing-Api-Secret-Key": dify_config.BILLING_API_SECRET_KEY,
     }
-    return _http_client.request(method, url, params=params, json=json, headers=headers, follow_redirects=follow_redirects)
+    return _http_client.request(
+        method, url, params=params, json=json, headers=headers, follow_redirects=follow_redirects
+    )
 
 
 def request[ResponseT: BillingModel](

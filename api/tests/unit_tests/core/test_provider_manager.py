@@ -1685,8 +1685,8 @@ def test_native_signup_uses_custom_providers_without_hosted_initialization(
     from core.plugin.plugin_service import PluginService
     from models.account import Tenant
     from models.model_billing import TenantModelBillingProfile
-    from services.feature_service import FeatureService
     from services.entities.feature_entities import FeatureModel
+    from services.feature_service import FeatureService
     from tests.helpers.unit.config_override import apply_config_overrides
 
     apply_config_overrides(monkeypatch, DEPLOYMENT_EDITION=DeploymentEdition.CLOUD)

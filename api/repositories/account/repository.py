@@ -178,10 +178,12 @@ class SQLAlchemyAccountRepository(AccountRepository, ConsoleAuthAccountRepositor
         session.add(account)
         session.flush()
         if creation.tokener_signup is not None:
-            session.add(AccountTokenerSignupIntent(
-                account_id=account.id,
-                plugin_unique_identifier=creation.tokener_signup.plugin_unique_identifier,
-            ))
+            session.add(
+                AccountTokenerSignupIntent(
+                    account_id=account.id,
+                    plugin_unique_identifier=creation.tokener_signup.plugin_unique_identifier,
+                )
+            )
         # Keep the stable Contact identity in the caller's account transaction.
         SQLAlchemyContactRepository(session).provision_account_backed_contact(AccountId(account.id))
         return account
