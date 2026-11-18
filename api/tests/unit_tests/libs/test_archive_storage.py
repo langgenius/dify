@@ -1,6 +1,7 @@
 import base64
 import hashlib
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import ANY, MagicMock
 
 import pytest
@@ -500,3 +501,51 @@ def test_content_md5_matches_checksum():
 
     assert ArchiveStorage._content_md5(data) == expected
     assert ArchiveStorage.compute_checksum(data) == hashlib.md5(data).hexdigest()
+
+
+def test_upload_file_uses_real_managed_multipart_transfer(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from botocore.stub import Stubber
+
+    _configure_storage(monkeypatch)
+    client = storage_module.boto3.client(
+        "s3",
+        region_name="us-east-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+    monkeypatch.setattr(storage_module.boto3, "client", lambda *_args, **_kwargs: client)
+    source = tmp_path / "archive.zip"
+    source.write_bytes(b"a" * (9 * 1024 * 1024))
+    with Stubber(client) as stubber:
+        stubber.add_response("head_bucket", {})
+        stubber.add_response("create_multipart_upload", {"UploadId": "upload-1"})
+        stubber.add_response("upload_part", {"ETag": '"part-1"'})
+        stubber.add_response("upload_part", {"ETag": '"part-2"'})
+        stubber.add_response("complete_multipart_upload", {"ETag": '"multipart-etag"'})
+        storage = ArchiveStorage(bucket=BUCKET_NAME)
+        storage.upload_file("download.zip", str(source))
+        stubber.assert_no_pending_responses()
+
+
+def test_failed_managed_upload_aborts_multipart(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    from botocore.stub import Stubber
+
+    _configure_storage(monkeypatch)
+    client = storage_module.boto3.client(
+        "s3",
+        region_name="us-east-1",
+        aws_access_key_id="test",
+        aws_secret_access_key="test",
+    )
+    monkeypatch.setattr(storage_module.boto3, "client", lambda *_args, **_kwargs: client)
+    source = tmp_path / "archive.zip"
+    source.write_bytes(b"a" * (9 * 1024 * 1024))
+    with Stubber(client) as stubber:
+        stubber.add_response("head_bucket", {})
+        stubber.add_response("create_multipart_upload", {"UploadId": "upload-1"})
+        stubber.add_client_error("upload_part", "AccessDenied", "upload rejected", http_status_code=403)
+        stubber.add_response("abort_multipart_upload", {})
+        storage = ArchiveStorage(bucket=BUCKET_NAME)
+        with pytest.raises(ArchiveStorageError, match="Failed to upload file"):
+            storage.upload_file("download.zip", str(source))
+        stubber.assert_no_pending_responses()
