@@ -207,7 +207,7 @@ class TestModelProviderModelApi:
 
         assert "data" in result
 
-    def test_post_models_success(self, app: Flask) -> None:
+    def test_post_models_success(self, app: Flask, sqlite_session: Session) -> None:
         api = ModelProviderModelApi()
         method = unwrap(api.post)
 
@@ -223,11 +223,12 @@ class TestModelProviderModelApi:
         with (
             app.test_request_context("/", json=payload),
             patch("controllers.console.workspace.models.ModelProviderService"),
-            patch("controllers.console.workspace.models.ModelLoadBalancingService"),
+            patch("controllers.console.workspace.models.ModelLoadBalancingService") as lb_service,
         ):
-            result, status = method(api, ParserPostModels.model_validate(payload), "tenant1", "openai")
+            result, status = method(api, sqlite_session, ParserPostModels.model_validate(payload), "tenant1", "openai")
 
         assert status == 200
+        assert lb_service.return_value.update_load_balancing_configs.call_args.kwargs["session"] is sqlite_session
 
     def test_delete_model_success(self, app: Flask) -> None:
         api = ModelProviderModelApi()
@@ -279,7 +280,7 @@ class TestModelProviderModelApi:
 
 
 class TestModelProviderModelCredentialApi:
-    def test_get_credentials_success(self, app: Flask) -> None:
+    def test_get_credentials_success(self, app: Flask, sqlite_session: Session) -> None:
         api = ModelProviderModelCredentialApi()
         method = unwrap(api.get)
 
@@ -306,6 +307,7 @@ class TestModelProviderModelCredentialApi:
 
             result = method(
                 api,
+                sqlite_session,
                 ParserGetCredentials(model="gpt-4", model_type=ModelType.LLM),
                 "tenant1",
                 _account(),
@@ -313,6 +315,7 @@ class TestModelProviderModelCredentialApi:
             )
 
         assert "credentials" in result
+        assert lb_service.return_value.get_load_balancing_configs.call_args.kwargs["session"] is sqlite_session
 
     def test_create_credential_success(self, app: Flask) -> None:
         api = ModelProviderModelCredentialApi()
@@ -332,7 +335,7 @@ class TestModelProviderModelCredentialApi:
 
         assert status == 201
 
-    def test_get_empty_credentials(self, app: Flask) -> None:
+    def test_get_empty_credentials(self, app: Flask, sqlite_session: Session) -> None:
         api = ModelProviderModelCredentialApi()
         method = unwrap(api.get)
 
@@ -347,6 +350,7 @@ class TestModelProviderModelCredentialApi:
 
             result = method(
                 api,
+                sqlite_session,
                 ParserGetCredentials(model="gpt", model_type=ModelType.LLM),
                 "t1",
                 _account(),
@@ -354,6 +358,7 @@ class TestModelProviderModelCredentialApi:
             )
 
         assert result["credentials"] == {}
+        assert lb.return_value.get_load_balancing_configs.call_args.kwargs["session"] is sqlite_session
 
     def test_delete_success(self, app: Flask) -> None:
         api = ModelProviderModelCredentialApi()

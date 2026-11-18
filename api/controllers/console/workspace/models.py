@@ -3,6 +3,7 @@ from typing import Any, cast
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy.orm import Session
 
 from controllers.common.fields import SimpleResultResponse, ValidationResultResponse
 from controllers.common.rbac import RBACCheck, Workspace
@@ -12,6 +13,7 @@ from controllers.common.schema import (
     register_response_schema_models,
     register_schema_models,
 )
+from controllers.common.session import with_session
 from controllers.console import console_ns
 from controllers.console.wraps import (
     RBACPermission,
@@ -26,7 +28,6 @@ from controllers.console.wraps import (
 from core.entities.model_entities import DefaultModelSetting
 from core.entities.provider_entities import CredentialConfiguration
 from extensions.ext_application_services import application_services
-from extensions.ext_database import db
 from fields.base import ResponseModel
 from graphon.model_runtime.entities.model_entities import ModelType, ParameterRule
 from graphon.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -272,7 +273,13 @@ class ModelProviderModelApi(Resource):
     @account_initialization_required
     @with_current_tenant_id
     @model_validate(ParserPostModels)
-    def post(self, req_data: ParserPostModels, tenant_id: str, provider: str):
+    @with_session
+    def post(self, session: Session, req_data: ParserPostModels, tenant_id: str, provider: str):
+        """Save validated model settings for the current tenant in a request session.
+
+        Existing service commits are preserved; the session decorator commits the
+        successful request and closes it on success or failure.
+        """
         # To save the model's load balance configs
 
         if req_data.config_from == "custom-model":
@@ -298,7 +305,7 @@ class ModelProviderModelApi(Resource):
                 model_type=req_data.model_type,
                 configs=req_data.load_balancing.configs,
                 config_from=req_data.config_from or "",
-                session=db.session(),
+                session=session,
             )
 
             if req_data.load_balancing.enabled:
@@ -346,7 +353,13 @@ class ModelProviderModelCredentialApi(Resource):
     @with_current_user
     @with_current_tenant_id
     @model_validate(ParserGetCredentials)
-    def get(self, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
+    @with_session
+    def get(self, session: Session, req_data: ParserGetCredentials, tenant_id: str, user: Account, provider: str):
+        """Read tenant model credentials and initialize inherited configs when needed.
+
+        The caller and request are validated by the outer decorators. The session
+        decorator finalizes and closes the session after response data is materialized.
+        """
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
@@ -362,7 +375,7 @@ class ModelProviderModelCredentialApi(Resource):
             provider=provider,
             model=req_data.model,
             model_type=req_data.model_type,
-            session=db.session(),
+            session=session,
             config_from=req_data.config_from or "",
         )
 
